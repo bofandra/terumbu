@@ -51,7 +51,11 @@ docker compose \
   -f "${COMPOSE_FILE}" \
   up -d --build postgres web
 
-APP_PORT="$(awk -F= '/^TERUMBU_APP_PORT=/ { print $2 }' "${ENV_FILE}" | tail -1)"
+APP_PORT="$(awk -F= '/^TERUMBU_APP_PORT=/ { print $2 }' "${ENV_FILE}" | tail -1 | tr -d '\r\n')"
+APP_PORT="${APP_PORT#\'}"
+APP_PORT="${APP_PORT%\'}"
+APP_PORT="${APP_PORT#\"}"
+APP_PORT="${APP_PORT%\"}"
 APP_PORT="${APP_PORT:-3100}"
 
 echo "Waiting for Terumbu on 127.0.0.1:${APP_PORT}..."
