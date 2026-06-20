@@ -81,35 +81,51 @@ jobs:
         run: |
           set -euo pipefail
 
-          APP_PORT="${TERUMBU_APP_PORT:-3100}"
-          POSTGRES_DB="${TERUMBU_POSTGRES_DB:-terumbu}"
-          POSTGRES_USER="${TERUMBU_POSTGRES_USER:-terumbu}"
-          PUBLIC_URL="${NEXT_PUBLIC_APP_URL:-http://${VPS_HOST}:${APP_PORT}}"
-          POSTHOG_HOST_VALUE="${POSTHOG_HOST:-https://app.posthog.com}"
+          clean_env_value() {
+            printf '%s' "$1" | tr -d '\r\n'
+          }
 
-          test -n "${TERUMBU_POSTGRES_PASSWORD}" || { echo "TERUMBU_POSTGRES_PASSWORD secret is required"; exit 1; }
+          quote_env_value() {
+            local value
+            value="$(clean_env_value "$1")"
+            printf "'%s'" "$(printf '%s' "${value}" | sed "s/'/'\\\\''/g")"
+          }
+
+          write_env_value() {
+            printf '%s=' "$1" >> terumbu.production.env
+            quote_env_value "$2" >> terumbu.production.env
+            printf '\n' >> terumbu.production.env
+          }
+
+          APP_PORT="$(clean_env_value "${TERUMBU_APP_PORT:-3100}")"
+          POSTGRES_DB="$(clean_env_value "${TERUMBU_POSTGRES_DB:-terumbu}")"
+          POSTGRES_USER="$(clean_env_value "${TERUMBU_POSTGRES_USER:-terumbu}")"
+          POSTGRES_PASSWORD="$(clean_env_value "${TERUMBU_POSTGRES_PASSWORD}")"
+          PUBLIC_URL="$(clean_env_value "${NEXT_PUBLIC_APP_URL:-http://${VPS_HOST}:${APP_PORT}}")"
+          POSTHOG_HOST_VALUE="$(clean_env_value "${POSTHOG_HOST:-https://app.posthog.com}")"
+
+          test -n "${POSTGRES_PASSWORD}" || { echo "TERUMBU_POSTGRES_PASSWORD secret is required"; exit 1; }
 
           if [ -z "${TERUMBU_DATABASE_URL}" ]; then
-            TERUMBU_DATABASE_URL="postgresql://${POSTGRES_USER}:${TERUMBU_POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}"
+            TERUMBU_DATABASE_URL="postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}"
+          else
+            TERUMBU_DATABASE_URL="$(clean_env_value "${TERUMBU_DATABASE_URL}")"
           fi
 
-          cat > terumbu.production.env <<EOF
-          TERUMBU_APP_PORT=${APP_PORT}
-          TERUMBU_POSTGRES_DB=${POSTGRES_DB}
-          TERUMBU_POSTGRES_USER=${POSTGRES_USER}
-          TERUMBU_POSTGRES_PASSWORD=${TERUMBU_POSTGRES_PASSWORD}
-          TERUMBU_DATABASE_URL=${TERUMBU_DATABASE_URL}
-          NEXT_PUBLIC_APP_URL=${PUBLIC_URL}
-          NEXT_PUBLIC_MAPBOX_TOKEN=${NEXT_PUBLIC_MAPBOX_TOKEN}
-          MIDTRANS_SERVER_KEY=${MIDTRANS_SERVER_KEY}
-          MIDTRANS_CLIENT_KEY=${MIDTRANS_CLIENT_KEY}
-          XENDIT_SECRET_KEY=${XENDIT_SECRET_KEY}
-          RESEND_API_KEY=${RESEND_API_KEY}
-          POSTHOG_KEY=${POSTHOG_KEY}
-          POSTHOG_HOST=${POSTHOG_HOST_VALUE}
-          EOF
-
-          sed -i 's/^          //' terumbu.production.env
+          : > terumbu.production.env
+          write_env_value TERUMBU_APP_PORT "${APP_PORT}"
+          write_env_value TERUMBU_POSTGRES_DB "${POSTGRES_DB}"
+          write_env_value TERUMBU_POSTGRES_USER "${POSTGRES_USER}"
+          write_env_value TERUMBU_POSTGRES_PASSWORD "${POSTGRES_PASSWORD}"
+          write_env_value TERUMBU_DATABASE_URL "${TERUMBU_DATABASE_URL}"
+          write_env_value NEXT_PUBLIC_APP_URL "${PUBLIC_URL}"
+          write_env_value NEXT_PUBLIC_MAPBOX_TOKEN "${NEXT_PUBLIC_MAPBOX_TOKEN}"
+          write_env_value MIDTRANS_SERVER_KEY "${MIDTRANS_SERVER_KEY}"
+          write_env_value MIDTRANS_CLIENT_KEY "${MIDTRANS_CLIENT_KEY}"
+          write_env_value XENDIT_SECRET_KEY "${XENDIT_SECRET_KEY}"
+          write_env_value RESEND_API_KEY "${RESEND_API_KEY}"
+          write_env_value POSTHOG_KEY "${POSTHOG_KEY}"
+          write_env_value POSTHOG_HOST "${POSTHOG_HOST_VALUE}"
 
       - name: Upload production env
         env:
@@ -132,4 +148,3 @@ jobs:
           ssh -i ~/.ssh/terumbu_deploy_key "${VPS_USER}@${VPS_HOST}" \
             "DEPLOY_BASE=/home/ubuntu/terumbu DEPLOY_REPO='${DEPLOY_REPO}' DEPLOY_REF='${DEPLOY_REF}' bash -s" \
             < scripts/deploy-vps.sh
-
