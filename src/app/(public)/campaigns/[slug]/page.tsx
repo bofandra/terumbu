@@ -4,16 +4,14 @@ import Image from "next/image";
 import { ImpactMapPreview } from "@/components/impact-map-preview";
 import { SectionHeading } from "@/components/section-heading";
 import { ButtonLink } from "@/components/ui/button";
-import { campaigns } from "@/lib/data";
+import { getCampaignDetail } from "@/lib/queries";
 import { formatCurrency } from "@/lib/utils";
 
-export function generateStaticParams() {
-  return campaigns.map((campaign) => ({ slug: campaign.slug }));
-}
+export const dynamic = "force-dynamic";
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  const campaign = campaigns.find((item) => item.slug === slug);
+  const campaign = await getCampaignDetail(slug);
 
   return {
     title: campaign?.title ?? "Campaign"
@@ -22,7 +20,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
 
 export default async function CampaignDetailPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  const campaign = campaigns.find((item) => item.slug === slug);
+  const campaign = await getCampaignDetail(slug);
 
   if (!campaign) {
     notFound();
@@ -60,7 +58,8 @@ export default async function CampaignDetailPage({ params }: { params: Promise<{
       <section className="mx-auto grid max-w-7xl gap-8 px-4 py-14 sm:px-6 lg:grid-cols-[1fr_380px] lg:px-8">
         <div className="space-y-14">
           <SectionHeading title="Campaign story">
-            This campaign funds local restoration teams, field equipment, ecosystem monitoring, and transparent public updates from the project site.
+            {campaign.story ??
+              "This campaign funds local restoration teams, field equipment, ecosystem monitoring, and transparent public updates from the project site."}
           </SectionHeading>
 
           <div className="grid gap-4 sm:grid-cols-3">
@@ -81,7 +80,39 @@ export default async function CampaignDetailPage({ params }: { params: Promise<{
               Impact locations will connect campaign funding with before and after photos, field updates, and verification records.
             </SectionHeading>
             <div className="mt-8">
-              <ImpactMapPreview />
+              <ImpactMapPreview sites={campaign.sites} />
+            </div>
+          </div>
+
+          <div>
+            <SectionHeading title="Field updates">
+              Partner teams publish updates as milestones, evidence uploads, and verification reviews are completed.
+            </SectionHeading>
+            <div className="mt-6 grid gap-4">
+              {campaign.updates.map((update) => (
+                <article key={update.title} className="rounded-2xl border border-ocean-900/10 bg-white p-5 shadow-soft">
+                  <p className="text-xs font-bold uppercase tracking-[0.14em] text-coral-700">
+                    {update.publishedAt?.toLocaleDateString("id-ID", { dateStyle: "medium" }) ?? "Draft"}
+                  </p>
+                  <h2 className="mt-2 text-xl font-bold tracking-normal text-ocean-900">{update.title}</h2>
+                  <p className="mt-3 text-sm leading-6 text-ocean-900/68">{update.body}</p>
+                </article>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <SectionHeading title="Evidence records">
+              Evidence files are stored with verification status so donors and partners can reconcile claims.
+            </SectionHeading>
+            <div className="mt-6 grid gap-4 md:grid-cols-3">
+              {campaign.evidence.map((item) => (
+                <article key={item.title} className="rounded-2xl border border-ocean-900/10 bg-white p-5 shadow-soft">
+                  <p className="text-xs font-bold uppercase tracking-[0.14em] text-ocean-900/52">{item.evidenceType}</p>
+                  <h2 className="mt-3 font-bold text-ocean-900">{item.title}</h2>
+                  <p className="mt-3 text-sm font-semibold text-kelp-700">{item.verificationStatus}</p>
+                </article>
+              ))}
             </div>
           </div>
         </div>
@@ -110,7 +141,7 @@ export default async function CampaignDetailPage({ params }: { params: Promise<{
               </button>
             ))}
           </div>
-          <ButtonLink href="/checkout/donation" className="mt-5 w-full">
+          <ButtonLink href={`/checkout/donation?campaign=${campaign.slug}`} className="mt-5 w-full">
             Continue Donation
           </ButtonLink>
         </aside>

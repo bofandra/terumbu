@@ -1,28 +1,47 @@
 import "dotenv/config";
 
-import { scryptSync } from "node:crypto";
-
 import { sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 
 import * as schema from "../src/db/schema";
+import { createPasswordHash } from "../src/lib/password";
 
 const {
   accounts,
   adminAuditLogs,
+  assessmentAttempts,
   campaignUpdates,
   campaigns,
   corporateAccounts,
+  corporateEmployees,
+  corporateEvidenceCenter,
+  corporatePermissions,
+  corporateProgramBudgets,
+  corporatePrograms,
+  corporateProjectPortfolio,
+  corporateReportExports,
+  courseAssessments,
+  courseCertificates,
+  courseEnrollments,
+  courseLessons,
   courses,
+  donationReceipts,
   donations,
+  emailLogs,
+  expeditionBookingPayments,
+  expeditionBookings,
+  expeditionDepartures,
+  expeditionParticipants,
   expeditions,
   impactPassportItems,
   impactPassports,
   impactSites,
+  lessonProgress,
   organizations,
   paymentTransactions,
   profiles,
+  projectEvidence,
   roles,
   sponsoredEcosystems,
   userRoles,
@@ -62,14 +81,51 @@ const ids = {
   transactionRajaAmpat: "88888888-8888-4888-8888-888888888881",
   transactionBali: "88888888-8888-4888-8888-888888888882",
   transactionKomodo: "88888888-8888-4888-8888-888888888883",
+  receiptRajaAmpat: "88888888-8888-4888-8888-888888888891",
+  receiptBali: "88888888-8888-4888-8888-888888888892",
+  receiptKomodo: "88888888-8888-4888-8888-888888888893",
   ecosystemCoral1: "99999999-9999-4999-8999-999999999991",
   ecosystemCoral2: "99999999-9999-4999-8999-999999999992",
   ecosystemMangrove: "99999999-9999-4999-8999-999999999993",
+  evidenceRajaAmpat: "dddddddd-dddd-4ddd-8ddd-dddddddddd01",
+  evidenceBali: "dddddddd-dddd-4ddd-8ddd-dddddddddd02",
+  evidenceKomodo: "dddddddd-dddd-4ddd-8ddd-dddddddddd03",
+  departureRajaAmpat: "dddddddd-dddd-4ddd-8ddd-dddddddddd11",
+  departureWakatobi: "dddddddd-dddd-4ddd-8ddd-dddddddddd12",
+  bookingRajaAmpat: "dddddddd-dddd-4ddd-8ddd-dddddddddd21",
+  bookingParticipantRaka: "dddddddd-dddd-4ddd-8ddd-dddddddddd31",
+  bookingPaymentRajaAmpat: "dddddddd-dddd-4ddd-8ddd-dddddddddd41",
+  oceanLessonIntro: "eeeeeeee-eeee-4eee-8eee-eeeeeeeeee01",
+  oceanLessonThreats: "eeeeeeee-eeee-4eee-8eee-eeeeeeeeee02",
+  coralLessonMethods: "eeeeeeee-eeee-4eee-8eee-eeeeeeeeee03",
+  coralLessonMonitoring: "eeeeeeee-eeee-4eee-8eee-eeeeeeeeee04",
+  esgLessonFunding: "eeeeeeee-eeee-4eee-8eee-eeeeeeeeee05",
+  esgLessonReporting: "eeeeeeee-eeee-4eee-8eee-eeeeeeeeee06",
+  enrollmentOceanExplorer: "eeeeeeee-eeee-4eee-8eee-eeeeeeeeee11",
+  lessonProgressIntro: "eeeeeeee-eeee-4eee-8eee-eeeeeeeeee21",
+  lessonProgressThreats: "eeeeeeee-eeee-4eee-8eee-eeeeeeeeee22",
+  assessmentOceanExplorer: "eeeeeeee-eeee-4eee-8eee-eeeeeeeeee31",
+  assessmentAttemptOceanExplorer: "eeeeeeee-eeee-4eee-8eee-eeeeeeeeee41",
+  certificateOceanExplorer: "eeeeeeee-eeee-4eee-8eee-eeeeeeeeee51",
   passportItemDonation: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1",
   passportItemCoral: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa2",
   passportItemExpedition: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa3",
   passportItemCourse: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa4",
   corporateAccount: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+  corporateProgram: "bbbbbbbb-bbbb-4bbb-8bbb-000000000001",
+  corporateBudgetRestoration: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbd1",
+  corporateBudgetEducation: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbd2",
+  corporateBudgetReporting: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbd3",
+  corporateEmployeeDemo: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbe1",
+  corporateEmployeeFinance: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbe2",
+  corporatePortfolioRaja: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbf1",
+  corporatePortfolioBali: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbf2",
+  corporateEvidenceRaja: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbba1",
+  corporateEvidenceBali: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbba2",
+  corporateReportExport: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbb91",
+  corporatePermission: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbb92",
+  emailReceiptRaja: "cccccccc-cccc-4ccc-8ccc-cccccccccc01",
+  emailBookingRaja: "cccccccc-cccc-4ccc-8ccc-cccccccccc02",
   auditLog: "cccccccc-cccc-4ccc-8ccc-cccccccccccc"
 };
 
@@ -80,9 +136,7 @@ const queryClient = postgres(databaseUrl, {
 const db = drizzle(queryClient, { schema });
 
 function passwordHash(password: string) {
-  const hash = scryptSync(password, DEMO_PASSWORD_SALT, 64).toString("hex");
-
-  return `scrypt:${DEMO_PASSWORD_SALT}:${hash}`;
+  return createPasswordHash(password, DEMO_PASSWORD_SALT);
 }
 
 function date(value: string) {
@@ -438,6 +492,77 @@ async function seed() {
     });
 
   await db
+    .insert(projectEvidence)
+    .values([
+      {
+        id: ids.evidenceRajaAmpat,
+        campaignId: campaignBySlug.get("restore-raja-ampat-reefs")!,
+        impactSiteId: ids.impactSiteRajaAmpat,
+        uploadedByUserId: demoUser.id,
+        evidenceCode: "EVD-RAJA-AMPAT-REEF-001",
+        title: "Raja Ampat reef table survey",
+        evidenceType: "field_photo",
+        fileUrl: "https://images.unsplash.com/photo-1583212292454-1fe6229603b7?auto=format&fit=crop&w=1200&q=80",
+        storageProvider: "cloudflare_r2_ready",
+        verificationStatus: "verified",
+        verifiedAt: date("2026-06-12T04:00:00.000Z"),
+        metadata: {
+          surveyDate: "2026-06-12",
+          evidenceCount: 14,
+          reviewer: "field_partner"
+        }
+      },
+      {
+        id: ids.evidenceBali,
+        campaignId: campaignBySlug.get("mangrove-shield-bali")!,
+        impactSiteId: ids.impactSiteBali,
+        uploadedByUserId: demoUser.id,
+        evidenceCode: "EVD-BALI-MANGROVE-001",
+        title: "North Bali nursery audit",
+        evidenceType: "document",
+        fileUrl: "https://images.unsplash.com/photo-1518837695005-2083093ee35b?auto=format&fit=crop&w=1200&q=80",
+        storageProvider: "cloudflare_r2_ready",
+        verificationStatus: "verified",
+        verifiedAt: date("2026-06-10T04:00:00.000Z"),
+        metadata: {
+          seedlingsReady: 18400,
+          survivalRate: 89
+        }
+      },
+      {
+        id: ids.evidenceKomodo,
+        campaignId: campaignBySlug.get("cleanup-komodo-coast")!,
+        impactSiteId: ids.impactSiteKomodo,
+        uploadedByUserId: demoUser.id,
+        evidenceCode: "EVD-KOMODO-CLEANUP-001",
+        title: "Komodo school cleanup launch",
+        evidenceType: "field_report",
+        fileUrl: "https://images.unsplash.com/photo-1546026423-cc4642628d2b?auto=format&fit=crop&w=1200&q=80",
+        storageProvider: "cloudflare_r2_ready",
+        verificationStatus: "in_review",
+        metadata: {
+          schools: 3,
+          sortedWasteKg: 420
+        }
+      }
+    ])
+    .onConflictDoUpdate({
+      target: projectEvidence.evidenceCode,
+      set: {
+        campaignId: sql`excluded.campaign_id`,
+        impactSiteId: sql`excluded.impact_site_id`,
+        uploadedByUserId: demoUser.id,
+        title: sql`excluded.title`,
+        evidenceType: sql`excluded.evidence_type`,
+        fileUrl: sql`excluded.file_url`,
+        storageProvider: sql`excluded.storage_provider`,
+        verificationStatus: sql`excluded.verification_status`,
+        verifiedAt: sql`excluded.verified_at`,
+        metadata: sql`excluded.metadata`
+      }
+    });
+
+  await db
     .insert(donations)
     .values([
       {
@@ -543,6 +668,56 @@ async function seed() {
     });
 
   await db
+    .insert(donationReceipts)
+    .values([
+      {
+        id: ids.receiptRajaAmpat,
+        donationId: ids.donationRajaAmpat,
+        receiptNumber: "TRB-RCP-2026-0001",
+        issuedAt: date("2026-06-01T04:31:00.000Z"),
+        emailedAt: date("2026-06-01T04:32:00.000Z"),
+        payload: {
+          campaign: "Restore Raja Ampat Reefs",
+          amount: 1500000,
+          currency: "IDR"
+        }
+      },
+      {
+        id: ids.receiptBali,
+        donationId: ids.donationBali,
+        receiptNumber: "TRB-RCP-2026-0002",
+        issuedAt: date("2026-06-07T06:16:00.000Z"),
+        emailedAt: date("2026-06-07T06:17:00.000Z"),
+        payload: {
+          campaign: "Mangrove Shield for North Bali",
+          amount: 1000000,
+          currency: "IDR"
+        }
+      },
+      {
+        id: ids.receiptKomodo,
+        donationId: ids.donationKomodo,
+        receiptNumber: "TRB-RCP-2026-0003",
+        issuedAt: date("2026-06-13T08:46:00.000Z"),
+        emailedAt: date("2026-06-13T08:47:00.000Z"),
+        payload: {
+          campaign: "Cleanup Komodo Coastline",
+          amount: 700000,
+          currency: "IDR"
+        }
+      }
+    ])
+    .onConflictDoUpdate({
+      target: donationReceipts.receiptNumber,
+      set: {
+        donationId: sql`excluded.donation_id`,
+        issuedAt: sql`excluded.issued_at`,
+        emailedAt: sql`excluded.emailed_at`,
+        payload: sql`excluded.payload`
+      }
+    });
+
+  await db
     .insert(sponsoredEcosystems)
     .values([
       {
@@ -608,7 +783,7 @@ async function seed() {
       }
     });
 
-  await db
+  const expeditionRows = await db
     .insert(expeditions)
     .values([
       {
@@ -643,9 +818,140 @@ async function seed() {
         imageUrl: sql`excluded.image_url`,
         relatedCampaignId: sql`excluded.related_campaign_id`
       }
+    })
+    .returning({ id: expeditions.id, slug: expeditions.slug });
+
+  const expeditionBySlug = new Map(expeditionRows.map((expedition) => [expedition.slug, expedition.id]));
+
+  await db
+    .insert(expeditionDepartures)
+    .values([
+      {
+        id: ids.departureRajaAmpat,
+        expeditionId: expeditionBySlug.get("raja-ampat-coral-restoration")!,
+        startsAt: date("2026-10-09T01:00:00.000Z"),
+        endsAt: date("2026-10-12T09:00:00.000Z"),
+        capacity: 12,
+        seatsBooked: 1,
+        status: "open",
+        metadata: {
+          meetingPoint: "Sorong Harbor",
+          guide: "Yayasan Bahari Lestari field team"
+        }
+      },
+      {
+        id: ids.departureWakatobi,
+        expeditionId: expeditionBySlug.get("wakatobi-reef-monitoring")!,
+        startsAt: date("2026-09-18T01:00:00.000Z"),
+        endsAt: date("2026-09-20T09:00:00.000Z"),
+        capacity: 10,
+        seatsBooked: 0,
+        status: "open",
+        metadata: {
+          meetingPoint: "Wanci Harbor",
+          guide: "Community reef monitor network"
+        }
+      }
+    ])
+    .onConflictDoUpdate({
+      target: [expeditionDepartures.expeditionId, expeditionDepartures.startsAt],
+      set: {
+        endsAt: sql`excluded.ends_at`,
+        capacity: sql`excluded.capacity`,
+        seatsBooked: sql`excluded.seats_booked`,
+        status: sql`excluded.status`,
+        metadata: sql`excluded.metadata`
+      }
     });
 
   await db
+    .insert(expeditionBookings)
+    .values({
+      id: ids.bookingRajaAmpat,
+      expeditionId: expeditionBySlug.get("raja-ampat-coral-restoration")!,
+      departureId: ids.departureRajaAmpat,
+      userId: demoUser.id,
+      bookingCode: "TRB-EXP-2026-0001",
+      contactName: "Raka Demo",
+      contactEmail: DEMO_EMAIL,
+      participantsCount: 1,
+      totalAmount: "2500000.00",
+      currency: "IDR",
+      status: "confirmed",
+      paymentStatus: "paid",
+      bookedAt: date("2026-06-14T05:00:00.000Z"),
+      confirmedAt: date("2026-06-14T05:02:00.000Z"),
+      metadata: {
+        confirmationEmailQueued: true,
+        departureMonth: "2026-10"
+      }
+    })
+    .onConflictDoUpdate({
+      target: expeditionBookings.bookingCode,
+      set: {
+        expeditionId: sql`excluded.expedition_id`,
+        departureId: sql`excluded.departure_id`,
+        userId: demoUser.id,
+        contactName: sql`excluded.contact_name`,
+        contactEmail: sql`excluded.contact_email`,
+        participantsCount: sql`excluded.participants_count`,
+        totalAmount: sql`excluded.total_amount`,
+        status: sql`excluded.status`,
+        paymentStatus: sql`excluded.payment_status`,
+        bookedAt: sql`excluded.booked_at`,
+        confirmedAt: sql`excluded.confirmed_at`,
+        metadata: sql`excluded.metadata`
+      }
+    });
+
+  await db
+    .insert(expeditionParticipants)
+    .values({
+      id: ids.bookingParticipantRaka,
+      bookingId: ids.bookingRajaAmpat,
+      fullName: "Raka Demo",
+      email: DEMO_EMAIL,
+      phone: "+62 812 0000 2026",
+      emergencyContact: "Demo Contact +62 812 1111 2026",
+      dietaryNotes: "No shellfish"
+    })
+    .onConflictDoUpdate({
+      target: expeditionParticipants.id,
+      set: {
+        bookingId: ids.bookingRajaAmpat,
+        fullName: "Raka Demo",
+        email: DEMO_EMAIL,
+        phone: "+62 812 0000 2026",
+        emergencyContact: "Demo Contact +62 812 1111 2026",
+        dietaryNotes: "No shellfish"
+      }
+    });
+
+  await db
+    .insert(expeditionBookingPayments)
+    .values({
+      id: ids.bookingPaymentRajaAmpat,
+      bookingId: ids.bookingRajaAmpat,
+      provider: "demo_gateway",
+      providerReference: "DEMO-EXPEDITION-RAJA-AMPAT-0001",
+      status: "paid",
+      payload: {
+        method: "virtual_account",
+        paidAt: "2026-06-14T05:01:00.000Z"
+      },
+      updatedAt: now
+    })
+    .onConflictDoUpdate({
+      target: [expeditionBookingPayments.provider, expeditionBookingPayments.providerReference],
+      set: {
+        bookingId: ids.bookingRajaAmpat,
+        status: sql`excluded.status`,
+        payload: sql`excluded.payload`,
+        updatedAt: now
+      }
+    });
+
+  const courseRows = await db
     .insert(courses)
     .values([
       {
@@ -681,6 +987,203 @@ async function seed() {
         durationMinutes: sql`excluded.duration_minutes`,
         summary: sql`excluded.summary`,
         imageUrl: sql`excluded.image_url`
+      }
+    })
+    .returning({ id: courses.id, slug: courses.slug });
+
+  const courseBySlug = new Map(courseRows.map((course) => [course.slug, course.id]));
+
+  await db
+    .insert(courseLessons)
+    .values([
+      {
+        id: ids.oceanLessonIntro,
+        courseId: courseBySlug.get("ocean-explorer")!,
+        title: "Reading a healthy reef",
+        slug: "reading-a-healthy-reef",
+        position: 1,
+        durationMinutes: 18,
+        body: "Learn the visual cues field teams use when evaluating coral health, fish presence, and reef stress."
+      },
+      {
+        id: ids.oceanLessonThreats,
+        courseId: courseBySlug.get("ocean-explorer")!,
+        title: "Threats and restoration signals",
+        slug: "threats-and-restoration-signals",
+        position: 2,
+        durationMinutes: 27,
+        body: "Connect warming, blast damage, plastic waste, and restoration evidence to measurable conservation claims."
+      },
+      {
+        id: ids.coralLessonMethods,
+        courseId: courseBySlug.get("coral-guardian")!,
+        title: "Coral nursery methods",
+        slug: "coral-nursery-methods",
+        position: 1,
+        durationMinutes: 48,
+        body: "Compare table, rope, and fragment tagging methods used by restoration teams."
+      },
+      {
+        id: ids.coralLessonMonitoring,
+        courseId: courseBySlug.get("coral-guardian")!,
+        title: "Monitoring and field safety",
+        slug: "monitoring-and-field-safety",
+        position: 2,
+        durationMinutes: 72,
+        body: "Prepare for survey checklists, evidence handling, and safe movement around active reef sites."
+      },
+      {
+        id: ids.esgLessonFunding,
+        courseId: courseBySlug.get("esg-for-coastal-conservation")!,
+        title: "Funding nature-positive programs",
+        slug: "funding-nature-positive-programs",
+        position: 1,
+        durationMinutes: 80,
+        body: "Structure conservation funding portfolios that can be reconciled to project outputs."
+      },
+      {
+        id: ids.esgLessonReporting,
+        courseId: courseBySlug.get("esg-for-coastal-conservation")!,
+        title: "Evidence and report export",
+        slug: "evidence-and-report-export",
+        position: 2,
+        durationMinutes: 100,
+        body: "Translate field evidence, budget usage, and employee engagement into corporate reports."
+      }
+    ])
+    .onConflictDoUpdate({
+      target: courseLessons.id,
+      set: {
+        courseId: sql`excluded.course_id`,
+        title: sql`excluded.title`,
+        slug: sql`excluded.slug`,
+        position: sql`excluded.position`,
+        durationMinutes: sql`excluded.duration_minutes`,
+        body: sql`excluded.body`
+      }
+    });
+
+  const [oceanEnrollment] = await db
+    .insert(courseEnrollments)
+    .values({
+      id: ids.enrollmentOceanExplorer,
+      userId: demoUser.id,
+      courseId: courseBySlug.get("ocean-explorer")!,
+      status: "completed",
+      enrolledAt: date("2026-06-12T02:00:00.000Z"),
+      completedAt: date("2026-06-16T07:00:00.000Z"),
+      metadata: {
+        source: "demo_seed"
+      }
+    })
+    .onConflictDoUpdate({
+      target: [courseEnrollments.userId, courseEnrollments.courseId],
+      set: {
+        status: "completed",
+        enrolledAt: date("2026-06-12T02:00:00.000Z"),
+        completedAt: date("2026-06-16T07:00:00.000Z"),
+        metadata: sql`excluded.metadata`
+      }
+    })
+    .returning({ id: courseEnrollments.id });
+
+  await db
+    .insert(lessonProgress)
+    .values([
+      {
+        id: ids.lessonProgressIntro,
+        enrollmentId: oceanEnrollment.id,
+        lessonId: ids.oceanLessonIntro,
+        status: "completed",
+        completedAt: date("2026-06-14T04:00:00.000Z"),
+        score: 96
+      },
+      {
+        id: ids.lessonProgressThreats,
+        enrollmentId: oceanEnrollment.id,
+        lessonId: ids.oceanLessonThreats,
+        status: "completed",
+        completedAt: date("2026-06-16T06:30:00.000Z"),
+        score: 92
+      }
+    ])
+    .onConflictDoUpdate({
+      target: [lessonProgress.enrollmentId, lessonProgress.lessonId],
+      set: {
+        status: "completed",
+        completedAt: sql`excluded.completed_at`,
+        score: sql`excluded.score`
+      }
+    });
+
+  const [oceanAssessment] = await db
+    .insert(courseAssessments)
+    .values({
+      id: ids.assessmentOceanExplorer,
+      courseId: courseBySlug.get("ocean-explorer")!,
+      title: "Ocean Explorer final check",
+      slug: "final-check",
+      passingScore: 80,
+      metadata: {
+        questionCount: 12
+      }
+    })
+    .onConflictDoUpdate({
+      target: [courseAssessments.courseId, courseAssessments.slug],
+      set: {
+        title: "Ocean Explorer final check",
+        passingScore: 80,
+        metadata: sql`excluded.metadata`
+      }
+    })
+    .returning({ id: courseAssessments.id });
+
+  await db
+    .insert(assessmentAttempts)
+    .values({
+      id: ids.assessmentAttemptOceanExplorer,
+      assessmentId: oceanAssessment.id,
+      userId: demoUser.id,
+      score: 92,
+      status: "passed",
+      submittedAt: date("2026-06-16T06:45:00.000Z"),
+      metadata: {
+        durationMinutes: 11
+      }
+    })
+    .onConflictDoUpdate({
+      target: [assessmentAttempts.assessmentId, assessmentAttempts.userId],
+      set: {
+        score: 92,
+        status: "passed",
+        submittedAt: date("2026-06-16T06:45:00.000Z"),
+        metadata: sql`excluded.metadata`
+      }
+    });
+
+  await db
+    .insert(courseCertificates)
+    .values({
+      id: ids.certificateOceanExplorer,
+      userId: demoUser.id,
+      courseId: courseBySlug.get("ocean-explorer")!,
+      enrollmentId: oceanEnrollment.id,
+      certificateNumber: "TRB-CERT-2026-0001",
+      publicSlug: "raka-demo-ocean-explorer-2026",
+      issuedAt: date("2026-06-16T07:00:00.000Z"),
+      metadata: {
+        score: 92,
+        credential: "Ocean Explorer"
+      }
+    })
+    .onConflictDoUpdate({
+      target: [courseCertificates.userId, courseCertificates.courseId],
+      set: {
+        enrollmentId: oceanEnrollment.id,
+        certificateNumber: "TRB-CERT-2026-0001",
+        publicSlug: "raka-demo-ocean-explorer-2026",
+        issuedAt: date("2026-06-16T07:00:00.000Z"),
+        metadata: sql`excluded.metadata`
       }
     });
 
@@ -788,6 +1291,236 @@ async function seed() {
       set: {
         name: "Nusantara Bank",
         logoUrl: "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=512&q=80"
+      }
+    });
+
+  await db
+    .insert(corporatePrograms)
+    .values({
+      id: ids.corporateProgram,
+      corporateAccountId: ids.corporateAccount,
+      name: "Ocean Impact Program 2026",
+      slug: "nusantara-bank-ocean-impact-2026",
+      startsAt: date("2026-01-01T00:00:00.000Z"),
+      endsAt: date("2026-12-31T16:59:59.000Z"),
+      budgetAmount: "500000000.00",
+      status: "active"
+    })
+    .onConflictDoUpdate({
+      target: corporatePrograms.slug,
+      set: {
+        corporateAccountId: ids.corporateAccount,
+        name: "Ocean Impact Program 2026",
+        startsAt: date("2026-01-01T00:00:00.000Z"),
+        endsAt: date("2026-12-31T16:59:59.000Z"),
+        budgetAmount: "500000000.00",
+        status: "active"
+      }
+    });
+
+  await db
+    .insert(corporateProgramBudgets)
+    .values([
+      {
+        id: ids.corporateBudgetRestoration,
+        programId: ids.corporateProgram,
+        category: "Restoration portfolio",
+        allocatedAmount: "350000000.00",
+        spentAmount: "238000000.00",
+        metadata: {
+          reportingCode: "RESTORE"
+        }
+      },
+      {
+        id: ids.corporateBudgetEducation,
+        programId: ids.corporateProgram,
+        category: "Employee learning",
+        allocatedAmount: "90000000.00",
+        spentAmount: "54000000.00",
+        metadata: {
+          reportingCode: "LEARN"
+        }
+      },
+      {
+        id: ids.corporateBudgetReporting,
+        programId: ids.corporateProgram,
+        category: "Verification and reports",
+        allocatedAmount: "60000000.00",
+        spentAmount: "48000000.00",
+        metadata: {
+          reportingCode: "VERIFY"
+        }
+      }
+    ])
+    .onConflictDoUpdate({
+      target: [corporateProgramBudgets.programId, corporateProgramBudgets.category],
+      set: {
+        allocatedAmount: sql`excluded.allocated_amount`,
+        spentAmount: sql`excluded.spent_amount`,
+        metadata: sql`excluded.metadata`
+      }
+    });
+
+  await db
+    .insert(corporateEmployees)
+    .values([
+      {
+        id: ids.corporateEmployeeDemo,
+        corporateAccountId: ids.corporateAccount,
+        userId: demoUser.id,
+        email: DEMO_EMAIL,
+        name: "Raka Demo",
+        department: "Sustainability",
+        role: "program_admin",
+        status: "active"
+      },
+      {
+        id: ids.corporateEmployeeFinance,
+        corporateAccountId: ids.corporateAccount,
+        email: "finance.demo@nusantarabank.example",
+        name: "Finance Demo",
+        department: "Finance",
+        role: "report_viewer",
+        status: "invited"
+      }
+    ])
+    .onConflictDoUpdate({
+      target: [corporateEmployees.corporateAccountId, corporateEmployees.email],
+      set: {
+        userId: sql`excluded.user_id`,
+        name: sql`excluded.name`,
+        department: sql`excluded.department`,
+        role: sql`excluded.role`,
+        status: sql`excluded.status`
+      }
+    });
+
+  await db
+    .insert(corporateProjectPortfolio)
+    .values([
+      {
+        id: ids.corporatePortfolioRaja,
+        programId: ids.corporateProgram,
+        campaignId: campaignBySlug.get("restore-raja-ampat-reefs")!,
+        allocationAmount: "220000000.00",
+        status: "funded"
+      },
+      {
+        id: ids.corporatePortfolioBali,
+        programId: ids.corporateProgram,
+        campaignId: campaignBySlug.get("mangrove-shield-bali")!,
+        allocationAmount: "118000000.00",
+        status: "monitoring"
+      }
+    ])
+    .onConflictDoUpdate({
+      target: [corporateProjectPortfolio.programId, corporateProjectPortfolio.campaignId],
+      set: {
+        allocationAmount: sql`excluded.allocation_amount`,
+        status: sql`excluded.status`
+      }
+    });
+
+  await db
+    .insert(corporateEvidenceCenter)
+    .values([
+      {
+        id: ids.corporateEvidenceRaja,
+        programId: ids.corporateProgram,
+        evidenceId: ids.evidenceRajaAmpat,
+        visibility: "reportable",
+        addedAt: date("2026-06-12T05:00:00.000Z")
+      },
+      {
+        id: ids.corporateEvidenceBali,
+        programId: ids.corporateProgram,
+        evidenceId: ids.evidenceBali,
+        visibility: "reportable",
+        addedAt: date("2026-06-10T05:00:00.000Z")
+      }
+    ])
+    .onConflictDoUpdate({
+      target: [corporateEvidenceCenter.programId, corporateEvidenceCenter.evidenceId],
+      set: {
+        visibility: sql`excluded.visibility`,
+        addedAt: sql`excluded.added_at`
+      }
+    });
+
+  await db
+    .insert(corporateReportExports)
+    .values({
+      id: ids.corporateReportExport,
+      programId: ids.corporateProgram,
+      requestedByUserId: demoUser.id,
+      exportCode: "TRB-CORP-EXPORT-2026-0001",
+      status: "ready",
+      fileUrl: "https://example.com/reports/nusantara-bank-ocean-impact-2026.pdf",
+      createdAt: date("2026-06-18T02:00:00.000Z")
+    })
+    .onConflictDoUpdate({
+      target: corporateReportExports.exportCode,
+      set: {
+        programId: ids.corporateProgram,
+        requestedByUserId: demoUser.id,
+        status: "ready",
+        fileUrl: "https://example.com/reports/nusantara-bank-ocean-impact-2026.pdf",
+        createdAt: date("2026-06-18T02:00:00.000Z")
+      }
+    });
+
+  await db
+    .insert(corporatePermissions)
+    .values({
+      id: ids.corporatePermission,
+      corporateAccountId: ids.corporateAccount,
+      userId: demoUser.id,
+      permission: "program.manage"
+    })
+    .onConflictDoNothing({
+      target: [corporatePermissions.corporateAccountId, corporatePermissions.userId, corporatePermissions.permission]
+    });
+
+  await db
+    .insert(emailLogs)
+    .values([
+      {
+        id: ids.emailReceiptRaja,
+        userId: demoUser.id,
+        recipientEmail: DEMO_EMAIL,
+        subject: "Your Terumbu donation receipt",
+        template: "donation_receipt",
+        status: "sent",
+        payload: {
+          receiptNumber: "TRB-RCP-2026-0001",
+          donationId: ids.donationRajaAmpat
+        },
+        sentAt: date("2026-06-01T04:32:00.000Z")
+      },
+      {
+        id: ids.emailBookingRaja,
+        userId: demoUser.id,
+        recipientEmail: DEMO_EMAIL,
+        subject: "Your Raja Ampat expedition booking is confirmed",
+        template: "expedition_booking_confirmation",
+        status: "sent",
+        payload: {
+          bookingCode: "TRB-EXP-2026-0001",
+          departure: "2026-10-09"
+        },
+        sentAt: date("2026-06-14T05:03:00.000Z")
+      }
+    ])
+    .onConflictDoUpdate({
+      target: emailLogs.id,
+      set: {
+        userId: demoUser.id,
+        recipientEmail: sql`excluded.recipient_email`,
+        subject: sql`excluded.subject`,
+        template: sql`excluded.template`,
+        status: sql`excluded.status`,
+        payload: sql`excluded.payload`,
+        sentAt: sql`excluded.sent_at`
       }
     });
 

@@ -6,6 +6,17 @@ ENV NEXT_TELEMETRY_DISABLED=1
 COPY package.json package-lock.json ./
 RUN npm ci
 
+FROM deps AS migrator
+WORKDIR /app
+
+ENV NEXT_TELEMETRY_DISABLED=1
+
+COPY drizzle.config.ts tsconfig.json ./
+COPY drizzle ./drizzle
+COPY src/db ./src/db
+
+CMD ["npm", "run", "db:migrate"]
+
 FROM node:24-alpine AS builder
 WORKDIR /app
 
@@ -34,4 +45,3 @@ USER nextjs
 EXPOSE 3000
 
 CMD ["node", "server.js"]
-

@@ -7,7 +7,9 @@ import { PassportPreview } from "@/components/passport-preview";
 import { SectionHeading } from "@/components/section-heading";
 import { StatStrip } from "@/components/stat-strip";
 import { ButtonLink } from "@/components/ui/button";
-import { campaigns, expeditions } from "@/lib/data";
+import { getCampaignCards, getExpeditionCards, getImpactMapSites, getImpactStats, getPublicPassport } from "@/lib/queries";
+
+export const dynamic = "force-dynamic";
 
 const journey = [
   {
@@ -32,7 +34,15 @@ const journey = [
   }
 ];
 
-export default function HomePage() {
+export default async function HomePage() {
+  const [stats, campaigns, expeditions, impactSites, passport] = await Promise.all([
+    getImpactStats(),
+    getCampaignCards(3),
+    getExpeditionCards(2),
+    getImpactMapSites(),
+    getPublicPassport("raka-demo-ocean-hero")
+  ]);
+
   return (
     <>
       <section className="relative flex min-h-[82vh] items-center overflow-hidden bg-ocean-900">
@@ -87,7 +97,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      <StatStrip />
+      <StatStrip stats={stats} />
 
       <section className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8">
         <div className="flex flex-col justify-between gap-6 md:flex-row md:items-end">
@@ -128,7 +138,7 @@ export default function HomePage() {
           Browse restoration sites, cleanup routes, learning hubs, project updates, and the progress behind every claim.
         </SectionHeading>
         <div className="mt-10">
-          <ImpactMapPreview />
+          <ImpactMapPreview sites={impactSites} />
         </div>
       </section>
 
@@ -158,7 +168,7 @@ export default function HomePage() {
           <SectionHeading eyebrow="Digital Impact Passport" title="Make every contribution part of a lifelong record">
             Donations, sponsored corals, expeditions, courses, volunteer hours, and certificates become a verified profile users can keep and share.
           </SectionHeading>
-          <PassportPreview />
+          {passport ? <PassportPreview passport={passport.preview} /> : null}
         </div>
       </section>
 
@@ -177,4 +187,3 @@ export default function HomePage() {
     </>
   );
 }
-

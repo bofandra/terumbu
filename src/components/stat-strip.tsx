@@ -1,4 +1,4 @@
-import { impactStats } from "@/lib/data";
+import type { ImpactStatData } from "@/lib/domain";
 
 const toneClass: Record<string, string> = {
   coral: "border-coral-300 bg-coral-100/70 text-coral-700",
@@ -7,11 +7,15 @@ const toneClass: Record<string, string> = {
   sand: "border-sand-100 bg-sand-100 text-ocean-900"
 };
 
-export function StatStrip() {
+type StatStripProps = {
+  stats: ImpactStatData[];
+};
+
+export function StatStrip({ stats }: StatStripProps) {
   return (
     <section className="relative z-10 mx-auto -mt-10 max-w-7xl px-4 sm:px-6 lg:px-8">
       <div className="grid gap-3 rounded-2xl border border-white/70 bg-white/92 p-3 shadow-soft backdrop-blur md:grid-cols-4">
-        {impactStats.map((stat) => (
+        {stats.map((stat) => (
           <div key={stat.label} className={`rounded-xl border px-4 py-5 ${toneClass[stat.tone]}`}>
             <p className="text-2xl font-bold tracking-normal">{stat.value}</p>
             <p className="mt-1 text-sm font-medium opacity-80">{stat.label}</p>
@@ -21,4 +25,3 @@ export function StatStrip() {
     </section>
   );
 }
-

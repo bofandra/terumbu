@@ -3,24 +3,11 @@ import Image from "next/image";
 import Link from "next/link";
 
 import { ButtonLink } from "@/components/ui/button";
+import type { CampaignCardData } from "@/lib/domain";
 import { formatCurrency } from "@/lib/utils";
 
 type CampaignCardProps = {
-  campaign: {
-    slug: string;
-    title: string;
-    category: string;
-    region: string;
-    summary: string;
-    imageUrl: string;
-    raised: number;
-    goal: number;
-    donors: number;
-    daysLeft: number;
-    impact: string;
-    partner: string;
-    verification: string;
-  };
+  campaign: CampaignCardData;
 };
 
 export function CampaignCard({ campaign }: CampaignCardProps) {

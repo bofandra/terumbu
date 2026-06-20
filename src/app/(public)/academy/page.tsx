@@ -2,13 +2,17 @@ import { Award, BookOpen, CheckCircle2 } from "lucide-react";
 
 import { SectionHeading } from "@/components/section-heading";
 import { ButtonLink } from "@/components/ui/button";
-import { courses } from "@/lib/data";
+import { getCourses } from "@/lib/queries";
 
 export const metadata = {
   title: "Academy"
 };
 
-export default function AcademyPage() {
+export const dynamic = "force-dynamic";
+
+export default async function AcademyPage() {
+  const courses = await getCourses();
+
   return (
     <>
       <section className="bg-ocean-900 text-white">
@@ -46,7 +50,7 @@ export default function AcademyPage() {
         </SectionHeading>
         <div className="mt-10 grid gap-5 md:grid-cols-3">
           {courses.map((course) => (
-            <article key={course.title} className="rounded-2xl border border-ocean-900/10 bg-white p-6 shadow-soft">
+            <article key={course.slug} className="rounded-2xl border border-ocean-900/10 bg-white p-6 shadow-soft">
               <BookOpen className="text-coral-500" size={25} aria-hidden="true" />
               <p className="mt-5 text-sm font-bold uppercase tracking-[0.14em] text-ocean-900/54">{course.level}</p>
               <h2 className="mt-3 text-xl font-bold tracking-normal text-ocean-900">{course.title}</h2>
@@ -58,6 +62,9 @@ export default function AcademyPage() {
                   Certificate
                 </span>
               </div>
+              <ButtonLink href={`/academy/courses/${course.slug}`} tone="secondary" className="mt-5 w-full">
+                Open Course
+              </ButtonLink>
             </article>
           ))}
         </div>
@@ -79,4 +86,3 @@ export default function AcademyPage() {
     </>
   );
 }
-

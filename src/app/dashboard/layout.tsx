@@ -34,9 +34,9 @@ export default async function DashboardLayout({ children }: Readonly<{ children:
             <button aria-label="Notifications" className="flex size-10 items-center justify-center rounded-full hover:bg-ocean-50">
               <Bell size={19} aria-hidden="true" />
             </button>
-            <button aria-label="Settings" className="flex size-10 items-center justify-center rounded-full hover:bg-ocean-50">
+            <Link href="/dashboard/settings" aria-label="Settings" className="flex size-10 items-center justify-center rounded-full hover:bg-ocean-50">
               <Settings size={19} aria-hidden="true" />
-            </button>
+            </Link>
             <div className="hidden items-center gap-2 rounded-full bg-ocean-50 py-1 pl-2 pr-3 sm:flex">
               <UserCircle size={21} aria-hidden="true" />
               <span className="max-w-40 truncate text-sm font-semibold text-ocean-900">{displayName}</span>

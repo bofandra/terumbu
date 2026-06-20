@@ -1,4 +1,4 @@
-import { randomBytes, scryptSync, timingSafeEqual } from "node:crypto";
+import { randomBytes } from "node:crypto";
 
 import { and, eq, gt } from "drizzle-orm";
 import { cookies } from "next/headers";
@@ -6,6 +6,7 @@ import { redirect } from "next/navigation";
 
 import { db } from "@/db/client";
 import { profiles, sessions, users } from "@/db/schema";
+export { createPasswordHash, verifyPassword } from "@/lib/password";
 
 const SESSION_COOKIE = "terumbu_session";
 const SESSION_MAX_AGE_SECONDS = 60 * 60 * 24 * 30;
@@ -18,33 +19,6 @@ export type SessionUser = {
   heroLevel: number | null;
   xp: number | null;
 };
-
-export function createPasswordHash(password: string, salt = randomBytes(16).toString("hex")) {
-  const hash = scryptSync(password, salt, 64).toString("hex");
-
-  return `scrypt:${salt}:${hash}`;
-}
-
-export function verifyPassword(password: string, storedHash: string | null) {
-  if (!storedHash) {
-    return false;
-  }
-
-  const [scheme, salt, hash] = storedHash.split(":");
-
-  if (scheme !== "scrypt" || !salt || !hash) {
-    return false;
-  }
-
-  const expected = Buffer.from(hash, "hex");
-  const actual = scryptSync(password, salt, 64);
-
-  if (expected.length !== actual.length) {
-    return false;
-  }
-
-  return timingSafeEqual(expected, actual);
-}
 
 export async function createSession(userId: string) {
   const token = randomBytes(32).toString("hex");

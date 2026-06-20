@@ -4,16 +4,14 @@ import { notFound } from "next/navigation";
 
 import { SectionHeading } from "@/components/section-heading";
 import { ButtonLink } from "@/components/ui/button";
-import { expeditions } from "@/lib/data";
+import { getExpeditionDetail } from "@/lib/queries";
 import { formatCurrency } from "@/lib/utils";
 
-export function generateStaticParams() {
-  return expeditions.map((expedition) => ({ slug: expedition.slug }));
-}
+export const dynamic = "force-dynamic";
 
 export default async function ExpeditionDetailPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  const expedition = expeditions.find((item) => item.slug === slug);
+  const expedition = await getExpeditionDetail(slug);
 
   if (!expedition) {
     notFound();
@@ -52,7 +50,7 @@ export default async function ExpeditionDetailPage({ params }: { params: Promise
             <div className="mt-8 rounded-2xl border border-ocean-900/10 bg-white p-5 shadow-soft">
               <p className="text-sm text-ocean-900/62">From</p>
               <p className="text-3xl font-bold tracking-normal text-ocean-900">{formatCurrency(expedition.price)}</p>
-              <ButtonLink href="/checkout/expedition" className="mt-5 w-full">
+              <ButtonLink href={`/checkout/expedition?expedition=${expedition.slug}`} className="mt-5 w-full">
                 Check Availability
               </ButtonLink>
             </div>
@@ -73,6 +71,32 @@ export default async function ExpeditionDetailPage({ params }: { params: Promise
               </p>
             </div>
           ))}
+        </div>
+      </section>
+
+      <section className="bg-white py-14">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <SectionHeading title="Upcoming departures">
+            Availability is backed by expedition departure and booking records.
+          </SectionHeading>
+          <div className="mt-8 grid gap-4 md:grid-cols-2">
+            {expedition.departures.map((departure) => (
+              <article key={departure.id} className="rounded-2xl border border-ocean-900/10 bg-sand-50 p-5">
+                <p className="text-sm font-bold uppercase tracking-[0.14em] text-coral-700">
+                  {departure.startsAt.toLocaleDateString("id-ID", { dateStyle: "medium" })}
+                </p>
+                <h2 className="mt-3 text-xl font-bold tracking-normal text-ocean-900">
+                  {departure.availableSeats} of {departure.capacity} seats available
+                </h2>
+                <p className="mt-2 text-sm text-ocean-900/62">
+                  Meeting point: {departure.meetingPoint ?? expedition.region}
+                </p>
+                <ButtonLink href={`/checkout/expedition?departure=${departure.id}`} tone="secondary" className="mt-5">
+                  Reserve Seats
+                </ButtonLink>
+              </article>
+            ))}
+          </div>
         </div>
       </section>
     </>

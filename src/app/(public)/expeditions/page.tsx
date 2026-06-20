@@ -1,12 +1,16 @@
 import { ExpeditionCard } from "@/components/expedition-card";
 import { SectionHeading } from "@/components/section-heading";
-import { expeditions } from "@/lib/data";
+import { getExpeditionCards } from "@/lib/queries";
 
 export const metadata = {
   title: "Expeditions"
 };
 
-export default function ExpeditionsPage() {
+export const dynamic = "force-dynamic";
+
+export default async function ExpeditionsPage() {
+  const expeditions = await getExpeditionCards();
+
   return (
     <section className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
       <SectionHeading eyebrow="Explore" title="Conservation expeditions">
@@ -20,4 +24,3 @@ export default function ExpeditionsPage() {
     </section>
   );
 }
-

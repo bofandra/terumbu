@@ -1,12 +1,16 @@
 import { CampaignCard } from "@/components/campaign-card";
 import { SectionHeading } from "@/components/section-heading";
-import { campaigns } from "@/lib/data";
+import { getCampaignCards } from "@/lib/queries";
 
 export const metadata = {
   title: "Campaigns"
 };
 
-export default function CampaignsPage() {
+export const dynamic = "force-dynamic";
+
+export default async function CampaignsPage() {
+  const campaigns = await getCampaignCards();
+
   return (
     <section className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
       <SectionHeading eyebrow="Donate" title="Verified conservation campaigns">
@@ -27,4 +31,3 @@ export default function CampaignsPage() {
     </section>
   );
 }
-

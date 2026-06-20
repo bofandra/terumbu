@@ -49,7 +49,25 @@ docker compose \
   --env-file "${ENV_FILE}" \
   --project-name "${PROJECT_NAME}" \
   -f "${COMPOSE_FILE}" \
-  up -d --build postgres web
+  up -d postgres
+
+docker compose \
+  --env-file "${ENV_FILE}" \
+  --project-name "${PROJECT_NAME}" \
+  -f "${COMPOSE_FILE}" \
+  build migrate
+
+docker compose \
+  --env-file "${ENV_FILE}" \
+  --project-name "${PROJECT_NAME}" \
+  -f "${COMPOSE_FILE}" \
+  run --rm migrate
+
+docker compose \
+  --env-file "${ENV_FILE}" \
+  --project-name "${PROJECT_NAME}" \
+  -f "${COMPOSE_FILE}" \
+  up -d --build web
 
 APP_PORT="$(awk -F= '/^TERUMBU_APP_PORT=/ { print $2 }' "${ENV_FILE}" | tail -1 | tr -d '\r\n')"
 APP_PORT="${APP_PORT#\'}"

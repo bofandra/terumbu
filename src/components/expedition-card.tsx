@@ -3,19 +3,11 @@ import Image from "next/image";
 import Link from "next/link";
 
 import { ButtonLink } from "@/components/ui/button";
+import type { ExpeditionCardData } from "@/lib/domain";
 import { formatCurrency } from "@/lib/utils";
 
 type ExpeditionCardProps = {
-  expedition: {
-    slug: string;
-    title: string;
-    region: string;
-    duration: string;
-    price: number;
-    rating: string;
-    imageUrl: string;
-    summary: string;
-  };
+  expedition: ExpeditionCardData;
 };
 
 export function ExpeditionCard({ expedition }: ExpeditionCardProps) {

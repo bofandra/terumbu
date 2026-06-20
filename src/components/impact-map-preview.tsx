@@ -3,35 +3,51 @@
 import { MapPin } from "lucide-react";
 import { useState } from "react";
 
-import { impactSites } from "@/lib/data";
+import type { ImpactSiteData } from "@/lib/domain";
 import { cn } from "@/lib/utils";
 
 const filters = ["All", "Coral", "Mangrove", "Cleanup", "Academy"];
+const indonesiaBounds = {
+  minLat: -11,
+  maxLat: 6,
+  minLng: 94,
+  maxLng: 142
+};
 
-export function ImpactMapPreview() {
+type ImpactMapPreviewProps = {
+  sites: ImpactSiteData[];
+};
+
+function pinPosition(site: ImpactSiteData) {
+  const left = ((site.longitude - indonesiaBounds.minLng) / (indonesiaBounds.maxLng - indonesiaBounds.minLng)) * 100;
+  const top = ((indonesiaBounds.maxLat - site.latitude) / (indonesiaBounds.maxLat - indonesiaBounds.minLat)) * 100;
+
+  return {
+    left: `${Math.min(92, Math.max(8, left))}%`,
+    top: `${Math.min(86, Math.max(12, top))}%`
+  };
+}
+
+export function ImpactMapPreview({ sites }: ImpactMapPreviewProps) {
   const [activeFilter, setActiveFilter] = useState("All");
-  const visibleSites = activeFilter === "All" ? impactSites : impactSites.filter((site) => site.type === activeFilter);
+  const visibleSites = activeFilter === "All" ? sites : sites.filter((site) => site.type === activeFilter);
 
   return (
     <div className="grid gap-5 lg:grid-cols-[1.25fr_0.75fr]">
       <div className="relative min-h-[420px] overflow-hidden rounded-2xl border border-ocean-900/10 bg-ocean-900 shadow-soft">
-        <div
-          className="absolute inset-0 bg-cover bg-center opacity-70"
-          style={{
-            backgroundImage:
-              "url('https://images.unsplash.com/photo-1546026423-cc4642628d2b?auto=format&fit=crop&w=1600&q=80')"
-          }}
+        <iframe
+          title="OpenStreetMap provider view of Indonesian conservation sites"
+          className="absolute inset-0 h-full w-full border-0 opacity-70"
+          loading="lazy"
+          src="https://www.openstreetmap.org/export/embed.html?bbox=94%2C-11%2C142%2C6&layer=mapnik"
         />
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_25%_20%,rgba(244,93,72,0.38),transparent_28%),linear-gradient(135deg,rgba(7,52,63,0.82),rgba(24,143,138,0.55))]" />
+        <div className="absolute inset-0 bg-[linear-gradient(135deg,rgba(7,52,63,0.76),rgba(24,143,138,0.42))]" />
 
-        {visibleSites.map((site, index) => (
+        {visibleSites.map((site) => (
           <div
             key={site.name}
             className="absolute"
-            style={{
-              left: `${20 + index * 17}%`,
-              top: `${24 + (index % 3) * 19}%`
-            }}
+            style={pinPosition(site)}
           >
             <span className="flex size-12 items-center justify-center rounded-full bg-white text-coral-500 shadow-soft">
               <MapPin size={22} aria-hidden="true" />
@@ -75,6 +91,9 @@ export function ImpactMapPreview() {
                   {site.type}
                 </span>
               </div>
+              <p className="mt-2 text-xs font-semibold text-ocean-900/58">
+                {site.verification} · {site.evidenceCount} evidence records
+              </p>
               <div className="mt-4 h-2 overflow-hidden rounded-full bg-ocean-50">
                 <div className="h-full rounded-full bg-kelp-500" style={{ width: `${site.progress}%` }} />
               </div>
@@ -86,4 +105,3 @@ export function ImpactMapPreview() {
     </div>
   );
 }
-

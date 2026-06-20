@@ -99,8 +99,12 @@ On push to `main`, GitHub Actions:
 6. Uploads the production `.env` to `/home/ubuntu/terumbu/.env`.
 7. SSHes into the VPS.
 8. Clones or updates `/home/ubuntu/terumbu/repo`.
-9. Runs Docker Compose for project `terumbu`.
-10. Health-checks `http://127.0.0.1:3100/` on the VPS.
+9. Starts the internal PostgreSQL container.
+10. Runs `npm run db:migrate` in a one-shot Docker Compose migration container on the VPS.
+11. Rebuilds/restarts the web container.
+12. Health-checks `http://127.0.0.1:3100/` on the VPS.
+
+Commit generated Drizzle files under `drizzle/` with the schema change. GitHub Actions deploys from the pushed commit, so uncommitted migration files cannot run on the VPS.
 
 ## Manual VPS Deploy
 
@@ -128,4 +132,3 @@ Optional Docker check:
 ```bash
 docker compose --env-file deploy/.env.example -f deploy/docker-compose.yml build
 ```
-
