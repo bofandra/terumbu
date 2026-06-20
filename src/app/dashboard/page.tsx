@@ -2,6 +2,7 @@ import { Award, CalendarDays, Heart, MapPinned, Waves } from "lucide-react";
 
 import { ImpactMapPreview } from "@/components/impact-map-preview";
 import { PassportPreview } from "@/components/passport-preview";
+import { requireUser } from "@/lib/auth";
 
 const summary = [
   { label: "Total donated", value: "Rp3.2M", icon: Heart },
@@ -14,11 +15,14 @@ export const metadata = {
   title: "Dashboard"
 };
 
-export default function DashboardPage() {
+export default async function DashboardPage() {
+  const user = await requireUser("/dashboard");
+  const firstName = (user.displayName ?? user.name ?? "Ocean Hero").split(" ")[0];
+
   return (
     <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
       <section className="rounded-2xl bg-ocean-900 p-6 text-white shadow-soft">
-        <p className="text-sm font-bold uppercase tracking-[0.16em] text-coral-300">Good morning, Raka</p>
+        <p className="text-sm font-bold uppercase tracking-[0.16em] text-coral-300">Good morning, {firstName}</p>
         <div className="mt-4 flex flex-col justify-between gap-5 md:flex-row md:items-end">
           <div>
             <h1 className="text-3xl font-bold tracking-normal sm:text-4xl">Your ocean impact continues to grow.</h1>
@@ -57,4 +61,3 @@ export default function DashboardPage() {
     </main>
   );
 }
-

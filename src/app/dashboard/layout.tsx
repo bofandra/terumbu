@@ -1,9 +1,15 @@
-import { Bell, Home, Settings, UserCircle } from "lucide-react";
+import { Bell, Home, LogOut, Settings, UserCircle } from "lucide-react";
 import Link from "next/link";
+
+import { requireUser } from "@/lib/auth";
+import { logoutAction } from "@/lib/auth-actions";
 
 const dashboardNav = ["Overview", "My Impact", "Corals", "Donations", "Expeditions", "Academy", "Passport"];
 
-export default function DashboardLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+export default async function DashboardLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+  const user = await requireUser("/dashboard");
+  const displayName = user.displayName ?? user.name ?? user.email;
+
   return (
     <div className="min-h-screen bg-sand-50">
       <aside className="fixed inset-y-0 left-0 hidden w-64 border-r border-ocean-900/10 bg-white px-4 py-5 lg:block">
@@ -31,9 +37,19 @@ export default function DashboardLayout({ children }: Readonly<{ children: React
             <button aria-label="Settings" className="flex size-10 items-center justify-center rounded-full hover:bg-ocean-50">
               <Settings size={19} aria-hidden="true" />
             </button>
-            <button aria-label="Profile" className="flex size-10 items-center justify-center rounded-full hover:bg-ocean-50">
+            <div className="hidden items-center gap-2 rounded-full bg-ocean-50 py-1 pl-2 pr-3 sm:flex">
               <UserCircle size={21} aria-hidden="true" />
-            </button>
+              <span className="max-w-40 truncate text-sm font-semibold text-ocean-900">{displayName}</span>
+            </div>
+            <form action={logoutAction}>
+              <button
+                type="submit"
+                aria-label="Logout"
+                className="flex size-10 items-center justify-center rounded-full hover:bg-ocean-50"
+              >
+                <LogOut size={19} aria-hidden="true" />
+              </button>
+            </form>
           </div>
         </header>
         {children}
@@ -41,4 +57,3 @@ export default function DashboardLayout({ children }: Readonly<{ children: React
     </div>
   );
 }
-
