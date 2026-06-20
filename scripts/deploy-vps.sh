@@ -55,17 +55,17 @@ APP_PORT="$(awk -F= '/^TERUMBU_APP_PORT=/ { print $2 }' "${ENV_FILE}" | tail -1)
 APP_PORT="${APP_PORT:-3100}"
 
 echo "Waiting for Terumbu on 127.0.0.1:${APP_PORT}..."
-for attempt in $(seq 1 20); do
-  if curl -fsS "http://127.0.0.1:${APP_PORT}/" >/dev/null; then
+for attempt in $(seq 1 60); do
+  if curl --max-time 5 -fsS "http://127.0.0.1:${APP_PORT}/" >/dev/null; then
     echo "Terumbu is healthy on port ${APP_PORT}."
     docker compose --env-file "${ENV_FILE}" --project-name "${PROJECT_NAME}" -f "${COMPOSE_FILE}" ps
     exit 0
   fi
 
-  sleep 3
+  echo "Terumbu is not ready yet (${attempt}/60)."
+  sleep 5
 done
 
 echo "Terumbu did not become healthy in time. Recent logs:" >&2
 docker compose --env-file "${ENV_FILE}" --project-name "${PROJECT_NAME}" -f "${COMPOSE_FILE}" logs --tail=120 web >&2
 exit 1
-
