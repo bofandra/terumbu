@@ -1,0 +1,45 @@
+services:
+  web:
+    container_name: terumbu-web
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      HOSTNAME: 0.0.0.0
+      PORT: 3000
+      DATABASE_URL: ${TERUMBU_DATABASE_URL}
+      NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL}
+      NEXT_PUBLIC_MAPBOX_TOKEN: ${NEXT_PUBLIC_MAPBOX_TOKEN:-}
+      MIDTRANS_SERVER_KEY: ${MIDTRANS_SERVER_KEY:-}
+      MIDTRANS_CLIENT_KEY: ${MIDTRANS_CLIENT_KEY:-}
+      XENDIT_SECRET_KEY: ${XENDIT_SECRET_KEY:-}
+      RESEND_API_KEY: ${RESEND_API_KEY:-}
+      POSTHOG_KEY: ${POSTHOG_KEY:-}
+      POSTHOG_HOST: ${POSTHOG_HOST:-https://app.posthog.com}
+    ports:
+      - "${TERUMBU_APP_PORT:-3100}:3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  postgres:
+    container_name: terumbu-postgres
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${TERUMBU_POSTGRES_DB:-terumbu}
+      POSTGRES_USER: ${TERUMBU_POSTGRES_USER:-terumbu}
+      POSTGRES_PASSWORD: ${TERUMBU_POSTGRES_PASSWORD}
+    volumes:
+      - terumbu_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  terumbu_postgres_data:
+

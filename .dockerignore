@@ -1,0 +1,16 @@
+.git
+.github
+.next
+node_modules
+npm-debug.log*
+.env
+.env*.local
+tsconfig.tsbuildinfo
+coverage
+dist
+out
+references
+screens
+DEVELOPMENT_PLAN.md
+DEPLOYMENT.md
+
