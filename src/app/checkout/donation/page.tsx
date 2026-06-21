@@ -14,6 +14,7 @@ export const dynamic = "force-dynamic";
 type DonationCheckoutPageProps = {
   searchParams?: Promise<{
     campaign?: string;
+    amount?: string;
     error?: string;
   }>;
 };
@@ -24,7 +25,8 @@ export default async function DonationCheckoutPage({ searchParams }: DonationChe
   const selectedCampaign = params?.campaign ?? campaigns[0]?.slug;
   const selectedCampaignData = campaigns.find((campaign) => campaign.slug === selectedCampaign) ?? campaigns[0];
   const donationAmounts = selectedCampaignData ? suggestedDonationAmounts(selectedCampaignData.goal) : [];
-  const selectedAmount = donationAmounts[0];
+  const requestedAmount = Number(params?.amount ?? "");
+  const selectedAmount = donationAmounts.includes(requestedAmount) ? requestedAmount : donationAmounts[0];
 
   return (
     <main className="min-h-screen bg-sand-50 px-4 py-12 sm:px-6 lg:px-8">
@@ -59,6 +61,15 @@ export default async function DonationCheckoutPage({ searchParams }: DonationChe
                 </option>
               ))}
             </select>
+          </label>
+          <label className="grid gap-2 text-sm font-semibold text-ocean-900">
+            Custom amount
+            <input
+              name="customAmount"
+              inputMode="numeric"
+              placeholder="Leave blank to use selected amount"
+              className="rounded-xl border border-ocean-900/14 px-4 py-3 outline-none focus:border-coral-500"
+            />
           </label>
           <label className="grid gap-2 text-sm font-semibold text-ocean-900">
             Name

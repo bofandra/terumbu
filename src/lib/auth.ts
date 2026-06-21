@@ -5,7 +5,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
 import { db } from "@/db/client";
-import { profiles, sessions, users } from "@/db/schema";
+import { profiles, roles, sessions, userRoles, users } from "@/db/schema";
 export { createPasswordHash, verifyPassword } from "@/lib/password";
 
 const SESSION_COOKIE = "terumbu_session";
@@ -72,6 +72,29 @@ export async function requireUser(nextPath = "/dashboard") {
 
   if (!user) {
     redirect(`/login?next=${encodeURIComponent(nextPath)}`);
+  }
+
+  return user;
+}
+
+export async function getUserRoles(userId: string) {
+  const rows = await db
+    .select({
+      key: roles.key
+    })
+    .from(userRoles)
+    .innerJoin(roles, eq(userRoles.roleId, roles.id))
+    .where(eq(userRoles.userId, userId));
+
+  return rows.map((row) => row.key);
+}
+
+export async function requireRole(allowedRoles: string[], nextPath = "/dashboard") {
+  const user = await requireUser(nextPath);
+  const roleKeys = await getUserRoles(user.id);
+
+  if (!roleKeys.some((role) => allowedRoles.includes(role))) {
+    redirect("/dashboard?error=forbidden");
   }
 
   return user;

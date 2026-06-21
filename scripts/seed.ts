@@ -204,8 +204,10 @@ async function seed() {
 
   const userRole = roleRows.find((role) => role.key === "user");
   const corporateAdminRole = roleRows.find((role) => role.key === "corporate_admin");
+  const partnerRole = roleRows.find((role) => role.key === "partner");
+  const adminRole = roleRows.find((role) => role.key === "admin");
 
-  if (!userRole || !corporateAdminRole) {
+  if (!userRole || !corporateAdminRole || !partnerRole || !adminRole) {
     throw new Error("Required demo roles were not created.");
   }
 
@@ -213,7 +215,9 @@ async function seed() {
     .insert(userRoles)
     .values([
       { id: ids.userRoleUser, userId: demoUser.id, roleId: userRole.id },
-      { id: ids.userRoleCorporateAdmin, userId: demoUser.id, roleId: corporateAdminRole.id }
+      { id: ids.userRoleCorporateAdmin, userId: demoUser.id, roleId: corporateAdminRole.id },
+      { userId: demoUser.id, roleId: partnerRole.id },
+      { userId: demoUser.id, roleId: adminRole.id }
     ])
     .onConflictDoNothing({
       target: [userRoles.userId, userRoles.roleId]

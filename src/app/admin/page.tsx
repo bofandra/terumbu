@@ -1,7 +1,7 @@
 import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
-import { requireUser } from "@/lib/auth";
+import { requireRole } from "@/lib/auth";
 import { reconcileDonationAction, verifyEvidenceAction } from "@/lib/portal-actions";
 import { getAdminPortalData } from "@/lib/queries";
 import { formatCurrency } from "@/lib/utils";
@@ -13,7 +13,7 @@ export const metadata = {
 export const dynamic = "force-dynamic";
 
 export default async function AdminPortalPage() {
-  await requireUser("/admin");
+  await requireRole(["admin"], "/admin");
   const data = await getAdminPortalData();
 
   return (
@@ -31,6 +31,23 @@ export default async function AdminPortalPage() {
             Dashboard
           </Link>
         </header>
+
+        <nav className="mt-6 flex flex-wrap gap-2" aria-label="Admin sections">
+          {[
+            ["Campaigns", "/admin/campaigns"],
+            ["Expeditions", "/admin/expeditions"],
+            ["Partners", "/admin/partners"],
+            ["Impact sites", "/admin/impact-sites"],
+            ["Evidence", "/admin/evidence"],
+            ["Reports", "/admin/reports"],
+            ["Users", "/admin/users"],
+            ["Audit", "/admin/audit"]
+          ].map(([label, href]) => (
+            <Link key={href} href={href} className="rounded-full bg-white px-4 py-2 text-sm font-bold text-ocean-900 shadow-sm ring-1 ring-ocean-900/10 hover:ring-coral-500">
+              {label}
+            </Link>
+          ))}
+        </nav>
 
         <section className="mt-6 grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
           <div className="rounded-2xl border border-ocean-900/10 bg-white p-5 shadow-soft">

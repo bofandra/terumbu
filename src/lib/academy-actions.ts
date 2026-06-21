@@ -23,6 +23,16 @@ function certificateSlug(courseSlug: string) {
   return `${courseSlug}-${randomBytes(4).toString("hex")}`;
 }
 
+function parseAssessmentScore(value: FormDataEntryValue | null) {
+  const score = Number(String(value ?? "").replace(/[^0-9]/g, ""));
+
+  if (!Number.isFinite(score)) {
+    return 0;
+  }
+
+  return Math.max(0, Math.min(100, Math.round(score)));
+}
+
 export async function enrollCourseAction(formData: FormData) {
   const slug = String(formData.get("courseSlug") ?? "");
   const user = await requireUser(`/academy/courses/${slug}`);
@@ -138,7 +148,7 @@ export async function submitAssessmentAction(formData: FormData) {
     redirect(`/academy/courses/${courseSlug}?error=assessment`);
   }
 
-  const score = 92;
+  const score = parseAssessmentScore(formData.get("score"));
   const passed = score >= row.passingScore;
 
   await db.transaction(async (tx) => {
@@ -151,7 +161,7 @@ export async function submitAssessmentAction(formData: FormData) {
         status: passed ? "passed" : "failed",
         submittedAt: now,
         metadata: {
-          source: "demo_assessment"
+          source: "assessment_form"
         }
       })
       .onConflictDoUpdate({

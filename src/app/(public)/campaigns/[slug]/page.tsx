@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import Image from "next/image";
+import Link from "next/link";
 
 import { ImpactMapPreview } from "@/components/impact-map-preview";
 import { SectionHeading } from "@/components/section-heading";
@@ -101,7 +102,11 @@ export default async function CampaignDetailPage({ params }: { params: Promise<{
                   <p className="text-xs font-bold uppercase tracking-[0.14em] text-coral-700">
                     {update.publishedAt?.toLocaleDateString("id-ID", { dateStyle: "medium" }) ?? "Draft"}
                   </p>
-                  <h2 className="mt-2 text-xl font-bold tracking-normal text-ocean-900">{update.title}</h2>
+                  <h2 className="mt-2 text-xl font-bold tracking-normal text-ocean-900">
+                    <Link href={`/campaigns/${campaign.slug}/updates/${update.id}`} className="hover:text-coral-700">
+                      {update.title}
+                    </Link>
+                  </h2>
                   <p className="mt-3 text-sm leading-6 text-ocean-900/68">{update.body}</p>
                 </article>
               ))}
@@ -143,9 +148,13 @@ export default async function CampaignDetailPage({ params }: { params: Promise<{
           </div>
           <div className="mt-6 grid gap-3">
             {donationAmounts.map((amount) => (
-              <button key={amount} className="rounded-xl border border-ocean-900/10 px-4 py-3 text-left font-bold text-ocean-900 hover:border-coral-500">
+              <Link
+                key={amount}
+                href={`/checkout/donation?campaign=${campaign.slug}&amount=${amount}`}
+                className="rounded-xl border border-ocean-900/10 px-4 py-3 text-left font-bold text-ocean-900 hover:border-coral-500"
+              >
                 {formatCurrency(amount)}
-              </button>
+              </Link>
             ))}
           </div>
           <ButtonLink href={`/checkout/donation?campaign=${campaign.slug}`} className="mt-5 w-full">

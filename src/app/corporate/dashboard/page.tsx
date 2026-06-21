@@ -3,6 +3,7 @@ import { AlertTriangle, Building2, Download, Leaf, TrendingUp, Users } from "luc
 import { ImpactMapPreview } from "@/components/impact-map-preview";
 import { Button } from "@/components/ui/button";
 import { requireUser } from "@/lib/auth";
+import { createCorporateReportExportAction } from "@/lib/corporate-actions";
 import { getCorporateDashboardData, getImpactMapSites } from "@/lib/queries";
 import { formatCurrency } from "@/lib/utils";
 
@@ -47,10 +48,12 @@ export default async function CorporateDashboardPage() {
             {data.program.endsAt.toLocaleDateString("id-ID", { dateStyle: "medium" })}
           </p>
         </div>
-        <Button type="button" tone="secondary">
-          <Download size={18} aria-hidden="true" />
-          Export Report
-        </Button>
+        <form action={createCorporateReportExportAction}>
+          <Button type="submit" tone="secondary">
+            <Download size={18} aria-hidden="true" />
+            Export Report
+          </Button>
+        </form>
       </header>
 
       <section className="mt-6 grid gap-4 md:grid-cols-4">

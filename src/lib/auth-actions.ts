@@ -155,7 +155,9 @@ export async function updateAccountAction(formData: FormData) {
   const displayName = String(formData.get("displayName") ?? "").trim();
   const location = String(formData.get("location") ?? "").trim();
   const bio = String(formData.get("bio") ?? "").trim();
-  const isPublic = formData.get("isPublic") === "on";
+  const requestedVisibility = String(formData.get("passportVisibility") ?? "private");
+  const passportVisibility = ["private", "link", "public"].includes(requestedVisibility) ? requestedVisibility : "private";
+  const isPublic = passportVisibility !== "private";
   const now = new Date();
 
   if (!name || !displayName) {
@@ -188,7 +190,7 @@ export async function updateAccountAction(formData: FormData) {
   await db
     .update(impactPassports)
     .set({
-      visibility: isPublic ? "public" : "private",
+      visibility: passportVisibility,
       updatedAt: now
     })
     .where(eq(impactPassports.userId, user.id));

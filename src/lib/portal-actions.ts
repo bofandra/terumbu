@@ -7,24 +7,86 @@ import { redirect } from "next/navigation";
 
 import { db } from "@/db/client";
 import {
+  adminAuditLogs,
   campaignUpdates,
   campaigns,
   donationReceipts,
   donations,
-  emailLogs,
+  organizations,
   paymentTransactions,
   projectEvidence
 } from "@/db/schema";
-import { requireUser } from "@/lib/auth";
+import { requireRole } from "@/lib/auth";
 import { buildReceiptNumber } from "@/lib/checkout";
+import { sendTransactionalEmail } from "@/lib/email";
 import { getEvidenceStorageProvider, normalizeEvidenceUrl } from "@/lib/storage";
 
 function evidenceCode() {
   return `EVD-${randomBytes(5).toString("hex").toUpperCase()}`;
 }
 
+const campaignStatuses = ["draft", "review", "published", "funded", "completed", "archived"] as const;
+const verificationStatuses = ["basic", "document", "field"] as const;
+
+export async function updateCampaignStatusAction(formData: FormData) {
+  const user = await requireRole(["admin"], "/admin/campaigns");
+  const campaignId = String(formData.get("campaignId") ?? "");
+  const status = String(formData.get("status") ?? "");
+
+  if (!campaignId || !campaignStatuses.includes(status as (typeof campaignStatuses)[number])) {
+    redirect("/admin/campaigns?error=campaign");
+  }
+
+  await db
+    .update(campaigns)
+    .set({
+      status: status as (typeof campaignStatuses)[number],
+      publishedAt: status === "published" ? new Date() : undefined,
+      updatedAt: new Date()
+    })
+    .where(eq(campaigns.id, campaignId));
+
+  await db.insert(adminAuditLogs).values({
+    actorUserId: user.id,
+    action: "campaign.status.updated",
+    entityType: "campaign",
+    entityId: campaignId,
+    metadata: { status }
+  });
+
+  redirect("/admin/campaigns?saved=status");
+}
+
+export async function updateOrganizationVerificationAction(formData: FormData) {
+  const user = await requireRole(["admin"], "/admin/partners");
+  const organizationId = String(formData.get("organizationId") ?? "");
+  const verification = String(formData.get("verification") ?? "");
+
+  if (!organizationId || !verificationStatuses.includes(verification as (typeof verificationStatuses)[number])) {
+    redirect("/admin/partners?error=partner");
+  }
+
+  await db
+    .update(organizations)
+    .set({
+      verification: verification as (typeof verificationStatuses)[number],
+      updatedAt: new Date()
+    })
+    .where(eq(organizations.id, organizationId));
+
+  await db.insert(adminAuditLogs).values({
+    actorUserId: user.id,
+    action: "organization.verification.updated",
+    entityType: "organization",
+    entityId: organizationId,
+    metadata: { verification }
+  });
+
+  redirect("/admin/partners?saved=verification");
+}
+
 export async function createCampaignUpdateAction(formData: FormData) {
-  await requireUser("/partner");
+  await requireRole(["partner", "admin"], "/partner");
   const campaignId = String(formData.get("campaignId") ?? "");
   const title = String(formData.get("title") ?? "").trim();
   const body = String(formData.get("body") ?? "").trim();
@@ -46,7 +108,7 @@ export async function createCampaignUpdateAction(formData: FormData) {
 }
 
 export async function submitEvidenceAction(formData: FormData) {
-  const user = await requireUser("/partner");
+  const user = await requireRole(["partner", "admin"], "/partner");
   const campaignId = String(formData.get("campaignId") ?? "");
   const impactSiteId = String(formData.get("impactSiteId") || "") || null;
   const title = String(formData.get("title") ?? "").trim();
@@ -76,7 +138,7 @@ export async function submitEvidenceAction(formData: FormData) {
 }
 
 export async function verifyEvidenceAction(formData: FormData) {
-  await requireUser("/admin");
+  const user = await requireRole(["admin"], "/admin");
   const evidenceId = String(formData.get("evidenceId") ?? "");
   const status = formData.get("status") === "rejected" ? "rejected" : "verified";
 
@@ -92,14 +154,23 @@ export async function verifyEvidenceAction(formData: FormData) {
     })
     .where(eq(projectEvidence.id, evidenceId));
 
+  await db.insert(adminAuditLogs).values({
+    actorUserId: user.id,
+    action: "evidence.verification.updated",
+    entityType: "project_evidence",
+    entityId: evidenceId,
+    metadata: { status }
+  });
+
   redirect("/admin?saved=evidence");
 }
 
 export async function reconcileDonationAction(formData: FormData) {
-  await requireUser("/admin");
+  const user = await requireRole(["admin"], "/admin");
   const donationId = String(formData.get("donationId") ?? "");
   const status = formData.get("status") === "failed" ? "failed" : "paid";
   const now = new Date();
+  let receiptEmailNumber: string | null = null;
 
   const [donation] = await db
     .select({
@@ -159,20 +230,31 @@ export async function reconcileDonationAction(formData: FormData) {
           target: donationReceipts.donationId
         });
 
-      if (donation.donorEmail) {
-        await tx.insert(emailLogs).values({
-          recipientEmail: donation.donorEmail,
-          subject: "Your Terumbu donation receipt",
-          template: "donation_receipt",
-          status: "sent",
-          payload: {
-            receiptNumber,
-            donationId: donation.id
-          },
-          sentAt: now
-        });
-      }
+      receiptEmailNumber = receiptNumber;
     }
+  });
+
+  if (receiptEmailNumber && donation.donorEmail) {
+    await sendTransactionalEmail({
+      recipientEmail: donation.donorEmail,
+      subject: "Your Terumbu donation receipt",
+      template: "donation_receipt",
+      payload: {
+        receiptNumber: receiptEmailNumber,
+        donationId: donation.id,
+        campaign: donation.campaignTitle,
+        amount: Number(donation.amount),
+        currency: "IDR"
+      }
+    });
+  }
+
+  await db.insert(adminAuditLogs).values({
+    actorUserId: user.id,
+    action: "donation.reconciled",
+    entityType: "donation",
+    entityId: donation.id,
+    metadata: { status }
   });
 
   redirect("/admin?saved=donation");

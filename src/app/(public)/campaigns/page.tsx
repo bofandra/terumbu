@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 import { CampaignCard } from "@/components/campaign-card";
 import { SectionHeading } from "@/components/section-heading";
 import { getCampaignCards, getCampaignCategories } from "@/lib/queries";
@@ -8,8 +10,16 @@ export const metadata = {
 
 export const dynamic = "force-dynamic";
 
-export default async function CampaignsPage() {
-  const [campaigns, categories] = await Promise.all([getCampaignCards(), getCampaignCategories()]);
+type CampaignsPageProps = {
+  searchParams?: Promise<{
+    category?: string;
+  }>;
+};
+
+export default async function CampaignsPage({ searchParams }: CampaignsPageProps) {
+  const params = await searchParams;
+  const selectedCategory = params?.category;
+  const [campaigns, categories] = await Promise.all([getCampaignCards(undefined, selectedCategory), getCampaignCategories()]);
   const filters = ["All", ...categories];
 
   return (
@@ -19,9 +29,13 @@ export default async function CampaignsPage() {
       </SectionHeading>
       <div className="mt-8 flex flex-wrap gap-2">
         {filters.map((filter) => (
-          <button key={filter} className="rounded-full bg-white px-4 py-2 text-sm font-bold text-ocean-900 shadow-sm ring-1 ring-ocean-900/10">
+          <Link
+            key={filter}
+            href={filter === "All" ? "/campaigns" : `/campaigns?category=${encodeURIComponent(filter)}`}
+            className="rounded-full bg-white px-4 py-2 text-sm font-bold text-ocean-900 shadow-sm ring-1 ring-ocean-900/10 hover:ring-coral-500"
+          >
             {filter}
-          </button>
+          </Link>
         ))}
       </div>
       <div className="mt-10 grid gap-6 lg:grid-cols-3">

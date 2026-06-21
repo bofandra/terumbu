@@ -1,7 +1,7 @@
 import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
-import { requireUser } from "@/lib/auth";
+import { requireRole } from "@/lib/auth";
 import { createCampaignUpdateAction, submitEvidenceAction } from "@/lib/portal-actions";
 import { getPartnerPortalData } from "@/lib/queries";
 import { formatCurrency } from "@/lib/utils";
@@ -13,7 +13,7 @@ export const metadata = {
 export const dynamic = "force-dynamic";
 
 export default async function PartnerPortalPage() {
-  await requireUser("/partner");
+  await requireRole(["partner", "admin"], "/partner");
   const data = await getPartnerPortalData();
 
   return (

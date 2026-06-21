@@ -28,7 +28,8 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
       location: profiles.location,
       bio: profiles.bio,
       isPublic: profiles.isPublic,
-      publicSlug: impactPassports.publicSlug
+      publicSlug: impactPassports.publicSlug,
+      passportVisibility: impactPassports.visibility
     })
     .from(users)
     .leftJoin(profiles, eq(profiles.userId, users.id))
@@ -75,9 +76,17 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
               Bio
               <textarea name="bio" defaultValue={account?.bio ?? ""} className="min-h-28 rounded-xl border border-ocean-900/14 px-4 py-3 outline-none focus:border-coral-500" />
             </label>
-            <label className="flex items-center gap-3 text-sm font-semibold text-ocean-900">
-              <input name="isPublic" type="checkbox" defaultChecked={account?.isPublic ?? false} className="size-4 accent-coral-500" />
-              Public Impact Passport
+            <label className="grid gap-2 text-sm font-semibold text-ocean-900">
+              Impact Passport visibility
+              <select
+                name="passportVisibility"
+                defaultValue={account?.passportVisibility ?? "private"}
+                className="rounded-xl border border-ocean-900/14 px-4 py-3 outline-none focus:border-coral-500"
+              >
+                <option value="private">Private</option>
+                <option value="link">Link-only</option>
+                <option value="public">Public</option>
+              </select>
             </label>
           </div>
           <Button type="submit" className="mt-6">

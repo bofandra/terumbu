@@ -15,6 +15,7 @@ const dashboardNav = [
   { label: "Donations", href: "/dashboard/donations" },
   { label: "Expeditions", href: "/dashboard/expeditions" },
   { label: "Academy", href: "/dashboard/academy" },
+  { label: "Certificates", href: "/dashboard/certificates" },
   { label: "Passport", href: "/dashboard/passport" }
 ];
 

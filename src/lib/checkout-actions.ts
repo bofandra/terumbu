@@ -10,7 +10,6 @@ import {
   campaigns,
   donationReceipts,
   donations,
-  emailLogs,
   expeditionBookingPayments,
   expeditionBookings,
   expeditionDepartures,
@@ -27,6 +26,8 @@ import {
   splitParticipantNames
 } from "@/lib/checkout";
 import { getSessionUser, safeRedirectPath } from "@/lib/auth";
+import { trackEvent } from "@/lib/analytics";
+import { sendTransactionalEmail } from "@/lib/email";
 
 function randomReference(prefix: string) {
   return `${prefix}-${new Date().getUTCFullYear()}-${randomBytes(5).toString("hex").toUpperCase()}`;
@@ -34,7 +35,8 @@ function randomReference(prefix: string) {
 
 export async function createDonationAction(formData: FormData) {
   const campaignSlug = String(formData.get("campaignSlug") ?? "");
-  const amount = parseDonationAmount(formData.get("amount"));
+  const customAmount = parseDonationAmount(formData.get("customAmount"));
+  const amount = customAmount > 0 ? customAmount : parseDonationAmount(formData.get("amount"));
   const donorName = String(formData.get("donorName") ?? "").trim();
   const donorEmail = String(formData.get("donorEmail") ?? "")
     .trim()
@@ -63,6 +65,8 @@ export async function createDonationAction(formData: FormData) {
   const providerReference = randomReference("DEMO-DONATION");
   const now = new Date();
   let donationId = "";
+  let receiptEmailNumber: string | null = null;
+  let receiptEmailUserId: string | null = null;
 
   await db.transaction(async (tx) => {
     const [donation] = await tx
@@ -120,18 +124,34 @@ export async function createDonationAction(formData: FormData) {
         }
       });
 
-      await tx.insert(emailLogs).values({
-        userId: sessionUser?.id ?? null,
-        recipientEmail: donorEmail,
-        subject: "Your Terumbu donation receipt",
-        template: "donation_receipt",
-        status: "sent",
-        payload: {
-          receiptNumber,
-          donationId: donation.id
-        },
-        sentAt: now
-      });
+      receiptEmailNumber = receiptNumber;
+      receiptEmailUserId = sessionUser?.id ?? null;
+    }
+  });
+
+  if (receiptEmailNumber) {
+    await sendTransactionalEmail({
+      userId: receiptEmailUserId,
+      recipientEmail: donorEmail,
+      subject: "Your Terumbu donation receipt",
+      template: "donation_receipt",
+      payload: {
+        receiptNumber: receiptEmailNumber,
+        donationId,
+        campaign: campaign.title,
+        amount,
+        currency: "IDR"
+      }
+    });
+  }
+
+  await trackEvent({
+    distinctId: sessionUser?.id ?? donorEmail,
+    event: "donation_checkout_completed",
+    properties: {
+      campaignSlug,
+      amount,
+      status: paymentState
     }
   });
 
@@ -182,6 +202,8 @@ export async function bookExpeditionAction(formData: FormData) {
   const bookingCode = buildBookingCode(providerReference, now);
   const totalAmount = calculateBookingTotal(departure.basePrice, participantCount);
   let bookingId = "";
+  let shouldSendBookingEmail = false;
+  let bookingEmailUserId: string | null = null;
 
   await db.transaction(async (tx) => {
     const [booking] = await tx
@@ -238,19 +260,34 @@ export async function bookExpeditionAction(formData: FormData) {
         })
         .where(eq(expeditionDepartures.id, departure.id));
 
-      await tx.insert(emailLogs).values({
-        userId: sessionUser?.id ?? null,
-        recipientEmail: contactEmail,
-        subject: `Your ${departure.expeditionTitle} booking is confirmed`,
-        template: "expedition_booking_confirmation",
-        status: "sent",
-        payload: {
-          bookingCode,
-          departure: departure.startsAt.toISOString(),
-          participantsCount: participantCount
-        },
-        sentAt: now
-      });
+      shouldSendBookingEmail = true;
+      bookingEmailUserId = sessionUser?.id ?? null;
+    }
+  });
+
+  if (shouldSendBookingEmail) {
+    await sendTransactionalEmail({
+      userId: bookingEmailUserId,
+      recipientEmail: contactEmail,
+      subject: `Your ${departure.expeditionTitle} booking is confirmed`,
+      template: "expedition_booking_confirmation",
+      payload: {
+        bookingCode,
+        bookingId,
+        departure: departure.startsAt.toISOString(),
+        participantsCount: participantCount
+      }
+    });
+  }
+
+  await trackEvent({
+    distinctId: sessionUser?.id ?? contactEmail,
+    event: "expedition_booking_completed",
+    properties: {
+      departureId,
+      participantsCount: participantCount,
+      totalAmount,
+      status: paymentState
     }
   });
 

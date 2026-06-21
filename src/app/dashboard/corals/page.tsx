@@ -1,4 +1,5 @@
 import { Waves } from "lucide-react";
+import Link from "next/link";
 
 import { requireUser } from "@/lib/auth";
 import { getDashboardData } from "@/lib/queries";
@@ -35,6 +36,9 @@ export default async function DashboardCoralsPage() {
                   <span className="rounded-full bg-kelp-100 px-3 py-1 text-kelp-700">{ecosystem.status}</span>
                   <span className="rounded-full bg-ocean-50 px-3 py-1">{ecosystem.siteName ?? "Site pending"}</span>
                 </div>
+                <Link href={`/dashboard/corals/${ecosystem.code}`} className="mt-4 inline-flex text-sm font-bold text-coral-700 hover:text-coral-500">
+                  View details
+                </Link>
               </div>
             </div>
           </article>

@@ -3,6 +3,7 @@ import { and, asc, desc, eq, sql } from "drizzle-orm";
 import { db } from "@/db/client";
 import {
   assessmentAttempts,
+  adminAuditLogs,
   campaignUpdates,
   campaigns,
   corporateAccounts,
@@ -82,7 +83,7 @@ export async function getImpactStats(): Promise<ImpactStatData[]> {
   ];
 }
 
-export async function getCampaignCards(limit?: number): Promise<CampaignCardData[]> {
+export async function getCampaignCards(limit?: number, category?: string): Promise<CampaignCardData[]> {
   const rows = await db
     .select({
       slug: campaigns.slug,
@@ -102,7 +103,7 @@ export async function getCampaignCards(limit?: number): Promise<CampaignCardData
     })
     .from(campaigns)
     .innerJoin(organizations, eq(campaigns.organizationId, organizations.id))
-    .where(eq(campaigns.status, "published"))
+    .where(category ? and(eq(campaigns.status, "published"), eq(campaigns.category, category)) : eq(campaigns.status, "published"))
     .orderBy(desc(campaigns.publishedAt));
 
   const cards = rows.map((row) => toCampaignCard(row));
@@ -133,6 +134,95 @@ export async function getPartnerNames(limit = 4): Promise<string[]> {
     .limit(limit);
 
   return rows.map((row) => row.name);
+}
+
+export async function getPartnerDirectory(limit = 12) {
+  const rows = await db
+    .select({
+      name: organizations.name,
+      slug: organizations.slug,
+      type: organizations.type,
+      description: organizations.description,
+      verification: organizations.verification,
+      campaignCount: sql<string>`count(${campaigns.id})`
+    })
+    .from(organizations)
+    .leftJoin(campaigns, eq(campaigns.organizationId, organizations.id))
+    .groupBy(organizations.id)
+    .orderBy(asc(organizations.name))
+    .limit(limit);
+
+  return rows.map((row) => ({
+    ...row,
+    verification: verificationLabel(row.verification),
+    campaignCount: toNumber(row.campaignCount)
+  }));
+}
+
+export async function getPartnerProfile(slug: string) {
+  const [partner] = await db
+    .select({
+      id: organizations.id,
+      name: organizations.name,
+      slug: organizations.slug,
+      type: organizations.type,
+      logoUrl: organizations.logoUrl,
+      websiteUrl: organizations.websiteUrl,
+      description: organizations.description,
+      verification: organizations.verification,
+      createdAt: organizations.createdAt
+    })
+    .from(organizations)
+    .where(eq(organizations.slug, slug))
+    .limit(1);
+
+  if (!partner) {
+    return null;
+  }
+
+  const [campaignRows, evidenceRows] = await Promise.all([
+    db
+      .select({
+        slug: campaigns.slug,
+        title: campaigns.title,
+        category: campaigns.category,
+        region: campaigns.region,
+        summary: campaigns.summary,
+        imageUrl: campaigns.imageUrl,
+        raisedAmount: campaigns.raisedAmount,
+        goalAmount: campaigns.goalAmount,
+        donorCount: campaigns.donorCount,
+        impactUnit: campaigns.impactUnit,
+        impactTarget: campaigns.impactTarget,
+        endsAt: campaigns.endsAt,
+        partner: organizations.name,
+        verification: organizations.verification
+      })
+      .from(campaigns)
+      .innerJoin(organizations, eq(campaigns.organizationId, organizations.id))
+      .where(eq(campaigns.organizationId, partner.id))
+      .orderBy(desc(campaigns.publishedAt)),
+    db
+      .select({
+        title: projectEvidence.title,
+        evidenceType: projectEvidence.evidenceType,
+        verificationStatus: projectEvidence.verificationStatus,
+        fileUrl: projectEvidence.fileUrl,
+        createdAt: projectEvidence.createdAt,
+        campaignTitle: campaigns.title
+      })
+      .from(projectEvidence)
+      .innerJoin(campaigns, eq(projectEvidence.campaignId, campaigns.id))
+      .where(eq(campaigns.organizationId, partner.id))
+      .orderBy(desc(projectEvidence.createdAt))
+  ]);
+
+  return {
+    ...partner,
+    verification: verificationLabel(partner.verification),
+    campaigns: campaignRows.map((campaign) => toCampaignCard(campaign)),
+    evidence: evidenceRows
+  };
 }
 
 export async function getFeaturedFieldUpdate() {
@@ -202,6 +292,7 @@ export async function getCampaignDetail(slug: string) {
   const [updates, sites, evidence] = await Promise.all([
     db
       .select({
+        id: campaignUpdates.id,
         title: campaignUpdates.title,
         body: campaignUpdates.body,
         imageUrl: campaignUpdates.imageUrl,
@@ -233,7 +324,34 @@ export async function getCampaignDetail(slug: string) {
   };
 }
 
-export async function getExpeditionCards(limit?: number): Promise<ExpeditionCardData[]> {
+export async function getCampaignUpdateDetail(campaignSlug: string, updateId: string) {
+  const [update] = await db
+    .select({
+      id: campaignUpdates.id,
+      title: campaignUpdates.title,
+      body: campaignUpdates.body,
+      imageUrl: campaignUpdates.imageUrl,
+      publishedAt: campaignUpdates.publishedAt,
+      campaignTitle: campaigns.title,
+      campaignSlug: campaigns.slug,
+      partner: organizations.name,
+      verification: organizations.verification
+    })
+    .from(campaignUpdates)
+    .innerJoin(campaigns, eq(campaignUpdates.campaignId, campaigns.id))
+    .innerJoin(organizations, eq(campaigns.organizationId, organizations.id))
+    .where(and(eq(campaigns.slug, campaignSlug), eq(campaignUpdates.id, updateId)))
+    .limit(1);
+
+  return update
+    ? {
+        ...update,
+        verification: verificationLabel(update.verification)
+      }
+    : null;
+}
+
+export async function getExpeditionCards(limit?: number, region?: string): Promise<ExpeditionCardData[]> {
   const [rows, departureRows] = await Promise.all([
     db
       .select({
@@ -247,6 +365,7 @@ export async function getExpeditionCards(limit?: number): Promise<ExpeditionCard
         summary: expeditions.summary
       })
       .from(expeditions)
+      .where(region ? eq(expeditions.region, region) : undefined)
       .orderBy(asc(expeditions.title)),
     db
       .select({
@@ -278,6 +397,18 @@ export async function getExpeditionCards(limit?: number): Promise<ExpeditionCard
   });
 
   return typeof limit === "number" ? cards.slice(0, limit) : cards;
+}
+
+export async function getExpeditionRegions() {
+  const rows = await db
+    .select({
+      region: expeditions.region
+    })
+    .from(expeditions)
+    .groupBy(expeditions.region)
+    .orderBy(asc(expeditions.region));
+
+  return rows.map((row) => row.region);
 }
 
 export async function getExpeditionDetail(slug: string) {
@@ -584,7 +715,7 @@ export async function getPublicPassport(publicSlug: string) {
     .where(eq(impactPassports.publicSlug, publicSlug))
     .limit(1);
 
-  if (!passport || passport.visibility !== "public" || !passport.isPublic) {
+  if (!passport || !["public", "link"].includes(passport.visibility) || !passport.isPublic) {
     return null;
   }
 
@@ -785,6 +916,44 @@ export async function getDashboardData(userId: string) {
   };
 }
 
+export async function getSponsoredEcosystemDetail(userId: string, code: string) {
+  const [ecosystem] = await db
+    .select({
+      code: sponsoredEcosystems.code,
+      label: sponsoredEcosystems.label,
+      status: sponsoredEcosystems.status,
+      plantedAt: sponsoredEcosystems.plantedAt,
+      lastUpdatedAt: sponsoredEcosystems.lastUpdatedAt,
+      metadata: sponsoredEcosystems.metadata,
+      campaignTitle: campaigns.title,
+      campaignSlug: campaigns.slug,
+      siteName: impactSites.name,
+      siteType: impactSites.ecosystemType,
+      siteRegion: impactSites.region,
+      latitude: impactSites.latitude,
+      longitude: impactSites.longitude
+    })
+    .from(sponsoredEcosystems)
+    .innerJoin(campaigns, eq(sponsoredEcosystems.campaignId, campaigns.id))
+    .leftJoin(impactSites, eq(sponsoredEcosystems.impactSiteId, impactSites.id))
+    .where(and(eq(sponsoredEcosystems.userId, userId), eq(sponsoredEcosystems.code, code)))
+    .limit(1);
+
+  if (!ecosystem) {
+    return null;
+  }
+
+  return {
+    ...ecosystem,
+    fragments: getMetadataNumber(ecosystem.metadata, "fragments"),
+    seedlings: getMetadataNumber(ecosystem.metadata, "seedlings"),
+    progress: getMetadataNumber(ecosystem.metadata, "progress"),
+    latestSurvey: getMetadataString(ecosystem.metadata, "latestSurvey"),
+    latitude: ecosystem.latitude ? toNumber(ecosystem.latitude) : null,
+    longitude: ecosystem.longitude ? toNumber(ecosystem.longitude) : null
+  };
+}
+
 export async function getDonationCheckoutOptions() {
   return getCampaignCards();
 }
@@ -912,6 +1081,7 @@ export async function getAdminPortalData() {
   const [campaignRows, evidenceRows, donationRows] = await Promise.all([
     db
       .select({
+        id: campaigns.id,
         title: campaigns.title,
         slug: campaigns.slug,
         status: campaigns.status,
@@ -954,6 +1124,108 @@ export async function getAdminPortalData() {
     campaigns: campaignRows,
     evidence: evidenceRows,
     donations: donationRows
+  };
+}
+
+export async function getAdminOperationsData() {
+  const [partners, expeditionRows, impactSiteRows, reportRows, userRows, auditRows] = await Promise.all([
+    db
+      .select({
+        id: organizations.id,
+        name: organizations.name,
+        slug: organizations.slug,
+        type: organizations.type,
+        verification: organizations.verification
+      })
+      .from(organizations)
+      .orderBy(asc(organizations.name)),
+    db
+      .select({
+        id: expeditions.id,
+        title: expeditions.title,
+        slug: expeditions.slug,
+        region: expeditions.region,
+        basePrice: expeditions.basePrice,
+        departureId: expeditionDepartures.id,
+        startsAt: expeditionDepartures.startsAt,
+        capacity: expeditionDepartures.capacity,
+        seatsBooked: expeditionDepartures.seatsBooked,
+        status: expeditionDepartures.status
+      })
+      .from(expeditions)
+      .leftJoin(expeditionDepartures, eq(expeditionDepartures.expeditionId, expeditions.id))
+      .orderBy(asc(expeditions.title)),
+    db
+      .select({
+        id: impactSites.id,
+        name: impactSites.name,
+        ecosystemType: impactSites.ecosystemType,
+        region: impactSites.region,
+        campaignTitle: campaigns.title,
+        metadata: impactSites.metadata
+      })
+      .from(impactSites)
+      .leftJoin(campaigns, eq(impactSites.campaignId, campaigns.id))
+      .orderBy(asc(impactSites.name)),
+    db
+      .select({
+        exportCode: corporateReportExports.exportCode,
+        status: corporateReportExports.status,
+        fileUrl: corporateReportExports.fileUrl,
+        createdAt: corporateReportExports.createdAt,
+        programName: corporatePrograms.name,
+        accountName: corporateAccounts.name
+      })
+      .from(corporateReportExports)
+      .innerJoin(corporatePrograms, eq(corporateReportExports.programId, corporatePrograms.id))
+      .innerJoin(corporateAccounts, eq(corporatePrograms.corporateAccountId, corporateAccounts.id))
+      .orderBy(desc(corporateReportExports.createdAt)),
+    db
+      .select({
+        id: users.id,
+        email: users.email,
+        name: users.name,
+        displayName: profiles.displayName,
+        createdAt: users.createdAt
+      })
+      .from(users)
+      .leftJoin(profiles, eq(profiles.userId, users.id))
+      .orderBy(desc(users.createdAt))
+      .limit(100),
+    db
+      .select({
+        id: adminAuditLogs.id,
+        action: adminAuditLogs.action,
+        entityType: adminAuditLogs.entityType,
+        entityId: adminAuditLogs.entityId,
+        metadata: adminAuditLogs.metadata,
+        createdAt: adminAuditLogs.createdAt,
+        actorEmail: users.email
+      })
+      .from(adminAuditLogs)
+      .leftJoin(users, eq(adminAuditLogs.actorUserId, users.id))
+      .orderBy(desc(adminAuditLogs.createdAt))
+      .limit(100)
+  ]);
+
+  return {
+    partners: partners.map((partner) => ({
+      ...partner,
+      verificationLabel: verificationLabel(partner.verification)
+    })),
+    expeditions: expeditionRows.map((row) => ({
+      ...row,
+      basePrice: toNumber(row.basePrice),
+      availableSeats: row.capacity === null || row.seatsBooked === null ? null : Math.max(0, row.capacity - row.seatsBooked)
+    })),
+    impactSites: impactSiteRows.map((site) => ({
+      ...site,
+      progress: getMetadataNumber(site.metadata, "progress"),
+      evidenceCount: getMetadataNumber(site.metadata, "evidenceCount")
+    })),
+    reports: reportRows,
+    users: userRows,
+    auditLogs: auditRows
   };
 }
 

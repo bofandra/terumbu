@@ -108,8 +108,17 @@ export default async function CourseDetailPage({ params }: { params: Promise<{ s
               Certified
             </span>
           ) : course.enrollment ? (
-            <form action={submitAssessmentAction}>
+            <form action={submitAssessmentAction} className="flex flex-col gap-2 sm:items-end">
               <input type="hidden" name="courseSlug" value={course.slug} />
+              <input
+                name="score"
+                type="number"
+                min={0}
+                max={100}
+                defaultValue={course.attempt?.score ?? course.assessment?.passingScore ?? 80}
+                className="w-28 rounded-xl border border-ocean-900/14 px-3 py-2 text-sm font-semibold outline-none focus:border-coral-500"
+                aria-label="Assessment score"
+              />
               <Button type="submit">Submit Assessment</Button>
             </form>
           ) : null}
