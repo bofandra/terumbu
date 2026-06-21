@@ -143,8 +143,9 @@ jobs:
           VPS_USER: ${{ secrets.VPS_USER }}
           DEPLOY_REPO: https://github.com/${{ github.repository }}.git
           DEPLOY_REF: ${{ github.ref_name }}
+          DEPLOY_VERSION: ${{ github.sha }}
         run: |
           set -euo pipefail
           ssh -i ~/.ssh/terumbu_deploy_key "${VPS_USER}@${VPS_HOST}" \
-            "DEPLOY_BASE=/home/ubuntu/terumbu DEPLOY_REPO='${DEPLOY_REPO}' DEPLOY_REF='${DEPLOY_REF}' bash -s" \
+            "DEPLOY_BASE=/home/ubuntu/terumbu DEPLOY_REPO='${DEPLOY_REPO}' DEPLOY_REF='${DEPLOY_REF}' DEPLOY_VERSION='${DEPLOY_VERSION}' bash -s" \
             < scripts/deploy-vps.sh

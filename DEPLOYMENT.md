@@ -101,8 +101,11 @@ On push to `main`, GitHub Actions:
 8. Clones or updates `/home/ubuntu/terumbu/repo`.
 9. Starts the internal PostgreSQL container.
 10. Runs `npm run db:migrate` in a one-shot Docker Compose migration container on the VPS.
-11. Rebuilds/restarts the web container.
-12. Health-checks `http://127.0.0.1:3100/` on the VPS.
+11. Rebuilds the web image with the Git commit SHA as `DEPLOY_VERSION`.
+12. Force-recreates the `terumbu-web` container from that freshly built image.
+13. Health-checks `http://127.0.0.1:3100/` on the VPS.
+
+The deploy script intentionally force-recreates only the Terumbu web container so the compiled Next.js bundle cannot remain stale after a successful deploy.
 
 Commit generated Drizzle files under `drizzle/` with the schema change. GitHub Actions deploys from the pushed commit, so uncommitted migration files cannot run on the VPS.
 

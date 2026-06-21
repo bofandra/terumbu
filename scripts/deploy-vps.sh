@@ -5,6 +5,7 @@ PROJECT_NAME="${PROJECT_NAME:-terumbu}"
 DEPLOY_BASE="${DEPLOY_BASE:-/home/ubuntu/terumbu}"
 DEPLOY_REPO="${DEPLOY_REPO:?DEPLOY_REPO is required}"
 DEPLOY_REF="${DEPLOY_REF:-main}"
+DEPLOY_VERSION="${DEPLOY_VERSION:-}"
 
 APP_DIR="${DEPLOY_BASE}/repo"
 ENV_FILE="${DEPLOY_BASE}/.env"
@@ -45,6 +46,12 @@ if [ ! -f "${COMPOSE_FILE}" ]; then
   exit 1
 fi
 
+if [ -z "${DEPLOY_VERSION}" ]; then
+  DEPLOY_VERSION="$(git -C "${APP_DIR}" rev-parse HEAD)"
+fi
+
+echo "Deploying Terumbu ${DEPLOY_VERSION} from ${DEPLOY_REF}..."
+
 docker compose \
   --env-file "${ENV_FILE}" \
   --project-name "${PROJECT_NAME}" \
@@ -55,7 +62,10 @@ docker compose \
   --env-file "${ENV_FILE}" \
   --project-name "${PROJECT_NAME}" \
   -f "${COMPOSE_FILE}" \
-  build migrate
+  build \
+  --pull \
+  --build-arg DEPLOY_VERSION="${DEPLOY_VERSION}" \
+  migrate
 
 docker compose \
   --env-file "${ENV_FILE}" \
@@ -67,7 +77,16 @@ docker compose \
   --env-file "${ENV_FILE}" \
   --project-name "${PROJECT_NAME}" \
   -f "${COMPOSE_FILE}" \
-  up -d --build web
+  build \
+  --pull \
+  --build-arg DEPLOY_VERSION="${DEPLOY_VERSION}" \
+  web
+
+docker compose \
+  --env-file "${ENV_FILE}" \
+  --project-name "${PROJECT_NAME}" \
+  -f "${COMPOSE_FILE}" \
+  up -d --no-build --force-recreate web
 
 APP_PORT="$(awk -F= '/^TERUMBU_APP_PORT=/ { print $2 }' "${ENV_FILE}" | tail -1 | tr -d '\r\n')"
 APP_PORT="${APP_PORT#\'}"
