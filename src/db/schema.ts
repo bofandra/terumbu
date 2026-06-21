@@ -1,5 +1,6 @@
 import {
   boolean,
+  foreignKey,
   index,
   integer,
   jsonb,
@@ -349,7 +350,7 @@ export const expeditionParticipants = pgTable("expedition_participants", {
 
 export const expeditionBookingPayments = pgTable("expedition_booking_payments", {
   id: uuid("id").defaultRandom().primaryKey(),
-  bookingId: uuid("booking_id").notNull().references(() => expeditionBookings.id, { onDelete: "cascade" }),
+  bookingId: uuid("booking_id").notNull(),
   provider: varchar("provider", { length: 80 }).notNull(),
   providerReference: varchar("provider_reference", { length: 255 }).notNull(),
   status: paymentStatus("status").default("created").notNull(),
@@ -358,7 +359,12 @@ export const expeditionBookingPayments = pgTable("expedition_booking_payments", 
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull()
 }, (table) => ({
   providerIdx: uniqueIndex("expedition_booking_payments_provider_idx").on(table.provider, table.providerReference),
-  bookingIdx: index("expedition_booking_payments_booking_idx").on(table.bookingId)
+  bookingIdx: index("expedition_booking_payments_booking_idx").on(table.bookingId),
+  bookingFk: foreignKey({
+    name: "expedition_booking_payments_booking_fk",
+    columns: [table.bookingId],
+    foreignColumns: [expeditionBookings.id]
+  }).onDelete("cascade")
 }));
 
 export const courses = pgTable("courses", {
@@ -493,7 +499,7 @@ export const corporateAccounts = pgTable("corporate_accounts", {
 
 export const corporatePrograms = pgTable("corporate_programs", {
   id: uuid("id").defaultRandom().primaryKey(),
-  corporateAccountId: uuid("corporate_account_id").notNull().references(() => corporateAccounts.id, { onDelete: "cascade" }),
+  corporateAccountId: uuid("corporate_account_id").notNull(),
   name: varchar("name", { length: 220 }).notNull(),
   slug: varchar("slug", { length: 220 }).notNull(),
   startsAt: timestamp("starts_at", { withTimezone: true }).notNull(),
@@ -504,7 +510,12 @@ export const corporatePrograms = pgTable("corporate_programs", {
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull()
 }, (table) => ({
   slugIdx: uniqueIndex("corporate_programs_slug_idx").on(table.slug),
-  accountIdx: index("corporate_programs_account_idx").on(table.corporateAccountId)
+  accountIdx: index("corporate_programs_account_idx").on(table.corporateAccountId),
+  accountFk: foreignKey({
+    name: "corporate_programs_account_fk",
+    columns: [table.corporateAccountId],
+    foreignColumns: [corporateAccounts.id]
+  }).onDelete("cascade")
 }));
 
 export const corporateProgramBudgets = pgTable("corporate_program_budgets", {
@@ -520,7 +531,7 @@ export const corporateProgramBudgets = pgTable("corporate_program_budgets", {
 
 export const corporateEmployees = pgTable("corporate_employees", {
   id: uuid("id").defaultRandom().primaryKey(),
-  corporateAccountId: uuid("corporate_account_id").notNull().references(() => corporateAccounts.id, { onDelete: "cascade" }),
+  corporateAccountId: uuid("corporate_account_id").notNull(),
   userId: uuid("user_id").references(() => users.id, { onDelete: "set null" }),
   email: varchar("email", { length: 255 }).notNull(),
   name: varchar("name", { length: 160 }).notNull(),
@@ -530,7 +541,12 @@ export const corporateEmployees = pgTable("corporate_employees", {
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull()
 }, (table) => ({
   accountEmailIdx: uniqueIndex("corporate_employees_account_email_idx").on(table.corporateAccountId, table.email),
-  accountIdx: index("corporate_employees_account_idx").on(table.corporateAccountId)
+  accountIdx: index("corporate_employees_account_idx").on(table.corporateAccountId),
+  accountFk: foreignKey({
+    name: "corporate_employees_account_fk",
+    columns: [table.corporateAccountId],
+    foreignColumns: [corporateAccounts.id]
+  }).onDelete("cascade")
 }));
 
 export const corporateProjectPortfolio = pgTable("corporate_project_portfolio", {
@@ -569,12 +585,17 @@ export const corporateReportExports = pgTable("corporate_report_exports", {
 
 export const corporatePermissions = pgTable("corporate_permissions", {
   id: uuid("id").defaultRandom().primaryKey(),
-  corporateAccountId: uuid("corporate_account_id").notNull().references(() => corporateAccounts.id, { onDelete: "cascade" }),
+  corporateAccountId: uuid("corporate_account_id").notNull(),
   userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   permission: varchar("permission", { length: 120 }).notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull()
 }, (table) => ({
-  permissionIdx: uniqueIndex("corporate_permissions_unique_idx").on(table.corporateAccountId, table.userId, table.permission)
+  permissionIdx: uniqueIndex("corporate_permissions_unique_idx").on(table.corporateAccountId, table.userId, table.permission),
+  accountFk: foreignKey({
+    name: "corporate_permissions_account_fk",
+    columns: [table.corporateAccountId],
+    foreignColumns: [corporateAccounts.id]
+  }).onDelete("cascade")
 }));
 
 export const emailLogs = pgTable("email_logs", {
