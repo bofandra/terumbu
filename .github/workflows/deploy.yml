@@ -66,6 +66,7 @@ jobs:
         env:
           TERUMBU_APP_PORT: ${{ vars.TERUMBU_APP_PORT }}
           NEXT_PUBLIC_APP_URL: ${{ vars.NEXT_PUBLIC_APP_URL }}
+          SESSION_COOKIE_SECURE: ${{ vars.SESSION_COOKIE_SECURE }}
           TERUMBU_POSTGRES_DB: ${{ vars.TERUMBU_POSTGRES_DB }}
           TERUMBU_POSTGRES_USER: ${{ vars.TERUMBU_POSTGRES_USER }}
           TERUMBU_POSTGRES_PASSWORD: ${{ secrets.TERUMBU_POSTGRES_PASSWORD }}
@@ -119,6 +120,7 @@ jobs:
           write_env_value TERUMBU_POSTGRES_PASSWORD "${POSTGRES_PASSWORD}"
           write_env_value TERUMBU_DATABASE_URL "${TERUMBU_DATABASE_URL}"
           write_env_value NEXT_PUBLIC_APP_URL "${PUBLIC_URL}"
+          write_env_value SESSION_COOKIE_SECURE "${SESSION_COOKIE_SECURE}"
           write_env_value NEXT_PUBLIC_MAPBOX_TOKEN "${NEXT_PUBLIC_MAPBOX_TOKEN}"
           write_env_value MIDTRANS_SERVER_KEY "${MIDTRANS_SERVER_KEY}"
           write_env_value MIDTRANS_CLIENT_KEY "${MIDTRANS_CLIENT_KEY}"

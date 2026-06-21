@@ -6,6 +6,7 @@ import { redirect } from "next/navigation";
 
 import { db } from "@/db/client";
 import { profiles, roles, sessions, userRoles, users } from "@/db/schema";
+import { shouldUseSecureSessionCookie } from "@/lib/session-cookie";
 export { createPasswordHash, verifyPassword } from "@/lib/password";
 
 const SESSION_COOKIE = "terumbu_session";
@@ -37,7 +38,7 @@ export async function createSession(userId: string) {
     maxAge: SESSION_MAX_AGE_SECONDS,
     path: "/",
     sameSite: "lax",
-    secure: process.env.NODE_ENV === "production"
+    secure: shouldUseSecureSessionCookie()
   });
 }
 

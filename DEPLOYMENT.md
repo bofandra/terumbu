@@ -79,6 +79,7 @@ Optional repository variables:
 
 - `TERUMBU_APP_PORT`: default `3100`
 - `NEXT_PUBLIC_APP_URL`: default `http://<VPS_HOST>:<TERUMBU_APP_PORT>`
+- `SESSION_COOKIE_SECURE`: optional override, set `true` for HTTPS-only cookies or `false` for plain HTTP. If omitted, Terumbu infers this from `NEXT_PUBLIC_APP_URL`.
 - `TERUMBU_POSTGRES_DB`: default `terumbu`
 - `TERUMBU_POSTGRES_USER`: default `terumbu`
 - `POSTHOG_HOST`: default `https://app.posthog.com`
