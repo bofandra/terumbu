@@ -1,6 +1,6 @@
 import { CampaignCard } from "@/components/campaign-card";
 import { SectionHeading } from "@/components/section-heading";
-import { getCampaignCards } from "@/lib/queries";
+import { getCampaignCards, getCampaignCategories } from "@/lib/queries";
 
 export const metadata = {
   title: "Campaigns"
@@ -9,7 +9,8 @@ export const metadata = {
 export const dynamic = "force-dynamic";
 
 export default async function CampaignsPage() {
-  const campaigns = await getCampaignCards();
+  const [campaigns, categories] = await Promise.all([getCampaignCards(), getCampaignCategories()]);
+  const filters = ["All", ...categories];
 
   return (
     <section className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
@@ -17,7 +18,7 @@ export default async function CampaignsPage() {
         Support coral restoration, mangrove protection, ocean cleanup, and community-led coastal programs.
       </SectionHeading>
       <div className="mt-8 flex flex-wrap gap-2">
-        {["All", "Coral", "Mangrove", "Cleanup", "Community"].map((filter) => (
+        {filters.map((filter) => (
           <button key={filter} className="rounded-full bg-white px-4 py-2 text-sm font-bold text-ocean-900 shadow-sm ring-1 ring-ocean-900/10">
             {filter}
           </button>

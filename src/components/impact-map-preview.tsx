@@ -1,12 +1,11 @@
 "use client";
 
 import { MapPin } from "lucide-react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
 import type { ImpactSiteData } from "@/lib/domain";
 import { cn } from "@/lib/utils";
 
-const filters = ["All", "Coral", "Mangrove", "Cleanup", "Academy"];
 const indonesiaBounds = {
   minLat: -11,
   maxLat: 6,
@@ -30,6 +29,7 @@ function pinPosition(site: ImpactSiteData) {
 
 export function ImpactMapPreview({ sites }: ImpactMapPreviewProps) {
   const [activeFilter, setActiveFilter] = useState("All");
+  const filters = useMemo(() => ["All", ...Array.from(new Set(sites.map((site) => site.type)))], [sites]);
   const visibleSites = activeFilter === "All" ? sites : sites.filter((site) => site.type === activeFilter);
 
   return (

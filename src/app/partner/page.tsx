@@ -84,7 +84,7 @@ export default async function PartnerPortalPage() {
                   <option value="document">Document</option>
                   <option value="field_report">Field report</option>
                 </select>
-                <input name="fileUrl" placeholder="File URL or R2 object URL" className="rounded-xl border border-ocean-900/14 px-4 py-3 outline-none focus:border-coral-500" />
+                <input name="fileUrl" placeholder="File URL or R2 object URL" className="rounded-xl border border-ocean-900/14 px-4 py-3 outline-none focus:border-coral-500" required />
               </div>
               <Button type="submit" className="mt-5">
                 Submit Evidence

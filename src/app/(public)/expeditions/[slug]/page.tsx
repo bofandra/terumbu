@@ -21,15 +21,21 @@ export default async function ExpeditionDetailPage({ params }: { params: Promise
     <>
       <section className="bg-white">
         <div className="mx-auto grid max-w-7xl gap-8 px-4 py-12 sm:px-6 lg:grid-cols-[1.1fr_0.9fr] lg:px-8">
-          <Image
-            src={expedition.imageUrl}
-            alt=""
-            width={980}
-            height={720}
-            className="h-[460px] w-full rounded-2xl object-cover shadow-soft"
-            sizes="(min-width: 1024px) 55vw, 100vw"
-            priority
-          />
+          {expedition.imageUrl ? (
+            <Image
+              src={expedition.imageUrl}
+              alt=""
+              width={980}
+              height={720}
+              className="h-[460px] w-full rounded-2xl object-cover shadow-soft"
+              sizes="(min-width: 1024px) 55vw, 100vw"
+              priority
+            />
+          ) : (
+            <div className="flex h-[460px] w-full items-end rounded-2xl bg-ocean-900 p-6 text-sm font-bold uppercase tracking-[0.14em] text-white/72 shadow-soft">
+              {expedition.region}
+            </div>
+          )}
           <div className="flex flex-col justify-center">
             <p className="text-sm font-bold uppercase tracking-[0.16em] text-coral-700">Conservation expedition</p>
             <h1 className="mt-4 text-4xl font-bold tracking-normal text-ocean-900 sm:text-5xl">{expedition.title}</h1>
@@ -38,8 +44,8 @@ export default async function ExpeditionDetailPage({ params }: { params: Promise
               {[
                 [MapPin, expedition.region],
                 [CalendarDays, expedition.duration],
-                [Users, "Small field group"],
-                [ShieldCheck, "Verified partner"]
+                [Users, expedition.groupSizeLabel],
+                [ShieldCheck, expedition.partner ? `${expedition.verification}: ${expedition.partner}` : expedition.verification]
               ].map(([Icon, label]) => (
                 <div key={label as string} className="flex items-center gap-3 rounded-xl bg-sand-50 p-4 font-semibold text-ocean-900">
                   <Icon size={20} aria-hidden="true" />
@@ -62,16 +68,16 @@ export default async function ExpeditionDetailPage({ params }: { params: Promise
         <SectionHeading title="Program overview">
           Participants learn restoration basics, join field monitoring, document evidence, and receive a verified activity record after completion.
         </SectionHeading>
-        <div className="mt-8 grid gap-4 md:grid-cols-3">
-          {["Coral planting", "Reef monitoring", "Community briefing"].map((item) => (
-            <div key={item} className="rounded-2xl border border-ocean-900/10 bg-white p-5 shadow-soft">
-              <h2 className="font-bold text-ocean-900">{item}</h2>
-              <p className="mt-2 text-sm leading-6 text-ocean-900/68">
-                Field teams provide guidance, safety checks, and evidence records connected to Terumbu impact data.
-              </p>
-            </div>
-          ))}
-        </div>
+        {expedition.programActivities.length > 0 ? (
+          <div className="mt-8 grid gap-4 md:grid-cols-3">
+            {expedition.programActivities.map((item) => (
+              <div key={item.title} className="rounded-2xl border border-ocean-900/10 bg-white p-5 shadow-soft">
+                <h2 className="font-bold text-ocean-900">{item.title}</h2>
+                <p className="mt-2 text-sm leading-6 text-ocean-900/68">{item.description}</p>
+              </div>
+            ))}
+          </div>
+        ) : null}
       </section>
 
       <section className="bg-white py-14">

@@ -13,5 +13,5 @@ export function normalizeEvidenceUrl(value: FormDataEntryValue | string | null |
     return url;
   }
 
-  return "https://images.unsplash.com/photo-1583212292454-1fe6229603b7?auto=format&fit=crop&w=1200&q=80";
+  return null;
 }

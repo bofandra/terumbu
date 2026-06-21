@@ -4,6 +4,7 @@ import Image from "next/image";
 import { ImpactMapPreview } from "@/components/impact-map-preview";
 import { SectionHeading } from "@/components/section-heading";
 import { ButtonLink } from "@/components/ui/button";
+import { suggestedDonationAmounts } from "@/lib/domain";
 import { getCampaignDetail } from "@/lib/queries";
 import { formatCurrency } from "@/lib/utils";
 
@@ -27,6 +28,7 @@ export default async function CampaignDetailPage({ params }: { params: Promise<{
   }
 
   const progress = Math.round((campaign.raised / campaign.goal) * 100);
+  const donationAmounts = suggestedDonationAmounts(campaign.goal);
 
   return (
     <>
@@ -43,14 +45,20 @@ export default async function CampaignDetailPage({ params }: { params: Promise<{
             </div>
           </div>
           <div className="overflow-hidden rounded-2xl border border-white/16 bg-white/10 p-3 backdrop-blur">
-            <Image
-              src={campaign.imageUrl}
-              alt=""
-              width={900}
-              height={520}
-              className="h-72 w-full rounded-xl object-cover"
-              sizes="(min-width: 1024px) 42vw, 100vw"
-            />
+            {campaign.imageUrl ? (
+              <Image
+                src={campaign.imageUrl}
+                alt=""
+                width={900}
+                height={520}
+                className="h-72 w-full rounded-xl object-cover"
+                sizes="(min-width: 1024px) 42vw, 100vw"
+              />
+            ) : (
+              <div className="flex h-72 w-full items-end rounded-xl bg-white/10 p-5 text-sm font-bold uppercase tracking-[0.14em] text-white/72">
+                {campaign.category}
+              </div>
+            )}
           </div>
         </div>
       </section>
@@ -58,8 +66,7 @@ export default async function CampaignDetailPage({ params }: { params: Promise<{
       <section className="mx-auto grid max-w-7xl gap-8 px-4 py-14 sm:px-6 lg:grid-cols-[1fr_380px] lg:px-8">
         <div className="space-y-14">
           <SectionHeading title="Campaign story">
-            {campaign.story ??
-              "This campaign funds local restoration teams, field equipment, ecosystem monitoring, and transparent public updates from the project site."}
+            {campaign.story ?? "No campaign story has been published yet."}
           </SectionHeading>
 
           <div className="grid gap-4 sm:grid-cols-3">
@@ -135,7 +142,7 @@ export default async function CampaignDetailPage({ params }: { params: Promise<{
             </div>
           </div>
           <div className="mt-6 grid gap-3">
-            {[50_000, 100_000, 500_000].map((amount) => (
+            {donationAmounts.map((amount) => (
               <button key={amount} className="rounded-xl border border-ocean-900/10 px-4 py-3 text-left font-bold text-ocean-900 hover:border-coral-500">
                 {formatCurrency(amount)}
               </button>

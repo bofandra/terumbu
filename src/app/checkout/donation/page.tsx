@@ -1,6 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { getSessionUser } from "@/lib/auth";
 import { createDonationAction } from "@/lib/checkout-actions";
+import { suggestedDonationAmounts } from "@/lib/domain";
 import { getDonationCheckoutOptions } from "@/lib/queries";
 import { formatCurrency } from "@/lib/utils";
 
@@ -21,6 +22,9 @@ export default async function DonationCheckoutPage({ searchParams }: DonationChe
   const params = await searchParams;
   const [campaigns, user] = await Promise.all([getDonationCheckoutOptions(), getSessionUser()]);
   const selectedCampaign = params?.campaign ?? campaigns[0]?.slug;
+  const selectedCampaignData = campaigns.find((campaign) => campaign.slug === selectedCampaign) ?? campaigns[0];
+  const donationAmounts = selectedCampaignData ? suggestedDonationAmounts(selectedCampaignData.goal) : [];
+  const selectedAmount = donationAmounts[0];
 
   return (
     <main className="min-h-screen bg-sand-50 px-4 py-12 sm:px-6 lg:px-8">
@@ -48,8 +52,8 @@ export default async function DonationCheckoutPage({ searchParams }: DonationChe
           </label>
           <label className="grid gap-2 text-sm font-semibold text-ocean-900">
             Donation amount
-            <select name="amount" defaultValue="100000" className="rounded-xl border border-ocean-900/14 px-4 py-3 outline-none focus:border-coral-500">
-              {[50_000, 100_000, 500_000, 1_000_000].map((amount) => (
+            <select name="amount" defaultValue={selectedAmount} className="rounded-xl border border-ocean-900/14 px-4 py-3 outline-none focus:border-coral-500">
+              {donationAmounts.map((amount) => (
                 <option key={amount} value={amount}>
                   {formatCurrency(amount)}
                 </option>

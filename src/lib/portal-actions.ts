@@ -53,7 +53,7 @@ export async function submitEvidenceAction(formData: FormData) {
   const evidenceType = String(formData.get("evidenceType") ?? "field_photo").trim();
   const fileUrl = normalizeEvidenceUrl(formData.get("fileUrl"));
 
-  if (!campaignId || !title) {
+  if (!campaignId || !title || !fileUrl) {
     redirect("/partner?error=evidence");
   }
 

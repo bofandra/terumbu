@@ -1,4 +1,4 @@
-import { CalendarDays, MapPin, Star } from "lucide-react";
+import { CalendarDays, MapPin, Users } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 
@@ -14,14 +14,20 @@ export function ExpeditionCard({ expedition }: ExpeditionCardProps) {
   return (
     <article className="grid overflow-hidden rounded-2xl border border-ocean-900/10 bg-white shadow-soft md:grid-cols-[0.95fr_1.05fr]">
       <Link href={`/expeditions/${expedition.slug}`} className="block min-h-72">
-        <Image
-          src={expedition.imageUrl}
-          alt=""
-          width={820}
-          height={620}
-          className="h-full min-h-72 w-full object-cover"
-          sizes="(min-width: 1280px) 45vw, 100vw"
-        />
+        {expedition.imageUrl ? (
+          <Image
+            src={expedition.imageUrl}
+            alt=""
+            width={820}
+            height={620}
+            className="h-full min-h-72 w-full object-cover"
+            sizes="(min-width: 1280px) 45vw, 100vw"
+          />
+        ) : (
+          <div className="flex h-full min-h-72 w-full items-end bg-ocean-900 p-6 text-sm font-bold uppercase tracking-[0.14em] text-white/72">
+            {expedition.region}
+          </div>
+        )}
       </Link>
       <div className="flex flex-col p-6">
         <div className="flex flex-wrap gap-3 text-sm font-semibold text-ocean-900/68">
@@ -34,8 +40,8 @@ export function ExpeditionCard({ expedition }: ExpeditionCardProps) {
             {expedition.duration}
           </span>
           <span className="inline-flex items-center gap-1 text-coral-700">
-            <Star size={16} aria-hidden="true" />
-            {expedition.rating}
+            <Users size={16} aria-hidden="true" />
+            {expedition.availabilityLabel}
           </span>
         </div>
         <h3 className="mt-5 text-2xl font-bold tracking-normal text-ocean-900">

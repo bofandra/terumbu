@@ -7,7 +7,15 @@ import { PassportPreview } from "@/components/passport-preview";
 import { SectionHeading } from "@/components/section-heading";
 import { StatStrip } from "@/components/stat-strip";
 import { ButtonLink } from "@/components/ui/button";
-import { getCampaignCards, getExpeditionCards, getImpactMapSites, getImpactStats, getPublicPassport } from "@/lib/queries";
+import {
+  getCampaignCards,
+  getExpeditionCards,
+  getFeaturedFieldUpdate,
+  getFeaturedPublicPassport,
+  getImpactMapSites,
+  getImpactStats,
+  getPartnerNames
+} from "@/lib/queries";
 
 export const dynamic = "force-dynamic";
 
@@ -35,12 +43,14 @@ const journey = [
 ];
 
 export default async function HomePage() {
-  const [stats, campaigns, expeditions, impactSites, passport] = await Promise.all([
+  const [stats, campaigns, expeditions, impactSites, passport, fieldUpdate, partners] = await Promise.all([
     getImpactStats(),
     getCampaignCards(3),
     getExpeditionCards(2),
     getImpactMapSites(),
-    getPublicPassport("raka-demo-ocean-hero")
+    getFeaturedPublicPassport(),
+    getFeaturedFieldUpdate(),
+    getPartnerNames()
   ]);
 
   return (
@@ -49,8 +59,7 @@ export default async function HomePage() {
         <div
           className="absolute inset-0 bg-cover bg-center"
           style={{
-            backgroundImage:
-              "url('https://images.unsplash.com/photo-1546026423-cc4642628d2b?auto=format&fit=crop&w=2400&q=80')"
+            backgroundImage: fieldUpdate?.imageUrl ? `url('${fieldUpdate.imageUrl}')` : undefined
           }}
         />
         <div className="absolute inset-0 bg-gradient-to-br from-ocean-900/92 via-ocean-700/58 to-coral-700/38" />
@@ -82,18 +91,18 @@ export default async function HomePage() {
             </div>
           </div>
 
-          <div className="hidden items-end lg:flex">
-            <div className="w-full rounded-2xl border border-white/20 bg-white/12 p-5 text-white backdrop-blur-xl">
-              <p className="text-sm font-bold uppercase tracking-[0.16em] text-coral-100">Field update</p>
-              <p className="mt-4 text-2xl font-bold tracking-normal">Raja Ampat reef garden reached 72% of the funding milestone.</p>
-              <div className="mt-6 h-3 overflow-hidden rounded-full bg-white/18">
-                <div className="h-full w-[72%] rounded-full bg-coral-500" />
+          {fieldUpdate ? (
+            <div className="hidden items-end lg:flex">
+              <div className="w-full rounded-2xl border border-white/20 bg-white/12 p-5 text-white backdrop-blur-xl">
+                <p className="text-sm font-bold uppercase tracking-[0.16em] text-coral-100">Field update</p>
+                <p className="mt-4 text-2xl font-bold tracking-normal">{fieldUpdate.title}</p>
+                <div className="mt-6 h-3 overflow-hidden rounded-full bg-white/18">
+                  <div className="h-full rounded-full bg-coral-500" style={{ width: `${fieldUpdate.progress}%` }} />
+                </div>
+                <p className="mt-4 text-sm leading-6 text-white/72">{fieldUpdate.description}</p>
               </div>
-              <p className="mt-4 text-sm leading-6 text-white/72">
-                7,200 coral fragments funded, 2,350 supporters, and the next monitoring photo update is being prepared by the field team.
-              </p>
             </div>
-          </div>
+          ) : null}
         </div>
       </section>
 
@@ -172,18 +181,20 @@ export default async function HomePage() {
         </div>
       </section>
 
-      <section className="border-y border-ocean-900/10 bg-white py-14">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <p className="text-sm font-bold uppercase tracking-[0.16em] text-ocean-900/58">Partner ecosystem</p>
-          <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            {["Yayasan Bahari Lestari", "Koperasi Pesisir Hijau", "Nusantara Bank", "Ocean Learning Lab"].map((partner) => (
-              <div key={partner} className="rounded-xl border border-ocean-900/10 bg-sand-50 px-5 py-4 text-sm font-bold text-ocean-900">
-                {partner}
-              </div>
-            ))}
+      {partners.length > 0 ? (
+        <section className="border-y border-ocean-900/10 bg-white py-14">
+          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+            <p className="text-sm font-bold uppercase tracking-[0.16em] text-ocean-900/58">Partner ecosystem</p>
+            <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              {partners.map((partner) => (
+                <div key={partner} className="rounded-xl border border-ocean-900/10 bg-sand-50 px-5 py-4 text-sm font-bold text-ocean-900">
+                  {partner}
+                </div>
+              ))}
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
+      ) : null}
     </>
   );
 }

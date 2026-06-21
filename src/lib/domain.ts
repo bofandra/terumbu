@@ -10,7 +10,7 @@ export type CampaignCardData = {
   category: string;
   region: string;
   summary: string;
-  imageUrl: string;
+  imageUrl: string | null;
   raised: number;
   goal: number;
   donors: number;
@@ -26,8 +26,8 @@ export type ExpeditionCardData = {
   region: string;
   duration: string;
   price: number;
-  rating: string;
-  imageUrl: string;
+  availabilityLabel: string;
+  imageUrl: string | null;
   summary: string;
 };
 
@@ -155,7 +155,7 @@ export function toCampaignCard(row: CampaignRow, now = new Date()): CampaignCard
     category: row.category,
     region: row.region,
     summary: row.summary,
-    imageUrl: row.imageUrl ?? "/placeholder-campaign.jpg",
+    imageUrl: row.imageUrl,
     raised: toNumber(row.raisedAmount),
     goal: toNumber(row.goalAmount),
     donors: row.donorCount,
@@ -166,15 +166,27 @@ export function toCampaignCard(row: CampaignRow, now = new Date()): CampaignCard
   };
 }
 
-export function toExpeditionCard(row: ExpeditionRow): ExpeditionCardData {
+export function suggestedDonationAmounts(goal: number) {
+  const baseline = Math.max(1, goal);
+  const amounts = [0.0002, 0.0005, 0.001].map((multiplier) => {
+    const amount = baseline * multiplier;
+    const step = amount >= 1_000_000 ? 100_000 : 50_000;
+
+    return Math.max(step, Math.round(amount / step) * step);
+  });
+
+  return Array.from(new Set(amounts));
+}
+
+export function toExpeditionCard(row: ExpeditionRow, availabilityLabel = "Departure schedule pending"): ExpeditionCardData {
   return {
     slug: row.slug,
     title: row.title,
     region: row.region,
     duration: `${row.durationDays} days / ${Math.max(0, row.durationDays - 1)} nights`,
     price: toNumber(row.basePrice),
-    rating: "4.9",
-    imageUrl: row.imageUrl ?? "/placeholder-expedition.jpg",
+    availabilityLabel,
+    imageUrl: row.imageUrl,
     summary: row.summary
   };
 }

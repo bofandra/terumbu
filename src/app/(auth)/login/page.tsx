@@ -54,7 +54,6 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
               className="rounded-xl border border-ocean-900/14 px-4 py-3 outline-none focus:border-coral-500"
               type="email"
               name="email"
-              defaultValue="demo@terumbu.eco"
               autoComplete="email"
               required
             />
@@ -65,7 +64,6 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
               className="rounded-xl border border-ocean-900/14 px-4 py-3 outline-none focus:border-coral-500"
               type="password"
               name="password"
-              defaultValue="TerumbuDemo2026!"
               autoComplete="current-password"
               required
             />

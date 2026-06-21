@@ -110,6 +110,66 @@ export async function getCampaignCards(limit?: number): Promise<CampaignCardData
   return typeof limit === "number" ? cards.slice(0, limit) : cards;
 }
 
+export async function getCampaignCategories(): Promise<string[]> {
+  const rows = await db
+    .select({
+      category: campaigns.category
+    })
+    .from(campaigns)
+    .where(eq(campaigns.status, "published"))
+    .groupBy(campaigns.category)
+    .orderBy(asc(campaigns.category));
+
+  return rows.map((row) => row.category);
+}
+
+export async function getPartnerNames(limit = 4): Promise<string[]> {
+  const rows = await db
+    .select({
+      name: organizations.name
+    })
+    .from(organizations)
+    .orderBy(asc(organizations.name))
+    .limit(limit);
+
+  return rows.map((row) => row.name);
+}
+
+export async function getFeaturedFieldUpdate() {
+  const [row] = await db
+    .select({
+      campaignTitle: campaigns.title,
+      imageUrl: campaigns.imageUrl,
+      raisedAmount: campaigns.raisedAmount,
+      goalAmount: campaigns.goalAmount,
+      donorCount: campaigns.donorCount,
+      impactTarget: campaigns.impactTarget,
+      impactUnit: campaigns.impactUnit,
+      siteName: impactSites.name
+    })
+    .from(campaigns)
+    .leftJoin(impactSites, eq(impactSites.campaignId, campaigns.id))
+    .where(eq(campaigns.status, "published"))
+    .orderBy(desc(campaigns.publishedAt))
+    .limit(1);
+
+  if (!row) {
+    return null;
+  }
+
+  const raised = toNumber(row.raisedAmount);
+  const goal = toNumber(row.goalAmount);
+  const progress = goal > 0 ? Math.min(100, Math.round((raised / goal) * 100)) : 0;
+  const focus = row.siteName ?? row.campaignTitle;
+
+  return {
+    imageUrl: row.imageUrl,
+    progress,
+    title: `${focus} is ${progress}% funded.`,
+    description: `${row.donorCount.toLocaleString("id-ID")} supporters have raised ${formatCurrency(raised)} toward ${formatCurrency(goal)} for ${row.impactTarget.toLocaleString("id-ID")} ${row.impactUnit}.`
+  };
+}
+
 export async function getCampaignDetail(slug: string) {
   const [row] = await db
     .select({
@@ -174,20 +234,48 @@ export async function getCampaignDetail(slug: string) {
 }
 
 export async function getExpeditionCards(limit?: number): Promise<ExpeditionCardData[]> {
-  const rows = await db
-    .select({
-      slug: expeditions.slug,
-      title: expeditions.title,
-      region: expeditions.region,
-      durationDays: expeditions.durationDays,
-      basePrice: expeditions.basePrice,
-      imageUrl: expeditions.imageUrl,
-      summary: expeditions.summary
-    })
-    .from(expeditions)
-    .orderBy(asc(expeditions.title));
+  const [rows, departureRows] = await Promise.all([
+    db
+      .select({
+        id: expeditions.id,
+        slug: expeditions.slug,
+        title: expeditions.title,
+        region: expeditions.region,
+        durationDays: expeditions.durationDays,
+        basePrice: expeditions.basePrice,
+        imageUrl: expeditions.imageUrl,
+        summary: expeditions.summary
+      })
+      .from(expeditions)
+      .orderBy(asc(expeditions.title)),
+    db
+      .select({
+        expeditionId: expeditionDepartures.expeditionId,
+        capacity: expeditionDepartures.capacity,
+        seatsBooked: expeditionDepartures.seatsBooked,
+        startsAt: expeditionDepartures.startsAt
+      })
+      .from(expeditionDepartures)
+      .where(eq(expeditionDepartures.status, "open"))
+      .orderBy(asc(expeditionDepartures.startsAt))
+  ]);
 
-  const cards = rows.map((row) => toExpeditionCard(row));
+  const nextDepartureByExpeditionId = new Map<string, (typeof departureRows)[number]>();
+
+  for (const departure of departureRows) {
+    if (!nextDepartureByExpeditionId.has(departure.expeditionId)) {
+      nextDepartureByExpeditionId.set(departure.expeditionId, departure);
+    }
+  }
+
+  const cards = rows.map((row) => {
+    const nextDeparture = nextDepartureByExpeditionId.get(row.id);
+    const availabilityLabel = nextDeparture
+      ? `${Math.max(0, nextDeparture.capacity - nextDeparture.seatsBooked)} seats available`
+      : "No open departures";
+
+    return toExpeditionCard(row, availabilityLabel);
+  });
 
   return typeof limit === "number" ? cards.slice(0, limit) : cards;
 }
@@ -202,9 +290,14 @@ export async function getExpeditionDetail(slug: string) {
       durationDays: expeditions.durationDays,
       basePrice: expeditions.basePrice,
       imageUrl: expeditions.imageUrl,
-      summary: expeditions.summary
+      summary: expeditions.summary,
+      relatedCampaignId: expeditions.relatedCampaignId,
+      partner: organizations.name,
+      verification: organizations.verification
     })
     .from(expeditions)
+    .leftJoin(campaigns, eq(expeditions.relatedCampaignId, campaigns.id))
+    .leftJoin(organizations, eq(campaigns.organizationId, organizations.id))
     .where(eq(expeditions.slug, slug))
     .limit(1);
 
@@ -212,29 +305,53 @@ export async function getExpeditionDetail(slug: string) {
     return null;
   }
 
-  const departures = await db
-    .select({
-      id: expeditionDepartures.id,
-      startsAt: expeditionDepartures.startsAt,
-      endsAt: expeditionDepartures.endsAt,
-      capacity: expeditionDepartures.capacity,
-      seatsBooked: expeditionDepartures.seatsBooked,
-      status: expeditionDepartures.status,
-      metadata: expeditionDepartures.metadata
-    })
-    .from(expeditionDepartures)
-    .where(eq(expeditionDepartures.expeditionId, row.id))
-    .orderBy(asc(expeditionDepartures.startsAt));
+  const [departures, relatedSites] = await Promise.all([
+    db
+      .select({
+        id: expeditionDepartures.id,
+        startsAt: expeditionDepartures.startsAt,
+        endsAt: expeditionDepartures.endsAt,
+        capacity: expeditionDepartures.capacity,
+        seatsBooked: expeditionDepartures.seatsBooked,
+        status: expeditionDepartures.status,
+        metadata: expeditionDepartures.metadata
+      })
+      .from(expeditionDepartures)
+      .where(eq(expeditionDepartures.expeditionId, row.id))
+      .orderBy(asc(expeditionDepartures.startsAt)),
+    row.relatedCampaignId ? getImpactMapSites(row.relatedCampaignId) : Promise.resolve([])
+  ]);
+
+  const mappedDepartures = departures.map((departure) => ({
+    ...departure,
+    availableSeats: Math.max(0, departure.capacity - departure.seatsBooked),
+    meetingPoint: getMetadataString(departure.metadata, "meetingPoint"),
+    guide: getMetadataString(departure.metadata, "guide")
+  }));
+
+  const siteActivities = relatedSites.map((site) => ({
+    title: `${site.type} milestone: ${site.name}`,
+    description: `${site.progress}% progress with ${site.evidenceCount} evidence records in ${site.region}.`
+  }));
+
+  const departureActivities = mappedDepartures.map((departure) => ({
+    title: departure.meetingPoint ? `Departure from ${departure.meetingPoint}` : `${departure.availableSeats} seats available`,
+    description: departure.guide
+      ? `Guided by ${departure.guide}.`
+      : `${departure.availableSeats} of ${departure.capacity} seats remain available for this departure.`
+  }));
+
+  const maxCapacity = mappedDepartures.reduce((capacity, departure) => Math.max(capacity, departure.capacity), 0);
 
   return {
     ...toExpeditionCard(row),
     id: row.id,
     durationDays: row.durationDays,
-    departures: departures.map((departure) => ({
-      ...departure,
-      availableSeats: Math.max(0, departure.capacity - departure.seatsBooked),
-      meetingPoint: getMetadataString(departure.metadata, "meetingPoint")
-    }))
+    partner: row.partner,
+    verification: verificationLabel(row.verification),
+    groupSizeLabel: maxCapacity > 0 ? `${maxCapacity} seats per departure` : "Departure capacity pending",
+    departures: mappedDepartures,
+    programActivities: [...siteActivities, ...departureActivities].slice(0, 3)
   };
 }
 
@@ -286,6 +403,32 @@ export async function getCourses() {
     ...course,
     duration: course.durationMinutes >= 60 ? `${Math.round(course.durationMinutes / 60)} hours` : `${course.durationMinutes} min`
   }));
+}
+
+export async function getAcademyOverviewStats() {
+  const [courseRows, lessonRows, certificateRows] = await Promise.all([
+    db
+      .select({
+        total: sql<string>`count(${courses.id})`
+      })
+      .from(courses),
+    db
+      .select({
+        total: sql<string>`count(${courseLessons.id})`
+      })
+      .from(courseLessons),
+    db
+      .select({
+        total: sql<string>`count(${courseCertificates.id})`
+      })
+      .from(courseCertificates)
+  ]);
+
+  return [
+    { value: String(toNumber(courseRows[0]?.total)), label: "Learning tracks" },
+    { value: String(toNumber(lessonRows[0]?.total)), label: "Lessons available" },
+    { value: String(toNumber(certificateRows[0]?.total)), label: "Certificates issued" }
+  ];
 }
 
 export async function getCourseDetail(slug: string, userId?: string) {
@@ -471,6 +614,20 @@ export async function getPublicPassport(publicSlug: string) {
     preview,
     items
   };
+}
+
+export async function getFeaturedPublicPassport() {
+  const [passport] = await db
+    .select({
+      publicSlug: impactPassports.publicSlug
+    })
+    .from(impactPassports)
+    .innerJoin(profiles, eq(impactPassports.userId, profiles.userId))
+    .where(and(eq(impactPassports.visibility, "public"), eq(profiles.isPublic, true)))
+    .orderBy(desc(impactPassports.updatedAt))
+    .limit(1);
+
+  return passport ? getPublicPassport(passport.publicSlug) : null;
 }
 
 async function buildPassportPreview(

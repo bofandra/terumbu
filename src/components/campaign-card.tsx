@@ -16,14 +16,20 @@ export function CampaignCard({ campaign }: CampaignCardProps) {
   return (
     <article className="overflow-hidden rounded-2xl border border-ocean-900/10 bg-white shadow-soft">
       <Link href={`/campaigns/${campaign.slug}`} className="block">
-        <Image
-          src={campaign.imageUrl}
-          alt=""
-          width={800}
-          height={450}
-          className="h-56 w-full object-cover"
-          sizes="(min-width: 1024px) 33vw, 100vw"
-        />
+        {campaign.imageUrl ? (
+          <Image
+            src={campaign.imageUrl}
+            alt=""
+            width={800}
+            height={450}
+            className="h-56 w-full object-cover"
+            sizes="(min-width: 1024px) 33vw, 100vw"
+          />
+        ) : (
+          <div className="flex h-56 w-full items-end bg-ocean-900 p-5 text-sm font-bold uppercase tracking-[0.14em] text-white/72">
+            {campaign.category}
+          </div>
+        )}
       </Link>
       <div className="p-5">
         <div className="flex flex-wrap items-center gap-2">

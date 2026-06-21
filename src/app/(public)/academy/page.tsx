@@ -2,7 +2,7 @@ import { Award, BookOpen, CheckCircle2 } from "lucide-react";
 
 import { SectionHeading } from "@/components/section-heading";
 import { ButtonLink } from "@/components/ui/button";
-import { getCourses } from "@/lib/queries";
+import { getAcademyOverviewStats, getCourses } from "@/lib/queries";
 
 export const metadata = {
   title: "Academy"
@@ -11,7 +11,8 @@ export const metadata = {
 export const dynamic = "force-dynamic";
 
 export default async function AcademyPage() {
-  const courses = await getCourses();
+  const [courses, academyStats] = await Promise.all([getCourses(), getAcademyOverviewStats()]);
+  const firstCourseHref = courses[0] ? `/academy/courses/${courses[0].slug}` : "/academy";
 
   return (
     <>
@@ -25,19 +26,15 @@ export default async function AcademyPage() {
             <p className="mt-5 text-lg leading-8 text-white/74">
               Courses prepare supporters, students, expedition participants, and corporate teams to understand the impact they fund.
             </p>
-            <ButtonLink href="/academy/courses/ocean-explorer" tone="light" className="mt-8">
+            <ButtonLink href={firstCourseHref} tone="light" className="mt-8">
               Start Learning
             </ButtonLink>
           </div>
           <div className="grid gap-4 sm:grid-cols-3 lg:grid-cols-1">
-            {[
-              ["2 of 4", "Raja Ampat preparation modules completed"],
-              ["4", "Certificates ready for Impact Passport"],
-              ["12 days", "Nusantara Bank challenge remaining"]
-            ].map(([value, label]) => (
-              <div key={label} className="rounded-2xl border border-white/16 bg-white/10 p-5 backdrop-blur">
-                <p className="text-3xl font-bold tracking-normal">{value}</p>
-                <p className="mt-2 text-sm leading-6 text-white/70">{label}</p>
+            {academyStats.map((stat) => (
+              <div key={stat.label} className="rounded-2xl border border-white/16 bg-white/10 p-5 backdrop-blur">
+                <p className="text-3xl font-bold tracking-normal">{stat.value}</p>
+                <p className="mt-2 text-sm leading-6 text-white/70">{stat.label}</p>
               </div>
             ))}
           </div>
