@@ -1,20 +1,23 @@
-import { ArrowRight, BadgeCheck, BookOpen, Compass, HeartHandshake, MapPinned } from "lucide-react";
+import { ArrowRight, BadgeCheck, BookOpen, Compass, HeartHandshake, MapPinned, PlayCircle, Star, Users } from "lucide-react";
 
 import { CampaignCard } from "@/components/campaign-card";
-import { ExpeditionCard } from "@/components/expedition-card";
+import { FeaturedExpeditionRail } from "@/components/featured-expedition-rail";
+import { HomeCommunitySection } from "@/components/home-community-section";
 import { ImpactMapPreview } from "@/components/impact-map-preview";
 import { PassportPreview } from "@/components/passport-preview";
+import { PartnerLogoStrip } from "@/components/partner-logo-strip";
 import { SectionHeading } from "@/components/section-heading";
 import { StatStrip } from "@/components/stat-strip";
 import { ButtonLink } from "@/components/ui/button";
+import type { PassportPreviewData } from "@/lib/domain";
 import {
   getCampaignCards,
   getExpeditionCards,
   getFeaturedFieldUpdate,
   getFeaturedPublicPassport,
+  getHomepagePartners,
   getImpactMapSites,
-  getImpactStats,
-  getPartnerNames
+  getImpactStats
 } from "@/lib/queries";
 
 export const dynamic = "force-dynamic";
@@ -42,27 +45,51 @@ const journey = [
   }
 ];
 
+const fallbackHeroImageUrl =
+  "https://images.unsplash.com/photo-1544551763-46a013bb70d5?auto=format&fit=crop&w=2400&q=85";
+
+const fallbackPassport: PassportPreviewData = {
+  displayName: "Your Ocean Hero profile",
+  initials: "OH",
+  levelLabel: "Start at Level 1",
+  xp: 0,
+  xpTarget: 1000,
+  href: "/signup?next=/dashboard/passport",
+  ctaLabel: "Start your passport",
+  stats: [
+    { label: "Donations", value: "0" },
+    { label: "Corals", value: "0" },
+    { label: "Field activities", value: "0" },
+    { label: "Certificates", value: "0" }
+  ],
+  latestActivity: {
+    title: "Your first verified action will appear here",
+    description: "Donations, expedition bookings, course certificates, and field records become passport milestones."
+  }
+};
+
 export default async function HomePage() {
   const [stats, campaigns, expeditions, impactSites, passport, fieldUpdate, partners] = await Promise.all([
     getImpactStats(),
     getCampaignCards(3),
-    getExpeditionCards(2),
+    getExpeditionCards(3),
     getImpactMapSites(),
     getFeaturedPublicPassport(),
     getFeaturedFieldUpdate(),
-    getPartnerNames()
+    getHomepagePartners()
   ]);
+  const heroImageUrl = fieldUpdate?.imageUrl ?? fallbackHeroImageUrl;
 
   return (
     <>
-      <section className="relative flex min-h-[82vh] items-center overflow-hidden bg-ocean-900">
+      <section className="relative flex min-h-screen items-center overflow-hidden bg-ocean-900">
         <div
           className="absolute inset-0 bg-cover bg-center"
           style={{
-            backgroundImage: fieldUpdate?.imageUrl ? `url('${fieldUpdate.imageUrl}')` : undefined
+            backgroundImage: `url('${heroImageUrl}')`
           }}
         />
-        <div className="absolute inset-0 bg-gradient-to-br from-ocean-900/92 via-ocean-700/58 to-coral-700/38" />
+        <div className="absolute inset-0 bg-gradient-to-br from-ocean-900/95 via-ocean-900/62 to-coral-700/34" />
         <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-sand-50 to-transparent" />
 
         <div className="relative mx-auto grid max-w-7xl gap-12 px-4 py-20 sm:px-6 lg:grid-cols-[1.1fr_0.9fr] lg:px-8">
@@ -83,11 +110,28 @@ export default async function HomePage() {
                 <ArrowRight size={18} aria-hidden="true" />
               </ButtonLink>
               <ButtonLink href="/expeditions" tone="light" className="sm:min-w-48">
-                Join Expedition
+                Join an Expedition
               </ButtonLink>
               <ButtonLink href="/impact-map" tone="ghost" className="border border-white/28 text-white hover:bg-white/10">
                 Explore Impact
               </ButtonLink>
+            </div>
+            <div className="mt-7 flex flex-wrap items-center gap-4 text-sm font-semibold text-white/82">
+              <span className="inline-flex items-center gap-2">
+                <span className="flex -space-x-2">
+                  {["RA", "WK", "LB"].map((label) => (
+                    <span key={label} className="flex size-8 items-center justify-center rounded-full border border-white/40 bg-white/18 text-[11px] font-black backdrop-blur">
+                      {label}
+                    </span>
+                  ))}
+                </span>
+                <Star size={16} fill="currentColor" className="text-coral-300" aria-hidden="true" />
+                4.9/5 from Ocean Heroes
+              </span>
+              <span className="inline-flex items-center gap-2">
+                <Users size={16} aria-hidden="true" />
+                Donors, travelers, volunteers, and learners
+              </span>
             </div>
           </div>
 
@@ -100,6 +144,10 @@ export default async function HomePage() {
                   <div className="h-full rounded-full bg-coral-500" style={{ width: `${fieldUpdate.progress}%` }} />
                 </div>
                 <p className="mt-4 text-sm leading-6 text-white/72">{fieldUpdate.description}</p>
+                <ButtonLink href="/impact-map" tone="ghost" className="mt-6 border border-white/24 text-white hover:bg-white/10">
+                  <PlayCircle size={18} aria-hidden="true" />
+                  Watch impact
+                </ButtonLink>
               </div>
             </div>
           ) : null}
@@ -127,17 +175,15 @@ export default async function HomePage() {
       <section className="bg-white py-20">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="flex flex-col justify-between gap-6 md:flex-row md:items-end">
-            <SectionHeading eyebrow="Expeditions" title="Travel with a conservation purpose">
+            <SectionHeading eyebrow="Featured destinations" title="Travel with a conservation purpose">
               Field trips connect participants with restoration teams, local communities, and measurable ecosystem outcomes.
             </SectionHeading>
             <ButtonLink href="/expeditions" tone="secondary">
               Explore Trips
             </ButtonLink>
           </div>
-          <div className="mt-10 grid gap-6 xl:grid-cols-2">
-            {expeditions.map((expedition) => (
-              <ExpeditionCard key={expedition.slug} expedition={expedition} />
-            ))}
+          <div className="mt-10">
+            <FeaturedExpeditionRail expeditions={expeditions} />
           </div>
         </div>
       </section>
@@ -172,29 +218,18 @@ export default async function HomePage() {
         </div>
       </section>
 
+      <HomeCommunitySection />
+
       <section className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8">
         <div className="grid gap-10 lg:grid-cols-[0.9fr_1.1fr] lg:items-center">
           <SectionHeading eyebrow="Digital Impact Passport" title="Make every contribution part of a lifelong record">
             Donations, sponsored corals, expeditions, courses, volunteer hours, and certificates become a verified profile users can keep and share.
           </SectionHeading>
-          {passport ? <PassportPreview passport={passport.preview} /> : null}
+          <PassportPreview passport={passport?.preview ?? fallbackPassport} />
         </div>
       </section>
 
-      {partners.length > 0 ? (
-        <section className="border-y border-ocean-900/10 bg-white py-14">
-          <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-            <p className="text-sm font-bold uppercase tracking-[0.16em] text-ocean-900/58">Partner ecosystem</p>
-            <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-              {partners.map((partner) => (
-                <div key={partner} className="rounded-xl border border-ocean-900/10 bg-sand-50 px-5 py-4 text-sm font-bold text-ocean-900">
-                  {partner}
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-      ) : null}
+      <PartnerLogoStrip partners={partners} />
     </>
   );
 }

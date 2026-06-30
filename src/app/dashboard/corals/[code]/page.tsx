@@ -23,6 +23,7 @@ export default async function SponsoredEcosystemDetailPage({ params }: { params:
             name: ecosystem.siteName,
             type: ecosystem.siteType ?? "Ecosystem",
             region: ecosystem.siteRegion ?? "Region pending",
+            campaignSlug: null,
             progress: ecosystem.progress,
             latitude: ecosystem.latitude,
             longitude: ecosystem.longitude,

@@ -14,6 +14,7 @@ type ExpeditionCheckoutPageProps = {
   searchParams?: Promise<{
     departure?: string;
     expedition?: string;
+    participants?: string;
     error?: string;
   }>;
 };
@@ -24,6 +25,7 @@ export default async function ExpeditionCheckoutPage({ searchParams }: Expeditio
   const filteredOptions = params?.expedition ? options.filter((option) => option.expeditionSlug === params.expedition) : options;
   const visibleOptions = filteredOptions.length > 0 ? filteredOptions : options;
   const selectedDeparture = params?.departure ?? visibleOptions[0]?.departureId;
+  const selectedParticipants = Math.max(1, Math.min(12, Number(params?.participants ?? 1) || 1));
 
   return (
     <main className="min-h-screen bg-sand-50 px-4 py-12 sm:px-6 lg:px-8">
@@ -60,7 +62,7 @@ export default async function ExpeditionCheckoutPage({ searchParams }: Expeditio
           </label>
           <label className="grid gap-2 text-sm font-semibold text-ocean-900">
             Participants
-            <input name="participantsCount" type="number" min={1} max={12} defaultValue={1} className="rounded-xl border border-ocean-900/14 px-4 py-3 outline-none focus:border-coral-500" required />
+            <input name="participantsCount" type="number" min={1} max={12} defaultValue={selectedParticipants} className="rounded-xl border border-ocean-900/14 px-4 py-3 outline-none focus:border-coral-500" required />
           </label>
           <label className="grid gap-2 text-sm font-semibold text-ocean-900">
             Participant names

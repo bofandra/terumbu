@@ -35,12 +35,21 @@ export type ImpactSiteData = {
   name: string;
   type: string;
   region: string;
+  campaignSlug: string | null;
   progress: number;
   latitude: number;
   longitude: number;
   verification: string;
   evidenceCount: number;
   latestSurvey: string | null;
+};
+
+export type PartnerLogoData = {
+  name: string;
+  slug: string;
+  type: string;
+  logoUrl: string | null;
+  href: string | null;
 };
 
 export type PassportPreviewData = {
@@ -58,6 +67,7 @@ export type PassportPreviewData = {
     description: string;
   } | null;
   href: string;
+  ctaLabel?: string;
 };
 
 type CampaignRow = {

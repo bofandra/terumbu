@@ -76,7 +76,7 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
               Bio
               <textarea name="bio" defaultValue={account?.bio ?? ""} className="min-h-28 rounded-xl border border-ocean-900/14 px-4 py-3 outline-none focus:border-coral-500" />
             </label>
-            <label className="grid gap-2 text-sm font-semibold text-ocean-900">
+            <label id="privacy" className="grid scroll-mt-24 gap-2 text-sm font-semibold text-ocean-900">
               Impact Passport visibility
               <select
                 name="passportVisibility"

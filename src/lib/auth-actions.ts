@@ -198,6 +198,26 @@ export async function updateAccountAction(formData: FormData) {
   redirect("/dashboard/settings?saved=profile");
 }
 
+export async function updatePassportVisibilityAction(formData: FormData) {
+  const user = await requireUser("/dashboard/passport");
+  const requestedVisibility = String(formData.get("passportVisibility") ?? "private");
+  const passportVisibility = ["private", "link", "public"].includes(requestedVisibility) ? requestedVisibility : "private";
+  const isPublic = passportVisibility !== "private";
+  const now = new Date();
+
+  await db.update(profiles).set({ isPublic, updatedAt: now }).where(eq(profiles.userId, user.id));
+
+  await db
+    .update(impactPassports)
+    .set({
+      visibility: passportVisibility,
+      updatedAt: now
+    })
+    .where(eq(impactPassports.userId, user.id));
+
+  redirect("/dashboard/passport?saved=visibility");
+}
+
 export async function changePasswordAction(formData: FormData) {
   const sessionUser = await requireUser("/dashboard/settings");
   const currentPassword = String(formData.get("currentPassword") ?? "");

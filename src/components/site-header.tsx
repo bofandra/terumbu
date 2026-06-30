@@ -51,13 +51,14 @@ export function SiteHeader() {
           </button>
           <Link
             href="/login"
-            className="flex size-11 items-center justify-center rounded-full text-white/80 transition hover:bg-white/10 hover:text-white"
+            className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full px-4 py-2 text-sm font-semibold text-white/82 transition hover:bg-white/10 hover:text-white"
             aria-label="Login"
           >
-            <UserCircle size={21} aria-hidden="true" />
+            <UserCircle size={19} aria-hidden="true" />
+            Login
           </Link>
           <ButtonLink href="/signup" tone="light">
-            Join
+            Sign Up / Join
           </ButtonLink>
         </div>
 
@@ -91,7 +92,7 @@ export function SiteHeader() {
               Login
             </Link>
             <ButtonLink href="/signup" tone="light" className="mt-2 w-full">
-              Join Terumbu
+              Sign Up / Join
             </ButtonLink>
           </nav>
         </div>
@@ -99,4 +100,3 @@ export function SiteHeader() {
     </header>
   );
 }
-

@@ -4,6 +4,7 @@ import test from "node:test";
 import {
   buildBookingCode,
   buildReceiptNumber,
+  buildSponsoredEcosystemCode,
   calculateBookingTotal,
   parseDonationAmount,
   parseParticipantCount,
@@ -27,6 +28,7 @@ test("checkout identifiers are deterministic for a sequence", () => {
 
   assert.equal(buildReceiptNumber("abc123", date), "TRB-RCP-2026-ABC123");
   assert.equal(buildBookingCode("42", date), "TRB-EXP-2026-0042");
+  assert.equal(buildSponsoredEcosystemCode("coral-7", date), "TRB-CORAL-2026-CORAL7");
 });
 
 test("participant names fill missing entries", () => {

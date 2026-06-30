@@ -1,11 +1,52 @@
-import { CheckCircle2, Circle, FileBadge, PlayCircle } from "lucide-react";
+import {
+  ArrowLeft,
+  ArrowRight,
+  Award,
+  BookOpen,
+  CheckCircle2,
+  Circle,
+  ClipboardCheck,
+  Clock,
+  Download,
+  FileBadge,
+  FileText,
+  GraduationCap,
+  Languages,
+  PlayCircle,
+  ShieldCheck
+} from "lucide-react";
+import Image from "next/image";
+import Link from "next/link";
 import { notFound } from "next/navigation";
 
-import { SectionHeading } from "@/components/section-heading";
 import { Button, ButtonLink } from "@/components/ui/button";
 import { completeLessonAction, enrollCourseAction, submitAssessmentAction } from "@/lib/academy-actions";
 import { getSessionUser } from "@/lib/auth";
 import { getCourseDetail } from "@/lib/queries";
+import { cn } from "@/lib/utils";
+
+function progressWidth(value: number) {
+  return `${Math.max(0, Math.min(100, value))}%`;
+}
+
+function ProgressBar({ value, label }: { value: number; label: string }) {
+  return (
+    <div
+      className="h-2 overflow-hidden rounded-full bg-ocean-900/10"
+      role="progressbar"
+      aria-label={label}
+      aria-valuemin={0}
+      aria-valuemax={100}
+      aria-valuenow={Math.round(value)}
+    >
+      <div className="h-full rounded-full bg-kelp-500" style={{ width: progressWidth(value) }} />
+    </div>
+  );
+}
+
+function formatDate(value: Date) {
+  return value.toLocaleDateString("id-ID", { dateStyle: "medium" });
+}
 
 export default async function CourseDetailPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
@@ -16,114 +57,281 @@ export default async function CourseDetailPage({ params }: { params: Promise<{ s
     notFound();
   }
 
+  const canSubmitAssessment = Boolean(course.enrollment && course.progressPercent >= 100 && !course.certificate);
+  const isEnrolled = Boolean(course.enrollment);
+  const certificateIssued = course.certificate?.issuedAt ? formatDate(course.certificate.issuedAt) : null;
+
   return (
-    <section className="mx-auto max-w-5xl px-4 py-16 sm:px-6 lg:px-8">
-      <SectionHeading eyebrow={course.level} title={course.title}>
-        {course.summary}
-      </SectionHeading>
-
-      <div className="mt-8 rounded-2xl border border-ocean-900/10 bg-white p-6 shadow-soft">
-        <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
+    <>
+      <section className="relative overflow-hidden bg-ocean-900 text-white">
+        {course.imageUrl ? <Image src={course.imageUrl} alt="" fill priority className="object-cover opacity-[0.38]" sizes="100vw" /> : null}
+        <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(7,52,63,0.98),rgba(7,52,63,0.82),rgba(7,52,63,0.38))]" />
+        <div className="relative mx-auto grid max-w-7xl gap-10 px-4 py-14 sm:px-6 lg:grid-cols-[1fr_420px] lg:px-8 lg:py-20">
           <div>
-            <p className="text-sm font-bold uppercase tracking-[0.14em] text-coral-700">{course.duration}</p>
-            <h2 className="mt-2 text-2xl font-bold tracking-normal text-ocean-900">
-              {course.enrollment ? "Enrollment active" : "Start this learning track"}
-            </h2>
-            <p className="mt-2 text-sm text-ocean-900/62">
-              {course.certificate
-                ? `Certificate ${course.certificate.certificateNumber} issued.`
-                : "Complete lessons and pass the assessment to add a certificate to your Impact Passport."}
-            </p>
+            <Link href="/academy" className="inline-flex items-center gap-2 text-sm font-bold text-white/76 hover:text-white">
+              <ArrowLeft size={17} aria-hidden="true" />
+              Back to Academy
+            </Link>
+            <p className="mt-8 text-sm font-bold uppercase text-coral-200">{course.topic}</p>
+            <h1 className="mt-4 max-w-3xl text-4xl font-bold leading-tight sm:text-6xl">{course.title}</h1>
+            <p className="mt-5 max-w-2xl text-lg leading-8 text-white/76">{course.summary}</p>
+            <div className="mt-7 flex flex-wrap gap-2 text-sm font-bold text-white/80">
+              <span className="rounded-full bg-white/12 px-4 py-2">{course.level}</span>
+              <span className="rounded-full bg-white/12 px-4 py-2">{course.duration}</span>
+              <span className="rounded-full bg-white/12 px-4 py-2">{course.moduleLabel}</span>
+              <span className="rounded-full bg-white/12 px-4 py-2">{course.language}</span>
+            </div>
+            <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+              {isEnrolled ? (
+                <ButtonLink href="#course-outline">
+                  <PlayCircle size={18} aria-hidden="true" />
+                  Continue Course
+                </ButtonLink>
+              ) : user ? (
+                <form action={enrollCourseAction}>
+                  <input type="hidden" name="courseSlug" value={course.slug} />
+                  <Button type="submit">
+                    <BookOpen size={18} aria-hidden="true" />
+                    Enroll
+                  </Button>
+                </form>
+              ) : (
+                <ButtonLink href={`/login?next=/academy/courses/${course.slug}`}>
+                  <BookOpen size={18} aria-hidden="true" />
+                  Login to Enroll
+                </ButtonLink>
+              )}
+              <ButtonLink href="#certificate" tone="light">
+                <Award size={18} aria-hidden="true" />
+                Certificate Details
+              </ButtonLink>
+            </div>
           </div>
-          {course.enrollment ? (
-            <span className="inline-flex items-center gap-2 rounded-full bg-kelp-100 px-4 py-2 text-sm font-bold text-kelp-700">
-              <CheckCircle2 size={17} aria-hidden="true" />
-              {course.enrollment.status}
-            </span>
-          ) : user ? (
-            <form action={enrollCourseAction}>
-              <input type="hidden" name="courseSlug" value={course.slug} />
-              <Button type="submit">Enroll</Button>
-            </form>
-          ) : (
-            <ButtonLink href={`/login?next=/academy/courses/${course.slug}`}>Login to enroll</ButtonLink>
-          )}
-        </div>
-      </div>
 
-      <div className="mt-8 grid gap-4">
-        {course.lessons.map((lesson) => {
-          const completed = lesson.progress?.status === "completed";
-
-          return (
-            <article key={lesson.id} className="rounded-2xl border border-ocean-900/10 bg-white p-6 shadow-soft">
-              <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
-                <div>
-                  <p className="text-sm font-bold uppercase tracking-[0.14em] text-ocean-900/52">
-                    Lesson {lesson.position} · {lesson.durationMinutes} min
-                  </p>
-                  <h2 className="mt-2 text-xl font-bold tracking-normal text-ocean-900">{lesson.title}</h2>
-                  <p className="mt-2 text-sm leading-6 text-ocean-900/68">{lesson.body}</p>
-                </div>
-                {completed ? (
-                  <span className="inline-flex items-center gap-2 rounded-full bg-kelp-100 px-4 py-2 text-sm font-bold text-kelp-700">
-                    <CheckCircle2 size={17} aria-hidden="true" />
-                    Completed
-                  </span>
-                ) : course.enrollment ? (
-                  <form action={completeLessonAction}>
-                    <input type="hidden" name="courseSlug" value={course.slug} />
-                    <input type="hidden" name="lessonId" value={lesson.id} />
-                    <Button type="submit" tone="secondary">
-                      <PlayCircle size={18} aria-hidden="true" />
-                      Complete
-                    </Button>
-                  </form>
-                ) : (
-                  <span className="inline-flex items-center gap-2 rounded-full bg-ocean-50 px-4 py-2 text-sm font-bold text-ocean-900/62">
-                    <Circle size={17} aria-hidden="true" />
-                    Locked
-                  </span>
-                )}
+          <article className="self-end rounded-2xl border border-white/18 bg-white p-5 text-ocean-900 shadow-soft">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-sm font-bold text-coral-700">{isEnrolled ? "Enrollment active" : course.accessLabel}</p>
+                <h2 className="mt-2 text-2xl font-bold">{isEnrolled ? `${course.progressPercent}% complete` : "Start this learning track"}</h2>
               </div>
-            </article>
-          );
-        })}
-      </div>
-
-      <div className="mt-8 rounded-2xl border border-ocean-900/10 bg-white p-6 shadow-soft">
-        <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
-          <div>
-            <p className="text-sm font-bold uppercase tracking-[0.14em] text-coral-700">Assessment</p>
-            <h2 className="mt-2 text-2xl font-bold tracking-normal text-ocean-900">
-              {course.assessment?.title ?? "Final assessment"}
-            </h2>
-            <p className="mt-2 text-sm text-ocean-900/62">
-              Passing score: {course.assessment?.passingScore ?? 80}. Current attempt: {course.attempt?.status ?? "not submitted"}.
+              <ShieldCheck size={28} aria-hidden="true" className="text-kelp-500" />
+            </div>
+            <p className="mt-3 text-sm leading-6 text-ocean-900/62">
+              {course.certificate
+                ? `Certificate ${course.certificate.certificateNumber} issued on ${certificateIssued}.`
+                : "Complete every lesson and pass the final check to add this course to your learning record."}
             </p>
-          </div>
-          {course.certificate ? (
-            <span className="inline-flex items-center gap-2 rounded-full bg-kelp-100 px-4 py-2 text-sm font-bold text-kelp-700">
-              <FileBadge size={17} aria-hidden="true" />
-              Certified
-            </span>
-          ) : course.enrollment ? (
-            <form action={submitAssessmentAction} className="flex flex-col gap-2 sm:items-end">
-              <input type="hidden" name="courseSlug" value={course.slug} />
-              <input
-                name="score"
-                type="number"
-                min={0}
-                max={100}
-                defaultValue={course.attempt?.score ?? course.assessment?.passingScore ?? 80}
-                className="w-28 rounded-xl border border-ocean-900/14 px-3 py-2 text-sm font-semibold outline-none focus:border-coral-500"
-                aria-label="Assessment score"
-              />
-              <Button type="submit">Submit Assessment</Button>
-            </form>
-          ) : null}
+            <div className="mt-5">
+              <ProgressBar value={course.progressPercent} label={`${course.title} progress`} />
+              <p className="mt-2 text-xs font-bold text-ocean-900/56">
+                {course.completedLessons}/{course.lessonCount} modules completed
+              </p>
+            </div>
+            <div className="mt-5 grid grid-cols-2 gap-3 text-sm">
+              <div className="rounded-xl bg-ocean-50 p-3">
+                <Clock size={18} aria-hidden="true" className="text-coral-500" />
+                <p className="mt-2 font-bold">{course.remainingMinutes} min</p>
+                <p className="text-xs text-ocean-900/54">Remaining</p>
+              </div>
+              <div className="rounded-xl bg-ocean-50 p-3">
+                <FileBadge size={18} aria-hidden="true" className="text-coral-500" />
+                <p className="mt-2 font-bold">{course.certificateHours} hours</p>
+                <p className="text-xs text-ocean-900/54">Credential record</p>
+              </div>
+            </div>
+          </article>
         </div>
-      </div>
-    </section>
+      </section>
+
+      <section className="mx-auto grid max-w-7xl gap-8 px-4 py-12 sm:px-6 lg:grid-cols-[1fr_360px] lg:px-8">
+        <div className="grid gap-8">
+          <section id="course-outline">
+            <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
+              <div>
+                <p className="text-sm font-bold uppercase text-coral-700">Course outline</p>
+                <h2 className="mt-2 text-3xl font-bold text-ocean-900">Lessons and progress</h2>
+              </div>
+              <p className="text-sm font-semibold text-ocean-900/58">{course.instructor} - {course.instructorRole}</p>
+            </div>
+            <div className="mt-6 grid gap-4">
+              {course.lessons.map((lesson) => {
+                const completed = lesson.progress?.status === "completed";
+
+                return (
+                  <article key={lesson.id} className="rounded-2xl border border-ocean-900/10 bg-white p-5 shadow-soft">
+                    <div className="flex flex-col justify-between gap-5 sm:flex-row sm:items-start">
+                      <div className="flex gap-4">
+                        <div
+                          className={cn(
+                            "grid size-12 flex-none place-items-center rounded-full",
+                            completed ? "bg-kelp-100 text-kelp-700" : isEnrolled ? "bg-coral-100 text-coral-700" : "bg-ocean-50 text-ocean-900/42"
+                          )}
+                        >
+                          {completed ? <CheckCircle2 size={22} aria-hidden="true" /> : isEnrolled ? <PlayCircle size={22} aria-hidden="true" /> : <Circle size={22} aria-hidden="true" />}
+                        </div>
+                        <div>
+                          <p className="text-sm font-bold text-ocean-900/52">
+                            Lesson {lesson.position} - {lesson.durationMinutes} min
+                          </p>
+                          <h3 className="mt-2 text-xl font-bold text-ocean-900">{lesson.title}</h3>
+                          <p className="mt-2 text-sm leading-6 text-ocean-900/64">{lesson.body}</p>
+                        </div>
+                      </div>
+                      {completed ? (
+                        <span className="inline-flex min-h-10 items-center gap-2 rounded-full bg-kelp-100 px-4 text-sm font-bold text-kelp-700">
+                          <CheckCircle2 size={17} aria-hidden="true" />
+                          Completed
+                        </span>
+                      ) : isEnrolled ? (
+                        <form action={completeLessonAction}>
+                          <input type="hidden" name="courseSlug" value={course.slug} />
+                          <input type="hidden" name="lessonId" value={lesson.id} />
+                          <Button type="submit" tone="secondary">
+                            <PlayCircle size={18} aria-hidden="true" />
+                            Complete
+                          </Button>
+                        </form>
+                      ) : (
+                        <span className="inline-flex min-h-10 items-center gap-2 rounded-full bg-ocean-50 px-4 text-sm font-bold text-ocean-900/56">
+                          <Circle size={17} aria-hidden="true" />
+                          Locked
+                        </span>
+                      )}
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+          </section>
+
+          <section className="rounded-2xl border border-ocean-900/10 bg-white p-6 shadow-soft">
+            <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
+              <div>
+                <p className="text-sm font-bold uppercase text-coral-700">Final assessment</p>
+                <h2 className="mt-2 text-2xl font-bold text-ocean-900">{course.assessment?.title ?? "Final course check"}</h2>
+                <p className="mt-2 text-sm leading-6 text-ocean-900/62">
+                  Passing score: {course.assessment?.passingScore ?? 80}. Current attempt: {course.attempt?.status ?? "not submitted"}.
+                </p>
+              </div>
+              {course.certificate ? (
+                <span className="inline-flex min-h-11 items-center gap-2 rounded-full bg-kelp-100 px-5 text-sm font-bold text-kelp-700">
+                  <FileBadge size={17} aria-hidden="true" />
+                  Certified
+                </span>
+              ) : canSubmitAssessment ? (
+                <form action={submitAssessmentAction}>
+                  <input type="hidden" name="courseSlug" value={course.slug} />
+                  <input type="hidden" name="score" value={course.assessment?.passingScore ?? 80} />
+                  <Button type="submit">
+                    <ClipboardCheck size={18} aria-hidden="true" />
+                    Submit Final Check
+                  </Button>
+                </form>
+              ) : isEnrolled ? (
+                <span className="rounded-full bg-ocean-50 px-5 py-3 text-sm font-bold text-ocean-900/58">
+                  Complete all lessons to unlock
+                </span>
+              ) : (
+                <ButtonLink href={`/login?next=/academy/courses/${course.slug}`} tone="secondary">Enroll to Start</ButtonLink>
+              )}
+            </div>
+          </section>
+        </div>
+
+        <aside className="grid content-start gap-6">
+          <article className="rounded-2xl border border-ocean-900/10 bg-white p-5 shadow-soft">
+            <p className="text-sm font-bold uppercase text-coral-700">Course facts</p>
+            <dl className="mt-4 grid gap-3 text-sm">
+              {[
+                { label: "Instructor", value: course.instructor, icon: GraduationCap },
+                { label: "Partner", value: course.partner, icon: ShieldCheck },
+                { label: "Format", value: course.format, icon: PlayCircle },
+                { label: "Language", value: course.language, icon: Languages },
+                { label: "Access", value: course.accessLabel, icon: Award }
+              ].map((item) => {
+                const Icon = item.icon;
+
+                return (
+                  <div key={item.label} className="flex items-center gap-3 rounded-xl bg-ocean-50 p-3">
+                    <Icon size={18} aria-hidden="true" className="text-coral-500" />
+                    <div>
+                      <dt className="text-xs font-bold text-ocean-900/50">{item.label}</dt>
+                      <dd className="font-bold text-ocean-900">{item.value}</dd>
+                    </div>
+                  </div>
+                );
+              })}
+            </dl>
+          </article>
+
+          <article className="rounded-2xl border border-ocean-900/10 bg-white p-5 shadow-soft">
+            <p className="text-sm font-bold uppercase text-coral-700">Completion requirements</p>
+            <ul className="mt-4 grid gap-3 text-sm font-semibold text-ocean-900/68">
+              {["Complete all required lessons", "Pass the final course check", "Keep certificate details verifiable", "Apply learning responsibly in field contexts"].map((item) => (
+                <li key={item} className="flex items-start gap-2">
+                  <CheckCircle2 size={17} aria-hidden="true" className="mt-0.5 text-kelp-500" />
+                  {item}
+                </li>
+              ))}
+            </ul>
+          </article>
+
+          <article id="certificate" className="rounded-2xl border border-[#cabdff]/70 bg-[#f5f1ff] p-5 shadow-soft">
+            <p className="text-sm font-bold uppercase text-[#5f3dc4]">Certificate</p>
+            <div className="mt-4 grid min-h-32 place-items-center rounded-xl border border-[#cabdff] bg-white p-4 text-center">
+              <FileBadge size={36} aria-hidden="true" className="text-[#5f3dc4]" />
+              <p className="mt-3 text-sm font-bold text-ocean-900">{course.certificateOutcome}</p>
+            </div>
+            <p className="mt-4 text-sm leading-6 text-ocean-900/62">
+              Certificates verify course completion, learning hours, and assessment result. They do not imply professional licensing.
+            </p>
+            {course.certificate ? (
+              <ButtonLink href="/dashboard/certificates" tone="secondary" className="mt-4 w-full">
+                <FileBadge size={18} aria-hidden="true" />
+                View Certificate
+              </ButtonLink>
+            ) : null}
+          </article>
+
+          <article className="rounded-2xl border border-ocean-900/10 bg-white p-5 shadow-soft">
+            <p className="text-sm font-bold uppercase text-coral-700">Learning resources</p>
+            <div className="mt-4 grid gap-3">
+              {[
+                { label: "Field checklist", icon: FileText },
+                { label: "Glossary", icon: BookOpen },
+                { label: "Monitoring template", icon: Download }
+              ].map((item) => {
+                const Icon = item.icon;
+
+                return (
+                  <div key={item.label} className="flex items-center gap-3 rounded-xl bg-sand-50 p-3 text-sm font-bold text-ocean-900">
+                    <Icon size={17} aria-hidden="true" className="text-coral-500" />
+                    {item.label}
+                  </div>
+                );
+              })}
+            </div>
+          </article>
+
+          <article className="rounded-2xl border border-ocean-900/10 bg-white p-5 shadow-soft">
+            <p className="text-sm font-bold uppercase text-coral-700">Apply this knowledge</p>
+            <h2 className="mt-2 text-xl font-bold text-ocean-900">Connect learning to conservation action</h2>
+            <p className="mt-3 text-sm leading-6 text-ocean-900/62">
+              Use this course before supporting campaigns, joining field activities, or explaining verified outcomes in your Impact Passport.
+            </p>
+            <div className="mt-4 grid gap-2">
+              <Link href="/campaigns" className="inline-flex min-h-10 items-center justify-between rounded-xl bg-ocean-50 px-4 text-sm font-bold text-ocean-900">
+                Explore campaigns
+                <ArrowRight size={16} aria-hidden="true" />
+              </Link>
+              <Link href="/expeditions" className="inline-flex min-h-10 items-center justify-between rounded-xl bg-ocean-50 px-4 text-sm font-bold text-ocean-900">
+                Explore expeditions
+                <ArrowRight size={16} aria-hidden="true" />
+              </Link>
+            </div>
+          </article>
+        </aside>
+      </section>
+    </>
   );
 }

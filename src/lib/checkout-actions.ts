@@ -10,16 +10,19 @@ import {
   campaigns,
   donationReceipts,
   donations,
+  impactSites,
   expeditionBookingPayments,
   expeditionBookings,
   expeditionDepartures,
   expeditionParticipants,
   expeditions,
-  paymentTransactions
+  paymentTransactions,
+  sponsoredEcosystems
 } from "@/db/schema";
 import {
   buildBookingCode,
   buildReceiptNumber,
+  buildSponsoredEcosystemCode,
   calculateBookingTotal,
   parseDonationAmount,
   parseParticipantCount,
@@ -43,6 +46,8 @@ export async function createDonationAction(formData: FormData) {
     .toLowerCase();
   const message = String(formData.get("message") ?? "").trim();
   const paymentState = formData.get("paymentState") === "failed" ? "failed" : "paid";
+  const rawIntent = String(formData.get("intent") ?? "one-time");
+  const contributionIntent = rawIntent === "monthly" || rawIntent === "coral" ? rawIntent : "one-time";
   const sessionUser = await getSessionUser();
 
   if (!campaignSlug || amount < 10_000 || !donorName || !donorEmail) {
@@ -64,6 +69,7 @@ export async function createDonationAction(formData: FormData) {
 
   const providerReference = randomReference("DEMO-DONATION");
   const now = new Date();
+  const sponsoredFragments = contributionIntent === "coral" ? Math.max(1, Math.round(amount / 50_000)) : 0;
   let donationId = "";
   let receiptEmailNumber: string | null = null;
   let receiptEmailUserId: string | null = null;
@@ -93,6 +99,10 @@ export async function createDonationAction(formData: FormData) {
       status: paymentState,
       payload: {
         method: "demo_checkout",
+        contributionIntent,
+        interval: contributionIntent === "monthly" ? "month" : null,
+        sponsoredFragments: sponsoredFragments || null,
+        cancelFromDashboard: contributionIntent === "monthly",
         completedAt: paymentState === "paid" ? now.toISOString() : null,
         failedAt: paymentState === "failed" ? now.toISOString() : null
       },
@@ -120,9 +130,40 @@ export async function createDonationAction(formData: FormData) {
           campaign: campaign.title,
           amount,
           currency: "IDR",
+          contributionIntent,
+          interval: contributionIntent === "monthly" ? "month" : null,
+          sponsoredFragments: sponsoredFragments || null,
           providerReference
         }
       });
+
+      if (contributionIntent === "coral") {
+        const [site] = await tx
+          .select({
+            id: impactSites.id
+          })
+          .from(impactSites)
+          .where(eq(impactSites.campaignId, campaign.id))
+          .limit(1);
+        const code = buildSponsoredEcosystemCode(providerReference, now);
+
+        await tx.insert(sponsoredEcosystems).values({
+          campaignId: campaign.id,
+          impactSiteId: site?.id ?? null,
+          userId: sessionUser?.id ?? null,
+          code,
+          label: `${donorName || "Anonymous"} coral sponsorship`,
+          status: "sponsored",
+          lastUpdatedAt: now,
+          metadata: {
+            donationId: donation.id,
+            fragments: sponsoredFragments,
+            amount,
+            currency: "IDR",
+            contributionIntent
+          }
+        });
+      }
 
       receiptEmailNumber = receiptNumber;
       receiptEmailUserId = sessionUser?.id ?? null;
@@ -151,6 +192,8 @@ export async function createDonationAction(formData: FormData) {
     properties: {
       campaignSlug,
       amount,
+      contributionIntent,
+      sponsoredFragments: sponsoredFragments || undefined,
       status: paymentState
     }
   });

@@ -37,7 +37,7 @@ export function PassportPreview({ passport }: PassportPreviewProps) {
           {passport.xp.toLocaleString("id-ID")} / {passport.xpTarget.toLocaleString("id-ID")} XP to Ocean Champion
         </p>
         <Link href={passport.href} className="mt-5 inline-flex text-sm font-bold text-coral-100 hover:text-white">
-          View public passport
+          {passport.ctaLabel ?? "View public passport"}
         </Link>
       </div>
 

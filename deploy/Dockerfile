@@ -16,6 +16,8 @@ ENV NEXT_TELEMETRY_DISABLED=1
 COPY drizzle.config.ts tsconfig.json ./
 COPY drizzle ./drizzle
 COPY src/db ./src/db
+COPY src/lib/password.ts ./src/lib/password.ts
+COPY scripts ./scripts
 
 LABEL org.opencontainers.image.revision="${DEPLOY_VERSION}"
 

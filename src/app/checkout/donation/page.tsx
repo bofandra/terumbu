@@ -15,6 +15,7 @@ type DonationCheckoutPageProps = {
   searchParams?: Promise<{
     campaign?: string;
     amount?: string;
+    intent?: string;
     error?: string;
   }>;
 };
@@ -27,6 +28,7 @@ export default async function DonationCheckoutPage({ searchParams }: DonationChe
   const donationAmounts = selectedCampaignData ? suggestedDonationAmounts(selectedCampaignData.goal) : [];
   const requestedAmount = Number(params?.amount ?? "");
   const selectedAmount = donationAmounts.includes(requestedAmount) ? requestedAmount : donationAmounts[0];
+  const contributionIntent = params?.intent === "monthly" || params?.intent === "coral" ? params.intent : "one-time";
 
   return (
     <main className="min-h-screen bg-sand-50 px-4 py-12 sm:px-6 lg:px-8">
@@ -42,6 +44,14 @@ export default async function DonationCheckoutPage({ searchParams }: DonationChe
           </p>
         ) : null}
         <form action={createDonationAction} className="mt-6 grid gap-4">
+          <input type="hidden" name="intent" value={contributionIntent} />
+          {contributionIntent !== "one-time" ? (
+            <p className="rounded-xl border border-kelp-500/20 bg-kelp-100 px-4 py-3 text-sm font-semibold text-kelp-700">
+              {contributionIntent === "monthly"
+                ? "Monthly contribution intent will be recorded with your demo transaction. Cancel anytime from your dashboard."
+                : "Coral sponsorship intent will create a sponsored ecosystem record after paid checkout."}
+            </p>
+          ) : null}
           <label className="grid gap-2 text-sm font-semibold text-ocean-900">
             Campaign
             <select name="campaignSlug" defaultValue={selectedCampaign} className="rounded-xl border border-ocean-900/14 px-4 py-3 outline-none focus:border-coral-500">
