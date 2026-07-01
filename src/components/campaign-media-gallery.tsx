@@ -1,6 +1,6 @@
 "use client";
 
-import { Camera, CheckCircle2, MapPin, PlayCircle, X } from "lucide-react";
+import { Camera, CheckCircle2, ImageOff, MapPin, X } from "lucide-react";
 import Image from "next/image";
 import { useState } from "react";
 
@@ -10,6 +10,7 @@ type CampaignMediaGalleryProps = {
   region: string;
   imageUrl: string | null;
   updatedLabel?: string;
+  verificationLabel?: string;
   mediaItems?: Array<{
     src: string;
     caption: string;
@@ -17,37 +18,50 @@ type CampaignMediaGalleryProps = {
   }>;
 };
 
-const supportingImages = [
-  "https://images.unsplash.com/photo-1546026423-cc4642628d2b?auto=format&fit=crop&w=900&q=80",
-  "https://images.unsplash.com/photo-1582967788606-a171c1080cb0?auto=format&fit=crop&w=900&q=80"
-];
-
-export function CampaignMediaGallery({ title, category, region, imageUrl, updatedLabel = "Updated recently", mediaItems = [] }: CampaignMediaGalleryProps) {
+export function CampaignMediaGallery({
+  title,
+  category,
+  region,
+  imageUrl,
+  updatedLabel = "Updated recently",
+  verificationLabel = "Verified campaign",
+  mediaItems = []
+}: CampaignMediaGalleryProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const mainImage = imageUrl ?? supportingImages[0];
   const galleryItems = [
-    { src: mainImage, caption: `${title} main campaign image`, provenance: "Campaign media" },
-    ...mediaItems,
-    { src: supportingImages[0], caption: `${category} field activity`, provenance: "Reference visual" },
-    { src: supportingImages[1], caption: `${region} conservation landscape`, provenance: "Reference visual" }
+    ...(imageUrl ? [{ src: imageUrl, caption: `${title} main campaign image`, provenance: "Campaign media" }] : []),
+    ...mediaItems
   ].filter((item, index, items) => items.findIndex((candidate) => candidate.src === item.src) === index);
   const galleryImages = galleryItems.slice(0, 3);
 
+  if (galleryImages.length === 0) {
+    return (
+      <div className="rounded-2xl border border-dashed border-ocean-900/14 bg-white p-8 text-center shadow-soft">
+        <ImageOff className="mx-auto text-coral-500" size={30} aria-hidden="true" />
+        <h2 className="mt-4 text-xl font-bold tracking-normal text-ocean-900">{title}</h2>
+        <p className="mt-2 text-sm leading-6 text-ocean-900/62">
+          No campaign, update, or evidence images have been recorded for {category} in {region}.
+        </p>
+      </div>
+    );
+  }
+
   return (
-    <div className="grid gap-2 md:grid-cols-[1.35fr_0.85fr]">
+    <div className={galleryImages.length > 1 ? "grid gap-2 md:grid-cols-[1.35fr_0.85fr]" : "grid gap-2"}>
       <div className="relative min-h-[360px] overflow-hidden rounded-2xl bg-ocean-900 shadow-soft">
         <Image
           src={galleryImages[0].src}
           alt={`${title} campaign restoration site`}
           fill
           priority
+          unoptimized
           className="object-cover"
           sizes="(min-width: 1024px) 45vw, 100vw"
         />
         <div className="absolute inset-0 bg-gradient-to-t from-ocean-900/76 via-transparent to-ocean-900/18" />
         <span className="absolute left-5 top-5 inline-flex items-center gap-2 rounded-full bg-kelp-500 px-4 py-2 text-sm font-bold text-white shadow-soft">
           <CheckCircle2 size={17} aria-hidden="true" />
-          Verified Campaign
+          {verificationLabel}
         </span>
         <div className="absolute bottom-5 left-5 right-5 flex flex-wrap items-center justify-between gap-3 text-sm font-bold text-white">
           <span className="inline-flex items-center gap-2">
@@ -58,40 +72,32 @@ export function CampaignMediaGallery({ title, category, region, imageUrl, update
         </div>
       </div>
 
-      <div className="grid gap-2">
-        <div className="relative min-h-44 overflow-hidden rounded-2xl bg-ocean-900">
-          <Image
-            src={galleryImages[1]?.src ?? supportingImages[0]}
-            alt={`${category} field activity`}
-            fill
-            className="object-cover"
-            sizes="(min-width: 1024px) 24vw, 100vw"
-          />
-          <div className="absolute inset-0 flex items-center justify-center bg-ocean-900/20">
-            <span className="flex size-16 items-center justify-center rounded-full bg-white/88 text-coral-500 shadow-soft">
-              <PlayCircle size={34} aria-hidden="true" />
-            </span>
-          </div>
-        </div>
-        <div className="relative min-h-44 overflow-hidden rounded-2xl bg-ocean-900">
-          <Image
-            src={galleryImages[2]?.src ?? supportingImages[1]}
-            alt={`${region} conservation landscape`}
-            fill
-            className="object-cover"
-            sizes="(min-width: 1024px) 24vw, 100vw"
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-ocean-900/62 to-transparent" />
+      {galleryImages.length > 1 ? (
+        <div className="grid gap-2">
+          {galleryImages.slice(1).map((item) => (
+            <div key={item.src} className="relative min-h-44 overflow-hidden rounded-2xl bg-ocean-900">
+              <Image
+                src={item.src}
+                alt={item.caption}
+                fill
+                unoptimized
+                className="object-cover"
+                sizes="(min-width: 1024px) 24vw, 100vw"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-ocean-900/62 to-transparent" />
+              <p className="absolute bottom-4 left-4 right-4 text-sm font-bold text-white">{item.provenance}</p>
+            </div>
+          ))}
           <button
             type="button"
             onClick={() => setIsOpen(true)}
-            className="absolute bottom-4 left-4 inline-flex items-center gap-2 rounded-full bg-white/90 px-4 py-2 text-sm font-bold text-ocean-900 shadow-soft backdrop-blur"
+            className="inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl bg-white px-4 py-2 text-sm font-bold text-ocean-900 shadow-soft ring-1 ring-ocean-900/10 transition hover:ring-coral-500"
           >
             <Camera size={17} aria-hidden="true" />
-            View all {galleryItems.length} photos
+            View all {galleryItems.length} images
           </button>
         </div>
-      </div>
+      ) : null}
 
       {isOpen ? (
         <div className="fixed inset-0 z-50 overflow-y-auto bg-ocean-900/80 p-4">
@@ -109,7 +115,7 @@ export function CampaignMediaGallery({ title, category, region, imageUrl, update
               {galleryItems.map((item) => (
                 <figure key={item.src} className="overflow-hidden rounded-2xl border border-ocean-900/10 bg-sand-50">
                   <div className="relative h-72">
-                    <Image src={item.src} alt={item.caption} fill className="object-cover" sizes="(min-width: 768px) 50vw, 100vw" />
+                    <Image src={item.src} alt={item.caption} fill unoptimized className="object-cover" sizes="(min-width: 768px) 50vw, 100vw" />
                   </div>
                   <figcaption className="p-4">
                     <p className="font-bold text-ocean-900">{item.caption}</p>

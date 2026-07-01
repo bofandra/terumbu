@@ -20,26 +20,23 @@ type CampaignDonationCardProps = {
   disabledReason?: string | null;
 };
 
-const monthlyAmounts = [25_000, 50_000, 100_000];
-const coralPackages = [
-  { label: "1 Coral Fragment", amount: 50_000, fragments: 1 },
-  { label: "5 Coral Fragments", amount: 250_000, fragments: 5 },
-  { label: "10 Coral Fragments", amount: 500_000, fragments: 10 }
-];
+function roundedIdr(value: number, step = 50_000) {
+  return Math.max(step, Math.round(value / step) * step);
+}
 
 function impactText(mode: DonationMode, amount: number, goal: number, impactTarget: number, impactUnit: string) {
+  const costPerUnit = goal > 0 && impactTarget > 0 ? goal / impactTarget : amount;
+
   if (mode === "monthly") {
     return `${formatCurrency(amount)}/month supports ongoing monitoring, reports, and contributor impact points.`;
   }
 
   if (mode === "coral") {
-    const selectedPackage = coralPackages.find((item) => item.amount === amount);
-    const fragments = selectedPackage?.fragments ?? Math.max(1, Math.round(amount / 50_000));
+    const fragments = Math.max(1, Math.round(amount / costPerUnit));
 
-    return `${formatCurrency(amount)} sponsors approximately ${fragments.toLocaleString("id-ID")} coral fragment${fragments === 1 ? "" : "s"} with certificate tracking.`;
+    return `${formatCurrency(amount)} sponsors approximately ${fragments.toLocaleString("id-ID")} ${impactUnit}.`;
   }
 
-  const costPerUnit = goal > 0 && impactTarget > 0 ? goal / impactTarget : 50_000;
   const units = Math.max(1, Math.round(amount / costPerUnit));
 
   return `${formatCurrency(amount)} can support approximately ${units.toLocaleString("id-ID")} ${impactUnit}.`;
@@ -68,14 +65,28 @@ export function CampaignDonationCard({
   oneTimeAmounts,
   disabledReason = null
 }: CampaignDonationCardProps) {
+  const fallbackAmount = roundedIdr(Math.max(1, goal) * 0.0005);
   const [mode, setMode] = useState<DonationMode>("one-time");
-  const [selectedAmount, setSelectedAmount] = useState(oneTimeAmounts[1] ?? oneTimeAmounts[0] ?? 100_000);
+  const [selectedAmount, setSelectedAmount] = useState(oneTimeAmounts[1] ?? oneTimeAmounts[0] ?? fallbackAmount);
   const [customAmount, setCustomAmount] = useState("");
   const [isSaved, setIsSaved] = useState(false);
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const customValue = Number(customAmount.replace(/[^0-9]/g, ""));
   const amount = customValue > 0 ? customValue : selectedAmount;
   const href = checkoutHref(campaignSlug, mode, amount);
+  const costPerUnit = goal > 0 && impactTarget > 0 ? goal / impactTarget : selectedAmount;
+  const monthlyAmounts = useMemo(
+    () => Array.from(new Set(oneTimeAmounts.map((oneTimeAmount) => roundedIdr(oneTimeAmount / 4, 25_000)))),
+    [oneTimeAmounts]
+  );
+  const impactPackages = useMemo(
+    () =>
+      [1, 5, 10].map((units) => ({
+        label: `${units.toLocaleString("id-ID")} ${impactUnit}`,
+        amount: roundedIdr(costPerUnit * units)
+      })),
+    [costPerUnit, impactUnit]
+  );
 
   const options = useMemo(() => {
     if (mode === "monthly") {
@@ -86,33 +97,30 @@ export function CampaignDonationCard({
     }
 
     if (mode === "coral") {
-      return coralPackages.map((item) => ({
-        label: item.label,
-        amount: item.amount
-      }));
+      return impactPackages;
     }
 
     return oneTimeAmounts.map((oneTimeAmount) => ({
       label: formatCurrency(oneTimeAmount),
       amount: oneTimeAmount
     }));
-  }, [mode, oneTimeAmounts]);
+  }, [impactPackages, mode, monthlyAmounts, oneTimeAmounts]);
 
   function setDonationMode(nextMode: DonationMode) {
     setMode(nextMode);
     setCustomAmount("");
 
     if (nextMode === "monthly") {
-      setSelectedAmount(monthlyAmounts[1]);
+      setSelectedAmount(monthlyAmounts[1] ?? monthlyAmounts[0] ?? selectedAmount);
       return;
     }
 
     if (nextMode === "coral") {
-      setSelectedAmount(coralPackages[1].amount);
+      setSelectedAmount(impactPackages[1]?.amount ?? impactPackages[0]?.amount ?? selectedAmount);
       return;
     }
 
-    setSelectedAmount(oneTimeAmounts[1] ?? oneTimeAmounts[0] ?? 100_000);
+    setSelectedAmount(oneTimeAmounts[1] ?? oneTimeAmounts[0] ?? fallbackAmount);
   }
 
   async function shareCampaign() {
@@ -144,7 +152,7 @@ export function CampaignDonationCard({
         {[
           ["one-time", "One-time"],
           ["monthly", "Monthly"],
-          ["coral", "Sponsor a Coral"]
+          ["coral", "Sponsor impact"]
         ].map(([value, label]) => (
           <button
             key={value}

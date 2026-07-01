@@ -1,10 +1,8 @@
-import Link from "next/link";
+import { FileCheck2, Megaphone, Pencil, Plus, ReceiptText, UploadCloud } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
+import { OperationCard, PartnerMetricCards, PartnerPageHeader } from "@/components/partner-portal-ui";
 import { requireRole } from "@/lib/auth";
-import { createCampaignUpdateAction, submitEvidenceAction } from "@/lib/portal-actions";
 import { getPartnerPortalData } from "@/lib/queries";
-import { formatCurrency } from "@/lib/utils";
 
 export const metadata = {
   title: "Partner Portal"
@@ -17,112 +15,24 @@ export default async function PartnerPortalPage() {
   const data = await getPartnerPortalData();
 
   return (
-    <main className="min-h-screen bg-sand-50 px-4 py-8 sm:px-6 lg:px-8">
-      <div className="mx-auto max-w-7xl">
-        <header className="flex flex-col justify-between gap-4 border-b border-ocean-900/10 pb-6 md:flex-row md:items-end">
-          <div>
-            <Link href="/" className="text-xl font-bold text-ocean-900">
-              Terumbu.eco
-            </Link>
-            <h1 className="mt-4 text-3xl font-bold tracking-normal text-ocean-900">Partner portal</h1>
-            <p className="mt-2 text-ocean-900/62">Manage campaign updates, submit evidence, and monitor verification status.</p>
-          </div>
-          <Link href="/dashboard" className="text-sm font-bold text-coral-700">
-            Dashboard
-          </Link>
-        </header>
+    <div className="space-y-8">
+      <PartnerPageHeader
+        title="Campaign operations"
+        description="Choose a focused workspace for campaign setup, publishing field updates, evidence submission, and verification tracking."
+        actionHref="/partner/campaigns"
+        actionLabel="Manage campaigns"
+      />
 
-        <section className="mt-6 grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
-          <div className="rounded-2xl border border-ocean-900/10 bg-white p-5 shadow-soft">
-            <h2 className="text-xl font-bold tracking-normal text-ocean-900">Campaigns</h2>
-            <div className="mt-5 grid gap-3">
-              {data.campaigns.map((campaign) => (
-                <div key={campaign.id} className="rounded-xl bg-sand-50 p-4">
-                  <p className="font-bold text-ocean-900">{campaign.title}</p>
-                  <p className="mt-1 text-sm text-ocean-900/58">{campaign.region}</p>
-                  <p className="mt-3 text-sm font-bold text-kelp-700">
-                    {campaign.status} · {formatCurrency(Number(campaign.raisedAmount))} / {formatCurrency(Number(campaign.goalAmount))}
-                  </p>
-                </div>
-              ))}
-            </div>
-          </div>
+      <PartnerMetricCards data={data} />
 
-          <div className="grid gap-6">
-            <form action={createCampaignUpdateAction} className="rounded-2xl border border-ocean-900/10 bg-white p-5 shadow-soft">
-              <h2 className="text-xl font-bold tracking-normal text-ocean-900">Publish update</h2>
-              <div className="mt-5 grid gap-4">
-                <select name="campaignId" className="rounded-xl border border-ocean-900/14 px-4 py-3 font-semibold outline-none focus:border-coral-500">
-                  {data.campaigns.map((campaign) => (
-                    <option key={campaign.id} value={campaign.id}>
-                      {campaign.title}
-                    </option>
-                  ))}
-                </select>
-                <input name="title" placeholder="Update title" className="rounded-xl border border-ocean-900/14 px-4 py-3 outline-none focus:border-coral-500" required />
-                <textarea name="body" placeholder="Field update" className="min-h-28 rounded-xl border border-ocean-900/14 px-4 py-3 outline-none focus:border-coral-500" required />
-                <input name="imageUrl" placeholder="Evidence image URL" className="rounded-xl border border-ocean-900/14 px-4 py-3 outline-none focus:border-coral-500" />
-              </div>
-              <Button type="submit" className="mt-5">
-                Publish
-              </Button>
-            </form>
-
-            <form action={submitEvidenceAction} className="rounded-2xl border border-ocean-900/10 bg-white p-5 shadow-soft">
-              <h2 className="text-xl font-bold tracking-normal text-ocean-900">Submit evidence</h2>
-              <div className="mt-5 grid gap-4">
-                <select name="campaignId" className="rounded-xl border border-ocean-900/14 px-4 py-3 font-semibold outline-none focus:border-coral-500">
-                  {data.campaigns.map((campaign) => (
-                    <option key={campaign.id} value={campaign.id}>
-                      {campaign.title}
-                    </option>
-                  ))}
-                </select>
-                <input name="title" placeholder="Evidence title" className="rounded-xl border border-ocean-900/14 px-4 py-3 outline-none focus:border-coral-500" required />
-                <select name="evidenceType" defaultValue="field_photo" className="rounded-xl border border-ocean-900/14 px-4 py-3 font-semibold outline-none focus:border-coral-500">
-                  <option value="field_photo">Field photo</option>
-                  <option value="document">Document</option>
-                  <option value="field_report">Field report</option>
-                </select>
-                <input name="fileUrl" placeholder="File URL or R2 object URL" className="rounded-xl border border-ocean-900/14 px-4 py-3 outline-none focus:border-coral-500" required />
-              </div>
-              <Button type="submit" className="mt-5">
-                Submit Evidence
-              </Button>
-            </form>
-          </div>
-        </section>
-
-        <section className="mt-6 grid gap-6 xl:grid-cols-2">
-          <div className="rounded-2xl border border-ocean-900/10 bg-white p-5 shadow-soft">
-            <h2 className="text-xl font-bold tracking-normal text-ocean-900">Evidence status</h2>
-            <div className="mt-5 grid gap-3">
-              {data.evidence.map((item) => (
-                <div key={item.evidenceCode} className="rounded-xl bg-sand-50 p-4">
-                  <p className="font-bold text-ocean-900">{item.title}</p>
-                  <p className="mt-1 text-sm text-ocean-900/58">{item.campaignTitle}</p>
-                  <p className="mt-3 text-sm font-bold text-kelp-700">{item.verificationStatus}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div className="rounded-2xl border border-ocean-900/10 bg-white p-5 shadow-soft">
-            <h2 className="text-xl font-bold tracking-normal text-ocean-900">Recent updates</h2>
-            <div className="mt-5 grid gap-3">
-              {data.updates.map((item) => (
-                <div key={`${item.campaignTitle}-${item.title}`} className="rounded-xl bg-sand-50 p-4">
-                  <p className="font-bold text-ocean-900">{item.title}</p>
-                  <p className="mt-1 text-sm text-ocean-900/58">{item.campaignTitle}</p>
-                  <p className="mt-3 text-sm font-bold text-ocean-900/62">
-                    {item.publishedAt?.toLocaleDateString("id-ID", { dateStyle: "medium" }) ?? "Draft"}
-                  </p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-      </div>
-    </main>
+      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3" aria-label="Partner workspace shortcuts">
+        <OperationCard href="/partner/campaigns/new" title="Create campaign" description="Start a new campaign record with goals, impact targets, story copy, and image upload." icon={Plus} />
+        <OperationCard href="/partner/campaigns" title="Campaigns" description="Review existing campaign cards, update details, replace images, or remove outdated records." icon={Megaphone} />
+        <OperationCard href="/partner/updates" title="Publish update" description="Post field notes and upload update images for supporters to see on campaign timelines." icon={Pencil} />
+        <OperationCard href="/partner/evidence/submit" title="Submit evidence" description="Attach image evidence to a campaign so admins can verify conservation progress." icon={UploadCloud} />
+        <OperationCard href="/partner/evidence" title="Evidence status" description="Check submitted evidence records and see which items are verified, pending, or rejected." icon={FileCheck2} />
+        <OperationCard href="/partner/updates/recent" title="Recent updates" description="Browse the published update history across your campaign portfolio." icon={ReceiptText} />
+      </section>
+    </div>
   );
 }

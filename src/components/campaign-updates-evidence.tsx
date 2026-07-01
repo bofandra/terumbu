@@ -32,7 +32,7 @@ type CampaignUpdatesEvidenceProps = {
 };
 
 function isImageUrl(value: string) {
-  return /\.(jpg|jpeg|png|webp|gif)(\?|$)/i.test(value) || value.includes("images.unsplash.com");
+  return value.startsWith("data:image/") || /\.(jpg|jpeg|png|webp|gif)(\?|$)/i.test(value);
 }
 
 function FilterButton({
@@ -82,7 +82,15 @@ export function CampaignUpdatesEvidence({ updates, evidence }: CampaignUpdatesEv
             visibleUpdates.map((update) => (
               <article key={update.id} className="grid gap-5 rounded-2xl border border-ocean-900/10 bg-white p-5 shadow-soft md:grid-cols-[220px_1fr]">
                 {update.imageUrl ? (
-                  <Image src={update.imageUrl} alt={`${update.title} update photo`} width={440} height={300} className="h-48 w-full rounded-xl object-cover md:h-full" sizes="(min-width: 768px) 220px, 100vw" />
+                  <Image
+                    src={update.imageUrl}
+                    alt={`${update.title} update photo`}
+                    width={440}
+                    height={300}
+                    unoptimized
+                    className="h-48 w-full rounded-xl object-cover md:h-full"
+                    sizes="(min-width: 768px) 220px, 100vw"
+                  />
                 ) : (
                   <div className="flex h-48 items-center justify-center rounded-xl bg-ocean-50 text-sm font-bold text-ocean-900/58">Update</div>
                 )}
@@ -120,7 +128,15 @@ export function CampaignUpdatesEvidence({ updates, evidence }: CampaignUpdatesEv
             visibleEvidence.map((item) => (
               <article key={item.title} className="overflow-hidden rounded-2xl border border-ocean-900/10 bg-white shadow-soft">
                 {isImageUrl(item.fileUrl) ? (
-                  <Image src={item.fileUrl} alt={`${item.title} evidence`} width={520} height={320} className="h-44 w-full object-cover" sizes="(min-width: 768px) 33vw, 100vw" />
+                  <Image
+                    src={item.fileUrl}
+                    alt={`${item.title} evidence`}
+                    width={520}
+                    height={320}
+                    unoptimized
+                    className="h-44 w-full object-cover"
+                    sizes="(min-width: 768px) 33vw, 100vw"
+                  />
                 ) : null}
                 <div className="p-5">
                   <p className="text-xs font-bold uppercase tracking-[0.14em] text-ocean-900/52">{item.evidenceType}</p>

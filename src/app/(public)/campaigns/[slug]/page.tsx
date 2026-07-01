@@ -1,11 +1,8 @@
 import {
   BookOpen,
-  CalendarDays,
   CheckCircle2,
   ChevronRight,
   ClipboardCheck,
-  Info,
-  Leaf,
   ShieldCheck,
   Users,
   Waves
@@ -15,7 +12,6 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { CampaignCard } from "@/components/campaign-card";
-import { CampaignBeforeAfterSlider } from "@/components/campaign-before-after-slider";
 import { CampaignDonationCard } from "@/components/campaign-donation-card";
 import { CampaignImpactCalculator } from "@/components/campaign-impact-calculator";
 import { CampaignMediaGallery } from "@/components/campaign-media-gallery";
@@ -36,66 +32,9 @@ export const dynamic = "force-dynamic";
 const tabs = [
   { label: "Overview", href: "#overview" },
   { label: "Impact", href: "#impact" },
-  { label: "Plan", href: "#plan" },
+  { label: "Records", href: "#records" },
   { label: "Updates", href: "#updates" },
-  { label: "Transparency", href: "#transparency" },
-  { label: "FAQ", href: "#faq" }
-];
-
-const timeline = [
-  {
-    phase: "Phase 1",
-    title: "Preparation",
-    date: "July-August 2026",
-    status: "In progress",
-    deliverables: ["Site assessment", "Community coordination", "Nursery preparation"]
-  },
-  {
-    phase: "Phase 2",
-    title: "Coral nursery",
-    date: "September-October 2026",
-    status: "Upcoming",
-    deliverables: ["Fragment collection", "Nursery stabilization", "Initial monitoring"]
-  },
-  {
-    phase: "Phase 3",
-    title: "Transplantation",
-    date: "November 2026-January 2027",
-    status: "Upcoming",
-    deliverables: ["Reef installation", "Coral transplantation", "Photo documentation"]
-  },
-  {
-    phase: "Phase 4",
-    title: "Monitoring",
-    date: "February-December 2027",
-    status: "Upcoming",
-    deliverables: ["Survival monitoring", "Corrective maintenance", "Sponsor updates"]
-  },
-  {
-    phase: "Phase 5",
-    title: "Final reporting",
-    date: "January 2028",
-    status: "Upcoming",
-    deliverables: ["Final impact report", "Public data release", "Completion evidence"]
-  }
-];
-
-const verificationItems = [
-  "Legal organization verified",
-  "Bank account verified",
-  "Project proposal reviewed",
-  "Budget reviewed",
-  "Field location validated",
-  "Reporting schedule approved"
-];
-
-const faqItems = [
-  ["How will my donation be used?", "Funds support field materials, local team operations, monitoring, documentation, and transparent project reporting."],
-  ["How is the organization verified?", "Terumbu tracks document verification, field validation, and reporting obligations before campaign claims are published."],
-  ["How often will I receive updates?", "Major campaign milestones, evidence uploads, and completion reports are published as partner updates."],
-  ["Can I donate anonymously?", "The demo checkout records donor details for receipts, but public donor recognition can remain anonymous in future supporter feeds."],
-  ["How is coral survival monitored?", "Field teams submit monitoring evidence, survey dates, and verification records connected to campaign impact sites."],
-  ["Can companies sponsor this project?", "Corporate teams can fund campaigns directly or manage structured programs through the corporate workspace."]
+  { label: "Transparency", href: "#transparency" }
 ];
 
 function partnerTypeLabel(value: string) {
@@ -120,7 +59,7 @@ function isImageUrl(value: string | null) {
     return false;
   }
 
-  return /\.(jpg|jpeg|png|webp|gif)(\?|$)/i.test(value) || value.includes("images.unsplash.com");
+  return value.startsWith("data:image/") || /\.(jpg|jpeg|png|webp|gif)(\?|$)/i.test(value);
 }
 
 function formatDateLabel(value: Date | null | undefined) {
@@ -187,15 +126,6 @@ export default async function CampaignDetailPage({ params }: { params: Promise<{
     .slice(0, 1);
   const relatedCampaigns = relatedCampaignRows.filter((item) => item.slug !== campaign.slug).slice(0, 3);
   const featuredCourses = courses.slice(0, 3);
-  const budgetItems = [
-    ["Coral nursery and materials", 35],
-    ["Field implementation", 25],
-    ["Monitoring and documentation", 15],
-    ["Community training", 10],
-    ["Logistics", 8],
-    ["Platform and payment costs", 5],
-    ["Contingency", 2]
-  ] as const;
   const story = campaign.story ?? campaign.summary;
   const campaignState = progress >= 100 ? "fully-funded" : campaign.daysLeft === 0 ? "ended" : "active";
   const disabledReason =
@@ -239,13 +169,27 @@ export default async function CampaignDetailPage({ params }: { params: Promise<{
     locationLabel: campaign.sites[0]?.name ?? campaign.region
   }));
   const sponsoredPreview = campaign.sponsoredEcosystems[0];
-  const teamMembers = [
-    ["Project lead", `${campaign.partner} field lead`],
-    ["Marine biologist", "Reef restoration specialist"],
-    ["Community coordinator", "Local partner liaison"],
-    ["Financial officer", "Campaign budget reviewer"],
-    ["Monitoring lead", "Evidence and survey coordinator"]
-  ];
+  const publicTags = [campaign.category, partnerTypeLabel(campaign.partnerType), campaign.verification, campaign.region];
+  const verifiedEvidenceCount = campaign.evidence.filter((item) => item.verificationStatus === "verified").length;
+  const recordedMilestones = [
+    ...campaign.updates.map((update) => ({
+      key: `update-${update.id}`,
+      title: update.title,
+      detail: update.body,
+      date: update.publishedAt,
+      label: "Update"
+    })),
+    ...campaign.evidence.map((item) => ({
+      key: `evidence-${item.title}-${item.createdAt.toISOString()}`,
+      title: item.title,
+      detail: `${item.evidenceType} / ${item.verificationStatus}`,
+      date: item.createdAt,
+      label: "Evidence"
+    }))
+  ]
+    .sort((first, second) => (second.date?.getTime() ?? 0) - (first.date?.getTime() ?? 0))
+    .slice(0, 6);
+  const sponsorAmount = donationAmounts[1] ?? donationAmounts[0] ?? 0;
 
   return (
     <main className="pb-24 lg:pb-0">
@@ -275,7 +219,8 @@ export default async function CampaignDetailPage({ params }: { params: Promise<{
                   category={campaign.category}
                   region={campaign.region}
                   imageUrl={campaign.imageUrl}
-                  updatedLabel={campaign.daysLeft > 0 ? `${campaign.daysLeft} days remaining` : "Latest report available"}
+                  updatedLabel={`${campaign.updates.length.toLocaleString("id-ID")} updates / ${campaign.evidence.length.toLocaleString("id-ID")} evidence records`}
+                  verificationLabel={campaign.verification}
                   mediaItems={mediaItems}
                 />
 
@@ -294,7 +239,7 @@ export default async function CampaignDetailPage({ params }: { params: Promise<{
                     <div className="mt-3 flex items-center gap-4">
                       <span className="relative flex size-16 shrink-0 items-center justify-center overflow-hidden rounded-full bg-white text-lg font-black text-ocean-900 ring-1 ring-ocean-900/10">
                         {campaign.partnerLogoUrl ? (
-                          <Image src={campaign.partnerLogoUrl} alt={`${campaign.partner} logo`} fill className="object-cover" sizes="64px" />
+                          <Image src={campaign.partnerLogoUrl} alt={`${campaign.partner} logo`} fill unoptimized className="object-cover" sizes="64px" />
                         ) : (
                           initialsForName(campaign.partner)
                         )}
@@ -310,7 +255,7 @@ export default async function CampaignDetailPage({ params }: { params: Promise<{
                       </div>
                     </div>
                     <div className="mt-4 flex flex-wrap gap-2">
-                      {[campaign.category, "Marine Biodiversity", "Community Livelihoods", "SDG 14"].map((tag) => (
+                      {publicTags.map((tag) => (
                         <span key={tag} className="rounded-full bg-white px-3 py-1 text-xs font-bold text-ocean-900">
                           {tag}
                         </span>
@@ -348,8 +293,8 @@ export default async function CampaignDetailPage({ params }: { params: Promise<{
                 <div className="mt-5 grid gap-4">
                   {[
                     [Waves, campaign.impactTarget.toLocaleString("id-ID"), `${campaign.impactUnit} target`],
-                    [ClipboardCheck, "12", "Monitoring visits over 12 months"],
-                    [Users, "20", "Local team members trained"]
+                    [ClipboardCheck, campaign.evidence.length.toLocaleString("id-ID"), "Evidence records"],
+                    [Users, campaign.donors.toLocaleString("id-ID"), "Paid supporters"]
                   ].map(([Icon, value, label]) => (
                     <div key={label as string} className="flex items-center gap-3 border-b border-ocean-900/10 pb-4 last:border-b-0 last:pb-0">
                       <Icon className="text-coral-500" size={24} aria-hidden="true" />
@@ -371,53 +316,50 @@ export default async function CampaignDetailPage({ params }: { params: Promise<{
       <section className="mx-auto grid max-w-7xl gap-8 px-4 py-16 sm:px-6 lg:px-8 xl:grid-cols-[1fr_340px]">
         <div className="grid gap-16">
           <section id="overview" className="scroll-mt-40">
-            <SectionHeading eyebrow="Overview" title="The problem, solution, and why this place matters" />
+            <SectionHeading eyebrow="Overview" title="Campaign story and public location records" />
             <div className="mt-8 grid gap-5">
               <article className="rounded-2xl border border-ocean-900/10 bg-white p-6 shadow-soft">
-                <h2 className="text-2xl font-bold tracking-normal text-ocean-900">The problem</h2>
-                <p className="mt-4 leading-8 text-ocean-900/68">
-                  {story} Restoration sites need sustained field materials, careful monitoring, and local coordination so conservation claims can be traced back to evidence.
-                </p>
-                <div className="mt-6 grid gap-4 md:grid-cols-3">
-                  {[
-                    [Waves, "35%", "Reef degradation in restoration sites"],
-                    [Info, "2.2C", "Rising sea surface temperature pressure"],
-                    [Users, "3,000+", "Local families rely on healthy reefs"]
-                  ].map(([Icon, value, label]) => (
-                    <div key={label as string} className="rounded-xl bg-ocean-50 p-4">
-                      <Icon className="text-coral-500" size={22} aria-hidden="true" />
-                      <p className="mt-3 text-xl font-bold tracking-normal text-ocean-900">{value as string}</p>
-                      <p className="mt-1 text-sm leading-6 text-ocean-900/62">{label as string}</p>
-                    </div>
-                  ))}
-                </div>
+                <h2 className="text-2xl font-bold tracking-normal text-ocean-900">Campaign story</h2>
+                <p className="mt-4 leading-8 text-ocean-900/68">{story}</p>
               </article>
 
               <article className="grid gap-6 rounded-2xl border border-ocean-900/10 bg-white p-6 shadow-soft lg:grid-cols-[0.9fr_1.1fr]">
                 <div>
-                  <h2 className="text-2xl font-bold tracking-normal text-ocean-900">Our solution</h2>
-                  <p className="mt-4 leading-8 text-ocean-900/68">
-                    The campaign funds a science-based program: nursery preparation, restoration activity, visual documentation, community participation, and recurring evidence reports.
-                  </p>
-                  <div className="mt-5 grid gap-3 text-sm font-semibold text-ocean-900/68">
-                    {["Coral nursery development", "Fragment transplantation", "Reef monitoring", "Community participation"].map((item) => (
-                      <span key={item} className="inline-flex items-center gap-2">
-                        <CheckCircle2 className="text-kelp-500" size={17} aria-hidden="true" />
-                        {item}
-                      </span>
-                    ))}
-                  </div>
+                  <h2 className="text-2xl font-bold tracking-normal text-ocean-900">Public campaign summary</h2>
+                  <p className="mt-4 leading-8 text-ocean-900/68">{campaign.summary}</p>
                 </div>
                 {campaign.imageUrl ? (
-                  <Image src={campaign.imageUrl} alt={`${campaign.title} restoration activity`} width={760} height={440} className="h-72 w-full rounded-xl object-cover" sizes="(min-width: 1024px) 44vw, 100vw" />
+                  <Image
+                    src={campaign.imageUrl}
+                    alt={`${campaign.title} campaign image`}
+                    width={760}
+                    height={440}
+                    unoptimized
+                    className="h-72 w-full rounded-xl object-cover"
+                    sizes="(min-width: 1024px) 44vw, 100vw"
+                  />
                 ) : null}
               </article>
 
               <article className="rounded-2xl border border-ocean-900/10 bg-white p-6 shadow-soft">
                 <h2 className="text-2xl font-bold tracking-normal text-ocean-900">Why {campaign.region}</h2>
-                <p className="mt-4 leading-8 text-ocean-900/68">
-                  This location combines ecological importance, local restoration capacity, and long-term monitoring access. Impact sites are shown with approximate public coordinates where sensitive field locations require care.
-                </p>
+                {campaign.sites.length > 0 ? (
+                  <div className="mt-4 grid gap-3 md:grid-cols-2">
+                    {campaign.sites.map((site) => (
+                      <div key={site.name} className="rounded-xl bg-sand-50 p-4">
+                        <p className="font-bold text-ocean-900">{site.name}</p>
+                        <p className="mt-1 text-sm text-ocean-900/62">
+                          {site.type} / {site.region}
+                        </p>
+                        <p className="mt-3 text-xs font-bold text-ocean-900/48">
+                          {site.progress}% progress / {site.evidenceCount} evidence records
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="mt-4 leading-8 text-ocean-900/68">No public impact sites have been linked to this campaign yet.</p>
+                )}
               </article>
             </div>
           </section>
@@ -428,9 +370,14 @@ export default async function CampaignDetailPage({ params }: { params: Promise<{
 
               <article className="grid gap-5 lg:grid-cols-2">
                 <div className="rounded-2xl border border-ocean-900/10 bg-white p-6 shadow-soft">
-                  <p className="text-sm font-bold uppercase tracking-[0.16em] text-coral-700">What We Will Deliver</p>
+                  <p className="text-sm font-bold uppercase tracking-[0.16em] text-coral-700">Recorded campaign targets</p>
                   <div className="mt-5 grid gap-3 text-sm font-semibold text-ocean-900/68">
-                    {[`${campaign.impactTarget.toLocaleString("id-ID")} ${campaign.impactUnit}`, "20 local community members trained", "12 monitoring visits", "4 educational workshops", "1 digital restoration dataset"].map((item) => (
+                    {[
+                      `${campaign.impactTarget.toLocaleString("id-ID")} ${campaign.impactUnit}`,
+                      `${campaign.sites.length.toLocaleString("id-ID")} linked impact sites`,
+                      `${campaign.evidence.length.toLocaleString("id-ID")} evidence records`,
+                      `${campaign.updates.length.toLocaleString("id-ID")} campaign updates`
+                    ].map((item) => (
                       <span key={item} className="inline-flex items-center gap-2">
                         <CheckCircle2 className="text-kelp-500" size={17} aria-hidden="true" />
                         {item}
@@ -439,11 +386,16 @@ export default async function CampaignDetailPage({ params }: { params: Promise<{
                   </div>
                 </div>
                 <div className="rounded-2xl border border-ocean-900/10 bg-ocean-900 p-6 text-white shadow-soft">
-                  <p className="text-sm font-bold uppercase tracking-[0.16em] text-coral-300">What We Aim to Change</p>
+                  <p className="text-sm font-bold uppercase tracking-[0.16em] text-coral-300">Public verification records</p>
                   <div className="mt-5 grid gap-3 text-sm font-semibold text-white/74">
-                    {["Increased reef coverage", "Improved local conservation capacity", "Better marine habitat condition", "Stronger community participation"].map((item) => (
+                    {[
+                      `${verifiedEvidenceCount.toLocaleString("id-ID")} verified evidence records`,
+                      `${campaign.evidence.length.toLocaleString("id-ID")} total evidence records`,
+                      `${campaign.sponsoredEcosystems.length.toLocaleString("id-ID")} sponsorship records`,
+                      `${campaign.donorActivity.length.toLocaleString("id-ID")} recent paid donor records`
+                    ].map((item) => (
                       <span key={item} className="inline-flex items-center gap-2">
-                        <Leaf className="text-kelp-100" size={17} aria-hidden="true" />
+                        <ShieldCheck className="text-kelp-100" size={17} aria-hidden="true" />
                         {item}
                       </span>
                     ))}
@@ -451,84 +403,65 @@ export default async function CampaignDetailPage({ params }: { params: Promise<{
                 </div>
               </article>
 
-              <article className="rounded-2xl border border-ocean-900/10 bg-white p-6 shadow-soft">
-                <SectionHeading title="Before and expected recovery">
-                  This comparison is an illustrative restoration projection based on the project plan. Completed phases should use dated field evidence.
-                </SectionHeading>
-                <div className="mt-8">
-                  <CampaignBeforeAfterSlider
-                    beforeImage={campaign.imageUrl ?? mediaItems[0]?.src ?? "https://images.unsplash.com/photo-1546026423-cc4642628d2b?auto=format&fit=crop&w=1200&q=80"}
-                    afterImage={mediaItems[1]?.src ?? "https://images.unsplash.com/photo-1582967788606-a171c1080cb0?auto=format&fit=crop&w=1200&q=80"}
-                    beforeLabel="Before Restoration"
-                    afterLabel="Expected Recovery"
-                  />
-                </div>
-              </article>
-
-              <article className="rounded-2xl border border-ocean-900/10 bg-white p-6 shadow-soft">
-                <div className="grid gap-6 lg:grid-cols-[0.9fr_1.1fr] lg:items-center">
-                  <div>
-                    <p className="text-sm font-bold uppercase tracking-[0.16em] text-coral-700">Sponsor a Coral</p>
-                    <h2 className="mt-3 text-2xl font-bold tracking-normal text-ocean-900">Sponsor a Coral and Follow Its Journey</h2>
-                    <p className="mt-4 leading-7 text-ocean-900/68">
-                      Sponsorship packages connect a funded fragment to location, growth updates, certificate records, and Impact Passport activity.
-                    </p>
-                    <ButtonLink href={`/checkout/donation?campaign=${campaign.slug}&amount=250000&intent=coral`} className="mt-6">
-                      Sponsor Your Coral
-                    </ButtonLink>
-                  </div>
-                  <div className="rounded-2xl bg-ocean-900 p-5 text-white">
-                    <p className="text-xs font-bold uppercase tracking-[0.16em] text-coral-300">
-                      Coral ID: {sponsoredPreview?.code ?? "RA-2026-00231"}
-                    </p>
-                    <div className="mt-5 grid gap-3 text-sm text-white/72">
-                      {[
-                        ["Location", sponsoredPreview?.region ?? campaign.region],
-                        ["Species", "Acropora"],
-                        ["Fragments", String(sponsoredPreview?.fragments || 5)],
-                        ["Planted", formatDateLabel(sponsoredPreview?.plantedAt) === "Pending" ? "Pending planting" : formatDateLabel(sponsoredPreview?.plantedAt)],
-                        ["Status", sponsoredPreview?.status ?? "Nursery Stage"],
-                        ["Next Update", sponsoredPreview?.lastUpdatedAt ? formatDateLabel(sponsoredPreview.lastUpdatedAt) : "January 2027"]
-                      ].map(([label, value]) => (
-                        <div key={label} className="flex justify-between gap-4 border-b border-white/10 pb-3">
-                          <span>{label}</span>
-                          <span className="font-bold text-white">{value}</span>
-                        </div>
-                      ))}
+              {sponsoredPreview ? (
+                <article className="rounded-2xl border border-ocean-900/10 bg-white p-6 shadow-soft">
+                  <div className="grid gap-6 lg:grid-cols-[0.9fr_1.1fr] lg:items-center">
+                    <div>
+                      <p className="text-sm font-bold uppercase tracking-[0.16em] text-coral-700">Sponsorship record</p>
+                      <h2 className="mt-3 text-2xl font-bold tracking-normal text-ocean-900">{sponsoredPreview.label}</h2>
+                      <p className="mt-4 leading-7 text-ocean-900/68">
+                        This sponsorship record is connected to the campaign database and appears here after paid sponsorship activity is recorded.
+                      </p>
+                      {sponsorAmount > 0 ? (
+                        <ButtonLink href={`/checkout/donation?campaign=${campaign.slug}&amount=${sponsorAmount}&intent=coral`} className="mt-6">
+                          Sponsor This Campaign
+                        </ButtonLink>
+                      ) : null}
                     </div>
-                  </div>
-                </div>
-              </article>
-            </div>
-          </section>
-
-          <section id="plan" className="scroll-mt-40">
-            <SectionHeading eyebrow="Plan" title="Project timeline and location" />
-            <div className="mt-8 grid gap-5">
-              {timeline.map((item) => (
-                <article key={item.phase} className="grid gap-5 rounded-2xl border border-ocean-900/10 bg-white p-5 shadow-soft md:grid-cols-[180px_1fr]">
-                  <div>
-                    <p className="text-sm font-bold uppercase tracking-[0.16em] text-coral-700">{item.phase}</p>
-                    <p className="mt-2 text-sm font-semibold text-ocean-900/58">{item.date}</p>
-                    <span className="mt-4 inline-flex rounded-full bg-ocean-50 px-3 py-1 text-xs font-bold text-ocean-900">{item.status}</span>
-                  </div>
-                  <div>
-                    <h2 className="text-xl font-bold tracking-normal text-ocean-900">{item.title}</h2>
-                    <div className="mt-4 grid gap-2 text-sm font-semibold text-ocean-900/66">
-                      {item.deliverables.map((deliverable) => (
-                        <span key={deliverable} className="inline-flex items-center gap-2">
-                          <CalendarDays className="text-kelp-500" size={16} aria-hidden="true" />
-                          {deliverable}
-                        </span>
-                      ))}
-                    </div>
-                    <div className="mt-5 grid gap-3 rounded-xl bg-sand-50 p-4 text-sm text-ocean-900/66 md:grid-cols-2">
-                      <p><span className="font-bold text-ocean-900">Funding needed:</span> {formatCurrency(Math.round(campaign.goal / timeline.length))}</p>
-                      <p><span className="font-bold text-ocean-900">Evidence after completion:</span> photo update and milestone note</p>
+                    <div className="rounded-2xl bg-ocean-900 p-5 text-white">
+                      <p className="text-xs font-bold uppercase tracking-[0.16em] text-coral-300">Record ID: {sponsoredPreview.code}</p>
+                      <div className="mt-5 grid gap-3 text-sm text-white/72">
+                        {[
+                          ["Location", sponsoredPreview.siteName ?? sponsoredPreview.region ?? campaign.region],
+                          ["Fragments", sponsoredPreview.fragments.toLocaleString("id-ID")],
+                          ["Planted", formatDateLabel(sponsoredPreview.plantedAt)],
+                          ["Status", sponsoredPreview.status],
+                          ["Last Update", formatDateLabel(sponsoredPreview.lastUpdatedAt)]
+                        ].map(([label, value]) => (
+                          <div key={label} className="flex justify-between gap-4 border-b border-white/10 pb-3">
+                            <span>{label}</span>
+                            <span className="font-bold text-white">{value}</span>
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   </div>
                 </article>
-              ))}
+              ) : null}
+            </div>
+          </section>
+
+          <section id="records" className="scroll-mt-40">
+            <SectionHeading eyebrow="Records" title="Recorded campaign activity and location" />
+            <div className="mt-8 grid gap-5">
+              {recordedMilestones.length > 0 ? (
+                recordedMilestones.map((item) => (
+                  <article key={item.key} className="grid gap-5 rounded-2xl border border-ocean-900/10 bg-white p-5 shadow-soft md:grid-cols-[180px_1fr]">
+                    <div>
+                      <p className="text-sm font-bold uppercase tracking-[0.16em] text-coral-700">{item.label}</p>
+                      <p className="mt-2 text-sm font-semibold text-ocean-900/58">{formatDateLabel(item.date)}</p>
+                    </div>
+                    <div>
+                      <h2 className="text-xl font-bold tracking-normal text-ocean-900">{item.title}</h2>
+                      <p className="mt-4 text-sm leading-6 text-ocean-900/66">{item.detail}</p>
+                    </div>
+                  </article>
+                ))
+              ) : (
+                <article className="rounded-2xl border border-ocean-900/10 bg-white p-6 text-ocean-900/68 shadow-soft">
+                  No campaign updates or evidence records have been recorded yet.
+                </article>
+              )}
             </div>
 
             <div className="mt-10">
@@ -556,7 +489,7 @@ export default async function CampaignDetailPage({ params }: { params: Promise<{
               <article className="rounded-2xl border border-ocean-900/10 bg-white p-6 shadow-soft">
                 <div className="flex items-center gap-4">
                   <span className="relative flex size-16 shrink-0 items-center justify-center overflow-hidden rounded-full bg-sand-50 text-lg font-black text-ocean-900 ring-1 ring-ocean-900/10">
-                    {campaign.partnerLogoUrl ? <Image src={campaign.partnerLogoUrl} alt={`${campaign.partner} logo`} fill className="object-cover" sizes="64px" /> : initialsForName(campaign.partner)}
+                    {campaign.partnerLogoUrl ? <Image src={campaign.partnerLogoUrl} alt={`${campaign.partner} logo`} fill unoptimized className="object-cover" sizes="64px" /> : initialsForName(campaign.partner)}
                   </span>
                   <div>
                     <p className="text-sm font-bold uppercase tracking-[0.16em] text-coral-700">{partnerTypeLabel(campaign.partnerType)}</p>
@@ -564,7 +497,7 @@ export default async function CampaignDetailPage({ params }: { params: Promise<{
                   </div>
                 </div>
                 <p className="mt-5 text-sm leading-6 text-ocean-900/68">
-                  {campaign.partnerDescription ?? `${campaign.partner} manages campaign activity, evidence uploads, reporting, and local coordination for this project.`}
+                  {campaign.partnerDescription ?? "No partner description recorded in database."}
                 </p>
                 <div className="mt-5 flex flex-wrap gap-3">
                   <ButtonLink href={`/partners/${campaign.partnerSlug}`} tone="secondary">View organization profile</ButtonLink>
@@ -578,11 +511,19 @@ export default async function CampaignDetailPage({ params }: { params: Promise<{
 
               <article className="rounded-2xl border border-ocean-900/10 bg-white p-6 shadow-soft">
                 <p className="text-sm font-bold uppercase tracking-[0.16em] text-kelp-700">Verification and governance</p>
-                <div className="mt-5 grid gap-3">
-                  {verificationItems.map((item) => (
-                    <span key={item} className="inline-flex items-center gap-2 text-sm font-semibold text-ocean-900/68">
+                <div className="mt-5 grid gap-3 text-sm font-semibold text-ocean-900/68">
+                  {[
+                    [`Partner verification: ${campaign.verification}`, "Organization verification level"],
+                    [`${campaign.evidence.length.toLocaleString("id-ID")} evidence records`, "Campaign evidence submitted"],
+                    [`${verifiedEvidenceCount.toLocaleString("id-ID")} verified evidence records`, "Evidence approved by admin review"],
+                    [`${campaign.sites.length.toLocaleString("id-ID")} impact sites`, "Campaign-linked field locations"]
+                  ].map(([value, label]) => (
+                    <span key={label} className="inline-flex items-center gap-2">
                       <ShieldCheck className="text-kelp-500" size={17} aria-hidden="true" />
-                      {item}
+                      <span>
+                        <span className="font-bold text-ocean-900">{value}</span>
+                        <span className="block text-xs font-semibold text-ocean-900/48">{label}</span>
+                      </span>
                     </span>
                   ))}
                 </div>
@@ -593,81 +534,23 @@ export default async function CampaignDetailPage({ params }: { params: Promise<{
             </div>
 
             <article className="mt-8 rounded-2xl border border-ocean-900/10 bg-white p-6 shadow-soft">
-              <p className="text-sm font-bold uppercase tracking-[0.16em] text-coral-700">Implementation team</p>
-              <div className="mt-5 grid gap-3 md:grid-cols-2">
-                {teamMembers.map(([role, name]) => (
-                  <div key={role} className="rounded-xl bg-sand-50 p-4">
-                    <p className="text-xs font-bold uppercase tracking-[0.12em] text-ocean-900/48">{role}</p>
-                    <p className="mt-2 font-bold text-ocean-900">{name}</p>
-                  </div>
-                ))}
-              </div>
-            </article>
-
-            <article className="mt-8 rounded-2xl border border-ocean-900/10 bg-white p-6 shadow-soft">
-              <SectionHeading title="Financial breakdown">
-                Budget percentages are visible before checkout. Payment processing fees may vary by method in the demo gateway.
+              <SectionHeading title="Funding record">
+                Funding values are calculated from the campaign row and paid donation records in the database.
               </SectionHeading>
-              <div className="mt-8 grid gap-4">
-                {budgetItems.map(([label, percent]) => (
-                  <div key={label}>
-                    <div className="flex items-center justify-between gap-4 text-sm font-bold text-ocean-900">
-                      <span>{label}</span>
-                      <span>{percent}% · {formatCurrency(Math.round(campaign.goal * (percent / 100)))}</span>
-                    </div>
-                    <div className="mt-2 h-3 overflow-hidden rounded-full bg-ocean-50">
-                      <div className="h-full rounded-full bg-coral-500" style={{ width: `${percent}%` }} />
-                    </div>
+              <div className="mt-8 grid gap-4 md:grid-cols-4">
+                {[
+                  [formatCurrency(campaign.goal), "Campaign goal"],
+                  [formatCurrency(campaign.raised), "Raised"],
+                  [formatCurrency(Math.max(0, campaign.goal - campaign.raised)), "Remaining"],
+                  [campaign.donors.toLocaleString("id-ID"), "Paid supporters"]
+                ].map(([value, label]) => (
+                  <div key={label} className="rounded-xl bg-sand-50 p-4">
+                    <p className="text-xl font-bold tracking-normal text-ocean-900">{value}</p>
+                    <p className="mt-1 text-sm text-ocean-900/62">{label}</p>
                   </div>
                 ))}
               </div>
-              <div className="mt-6 grid gap-3 rounded-xl bg-sand-50 p-4 text-sm text-ocean-900/68 md:grid-cols-2">
-                <p><span className="font-bold text-ocean-900">Platform fee:</span> 5% included in budget planning.</p>
-                <p><span className="font-bold text-ocean-900">Payment processing:</span> depends on payment method.</p>
-              </div>
-              <details className="mt-5 rounded-xl border border-ocean-900/10 p-4">
-                <summary className="cursor-pointer text-sm font-bold text-ocean-900">View Detailed Budget</summary>
-                <div className="mt-4 overflow-x-auto">
-                  <table className="w-full min-w-[620px] text-left text-sm">
-                    <thead className="text-ocean-900/54">
-                      <tr>
-                        <th className="py-2 pr-4">Budget item</th>
-                        <th className="py-2 pr-4">Quantity</th>
-                        <th className="py-2 pr-4">Unit cost</th>
-                        <th className="py-2">Total</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-ocean-900/10">
-                      {budgetItems.map(([label, percent], index) => {
-                        const total = Math.round(campaign.goal * (percent / 100));
-                        const quantity = [100, 12, 12, 4, 8, 1, 1][index] ?? 1;
-
-                        return (
-                          <tr key={label}>
-                            <td className="py-3 pr-4 font-semibold text-ocean-900">{label}</td>
-                            <td className="py-3 pr-4 text-ocean-900/64">{quantity}</td>
-                            <td className="py-3 pr-4 text-ocean-900/64">{formatCurrency(Math.round(total / quantity))}</td>
-                            <td className="py-3 font-bold text-ocean-900">{formatCurrency(total)}</td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              </details>
             </article>
-          </section>
-
-          <section id="faq" className="scroll-mt-40">
-            <SectionHeading eyebrow="FAQ" title="Questions before you contribute" />
-            <div className="mt-8 grid gap-3">
-              {faqItems.map(([question, answer]) => (
-                <details key={question} className="rounded-2xl border border-ocean-900/10 bg-white p-5 shadow-sm">
-                  <summary className="cursor-pointer text-base font-bold text-ocean-900">{question}</summary>
-                  <p className="mt-3 text-sm leading-6 text-ocean-900/66">{answer}</p>
-                </details>
-              ))}
-            </div>
           </section>
 
           <section className="rounded-2xl bg-ocean-900 p-8 text-white shadow-soft">
@@ -683,7 +566,11 @@ export default async function CampaignDetailPage({ params }: { params: Promise<{
               ) : (
                 <>
                   <ButtonLink href={`/checkout/donation?campaign=${campaign.slug}`} tone="light">Donate Now</ButtonLink>
-                  <ButtonLink href={`/checkout/donation?campaign=${campaign.slug}&amount=250000&intent=coral`} className="bg-coral-500 text-white hover:bg-coral-700">Sponsor a Coral</ButtonLink>
+                  {sponsorAmount > 0 ? (
+                    <ButtonLink href={`/checkout/donation?campaign=${campaign.slug}&amount=${sponsorAmount}&intent=coral`} className="bg-coral-500 text-white hover:bg-coral-700">
+                      Sponsor a Coral
+                    </ButtonLink>
+                  ) : null}
                 </>
               )}
               <ButtonLink href="#updates" tone="ghost" className="border border-white/24 text-white hover:bg-white/10">Follow Updates</ButtonLink>
@@ -701,7 +588,9 @@ export default async function CampaignDetailPage({ params }: { params: Promise<{
                   const donor = publicDonorName(activity.donorName);
                   const label =
                     activity.contributionIntent === "coral"
-                      ? `${donor} sponsored ${Math.max(1, activity.sponsoredFragments).toLocaleString("id-ID")} coral fragments`
+                      ? activity.sponsoredFragments > 0
+                        ? `${donor} sponsored ${activity.sponsoredFragments.toLocaleString("id-ID")} coral fragments`
+                        : `${donor} sponsored this campaign`
                       : activity.contributionIntent === "monthly"
                         ? `${donor} started monthly support`
                         : `${donor} supported this campaign`;

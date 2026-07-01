@@ -12,20 +12,19 @@ type CampaignImpactCalculatorProps = {
 };
 
 export function CampaignImpactCalculator({ goal, impactTarget, impactUnit }: CampaignImpactCalculatorProps) {
-  const [amount, setAmount] = useState(500_000);
+  const defaultAmount = Math.max(50_000, Math.round(Math.max(1, goal) * 0.001 / 50_000) * 50_000);
+  const [amount, setAmount] = useState(defaultAmount);
   const costPerUnit = goal > 0 && impactTarget > 0 ? goal / impactTarget : 50_000;
   const outputs = useMemo(() => {
     const units = Math.max(1, Math.round(amount / costPerUnit));
-    const monitoringVisits = Math.max(1, Math.round(amount / 250_000));
-    const area = Math.max(1, Math.round(units * 0.4));
+    const goalShare = goal > 0 ? Math.min(100, (amount / goal) * 100) : 0;
 
     return [
       [`${units.toLocaleString("id-ID")} ${impactUnit}`, "Estimated direct restoration output"],
-      [`${monitoringVisits.toLocaleString("id-ID")} monitoring visit${monitoringVisits === 1 ? "" : "s"}`, "Field checks and reporting support"],
-      ["Local team equipment support", "Contributes to shared materials and operations"],
-      [`Approximately ${area.toLocaleString("id-ID")} m2 of restoration area`, "Planning estimate, not guaranteed ecological outcome"]
+      [formatCurrency(costPerUnit), `Recorded campaign cost per ${impactUnit}`],
+      [`${goalShare.toLocaleString("id-ID", { maximumFractionDigits: 2 })}%`, "Share of campaign funding goal"]
     ];
-  }, [amount, costPerUnit, impactUnit]);
+  }, [amount, costPerUnit, goal, impactUnit]);
 
   return (
     <section id="impact-calculator" className="rounded-2xl border border-ocean-900/10 bg-white p-6 shadow-soft">

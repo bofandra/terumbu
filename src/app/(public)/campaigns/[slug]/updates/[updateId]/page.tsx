@@ -40,6 +40,7 @@ export default async function CampaignUpdatePage({ params }: { params: Promise<{
           alt=""
           width={1100}
           height={620}
+          unoptimized
           className="mt-8 h-[420px] w-full rounded-2xl object-cover shadow-soft"
           sizes="(min-width: 1024px) 900px, 100vw"
         />

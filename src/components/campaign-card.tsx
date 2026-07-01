@@ -22,6 +22,7 @@ export function CampaignCard({ campaign }: CampaignCardProps) {
             alt=""
             width={800}
             height={450}
+            unoptimized
             className="h-56 w-full object-cover"
             sizes="(min-width: 1024px) 33vw, 100vw"
           />

@@ -3296,44 +3296,140 @@ export async function getAdminOperationsData() {
 }
 
 export async function getPartnerPortalData() {
-  const [campaignRows, evidenceRows, updateRows] = await Promise.all([
+  const [organizationRows, campaignRows, evidenceRows, updateRows, siteRows, sponsoredRows, donorRows] = await Promise.all([
+    db
+      .select({
+        id: organizations.id,
+        name: organizations.name,
+        type: organizations.type,
+        verification: organizations.verification
+      })
+      .from(organizations)
+      .orderBy(asc(organizations.name)),
     db
       .select({
         id: campaigns.id,
+        organizationId: campaigns.organizationId,
         title: campaigns.title,
         slug: campaigns.slug,
+        summary: campaigns.summary,
+        story: campaigns.story,
+        category: campaigns.category,
         region: campaigns.region,
+        imageUrl: campaigns.imageUrl,
         status: campaigns.status,
         raisedAmount: campaigns.raisedAmount,
-        goalAmount: campaigns.goalAmount
+        goalAmount: campaigns.goalAmount,
+        donorCount: campaigns.donorCount,
+        impactUnit: campaigns.impactUnit,
+        impactTarget: campaigns.impactTarget,
+        endsAt: campaigns.endsAt,
+        partner: organizations.name,
+        partnerSlug: organizations.slug,
+        partnerType: organizations.type,
+        partnerLogoUrl: organizations.logoUrl,
+        partnerWebsiteUrl: organizations.websiteUrl,
+        partnerDescription: organizations.description,
+        verification: organizations.verification
       })
       .from(campaigns)
+      .innerJoin(organizations, eq(campaigns.organizationId, organizations.id))
       .orderBy(desc(campaigns.updatedAt)),
     db
       .select({
+        campaignId: projectEvidence.campaignId,
         title: projectEvidence.title,
         evidenceCode: projectEvidence.evidenceCode,
+        evidenceType: projectEvidence.evidenceType,
         verificationStatus: projectEvidence.verificationStatus,
         campaignTitle: campaigns.title,
-        fileUrl: projectEvidence.fileUrl
+        fileUrl: projectEvidence.fileUrl,
+        createdAt: projectEvidence.createdAt
       })
       .from(projectEvidence)
       .innerJoin(campaigns, eq(projectEvidence.campaignId, campaigns.id))
       .orderBy(desc(projectEvidence.createdAt)),
     db
       .select({
+        id: campaignUpdates.id,
+        campaignId: campaignUpdates.campaignId,
         title: campaignUpdates.title,
+        body: campaignUpdates.body,
+        imageUrl: campaignUpdates.imageUrl,
         campaignTitle: campaigns.title,
         publishedAt: campaignUpdates.publishedAt
       })
       .from(campaignUpdates)
       .innerJoin(campaigns, eq(campaignUpdates.campaignId, campaigns.id))
-      .orderBy(desc(campaignUpdates.publishedAt))
+      .orderBy(desc(campaignUpdates.publishedAt)),
+    db
+      .select({
+        campaignId: impactSites.campaignId,
+        name: impactSites.name,
+        type: impactSites.ecosystemType,
+        region: impactSites.region,
+        latitude: impactSites.latitude,
+        longitude: impactSites.longitude,
+        metadata: impactSites.metadata
+      })
+      .from(impactSites)
+      .where(sql`${impactSites.campaignId} is not null`)
+      .orderBy(asc(impactSites.name)),
+    db
+      .select({
+        campaignId: sponsoredEcosystems.campaignId,
+        code: sponsoredEcosystems.code,
+        label: sponsoredEcosystems.label,
+        status: sponsoredEcosystems.status,
+        plantedAt: sponsoredEcosystems.plantedAt,
+        lastUpdatedAt: sponsoredEcosystems.lastUpdatedAt,
+        metadata: sponsoredEcosystems.metadata,
+        siteName: impactSites.name,
+        region: impactSites.region
+      })
+      .from(sponsoredEcosystems)
+      .leftJoin(impactSites, eq(sponsoredEcosystems.impactSiteId, impactSites.id))
+      .orderBy(desc(sponsoredEcosystems.lastUpdatedAt)),
+    db
+      .select({
+        campaignId: donations.campaignId,
+        donorName: donations.donorName,
+        amount: donations.amount,
+        message: donations.message,
+        createdAt: donations.createdAt
+      })
+      .from(donations)
+      .where(eq(donations.status, "paid"))
+      .orderBy(desc(donations.createdAt))
   ]);
 
   return {
-    campaigns: campaignRows,
+    organizations: organizationRows.map((organization) => ({
+      ...organization,
+        verificationLabel: verificationLabel(organization.verification)
+      })),
+    campaigns: campaignRows.map((campaign) => ({
+      ...campaign,
+      verificationLabel: verificationLabel(campaign.verification)
+    })),
     evidence: evidenceRows,
-    updates: updateRows
+    updates: updateRows,
+    impactSites: siteRows.map((site) => ({
+      ...site,
+      latitude: toNumber(site.latitude),
+      longitude: toNumber(site.longitude),
+      progress: getMetadataNumber(site.metadata, "progress"),
+      evidenceCount: getMetadataNumber(site.metadata, "evidenceCount"),
+      latestSurvey: getMetadataString(site.metadata, "latestSurvey")
+    })),
+    sponsoredEcosystems: sponsoredRows.map((ecosystem) => ({
+      ...ecosystem,
+      fragments: getMetadataNumber(ecosystem.metadata, "fragments"),
+      survivalRate: getMetadataNumber(ecosystem.metadata, "survivalRate")
+    })),
+    donorActivity: donorRows.map((donation) => ({
+      ...donation,
+      amount: toNumber(donation.amount)
+    }))
   };
 }
