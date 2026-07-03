@@ -11,8 +11,8 @@ export const metadata = {
 export const dynamic = "force-dynamic";
 
 export default async function PartnerPortalPage() {
-  await requireRole(["partner", "admin"], "/partner");
-  const data = await getPartnerPortalData();
+  const user = await requireRole(["partner", "admin"], "/partner");
+  const data = await getPartnerPortalData(user.id);
 
   return (
     <div className="space-y-8">

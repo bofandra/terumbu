@@ -12,6 +12,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { CampaignCard } from "@/components/campaign-card";
+import { CampaignBeforeAfterSlider } from "@/components/campaign-before-after-slider";
 import { CampaignDonationCard } from "@/components/campaign-donation-card";
 import { CampaignImpactCalculator } from "@/components/campaign-impact-calculator";
 import { CampaignMediaGallery } from "@/components/campaign-media-gallery";
@@ -21,10 +22,12 @@ import { CampaignUpdatesEvidence } from "@/components/campaign-updates-evidence"
 import { ExpeditionCard } from "@/components/expedition-card";
 import { ImpactMapPreview } from "@/components/impact-map-preview";
 import { SectionHeading } from "@/components/section-heading";
-import { ButtonLink } from "@/components/ui/button";
+import { Button, ButtonLink } from "@/components/ui/button";
 import { VerificationExplainer } from "@/components/verification-explainer";
-import { suggestedDonationAmounts } from "@/lib/domain";
-import { getCampaignCards, getCampaignDetail, getCourses, getExpeditionCards } from "@/lib/queries";
+import { getSessionUser } from "@/lib/auth";
+import { evidenceAnchorId, evidenceSourceHref, evidenceStage, evidenceStageLabel, getMetadataNumberOrString, getMetadataString, suggestedDonationAmounts } from "@/lib/domain";
+import { getCampaignCards, getCampaignDetail, getCampaignRetentionState, getCourses, getExpeditionCards } from "@/lib/queries";
+import { followCampaignAction, removeSavedCampaignAction, saveCampaignAction, unfollowCampaignAction } from "@/lib/retention-actions";
 import { formatCurrency } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
@@ -113,10 +116,12 @@ export default async function CampaignDetailPage({ params }: { params: Promise<{
     notFound();
   }
 
-  const [allExpeditions, courses, relatedCampaignRows] = await Promise.all([
+  const sessionUser = await getSessionUser();
+  const [allExpeditions, courses, relatedCampaignRows, retentionState] = await Promise.all([
     getExpeditionCards(),
     getCourses(),
-    getCampaignCards(6, campaign.category)
+    getCampaignCards(6, campaign.category),
+    sessionUser ? getCampaignRetentionState(sessionUser.id, campaign.slug) : Promise.resolve(null)
   ]);
   const progress = campaign.goal > 0 ? Math.min(100, Math.round((campaign.raised / campaign.goal) * 100)) : 0;
   const impactFunded = campaign.goal > 0 ? Math.round((campaign.raised / campaign.goal) * campaign.impactTarget) : 0;
@@ -161,16 +166,32 @@ export default async function CampaignDetailPage({ params }: { params: Promise<{
     href: `/campaigns/${campaign.slug}/updates/${update.id}`
   }));
   const evidenceItems = campaign.evidence.map((item) => ({
+    id: item.id,
+    code: item.evidenceCode,
+    anchorId: evidenceAnchorId(item.evidenceCode),
     title: item.title,
     evidenceType: item.evidenceType,
     fileUrl: item.fileUrl,
     verificationStatus: item.verificationStatus,
+    stageLabel: evidenceStageLabel(evidenceStage(item.metadata, item.evidenceType)),
     dateLabel: formatDateLabel(item.createdAt),
-    locationLabel: campaign.sites[0]?.name ?? campaign.region
+    locationLabel: item.siteName ? `${item.siteName}, ${item.siteRegion ?? campaign.region}` : campaign.sites[0]?.name ?? campaign.region,
+    observation: getMetadataString(item.metadata, "observation") ?? getMetadataString(item.metadata, "summary"),
+    metricLabel: getMetadataString(item.metadata, "metricLabel") ?? (getMetadataNumberOrString(item.metadata, "survivalRate") ? "Survival rate" : null),
+    metricValue: getMetadataNumberOrString(item.metadata, "metricValue") ?? (getMetadataNumberOrString(item.metadata, "survivalRate") ? `${getMetadataNumberOrString(item.metadata, "survivalRate")}%` : null),
+    sourceHref: evidenceSourceHref(campaign.slug, item.evidenceCode) ?? item.fileUrl
   }));
   const sponsoredPreview = campaign.sponsoredEcosystems[0];
+  const beforeAfterSite = campaign.sites.find(
+    (site) =>
+      site.beforeAfter?.before &&
+      site.beforeAfter.after &&
+      isImageUrl(site.beforeAfter.before.fileUrl) &&
+      isImageUrl(site.beforeAfter.after.fileUrl)
+  );
   const publicTags = [campaign.category, partnerTypeLabel(campaign.partnerType), campaign.verification, campaign.region];
   const verifiedEvidenceCount = campaign.evidence.filter((item) => item.verificationStatus === "verified").length;
+  const campaignPath = `/campaigns/${campaign.slug}`;
   const recordedMilestones = [
     ...campaign.updates.map((update) => ({
       key: `update-${update.id}`,
@@ -288,6 +309,43 @@ export default async function CampaignDetailPage({ params }: { params: Promise<{
                 disabledReason={disabledReason}
               />
 
+              <div className="rounded-2xl border border-ocean-900/10 bg-white p-5 shadow-soft">
+                <p className="text-sm font-bold uppercase tracking-[0.16em] text-coral-700">Keep this project close</p>
+                <p className="mt-3 text-sm leading-6 text-ocean-900/62">
+                  Save the campaign to your dashboard or follow partner updates as they are published.
+                </p>
+                <div className="mt-5 grid gap-3">
+                  {sessionUser ? (
+                    <>
+                      <form action={retentionState?.isSaved ? removeSavedCampaignAction : saveCampaignAction}>
+                        <input type="hidden" name="campaignSlug" value={campaign.slug} />
+                        <input type="hidden" name="next" value={campaignPath} />
+                        <Button type="submit" tone={retentionState?.isSaved ? "light" : "secondary"} className="w-full">
+                          {retentionState?.isSaved ? "Remove Saved Project" : "Save Project"}
+                        </Button>
+                      </form>
+                      <form action={retentionState?.isFollowing ? unfollowCampaignAction : followCampaignAction}>
+                        <input type="hidden" name="campaignSlug" value={campaign.slug} />
+                        <input type="hidden" name="next" value={campaignPath} />
+                        <input type="hidden" name="frequency" value="weekly" />
+                        <Button type="submit" tone={retentionState?.isFollowing ? "light" : "primary"} className="w-full">
+                          {retentionState?.isFollowing ? "Unfollow Updates" : "Follow Updates"}
+                        </Button>
+                      </form>
+                    </>
+                  ) : (
+                    <>
+                      <ButtonLink href={`/login?next=${encodeURIComponent(campaignPath)}`} tone="secondary" className="w-full">
+                        Sign in to Save
+                      </ButtonLink>
+                      <ButtonLink href={`/login?next=${encodeURIComponent(campaignPath)}`} className="w-full">
+                        Sign in to Follow
+                      </ButtonLink>
+                    </>
+                  )}
+                </div>
+              </div>
+
               <div className="rounded-2xl border border-ocean-900/10 bg-ocean-50 p-5 shadow-soft">
                 <p className="text-sm font-bold uppercase tracking-[0.16em] text-kelp-700">Impact at a glance</p>
                 <div className="mt-5 grid gap-4">
@@ -403,6 +461,17 @@ export default async function CampaignDetailPage({ params }: { params: Promise<{
                 </div>
               </article>
 
+              {beforeAfterSite?.beforeAfter?.before && beforeAfterSite.beforeAfter.after ? (
+                <CampaignBeforeAfterSlider
+                  beforeImage={beforeAfterSite.beforeAfter.before.fileUrl}
+                  afterImage={beforeAfterSite.beforeAfter.after.fileUrl}
+                  beforeLabel={`${beforeAfterSite.name} / ${beforeAfterSite.beforeAfter.before.stageLabel}`}
+                  afterLabel={`${beforeAfterSite.name} / ${beforeAfterSite.beforeAfter.after.stageLabel}`}
+                  controlLabel="Compare actual field evidence"
+                  caption={`Actual site evidence from ${beforeAfterSite.name}. Before record: ${beforeAfterSite.beforeAfter.before.surveyDate ?? "date pending"}. Latest record: ${beforeAfterSite.beforeAfter.after.surveyDate ?? "date pending"}.`}
+                />
+              ) : null}
+
               {sponsoredPreview ? (
                 <article className="rounded-2xl border border-ocean-900/10 bg-white p-6 shadow-soft">
                   <div className="grid gap-6 lg:grid-cols-[0.9fr_1.1fr] lg:items-center">
@@ -478,7 +547,7 @@ export default async function CampaignDetailPage({ params }: { params: Promise<{
             <SectionHeading eyebrow="Updates" title="Project updates and evidence gallery">
               Follow field activities, monitoring notes, community stories, and evidence uploads as the campaign moves through milestones.
             </SectionHeading>
-            <div className="mt-8">
+            <div id="evidence" className="mt-8 scroll-mt-40">
               <CampaignUpdatesEvidence updates={updateItems} evidence={evidenceItems} />
             </div>
           </section>
@@ -573,7 +642,20 @@ export default async function CampaignDetailPage({ params }: { params: Promise<{
                   ) : null}
                 </>
               )}
-              <ButtonLink href="#updates" tone="ghost" className="border border-white/24 text-white hover:bg-white/10">Follow Updates</ButtonLink>
+              {sessionUser ? (
+                <form action={retentionState?.isFollowing ? unfollowCampaignAction : followCampaignAction}>
+                  <input type="hidden" name="campaignSlug" value={campaign.slug} />
+                  <input type="hidden" name="next" value={campaignPath} />
+                  <input type="hidden" name="frequency" value="weekly" />
+                  <Button type="submit" tone="ghost" className="border border-white/24 text-white hover:bg-white/10">
+                    {retentionState?.isFollowing ? "Unfollow Updates" : "Follow Updates"}
+                  </Button>
+                </form>
+              ) : (
+                <ButtonLink href={`/login?next=${encodeURIComponent(campaignPath)}`} tone="ghost" className="border border-white/24 text-white hover:bg-white/10">
+                  Follow Updates
+                </ButtonLink>
+              )}
             </div>
           </section>
         </div>

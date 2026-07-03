@@ -1,9 +1,11 @@
 "use client";
 
-import { Camera, CheckCircle2, List, MapPin } from "lucide-react";
+import { Camera, CheckCircle2, ExternalLink, List, MapPin } from "lucide-react";
+import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
 
+import type { ImpactSiteData } from "@/lib/domain";
 import { cn, formatCurrency } from "@/lib/utils";
 
 const indonesiaBounds = {
@@ -13,18 +15,9 @@ const indonesiaBounds = {
   maxLng: 142
 };
 
-type PersonalImpactSite = {
-  name: string;
-  type: string;
-  region: string;
+type PersonalImpactSite = ImpactSiteData & {
   campaignSlug: string;
   campaignTitle: string;
-  progress: number;
-  latitude: number;
-  longitude: number;
-  verification: string;
-  evidenceCount: number;
-  latestSurvey: string | null;
   contributed: number;
   supportedUnits: number;
 };
@@ -51,6 +44,10 @@ function pinTone(type: string) {
   }
 
   return "bg-ocean-700 text-white ring-ocean-100";
+}
+
+function isImageUrl(value: string | null | undefined) {
+  return Boolean(value && (value.startsWith("data:image/") || /\.(jpg|jpeg|png|webp|gif)(\?|$)/i.test(value)));
 }
 
 export function DashboardPersonalImpactMap({ sites }: { sites: PersonalImpactSite[] }) {
@@ -100,13 +97,13 @@ export function DashboardPersonalImpactMap({ sites }: { sites: PersonalImpactSit
 
           {sites.map((site) => (
             <button
-              key={`${site.campaignSlug}-${site.name}`}
+              key={site.id}
               type="button"
               aria-label={`Show my impact at ${site.name}`}
               className={cn(
                 "absolute z-10 -translate-x-1/2 -translate-y-1/2 rounded-full p-1 shadow-soft ring-4 transition hover:scale-110 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-coral-500",
                 pinTone(site.type),
-                selectedSite?.name === site.name && "scale-110 ring-white"
+                selectedSite?.id === site.id && "scale-110 ring-white"
               )}
               style={pinPosition(site)}
               onClick={() => setSelectedName(site.name)}
@@ -145,10 +142,40 @@ export function DashboardPersonalImpactMap({ sites }: { sites: PersonalImpactSit
                   <Camera className="mt-0.5 text-coral-500" size={20} aria-hidden="true" />
                   <div>
                     <p className="text-sm font-bold text-ocean-900">{selectedSite.evidenceCount} evidence records</p>
-                    <p className="text-xs text-ocean-900/58">{selectedSite.latestSurvey ? `Latest survey: ${selectedSite.latestSurvey}` : "Survey pending"}</p>
+                    <p className="text-xs text-ocean-900/58">
+                      {selectedSite.latestSurvey ? `Latest survey: ${selectedSite.latestSurvey}` : "Survey pending"} · {selectedSite.verifiedEvidenceCount} verified
+                    </p>
                   </div>
                 </div>
               </div>
+              {selectedSite.beforeAfter ? (
+                <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
+                  {[
+                    { label: "Before", evidence: selectedSite.beforeAfter.before },
+                    { label: "After", evidence: selectedSite.beforeAfter.after }
+                  ].map(({ label, evidence }) => (
+                    <div key={label} className="overflow-hidden rounded-xl bg-white">
+                      {evidence && isImageUrl(evidence.fileUrl) ? (
+                        <Image
+                          src={evidence.fileUrl}
+                          alt={`${label} evidence for ${selectedSite.name}`}
+                          width={420}
+                          height={240}
+                          unoptimized
+                          className="h-24 w-full object-cover"
+                          sizes="(min-width: 1280px) 260px, 50vw"
+                        />
+                      ) : null}
+                      <div className="p-3">
+                        <p className="text-xs font-bold uppercase tracking-[0.12em] text-coral-700">{label}</p>
+                        <p className="mt-1 text-xs font-semibold text-ocean-900/62">
+                          {evidence ? evidence.title : "Evidence pending"}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : null}
               <div className="mt-5 h-2 overflow-hidden rounded-full bg-white">
                 <div className="h-full rounded-full bg-kelp-500" style={{ width: `${selectedSite.progress}%` }} />
               </div>
@@ -159,6 +186,24 @@ export function DashboardPersonalImpactMap({ sites }: { sites: PersonalImpactSit
               <Link href={`/campaigns/${selectedSite.campaignSlug}`} className="mt-5 inline-flex text-sm font-bold text-coral-700 hover:text-coral-500">
                 View my impact here
               </Link>
+              {selectedSite.latestEvidence ? (
+                <Link href={selectedSite.latestEvidence.sourceHref} className="mt-3 flex items-center gap-1 text-sm font-bold text-ocean-900/62 hover:text-coral-500">
+                  Latest evidence source
+                  <ExternalLink size={14} aria-hidden="true" />
+                </Link>
+              ) : null}
+              {selectedSite.monitoringHistory.length > 0 ? (
+                <ol className="mt-5 space-y-3">
+                  {selectedSite.monitoringHistory.slice(0, 3).map((event) => (
+                    <li key={event.id} className="border-l-2 border-ocean-100 pl-3">
+                      <Link href={event.evidenceHref} className="text-xs font-bold text-ocean-900 hover:text-coral-700">
+                        {event.label} / {event.date}
+                      </Link>
+                      <p className="mt-1 text-xs leading-5 text-ocean-900/58">{event.summary}</p>
+                    </li>
+                  ))}
+                </ol>
+              ) : null}
             </div>
           ) : null}
 
@@ -169,7 +214,7 @@ export function DashboardPersonalImpactMap({ sites }: { sites: PersonalImpactSit
             </p>
             {sites.map((site) => (
               <button
-                key={`${site.campaignSlug}-${site.name}-list`}
+                key={`${site.id}-list`}
                 type="button"
                 className={cn(
                   "w-full rounded-xl border px-4 py-3 text-left text-sm transition hover:border-coral-500",

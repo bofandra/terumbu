@@ -1,0 +1,22 @@
+{
+  "exportCode": "TRB-CORP-EXPORT-2026-0001",
+  "generatedAt": "2026-06-18T02:00:00.000Z",
+  "evidence": [
+    {
+      "evidenceCode": "TRB-EVD-RAJA-001",
+      "title": "Raja Ampat coral nursery monitoring",
+      "evidenceType": "monitoring",
+      "verificationStatus": "verified",
+      "campaignTitle": "Restore Raja Ampat Reefs",
+      "sourceHref": "/campaigns/restore-raja-ampat-reefs#evidence"
+    },
+    {
+      "evidenceCode": "TRB-EVD-BALI-001",
+      "title": "Bali mangrove seedling audit",
+      "evidenceType": "field_report",
+      "verificationStatus": "verified",
+      "campaignTitle": "Mangrove Shield Bali",
+      "sourceHref": "/campaigns/mangrove-shield-bali#evidence"
+    }
+  ]
+}

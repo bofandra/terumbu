@@ -7,6 +7,12 @@ import { cn } from "@/lib/utils";
 export const adminSelectClassName =
   "min-h-10 rounded-lg border border-ocean-900/14 bg-white px-3 text-sm font-semibold text-ocean-900 outline-none transition focus:border-coral-500";
 
+export const adminInputClassName =
+  "min-h-10 rounded-lg border border-ocean-900/14 bg-white px-3 text-sm font-semibold text-ocean-900 outline-none transition placeholder:text-ocean-900/38 focus:border-coral-500";
+
+export const adminTextareaClassName =
+  "min-h-24 rounded-lg border border-ocean-900/14 bg-white px-3 py-2 text-sm font-semibold leading-6 text-ocean-900 outline-none transition placeholder:text-ocean-900/38 focus:border-coral-500";
+
 export const adminPanelClassName = "overflow-hidden rounded-lg border border-ocean-900/10 bg-white shadow-soft";
 
 const badgeClasses: Record<string, string> = {

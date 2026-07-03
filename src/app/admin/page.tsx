@@ -15,7 +15,7 @@ import type { LucideIcon } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { requireRole } from "@/lib/auth";
-import { reconcileDonationAction, verifyEvidenceAction } from "@/lib/portal-actions";
+import { reconcileDonationAction, reconcileExpeditionBookingAction, verifyEvidenceAction } from "@/lib/portal-actions";
 import { getAdminOperationsData, getAdminPortalData } from "@/lib/queries";
 import { cn, formatCurrency } from "@/lib/utils";
 
@@ -36,6 +36,8 @@ const badgeClasses: Record<string, string> = {
   paid: "bg-kelp-100 text-kelp-700",
   pending: "bg-sand-100 text-ocean-900",
   published: "bg-ocean-50 text-ocean-700",
+  refund: "bg-coral-100 text-coral-700",
+  refunded: "bg-coral-100 text-coral-700",
   rejected: "bg-coral-100 text-coral-700",
   review: "bg-sand-100 text-ocean-900",
   submitted: "bg-sand-100 text-ocean-900",
@@ -94,12 +96,20 @@ export default async function AdminPortalPage() {
   const reviewCampaigns = data.campaigns.filter((campaign) => campaign.status === "review").length;
   const liveCampaigns = data.campaigns.filter((campaign) => campaign.status === "published" || campaign.status === "funded").length;
   const pendingEvidence = data.evidence.filter((item) => item.verificationStatus !== "verified").length;
-  const donationsToReconcile = data.donations.filter((donation) => donation.status !== "paid").length;
+  const donationsToReconcile = data.donations.filter((donation) => donation.status !== "paid" || donation.pendingOperation).length;
 
   const evidencePriority: Record<string, number> = { submitted: 0, in_review: 1, rejected: 2, verified: 3 };
   const donationPriority: Record<string, number> = { created: 0, pending: 1, failed: 2, expired: 3, refunded: 4, paid: 5 };
   const evidenceQueue = [...data.evidence].sort((a, b) => (evidencePriority[a.verificationStatus] ?? 9) - (evidencePriority[b.verificationStatus] ?? 9)).slice(0, 5);
-  const donationQueue = [...data.donations].sort((a, b) => (donationPriority[a.status] ?? 9) - (donationPriority[b.status] ?? 9)).slice(0, 5);
+  const donationQueue = [...data.donations]
+    .filter((donation) => donation.status !== "paid" || donation.pendingOperation)
+    .sort((a, b) => {
+      const firstPriority = a.pendingOperation?.operationType === "refund" ? -1 : donationPriority[a.status] ?? 9;
+      const secondPriority = b.pendingOperation?.operationType === "refund" ? -1 : donationPriority[b.status] ?? 9;
+
+      return firstPriority - secondPriority;
+    })
+    .slice(0, 5);
 
   const metrics: MetricCard[] = [
     {
@@ -285,19 +295,25 @@ export default async function AdminPortalPage() {
             {donationQueue.map((donation) => (
               <form key={donation.id} action={reconcileDonationAction} className="p-4">
                 <input type="hidden" name="donationId" value={donation.id} />
+                {donation.pendingOperation ? <input type="hidden" name="operationId" value={donation.pendingOperation.id} /> : null}
                 <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-start">
                   <div>
                     <div className="flex flex-wrap items-center gap-2">
                       <p className="font-bold text-ocean-900">{donation.campaignTitle}</p>
                       <StatusBadge value={donation.status} />
+                      {donation.pendingOperation ? <StatusBadge value={donation.pendingOperation.operationType} /> : null}
                     </div>
                     <p className="mt-1 text-sm font-semibold text-ocean-900/58">{donation.donorName ?? "Anonymous donor"}</p>
                     <p className="mt-2 text-sm font-bold text-ocean-900">{formatCurrency(Number(donation.amount))}</p>
+                    {donation.pendingOperation?.reason ? (
+                      <p className="mt-2 text-xs font-semibold text-ocean-900/52">{donation.pendingOperation.reason}</p>
+                    ) : null}
                   </div>
                   <div className="flex flex-wrap gap-2">
-                    <select name="status" defaultValue={donation.status === "failed" ? "failed" : "paid"} className={selectClassName}>
+                    <select name="status" defaultValue={donation.pendingOperation?.operationType === "refund" ? "refunded" : donation.status === "failed" ? "failed" : "paid"} className={selectClassName}>
                       <option value="paid">Paid</option>
                       <option value="failed">Failed</option>
+                      <option value="refunded">Refunded</option>
                     </select>
                     <Button type="submit" tone="secondary" className="min-h-10 px-4">
                       <ReceiptText className="size-4" aria-hidden="true" />
@@ -308,6 +324,43 @@ export default async function AdminPortalPage() {
               </form>
             ))}
             {donationQueue.length === 0 ? <p className="p-4 text-sm font-semibold text-ocean-900/58">No donation records found.</p> : null}
+          </div>
+
+          <div className="border-t border-ocean-900/10 p-4">
+            <h3 className="font-bold text-ocean-900">Expedition billing requests</h3>
+            <p className="mt-1 text-sm font-semibold text-ocean-900/58">Pending booking refunds and payment decisions</p>
+          </div>
+          <div className="divide-y divide-ocean-900/10">
+            {data.bookingPaymentOperations.slice(0, 4).map((operation) => (
+              <form key={operation.id} action={reconcileExpeditionBookingAction} className="p-4">
+                <input type="hidden" name="bookingId" value={operation.bookingId ?? ""} />
+                <input type="hidden" name="operationId" value={operation.id} />
+                <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-start">
+                  <div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="font-bold text-ocean-900">{operation.expeditionTitle}</p>
+                      <StatusBadge value={operation.paymentStatus} />
+                      <StatusBadge value={operation.operationType} />
+                    </div>
+                    <p className="mt-1 text-sm font-semibold text-ocean-900/58">{operation.contactName} / {operation.bookingCode}</p>
+                    <p className="mt-2 text-sm font-bold text-ocean-900">{formatCurrency(Number(operation.amount ?? 0))}</p>
+                    {operation.reason ? <p className="mt-2 text-xs font-semibold text-ocean-900/52">{operation.reason}</p> : null}
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <select name="status" defaultValue={operation.operationType === "refund" ? "refunded" : "paid"} className={selectClassName}>
+                      <option value="paid">Paid</option>
+                      <option value="failed">Failed</option>
+                      <option value="refunded">Refunded</option>
+                    </select>
+                    <Button type="submit" tone="secondary" className="min-h-10 px-4">
+                      <ReceiptText className="size-4" aria-hidden="true" />
+                      Reconcile
+                    </Button>
+                  </div>
+                </div>
+              </form>
+            ))}
+            {data.bookingPaymentOperations.length === 0 ? <p className="p-4 text-sm font-semibold text-ocean-900/58">No expedition billing requests found.</p> : null}
           </div>
         </section>
 

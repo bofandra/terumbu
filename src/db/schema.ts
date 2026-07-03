@@ -137,6 +137,26 @@ export const profiles = pgTable("profiles", {
   userIdx: uniqueIndex("profiles_user_idx").on(table.userId)
 }));
 
+export const userPaymentMethods = pgTable("user_payment_methods", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  provider: varchar("provider", { length: 80 }).default("demo_gateway").notNull(),
+  providerPaymentMethodId: varchar("provider_payment_method_id", { length: 255 }).notNull(),
+  label: varchar("label", { length: 160 }).notNull(),
+  brand: varchar("brand", { length: 80 }).default("Demo Card").notNull(),
+  last4: varchar("last4", { length: 4 }).notNull(),
+  expMonth: integer("exp_month"),
+  expYear: integer("exp_year"),
+  isDefault: boolean("is_default").default(false).notNull(),
+  status: varchar("status", { length: 80 }).default("active").notNull(),
+  metadata: jsonb("metadata"),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull()
+}, (table) => ({
+  userIdx: index("user_payment_methods_user_idx").on(table.userId),
+  providerIdx: uniqueIndex("user_payment_methods_provider_idx").on(table.provider, table.providerPaymentMethodId)
+}));
+
 export const organizations = pgTable("organizations", {
   id: uuid("id").defaultRandom().primaryKey(),
   name: varchar("name", { length: 180 }).notNull(),
@@ -150,6 +170,20 @@ export const organizations = pgTable("organizations", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull()
 }, (table) => ({
   slugIdx: uniqueIndex("organizations_slug_idx").on(table.slug)
+}));
+
+export const organizationUsers = pgTable("organization_users", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  organizationId: uuid("organization_id").notNull().references(() => organizations.id, { onDelete: "cascade" }),
+  userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  role: varchar("role", { length: 80 }).default("manager").notNull(),
+  status: varchar("status", { length: 80 }).default("active").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull()
+}, (table) => ({
+  organizationIdx: index("organization_users_organization_idx").on(table.organizationId),
+  userIdx: index("organization_users_user_idx").on(table.userId),
+  userOrganizationIdx: uniqueIndex("organization_users_unique_idx").on(table.organizationId, table.userId)
 }));
 
 export const campaigns = pgTable("campaigns", {
@@ -192,6 +226,31 @@ export const impactSites = pgTable("impact_sites", {
   campaignIdx: index("impact_sites_campaign_idx").on(table.campaignId)
 }));
 
+export const donationSubscriptions = pgTable("donation_subscriptions", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  campaignId: uuid("campaign_id").notNull().references(() => campaigns.id),
+  userId: uuid("user_id").references(() => users.id, { onDelete: "set null" }),
+  paymentMethodId: uuid("payment_method_id").references(() => userPaymentMethods.id, { onDelete: "set null" }),
+  donorName: varchar("donor_name", { length: 160 }).notNull(),
+  donorEmail: varchar("donor_email", { length: 255 }).notNull(),
+  amount: numeric("amount", { precision: 14, scale: 2 }).notNull(),
+  currency: varchar("currency", { length: 8 }).default("IDR").notNull(),
+  interval: varchar("interval", { length: 40 }).default("month").notNull(),
+  status: varchar("status", { length: 80 }).default("incomplete").notNull(),
+  provider: varchar("provider", { length: 80 }).default("demo_gateway").notNull(),
+  providerSubscriptionReference: varchar("provider_subscription_reference", { length: 255 }).notNull(),
+  startedAt: timestamp("started_at", { withTimezone: true }),
+  nextBillingAt: timestamp("next_billing_at", { withTimezone: true }),
+  cancelledAt: timestamp("cancelled_at", { withTimezone: true }),
+  metadata: jsonb("metadata"),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull()
+}, (table) => ({
+  campaignIdx: index("donation_subscriptions_campaign_idx").on(table.campaignId),
+  userIdx: index("donation_subscriptions_user_idx").on(table.userId),
+  providerIdx: uniqueIndex("donation_subscriptions_provider_idx").on(table.provider, table.providerSubscriptionReference)
+}));
+
 export const campaignUpdates = pgTable("campaign_updates", {
   id: uuid("id").defaultRandom().primaryKey(),
   campaignId: uuid("campaign_id").notNull().references(() => campaigns.id, { onDelete: "cascade" }),
@@ -202,6 +261,90 @@ export const campaignUpdates = pgTable("campaign_updates", {
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull()
 }, (table) => ({
   campaignIdx: index("campaign_updates_campaign_idx").on(table.campaignId)
+}));
+
+export const userSavedCampaigns = pgTable("user_saved_campaigns", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  campaignId: uuid("campaign_id").notNull().references(() => campaigns.id, { onDelete: "cascade" }),
+  status: varchar("status", { length: 80 }).default("active").notNull(),
+  savedAt: timestamp("saved_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull()
+}, (table) => ({
+  userIdx: index("user_saved_campaigns_user_idx").on(table.userId),
+  campaignIdx: index("user_saved_campaigns_campaign_idx").on(table.campaignId),
+  userCampaignIdx: uniqueIndex("user_saved_campaigns_unique_idx").on(table.userId, table.campaignId)
+}));
+
+export const campaignFollowSubscriptions = pgTable("campaign_follow_subscriptions", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  campaignId: uuid("campaign_id").notNull().references(() => campaigns.id, { onDelete: "cascade" }),
+  email: varchar("email", { length: 255 }),
+  status: varchar("status", { length: 80 }).default("active").notNull(),
+  frequency: varchar("frequency", { length: 80 }).default("weekly").notNull(),
+  lastNotifiedAt: timestamp("last_notified_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull()
+}, (table) => ({
+  userIdx: index("campaign_follow_subscriptions_user_idx").on(table.userId),
+  campaignIdx: index("campaign_follow_subscriptions_campaign_idx").on(table.campaignId),
+  userCampaignIdx: uniqueIndex("campaign_follow_subscriptions_unique_idx").on(table.userId, table.campaignId)
+}));
+
+export const notificationPreferences = pgTable("notification_preferences", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  campaignUpdates: boolean("campaign_updates").default(true).notNull(),
+  evidenceAlerts: boolean("evidence_alerts").default(true).notNull(),
+  expeditionReminders: boolean("expedition_reminders").default(true).notNull(),
+  academyUpdates: boolean("academy_updates").default(true).notNull(),
+  monthlyImpactEmail: boolean("monthly_impact_email").default(true).notNull(),
+  monthlyImpactReport: boolean("monthly_impact_report").default(true).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull()
+}, (table) => ({
+  userIdx: uniqueIndex("notification_preferences_user_idx").on(table.userId)
+}));
+
+export const userNotifications = pgTable("user_notifications", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  notificationCode: varchar("notification_code", { length: 180 }).notNull(),
+  category: varchar("category", { length: 120 }).notNull(),
+  title: varchar("title", { length: 220 }).notNull(),
+  message: text("message").notNull(),
+  href: text("href").notNull(),
+  sourceType: varchar("source_type", { length: 80 }),
+  sourceId: uuid("source_id"),
+  readAt: timestamp("read_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull()
+}, (table) => ({
+  userIdx: index("user_notifications_user_idx").on(table.userId),
+  sourceIdx: index("user_notifications_source_idx").on(table.sourceType, table.sourceId),
+  userCodeIdx: uniqueIndex("user_notifications_code_idx").on(table.userId, table.notificationCode)
+}));
+
+export const monthlyImpactReports = pgTable("monthly_impact_reports", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  reportMonth: varchar("report_month", { length: 7 }).notNull(),
+  status: varchar("status", { length: 80 }).default("ready").notNull(),
+  label: varchar("label", { length: 160 }).notNull(),
+  contributions: numeric("contributions", { precision: 14, scale: 2 }).default("0").notNull(),
+  campaignUpdates: integer("campaign_updates").default(0).notNull(),
+  newEvidence: integer("new_evidence").default(0).notNull(),
+  coralsMonitored: integer("corals_monitored").default(0).notNull(),
+  academyProgress: integer("academy_progress").default(0).notNull(),
+  emailedAt: timestamp("emailed_at", { withTimezone: true }),
+  metadata: jsonb("metadata"),
+  generatedAt: timestamp("generated_at", { withTimezone: true }).defaultNow().notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull()
+}, (table) => ({
+  userIdx: index("monthly_impact_reports_user_idx").on(table.userId),
+  userMonthIdx: uniqueIndex("monthly_impact_reports_user_month_idx").on(table.userId, table.reportMonth)
 }));
 
 export const projectEvidence = pgTable("project_evidence", {
@@ -228,6 +371,8 @@ export const donations = pgTable("donations", {
   id: uuid("id").defaultRandom().primaryKey(),
   campaignId: uuid("campaign_id").notNull().references(() => campaigns.id),
   userId: uuid("user_id").references(() => users.id, { onDelete: "set null" }),
+  subscriptionId: uuid("subscription_id").references(() => donationSubscriptions.id, { onDelete: "set null" }),
+  idempotencyKey: varchar("idempotency_key", { length: 160 }),
   donorName: varchar("donor_name", { length: 160 }),
   donorEmail: varchar("donor_email", { length: 255 }),
   amount: numeric("amount", { precision: 14, scale: 2 }).notNull(),
@@ -238,7 +383,8 @@ export const donations = pgTable("donations", {
 }, (table) => ({
   campaignIdx: index("donations_campaign_idx").on(table.campaignId),
   userIdx: index("donations_user_idx").on(table.userId),
-  statusIdx: index("donations_status_idx").on(table.status)
+  statusIdx: index("donations_status_idx").on(table.status),
+  idempotencyIdx: uniqueIndex("donations_idempotency_idx").on(table.idempotencyKey)
 }));
 
 export const donationReceipts = pgTable("donation_receipts", {
@@ -256,6 +402,7 @@ export const donationReceipts = pgTable("donation_receipts", {
 export const paymentTransactions = pgTable("payment_transactions", {
   id: uuid("id").defaultRandom().primaryKey(),
   donationId: uuid("donation_id").references(() => donations.id, { onDelete: "set null" }),
+  paymentMethodId: uuid("payment_method_id").references(() => userPaymentMethods.id, { onDelete: "set null" }),
   provider: varchar("provider", { length: 80 }).notNull(),
   providerReference: varchar("provider_reference", { length: 255 }).notNull(),
   status: paymentStatus("status").default("created").notNull(),
@@ -270,6 +417,7 @@ export const sponsoredEcosystems = pgTable("sponsored_ecosystems", {
   id: uuid("id").defaultRandom().primaryKey(),
   userId: uuid("user_id").references(() => users.id, { onDelete: "set null" }),
   campaignId: uuid("campaign_id").notNull().references(() => campaigns.id),
+  donationId: uuid("donation_id").references(() => donations.id, { onDelete: "set null" }),
   impactSiteId: uuid("impact_site_id").references(() => impactSites.id, { onDelete: "set null" }),
   code: varchar("code", { length: 80 }).notNull(),
   label: varchar("label", { length: 160 }).notNull(),
@@ -279,6 +427,7 @@ export const sponsoredEcosystems = pgTable("sponsored_ecosystems", {
   metadata: jsonb("metadata")
 }, (table) => ({
   codeIdx: uniqueIndex("sponsored_ecosystems_code_idx").on(table.code),
+  donationIdx: uniqueIndex("sponsored_ecosystems_donation_idx").on(table.donationId),
   userIdx: index("sponsored_ecosystems_user_idx").on(table.userId)
 }));
 
@@ -321,6 +470,7 @@ export const expeditionBookings = pgTable("expedition_bookings", {
   contactName: varchar("contact_name", { length: 160 }).notNull(),
   contactEmail: varchar("contact_email", { length: 255 }).notNull(),
   participantsCount: integer("participants_count").notNull(),
+  idempotencyKey: varchar("idempotency_key", { length: 160 }),
   totalAmount: numeric("total_amount", { precision: 14, scale: 2 }).notNull(),
   currency: varchar("currency", { length: 8 }).default("IDR").notNull(),
   status: bookingStatus("status").default("pending_payment").notNull(),
@@ -330,6 +480,7 @@ export const expeditionBookings = pgTable("expedition_bookings", {
   metadata: jsonb("metadata")
 }, (table) => ({
   bookingCodeIdx: uniqueIndex("expedition_bookings_code_idx").on(table.bookingCode),
+  idempotencyIdx: uniqueIndex("expedition_bookings_idempotency_idx").on(table.idempotencyKey),
   userIdx: index("expedition_bookings_user_idx").on(table.userId),
   departureIdx: index("expedition_bookings_departure_idx").on(table.departureId),
   statusIdx: index("expedition_bookings_status_idx").on(table.status)
@@ -351,6 +502,7 @@ export const expeditionParticipants = pgTable("expedition_participants", {
 export const expeditionBookingPayments = pgTable("expedition_booking_payments", {
   id: uuid("id").defaultRandom().primaryKey(),
   bookingId: uuid("booking_id").notNull(),
+  paymentMethodId: uuid("payment_method_id").references(() => userPaymentMethods.id, { onDelete: "set null" }),
   provider: varchar("provider", { length: 80 }).notNull(),
   providerReference: varchar("provider_reference", { length: 255 }).notNull(),
   status: paymentStatus("status").default("created").notNull(),
@@ -365,6 +517,34 @@ export const expeditionBookingPayments = pgTable("expedition_booking_payments", 
     columns: [table.bookingId],
     foreignColumns: [expeditionBookings.id]
   }).onDelete("cascade")
+}));
+
+export const paymentOperations = pgTable("payment_operations", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  operationCode: varchar("operation_code", { length: 120 }).notNull(),
+  operationType: varchar("operation_type", { length: 80 }).notNull(),
+  entityType: varchar("entity_type", { length: 80 }).notNull(),
+  donationId: uuid("donation_id").references(() => donations.id, { onDelete: "set null" }),
+  bookingId: uuid("booking_id").references(() => expeditionBookings.id, { onDelete: "set null" }),
+  subscriptionId: uuid("subscription_id").references(() => donationSubscriptions.id, { onDelete: "set null" }),
+  requestedByUserId: uuid("requested_by_user_id").references(() => users.id, { onDelete: "set null" }),
+  processedByUserId: uuid("processed_by_user_id").references(() => users.id, { onDelete: "set null" }),
+  status: varchar("status", { length: 80 }).default("pending").notNull(),
+  amount: numeric("amount", { precision: 14, scale: 2 }),
+  currency: varchar("currency", { length: 8 }).default("IDR").notNull(),
+  provider: varchar("provider", { length: 80 }).default("demo_gateway").notNull(),
+  providerReference: varchar("provider_reference", { length: 255 }),
+  reason: text("reason"),
+  metadata: jsonb("metadata"),
+  processedAt: timestamp("processed_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull()
+}, (table) => ({
+  codeIdx: uniqueIndex("payment_operations_code_idx").on(table.operationCode),
+  donationIdx: index("payment_operations_donation_idx").on(table.donationId),
+  bookingIdx: index("payment_operations_booking_idx").on(table.bookingId),
+  subscriptionIdx: index("payment_operations_subscription_idx").on(table.subscriptionId),
+  statusIdx: index("payment_operations_status_idx").on(table.status)
 }));
 
 export const courses = pgTable("courses", {
@@ -477,6 +657,8 @@ export const impactPassports = pgTable("impact_passports", {
 export const impactPassportItems = pgTable("impact_passport_items", {
   id: uuid("id").defaultRandom().primaryKey(),
   passportId: uuid("passport_id").notNull().references(() => impactPassports.id, { onDelete: "cascade" }),
+  sourceType: varchar("source_type", { length: 80 }),
+  sourceId: uuid("source_id"),
   itemType: varchar("item_type", { length: 80 }).notNull(),
   title: varchar("title", { length: 220 }).notNull(),
   description: text("description"),
@@ -484,7 +666,8 @@ export const impactPassportItems = pgTable("impact_passport_items", {
   occurredAt: timestamp("occurred_at", { withTimezone: true }).notNull(),
   metadata: jsonb("metadata")
 }, (table) => ({
-  passportIdx: index("impact_passport_items_passport_idx").on(table.passportId)
+  passportIdx: index("impact_passport_items_passport_idx").on(table.passportId),
+  sourceIdx: uniqueIndex("impact_passport_items_source_idx").on(table.passportId, table.sourceType, table.sourceId)
 }));
 
 export const corporateAccounts = pgTable("corporate_accounts", {
@@ -574,12 +757,22 @@ export const corporateReportExports = pgTable("corporate_report_exports", {
   id: uuid("id").defaultRandom().primaryKey(),
   programId: uuid("program_id").notNull().references(() => corporatePrograms.id, { onDelete: "cascade" }),
   requestedByUserId: uuid("requested_by_user_id").references(() => users.id, { onDelete: "set null" }),
+  approvedByUserId: uuid("approved_by_user_id").references(() => users.id, { onDelete: "set null" }),
   exportCode: varchar("export_code", { length: 120 }).notNull(),
+  reportType: varchar("report_type", { length: 80 }).default("esg").notNull(),
   status: varchar("status", { length: 80 }).default("queued").notNull(),
   fileUrl: text("file_url"),
+  previewUrl: text("preview_url"),
+  evidenceBundleUrl: text("evidence_bundle_url"),
+  publicSlug: varchar("public_slug", { length: 180 }),
+  approvedAt: timestamp("approved_at", { withTimezone: true }),
+  publishedAt: timestamp("published_at", { withTimezone: true }),
+  metadata: jsonb("metadata"),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull()
 }, (table) => ({
   exportCodeIdx: uniqueIndex("corporate_report_exports_code_idx").on(table.exportCode),
+  publicSlugIdx: uniqueIndex("corporate_report_exports_public_slug_idx").on(table.publicSlug),
   programIdx: index("corporate_report_exports_program_idx").on(table.programId)
 }));
 

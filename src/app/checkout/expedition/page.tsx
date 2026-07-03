@@ -1,3 +1,5 @@
+import { randomBytes } from "node:crypto";
+
 import { Button } from "@/components/ui/button";
 import { getSessionUser } from "@/lib/auth";
 import { bookExpeditionAction } from "@/lib/checkout-actions";
@@ -26,6 +28,7 @@ export default async function ExpeditionCheckoutPage({ searchParams }: Expeditio
   const visibleOptions = filteredOptions.length > 0 ? filteredOptions : options;
   const selectedDeparture = params?.departure ?? visibleOptions[0]?.departureId;
   const selectedParticipants = Math.max(1, Math.min(12, Number(params?.participants ?? 1) || 1));
+  const idempotencyKey = `expedition-${randomBytes(12).toString("hex")}`;
 
   return (
     <main className="min-h-screen bg-sand-50 px-4 py-12 sm:px-6 lg:px-8">
@@ -42,6 +45,7 @@ export default async function ExpeditionCheckoutPage({ searchParams }: Expeditio
         ) : null}
         <form action={bookExpeditionAction} className="mt-6 grid gap-4">
           <input type="hidden" name="next" value="/checkout/expedition" />
+          <input type="hidden" name="idempotencyKey" value={idempotencyKey} />
           <label className="grid gap-2 text-sm font-semibold text-ocean-900">
             Departure
             <select name="departureId" defaultValue={selectedDeparture} className="rounded-xl border border-ocean-900/14 px-4 py-3 outline-none focus:border-coral-500">

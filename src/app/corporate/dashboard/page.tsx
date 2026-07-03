@@ -54,11 +54,11 @@ function compactCurrency(value: number) {
 }
 
 function statusClass(status: string) {
-  if (status === "On Track" || status === "Complete" || status === "Completed") {
+  if (status === "On Track" || status === "Complete" || status === "Completed" || status === "published" || status === "approved" || status === "generated") {
     return "bg-kelp-100 text-kelp-700";
   }
 
-  if (status === "Needs Attention" || status === "Review" || status === "Requires explanation") {
+  if (status === "Needs Attention" || status === "Review" || status === "Requires explanation" || status === "review") {
     return "bg-coral-100 text-coral-700";
   }
 
@@ -139,6 +139,8 @@ export default async function CorporateDashboardPage() {
 
   const maxTrendEmployees = Math.max(1, ...data.employeeTrend.map((item) => item.employees));
   const maxTrendHours = Math.max(1, ...data.employeeTrend.map((item) => item.volunteerHours));
+  const publicImpactHref = data.publicImpactPreview.href ?? "/corporate/reports";
+  const publicImpactCta = data.publicImpactPreview.href ? "View Public Impact Page" : "Prepare Public Page";
 
   return (
     <main className="mx-auto max-w-[1500px] px-4 py-6 sm:px-6 lg:px-8">
@@ -168,9 +170,9 @@ export default async function CorporateDashboardPage() {
                 <Plus size={17} aria-hidden="true" />
                 Add New Project
               </ButtonLink>
-              <ButtonLink href="#public-impact-page" tone="light">
+              <ButtonLink href={publicImpactHref} tone="light">
                 <Globe2 size={17} aria-hidden="true" />
-                View Public Impact Page
+                {publicImpactCta}
               </ButtonLink>
             </div>
           </div>
@@ -436,11 +438,13 @@ export default async function CorporateDashboardPage() {
           </div>
           <div className="mt-5 grid gap-3">
             {data.evidence.slice(0, 4).map((item) => (
-              <Link key={`${item.title}-${item.addedAt.toISOString()}`} href={item.fileUrl} className="rounded-xl border border-ocean-900/10 bg-sand-50 p-4 hover:border-coral-500">
+              <Link key={item.id} href={item.sourceHref} className="rounded-xl border border-ocean-900/10 bg-sand-50 p-4 hover:border-coral-500">
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <p className="font-bold text-ocean-900">{item.title}</p>
-                    <p className="mt-1 text-xs text-ocean-900/56">{item.campaignTitle} · {item.organizationName}</p>
+                    <p className="mt-1 text-xs text-ocean-900/56">
+                      {item.stageLabel} · {item.campaignTitle} · {item.organizationName}
+                    </p>
                   </div>
                   <span className={cn("rounded-full px-2 py-1 text-xs font-bold", statusClass(item.verificationStatus === "verified" ? "On Track" : "Under Review"))}>
                     {item.verificationStatus}
@@ -511,7 +515,7 @@ export default async function CorporateDashboardPage() {
           <div className="flex items-start justify-between gap-3">
             <div>
               <p className="text-sm font-bold uppercase text-coral-700">Reports center</p>
-              <h2 className="mt-2 text-xl font-bold tracking-normal text-ocean-900">{data.latestReport.reportType}</h2>
+              <h2 className="mt-2 text-xl font-bold tracking-normal text-ocean-900">{data.latestReport.reportTypeLabel ?? data.latestReport.reportType}</h2>
             </div>
             <span className={cn("rounded-full px-3 py-1 text-xs font-bold", statusClass(data.latestReport.status === "ready_for_review" ? "On Track" : data.latestReport.status))}>
               {data.latestReport.status.replaceAll("_", " ")}
@@ -534,14 +538,21 @@ export default async function CorporateDashboardPage() {
           <div className="mt-5 flex flex-wrap gap-2">
             <ButtonLink href="/corporate/reports" tone="light">
               <FileText size={17} aria-hidden="true" />
-              Preview Report
+              Manage Reports
             </ButtonLink>
-            <form action={createCorporateReportExportAction}>
-              <Button type="submit" tone="secondary">
-                Submit for Approval
+            {data.latestReport.previewUrl ? (
+              <ButtonLink href={data.latestReport.previewUrl} tone="secondary">
+                Preview Latest
                 <ArrowRight size={17} aria-hidden="true" />
-              </Button>
-            </form>
+              </ButtonLink>
+            ) : (
+              <form action={createCorporateReportExportAction}>
+                <Button type="submit" tone="secondary">
+                  Generate Report
+                  <ArrowRight size={17} aria-hidden="true" />
+                </Button>
+              </form>
+            )}
           </div>
         </article>
 
@@ -556,8 +567,8 @@ export default async function CorporateDashboardPage() {
               </p>
             ))}
           </div>
-          <Link href="/corporate/reports" className="mt-5 inline-flex items-center gap-2 text-sm font-bold text-coral-700 hover:text-coral-500">
-            Prepare public report
+          <Link href={publicImpactHref} className="mt-5 inline-flex items-center gap-2 text-sm font-bold text-coral-700 hover:text-coral-500">
+            {publicImpactCta}
             <ExternalLink size={15} aria-hidden="true" />
           </Link>
         </article>

@@ -13,6 +13,7 @@ const {
   assessmentAttempts,
   campaignUpdates,
   campaigns,
+  campaignFollowSubscriptions,
   corporateAccounts,
   corporateEmployees,
   corporateEvidenceCenter,
@@ -38,6 +39,9 @@ const {
   impactPassports,
   impactSites,
   lessonProgress,
+  monthlyImpactReports,
+  notificationPreferences,
+  organizationUsers,
   organizations,
   paymentTransactions,
   profiles,
@@ -45,6 +49,8 @@ const {
   roles,
   sponsoredEcosystems,
   userRoles,
+  userNotifications,
+  userSavedCampaigns,
   users
 } = schema;
 
@@ -90,6 +96,13 @@ const ids = {
   evidenceRajaAmpat: "dddddddd-dddd-4ddd-8ddd-dddddddddd01",
   evidenceBali: "dddddddd-dddd-4ddd-8ddd-dddddddddd02",
   evidenceKomodo: "dddddddd-dddd-4ddd-8ddd-dddddddddd03",
+  evidenceRajaAmpatBefore: "dddddddd-dddd-4ddd-8ddd-dddddddddd04",
+  evidenceBaliBefore: "dddddddd-dddd-4ddd-8ddd-dddddddddd05",
+  evidenceKomodoBefore: "dddddddd-dddd-4ddd-8ddd-dddddddddd06",
+  savedCampaignRaja: "dddddddd-dddd-4ddd-8ddd-dddddddddd07",
+  followCampaignRaja: "dddddddd-dddd-4ddd-8ddd-dddddddddd08",
+  notificationFollowUpdate: "dddddddd-dddd-4ddd-8ddd-dddddddddd09",
+  monthlyReportDemo: "dddddddd-dddd-4ddd-8ddd-dddddddddd0a",
   departureRajaAmpat: "dddddddd-dddd-4ddd-8ddd-dddddddddd11",
   departureWakatobi: "dddddddd-dddd-4ddd-8ddd-dddddddddd12",
   bookingRajaAmpat: "dddddddd-dddd-4ddd-8ddd-dddddddddd21",
@@ -301,6 +314,22 @@ async function seed() {
     [komodoOrg.slug, komodoOrg.id]
   ]);
 
+  await db
+    .insert(organizationUsers)
+    .values([
+      { organizationId: organizationBySlug.get("yayasan-bahari-lestari")!, userId: demoUser.id, role: "owner", status: "active", updatedAt: now },
+      { organizationId: organizationBySlug.get("koperasi-pesisir-hijau")!, userId: demoUser.id, role: "manager", status: "active", updatedAt: now },
+      { organizationId: organizationBySlug.get("komodo-ocean-watch")!, userId: demoUser.id, role: "manager", status: "active", updatedAt: now }
+    ])
+    .onConflictDoUpdate({
+      target: [organizationUsers.organizationId, organizationUsers.userId],
+      set: {
+        role: sql`excluded.role`,
+        status: sql`excluded.status`,
+        updatedAt: now
+      }
+    });
+
   const [rajaAmpatCampaign, baliCampaign, komodoCampaign] = await db
     .insert(campaigns)
     .values([
@@ -499,6 +528,27 @@ async function seed() {
     .insert(projectEvidence)
     .values([
       {
+        id: ids.evidenceRajaAmpatBefore,
+        campaignId: campaignBySlug.get("restore-raja-ampat-reefs")!,
+        impactSiteId: ids.impactSiteRajaAmpat,
+        uploadedByUserId: demoUser.id,
+        evidenceCode: "EVD-RAJA-AMPAT-REEF-000",
+        title: "Raja Ampat reef baseline photo",
+        evidenceType: "before_photo",
+        fileUrl: "https://images.unsplash.com/photo-1546026423-cc4642628d2b?auto=format&fit=crop&w=1200&q=80",
+        storageProvider: "cloudflare_r2_ready",
+        verificationStatus: "verified",
+        verifiedAt: date("2026-05-20T04:00:00.000Z"),
+        metadata: {
+          stage: "before",
+          surveyDate: "2026-05-20",
+          observation: "Baseline record before the first restoration table batch was installed.",
+          metricLabel: "Tagged fragments",
+          metricValue: 0,
+          reviewer: "field_partner"
+        }
+      },
+      {
         id: ids.evidenceRajaAmpat,
         campaignId: campaignBySlug.get("restore-raja-ampat-reefs")!,
         impactSiteId: ids.impactSiteRajaAmpat,
@@ -511,8 +561,34 @@ async function seed() {
         verificationStatus: "verified",
         verifiedAt: date("2026-06-12T04:00:00.000Z"),
         metadata: {
+          stage: "after",
           surveyDate: "2026-06-12",
           evidenceCount: 14,
+          observation: "Restoration tables are installed and the first demo coral cohort is tagged for monitoring.",
+          metricLabel: "Tagged fragments",
+          metricValue: 2350,
+          survivalRate: 94,
+          reviewer: "field_partner"
+        }
+      },
+      {
+        id: ids.evidenceBaliBefore,
+        campaignId: campaignBySlug.get("mangrove-shield-bali")!,
+        impactSiteId: ids.impactSiteBali,
+        uploadedByUserId: demoUser.id,
+        evidenceCode: "EVD-BALI-MANGROVE-000",
+        title: "North Bali shoreline baseline",
+        evidenceType: "before_photo",
+        fileUrl: "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1200&q=80",
+        storageProvider: "cloudflare_r2_ready",
+        verificationStatus: "verified",
+        verifiedAt: date("2026-05-18T04:00:00.000Z"),
+        metadata: {
+          stage: "before",
+          surveyDate: "2026-05-18",
+          observation: "Baseline shoreline condition recorded before nursery transfer and planting blocks.",
+          metricLabel: "Seedlings planted",
+          metricValue: 0,
           reviewer: "field_partner"
         }
       },
@@ -529,8 +605,34 @@ async function seed() {
         verificationStatus: "verified",
         verifiedAt: date("2026-06-10T04:00:00.000Z"),
         metadata: {
+          stage: "monitoring",
+          surveyDate: "2026-06-09",
+          observation: "Nursery audit confirmed planting stock and early survival indicators for the next coastal block.",
+          metricLabel: "Seedlings ready",
+          metricValue: 18400,
           seedlingsReady: 18400,
           survivalRate: 89
+        }
+      },
+      {
+        id: ids.evidenceKomodoBefore,
+        campaignId: campaignBySlug.get("cleanup-komodo-coast")!,
+        impactSiteId: ids.impactSiteKomodo,
+        uploadedByUserId: demoUser.id,
+        evidenceCode: "EVD-KOMODO-CLEANUP-000",
+        title: "Komodo cleanup route baseline",
+        evidenceType: "before_photo",
+        fileUrl: "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=1200&q=80",
+        storageProvider: "cloudflare_r2_ready",
+        verificationStatus: "verified",
+        verifiedAt: date("2026-05-24T04:00:00.000Z"),
+        metadata: {
+          stage: "before",
+          surveyDate: "2026-05-24",
+          observation: "Baseline coastal route photographed before school cleanup teams started sorting waste.",
+          metricLabel: "Sorted waste",
+          metricValue: "0 kg",
+          reviewer: "field_partner"
         }
       },
       {
@@ -545,6 +647,11 @@ async function seed() {
         storageProvider: "cloudflare_r2_ready",
         verificationStatus: "in_review",
         metadata: {
+          stage: "monitoring",
+          surveyDate: "2026-06-05",
+          observation: "School teams launched the first cleanup route and logged sorted waste by material type.",
+          metricLabel: "Sorted waste",
+          metricValue: "420 kg",
           schools: 3,
           sortedWasteKg: 420
         }
@@ -1226,7 +1333,9 @@ async function seed() {
         metadata: {
           amount: 1500000,
           currency: "IDR",
-          campaign: "restore-raja-ampat-reefs"
+          campaign: "restore-raja-ampat-reefs",
+          campaignSlug: "restore-raja-ampat-reefs",
+          evidenceCode: "EVD-RAJA-AMPAT-REEF-001"
         }
       },
       {
@@ -1239,7 +1348,9 @@ async function seed() {
         occurredAt: date("2026-06-04T02:30:00.000Z"),
         metadata: {
           codes: ["TRB-CORAL-RA-0001", "TRB-CORAL-RA-0002"],
-          fragments: 25
+          fragments: 25,
+          campaignSlug: "restore-raja-ampat-reefs",
+          evidenceCode: "EVD-RAJA-AMPAT-REEF-001"
         }
       },
       {
@@ -1279,6 +1390,127 @@ async function seed() {
         evidenceUrl: sql`excluded.evidence_url`,
         occurredAt: sql`excluded.occurred_at`,
         metadata: sql`excluded.metadata`
+      }
+    });
+
+  await db
+    .insert(notificationPreferences)
+    .values({
+      userId: demoUser.id,
+      campaignUpdates: true,
+      evidenceAlerts: true,
+      expeditionReminders: true,
+      academyUpdates: true,
+      monthlyImpactEmail: true,
+      monthlyImpactReport: true,
+      updatedAt: now
+    })
+    .onConflictDoUpdate({
+      target: notificationPreferences.userId,
+      set: {
+        campaignUpdates: true,
+        evidenceAlerts: true,
+        expeditionReminders: true,
+        academyUpdates: true,
+        monthlyImpactEmail: true,
+        monthlyImpactReport: true,
+        updatedAt: now
+      }
+    });
+
+  await db
+    .insert(userSavedCampaigns)
+    .values({
+      id: ids.savedCampaignRaja,
+      userId: demoUser.id,
+      campaignId: campaignBySlug.get("restore-raja-ampat-reefs")!,
+      status: "active",
+      savedAt: date("2026-06-13T04:00:00.000Z"),
+      updatedAt: now
+    })
+    .onConflictDoUpdate({
+      target: [userSavedCampaigns.userId, userSavedCampaigns.campaignId],
+      set: {
+        status: "active",
+        updatedAt: now
+      }
+    });
+
+  await db
+    .insert(campaignFollowSubscriptions)
+    .values({
+      id: ids.followCampaignRaja,
+      userId: demoUser.id,
+      campaignId: campaignBySlug.get("restore-raja-ampat-reefs")!,
+      email: DEMO_EMAIL,
+      status: "active",
+      frequency: "weekly",
+      updatedAt: now
+    })
+    .onConflictDoUpdate({
+      target: [campaignFollowSubscriptions.userId, campaignFollowSubscriptions.campaignId],
+      set: {
+        email: DEMO_EMAIL,
+        status: "active",
+        frequency: "weekly",
+        updatedAt: now
+      }
+    });
+
+  await db
+    .insert(userNotifications)
+    .values({
+      id: ids.notificationFollowUpdate,
+      userId: demoUser.id,
+      notificationCode: "seed-follow-update-raja-ampat",
+      category: "Followed campaigns",
+      title: "First coral table batch installed",
+      message: "Restore 10,000 Coral Fragments in Raja Ampat published a new update.",
+      href: `/campaigns/restore-raja-ampat-reefs/updates/${ids.campaignUpdateRajaAmpat}`,
+      sourceType: "campaign_update",
+      sourceId: ids.campaignUpdateRajaAmpat,
+      createdAt: date("2026-06-12T05:00:00.000Z"),
+      updatedAt: now
+    })
+    .onConflictDoUpdate({
+      target: [userNotifications.userId, userNotifications.notificationCode],
+      set: {
+        message: "Restore 10,000 Coral Fragments in Raja Ampat published a new update.",
+        href: `/campaigns/restore-raja-ampat-reefs/updates/${ids.campaignUpdateRajaAmpat}`,
+        updatedAt: now
+      }
+    });
+
+  await db
+    .insert(monthlyImpactReports)
+    .values({
+      id: ids.monthlyReportDemo,
+      userId: demoUser.id,
+      reportMonth: "2026-06",
+      status: "ready",
+      label: "June 2026 Impact Report",
+      contributions: "2750000.00",
+      campaignUpdates: 3,
+      newEvidence: 6,
+      coralsMonitored: 25,
+      academyProgress: 1,
+      metadata: {
+        generatedBy: "seed"
+      },
+      generatedAt: date("2026-06-30T03:00:00.000Z"),
+      updatedAt: now
+    })
+    .onConflictDoUpdate({
+      target: [monthlyImpactReports.userId, monthlyImpactReports.reportMonth],
+      set: {
+        label: "June 2026 Impact Report",
+        contributions: "2750000.00",
+        campaignUpdates: 3,
+        newEvidence: 6,
+        coralsMonitored: 25,
+        academyProgress: 1,
+        generatedAt: date("2026-06-30T03:00:00.000Z"),
+        updatedAt: now
       }
     });
 
@@ -1457,9 +1689,24 @@ async function seed() {
       id: ids.corporateReportExport,
       programId: ids.corporateProgram,
       requestedByUserId: demoUser.id,
+      approvedByUserId: demoUser.id,
       exportCode: "TRB-CORP-EXPORT-2026-0001",
-      status: "ready",
-      fileUrl: "https://example.com/reports/nusantara-bank-ocean-impact-2026.pdf",
+      reportType: "esg",
+      status: "published",
+      fileUrl: "/generated/corporate-reports/trb-corp-export-2026-0001.json",
+      previewUrl: "/generated/corporate-reports/trb-corp-export-2026-0001.html",
+      evidenceBundleUrl: "/generated/corporate-reports/trb-corp-export-2026-0001-evidence.json",
+      publicSlug: "nusantara-bank-ocean-impact-2026",
+      approvedAt: date("2026-06-18T04:00:00.000Z"),
+      publishedAt: date("2026-06-19T04:00:00.000Z"),
+      metadata: {
+        portfolioCount: 2,
+        evidenceCount: 2,
+        verifiedOutputs: 2,
+        committedFunding: 500000000,
+        generatedBy: "seeded_corporate_report"
+      },
+      updatedAt: date("2026-06-19T04:00:00.000Z"),
       createdAt: date("2026-06-18T02:00:00.000Z")
     })
     .onConflictDoUpdate({
@@ -1467,8 +1714,23 @@ async function seed() {
       set: {
         programId: ids.corporateProgram,
         requestedByUserId: demoUser.id,
-        status: "ready",
-        fileUrl: "https://example.com/reports/nusantara-bank-ocean-impact-2026.pdf",
+        approvedByUserId: demoUser.id,
+        reportType: "esg",
+        status: "published",
+        fileUrl: "/generated/corporate-reports/trb-corp-export-2026-0001.json",
+        previewUrl: "/generated/corporate-reports/trb-corp-export-2026-0001.html",
+        evidenceBundleUrl: "/generated/corporate-reports/trb-corp-export-2026-0001-evidence.json",
+        publicSlug: "nusantara-bank-ocean-impact-2026",
+        approvedAt: date("2026-06-18T04:00:00.000Z"),
+        publishedAt: date("2026-06-19T04:00:00.000Z"),
+        metadata: {
+          portfolioCount: 2,
+          evidenceCount: 2,
+          verifiedOutputs: 2,
+          committedFunding: 500000000,
+          generatedBy: "seeded_corporate_report"
+        },
+        updatedAt: date("2026-06-19T04:00:00.000Z"),
         createdAt: date("2026-06-18T02:00:00.000Z")
       }
     });

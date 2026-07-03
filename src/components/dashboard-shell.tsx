@@ -36,11 +36,11 @@ const dashboardNav = [
   { label: "Academy", href: "/dashboard/academy", icon: BookOpen },
   { label: "Impact Passport", href: "/dashboard/passport", icon: Award },
   { label: "Certificates", href: "/dashboard/certificates", icon: FileBadge },
-  { label: "Saved Projects", href: "/campaigns", icon: Star }
+  { label: "Saved Projects", href: "/dashboard/saved", icon: Star }
 ];
 
 const accountNav = [
-  { label: "Notifications", href: "/dashboard#notifications", icon: Bell, badge: "3" },
+  { label: "Notifications", href: "/dashboard#notifications", icon: Bell },
   { label: "Payment Methods", href: "/dashboard/donations", icon: CreditCard },
   { label: "Account Settings", href: "/dashboard/settings", icon: Settings },
   { label: "Privacy & Visibility", href: "/dashboard/settings#privacy", icon: Eye },
@@ -74,10 +74,11 @@ function initialsForDisplayName(displayName: string) {
   return initials || "OH";
 }
 
-export function DashboardShell({ children, displayName }: { children: ReactNode; displayName: string }) {
+export function DashboardShell({ children, displayName, unreadNotificationCount = 0 }: { children: ReactNode; displayName: string; unreadNotificationCount?: number }) {
   const pathname = usePathname();
   const currentLabel = getCurrentLabel(pathname);
   const initials = initialsForDisplayName(displayName);
+  const notificationBadge = unreadNotificationCount > 0 ? String(Math.min(unreadNotificationCount, 99)) : null;
 
   return (
     <div className="min-h-screen bg-[#f5f8fb] pb-20 lg:pb-0">
@@ -132,7 +133,7 @@ export function DashboardShell({ children, displayName }: { children: ReactNode;
                     <Icon size={18} aria-hidden="true" />
                     {item.label}
                   </span>
-                  {item.badge ? <span className="rounded-full bg-coral-500 px-2 py-0.5 text-[11px] text-white">{item.badge}</span> : null}
+                  {item.label === "Notifications" && notificationBadge ? <span className="rounded-full bg-coral-500 px-2 py-0.5 text-[11px] text-white">{notificationBadge}</span> : null}
                 </Link>
               );
             })}
@@ -159,7 +160,7 @@ export function DashboardShell({ children, displayName }: { children: ReactNode;
               <div className="absolute left-0 mt-3 w-72 rounded-2xl border border-ocean-900/10 bg-white p-2 shadow-soft">
                 {[...dashboardNav, ...accountNav].map((item) => {
                   const Icon = item.icon;
-                  const badge = "badge" in item && typeof item.badge === "string" ? item.badge : null;
+                  const badge = item.label === "Notifications" ? notificationBadge : null;
 
                   return (
                     <Link key={item.href} href={item.href} className="flex items-center justify-between rounded-xl px-3 py-2 text-sm font-bold text-ocean-900 hover:bg-ocean-50">
@@ -191,7 +192,7 @@ export function DashboardShell({ children, displayName }: { children: ReactNode;
             </Link>
             <Link href="/dashboard#notifications" aria-label="Notifications" className="relative flex size-11 items-center justify-center rounded-full hover:bg-ocean-50">
               <Bell size={19} aria-hidden="true" />
-              <span className="absolute right-1.5 top-1.5 min-w-5 rounded-full bg-coral-500 px-1 text-center text-[10px] font-bold leading-5 text-white">3</span>
+              {notificationBadge ? <span className="absolute right-1.5 top-1.5 min-w-5 rounded-full bg-coral-500 px-1 text-center text-[10px] font-bold leading-5 text-white">{notificationBadge}</span> : null}
             </Link>
             <details className="group relative">
               <summary className="flex cursor-pointer list-none items-center gap-3 rounded-full hover:bg-ocean-50 sm:py-1 sm:pl-1 sm:pr-3">

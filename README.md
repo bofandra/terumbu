@@ -97,6 +97,7 @@ The database schema is defined in `src/db/schema.ts`, and generated migrations l
 ### Organizations, Campaigns, And Evidence
 
 - `organizations`: conservation partners, corporate partners, and verification level.
+- `organization_users`: partner team memberships and partner-portal access status.
 - `campaigns`: fundraising campaigns, goals, raised amount, impact target, status, and publishing dates.
 - `impact_sites`: project or ecosystem locations with latitude, longitude, ecosystem type, and metadata.
 - `campaign_updates`: public field updates attached to campaigns.

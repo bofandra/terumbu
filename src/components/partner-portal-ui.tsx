@@ -217,16 +217,22 @@ export function OperationCard({
 }
 
 export function CampaignFields({ campaign, organizations }: { campaign?: Campaign; organizations: Organization[] }) {
+  const hasOrganizations = organizations.length > 0;
+
   return (
     <>
       <div className="grid gap-3 md:grid-cols-2">
         <Field label="Organization">
-          <select name="organizationId" defaultValue={campaign?.organizationId ?? organizations[0]?.id} className={inputClassName} required>
-            {organizations.map((organization) => (
-              <option key={organization.id} value={organization.id}>
-                {organization.name}
-              </option>
-            ))}
+          <select name="organizationId" defaultValue={campaign?.organizationId ?? organizations[0]?.id} className={inputClassName} disabled={!hasOrganizations} required>
+            {hasOrganizations ? (
+              organizations.map((organization) => (
+                <option key={organization.id} value={organization.id}>
+                  {organization.name}
+                </option>
+              ))
+            ) : (
+              <option>No active partner access</option>
+            )}
           </select>
         </Field>
         <Field label="Status">
@@ -290,6 +296,8 @@ export function CampaignFields({ campaign, organizations }: { campaign?: Campaig
 }
 
 export function CampaignCreateForm({ organizations }: { organizations: Organization[] }) {
+  const hasOrganizations = organizations.length > 0;
+
   return (
     <form action={createPartnerCampaignAction} data-testid="partner-create-campaign-form" className="rounded-lg border border-ocean-900/10 bg-white p-5 shadow-soft">
       <input type="hidden" name="redirectTo" value="/partner/campaigns/new" />
@@ -303,7 +311,7 @@ export function CampaignCreateForm({ organizations }: { organizations: Organizat
       <div className="mt-5 grid gap-4">
         <CampaignFields organizations={organizations} />
       </div>
-      <Button type="submit" className="mt-5">
+      <Button type="submit" className="mt-5" disabled={!hasOrganizations}>
         <Plus className="size-4" aria-hidden="true" />
         Create Campaign
       </Button>

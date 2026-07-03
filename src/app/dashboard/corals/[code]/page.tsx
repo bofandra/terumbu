@@ -20,15 +20,23 @@ export default async function SponsoredEcosystemDetailPage({ params }: { params:
     ecosystem.latitude !== null && ecosystem.longitude !== null && ecosystem.siteName
       ? [
           {
+            id: ecosystem.code,
             name: ecosystem.siteName,
             type: ecosystem.siteType ?? "Ecosystem",
             region: ecosystem.siteRegion ?? "Region pending",
             campaignSlug: null,
+            campaignTitle: ecosystem.campaignTitle,
             progress: ecosystem.progress,
             latitude: ecosystem.latitude,
             longitude: ecosystem.longitude,
             verification: "Linked site",
             evidenceCount: 0,
+            verifiedEvidenceCount: 0,
+            pendingEvidenceCount: 0,
+            latestEvidence: null,
+            beforeAfter: null,
+            monitoringHistory: [],
+            evidence: [],
             latestSurvey: ecosystem.latestSurvey
           }
         ]

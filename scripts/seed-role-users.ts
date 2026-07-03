@@ -11,6 +11,8 @@ import {
   corporatePermissions,
   corporatePrograms,
   impactPassports,
+  organizationUsers,
+  organizations,
   profiles,
   roles,
   userRoles,
@@ -266,6 +268,39 @@ async function attachCorporateAccess(userId: string) {
     });
 }
 
+async function attachPartnerAccess(userId: string) {
+  const partnerRows = await db
+    .select({
+      id: organizations.id,
+      slug: organizations.slug
+    })
+    .from(organizations);
+
+  const primaryPartner = partnerRows.find((organization) => organization.slug === "yayasan-bahari-lestari") ?? partnerRows[0];
+
+  if (!primaryPartner) {
+    return;
+  }
+
+  await db
+    .insert(organizationUsers)
+    .values({
+      organizationId: primaryPartner.id,
+      userId,
+      role: "manager",
+      status: "active",
+      updatedAt: now
+    })
+    .onConflictDoUpdate({
+      target: [organizationUsers.organizationId, organizationUsers.userId],
+      set: {
+        role: sql`excluded.role`,
+        status: sql`excluded.status`,
+        updatedAt: now
+      }
+    });
+}
+
 async function seedRoleUsers() {
   const createdAccounts = [];
 
@@ -285,6 +320,10 @@ async function seedRoleUsers() {
 
     if (account.roleKey === "corporate_admin") {
       await attachCorporateAccess(user.id);
+    }
+
+    if (account.roleKey === "partner") {
+      await attachPartnerAccess(user.id);
     }
 
     createdAccounts.push(`${account.roleKey}:${account.email}`);

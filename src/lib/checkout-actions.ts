@@ -2,27 +2,22 @@
 
 import { randomBytes } from "node:crypto";
 
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { redirect } from "next/navigation";
 
 import { db } from "@/db/client";
 import {
   campaigns,
-  donationReceipts,
   donations,
-  impactSites,
   expeditionBookingPayments,
   expeditionBookings,
   expeditionDepartures,
   expeditionParticipants,
   expeditions,
-  paymentTransactions,
-  sponsoredEcosystems
+  paymentTransactions
 } from "@/db/schema";
 import {
   buildBookingCode,
-  buildReceiptNumber,
-  buildSponsoredEcosystemCode,
   calculateBookingTotal,
   parseDonationAmount,
   parseParticipantCount,
@@ -31,6 +26,12 @@ import {
 import { getSessionUser, safeRedirectPath } from "@/lib/auth";
 import { trackEvent } from "@/lib/analytics";
 import { sendTransactionalEmail } from "@/lib/email";
+import {
+  ensureUserPaymentMethod,
+  paymentStatusFromValue,
+  transitionDonationPayment,
+  transitionExpeditionBookingPayment
+} from "@/lib/payment-workflows";
 
 function randomReference(prefix: string) {
   return `${prefix}-${new Date().getUTCFullYear()}-${randomBytes(5).toString("hex").toUpperCase()}`;
@@ -45,9 +46,13 @@ export async function createDonationAction(formData: FormData) {
     .trim()
     .toLowerCase();
   const message = String(formData.get("message") ?? "").trim();
-  const paymentState = formData.get("paymentState") === "failed" ? "failed" : "paid";
+  const paymentState = paymentStatusFromValue(formData.get("paymentState"), "paid");
   const rawIntent = String(formData.get("intent") ?? "one-time");
   const contributionIntent = rawIntent === "monthly" || rawIntent === "coral" ? rawIntent : "one-time";
+  const idempotencyKey = String(formData.get("idempotencyKey") ?? "").trim() || null;
+  const savePaymentMethod = formData.get("savePaymentMethod") === "on" || contributionIntent === "monthly";
+  const cardLast4 = String(formData.get("cardLast4") ?? "4242");
+  const cardLabel = String(formData.get("cardLabel") ?? "").trim();
   const sessionUser = await getSessionUser();
 
   if (!campaignSlug || amount < 10_000 || !donorName || !donorEmail) {
@@ -67,6 +72,21 @@ export async function createDonationAction(formData: FormData) {
     redirect("/checkout/donation?error=campaign");
   }
 
+  if (idempotencyKey) {
+    const [existingDonation] = await db
+      .select({
+        id: donations.id,
+        status: donations.status
+      })
+      .from(donations)
+      .where(eq(donations.idempotencyKey, idempotencyKey))
+      .limit(1);
+
+    if (existingDonation) {
+      redirect(`/checkout/success?status=${existingDonation.status}&type=donation&id=${existingDonation.id}`);
+    }
+  }
+
   const providerReference = randomReference("DEMO-DONATION");
   const now = new Date();
   const sponsoredFragments = contributionIntent === "coral" ? Math.max(1, Math.round(amount / 50_000)) : 0;
@@ -75,16 +95,27 @@ export async function createDonationAction(formData: FormData) {
   let receiptEmailUserId: string | null = null;
 
   await db.transaction(async (tx) => {
+    const paymentMethodId = savePaymentMethod
+      ? await ensureUserPaymentMethod(tx as unknown as typeof db, {
+          userId: sessionUser?.id,
+          label: cardLabel || null,
+          brand: "Demo Card",
+          last4: cardLast4,
+          makeDefault: contributionIntent === "monthly",
+          now
+        })
+      : null;
     const [donation] = await tx
       .insert(donations)
       .values({
         campaignId: campaign.id,
         userId: sessionUser?.id ?? null,
+        idempotencyKey,
         donorName,
         donorEmail,
         amount: amount.toFixed(2),
         currency: "IDR",
-        status: paymentState,
+        status: "created",
         message,
         createdAt: now
       })
@@ -94,9 +125,10 @@ export async function createDonationAction(formData: FormData) {
 
     await tx.insert(paymentTransactions).values({
       donationId: donation.id,
+      paymentMethodId,
       provider: "demo_gateway",
       providerReference,
-      status: paymentState,
+      status: "created",
       payload: {
         method: "demo_checkout",
         contributionIntent,
@@ -109,63 +141,26 @@ export async function createDonationAction(formData: FormData) {
       updatedAt: now
     });
 
-    if (paymentState === "paid") {
-      await tx
-        .update(campaigns)
-        .set({
-          raisedAmount: sql`${campaigns.raisedAmount} + ${amount}`,
-          donorCount: sql`${campaigns.donorCount} + 1`,
-          updatedAt: now
-        })
-        .where(eq(campaigns.id, campaign.id));
+    const result = await transitionDonationPayment(tx as unknown as typeof db, {
+      donationId: donation.id,
+      nextStatus: paymentState,
+      providerReference,
+      paymentMethodId,
+      providerPayload: {
+        method: "demo_checkout",
+        contributionIntent,
+        interval: contributionIntent === "monthly" ? "month" : null,
+        sponsoredFragments: sponsoredFragments || null,
+        cancelFromDashboard: contributionIntent === "monthly",
+        completedAt: paymentState === "paid" ? now.toISOString() : null,
+        failedAt: paymentState === "failed" ? now.toISOString() : null
+      },
+      operationType: "checkout",
+      now
+    });
 
-      const receiptNumber = buildReceiptNumber(providerReference, now);
-
-      await tx.insert(donationReceipts).values({
-        donationId: donation.id,
-        receiptNumber,
-        issuedAt: now,
-        emailedAt: now,
-        payload: {
-          campaign: campaign.title,
-          amount,
-          currency: "IDR",
-          contributionIntent,
-          interval: contributionIntent === "monthly" ? "month" : null,
-          sponsoredFragments: sponsoredFragments || null,
-          providerReference
-        }
-      });
-
-      if (contributionIntent === "coral") {
-        const [site] = await tx
-          .select({
-            id: impactSites.id
-          })
-          .from(impactSites)
-          .where(eq(impactSites.campaignId, campaign.id))
-          .limit(1);
-        const code = buildSponsoredEcosystemCode(providerReference, now);
-
-        await tx.insert(sponsoredEcosystems).values({
-          campaignId: campaign.id,
-          impactSiteId: site?.id ?? null,
-          userId: sessionUser?.id ?? null,
-          code,
-          label: `${donorName || "Anonymous"} coral sponsorship`,
-          status: "sponsored",
-          lastUpdatedAt: now,
-          metadata: {
-            donationId: donation.id,
-            fragments: sponsoredFragments,
-            amount,
-            currency: "IDR",
-            contributionIntent
-          }
-        });
-      }
-
-      receiptEmailNumber = receiptNumber;
+    if (result?.receiptCreated) {
+      receiptEmailNumber = result.receiptNumber;
       receiptEmailUserId = sessionUser?.id ?? null;
     }
   });
@@ -213,8 +208,9 @@ export async function bookExpeditionAction(formData: FormData) {
     .toLowerCase();
   const participantCount = parseParticipantCount(formData.get("participantsCount"));
   const participantNames = splitParticipantNames(formData.get("participantNames"), contactName || "Participant", participantCount);
-  const paymentState = formData.get("paymentState") === "failed" ? "failed" : "paid";
+  const paymentState = paymentStatusFromValue(formData.get("paymentState"), "paid");
   const nextPath = safeRedirectPath(formData.get("next"));
+  const idempotencyKey = String(formData.get("idempotencyKey") ?? "").trim() || null;
   const sessionUser = await getSessionUser();
 
   if (!departureId || !contactName || !contactEmail) {
@@ -240,6 +236,21 @@ export async function bookExpeditionAction(formData: FormData) {
     redirect(`${nextPath}?error=availability`);
   }
 
+  if (idempotencyKey) {
+    const [existingBooking] = await db
+      .select({
+        id: expeditionBookings.id,
+        paymentStatus: expeditionBookings.paymentStatus
+      })
+      .from(expeditionBookings)
+      .where(eq(expeditionBookings.idempotencyKey, idempotencyKey))
+      .limit(1);
+
+    if (existingBooking) {
+      redirect(`/checkout/success?status=${existingBooking.paymentStatus}&type=expedition&id=${existingBooking.id}`);
+    }
+  }
+
   const now = new Date();
   const providerReference = randomReference("DEMO-EXPEDITION");
   const bookingCode = buildBookingCode(providerReference, now);
@@ -259,12 +270,13 @@ export async function bookExpeditionAction(formData: FormData) {
         contactName,
         contactEmail,
         participantsCount: participantCount,
+        idempotencyKey,
         totalAmount: totalAmount.toFixed(2),
         currency: "IDR",
-        status: paymentState === "paid" ? "confirmed" : "pending_payment",
-        paymentStatus: paymentState,
+        status: "pending_payment",
+        paymentStatus: "created",
         bookedAt: now,
-        confirmedAt: paymentState === "paid" ? now : null,
+        confirmedAt: null,
         metadata: {
           providerReference,
           participantNames
@@ -278,7 +290,7 @@ export async function bookExpeditionAction(formData: FormData) {
       bookingId: booking.id,
       provider: "demo_gateway",
       providerReference,
-      status: paymentState,
+      status: "created",
       payload: {
         method: "demo_checkout",
         completedAt: paymentState === "paid" ? now.toISOString() : null,
@@ -295,14 +307,20 @@ export async function bookExpeditionAction(formData: FormData) {
       }))
     );
 
-    if (paymentState === "paid") {
-      await tx
-        .update(expeditionDepartures)
-        .set({
-          seatsBooked: sql`${expeditionDepartures.seatsBooked} + ${participantCount}`
-        })
-        .where(eq(expeditionDepartures.id, departure.id));
+    const result = await transitionExpeditionBookingPayment(tx as unknown as typeof db, {
+      bookingId: booking.id,
+      nextStatus: paymentState,
+      providerReference,
+      providerPayload: {
+        method: "demo_checkout",
+        completedAt: paymentState === "paid" ? now.toISOString() : null,
+        failedAt: paymentState === "failed" ? now.toISOString() : null
+      },
+      operationType: "checkout",
+      now
+    });
 
+    if (result?.nextStatus === "paid") {
       shouldSendBookingEmail = true;
       bookingEmailUserId = sessionUser?.id ?? null;
     }

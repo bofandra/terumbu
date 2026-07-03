@@ -5,6 +5,8 @@ import { db } from "@/db/client";
 import { impactPassports, profiles, users } from "@/db/schema";
 import { requireUser } from "@/lib/auth";
 import { changePasswordAction, updateAccountAction } from "@/lib/auth-actions";
+import { getNotificationPreferences } from "@/lib/queries";
+import { updateNotificationPreferencesAction } from "@/lib/retention-actions";
 
 export const metadata = {
   title: "Account Settings"
@@ -20,22 +22,26 @@ type SettingsPageProps = {
 export default async function SettingsPage({ searchParams }: SettingsPageProps) {
   const params = await searchParams;
   const sessionUser = await requireUser("/dashboard/settings");
-  const [account] = await db
-    .select({
-      name: users.name,
-      email: users.email,
-      displayName: profiles.displayName,
-      location: profiles.location,
-      bio: profiles.bio,
-      isPublic: profiles.isPublic,
-      publicSlug: impactPassports.publicSlug,
-      passportVisibility: impactPassports.visibility
-    })
-    .from(users)
-    .leftJoin(profiles, eq(profiles.userId, users.id))
-    .leftJoin(impactPassports, eq(impactPassports.userId, users.id))
-    .where(eq(users.id, sessionUser.id))
-    .limit(1);
+  const [account, preferences] = await Promise.all([
+    db
+      .select({
+        name: users.name,
+        email: users.email,
+        displayName: profiles.displayName,
+        location: profiles.location,
+        bio: profiles.bio,
+        isPublic: profiles.isPublic,
+        publicSlug: impactPassports.publicSlug,
+        passportVisibility: impactPassports.visibility
+      })
+      .from(users)
+      .leftJoin(profiles, eq(profiles.userId, users.id))
+      .leftJoin(impactPassports, eq(impactPassports.userId, users.id))
+      .where(eq(users.id, sessionUser.id))
+      .limit(1)
+      .then((rows) => rows[0]),
+    getNotificationPreferences(sessionUser.id)
+  ]);
 
   return (
     <main className="mx-auto max-w-5xl px-4 py-8 sm:px-6 lg:px-8">
@@ -109,6 +115,31 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
           <Button type="submit" tone="secondary" className="mt-6">
             Change Password
           </Button>
+        </form>
+      </section>
+
+      <section id="notifications" className="mt-6 scroll-mt-24 rounded-2xl border border-ocean-900/10 bg-white p-6 shadow-soft">
+        <h2 className="text-xl font-bold tracking-normal text-ocean-900">Notifications and reports</h2>
+        <p className="mt-2 text-sm leading-6 text-ocean-900/62">
+          Choose which retention messages Terumbu keeps in your dashboard and which monthly summaries can be queued for email.
+        </p>
+        <form action={updateNotificationPreferencesAction} className="mt-5 grid gap-4 md:grid-cols-2">
+          {[
+            ["campaignUpdates", "Campaign updates", preferences.campaignUpdates],
+            ["evidenceAlerts", "Evidence alerts", preferences.evidenceAlerts],
+            ["expeditionReminders", "Expedition reminders", preferences.expeditionReminders],
+            ["academyUpdates", "Academy updates", preferences.academyUpdates],
+            ["monthlyImpactReport", "Monthly report records", preferences.monthlyImpactReport],
+            ["monthlyImpactEmail", "Monthly email summaries", preferences.monthlyImpactEmail]
+          ].map(([name, label, enabled]) => (
+            <label key={name as string} className="flex items-center justify-between gap-4 rounded-xl border border-ocean-900/10 bg-sand-50 px-4 py-3 text-sm font-bold text-ocean-900">
+              <span>{label as string}</span>
+              <input name={name as string} type="checkbox" defaultChecked={Boolean(enabled)} className="size-5 accent-coral-500" />
+            </label>
+          ))}
+          <div className="md:col-span-2">
+            <Button type="submit">Save Notification Preferences</Button>
+          </div>
         </form>
       </section>
     </main>

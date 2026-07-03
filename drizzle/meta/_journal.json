@@ -15,6 +15,34 @@
       "when": 1782056517578,
       "tag": "0001_shorten_fk_constraint_names",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1783086869703,
+      "tag": "0002_conscious_boomerang",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1783089466055,
+      "tag": "0003_yellow_shiver_man",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1783091942136,
+      "tag": "0004_milky_angel",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1783093091581,
+      "tag": "0005_sharp_the_santerians",
+      "breakpoints": true
     }
   ]
 }

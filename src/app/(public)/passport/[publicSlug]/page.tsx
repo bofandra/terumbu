@@ -18,6 +18,7 @@ import { notFound } from "next/navigation";
 
 import { PassportCopyButton } from "@/components/passport-copy-button";
 import { ButtonLink } from "@/components/ui/button";
+import { evidenceSourceHref } from "@/lib/domain";
 import { getPublicPassport } from "@/lib/queries";
 
 export const dynamic = "force-dynamic";
@@ -66,6 +67,21 @@ function metadataString(metadata: unknown, key: string) {
   const value = (metadata as Record<string, unknown>)[key];
 
   return typeof value === "string" ? value : null;
+}
+
+function passportItemSourceHref(item: PassportItem) {
+  const campaignSlug = metadataString(item.metadata, "campaignSlug") ?? metadataString(item.metadata, "campaign");
+  const evidenceCode = metadataString(item.metadata, "evidenceCode");
+
+  if (campaignSlug && evidenceCode) {
+    return evidenceSourceHref(campaignSlug, evidenceCode);
+  }
+
+  if (campaignSlug) {
+    return `/campaigns/${campaignSlug}#evidence`;
+  }
+
+  return item.evidenceUrl;
 }
 
 function metadataNumber(metadata: unknown, key: string) {
@@ -356,9 +372,9 @@ export default async function PublicPassportPage({ params }: { params: Promise<{
                     <p className="mt-1 text-sm leading-6 text-ocean-900/58">{item.description ?? "Verified activity added to this Impact Passport."}</p>
                     <div className="mt-3 flex flex-wrap gap-2 text-xs font-bold">
                       <span className="rounded-full bg-kelp-100 px-2 py-1 text-kelp-700">{metadataString(item.metadata, "verificationStatus") ?? "Verified by Terumbu.eco"}</span>
-                      {item.evidenceUrl ? (
-                        <Link href={item.evidenceUrl} className="inline-flex items-center gap-1 rounded-full bg-ocean-50 px-2 py-1 text-ocean-900 hover:text-coral-700">
-                          Evidence
+                      {passportItemSourceHref(item) ? (
+                        <Link href={passportItemSourceHref(item)!} className="inline-flex items-center gap-1 rounded-full bg-ocean-50 px-2 py-1 text-ocean-900 hover:text-coral-700">
+                          Evidence source
                           <ExternalLink size={13} aria-hidden="true" />
                         </Link>
                       ) : null}

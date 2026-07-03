@@ -6,7 +6,7 @@ import { eq } from "drizzle-orm";
 import { redirect } from "next/navigation";
 
 import { db } from "@/db/client";
-import { accounts, impactPassports, profiles, roles, userRoles, users } from "@/db/schema";
+import { accounts, impactPassports, notificationPreferences, profiles, roles, userRoles, users } from "@/db/schema";
 import {
   createPasswordHash,
   createSession,
@@ -137,6 +137,11 @@ export async function signupAction(formData: FormData) {
     publicSlug: `${toSlug(name)}-${randomBytes(3).toString("hex")}`,
     visibility: "private",
     story: "A new Impact Passport ready to collect donations, lessons, expeditions, and verified evidence.",
+    updatedAt: now
+  });
+
+  await db.insert(notificationPreferences).values({
+    userId: user.id,
     updatedAt: now
   });
 

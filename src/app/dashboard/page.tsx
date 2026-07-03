@@ -22,9 +22,15 @@ import Link from "next/link";
 import { DashboardImpactTrend } from "@/components/dashboard-impact-trend";
 import { DashboardPersonalImpactMap } from "@/components/dashboard-personal-impact-map";
 import { PassportPreview } from "@/components/passport-preview";
-import { ButtonLink } from "@/components/ui/button";
+import { Button, ButtonLink } from "@/components/ui/button";
 import { requireUser } from "@/lib/auth";
 import { getDashboardData } from "@/lib/queries";
+import {
+  emailMonthlyImpactReportAction,
+  generateMonthlyImpactReportAction,
+  markAllNotificationsReadAction,
+  markNotificationReadAction
+} from "@/lib/retention-actions";
 import { cn, formatCurrency } from "@/lib/utils";
 
 export const metadata = {
@@ -72,7 +78,14 @@ function achievementIcon(name: string) {
   return Heart;
 }
 
-export default async function DashboardPage() {
+type DashboardPageProps = {
+  searchParams?: Promise<{
+    saved?: string;
+  }>;
+};
+
+export default async function DashboardPage({ searchParams }: DashboardPageProps) {
+  const params = await searchParams;
   const user = await requireUser("/dashboard");
   const data = await getDashboardData(user.id);
   const displayName = data.profile?.displayName ?? user.displayName ?? user.name ?? "Ocean Hero";
@@ -147,6 +160,12 @@ export default async function DashboardPage() {
           </ButtonLink>
         </div>
       </header>
+
+      {params?.saved ? (
+        <p className="mt-6 rounded-xl border border-kelp-500/20 bg-kelp-100 px-4 py-3 text-sm font-semibold text-kelp-700">
+          Dashboard update saved.
+        </p>
+      ) : null}
 
       {isNewUser ? (
         <section className="mt-6 rounded-2xl border border-dashed border-ocean-900/18 bg-white p-6 shadow-soft">
@@ -274,20 +293,39 @@ export default async function DashboardPage() {
               <p className="text-sm font-bold uppercase tracking-[0.16em] text-coral-700">Notifications</p>
               <h2 className="mt-2 text-2xl font-bold tracking-normal text-ocean-900">What changed</h2>
             </div>
-            <Bell size={22} aria-hidden="true" className="text-coral-500" />
+            <div className="flex items-center gap-3">
+              {data.unreadNotificationCount > 0 ? (
+                <form action={markAllNotificationsReadAction}>
+                  <input type="hidden" name="next" value="/dashboard#notifications" />
+                  <Button type="submit" tone="ghost" className="min-h-9 px-3 py-1.5">
+                    Mark all read
+                  </Button>
+                </form>
+              ) : null}
+              <Bell size={22} aria-hidden="true" className="text-coral-500" />
+            </div>
           </div>
           <div className="mt-5 grid gap-3">
             {data.notifications.length > 0 ? (
               data.notifications.map((notification) => (
-                <Link key={notification.id} href={notification.href} className="rounded-xl border border-ocean-900/10 bg-sand-50 p-4 hover:border-coral-500">
+                <div key={notification.id} className="rounded-xl border border-ocean-900/10 bg-sand-50 p-4">
                   <div className="flex items-start justify-between gap-3">
-                    <p className="text-sm font-bold text-ocean-900">{notification.message}</p>
+                    <Link href={notification.href} className="text-sm font-bold text-ocean-900 hover:text-coral-700">{notification.message}</Link>
                     {notification.unread ? <span className="mt-1 size-2 shrink-0 rounded-full bg-coral-500" aria-label="Unread" /> : null}
                   </div>
                   <p className="mt-2 text-xs font-semibold text-ocean-900/54">
                     {notification.category} · {formatShortDate(notification.timestamp)}
                   </p>
-                </Link>
+                  {notification.unread ? (
+                    <form action={markNotificationReadAction} className="mt-3">
+                      <input type="hidden" name="notificationId" value={notification.id} />
+                      <input type="hidden" name="next" value="/dashboard#notifications" />
+                      <Button type="submit" tone="ghost" className="min-h-9 px-3 py-1.5">
+                        Mark read
+                      </Button>
+                    </form>
+                  ) : null}
+                </div>
               ))
             ) : (
               <p className="rounded-xl border border-dashed border-ocean-900/14 p-4 text-sm font-semibold text-ocean-900/62">No notifications yet.</p>
@@ -504,7 +542,7 @@ export default async function DashboardPage() {
         </article>
 
         <div className="grid gap-6">
-          <article className="rounded-2xl border border-ocean-900/10 bg-white p-5 shadow-soft">
+          <article id="monthly-report" className="rounded-2xl border border-ocean-900/10 bg-white p-5 shadow-soft">
             <p className="text-sm font-bold uppercase tracking-[0.16em] text-coral-700">Achievements</p>
             <div className="mt-5 grid gap-3 sm:grid-cols-2">
               {data.achievements.slice(0, 4).map((achievement) => {
@@ -558,7 +596,7 @@ export default async function DashboardPage() {
                 <h2 className="mt-2 text-2xl font-bold tracking-normal text-ocean-900">{data.monthlyReport.label}</h2>
               </div>
               <span className={cn("rounded-full px-3 py-1 text-xs font-bold", data.monthlyReport.ready ? "bg-kelp-100 text-kelp-700" : "bg-sand-100 text-ocean-900/62")}>
-                {data.monthlyReport.ready ? "Ready" : "Pending"}
+                {data.monthlyReport.persisted ? "Saved" : data.monthlyReport.ready ? "Ready" : "Pending"}
               </span>
             </div>
             <div className="mt-5 grid gap-3 sm:grid-cols-2">
@@ -567,12 +605,30 @@ export default async function DashboardPage() {
               <ReportItem label="New evidence" value={String(data.monthlyReport.newEvidence)} />
               <ReportItem label="Corals monitored" value={String(data.monthlyReport.coralsMonitored)} />
             </div>
+            <p className="mt-4 text-xs font-semibold text-ocean-900/54">
+              {data.monthlyReport.emailedAt
+                ? `Last emailed ${formatShortDate(data.monthlyReport.emailedAt)}`
+                : data.monthlyReport.generatedAt
+                  ? `Generated ${formatShortDate(data.monthlyReport.generatedAt)}`
+                  : "Generate a saved report record before sending summaries."}
+            </p>
             <div className="mt-5 flex flex-wrap gap-2">
               <ButtonLink href="/dashboard/impact" tone="secondary">View Report</ButtonLink>
-              <ButtonLink href="/dashboard/impact" tone="light">
-                <Download size={17} aria-hidden="true" />
-                Download PDF
-              </ButtonLink>
+              {data.monthlyReport.preferenceEnabled ? (
+                <form action={generateMonthlyImpactReportAction}>
+                  <Button type="submit" tone="light">
+                    <Download size={17} aria-hidden="true" />
+                    Save Summary
+                  </Button>
+                </form>
+              ) : null}
+              {data.monthlyReport.emailEnabled ? (
+                <form action={emailMonthlyImpactReportAction}>
+                  <Button type="submit" tone="light">
+                    Email Summary
+                  </Button>
+                </form>
+              ) : null}
             </div>
           </article>
 

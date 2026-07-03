@@ -32,16 +32,54 @@ export type ExpeditionCardData = {
 };
 
 export type ImpactSiteData = {
+  id: string;
   name: string;
   type: string;
   region: string;
   campaignSlug: string | null;
+  campaignTitle: string | null;
   progress: number;
   latitude: number;
   longitude: number;
   verification: string;
   evidenceCount: number;
+  verifiedEvidenceCount: number;
+  pendingEvidenceCount: number;
   latestSurvey: string | null;
+  latestEvidence: EvidenceSourceData | null;
+  beforeAfter: {
+    before: EvidenceSourceData | null;
+    after: EvidenceSourceData | null;
+  } | null;
+  monitoringHistory: MonitoringHistoryItem[];
+  evidence: EvidenceSourceData[];
+};
+
+export type EvidenceSourceData = {
+  id: string;
+  code: string;
+  title: string;
+  evidenceType: string;
+  fileUrl: string;
+  verificationStatus: string;
+  stage: string;
+  stageLabel: string;
+  surveyDate: string | null;
+  observation: string | null;
+  metricLabel: string | null;
+  metricValue: string | null;
+  createdAt: Date;
+  verifiedAt: Date | null;
+  sourceHref: string;
+};
+
+export type MonitoringHistoryItem = {
+  id: string;
+  label: string;
+  date: string;
+  status: string;
+  summary: string;
+  evidenceHref: string;
 };
 
 export type PartnerLogoData = {
@@ -125,6 +163,65 @@ export function getMetadataString(metadata: unknown, key: string) {
   const value = (metadata as Record<string, unknown>)[key];
 
   return typeof value === "string" ? value : null;
+}
+
+export function getMetadataNumberOrString(metadata: unknown, key: string) {
+  if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) {
+    return null;
+  }
+
+  const value = (metadata as Record<string, unknown>)[key];
+
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return value.toLocaleString("id-ID");
+  }
+
+  return typeof value === "string" ? value : null;
+}
+
+export function evidenceStage(metadata: unknown, evidenceType: string) {
+  const explicitStage = getMetadataString(metadata, "stage") ?? getMetadataString(metadata, "captureStage");
+
+  if (explicitStage) {
+    return explicitStage;
+  }
+
+  const normalized = evidenceType.toLowerCase();
+
+  if (normalized.includes("before")) {
+    return "before";
+  }
+
+  if (normalized.includes("after")) {
+    return "after";
+  }
+
+  if (normalized.includes("monitor")) {
+    return "monitoring";
+  }
+
+  return "evidence";
+}
+
+export function evidenceStageLabel(stage: string) {
+  const labels: Record<string, string> = {
+    before: "Before",
+    after: "After",
+    monitoring: "Monitoring",
+    survey: "Survey",
+    report: "Report",
+    evidence: "Evidence"
+  };
+
+  return labels[stage] ?? stage.replaceAll("_", " ");
+}
+
+export function evidenceAnchorId(code: string) {
+  return `evidence-${code.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")}`;
+}
+
+export function evidenceSourceHref(campaignSlug: string | null | undefined, code: string) {
+  return campaignSlug ? `/campaigns/${campaignSlug}#${evidenceAnchorId(code)}` : null;
 }
 
 export function daysUntil(value: Date | null, now = new Date()) {

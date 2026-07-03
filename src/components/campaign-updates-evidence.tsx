@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { ExternalLink } from "lucide-react";
 import { useMemo, useState } from "react";
 
 import { cn } from "@/lib/utils";
@@ -18,12 +19,20 @@ export type CampaignUpdateItem = {
 };
 
 export type CampaignEvidenceItem = {
+  id: string;
+  code: string;
+  anchorId: string;
   title: string;
   evidenceType: string;
   fileUrl: string;
   verificationStatus: string;
+  stageLabel: string;
   dateLabel: string;
   locationLabel: string;
+  observation: string | null;
+  metricLabel: string | null;
+  metricValue: string | null;
+  sourceHref: string;
 };
 
 type CampaignUpdatesEvidenceProps = {
@@ -126,7 +135,7 @@ export function CampaignUpdatesEvidence({ updates, evidence }: CampaignUpdatesEv
         <div className="mt-8 grid gap-4 md:grid-cols-3">
           {visibleEvidence.length > 0 ? (
             visibleEvidence.map((item) => (
-              <article key={item.title} className="overflow-hidden rounded-2xl border border-ocean-900/10 bg-white shadow-soft">
+              <article id={item.anchorId} key={item.id} className="scroll-mt-36 overflow-hidden rounded-2xl border border-ocean-900/10 bg-white shadow-soft">
                 {isImageUrl(item.fileUrl) ? (
                   <Image
                     src={item.fileUrl}
@@ -139,13 +148,29 @@ export function CampaignUpdatesEvidence({ updates, evidence }: CampaignUpdatesEv
                   />
                 ) : null}
                 <div className="p-5">
-                  <p className="text-xs font-bold uppercase tracking-[0.14em] text-ocean-900/52">{item.evidenceType}</p>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <p className="text-xs font-bold uppercase tracking-[0.14em] text-ocean-900/52">{item.evidenceType}</p>
+                    <span className="rounded-full bg-ocean-50 px-2 py-1 text-xs font-bold text-ocean-900">{item.stageLabel}</span>
+                  </div>
                   <h2 className="mt-3 font-bold text-ocean-900">{item.title}</h2>
                   <p className="mt-3 text-sm font-semibold text-kelp-700">{item.verificationStatus}</p>
                   <p className="mt-2 text-xs text-ocean-900/52">{item.dateLabel} · {item.locationLabel}</p>
-                  <Link href={item.fileUrl} className="mt-4 inline-flex text-sm font-bold text-coral-700 hover:text-coral-500">
-                    Open evidence file
-                  </Link>
+                  {item.observation ? <p className="mt-3 text-sm leading-6 text-ocean-900/62">{item.observation}</p> : null}
+                  {item.metricLabel && item.metricValue ? (
+                    <p className="mt-3 rounded-xl bg-sand-50 px-3 py-2 text-xs font-bold text-ocean-900">
+                      {item.metricLabel}: {item.metricValue}
+                    </p>
+                  ) : null}
+                  <div className="mt-4 flex flex-wrap gap-3">
+                    <Link href={item.sourceHref} className="inline-flex items-center gap-1 text-sm font-bold text-coral-700 hover:text-coral-500">
+                      Evidence source
+                    </Link>
+                    <Link href={item.fileUrl} className="inline-flex items-center gap-1 text-sm font-bold text-ocean-900/62 hover:text-coral-500">
+                      File
+                      <ExternalLink size={14} aria-hidden="true" />
+                    </Link>
+                  </div>
+                  <p className="mt-3 text-xs font-bold uppercase tracking-[0.12em] text-ocean-900/42">{item.code}</p>
                 </div>
               </article>
             ))

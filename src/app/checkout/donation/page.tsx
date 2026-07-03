@@ -1,3 +1,5 @@
+import { randomBytes } from "node:crypto";
+
 import { Button } from "@/components/ui/button";
 import { getSessionUser } from "@/lib/auth";
 import { createDonationAction } from "@/lib/checkout-actions";
@@ -29,6 +31,7 @@ export default async function DonationCheckoutPage({ searchParams }: DonationChe
   const requestedAmount = Number(params?.amount ?? "");
   const selectedAmount = donationAmounts.includes(requestedAmount) ? requestedAmount : donationAmounts[0];
   const contributionIntent = params?.intent === "monthly" || params?.intent === "coral" ? params.intent : "one-time";
+  const idempotencyKey = `donation-${randomBytes(12).toString("hex")}`;
 
   return (
     <main className="min-h-screen bg-sand-50 px-4 py-12 sm:px-6 lg:px-8">
@@ -45,10 +48,11 @@ export default async function DonationCheckoutPage({ searchParams }: DonationChe
         ) : null}
         <form action={createDonationAction} className="mt-6 grid gap-4">
           <input type="hidden" name="intent" value={contributionIntent} />
+          <input type="hidden" name="idempotencyKey" value={idempotencyKey} />
           {contributionIntent !== "one-time" ? (
             <p className="rounded-xl border border-kelp-500/20 bg-kelp-100 px-4 py-3 text-sm font-semibold text-kelp-700">
               {contributionIntent === "monthly"
-                ? "Monthly contribution intent will be recorded with your demo transaction. Cancel anytime from your dashboard."
+                ? "Monthly giving will create a subscription record. Cancel anytime from your dashboard."
                 : "Coral sponsorship intent will create a sponsored ecosystem record after paid checkout."}
             </p>
           ) : null}
@@ -93,6 +97,42 @@ export default async function DonationCheckoutPage({ searchParams }: DonationChe
             Message
             <textarea name="message" className="min-h-24 rounded-xl border border-ocean-900/14 px-4 py-3 outline-none focus:border-coral-500" />
           </label>
+          <div className="grid gap-3 rounded-xl border border-ocean-900/10 bg-sand-50 p-4">
+            <label className="flex items-start gap-3 text-sm font-semibold text-ocean-900">
+              <input
+                type="checkbox"
+                name="savePaymentMethod"
+                defaultChecked={contributionIntent === "monthly"}
+                className="mt-1 size-4 rounded border-ocean-900/20"
+              />
+              <span>
+                Save demo payment method
+                <span className="mt-1 block text-xs font-medium leading-5 text-ocean-900/58">
+                  Required for monthly giving. This stores a demo token, card label, and last four digits only.
+                </span>
+              </span>
+            </label>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <label className="grid gap-2 text-sm font-semibold text-ocean-900">
+                Card label
+                <input
+                  name="cardLabel"
+                  defaultValue="Ocean Hero card"
+                  className="rounded-xl border border-ocean-900/14 bg-white px-4 py-3 outline-none focus:border-coral-500"
+                />
+              </label>
+              <label className="grid gap-2 text-sm font-semibold text-ocean-900">
+                Demo last 4
+                <input
+                  name="cardLast4"
+                  inputMode="numeric"
+                  maxLength={4}
+                  defaultValue="4242"
+                  className="rounded-xl border border-ocean-900/14 bg-white px-4 py-3 outline-none focus:border-coral-500"
+                />
+              </label>
+            </div>
+          </div>
           <label className="grid gap-2 text-sm font-semibold text-ocean-900">
             Demo payment result
             <select name="paymentState" defaultValue="paid" className="rounded-xl border border-ocean-900/14 px-4 py-3 outline-none focus:border-coral-500">
