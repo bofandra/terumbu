@@ -82,7 +82,7 @@ docker compose \
   --env-file "${ENV_FILE}" \
   --project-name "${PROJECT_NAME}" \
   -f "${COMPOSE_FILE}" \
-  run --rm migrate
+  run --rm -T migrate </dev/null
 
 docker compose \
   --env-file "${ENV_FILE}" \
