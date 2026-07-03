@@ -52,6 +52,17 @@ fi
 
 echo "Deploying Terumbu ${DEPLOY_VERSION} from ${DEPLOY_REF}..."
 
+CURRENT_HEAD="$(git -C "${APP_DIR}" rev-parse HEAD)"
+case "${CURRENT_HEAD}" in
+  "${DEPLOY_VERSION}"*) ;;
+  *)
+    echo "Checked out ${CURRENT_HEAD}, but deploy version is ${DEPLOY_VERSION}." >&2
+    exit 1
+    ;;
+esac
+
+echo "Checked out ${CURRENT_HEAD}."
+
 docker compose \
   --env-file "${ENV_FILE}" \
   --project-name "${PROJECT_NAME}" \
@@ -88,6 +99,15 @@ docker compose \
   -f "${COMPOSE_FILE}" \
   up -d --no-build --force-recreate web
 
+RUNNING_REVISION="$(docker inspect terumbu-web --format '{{ index .Config.Labels "org.opencontainers.image.revision" }}' 2>/dev/null || true)"
+if [ "${RUNNING_REVISION}" != "${DEPLOY_VERSION}" ]; then
+  echo "terumbu-web is running revision '${RUNNING_REVISION}', expected '${DEPLOY_VERSION}'." >&2
+  docker compose --env-file "${ENV_FILE}" --project-name "${PROJECT_NAME}" -f "${COMPOSE_FILE}" ps >&2
+  exit 1
+fi
+
+echo "terumbu-web is running revision ${RUNNING_REVISION}."
+
 APP_PORT="$(awk -F= '/^TERUMBU_APP_PORT=/ { print $2 }' "${ENV_FILE}" | tail -1 | tr -d '\r\n')"
 APP_PORT="${APP_PORT#\'}"
 APP_PORT="${APP_PORT%\'}"
@@ -97,10 +117,15 @@ APP_PORT="${APP_PORT:-3100}"
 
 echo "Waiting for Terumbu on 127.0.0.1:${APP_PORT}..."
 for attempt in $(seq 1 60); do
-  if curl --max-time 5 -fsS "http://127.0.0.1:${APP_PORT}/" >/dev/null; then
-    echo "Terumbu is healthy on port ${APP_PORT}."
-    docker compose --env-file "${ENV_FILE}" --project-name "${PROJECT_NAME}" -f "${COMPOSE_FILE}" ps
-    exit 0
+  HEALTH_RESPONSE="$(curl --max-time 5 -fsS "http://127.0.0.1:${APP_PORT}/api/health" 2>/dev/null || true)"
+  if printf '%s' "${HEALTH_RESPONSE}" | grep -q '"status":"ok"'; then
+    if printf '%s' "${HEALTH_RESPONSE}" | grep -q "\"version\":\"${DEPLOY_VERSION}\""; then
+      echo "Terumbu is healthy on port ${APP_PORT} with version ${DEPLOY_VERSION}."
+      docker compose --env-file "${ENV_FILE}" --project-name "${PROJECT_NAME}" -f "${COMPOSE_FILE}" ps
+      exit 0
+    fi
+
+    echo "Terumbu responded with a different version: ${HEALTH_RESPONSE}"
   fi
 
   echo "Terumbu is not ready yet (${attempt}/60)."
