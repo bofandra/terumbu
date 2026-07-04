@@ -4438,6 +4438,7 @@ export async function getAdminOperationsData() {
       imageUrl: string | null;
       metadata: unknown;
       metadataJson: string;
+      detailMetadata: ReturnType<typeof normalizeExpeditionDetailMetadata> | null;
       relatedCampaignId: string | null;
       relatedCampaignTitle: string | null;
       bookingCount: number;
@@ -4473,6 +4474,7 @@ export async function getAdminOperationsData() {
         imageUrl: row.imageUrl,
         metadata: row.metadata,
         metadataJson: "",
+        detailMetadata: null,
         relatedCampaignId: row.relatedCampaignId,
         relatedCampaignTitle: row.relatedCampaignTitle,
         bookingCount: expeditionBookingCounts.get(row.id) ?? 0,
@@ -4528,6 +4530,7 @@ export async function getAdminOperationsData() {
     );
 
     expedition.metadataJson = expeditionMetadataEditorJson(metadata);
+    expedition.detailMetadata = metadata;
   }
 
   return {
@@ -4790,6 +4793,7 @@ export async function getPartnerPortalData(userId?: string) {
       imageUrl: string | null;
       metadata: unknown;
       metadataJson: string;
+      detailMetadata: ReturnType<typeof normalizeExpeditionDetailMetadata> | null;
       relatedCampaignId: string | null;
       relatedCampaignTitle: string | null;
       organizationId: string | null;
@@ -4827,6 +4831,7 @@ export async function getPartnerPortalData(userId?: string) {
         imageUrl: row.imageUrl,
         metadata: row.metadata,
         metadataJson: "",
+        detailMetadata: null,
         relatedCampaignId: row.relatedCampaignId,
         relatedCampaignTitle: row.relatedCampaignTitle,
         organizationId: row.organizationId,
@@ -4884,6 +4889,7 @@ export async function getPartnerPortalData(userId?: string) {
     );
 
     expedition.metadataJson = expeditionMetadataEditorJson(metadata);
+    expedition.detailMetadata = metadata;
   }
 
   return {

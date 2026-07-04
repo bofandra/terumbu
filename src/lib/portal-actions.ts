@@ -31,7 +31,7 @@ import {
 } from "@/db/schema";
 import { createPasswordHash, requireRole } from "@/lib/auth";
 import { sendTransactionalEmail } from "@/lib/email";
-import { parseExpeditionMetadataJson } from "@/lib/expedition-metadata";
+import { parseExpeditionMetadataJson, type ExpeditionDetailMetadata } from "@/lib/expedition-metadata";
 import { transitionDonationPayment, transitionExpeditionBookingPayment } from "@/lib/payment-workflows";
 import { getEvidenceStorageProvider, normalizeEvidenceUrl, readUploadedImageAsDataUrl } from "@/lib/storage";
 
@@ -326,6 +326,234 @@ function expeditionMetadataFromForm(formData: FormData, onError: (code: string, 
   }
 
   return result.metadata;
+}
+
+function formNumber(formData: FormData, key: string, fallback = 0) {
+  const value = Number(formText(formData, key));
+
+  return Number.isFinite(value) ? value : fallback;
+}
+
+function formOptionalNumber(formData: FormData, key: string) {
+  const raw = formText(formData, key);
+  const value = Number(raw);
+
+  return raw && Number.isFinite(value) ? value : undefined;
+}
+
+function formLines(formData: FormData, key: string) {
+  return formText(formData, key)
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+}
+
+function formParagraphs(formData: FormData, key: string) {
+  return formText(formData, key)
+    .split(/\n\s*\n/)
+    .map((paragraph) => paragraph.trim())
+    .filter(Boolean);
+}
+
+function formArray(formData: FormData, key: string) {
+  return formData
+    .getAll(key)
+    .map((value) => String(value ?? "").trim());
+}
+
+function maxLength(...items: string[][]) {
+  return Math.max(0, ...items.map((item) => item.length));
+}
+
+function formPairs(formData: FormData, labelKey: string, valueKey: string) {
+  const labels = formArray(formData, labelKey);
+  const values = formArray(formData, valueKey);
+
+  return Array.from({ length: maxLength(labels, values) }, (_, index) => ({
+    label: labels[index] ?? "",
+    value: values[index] ?? ""
+  })).filter((item) => item.label || item.value);
+}
+
+function formPercentPairs(formData: FormData, labelKey: string, percentKey: string) {
+  const labels = formArray(formData, labelKey);
+  const percentages = formArray(formData, percentKey);
+
+  return Array.from({ length: maxLength(labels, percentages) }, (_, index) => ({
+    label: labels[index] ?? "",
+    percent: Math.max(0, Math.min(100, Number(percentages[index] ?? 0)))
+  })).filter((item) => item.label || item.percent > 0);
+}
+
+function partnerExpeditionMetadataFromForm(formData: FormData): ExpeditionDetailMetadata {
+  const gallerySrc = formArray(formData, "gallerySrc");
+  const galleryLabel = formArray(formData, "galleryLabel");
+  const galleryCaption = formArray(formData, "galleryCaption");
+  const galleryProvenance = formArray(formData, "galleryProvenance");
+  const pillarTitles = formArray(formData, "pillarTitle");
+  const pillarBodies = formArray(formData, "pillarBody");
+  const highlightTitles = formArray(formData, "highlightTitle");
+  const highlightStatuses = formArray(formData, "highlightStatus");
+  const impactTargetValues = formArray(formData, "impactTargetValue");
+  const impactTargetLabels = formArray(formData, "impactTargetLabel");
+  const dayLabels = formArray(formData, "itineraryDay");
+  const dayTitles = formArray(formData, "itineraryDayTitle");
+  const dayMeals = formArray(formData, "itineraryMeals");
+  const dayLevels = formArray(formData, "itineraryPhysicalLevel");
+  const dayActivities = formArray(formData, "itineraryActivities");
+  const teamNames = formArray(formData, "teamName");
+  const teamRoles = formArray(formData, "teamRole");
+  const teamDetails = formArray(formData, "teamDetail");
+  const reviewNames = formArray(formData, "reviewName");
+  const reviewJoinedAs = formArray(formData, "reviewJoinedAs");
+  const reviewRatings = formArray(formData, "reviewRating");
+  const reviewDates = formArray(formData, "reviewDate");
+  const reviewBodies = formArray(formData, "reviewBody");
+  const tripUpdateTitles = formArray(formData, "tripUpdateTitle");
+  const tripUpdateDates = formArray(formData, "tripUpdateDate");
+  const tripUpdateBodies = formArray(formData, "tripUpdateBody");
+  const cancellationLabels = formArray(formData, "cancellationLabel");
+  const cancellationRefunds = formArray(formData, "cancellationRefund");
+  const faqQuestions = formArray(formData, "faqQuestion");
+  const faqAnswers = formArray(formData, "faqAnswer");
+  const contribution = formOptionalNumber(formData, "conservationContribution");
+  const platformFee = formOptionalNumber(formData, "platformFee");
+
+  return {
+    categoryLabel: formText(formData, "categoryLabel"),
+    activitySummary: formText(formData, "activitySummary"),
+    rating: formNumber(formData, "rating", 0),
+    reviewCount: formNumber(formData, "reviewCount", 0),
+    participantCount: formNumber(formData, "participantCount", 0),
+    difficulty: formText(formData, "difficulty"),
+    minimumAge: formNumber(formData, "minimumAge", 0),
+    languages: formLines(formData, "languages"),
+    skillRequirements: formLines(formData, "skillRequirements"),
+    tags: formLines(formData, "tags"),
+    quickFacts: formPairs(formData, "quickFactLabel", "quickFactValue"),
+    galleryImages: Array.from({ length: maxLength(gallerySrc, galleryLabel, galleryCaption, galleryProvenance) }, (_, index) => ({
+      src: gallerySrc[index] ?? "",
+      label: galleryLabel[index] ?? "",
+      caption: galleryCaption[index] ?? "",
+      provenance: galleryProvenance[index] ?? ""
+    })).filter((item) => item.src || item.label || item.caption || item.provenance),
+    hostedBy: {
+      title: formText(formData, "hostedByTitle"),
+      verificationLabel: formText(formData, "hostedByVerificationLabel"),
+      profileHref: formText(formData, "hostedByProfileHref"),
+      profileLabel: formText(formData, "hostedByProfileLabel")
+    },
+    overview: {
+      title: formText(formData, "overviewTitle"),
+      paragraphs: formParagraphs(formData, "overviewParagraphs"),
+      pillars: Array.from({ length: maxLength(pillarTitles, pillarBodies) }, (_, index) => ({
+        title: pillarTitles[index] ?? "",
+        body: pillarBodies[index] ?? ""
+      })).filter((item) => item.title || item.body),
+      passportNote: formText(formData, "passportNote")
+    },
+    highlights: Array.from({ length: maxLength(highlightTitles, highlightStatuses) }, (_, index) => ({
+      title: highlightTitles[index] ?? "",
+      status: highlightStatuses[index] ?? ""
+    })).filter((item) => item.title || item.status),
+    impact: {
+      title: formText(formData, "impactTitle"),
+      summary: formText(formData, "impactSummary"),
+      contributionPercent: formNumber(formData, "contributionPercent", 0),
+      ...(contribution === undefined ? {} : { conservationContribution: contribution }),
+      methodologyUpdatedAt: formText(formData, "methodologyUpdatedAt"),
+      methodologyNote: formText(formData, "methodologyNote"),
+      targets: Array.from({ length: maxLength(impactTargetValues, impactTargetLabels) }, (_, index) => ({
+        value: impactTargetValues[index] ?? "",
+        label: impactTargetLabels[index] ?? ""
+      })).filter((item) => item.value || item.label),
+      allocation: formPercentPairs(formData, "allocationLabel", "allocationPercent")
+    },
+    priceBreakdown: {
+      equipmentRental: formNumber(formData, "equipmentRental", 0),
+      platformFeePercent: formNumber(formData, "platformFeePercent", 0),
+      ...(platformFee === undefined ? {} : { platformFee })
+    },
+    itineraryTitle: formText(formData, "itineraryTitle"),
+    itineraryDisclaimer: formText(formData, "itineraryDisclaimer"),
+    itinerary: Array.from({ length: maxLength(dayLabels, dayTitles, dayMeals, dayLevels, dayActivities) }, (_, index) => ({
+      day: dayLabels[index] ?? "",
+      title: dayTitles[index] ?? "",
+      meals: dayMeals[index] ?? "",
+      physicalLevel: dayLevels[index] ?? "",
+      activities: (dayActivities[index] ?? "")
+        .split(/\r?\n/)
+        .map((item) => item.trim())
+        .filter(Boolean)
+    })).filter((item) => item.day || item.title || item.meals || item.physicalLevel || item.activities.length > 0),
+    included: formLines(formData, "included"),
+    notIncluded: formLines(formData, "notIncluded"),
+    requirements: formLines(formData, "requirements"),
+    safety: formLines(formData, "safety"),
+    emergencyPlanSummary: formText(formData, "emergencyPlanSummary"),
+    sustainability: formLines(formData, "sustainability"),
+    route: {
+      title: formText(formData, "routeTitle"),
+      mapTitle: formText(formData, "mapTitle"),
+      mapEmbedUrl: formText(formData, "mapEmbedUrl"),
+      privacyNote: formText(formData, "routePrivacyNote"),
+      sidebarTitle: formText(formData, "routeSidebarTitle"),
+      sidebarNote: formText(formData, "routeSidebarNote"),
+      steps: formLines(formData, "routeSteps"),
+      travelTimes: formLines(formData, "routeTravelTimes")
+    },
+    accommodation: {
+      name: formText(formData, "accommodationName"),
+      type: formText(formData, "accommodationType"),
+      details: formLines(formData, "accommodationDetails"),
+      mealNote: formText(formData, "mealNote")
+    },
+    team: Array.from({ length: maxLength(teamNames, teamRoles, teamDetails) }, (_, index) => ({
+      name: teamNames[index] ?? "",
+      role: teamRoles[index] ?? "",
+      detail: teamDetails[index] ?? ""
+    })).filter((item) => item.name || item.role || item.detail),
+    preparationCourse: {
+      title: formText(formData, "preparationCourseTitle"),
+      summary: formText(formData, "preparationCourseSummary"),
+      imageUrl: nullableText(formData, "preparationCourseImageUrl"),
+      href: formText(formData, "preparationCourseHref"),
+      ctaLabel: formText(formData, "preparationCourseCtaLabel")
+    },
+    reviewCategories: formPairs(formData, "reviewCategoryLabel", "reviewCategoryValue"),
+    reviews: Array.from({ length: maxLength(reviewNames, reviewJoinedAs, reviewRatings, reviewDates, reviewBodies) }, (_, index) => ({
+      name: reviewNames[index] ?? "",
+      joinedAs: reviewJoinedAs[index] ?? "",
+      rating: Number(reviewRatings[index] ?? 0),
+      date: reviewDates[index] ?? "",
+      body: reviewBodies[index] ?? ""
+    })).filter((item) => item.name || item.joinedAs || item.rating > 0 || item.date || item.body),
+    tripUpdates: Array.from({ length: maxLength(tripUpdateTitles, tripUpdateDates, tripUpdateBodies) }, (_, index) => ({
+      title: tripUpdateTitles[index] ?? "",
+      date: tripUpdateDates[index] ?? "",
+      body: tripUpdateBodies[index] ?? ""
+    })).filter((item) => item.title || item.date || item.body),
+    cancellationPolicy: Array.from({ length: maxLength(cancellationLabels, cancellationRefunds) }, (_, index) => ({
+      label: cancellationLabels[index] ?? "",
+      refund: cancellationRefunds[index] ?? ""
+    })).filter((item) => item.label || item.refund),
+    faqs: Array.from({ length: maxLength(faqQuestions, faqAnswers) }, (_, index) => ({
+      question: faqQuestions[index] ?? "",
+      answer: faqAnswers[index] ?? ""
+    })).filter((item) => item.question || item.answer),
+    finalCta: {
+      eyebrow: formText(formData, "finalCtaEyebrow"),
+      title: formText(formData, "finalCtaTitle"),
+      body: formText(formData, "finalCtaBody"),
+      primaryLabel: formText(formData, "finalCtaPrimaryLabel"),
+      secondaryLabel: formText(formData, "finalCtaSecondaryLabel")
+    },
+    weatherAdvisory: {
+      title: formText(formData, "weatherAdvisoryTitle"),
+      body: formText(formData, "weatherAdvisoryBody")
+    },
+    bookingTrustIndicators: formLines(formData, "bookingTrustIndicators")
+  };
 }
 
 async function getRoleId(key: string, name: string) {
@@ -1309,7 +1537,7 @@ export async function updatePartnerExpeditionAction(formData: FormData) {
   const basePrice = parsePositiveDecimal(formData.get("basePrice"));
   const summary = formText(formData, "summary");
   const relatedCampaignId = nullableText(formData, "relatedCampaignId");
-  const metadata = expeditionMetadataFromForm(formData, (code) => redirectPartnerError(formData, "/partner/expeditions", code));
+  const metadata = partnerExpeditionMetadataFromForm(formData);
 
   if (!expeditionId || !title || !slug || !region || !durationDays || !basePrice || !summary || !relatedCampaignId) {
     redirectPartnerError(formData, "/partner/expeditions", "expedition-invalid");
@@ -1353,6 +1581,54 @@ export async function updatePartnerExpeditionAction(formData: FormData) {
   });
 
   redirectPartnerSaved(formData, "/partner/expeditions", "expedition-updated");
+}
+
+export async function createPartnerExpeditionAction(formData: FormData) {
+  const user = await requireRole(["partner", "admin"], "/partner/expeditions");
+  const title = formText(formData, "title");
+  const slug = slugifyExpedition(formText(formData, "slug") || title);
+  const region = formText(formData, "region");
+  const durationDays = parsePositiveInteger(formData.get("durationDays"));
+  const basePrice = parsePositiveDecimal(formData.get("basePrice"));
+  const summary = formText(formData, "summary");
+  const relatedCampaignId = nullableText(formData, "relatedCampaignId");
+
+  if (!title || !slug || !region || !durationDays || !basePrice || !summary || !relatedCampaignId) {
+    redirectPartnerError(formData, "/partner/expeditions", "expedition-invalid");
+  }
+
+  await requireCampaignAccess(user.id, relatedCampaignId, formData, "/partner/expeditions");
+
+  const [existing] = await db.select({ id: expeditions.id }).from(expeditions).where(eq(expeditions.slug, slug)).limit(1);
+
+  if (existing) {
+    redirectPartnerError(formData, "/partner/expeditions", "expedition-slug");
+  }
+
+  const [expedition] = await db
+    .insert(expeditions)
+    .values({
+      title,
+      slug,
+      region,
+      durationDays,
+      basePrice,
+      summary,
+      imageUrl: nullableText(formData, "imageUrl"),
+      relatedCampaignId,
+      metadata: null
+    })
+    .returning({ id: expeditions.id });
+
+  await db.insert(adminAuditLogs).values({
+    actorUserId: user.id,
+    action: "partner_expedition.created",
+    entityType: "expedition",
+    entityId: expedition.id,
+    metadata: { source: "partner_portal", slug, relatedCampaignId }
+  });
+
+  redirectPartnerSaved(formData, "/partner/expeditions", "expedition-created");
 }
 
 export async function createPartnerExpeditionDepartureAction(formData: FormData) {

@@ -87,7 +87,7 @@ export function PartnerShell({ children, displayName, roleLabel }: { children: R
           <div className="mt-6 hidden rounded-lg border border-ocean-900/10 bg-sand-50 p-4 lg:block">
             <p className="text-xs font-bold uppercase tracking-[0.14em] text-coral-700">Partner workspace</p>
             <p className="mt-2 text-sm font-semibold leading-6 text-ocean-900/68">
-              Campaign setup, field activity, image uploads, and verification tracking in one place.
+              Campaign setup, expedition details, field activity, images, and verification tracking in one place.
             </p>
           </div>
         </aside>
@@ -100,7 +100,7 @@ export function PartnerShell({ children, displayName, roleLabel }: { children: R
               </Link>
               <div className="min-w-0">
                 <p className="text-xs font-bold uppercase tracking-[0.16em] text-coral-700">Partner portal</p>
-                <p className="truncate text-lg font-bold tracking-normal text-ocean-900 sm:text-xl">Campaign workspace</p>
+                <p className="truncate text-lg font-bold tracking-normal text-ocean-900 sm:text-xl">Partner workspace</p>
               </div>
             </div>
 
