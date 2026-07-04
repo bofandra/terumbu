@@ -43,6 +43,13 @@
       "when": 1783093091581,
       "tag": "0005_sharp_the_santerians",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1783144640669,
+      "tag": "0006_steep_maverick",
+      "breakpoints": true
     }
   ]
 }

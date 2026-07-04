@@ -5,7 +5,7 @@ Terumbu.eco is a conservation engagement platform for Indonesia's coastal ecosys
 ## Features
 
 - Public homepage with live impact stats, featured campaigns, expeditions, impact map preview, and Impact Passport preview.
-- Campaign listing and campaign detail pages with donation progress, partner verification, field updates, impact sites, and evidence records.
+- Campaign listing and campaign detail pages with donation progress, partner verification, field activity, impact sites, and evidence records.
 - Donation checkout flow with demo payment webhook handling.
 - Conservation expedition listing, trip detail pages, departure availability, and booking checkout flow.
 - Terumbu Academy course catalog, course detail pages, lesson progress, assessments, certificates, and learn-to-action pathways.
@@ -100,7 +100,8 @@ The database schema is defined in `src/db/schema.ts`, and generated migrations l
 - `organization_users`: partner team memberships and partner-portal access status.
 - `campaigns`: fundraising campaigns, goals, raised amount, impact target, status, and publishing dates.
 - `impact_sites`: project or ecosystem locations with latitude, longitude, ecosystem type, and metadata.
-- `campaign_updates`: public field updates attached to campaigns.
+- `campaign_activity`: partner-facing activity records that can link to a public update, evidence record, or both.
+- `campaign_updates`: compatibility records for public field updates attached to campaigns.
 - `project_evidence`: evidence files, verification status, uploader, site, campaign, and metadata.
 - `sponsored_ecosystems`: user-linked or campaign-linked sponsored corals, mangroves, or other ecosystem units.
 

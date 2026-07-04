@@ -4,6 +4,7 @@ import { db } from "@/db/client";
 import {
   assessmentAttempts,
   adminAuditLogs,
+  campaignActivities,
   campaignUpdates,
   campaigns,
   campaignFollowSubscriptions,
@@ -4338,7 +4339,7 @@ export async function getPartnerPortalData(userId?: string) {
   const organizationScope = organizationIds === null ? sql`true` : organizationIds.length > 0 ? inArray(organizations.id, organizationIds) : sql`false`;
   const campaignScope = organizationIds === null ? sql`true` : organizationIds.length > 0 ? inArray(campaigns.organizationId, organizationIds) : sql`false`;
 
-  const [organizationRows, campaignRows, evidenceRows, updateRows, siteRows, sponsoredRows, donorRows] = await Promise.all([
+  const [organizationRows, campaignRows, evidenceRows, updateRows, activityRows, siteRows, sponsoredRows, donorRows] = await Promise.all([
     db
       .select({
         id: organizations.id,
@@ -4402,12 +4403,40 @@ export async function getPartnerPortalData(userId?: string) {
         body: campaignUpdates.body,
         imageUrl: campaignUpdates.imageUrl,
         campaignTitle: campaigns.title,
-        publishedAt: campaignUpdates.publishedAt
+        publishedAt: campaignUpdates.publishedAt,
+        createdAt: campaignUpdates.createdAt
       })
       .from(campaignUpdates)
       .innerJoin(campaigns, eq(campaignUpdates.campaignId, campaigns.id))
       .where(campaignScope)
       .orderBy(desc(campaignUpdates.publishedAt)),
+    db
+      .select({
+        id: campaignActivities.id,
+        campaignId: campaignActivities.campaignId,
+        sourceUpdateId: campaignActivities.sourceUpdateId,
+        sourceEvidenceId: campaignActivities.sourceEvidenceId,
+        activityCode: campaignActivities.activityCode,
+        title: campaignActivities.title,
+        body: campaignActivities.body,
+        activityType: campaignActivities.activityType,
+        mediaUrl: campaignActivities.mediaUrl,
+        evidenceType: campaignActivities.evidenceType,
+        visibilityStatus: campaignActivities.visibilityStatus,
+        verificationStatus: campaignActivities.verificationStatus,
+        publishedAt: campaignActivities.publishedAt,
+        verifiedAt: campaignActivities.verifiedAt,
+        createdAt: campaignActivities.createdAt,
+        campaignTitle: campaigns.title,
+        campaignSlug: campaigns.slug,
+        evidenceCode: projectEvidence.evidenceCode,
+        evidenceFileUrl: projectEvidence.fileUrl
+      })
+      .from(campaignActivities)
+      .innerJoin(campaigns, eq(campaignActivities.campaignId, campaigns.id))
+      .leftJoin(projectEvidence, eq(campaignActivities.sourceEvidenceId, projectEvidence.id))
+      .where(campaignScope)
+      .orderBy(desc(campaignActivities.createdAt)),
     db
       .select({
         campaignId: impactSites.campaignId,
@@ -4464,6 +4493,7 @@ export async function getPartnerPortalData(userId?: string) {
     })),
     evidence: evidenceRows,
     updates: updateRows,
+    activities: activityRows,
     impactSites: siteRows.map((site) => ({
       ...site,
       latitude: toNumber(site.latitude),

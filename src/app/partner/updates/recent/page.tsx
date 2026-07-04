@@ -1,26 +1,9 @@
-import { PartnerPageHeader, RecentUpdatesList } from "@/components/partner-portal-ui";
-import { requireRole } from "@/lib/auth";
-import { getPartnerPortalData } from "@/lib/queries";
+import { redirect } from "next/navigation";
 
 export const metadata = {
-  title: "Recent Partner Updates"
+  title: "Partner Activity"
 };
 
-export const dynamic = "force-dynamic";
-
-export default async function PartnerRecentUpdatesPage() {
-  const user = await requireRole(["partner", "admin"], "/partner");
-  const data = await getPartnerPortalData(user.id);
-
-  return (
-    <div className="space-y-8">
-      <PartnerPageHeader
-        title="Recent updates"
-        description="Review the latest published campaign updates and the images attached to them."
-        actionHref="/partner/updates"
-        actionLabel="Publish update"
-      />
-      <RecentUpdatesList updates={data.updates} />
-    </div>
-  );
+export default function PartnerRecentUpdatesRedirectPage() {
+  redirect("/partner/activity");
 }

@@ -63,7 +63,7 @@ const roleAccounts = [
     name: "Partner Demo",
     displayName: "Partner Demo",
     location: "Raja Ampat, Indonesia",
-    bio: "Demo conservation partner account for updates and evidence submission workflows.",
+    bio: "Demo conservation partner account for campaign activity and evidence verification workflows.",
     heroLevel: 5,
     xp: 5600
   },

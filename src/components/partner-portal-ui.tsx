@@ -3,17 +3,14 @@ import {
   ArrowUpRight,
   BadgeCheck,
   Camera,
+  ClipboardList,
   FileCheck2,
   Globe2,
-  ImagePlus,
-  MapPin,
   Megaphone,
   Pencil,
   Plus,
-  ReceiptText,
   Save,
   Trash2,
-  UploadCloud,
   type LucideIcon
 } from "lucide-react";
 import type { ReactNode } from "react";
@@ -21,18 +18,19 @@ import type { ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { ProgressMeter } from "@/components/ui/progress-meter";
 import {
-  createCampaignUpdateAction,
+  createCampaignActivityAction,
   createPartnerCampaignAction,
   deletePartnerCampaignAction,
-  submitEvidenceAction,
   updatePartnerCampaignAction
 } from "@/lib/portal-actions";
 import type { getPartnerPortalData } from "@/lib/queries";
+import { evidenceSourceHref } from "@/lib/domain";
 import { cn, formatCurrency } from "@/lib/utils";
 
 export type PartnerPortalData = Awaited<ReturnType<typeof getPartnerPortalData>>;
 type Campaign = PartnerPortalData["campaigns"][number];
 type Organization = PartnerPortalData["organizations"][number];
+type CampaignActivity = PartnerPortalData["activities"][number];
 type CampaignUpdate = PartnerPortalData["updates"][number];
 type CampaignEvidence = PartnerPortalData["evidence"][number];
 type CampaignImpactSite = PartnerPortalData["impactSites"][number];
@@ -169,7 +167,7 @@ export function PartnerMetricCards({ data }: { data: PartnerPortalData }) {
   const metrics: Array<{ label: string; value: string; detail: string; icon: LucideIcon }> = [
     { label: "Campaigns", value: data.campaigns.length.toLocaleString("id-ID"), detail: `${formatCurrency(totalRaised)} raised`, icon: Megaphone },
     { label: "Evidence pending", value: pendingEvidence.toLocaleString("id-ID"), detail: `${data.evidence.length} evidence records`, icon: FileCheck2 },
-    { label: "Recent updates", value: data.updates.length.toLocaleString("id-ID"), detail: "Published field notes", icon: ReceiptText }
+    { label: "Activity", value: data.activities.length.toLocaleString("id-ID"), detail: `${data.updates.length} public / ${data.evidence.length} evidence`, icon: ClipboardList }
   ];
 
   return (
@@ -471,10 +469,10 @@ function CampaignPublicDataPanel({
           </section>
 
           <section>
-            <h4 className="text-sm font-bold uppercase tracking-[0.12em] text-coral-700">Updates and evidence</h4>
+            <h4 className="text-sm font-bold uppercase tracking-[0.12em] text-coral-700">Activity</h4>
             <div className="mt-3 grid gap-2 text-sm">
               <div className="rounded-lg bg-sand-50 p-3">
-                <p className="font-bold text-ocean-900">{updates.length.toLocaleString("id-ID")} updates</p>
+                <p className="font-bold text-ocean-900">{updates.length.toLocaleString("id-ID")} public updates</p>
                 <p className="mt-1 text-ocean-900/62">{updates[0] ? `Latest: ${updates[0].title} / ${dateLabel(updates[0].publishedAt)}` : "Updates will appear after publication."}</p>
               </div>
               <div className="rounded-lg bg-sand-50 p-3">
@@ -528,13 +526,9 @@ function CampaignPublicDataPanel({
             <ArrowUpRight className="size-4" aria-hidden="true" />
             View public page
           </Link>
-          <Link href="/partner/updates" className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border border-ocean-900/10 px-3 text-sm font-bold text-ocean-900 hover:border-coral-500 hover:text-coral-700">
+          <Link href="/partner/activity" className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border border-ocean-900/10 px-3 text-sm font-bold text-ocean-900 hover:border-coral-500 hover:text-coral-700">
             <Camera className="size-4" aria-hidden="true" />
-            Add update image
-          </Link>
-          <Link href="/partner/evidence/submit" className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border border-ocean-900/10 px-3 text-sm font-bold text-ocean-900 hover:border-coral-500 hover:text-coral-700">
-            <MapPin className="size-4" aria-hidden="true" />
-            Submit evidence
+            Add activity
           </Link>
         </div>
       </div>
@@ -665,7 +659,7 @@ export function CampaignList({
         {campaigns.length === 0 ? (
           <div className="rounded-lg border border-dashed border-ocean-900/14 p-4">
             <p className="font-bold text-ocean-900">No partner campaigns yet.</p>
-            <p className="mt-2 text-sm leading-6 text-ocean-900/58">Create a campaign before publishing field updates or submitting evidence.</p>
+            <p className="mt-2 text-sm leading-6 text-ocean-900/58">Create a campaign before adding field activity.</p>
             <Link href="/partner/campaigns/new" className="mt-3 inline-flex text-sm font-bold text-coral-700">
               Create campaign
             </Link>
@@ -676,161 +670,116 @@ export function CampaignList({
   );
 }
 
-export function PublishUpdateForm({ campaigns }: { campaigns: Campaign[] }) {
+export function CampaignActivityForm({ campaigns }: { campaigns: Campaign[] }) {
   const hasCampaigns = campaigns.length > 0;
 
   return (
-    <form action={createCampaignUpdateAction} data-testid="partner-update-form" className="rounded-lg border border-ocean-900/10 bg-white p-5 shadow-soft">
-      <input type="hidden" name="redirectTo" value="/partner/updates" />
+    <form action={createCampaignActivityAction} data-testid="partner-activity-form" className="rounded-lg border border-ocean-900/10 bg-white p-5 shadow-soft">
+      <input type="hidden" name="redirectTo" value="/partner/activity" />
       <div className="flex items-center justify-between gap-3">
         <div>
-          <h2 className="text-xl font-bold tracking-normal text-ocean-900">Publish update</h2>
-          <p className="mt-1 text-sm font-semibold text-ocean-900/58">Field notes can include an uploaded image and become visible on campaign timelines.</p>
+          <h2 className="text-xl font-bold tracking-normal text-ocean-900">Add activity</h2>
+          <p className="mt-1 text-sm font-semibold text-ocean-900/58">Create one campaign activity for public progress, verification evidence, or both.</p>
         </div>
-        <ImagePlus className="size-5 text-kelp-700" aria-hidden="true" />
+        <ClipboardList className="size-5 text-kelp-700" aria-hidden="true" />
       </div>
       <div className="mt-5 grid gap-4">
-        <Field label="Campaign">
-          <select name="campaignId" className={inputClassName} disabled={!hasCampaigns} required>
-            {campaigns.map((campaign) => (
-              <option key={campaign.id} value={campaign.id}>
-                {campaign.title}
-              </option>
-            ))}
-          </select>
-        </Field>
-        <Field label="Update title">
-          <input name="title" placeholder="Update title" className={inputClassName} required />
-        </Field>
-        <Field label="Field update">
-          <textarea name="body" placeholder="Field update" className={textareaClassName} required />
-        </Field>
         <div className="grid gap-3 md:grid-cols-2">
-          <Field label="Upload image">
+          <Field label="Campaign">
+            <select name="campaignId" className={inputClassName} disabled={!hasCampaigns} required>
+              {campaigns.map((campaign) => (
+                <option key={campaign.id} value={campaign.id}>
+                  {campaign.title}
+                </option>
+              ))}
+            </select>
+          </Field>
+          <Field label="Activity use">
+            <select name="activityUse" defaultValue="public_update" className={inputClassName} disabled={!hasCampaigns}>
+              <option value="public_update">Public update</option>
+              <option value="evidence">Evidence only</option>
+              <option value="update_and_evidence">Public update + evidence</option>
+            </select>
+          </Field>
+        </div>
+        <Field label="Activity title">
+          <input name="title" placeholder="Activity title" className={inputClassName} required />
+        </Field>
+        <Field label="Field note">
+          <textarea name="body" placeholder="Progress note or reviewer context" className={textareaClassName} required />
+        </Field>
+        <div className="grid gap-3 md:grid-cols-3">
+          <Field label="Evidence type">
+            <select name="evidenceType" defaultValue="field_photo" className={inputClassName} disabled={!hasCampaigns}>
+              <option value="field_photo">Field photo</option>
+              <option value="document">Document</option>
+              <option value="field_report">Field report</option>
+            </select>
+          </Field>
+          <Field label="Upload attachment">
             <input name="imageFile" type="file" accept="image/png,image/jpeg,image/webp,image/gif" className={inputClassName} />
           </Field>
-          <Field label="Image URL">
-            <input name="imageUrl" placeholder="https://..." className={inputClassName} />
+          <Field label="Attachment URL">
+            <input name="attachmentUrl" placeholder="https://..." className={inputClassName} />
           </Field>
         </div>
       </div>
       <Button type="submit" className="mt-5" disabled={!hasCampaigns}>
-        <UploadCloud className="size-4" aria-hidden="true" />
-        Publish Update
+        <ClipboardList className="size-4" aria-hidden="true" />
+        Save Activity
       </Button>
     </form>
   );
 }
 
-export function EvidenceSubmitForm({ campaigns }: { campaigns: Campaign[] }) {
-  const hasCampaigns = campaigns.length > 0;
-
-  return (
-    <form action={submitEvidenceAction} data-testid="partner-evidence-form" className="rounded-lg border border-ocean-900/10 bg-white p-5 shadow-soft">
-      <input type="hidden" name="redirectTo" value="/partner/evidence/submit" />
-      <div className="flex items-center justify-between gap-3">
-        <div>
-          <h2 className="text-xl font-bold tracking-normal text-ocean-900">Submit evidence</h2>
-          <p className="mt-1 text-sm font-semibold text-ocean-900/58">Uploaded evidence is submitted for admin review before it becomes a public trust signal.</p>
-        </div>
-        <FileCheck2 className="size-5 text-kelp-700" aria-hidden="true" />
-      </div>
-      <div className="mt-5 grid gap-4">
-        <Field label="Campaign">
-          <select name="campaignId" className={inputClassName} disabled={!hasCampaigns} required>
-            {campaigns.map((campaign) => (
-              <option key={campaign.id} value={campaign.id}>
-                {campaign.title}
-              </option>
-            ))}
-          </select>
-        </Field>
-        <Field label="Evidence title">
-          <input name="title" placeholder="Evidence title" className={inputClassName} required />
-        </Field>
-        <Field label="Evidence type">
-          <select name="evidenceType" defaultValue="field_photo" className={inputClassName}>
-            <option value="field_photo">Field photo</option>
-            <option value="document">Document</option>
-            <option value="field_report">Field report</option>
-          </select>
-        </Field>
-        <div className="grid gap-3 md:grid-cols-2">
-          <Field label="Upload image">
-            <input name="imageFile" type="file" accept="image/png,image/jpeg,image/webp,image/gif" className={inputClassName} />
-          </Field>
-          <Field label="File URL">
-            <input name="fileUrl" placeholder="https://..." className={inputClassName} />
-          </Field>
-        </div>
-      </div>
-      <Button type="submit" className="mt-5" disabled={!hasCampaigns}>
-        <FileCheck2 className="size-4" aria-hidden="true" />
-        Submit Evidence
-      </Button>
-    </form>
-  );
-}
-
-export function EvidenceStatusList({ evidence }: { evidence: PartnerPortalData["evidence"] }) {
+export function CampaignActivityList({ activities }: { activities: CampaignActivity[] }) {
   return (
     <section className="rounded-lg border border-ocean-900/10 bg-white p-5 shadow-soft">
-      <h2 className="text-xl font-bold tracking-normal text-ocean-900">Evidence status</h2>
+      <h2 className="text-xl font-bold tracking-normal text-ocean-900">Activity timeline</h2>
       <div className="mt-5 grid gap-3">
-        {evidence.map((item) => (
-          <article key={item.evidenceCode} className="grid gap-3 rounded-lg bg-sand-50 p-4 sm:grid-cols-[96px_1fr]">
-            <div className="min-h-20 rounded-lg bg-ocean-900/10 bg-cover bg-center" style={imageBackground(item.fileUrl)} />
-            <div>
-              <div className="flex flex-wrap items-center gap-2">
-                <p className="font-bold text-ocean-900">{item.title}</p>
-                <StatusBadge value={item.verificationStatus} />
+        {activities.map((item) => {
+          const updateHref = item.sourceUpdateId ? `/campaigns/${item.campaignSlug}/updates/${item.sourceUpdateId}` : null;
+          const evidenceHref = item.evidenceCode ? evidenceSourceHref(item.campaignSlug, item.evidenceCode) ?? item.evidenceFileUrl : item.evidenceFileUrl;
+          const status = item.verificationStatus ?? item.visibilityStatus;
+          const date = item.publishedAt ?? item.createdAt;
+
+          return (
+            <article key={item.id} className="grid gap-3 rounded-lg bg-sand-50 p-4 sm:grid-cols-[96px_1fr]">
+              <div className="min-h-20 rounded-lg bg-ocean-900/10 bg-cover bg-center" style={imageBackground(isImageRecord(item.mediaUrl) ? item.mediaUrl : null)} />
+              <div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <p className="font-bold text-ocean-900">{item.title}</p>
+                  <StatusBadge value={status} />
+                  <span className="inline-flex min-h-7 items-center rounded-full bg-white px-2.5 text-xs font-bold capitalize text-ocean-900/62">
+                    {labelize(item.activityType)}
+                  </span>
+                </div>
+                <p className="mt-1 text-sm font-semibold text-ocean-900/58">{item.campaignTitle}</p>
+                {item.body ? <p className="mt-3 line-clamp-2 text-sm leading-6 text-ocean-900/68">{item.body}</p> : null}
+                <div className="mt-3 flex flex-wrap items-center gap-3 text-xs font-bold text-ocean-900/48">
+                  <span>{item.activityCode} / {date.toLocaleDateString("id-ID", { dateStyle: "medium" })}</span>
+                  {item.evidenceCode ? <span>{item.evidenceCode}</span> : null}
+                </div>
+                <div className="mt-3 flex flex-wrap gap-3">
+                  {updateHref ? (
+                    <Link href={updateHref} className="inline-flex text-sm font-bold text-coral-700 hover:text-coral-500">
+                      Public update
+                    </Link>
+                  ) : null}
+                  {evidenceHref ? (
+                    <Link href={evidenceHref} className="inline-flex text-sm font-bold text-ocean-900/62 hover:text-coral-500">
+                      Evidence source
+                    </Link>
+                  ) : null}
+                </div>
               </div>
-              <p className="mt-1 text-sm font-semibold text-ocean-900/58">{item.campaignTitle}</p>
-              <p className="mt-2 text-xs font-bold text-ocean-900/48">
-                {item.evidenceCode} / {item.createdAt.toLocaleDateString("id-ID", { dateStyle: "medium" })}
-              </p>
-            </div>
-          </article>
-        ))}
-        {evidence.length === 0 ? (
+            </article>
+          );
+        })}
+        {activities.length === 0 ? (
           <div className="rounded-lg border border-dashed border-ocean-900/14 p-4">
-            <p className="font-bold text-ocean-900">No evidence submitted yet.</p>
-            <p className="mt-2 text-sm leading-6 text-ocean-900/58">Submit field photos or reports so admins can verify conservation progress.</p>
-            <Link href="/partner/evidence/submit" className="mt-3 inline-flex text-sm font-bold text-coral-700">
-              Submit evidence
-            </Link>
-          </div>
-        ) : null}
-      </div>
-    </section>
-  );
-}
-
-export function RecentUpdatesList({ updates }: { updates: PartnerPortalData["updates"] }) {
-  return (
-    <section className="rounded-lg border border-ocean-900/10 bg-white p-5 shadow-soft">
-      <h2 className="text-xl font-bold tracking-normal text-ocean-900">Recent updates</h2>
-      <div className="mt-5 grid gap-3">
-        {updates.map((item) => (
-          <article key={`${item.campaignTitle}-${item.title}`} className="grid gap-3 rounded-lg bg-sand-50 p-4 sm:grid-cols-[96px_1fr]">
-            <div className="min-h-20 rounded-lg bg-ocean-900/10 bg-cover bg-center" style={imageBackground(item.imageUrl)} />
-            <div>
-              <p className="font-bold text-ocean-900">{item.title}</p>
-              <p className="mt-1 text-sm font-semibold text-ocean-900/58">{item.campaignTitle}</p>
-              <p className="mt-3 line-clamp-2 text-sm leading-6 text-ocean-900/68">{item.body}</p>
-              <p className="mt-3 text-xs font-bold text-ocean-900/48">
-                {item.publishedAt?.toLocaleDateString("id-ID", { dateStyle: "medium" }) ?? "Draft"}
-              </p>
-            </div>
-          </article>
-        ))}
-        {updates.length === 0 ? (
-          <div className="rounded-lg border border-dashed border-ocean-900/14 p-4">
-            <p className="font-bold text-ocean-900">No updates published yet.</p>
-            <p className="mt-2 text-sm leading-6 text-ocean-900/58">Publish a field note when restoration teams have progress to share.</p>
-            <Link href="/partner/updates" className="mt-3 inline-flex text-sm font-bold text-coral-700">
-              Publish update
-            </Link>
+            <p className="font-bold text-ocean-900">No activity yet.</p>
+            <p className="mt-2 text-sm leading-6 text-ocean-900/58">Add campaign activity when field teams have progress or proof to record.</p>
           </div>
         ) : null}
       </div>

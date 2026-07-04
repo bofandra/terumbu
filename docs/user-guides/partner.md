@@ -8,19 +8,19 @@
 
 ## What This Role Is For
 
-Use this account to review the conservation partner portal. Partners can inspect campaign status, publish field updates, submit evidence, and monitor verification progress.
+Use this account to review the conservation partner portal. Partners can inspect campaign status, add campaign activity, and monitor verification progress.
 
 ## Suggested Walkthrough
 
 1. Sign in from `/login?next=/partner`.
 2. Open `/partner` to review campaign summaries, evidence status, recent updates, and partner submission forms.
-3. Use the publish-update form to create a campaign update with a title, field update text, and optional image URL.
-4. Use the submit-evidence form to add a field photo, document, or field report URL.
-5. Open a public campaign page after publishing to confirm updates and evidence are visible in the public-facing journey when appropriate.
+3. Use the activity form to create a public update, evidence-only record, or combined public update and evidence submission.
+4. Open the activity timeline to confirm verification status and public source links.
+5. Open a public campaign page after publishing to confirm public activity appears in the campaign journey when appropriate.
 
 ## Validation Checklist
 
 - `/partner` is accessible to this account.
 - Admin-only pages under `/admin` remain blocked.
-- Partner-created updates and evidence are attached to a campaign.
+- Partner-created activity is attached to a campaign.
 - Evidence starts in the correct review state before admin verification.

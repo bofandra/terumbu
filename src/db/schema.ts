@@ -367,6 +367,34 @@ export const projectEvidence = pgTable("project_evidence", {
   statusIdx: index("project_evidence_status_idx").on(table.verificationStatus)
 }));
 
+export const campaignActivities = pgTable("campaign_activity", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  campaignId: uuid("campaign_id").notNull().references(() => campaigns.id, { onDelete: "cascade" }),
+  sourceUpdateId: uuid("source_update_id").references(() => campaignUpdates.id, { onDelete: "set null" }),
+  sourceEvidenceId: uuid("source_evidence_id").references(() => projectEvidence.id, { onDelete: "set null" }),
+  impactSiteId: uuid("impact_site_id").references(() => impactSites.id, { onDelete: "set null" }),
+  createdByUserId: uuid("created_by_user_id").references(() => users.id, { onDelete: "set null" }),
+  activityCode: varchar("activity_code", { length: 120 }).notNull(),
+  title: varchar("title", { length: 220 }).notNull(),
+  body: text("body"),
+  activityType: varchar("activity_type", { length: 80 }).default("field_note").notNull(),
+  mediaUrl: text("media_url"),
+  evidenceType: varchar("evidence_type", { length: 80 }),
+  visibilityStatus: varchar("visibility_status", { length: 80 }).default("published").notNull(),
+  verificationStatus: evidenceStatus("verification_status"),
+  storageProvider: varchar("storage_provider", { length: 80 }),
+  publishedAt: timestamp("published_at", { withTimezone: true }),
+  verifiedAt: timestamp("verified_at", { withTimezone: true }),
+  metadata: jsonb("metadata"),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull()
+}, (table) => ({
+  codeIdx: uniqueIndex("campaign_activity_code_idx").on(table.activityCode),
+  campaignIdx: index("campaign_activity_campaign_idx").on(table.campaignId),
+  sourceUpdateIdx: index("campaign_activity_update_idx").on(table.sourceUpdateId),
+  sourceEvidenceIdx: index("campaign_activity_evidence_idx").on(table.sourceEvidenceId),
+  statusIdx: index("campaign_activity_status_idx").on(table.visibilityStatus, table.verificationStatus)
+}));
+
 export const donations = pgTable("donations", {
   id: uuid("id").defaultRandom().primaryKey(),
   campaignId: uuid("campaign_id").notNull().references(() => campaigns.id),

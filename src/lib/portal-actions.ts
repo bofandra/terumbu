@@ -9,6 +9,7 @@ import { db } from "@/db/client";
 import {
   accounts,
   adminAuditLogs,
+  campaignActivities,
   campaignUpdates,
   campaigns,
   corporateProjectPortfolio,
@@ -37,12 +38,18 @@ function evidenceCode() {
   return `EVD-${randomBytes(5).toString("hex").toUpperCase()}`;
 }
 
+function activityCode() {
+  return `ACT-${randomBytes(5).toString("hex").toUpperCase()}`;
+}
+
 const campaignStatuses = ["draft", "review", "published", "funded", "completed", "archived"] as const;
 const partnerCampaignStatuses = ["draft", "review"] as const;
 const verificationStatuses = ["basic", "document", "field"] as const;
 const organizationUserRoles = ["owner", "manager", "contributor", "viewer"] as const;
 const organizationUserStatuses = ["active", "inactive"] as const;
 const expeditionDepartureStatuses = ["open", "waitlist", "full", "private_group", "cancelled"] as const;
+const activityUses = ["public_update", "evidence", "update_and_evidence"] as const;
+const evidenceTypes = ["field_photo", "document", "field_report"] as const;
 
 function formText(formData: FormData, key: string) {
   return String(formData.get(key) ?? "").trim();
@@ -78,6 +85,7 @@ function organizationUserStatusFromForm(value: FormDataEntryValue | null) {
 
 const partnerRedirectPaths = new Set([
   "/partner",
+  "/partner/activity",
   "/partner/campaigns",
   "/partner/campaigns/new",
   "/partner/updates",
@@ -164,6 +172,18 @@ function expeditionDepartureStatusFromForm(value: FormDataEntryValue | null) {
   return expeditionDepartureStatuses.includes(status as (typeof expeditionDepartureStatuses)[number])
     ? (status as (typeof expeditionDepartureStatuses)[number])
     : "open";
+}
+
+function activityUseFromForm(value: FormDataEntryValue | null) {
+  const activityUse = String(value ?? "public_update");
+
+  return activityUses.includes(activityUse as (typeof activityUses)[number]) ? (activityUse as (typeof activityUses)[number]) : "public_update";
+}
+
+function evidenceTypeFromForm(value: FormDataEntryValue | null) {
+  const evidenceType = String(value ?? "field_photo");
+
+  return evidenceTypes.includes(evidenceType as (typeof evidenceTypes)[number]) ? (evidenceType as (typeof evidenceTypes)[number]) : "field_photo";
 }
 
 function slugifyTitle(value: string) {
@@ -1484,68 +1504,141 @@ export async function updateOrganizationVerificationAction(formData: FormData) {
   redirect("/admin/partners?saved=verification");
 }
 
-export async function createCampaignUpdateAction(formData: FormData) {
+export async function createCampaignActivityAction(formData: FormData) {
   const user = await requireRole(["partner", "admin"], "/partner");
-  const campaignId = String(formData.get("campaignId") ?? "");
-  const title = String(formData.get("title") ?? "").trim();
-  const body = String(formData.get("body") ?? "").trim();
-  const imageUrl = await imageFromForm(formData, "imageFile", "imageUrl", "/partner/updates");
+  const campaignId = formText(formData, "campaignId");
+  const impactSiteId = nullableText(formData, "impactSiteId");
+  const title = formText(formData, "title");
+  const body = formText(formData, "body");
+  const activityUse = activityUseFromForm(formData.get("activityUse"));
+  const evidenceType = evidenceTypeFromForm(formData.get("evidenceType"));
+  const attachmentUrl = await imageFromForm(formData, "imageFile", "attachmentUrl", "/partner/activity");
+  const shouldPublish = activityUse === "public_update" || activityUse === "update_and_evidence";
+  const shouldSubmitEvidence = activityUse === "evidence" || activityUse === "update_and_evidence";
 
-  if (!campaignId || !title || !body) {
-    redirectPartnerError(formData, "/partner/updates", "update");
+  if (!campaignId || !title || !body || (shouldSubmitEvidence && !attachmentUrl)) {
+    redirectPartnerError(formData, "/partner/activity", "activity");
   }
 
-  await requireCampaignAccess(user.id, campaignId, formData, "/partner/updates");
-
-  await db.insert(campaignUpdates).values({
-    campaignId,
-    title,
-    body,
-    imageUrl,
-    publishedAt: new Date()
-  });
-
-  redirectPartnerSaved(formData, "/partner/updates", "update");
-}
-
-export async function submitEvidenceAction(formData: FormData) {
-  const user = await requireRole(["partner", "admin"], "/partner");
-  const campaignId = String(formData.get("campaignId") ?? "");
-  const impactSiteId = String(formData.get("impactSiteId") || "") || null;
-  const title = String(formData.get("title") ?? "").trim();
-  const evidenceType = String(formData.get("evidenceType") ?? "field_photo").trim();
-  const fileUrl = await imageFromForm(formData, "imageFile", "fileUrl", "/partner/evidence/submit");
-
-  if (!campaignId || !title || !fileUrl) {
-    redirectPartnerError(formData, "/partner/evidence/submit", "evidence");
-  }
-
-  await requireCampaignAccess(user.id, campaignId, formData, "/partner/evidence/submit");
+  await requireCampaignAccess(user.id, campaignId, formData, "/partner/activity");
 
   if (impactSiteId) {
     const [site] = await db.select({ campaignId: impactSites.campaignId }).from(impactSites).where(eq(impactSites.id, impactSiteId)).limit(1);
 
     if (!site || site.campaignId !== campaignId) {
-      redirectPartnerError(formData, "/partner/evidence/submit", "impact-site");
+      redirectPartnerError(formData, "/partner/activity", "impact-site");
     }
   }
 
-  await db.insert(projectEvidence).values({
-    campaignId,
-    impactSiteId,
-    uploadedByUserId: user.id,
-    evidenceCode: evidenceCode(),
-    title,
-    evidenceType,
-    fileUrl,
-    storageProvider: fileUrl.startsWith("data:image/") ? "database_inline" : getEvidenceStorageProvider(),
-    verificationStatus: "submitted",
-    metadata: {
-      submittedFrom: "partner_portal"
+  const now = new Date();
+  const storageProvider = attachmentUrl?.startsWith("data:image/") ? "database_inline" : attachmentUrl ? getEvidenceStorageProvider() : null;
+  const generatedActivityCode = activityCode();
+
+  await db.transaction(async (tx) => {
+    let sourceUpdateId: string | null = null;
+    let sourceEvidenceId: string | null = null;
+    let generatedEvidenceCode: string | null = null;
+
+    if (shouldPublish) {
+      const [update] = await tx
+        .insert(campaignUpdates)
+        .values({
+          campaignId,
+          title,
+          body,
+          imageUrl: attachmentUrl,
+          publishedAt: now
+        })
+        .returning({ id: campaignUpdates.id });
+
+      sourceUpdateId = update.id;
     }
+
+    if (shouldSubmitEvidence && attachmentUrl) {
+      generatedEvidenceCode = evidenceCode();
+
+      const [evidence] = await tx
+        .insert(projectEvidence)
+        .values({
+          campaignId,
+          impactSiteId,
+          uploadedByUserId: user.id,
+          evidenceCode: generatedEvidenceCode,
+          title,
+          evidenceType,
+          fileUrl: attachmentUrl,
+          storageProvider: storageProvider ?? getEvidenceStorageProvider(),
+          verificationStatus: "submitted",
+          metadata: {
+            activityCode: generatedActivityCode,
+            observation: body || null,
+            submittedFrom: "partner_activity"
+          }
+        })
+        .returning({ id: projectEvidence.id });
+
+      sourceEvidenceId = evidence.id;
+    }
+
+    await tx.insert(campaignActivities).values({
+      campaignId,
+      sourceUpdateId,
+      sourceEvidenceId,
+      impactSiteId,
+      createdByUserId: user.id,
+      activityCode: generatedActivityCode,
+      title,
+      body: body || null,
+      activityType: shouldPublish && shouldSubmitEvidence ? "field_report" : shouldSubmitEvidence ? evidenceType : "field_note",
+      mediaUrl: attachmentUrl,
+      evidenceType: shouldSubmitEvidence ? evidenceType : null,
+      visibilityStatus: shouldPublish ? "published" : "evidence_only",
+      verificationStatus: shouldSubmitEvidence ? "submitted" : null,
+      storageProvider,
+      publishedAt: shouldPublish ? now : null,
+      metadata: {
+        activityUse,
+        evidenceCode: generatedEvidenceCode,
+        submittedFrom: "partner_portal"
+      }
+    });
   });
 
-  redirectPartnerSaved(formData, "/partner/evidence/submit", "evidence");
+  redirectPartnerSaved(formData, "/partner/activity", "activity");
+}
+
+export async function createCampaignUpdateAction(formData: FormData) {
+  formData.set("activityUse", "public_update");
+  formData.set("redirectTo", "/partner/activity");
+
+  if (!formText(formData, "attachmentUrl")) {
+    const imageUrl = formText(formData, "imageUrl");
+
+    if (imageUrl) {
+      formData.set("attachmentUrl", imageUrl);
+    }
+  }
+
+  return createCampaignActivityAction(formData);
+}
+
+export async function submitEvidenceAction(formData: FormData) {
+  formData.set("activityUse", "evidence");
+  formData.set("redirectTo", "/partner/activity");
+
+  if (!formText(formData, "attachmentUrl")) {
+    const fileUrl = formText(formData, "fileUrl");
+
+    if (fileUrl) {
+      formData.set("attachmentUrl", fileUrl);
+    }
+  }
+
+  if (!formText(formData, "body")) {
+    formData.set("body", formText(formData, "title"));
+  }
+
+  return createCampaignActivityAction(formData);
 }
 
 export async function verifyEvidenceAction(formData: FormData) {
@@ -1564,6 +1657,14 @@ export async function verifyEvidenceAction(formData: FormData) {
       verifiedAt: status === "verified" ? new Date() : null
     })
     .where(eq(projectEvidence.id, evidenceId));
+
+  await db
+    .update(campaignActivities)
+    .set({
+      verificationStatus: status,
+      verifiedAt: status === "verified" ? new Date() : null
+    })
+    .where(eq(campaignActivities.sourceEvidenceId, evidenceId));
 
   await db.insert(adminAuditLogs).values({
     actorUserId: user.id,

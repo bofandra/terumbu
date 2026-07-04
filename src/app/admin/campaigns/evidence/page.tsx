@@ -84,8 +84,8 @@ export default async function AdminCampaignEvidencePage() {
               className="m-4"
               title="No evidence awaiting review"
               description="Partner submissions will appear here when field teams upload photos, survey notes, or verification records."
-              actionHref="/partner/evidence/submit"
-              actionLabel="Submit evidence"
+              actionHref="/partner/activity"
+              actionLabel="Add activity"
             />
           ) : null}
         </div>

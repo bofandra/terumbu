@@ -4,13 +4,10 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   ArrowUpRight,
-  FileCheck2,
+  ClipboardList,
   LayoutDashboard,
   Megaphone,
-  Pencil,
   Plus,
-  ReceiptText,
-  UploadCloud,
   Waves,
   type LucideIcon
 } from "lucide-react";
@@ -28,10 +25,7 @@ const partnerNavItems: PartnerNavItem[] = [
   { href: "/partner", label: "Overview", icon: LayoutDashboard },
   { href: "/partner/campaigns/new", label: "Create", icon: Plus },
   { href: "/partner/campaigns", label: "Campaigns", icon: Megaphone },
-  { href: "/partner/updates", label: "Updates", icon: Pencil },
-  { href: "/partner/evidence/submit", label: "Submit evidence", icon: UploadCloud },
-  { href: "/partner/evidence", label: "Evidence status", icon: FileCheck2 },
-  { href: "/partner/updates/recent", label: "Recent updates", icon: ReceiptText }
+  { href: "/partner/activity", label: "Activity", icon: ClipboardList }
 ];
 
 export function PartnerShell({ children }: { children: ReactNode }) {
@@ -85,7 +79,7 @@ export function PartnerShell({ children }: { children: ReactNode }) {
           <div className="mt-6 hidden rounded-lg border border-ocean-900/10 bg-sand-50 p-4 lg:block">
             <p className="text-xs font-bold uppercase tracking-[0.14em] text-coral-700">Partner workspace</p>
             <p className="mt-2 text-sm font-semibold leading-6 text-ocean-900/68">
-              Campaign setup, field updates, image uploads, and evidence tracking in one place.
+              Campaign setup, field activity, image uploads, and verification tracking in one place.
             </p>
           </div>
         </aside>
