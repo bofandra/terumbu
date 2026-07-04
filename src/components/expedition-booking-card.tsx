@@ -87,14 +87,15 @@ function Stepper({
 }
 
 export function ExpeditionBookingCard({ slug, price, equipmentRental, platformFee, departures, conservationContribution, compact = false, anchorId }: ExpeditionBookingCardProps) {
-  const [selectedDepartureId, setSelectedDepartureId] = useState(departures[0]?.id ?? null);
+  const firstBookableDeparture = departures.find((departure) => departure.status === "open" && departure.availableSeats > 0) ?? departures[0] ?? null;
+  const [selectedDepartureId, setSelectedDepartureId] = useState(firstBookableDeparture?.id ?? null);
   const [adults, setAdults] = useState(1);
   const [students, setStudents] = useState(0);
   const [children, setChildren] = useState(0);
   const participants = participantTotal(adults, students, children);
-  const selectedDeparture = departures.find((departure) => departure.id === selectedDepartureId) ?? departures[0] ?? null;
+  const selectedDeparture = departures.find((departure) => departure.id === selectedDepartureId) ?? firstBookableDeparture;
   const participantsWithinCapacity = selectedDeparture ? participants <= selectedDeparture.availableSeats : false;
-  const bookingDisabled = !selectedDeparture || selectedDeparture.availableSeats <= 0 || !participantsWithinCapacity || selectedDeparture.status === "cancelled";
+  const bookingDisabled = !selectedDeparture || selectedDeparture.availableSeats <= 0 || !participantsWithinCapacity || selectedDeparture.status !== "open";
   const total = useMemo(() => price * participants + equipmentRental + platformFee, [equipmentRental, participants, platformFee, price]);
   const href = checkoutHref(selectedDeparture?.id ?? null, participants);
 

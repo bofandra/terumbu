@@ -225,6 +225,7 @@ export async function bookExpeditionAction(formData: FormData) {
       basePrice: expeditions.basePrice,
       capacity: expeditionDepartures.capacity,
       seatsBooked: expeditionDepartures.seatsBooked,
+      status: expeditionDepartures.status,
       startsAt: expeditionDepartures.startsAt
     })
     .from(expeditionDepartures)
@@ -232,7 +233,7 @@ export async function bookExpeditionAction(formData: FormData) {
     .where(eq(expeditionDepartures.id, departureId))
     .limit(1);
 
-  if (!departure || departure.capacity - departure.seatsBooked < participantCount) {
+  if (!departure || departure.status !== "open" || departure.capacity - departure.seatsBooked < participantCount) {
     redirect(`${nextPath}?error=availability`);
   }
 

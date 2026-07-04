@@ -814,6 +814,12 @@ export async function getExpeditionDetail(slug: string) {
     statusLabel:
       departure.status === "cancelled"
         ? "Cancelled"
+        : departure.status === "waitlist"
+          ? "Waitlist"
+          : departure.status === "private_group"
+            ? "Private group"
+            : departure.status === "full"
+              ? "Full"
         : departure.capacity - departure.seatsBooked <= 0
           ? "Full"
           : departure.capacity - departure.seatsBooked <= 4
@@ -3281,6 +3287,7 @@ export async function getExpeditionCheckoutOptions() {
     })
     .from(expeditionDepartures)
     .innerJoin(expeditions, eq(expeditionDepartures.expeditionId, expeditions.id))
+    .where(eq(expeditionDepartures.status, "open"))
     .orderBy(asc(expeditionDepartures.startsAt));
 
   return rows.map((row) => ({
@@ -3887,21 +3894,81 @@ export async function getPublicCorporateImpactReport(publicSlug: string) {
 }
 
 export async function getAdminPortalData() {
-  const [campaignRows, evidenceRows, donationRows, operationRows, bookingOperationRows] = await Promise.all([
+  const [
+    campaignRows,
+    organizationRows,
+    campaignDonationCountRows,
+    campaignSponsorshipCountRows,
+    campaignPortfolioCountRows,
+    campaignExpeditionCountRows,
+    evidenceRows,
+    donationRows,
+    operationRows,
+    bookingOperationRows
+  ] = await Promise.all([
     db
       .select({
         id: campaigns.id,
+        organizationId: campaigns.organizationId,
         title: campaigns.title,
         slug: campaigns.slug,
+        summary: campaigns.summary,
+        story: campaigns.story,
+        category: campaigns.category,
+        region: campaigns.region,
+        imageUrl: campaigns.imageUrl,
         status: campaigns.status,
         raisedAmount: campaigns.raisedAmount,
         goalAmount: campaigns.goalAmount,
         donorCount: campaigns.donorCount,
+        impactUnit: campaigns.impactUnit,
+        impactTarget: campaigns.impactTarget,
+        publishedAt: campaigns.publishedAt,
+        endsAt: campaigns.endsAt,
         partner: organizations.name
       })
       .from(campaigns)
       .innerJoin(organizations, eq(campaigns.organizationId, organizations.id))
       .orderBy(desc(campaigns.updatedAt)),
+    db
+      .select({
+        id: organizations.id,
+        name: organizations.name,
+        slug: organizations.slug,
+        type: organizations.type,
+        verification: organizations.verification
+      })
+      .from(organizations)
+      .orderBy(asc(organizations.name)),
+    db
+      .select({
+        campaignId: donations.campaignId,
+        total: sql<number>`count(${donations.id})`
+      })
+      .from(donations)
+      .groupBy(donations.campaignId),
+    db
+      .select({
+        campaignId: sponsoredEcosystems.campaignId,
+        total: sql<number>`count(${sponsoredEcosystems.id})`
+      })
+      .from(sponsoredEcosystems)
+      .groupBy(sponsoredEcosystems.campaignId),
+    db
+      .select({
+        campaignId: corporateProjectPortfolio.campaignId,
+        total: sql<number>`count(${corporateProjectPortfolio.id})`
+      })
+      .from(corporateProjectPortfolio)
+      .groupBy(corporateProjectPortfolio.campaignId),
+    db
+      .select({
+        campaignId: expeditions.relatedCampaignId,
+        total: sql<number>`count(${expeditions.id})`
+      })
+      .from(expeditions)
+      .where(sql`${expeditions.relatedCampaignId} is not null`)
+      .groupBy(expeditions.relatedCampaignId),
     db
       .select({
         id: projectEvidence.id,
@@ -3971,9 +4038,26 @@ export async function getAdminPortalData() {
       .filter((operation) => operation.donationId)
       .map((operation) => [operation.donationId as string, operation])
   );
+  const donationCounts = new Map(campaignDonationCountRows.map((row) => [row.campaignId, Number(row.total)]));
+  const sponsorshipCounts = new Map(campaignSponsorshipCountRows.map((row) => [row.campaignId, Number(row.total)]));
+  const portfolioCounts = new Map(campaignPortfolioCountRows.map((row) => [row.campaignId, Number(row.total)]));
+  const expeditionCounts = new Map<string, number>();
+
+  for (const row of campaignExpeditionCountRows) {
+    if (row.campaignId) {
+      expeditionCounts.set(row.campaignId, Number(row.total));
+    }
+  }
 
   return {
-    campaigns: campaignRows,
+    organizations: organizationRows,
+    campaigns: campaignRows.map((campaign) => ({
+      ...campaign,
+      donationRecordCount: donationCounts.get(campaign.id) ?? 0,
+      sponsorshipRecordCount: sponsorshipCounts.get(campaign.id) ?? 0,
+      corporatePortfolioCount: portfolioCounts.get(campaign.id) ?? 0,
+      relatedExpeditionCount: expeditionCounts.get(campaign.id) ?? 0
+    })),
     evidence: evidenceRows,
     donations: donationRows.map((donation) => ({
       ...donation,
@@ -3985,7 +4069,7 @@ export async function getAdminPortalData() {
 }
 
 export async function getAdminOperationsData() {
-  const [partners, partnerMemberRows, partnerCampaignCountRows, expeditionRows, impactSiteRows, reportRows, userRows, auditRows] = await Promise.all([
+  const [partners, partnerMemberRows, partnerCampaignCountRows, campaignOptionRows, expeditionRows, expeditionBookingCountRows, impactSiteRows, reportRows, userRows, auditRows] = await Promise.all([
     db
       .select({
         id: organizations.id,
@@ -4026,20 +4110,47 @@ export async function getAdminOperationsData() {
       .groupBy(campaigns.organizationId),
     db
       .select({
+        id: campaigns.id,
+        title: campaigns.title,
+        slug: campaigns.slug,
+        status: campaigns.status,
+        organizationName: organizations.name
+      })
+      .from(campaigns)
+      .innerJoin(organizations, eq(campaigns.organizationId, organizations.id))
+      .orderBy(asc(campaigns.title)),
+    db
+      .select({
         id: expeditions.id,
         title: expeditions.title,
         slug: expeditions.slug,
         region: expeditions.region,
+        durationDays: expeditions.durationDays,
         basePrice: expeditions.basePrice,
+        summary: expeditions.summary,
+        imageUrl: expeditions.imageUrl,
+        relatedCampaignId: expeditions.relatedCampaignId,
+        relatedCampaignTitle: campaigns.title,
         departureId: expeditionDepartures.id,
         startsAt: expeditionDepartures.startsAt,
+        endsAt: expeditionDepartures.endsAt,
         capacity: expeditionDepartures.capacity,
         seatsBooked: expeditionDepartures.seatsBooked,
-        status: expeditionDepartures.status
+        status: expeditionDepartures.status,
+        departureMetadata: expeditionDepartures.metadata
       })
       .from(expeditions)
       .leftJoin(expeditionDepartures, eq(expeditionDepartures.expeditionId, expeditions.id))
+      .leftJoin(campaigns, eq(expeditions.relatedCampaignId, campaigns.id))
       .orderBy(asc(expeditions.title)),
+    db
+      .select({
+        expeditionId: expeditionBookings.expeditionId,
+        departureId: expeditionBookings.departureId,
+        total: sql<number>`count(${expeditionBookings.id})`
+      })
+      .from(expeditionBookings)
+      .groupBy(expeditionBookings.expeditionId, expeditionBookings.departureId),
     db
       .select({
         id: impactSites.id,
@@ -4094,14 +4205,95 @@ export async function getAdminOperationsData() {
   ]);
 
   const campaignCounts = new Map(partnerCampaignCountRows.map((row) => [row.organizationId, Number(row.total)]));
+  const expeditionBookingCounts = new Map<string, number>();
+  const departureBookingCounts = new Map<string, number>();
+
+  for (const row of expeditionBookingCountRows) {
+    const total = Number(row.total);
+
+    expeditionBookingCounts.set(row.expeditionId, (expeditionBookingCounts.get(row.expeditionId) ?? 0) + total);
+    departureBookingCounts.set(row.departureId, total);
+  }
+
+  const expeditionCatalogById = new Map<
+    string,
+    {
+      id: string;
+      title: string;
+      slug: string;
+      region: string;
+      durationDays: number;
+      basePrice: number;
+      summary: string;
+      imageUrl: string | null;
+      relatedCampaignId: string | null;
+      relatedCampaignTitle: string | null;
+      bookingCount: number;
+      departures: {
+        id: string;
+        startsAt: Date;
+        endsAt: Date;
+        capacity: number;
+        seatsBooked: number;
+        availableSeats: number;
+        status: string;
+        bookingCount: number;
+        meetingPoint: string | null;
+        guide: string | null;
+        minParticipants: number;
+        weatherAdvisory: string | null;
+      }[];
+    }
+  >();
+
+  for (const row of expeditionRows) {
+    let expedition = expeditionCatalogById.get(row.id);
+
+    if (!expedition) {
+      expedition = {
+        id: row.id,
+        title: row.title,
+        slug: row.slug,
+        region: row.region,
+        durationDays: row.durationDays,
+        basePrice: toNumber(row.basePrice),
+        summary: row.summary,
+        imageUrl: row.imageUrl,
+        relatedCampaignId: row.relatedCampaignId,
+        relatedCampaignTitle: row.relatedCampaignTitle,
+        bookingCount: expeditionBookingCounts.get(row.id) ?? 0,
+        departures: []
+      };
+      expeditionCatalogById.set(row.id, expedition);
+    }
+
+    if (row.departureId && row.startsAt && row.endsAt && row.capacity !== null && row.seatsBooked !== null && row.status) {
+      expedition.departures.push({
+        id: row.departureId,
+        startsAt: row.startsAt,
+        endsAt: row.endsAt,
+        capacity: row.capacity,
+        seatsBooked: row.seatsBooked,
+        availableSeats: Math.max(0, row.capacity - row.seatsBooked),
+        status: row.status,
+        bookingCount: departureBookingCounts.get(row.departureId) ?? 0,
+        meetingPoint: getMetadataString(row.departureMetadata, "meetingPoint"),
+        guide: getMetadataString(row.departureMetadata, "guide"),
+        minParticipants: getMetadataNumber(row.departureMetadata, "minParticipants", 6),
+        weatherAdvisory: getMetadataString(row.departureMetadata, "weatherAdvisory")
+      });
+    }
+  }
 
   return {
+    campaignOptions: campaignOptionRows,
     partners: partners.map((partner) => ({
       ...partner,
       campaignCount: campaignCounts.get(partner.id) ?? 0,
       members: partnerMemberRows.filter((member) => member.organizationId === partner.id),
       verificationLabel: verificationLabel(partner.verification)
     })),
+    expeditionCatalog: Array.from(expeditionCatalogById.values()),
     expeditions: expeditionRows.map((row) => ({
       ...row,
       basePrice: toNumber(row.basePrice),

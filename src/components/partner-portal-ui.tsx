@@ -38,7 +38,7 @@ type CampaignImpactSite = PartnerPortalData["impactSites"][number];
 type CampaignSponsorship = PartnerPortalData["sponsoredEcosystems"][number];
 type CampaignDonation = PartnerPortalData["donorActivity"][number];
 
-const campaignStatuses = ["draft", "review", "published", "funded", "completed", "archived"];
+const partnerCampaignStatuses = ["draft", "review"];
 
 export const inputClassName =
   "min-h-11 w-full min-w-0 rounded-lg border border-ocean-900/14 bg-white px-3 text-sm font-semibold text-ocean-900 outline-none transition placeholder:text-ocean-900/36 focus:border-coral-500";
@@ -95,6 +95,10 @@ function isImageRecord(value: string | null) {
   }
 
   return value.startsWith("data:image/") || /\.(jpg|jpeg|png|webp|gif)(\?|$)/i.test(value);
+}
+
+function statusOptionsForCampaign(campaign?: Campaign) {
+  return campaign && !partnerCampaignStatuses.includes(campaign.status) ? [campaign.status, ...partnerCampaignStatuses] : partnerCampaignStatuses;
 }
 
 function initialsForName(value: string) {
@@ -237,7 +241,7 @@ export function CampaignFields({ campaign, organizations }: { campaign?: Campaig
         </Field>
         <Field label="Status">
           <select name="status" defaultValue={campaign?.status ?? "draft"} className={inputClassName}>
-            {campaignStatuses.map((status) => (
+            {statusOptionsForCampaign(campaign).map((status) => (
               <option key={status} value={status}>
                 {labelize(status)}
               </option>
@@ -647,7 +651,7 @@ export function CampaignList({
                     <input type="hidden" name="redirectTo" value="/partner/campaigns" />
                     <label className="flex items-start gap-2 text-sm font-bold text-ocean-900">
                       <input name="confirmDelete" type="checkbox" value="delete" className="mt-1 size-4 accent-coral-500" required />
-                      Delete this campaign and its related donation, evidence, update, sponsorship, and portfolio records.
+                      Delete this campaign only if it has no donations, sponsorships, corporate portfolio links, or related expeditions.
                     </label>
                     <Button type="submit" className="w-fit bg-coral-500 hover:bg-coral-700">
                       <Trash2 className="size-4" aria-hidden="true" />

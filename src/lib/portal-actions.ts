@@ -2,7 +2,7 @@
 
 import { randomBytes } from "node:crypto";
 
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { redirect } from "next/navigation";
 
 import { db } from "@/db/client";
@@ -14,13 +14,13 @@ import {
   corporateProjectPortfolio,
   donations,
   expeditionBookings,
+  expeditionDepartures,
   expeditions,
   impactPassports,
   impactSites,
   organizationUsers,
   organizations,
   paymentOperations,
-  paymentTransactions,
   profiles,
   projectEvidence,
   roles,
@@ -38,9 +38,11 @@ function evidenceCode() {
 }
 
 const campaignStatuses = ["draft", "review", "published", "funded", "completed", "archived"] as const;
+const partnerCampaignStatuses = ["draft", "review"] as const;
 const verificationStatuses = ["basic", "document", "field"] as const;
 const organizationUserRoles = ["owner", "manager", "contributor", "viewer"] as const;
 const organizationUserStatuses = ["active", "inactive"] as const;
+const expeditionDepartureStatuses = ["open", "waitlist", "full", "private_group", "cancelled"] as const;
 
 function formText(formData: FormData, key: string) {
   return String(formData.get(key) ?? "").trim();
@@ -120,10 +122,48 @@ function parsePositiveInteger(value: FormDataEntryValue | null) {
   return amount;
 }
 
+function parseNonNegativeInteger(value: FormDataEntryValue | null) {
+  const digits = String(value ?? "").replace(/[^\d]/g, "");
+  const amount = Number(digits);
+
+  if (!Number.isInteger(amount) || amount < 0) {
+    return null;
+  }
+
+  return amount;
+}
+
+function parsePositiveDecimal(value: FormDataEntryValue | null) {
+  const normalized = String(value ?? "")
+    .trim()
+    .replace(/,/g, "");
+  const amount = Number(normalized);
+
+  if (!Number.isFinite(amount) || amount <= 0) {
+    return null;
+  }
+
+  return amount.toFixed(2);
+}
+
 function campaignStatusFromForm(value: FormDataEntryValue | null) {
   const status = String(value ?? "draft");
 
   return campaignStatuses.includes(status as (typeof campaignStatuses)[number]) ? (status as (typeof campaignStatuses)[number]) : "draft";
+}
+
+function partnerCampaignStatusFromForm(value: FormDataEntryValue | null) {
+  const status = String(value ?? "draft");
+
+  return partnerCampaignStatuses.includes(status as (typeof partnerCampaignStatuses)[number]) ? (status as (typeof partnerCampaignStatuses)[number]) : "review";
+}
+
+function expeditionDepartureStatusFromForm(value: FormDataEntryValue | null) {
+  const status = String(value ?? "open");
+
+  return expeditionDepartureStatuses.includes(status as (typeof expeditionDepartureStatuses)[number])
+    ? (status as (typeof expeditionDepartureStatuses)[number])
+    : "open";
 }
 
 function slugifyTitle(value: string) {
@@ -144,6 +184,29 @@ function slugifyPartner(value: string) {
     .slice(0, 120);
 
   return slug || `partner-${randomBytes(2).toString("hex")}`;
+}
+
+function slugifyExpedition(value: string) {
+  const slug = value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 180);
+
+  return slug || `expedition-${randomBytes(2).toString("hex")}`;
+}
+
+function parseDateTime(value: FormDataEntryValue | null) {
+  const raw = String(value ?? "").trim();
+
+  if (!raw) {
+    return null;
+  }
+
+  const normalized = raw.includes("T") ? `${raw}:00.000Z` : `${raw}T00:00:00.000Z`;
+  const date = new Date(normalized);
+
+  return Number.isNaN(date.getTime()) ? null : date;
 }
 
 function parseOptionalDate(value: FormDataEntryValue | null) {
@@ -174,6 +237,48 @@ function redirectAdminPartnerError(code: string): never {
 
 function redirectAdminPartnerSaved(code: string): never {
   redirect(`/admin/partners?saved=${encodeURIComponent(code)}`);
+}
+
+function redirectAdminCampaignError(code: string): never {
+  redirect(`/admin/campaigns?error=${encodeURIComponent(code)}`);
+}
+
+function redirectAdminCampaignSaved(code: string): never {
+  redirect(`/admin/campaigns?saved=${encodeURIComponent(code)}`);
+}
+
+function redirectAdminExpeditionError(code: string): never {
+  redirect(`/admin/expeditions?error=${encodeURIComponent(code)}`);
+}
+
+function redirectAdminExpeditionSaved(code: string): never {
+  redirect(`/admin/expeditions?saved=${encodeURIComponent(code)}`);
+}
+
+function departureMetadata(formData: FormData) {
+  const metadata: Record<string, string | number> = {};
+  const meetingPoint = nullableText(formData, "meetingPoint");
+  const guide = nullableText(formData, "guide");
+  const weatherAdvisory = nullableText(formData, "weatherAdvisory");
+  const minParticipants = parsePositiveInteger(formData.get("minParticipants"));
+
+  if (meetingPoint) {
+    metadata.meetingPoint = meetingPoint;
+  }
+
+  if (guide) {
+    metadata.guide = guide;
+  }
+
+  if (weatherAdvisory) {
+    metadata.weatherAdvisory = weatherAdvisory;
+  }
+
+  if (minParticipants) {
+    metadata.minParticipants = minParticipants;
+  }
+
+  return Object.keys(metadata).length > 0 ? metadata : null;
 }
 
 async function getRoleId(key: string, name: string) {
@@ -217,6 +322,33 @@ async function syncPartnerRoleForUser(userId: string) {
   if (partnerRole) {
     await db.delete(userRoles).where(and(eq(userRoles.userId, userId), eq(userRoles.roleId, partnerRole.id)));
   }
+}
+
+async function imageFromAdminCampaignForm(formData: FormData) {
+  const upload = await readUploadedImageAsDataUrl(formData.get("imageFile"));
+
+  if (upload.error) {
+    redirectAdminCampaignError(`image-${upload.error}`);
+  }
+
+  return upload.dataUrl ?? normalizeEvidenceUrl(formData.get("imageUrl"));
+}
+
+async function getCampaignDeleteBlockers(campaignId: string) {
+  const [donation, sponsorship, portfolioProject, relatedExpedition] = await Promise.all([
+    db.select({ id: donations.id }).from(donations).where(eq(donations.campaignId, campaignId)).limit(1),
+    db.select({ id: sponsoredEcosystems.id }).from(sponsoredEcosystems).where(eq(sponsoredEcosystems.campaignId, campaignId)).limit(1),
+    db.select({ id: corporateProjectPortfolio.id }).from(corporateProjectPortfolio).where(eq(corporateProjectPortfolio.campaignId, campaignId)).limit(1),
+    db.select({ id: expeditions.id }).from(expeditions).where(eq(expeditions.relatedCampaignId, campaignId)).limit(1)
+  ]);
+
+  return {
+    hasDonations: donation.length > 0,
+    hasSponsorships: sponsorship.length > 0,
+    hasCorporatePortfolio: portfolioProject.length > 0,
+    hasRelatedExpeditions: relatedExpedition.length > 0,
+    blocked: donation.length > 0 || sponsorship.length > 0 || portfolioProject.length > 0 || relatedExpedition.length > 0
+  };
 }
 
 async function getPortalUserRoles(userId: string) {
@@ -603,6 +735,8 @@ export async function removeOrganizationUserAction(formData: FormData) {
 
 export async function createPartnerCampaignAction(formData: FormData) {
   const user = await requireRole(["partner", "admin"], "/partner");
+  const roleKeys = await getPortalUserRoles(user.id);
+  const isAdmin = roleKeys.includes("admin");
   const organizationId = formText(formData, "organizationId");
   const title = formText(formData, "title");
   const summary = formText(formData, "summary");
@@ -612,7 +746,7 @@ export async function createPartnerCampaignAction(formData: FormData) {
   const goalAmount = parseIdrAmount(formData.get("goalAmount"));
   const impactUnit = formText(formData, "impactUnit");
   const impactTarget = parsePositiveInteger(formData.get("impactTarget"));
-  const status = campaignStatusFromForm(formData.get("status"));
+  const status = isAdmin ? campaignStatusFromForm(formData.get("status")) : partnerCampaignStatusFromForm(formData.get("status"));
   const imageUrl = await imageFromForm(formData, "imageFile", "imageUrl", "/partner/campaigns/new");
   const endsAt = parseOptionalDate(formData.get("endsAt"));
 
@@ -664,6 +798,8 @@ export async function createPartnerCampaignAction(formData: FormData) {
 
 export async function updatePartnerCampaignAction(formData: FormData) {
   const user = await requireRole(["partner", "admin"], "/partner");
+  const roleKeys = await getPortalUserRoles(user.id);
+  const isAdmin = roleKeys.includes("admin");
   const campaignId = formText(formData, "campaignId");
   const organizationId = formText(formData, "organizationId");
   const title = formText(formData, "title");
@@ -674,7 +810,7 @@ export async function updatePartnerCampaignAction(formData: FormData) {
   const goalAmount = parseIdrAmount(formData.get("goalAmount"));
   const impactUnit = formText(formData, "impactUnit");
   const impactTarget = parsePositiveInteger(formData.get("impactTarget"));
-  const status = campaignStatusFromForm(formData.get("status"));
+  const requestedStatus = campaignStatusFromForm(formData.get("status"));
   const uploadedImageUrl = await imageFromForm(formData, "imageFile", "imageUrl", "/partner/campaigns");
   const endsAt = parseOptionalDate(formData.get("endsAt"));
   const removeImage = formData.get("removeImage") === "on";
@@ -688,6 +824,7 @@ export async function updatePartnerCampaignAction(formData: FormData) {
       id: campaigns.id,
       organizationId: campaigns.organizationId,
       imageUrl: campaigns.imageUrl,
+      status: campaigns.status,
       publishedAt: campaigns.publishedAt
     })
     .from(campaigns)
@@ -709,6 +846,11 @@ export async function updatePartnerCampaignAction(formData: FormData) {
   await requireOrganizationAccess(user.id, organizationId, formData, "/partner/campaigns");
 
   const now = new Date();
+  const status = isAdmin
+    ? requestedStatus
+    : partnerCampaignStatuses.includes(requestedStatus as (typeof partnerCampaignStatuses)[number])
+      ? (requestedStatus as (typeof partnerCampaignStatuses)[number])
+      : campaign.status;
 
   await db
     .update(campaigns)
@@ -724,7 +866,7 @@ export async function updatePartnerCampaignAction(formData: FormData) {
       impactUnit,
       impactTarget,
       status,
-      publishedAt: status === "published" ? campaign.publishedAt ?? now : null,
+      publishedAt: status === "published" ? campaign.publishedAt ?? now : status === campaign.status ? campaign.publishedAt : null,
       endsAt,
       updatedAt: now
     })
@@ -758,21 +900,13 @@ export async function deletePartnerCampaignAction(formData: FormData) {
 
   await requireOrganizationAccess(user.id, campaign.organizationId, formData, "/partner/campaigns");
 
-  await db.transaction(async (tx) => {
-    const donationRows = await tx.select({ id: donations.id }).from(donations).where(eq(donations.campaignId, campaignId));
-    const donationIds = donationRows.map((donation) => donation.id);
+  const blockers = await getCampaignDeleteBlockers(campaignId);
 
-    if (donationIds.length > 0) {
-      await tx.delete(paymentTransactions).where(inArray(paymentTransactions.donationId, donationIds));
-    }
+  if (blockers.blocked) {
+    redirectPartnerError(formData, "/partner/campaigns", "campaign-has-history");
+  }
 
-    await tx.delete(corporateProjectPortfolio).where(eq(corporateProjectPortfolio.campaignId, campaignId));
-    await tx.delete(sponsoredEcosystems).where(eq(sponsoredEcosystems.campaignId, campaignId));
-    await tx.delete(donations).where(eq(donations.campaignId, campaignId));
-    await tx.update(impactSites).set({ campaignId: null }).where(eq(impactSites.campaignId, campaignId));
-    await tx.update(expeditions).set({ relatedCampaignId: null }).where(eq(expeditions.relatedCampaignId, campaignId));
-    await tx.delete(campaigns).where(eq(campaigns.id, campaignId));
-  });
+  await db.delete(campaigns).where(eq(campaigns.id, campaignId));
 
   await db.insert(adminAuditLogs).values({
     actorUserId: user.id,
@@ -785,12 +919,505 @@ export async function deletePartnerCampaignAction(formData: FormData) {
   redirectPartnerSaved(formData, "/partner/campaigns", "campaign-deleted");
 }
 
+export async function createExpeditionAction(formData: FormData) {
+  const user = await requireRole(["admin"], "/admin/expeditions");
+  const title = formText(formData, "title");
+  const slug = slugifyExpedition(formText(formData, "slug") || title);
+  const region = formText(formData, "region");
+  const durationDays = parsePositiveInteger(formData.get("durationDays"));
+  const basePrice = parsePositiveDecimal(formData.get("basePrice"));
+  const summary = formText(formData, "summary");
+  const relatedCampaignId = nullableText(formData, "relatedCampaignId");
+
+  if (!title || !slug || !region || !durationDays || !basePrice || !summary) {
+    redirectAdminExpeditionError("expedition-invalid");
+  }
+
+  const [existing] = await db.select({ id: expeditions.id }).from(expeditions).where(eq(expeditions.slug, slug)).limit(1);
+
+  if (existing) {
+    redirectAdminExpeditionError("expedition-slug");
+  }
+
+  if (relatedCampaignId) {
+    const [campaign] = await db.select({ id: campaigns.id }).from(campaigns).where(eq(campaigns.id, relatedCampaignId)).limit(1);
+
+    if (!campaign) {
+      redirectAdminExpeditionError("campaign-missing");
+    }
+  }
+
+  const [expedition] = await db
+    .insert(expeditions)
+    .values({
+      title,
+      slug,
+      region,
+      durationDays,
+      basePrice,
+      summary,
+      imageUrl: nullableText(formData, "imageUrl"),
+      relatedCampaignId
+    })
+    .returning({ id: expeditions.id });
+
+  await db.insert(adminAuditLogs).values({
+    actorUserId: user.id,
+    action: "expedition.created",
+    entityType: "expedition",
+    entityId: expedition.id,
+    metadata: { slug, relatedCampaignId }
+  });
+
+  redirectAdminExpeditionSaved("expedition-created");
+}
+
+export async function updateExpeditionAction(formData: FormData) {
+  const user = await requireRole(["admin"], "/admin/expeditions");
+  const expeditionId = formText(formData, "expeditionId");
+  const title = formText(formData, "title");
+  const slug = slugifyExpedition(formText(formData, "slug") || title);
+  const region = formText(formData, "region");
+  const durationDays = parsePositiveInteger(formData.get("durationDays"));
+  const basePrice = parsePositiveDecimal(formData.get("basePrice"));
+  const summary = formText(formData, "summary");
+  const relatedCampaignId = nullableText(formData, "relatedCampaignId");
+
+  if (!expeditionId || !title || !slug || !region || !durationDays || !basePrice || !summary) {
+    redirectAdminExpeditionError("expedition-invalid");
+  }
+
+  const [existingSlug] = await db.select({ id: expeditions.id }).from(expeditions).where(eq(expeditions.slug, slug)).limit(1);
+
+  if (existingSlug && existingSlug.id !== expeditionId) {
+    redirectAdminExpeditionError("expedition-slug");
+  }
+
+  if (relatedCampaignId) {
+    const [campaign] = await db.select({ id: campaigns.id }).from(campaigns).where(eq(campaigns.id, relatedCampaignId)).limit(1);
+
+    if (!campaign) {
+      redirectAdminExpeditionError("campaign-missing");
+    }
+  }
+
+  const [expedition] = await db
+    .update(expeditions)
+    .set({
+      title,
+      slug,
+      region,
+      durationDays,
+      basePrice,
+      summary,
+      imageUrl: nullableText(formData, "imageUrl"),
+      relatedCampaignId
+    })
+    .where(eq(expeditions.id, expeditionId))
+    .returning({ id: expeditions.id });
+
+  if (!expedition) {
+    redirectAdminExpeditionError("expedition-missing");
+  }
+
+  await db.insert(adminAuditLogs).values({
+    actorUserId: user.id,
+    action: "expedition.updated",
+    entityType: "expedition",
+    entityId: expeditionId,
+    metadata: { slug, relatedCampaignId }
+  });
+
+  redirectAdminExpeditionSaved("expedition-updated");
+}
+
+export async function deleteExpeditionAction(formData: FormData) {
+  const user = await requireRole(["admin"], "/admin/expeditions");
+  const expeditionId = formText(formData, "expeditionId");
+  const confirmed = formData.get("confirmDelete") === "delete";
+
+  if (!expeditionId || !confirmed) {
+    redirectAdminExpeditionError("expedition-delete");
+  }
+
+  const [booking] = await db.select({ id: expeditionBookings.id }).from(expeditionBookings).where(eq(expeditionBookings.expeditionId, expeditionId)).limit(1);
+
+  if (booking) {
+    redirectAdminExpeditionError("expedition-has-bookings");
+  }
+
+  const [expedition] = await db.delete(expeditions).where(eq(expeditions.id, expeditionId)).returning({ id: expeditions.id, slug: expeditions.slug });
+
+  if (!expedition) {
+    redirectAdminExpeditionError("expedition-missing");
+  }
+
+  await db.insert(adminAuditLogs).values({
+    actorUserId: user.id,
+    action: "expedition.deleted",
+    entityType: "expedition",
+    entityId: expedition.id,
+    metadata: { slug: expedition.slug }
+  });
+
+  redirectAdminExpeditionSaved("expedition-deleted");
+}
+
+export async function createExpeditionDepartureAction(formData: FormData) {
+  const user = await requireRole(["admin"], "/admin/expeditions");
+  const expeditionId = formText(formData, "expeditionId");
+  const startsAt = parseDateTime(formData.get("startsAt"));
+  const endsAt = parseDateTime(formData.get("endsAt"));
+  const capacity = parsePositiveInteger(formData.get("capacity"));
+  const seatsBooked = parseNonNegativeInteger(formData.get("seatsBooked")) ?? 0;
+  const status = expeditionDepartureStatusFromForm(formData.get("status"));
+
+  if (!expeditionId || !startsAt || !endsAt || !capacity || endsAt <= startsAt || seatsBooked > capacity) {
+    redirectAdminExpeditionError("departure-invalid");
+  }
+
+  const [expedition] = await db.select({ id: expeditions.id }).from(expeditions).where(eq(expeditions.id, expeditionId)).limit(1);
+
+  if (!expedition) {
+    redirectAdminExpeditionError("expedition-missing");
+  }
+
+  const [existing] = await db
+    .select({ id: expeditionDepartures.id })
+    .from(expeditionDepartures)
+    .where(and(eq(expeditionDepartures.expeditionId, expeditionId), eq(expeditionDepartures.startsAt, startsAt)))
+    .limit(1);
+
+  if (existing) {
+    redirectAdminExpeditionError("departure-duplicate");
+  }
+
+  const [departure] = await db
+    .insert(expeditionDepartures)
+    .values({
+      expeditionId,
+      startsAt,
+      endsAt,
+      capacity,
+      seatsBooked,
+      status,
+      metadata: departureMetadata(formData)
+    })
+    .returning({ id: expeditionDepartures.id });
+
+  await db.insert(adminAuditLogs).values({
+    actorUserId: user.id,
+    action: "expedition_departure.created",
+    entityType: "expedition_departure",
+    entityId: departure.id,
+    metadata: { expeditionId, status, capacity }
+  });
+
+  redirectAdminExpeditionSaved("departure-created");
+}
+
+export async function updateExpeditionDepartureAction(formData: FormData) {
+  const user = await requireRole(["admin"], "/admin/expeditions");
+  const departureId = formText(formData, "departureId");
+  const startsAt = parseDateTime(formData.get("startsAt"));
+  const endsAt = parseDateTime(formData.get("endsAt"));
+  const capacity = parsePositiveInteger(formData.get("capacity"));
+  const status = expeditionDepartureStatusFromForm(formData.get("status"));
+
+  if (!departureId || !startsAt || !endsAt || !capacity || endsAt <= startsAt) {
+    redirectAdminExpeditionError("departure-invalid");
+  }
+
+  const [existingDeparture] = await db
+    .select({
+      id: expeditionDepartures.id,
+      expeditionId: expeditionDepartures.expeditionId,
+      seatsBooked: expeditionDepartures.seatsBooked
+    })
+    .from(expeditionDepartures)
+    .where(eq(expeditionDepartures.id, departureId))
+    .limit(1);
+
+  if (!existingDeparture) {
+    redirectAdminExpeditionError("departure-missing");
+  }
+
+  if (capacity < existingDeparture.seatsBooked) {
+    redirectAdminExpeditionError("departure-capacity");
+  }
+
+  const [duplicate] = await db
+    .select({ id: expeditionDepartures.id })
+    .from(expeditionDepartures)
+    .where(and(eq(expeditionDepartures.expeditionId, existingDeparture.expeditionId), eq(expeditionDepartures.startsAt, startsAt)))
+    .limit(1);
+
+  if (duplicate && duplicate.id !== departureId) {
+    redirectAdminExpeditionError("departure-duplicate");
+  }
+
+  await db
+    .update(expeditionDepartures)
+    .set({
+      startsAt,
+      endsAt,
+      capacity,
+      status,
+      metadata: departureMetadata(formData)
+    })
+    .where(eq(expeditionDepartures.id, departureId));
+
+  await db.insert(adminAuditLogs).values({
+    actorUserId: user.id,
+    action: "expedition_departure.updated",
+    entityType: "expedition_departure",
+    entityId: departureId,
+    metadata: { expeditionId: existingDeparture.expeditionId, status, capacity }
+  });
+
+  redirectAdminExpeditionSaved("departure-updated");
+}
+
+export async function deleteExpeditionDepartureAction(formData: FormData) {
+  const user = await requireRole(["admin"], "/admin/expeditions");
+  const departureId = formText(formData, "departureId");
+  const confirmed = formData.get("confirmDelete") === "delete";
+
+  if (!departureId || !confirmed) {
+    redirectAdminExpeditionError("departure-delete");
+  }
+
+  const [booking] = await db.select({ id: expeditionBookings.id }).from(expeditionBookings).where(eq(expeditionBookings.departureId, departureId)).limit(1);
+
+  if (booking) {
+    redirectAdminExpeditionError("departure-has-bookings");
+  }
+
+  const [departure] = await db
+    .delete(expeditionDepartures)
+    .where(eq(expeditionDepartures.id, departureId))
+    .returning({
+      id: expeditionDepartures.id,
+      expeditionId: expeditionDepartures.expeditionId
+    });
+
+  if (!departure) {
+    redirectAdminExpeditionError("departure-missing");
+  }
+
+  await db.insert(adminAuditLogs).values({
+    actorUserId: user.id,
+    action: "expedition_departure.deleted",
+    entityType: "expedition_departure",
+    entityId: departure.id,
+    metadata: { expeditionId: departure.expeditionId }
+  });
+
+  redirectAdminExpeditionSaved("departure-deleted");
+}
+
+export async function createAdminCampaignAction(formData: FormData) {
+  const user = await requireRole(["admin"], "/admin/campaigns");
+  const organizationId = formText(formData, "organizationId");
+  const title = formText(formData, "title");
+  const slug = slugifyTitle(formText(formData, "slug") || title);
+  const summary = formText(formData, "summary");
+  const story = formText(formData, "story");
+  const category = formText(formData, "category");
+  const region = formText(formData, "region");
+  const goalAmount = parseIdrAmount(formData.get("goalAmount"));
+  const impactUnit = formText(formData, "impactUnit");
+  const impactTarget = parsePositiveInteger(formData.get("impactTarget"));
+  const status = campaignStatusFromForm(formData.get("status"));
+  const imageUrl = await imageFromAdminCampaignForm(formData);
+  const endsAt = parseOptionalDate(formData.get("endsAt"));
+
+  if (!organizationId || !title || !slug || !summary || !category || !region || !goalAmount || !impactUnit || !impactTarget) {
+    redirectAdminCampaignError("campaign-invalid");
+  }
+
+  const [organization] = await db.select({ id: organizations.id }).from(organizations).where(eq(organizations.id, organizationId)).limit(1);
+
+  if (!organization) {
+    redirectAdminCampaignError("organization-missing");
+  }
+
+  const [existingSlug] = await db.select({ id: campaigns.id }).from(campaigns).where(eq(campaigns.slug, slug)).limit(1);
+
+  if (existingSlug) {
+    redirectAdminCampaignError("campaign-slug");
+  }
+
+  const now = new Date();
+  const [campaign] = await db
+    .insert(campaigns)
+    .values({
+      organizationId,
+      title,
+      slug,
+      summary,
+      story: story || null,
+      category,
+      region,
+      imageUrl,
+      goalAmount,
+      impactUnit,
+      impactTarget,
+      status,
+      publishedAt: status === "published" ? now : null,
+      endsAt,
+      updatedAt: now
+    })
+    .returning({ id: campaigns.id });
+
+  await db.insert(adminAuditLogs).values({
+    actorUserId: user.id,
+    action: "campaign.created",
+    entityType: "campaign",
+    entityId: campaign.id,
+    metadata: { source: "admin", slug, status }
+  });
+
+  redirectAdminCampaignSaved("campaign-created");
+}
+
+export async function updateAdminCampaignAction(formData: FormData) {
+  const user = await requireRole(["admin"], "/admin/campaigns");
+  const campaignId = formText(formData, "campaignId");
+  const organizationId = formText(formData, "organizationId");
+  const title = formText(formData, "title");
+  const slug = slugifyTitle(formText(formData, "slug") || title);
+  const summary = formText(formData, "summary");
+  const story = formText(formData, "story");
+  const category = formText(formData, "category");
+  const region = formText(formData, "region");
+  const goalAmount = parseIdrAmount(formData.get("goalAmount"));
+  const impactUnit = formText(formData, "impactUnit");
+  const impactTarget = parsePositiveInteger(formData.get("impactTarget"));
+  const status = campaignStatusFromForm(formData.get("status"));
+  const uploadedImageUrl = await imageFromAdminCampaignForm(formData);
+  const endsAt = parseOptionalDate(formData.get("endsAt"));
+  const removeImage = formData.get("removeImage") === "on";
+
+  if (!campaignId || !organizationId || !title || !slug || !summary || !category || !region || !goalAmount || !impactUnit || !impactTarget) {
+    redirectAdminCampaignError("campaign-invalid");
+  }
+
+  const [campaign] = await db
+    .select({
+      id: campaigns.id,
+      slug: campaigns.slug,
+      imageUrl: campaigns.imageUrl,
+      publishedAt: campaigns.publishedAt
+    })
+    .from(campaigns)
+    .where(eq(campaigns.id, campaignId))
+    .limit(1);
+
+  if (!campaign) {
+    redirectAdminCampaignError("campaign-missing");
+  }
+
+  const [organization] = await db.select({ id: organizations.id }).from(organizations).where(eq(organizations.id, organizationId)).limit(1);
+
+  if (!organization) {
+    redirectAdminCampaignError("organization-missing");
+  }
+
+  const [existingSlug] = await db.select({ id: campaigns.id }).from(campaigns).where(eq(campaigns.slug, slug)).limit(1);
+
+  if (existingSlug && existingSlug.id !== campaignId) {
+    redirectAdminCampaignError("campaign-slug");
+  }
+
+  const now = new Date();
+
+  await db
+    .update(campaigns)
+    .set({
+      organizationId,
+      title,
+      slug,
+      summary,
+      story: story || null,
+      category,
+      region,
+      imageUrl: removeImage ? null : uploadedImageUrl ?? campaign.imageUrl,
+      goalAmount,
+      impactUnit,
+      impactTarget,
+      status,
+      publishedAt: status === "published" ? campaign.publishedAt ?? now : null,
+      endsAt,
+      updatedAt: now
+    })
+    .where(eq(campaigns.id, campaignId));
+
+  await db.insert(adminAuditLogs).values({
+    actorUserId: user.id,
+    action: "campaign.updated",
+    entityType: "campaign",
+    entityId: campaignId,
+    metadata: { source: "admin", previousSlug: campaign.slug, slug, status }
+  });
+
+  redirectAdminCampaignSaved("campaign-updated");
+}
+
+export async function deleteAdminCampaignAction(formData: FormData) {
+  const user = await requireRole(["admin"], "/admin/campaigns");
+  const campaignId = formText(formData, "campaignId");
+  const confirmed = formData.get("confirmDelete") === "delete";
+
+  if (!campaignId || !confirmed) {
+    redirectAdminCampaignError("campaign-delete");
+  }
+
+  const [campaign] = await db.select({ id: campaigns.id, title: campaigns.title }).from(campaigns).where(eq(campaigns.id, campaignId)).limit(1);
+
+  if (!campaign) {
+    redirectAdminCampaignError("campaign-missing");
+  }
+
+  const blockers = await getCampaignDeleteBlockers(campaignId);
+
+  if (blockers.blocked) {
+    redirectAdminCampaignError("campaign-has-history");
+  }
+
+  await db.delete(campaigns).where(eq(campaigns.id, campaignId));
+
+  await db.insert(adminAuditLogs).values({
+    actorUserId: user.id,
+    action: "campaign.deleted",
+    entityType: "campaign",
+    entityId: campaignId,
+    metadata: { source: "admin", title: campaign.title }
+  });
+
+  redirectAdminCampaignSaved("campaign-deleted");
+}
+
 export async function updateCampaignStatusAction(formData: FormData) {
   const user = await requireRole(["admin"], "/admin/campaigns");
   const campaignId = String(formData.get("campaignId") ?? "");
   const status = String(formData.get("status") ?? "");
+  const now = new Date();
 
   if (!campaignId || !campaignStatuses.includes(status as (typeof campaignStatuses)[number])) {
+    redirect("/admin/campaigns?error=campaign");
+  }
+
+  const [campaign] = await db
+    .select({
+      id: campaigns.id,
+      publishedAt: campaigns.publishedAt
+    })
+    .from(campaigns)
+    .where(eq(campaigns.id, campaignId))
+    .limit(1);
+
+  if (!campaign) {
     redirect("/admin/campaigns?error=campaign");
   }
 
@@ -798,8 +1425,8 @@ export async function updateCampaignStatusAction(formData: FormData) {
     .update(campaigns)
     .set({
       status: status as (typeof campaignStatuses)[number],
-      publishedAt: status === "published" ? new Date() : undefined,
-      updatedAt: new Date()
+      publishedAt: status === "published" ? campaign.publishedAt ?? now : null,
+      updatedAt: now
     })
     .where(eq(campaigns.id, campaignId));
 

@@ -147,7 +147,7 @@ export default async function AdminPortalPage() {
     { label: "Evidence", value: data.evidence.length, detail: `${pendingEvidence} pending`, href: "/admin/evidence", icon: FileCheck2 },
     { label: "Partners", value: operations.partners.length, detail: "Verification levels", href: "/admin/partners", icon: Handshake },
     { label: "Impact sites", value: operations.impactSites.length, detail: "Field locations", href: "/admin/impact-sites", icon: MapPinned },
-    { label: "Expeditions", value: operations.expeditions.length, detail: "Departures and capacity", href: "/admin/expeditions", icon: ShipWheel },
+    { label: "Expeditions", value: operations.expeditionCatalog.length, detail: "Departures and capacity", href: "/admin/expeditions", icon: ShipWheel },
     { label: "Users", value: operations.users.length, detail: "Recent accounts", href: "/admin/users", icon: Users }
   ];
 

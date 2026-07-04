@@ -338,9 +338,15 @@ export default async function ExpeditionDetailPage({ params }: { params: Promise
                           Minimum {departure.minParticipants} participants
                         </span>
                       </div>
-                      <ButtonLink href={`/checkout/expedition?departure=${departure.id}`} tone="secondary" className="mt-5">
-                        Select Date
-                      </ButtonLink>
+                      {departure.status === "open" && departure.availableSeats > 0 ? (
+                        <ButtonLink href={`/checkout/expedition?departure=${departure.id}`} tone="secondary" className="mt-5">
+                          Select Date
+                        </ButtonLink>
+                      ) : (
+                        <ButtonLink href={`mailto:support@terumbu.eco?subject=Join waitlist for ${encodeURIComponent(expedition.title)}`} tone="light" className="mt-5">
+                          Join Waitlist
+                        </ButtonLink>
+                      )}
                     </article>
                   ))
                 ) : (
