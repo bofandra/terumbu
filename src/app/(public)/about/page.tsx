@@ -36,7 +36,7 @@ export default async function AboutPage() {
 
       <section className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
         <SectionHeading eyebrow="Trust model" title="Evidence, partners, and records move together">
-          Campaign progress, site updates, evidence files, donations, expedition bookings, course certificates, and Impact Passport entries are stored as connected PostgreSQL records.
+          Campaign progress, site updates, evidence files, donations, expedition bookings, course certificates, and Impact Passport entries stay connected across the platform.
         </SectionHeading>
         <div className="mt-10 grid gap-4 md:grid-cols-3">
           {[

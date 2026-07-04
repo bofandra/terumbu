@@ -24,15 +24,23 @@ type AdminNavItem = {
   href: string;
   label: string;
   icon: LucideIcon;
+  children?: AdminNavItem[];
 };
 
 const adminNavItems: AdminNavItem[] = [
   { href: "/admin", label: "Overview", icon: LayoutDashboard },
-  { href: "/admin/campaigns", label: "Campaigns", icon: Megaphone },
+  {
+    href: "/admin/campaigns",
+    label: "Campaigns",
+    icon: Megaphone,
+    children: [
+      { href: "/admin/campaigns", label: "Campaign list", icon: Megaphone },
+      { href: "/admin/campaigns/impact-sites", label: "Impact sites", icon: MapPinned },
+      { href: "/admin/campaigns/evidence", label: "Evidence", icon: FileCheck2 }
+    ]
+  },
   { href: "/admin/expeditions", label: "Expeditions", icon: ShipWheel },
   { href: "/admin/partners", label: "Partners", icon: Handshake },
-  { href: "/admin/impact-sites", label: "Impact sites", icon: MapPinned },
-  { href: "/admin/evidence", label: "Evidence", icon: FileCheck2 },
   { href: "/admin/reports", label: "Reports", icon: BarChart3 },
   { href: "/admin/users", label: "Users", icon: Users },
   { href: "/admin/audit", label: "Audit", icon: ScrollText }
@@ -70,20 +78,51 @@ export function AdminShell({ children }: { children: ReactNode }) {
               const isActive = pathname === item.href || (item.href !== "/admin" && pathname.startsWith(`${item.href}/`));
 
               return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  aria-current={isActive ? "page" : undefined}
-                  className={cn(
-                    "inline-flex min-h-11 shrink-0 items-center gap-3 rounded-lg px-3 text-sm font-bold transition lg:w-full",
-                    isActive
-                      ? "bg-ocean-900 text-white shadow-soft"
-                      : "text-ocean-900/70 hover:bg-ocean-50 hover:text-ocean-900"
-                  )}
-                >
-                  <Icon className="size-4" aria-hidden="true" />
-                  <span>{item.label}</span>
-                </Link>
+                <div key={item.href} className="shrink-0 lg:w-full">
+                  <Link
+                    href={item.href}
+                    aria-current={isActive ? "page" : undefined}
+                    className={cn(
+                      "inline-flex min-h-11 w-full items-center gap-3 rounded-lg px-3 text-sm font-bold transition",
+                      isActive
+                        ? "bg-ocean-900 text-white shadow-soft"
+                        : "text-ocean-900/70 hover:bg-ocean-50 hover:text-ocean-900"
+                    )}
+                  >
+                    <Icon className="size-4" aria-hidden="true" />
+                    <span>{item.label}</span>
+                  </Link>
+
+                  {item.children?.length ? (
+                    <div className="mt-1 hidden border-l border-ocean-900/10 pl-4 lg:grid">
+                      {item.children.map((child) => {
+                        const ChildIcon = child.icon;
+                        const anotherChildIsActive = item.children?.some(
+                          (sibling) => sibling.href !== item.href && (pathname === sibling.href || pathname.startsWith(`${sibling.href}/`))
+                        );
+                        const childIsActive =
+                          child.href === item.href ? isActive && !anotherChildIsActive : pathname === child.href || pathname.startsWith(`${child.href}/`);
+
+                        return (
+                          <Link
+                            key={child.href}
+                            href={child.href}
+                            aria-current={childIsActive ? "page" : undefined}
+                            className={cn(
+                              "inline-flex min-h-9 items-center gap-2 rounded-lg px-3 text-xs font-bold transition",
+                              childIsActive
+                                ? "bg-ocean-50 text-ocean-900"
+                                : "text-ocean-900/58 hover:bg-ocean-50 hover:text-ocean-900"
+                            )}
+                          >
+                            <ChildIcon className="size-3.5" aria-hidden="true" />
+                            <span>{child.label}</span>
+                          </Link>
+                        );
+                      })}
+                    </div>
+                  ) : null}
+                </div>
               );
             })}
           </nav>

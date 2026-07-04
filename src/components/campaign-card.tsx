@@ -3,6 +3,7 @@ import Image from "next/image";
 import Link from "next/link";
 
 import { ButtonLink } from "@/components/ui/button";
+import { ProgressMeter } from "@/components/ui/progress-meter";
 import type { CampaignCardData } from "@/lib/domain";
 import { formatCurrency } from "@/lib/utils";
 
@@ -55,9 +56,7 @@ export function CampaignCard({ campaign }: CampaignCardProps) {
             <span className="font-bold text-ocean-900">{progress}% funded</span>
             <span className="text-ocean-900/60">{campaign.daysLeft} days left</span>
           </div>
-          <div className="mt-2 h-3 overflow-hidden rounded-full bg-ocean-50">
-            <div className="h-full rounded-full bg-coral-500" style={{ width: `${progress}%` }} />
-          </div>
+          <ProgressMeter value={progress} label={`${campaign.title} funding progress`} className="mt-2 h-3" trackClassName="bg-ocean-50" />
           <p className="mt-3 text-sm text-ocean-900/68">
             <span className="font-bold text-ocean-900">{formatCurrency(campaign.raised)}</span> raised of{" "}
             {formatCurrency(campaign.goal)}

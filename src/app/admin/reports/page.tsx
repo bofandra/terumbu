@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { ArrowUpRight, BarChart3, FileText } from "lucide-react";
 
-import { AdminPageHeader, AdminStatusBadge, adminPanelClassName } from "@/components/admin-ui";
+import { AdminEmptyState, AdminPageHeader, AdminStatusBadge, adminPanelClassName } from "@/components/admin-ui";
 import { requireRole } from "@/lib/auth";
 import { getAdminOperationsData } from "@/lib/queries";
 
@@ -83,7 +83,15 @@ export default async function AdminReportsPage() {
               </div>
             </article>
           ))}
-          {data.reports.length === 0 ? <p className="p-4 text-sm font-semibold text-ocean-900/58">No report exports found.</p> : null}
+          {data.reports.length === 0 ? (
+            <AdminEmptyState
+              className="m-4"
+              title="No report exports yet"
+              description="Corporate exports will appear here after an admin or corporate manager generates a reporting package."
+              actionHref="/corporate/reports"
+              actionLabel="Open reports"
+            />
+          ) : null}
         </div>
       </section>
     </div>

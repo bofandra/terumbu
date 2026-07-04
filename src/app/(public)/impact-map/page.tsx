@@ -14,7 +14,7 @@ export default async function ImpactMapPage() {
   return (
     <section className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
       <SectionHeading eyebrow="Impact Map" title="A national view of verified conservation work">
-        PostgreSQL-backed impact sites, verification status, evidence counts, and provider map tiles are shown together.
+        Browse impact sites, verification status, evidence counts, and approximate field locations in one public view.
       </SectionHeading>
       <div className="mt-10">
         <ImpactMapPreview sites={sites} />

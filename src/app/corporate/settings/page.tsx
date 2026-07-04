@@ -1,3 +1,4 @@
+import { CorporateEmptyState } from "@/components/corporate-empty-state";
 import { requireUser } from "@/lib/auth";
 import { getCorporateDashboardData } from "@/lib/queries";
 
@@ -12,7 +13,7 @@ export default async function CorporateSettingsPage() {
   const data = await getCorporateDashboardData(user.id);
 
   if (!data) {
-    return <main className="mx-auto max-w-[1500px] px-4 py-8 sm:px-6 lg:px-8">Corporate program not configured.</main>;
+    return <CorporateEmptyState />;
   }
 
   return (
@@ -22,7 +23,7 @@ export default async function CorporateSettingsPage() {
       <section className="mt-6 rounded-2xl border border-ocean-900/10 bg-white p-5 shadow-soft">
         <h2 className="text-xl font-bold tracking-normal text-ocean-900">Workspace access</h2>
         <p className="mt-2 text-sm leading-6 text-ocean-900/62">
-          Access is currently controlled by corporate permissions and employee records in PostgreSQL. Team invitation and role editing workflows should be managed from the admin portal next.
+          Access is controlled by corporate permissions and employee records. Team invitation and role editing workflows should be managed from the admin portal next.
         </p>
       </section>
     </main>

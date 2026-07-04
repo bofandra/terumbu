@@ -20,28 +20,14 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { Button, ButtonLink } from "@/components/ui/button";
+import { ProgressMeter } from "@/components/ui/progress-meter";
 import { completeLessonAction, enrollCourseAction, submitAssessmentAction } from "@/lib/academy-actions";
 import { getSessionUser } from "@/lib/auth";
 import { getCourseDetail } from "@/lib/queries";
 import { cn } from "@/lib/utils";
 
-function progressWidth(value: number) {
-  return `${Math.max(0, Math.min(100, value))}%`;
-}
-
 function ProgressBar({ value, label }: { value: number; label: string }) {
-  return (
-    <div
-      className="h-2 overflow-hidden rounded-full bg-ocean-900/10"
-      role="progressbar"
-      aria-label={label}
-      aria-valuemin={0}
-      aria-valuemax={100}
-      aria-valuenow={Math.round(value)}
-    >
-      <div className="h-full rounded-full bg-kelp-500" style={{ width: progressWidth(value) }} />
-    </div>
-  );
+  return <ProgressMeter value={value} label={label} indicatorClassName="bg-kelp-500" trackClassName="bg-ocean-900/10" />;
 }
 
 function formatDate(value: Date) {
@@ -276,10 +262,10 @@ export default async function CourseDetailPage({ params }: { params: Promise<{ s
             </ul>
           </article>
 
-          <article id="certificate" className="rounded-2xl border border-[#cabdff]/70 bg-[#f5f1ff] p-5 shadow-soft">
-            <p className="text-sm font-bold uppercase text-[#5f3dc4]">Certificate</p>
-            <div className="mt-4 grid min-h-32 place-items-center rounded-xl border border-[#cabdff] bg-white p-4 text-center">
-              <FileBadge size={36} aria-hidden="true" className="text-[#5f3dc4]" />
+          <article id="certificate" className="rounded-2xl border border-credential-300/70 bg-credential-50 p-5 shadow-soft">
+            <p className="text-sm font-bold uppercase text-credential-700">Certificate</p>
+            <div className="mt-4 grid min-h-32 place-items-center rounded-xl border border-credential-300 bg-white p-4 text-center">
+              <FileBadge size={36} aria-hidden="true" className="text-credential-700" />
               <p className="mt-3 text-sm font-bold text-ocean-900">{course.certificateOutcome}</p>
             </div>
             <p className="mt-4 text-sm leading-6 text-ocean-900/62">

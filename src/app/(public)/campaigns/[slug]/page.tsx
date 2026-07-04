@@ -416,7 +416,7 @@ export default async function CampaignDetailPage({ params }: { params: Promise<{
                     ))}
                   </div>
                 ) : (
-                  <p className="mt-4 leading-8 text-ocean-900/68">No public impact sites have been linked to this campaign yet.</p>
+                  <p className="mt-4 leading-8 text-ocean-900/68">Public impact sites will appear after partner locations are approved for sharing.</p>
                 )}
               </article>
             </div>
@@ -479,7 +479,7 @@ export default async function CampaignDetailPage({ params }: { params: Promise<{
                       <p className="text-sm font-bold uppercase tracking-[0.16em] text-coral-700">Sponsorship record</p>
                       <h2 className="mt-3 text-2xl font-bold tracking-normal text-ocean-900">{sponsoredPreview.label}</h2>
                       <p className="mt-4 leading-7 text-ocean-900/68">
-                        This sponsorship record is connected to the campaign database and appears here after paid sponsorship activity is recorded.
+                        This sponsorship record appears after paid sponsorship activity is confirmed and linked to the campaign.
                       </p>
                       {sponsorAmount > 0 ? (
                         <ButtonLink href={`/checkout/donation?campaign=${campaign.slug}&amount=${sponsorAmount}&intent=coral`} className="mt-6">
@@ -528,7 +528,7 @@ export default async function CampaignDetailPage({ params }: { params: Promise<{
                 ))
               ) : (
                 <article className="rounded-2xl border border-ocean-900/10 bg-white p-6 text-ocean-900/68 shadow-soft">
-                  No campaign updates or evidence records have been recorded yet.
+                  No campaign updates or evidence records have been published yet.
                 </article>
               )}
             </div>
@@ -566,7 +566,7 @@ export default async function CampaignDetailPage({ params }: { params: Promise<{
                   </div>
                 </div>
                 <p className="mt-5 text-sm leading-6 text-ocean-900/68">
-                  {campaign.partnerDescription ?? "No partner description recorded in database."}
+                  {campaign.partnerDescription ?? "Partner details will appear after the organization profile is completed."}
                 </p>
                 <div className="mt-5 flex flex-wrap gap-3">
                   <ButtonLink href={`/partners/${campaign.partnerSlug}`} tone="secondary">View organization profile</ButtonLink>
@@ -604,7 +604,7 @@ export default async function CampaignDetailPage({ params }: { params: Promise<{
 
             <article className="mt-8 rounded-2xl border border-ocean-900/10 bg-white p-6 shadow-soft">
               <SectionHeading title="Funding record">
-                Funding values are calculated from the campaign row and paid donation records in the database.
+                Funding values combine the campaign goal with paid supporter contributions.
               </SectionHeading>
               <div className="mt-8 grid gap-4 md:grid-cols-4">
                 {[

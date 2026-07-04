@@ -20,7 +20,9 @@ import {
 import Image from "next/image";
 import Link from "next/link";
 
+import { CorporateEmptyState } from "@/components/corporate-empty-state";
 import { Button, ButtonLink } from "@/components/ui/button";
+import { ProgressMeter } from "@/components/ui/progress-meter";
 import { requireUser } from "@/lib/auth";
 import { createCorporateReportExportAction } from "@/lib/corporate-actions";
 import { getCorporateDashboardData } from "@/lib/queries";
@@ -118,23 +120,7 @@ export default async function CorporateDashboardPage() {
   const data = await getCorporateDashboardData(user.id);
 
   if (!data) {
-    return (
-      <main className="mx-auto max-w-5xl px-4 py-12 sm:px-6 lg:px-8">
-        <section className="rounded-2xl border border-dashed border-ocean-900/18 bg-white p-8 shadow-soft">
-          <p className="text-sm font-bold uppercase text-coral-700">Corporate workspace</p>
-          <h1 className="mt-3 text-3xl font-bold tracking-normal text-ocean-900">Welcome to your corporate impact workspace</h1>
-          <p className="mt-3 max-w-2xl text-sm leading-6 text-ocean-900/62">
-            Create your first conservation program or speak with the Terumbu partnership team to design a verified ESG portfolio.
-          </p>
-          <div className="mt-6 flex flex-wrap gap-2">
-            <ButtonLink href="/campaigns">Browse Verified Projects</ButtonLink>
-            <ButtonLink href="mailto:partnerships@terumbu.eco" tone="light">
-              Contact Partnership Team
-            </ButtonLink>
-          </div>
-        </section>
-      </main>
-    );
+    return <CorporateEmptyState />;
   }
 
   const maxTrendEmployees = Math.max(1, ...data.employeeTrend.map((item) => item.employees));
@@ -181,9 +167,7 @@ export default async function CorporateDashboardPage() {
             <p className="text-sm font-bold">Program Period Progress</p>
             <p className="mt-4 text-4xl font-bold tracking-normal">{data.reporting.periodProgress}%</p>
             <p className="mt-1 text-sm text-white/70">of annual program period completed</p>
-            <div className="mt-5 h-2 overflow-hidden rounded-full bg-white/18">
-              <div className="h-full rounded-full bg-kelp-400" style={{ width: `${data.reporting.periodProgress}%` }} />
-            </div>
+            <ProgressMeter value={data.reporting.periodProgress} label="Program period progress" className="mt-5 h-2" indicatorClassName="bg-kelp-400" trackClassName="bg-white/18" />
             <p className="mt-4 text-xs font-semibold text-white/64">
               {formatDate(data.program.startsAt)} - {formatDate(data.program.endsAt)}
             </p>
@@ -227,9 +211,12 @@ export default async function CorporateDashboardPage() {
                   <p className="text-ocean-900/60">Target {goal.target.toLocaleString("id-ID")}</p>
                   <p className="font-bold text-ocean-900">{goal.current.toLocaleString("id-ID")}</p>
                   <div>
-                    <div className="h-2 overflow-hidden rounded-full bg-white">
-                      <div className={cn("h-full rounded-full", goal.status === "Needs Attention" ? "bg-coral-500" : "bg-kelp-500")} style={{ width: `${goal.progress}%` }} />
-                    </div>
+                    <ProgressMeter
+                      value={goal.progress}
+                      label={`${goal.goal} progress`}
+                      indicatorClassName={goal.status === "Needs Attention" ? "bg-coral-500" : "bg-kelp-500"}
+                      trackClassName="bg-white"
+                    />
                     <p className="mt-2 text-xs font-semibold text-ocean-900/56">Forecast: {goal.forecast.toLocaleString("id-ID")} {goal.unit}</p>
                   </div>
                 </div>
@@ -502,9 +489,7 @@ export default async function CorporateDashboardPage() {
                   <span className="font-bold text-ocean-900">{sdg.code} · {sdg.label}</span>
                   <span className="font-bold text-ocean-900/62">{sdg.progress}%</span>
                 </div>
-                <div className="mt-2 h-2 overflow-hidden rounded-full bg-ocean-50">
-                  <div className="h-full rounded-full bg-ocean-700" style={{ width: `${sdg.progress}%` }} />
-                </div>
+                <ProgressMeter value={sdg.progress} label={`${sdg.code} ${sdg.label} progress`} className="mt-2 h-2" indicatorClassName="bg-ocean-700" trackClassName="bg-ocean-50" />
               </div>
             ))}
           </div>
@@ -595,9 +580,13 @@ function ProgressCell({ value }: { value: number }) {
       <div className="flex items-center justify-between gap-3">
         <span className="text-xs font-bold text-ocean-900">{value}%</span>
       </div>
-      <div className="mt-2 h-2 w-28 overflow-hidden rounded-full bg-ocean-50">
-        <div className={cn("h-full rounded-full", value < 65 ? "bg-coral-500" : "bg-kelp-500")} style={{ width: `${value}%` }} />
-      </div>
+      <ProgressMeter
+        value={value}
+        label="Project progress"
+        className="mt-2 h-2 w-28"
+        indicatorClassName={value < 65 ? "bg-coral-500" : "bg-kelp-500"}
+        trackClassName="bg-ocean-50"
+      />
     </div>
   );
 }

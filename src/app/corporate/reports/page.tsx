@@ -1,6 +1,7 @@
 import { CheckCircle2, Download, Eye, FileArchive, Send, UploadCloud } from "lucide-react";
 import Link from "next/link";
 
+import { CorporateEmptyState } from "@/components/corporate-empty-state";
 import { Button } from "@/components/ui/button";
 import { requireUser } from "@/lib/auth";
 import {
@@ -51,7 +52,7 @@ export default async function CorporateReportsPage({ searchParams }: CorporateRe
   const data = await getCorporateDashboardData(user.id);
 
   if (!data) {
-    return <main className="mx-auto max-w-[1500px] px-4 py-8 sm:px-6 lg:px-8">Corporate program not configured.</main>;
+    return <CorporateEmptyState />;
   }
 
   return (

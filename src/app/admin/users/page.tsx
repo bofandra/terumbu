@@ -1,6 +1,6 @@
 import { Mail, UserRound, Users } from "lucide-react";
 
-import { AdminPageHeader, adminPanelClassName } from "@/components/admin-ui";
+import { AdminEmptyState, AdminPageHeader, adminPanelClassName } from "@/components/admin-ui";
 import { requireRole } from "@/lib/auth";
 import { getAdminOperationsData } from "@/lib/queries";
 
@@ -75,8 +75,11 @@ export default async function AdminUsersPage() {
               ))}
               {data.users.length === 0 ? (
                 <tr>
-                  <td className="px-4 py-4 text-sm font-semibold text-ocean-900/58" colSpan={3}>
-                    No users found.
+                  <td className="px-4 py-4" colSpan={3}>
+                    <AdminEmptyState
+                      title="No user accounts yet"
+                      description="New supporter, partner, corporate, and admin accounts will appear here after registration or account creation."
+                    />
                   </td>
                 </tr>
               ) : null}

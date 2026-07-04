@@ -130,7 +130,7 @@ export default async function SavedProjectsPage() {
                   ) : null}
                 </div>
               ))}
-              {data.notifications.length === 0 ? <p className="text-sm font-semibold text-ocean-900/62">No notifications have been generated yet.</p> : null}
+              {data.notifications.length === 0 ? <p className="text-sm font-semibold text-ocean-900/62">Notifications will appear here when account or impact activity needs attention.</p> : null}
             </div>
           </article>
 

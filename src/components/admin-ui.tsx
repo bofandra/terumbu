@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowUpRight } from "lucide-react";
+import { ArrowUpRight, FileSearch } from "lucide-react";
 import type { ReactNode } from "react";
 
 import { cn } from "@/lib/utils";
@@ -80,5 +80,44 @@ export function AdminPageHeader({
         </Link>
       ) : null}
     </header>
+  );
+}
+
+export function AdminEmptyState({
+  title,
+  description,
+  actionHref,
+  actionLabel,
+  className
+}: {
+  title: string;
+  description: string;
+  actionHref?: string;
+  actionLabel?: string;
+  className?: string;
+}) {
+  return (
+    <div className={cn("rounded-lg border border-dashed border-ocean-900/14 bg-sand-50 p-5", className)}>
+      <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
+        <div className="flex gap-3">
+          <span className="grid size-10 shrink-0 place-items-center rounded-lg bg-white text-coral-700 ring-1 ring-ocean-900/10">
+            <FileSearch className="size-5" aria-hidden="true" />
+          </span>
+          <div>
+            <p className="font-bold text-ocean-900">{title}</p>
+            <p className="mt-1 max-w-2xl text-sm font-semibold leading-6 text-ocean-900/58">{description}</p>
+          </div>
+        </div>
+        {actionHref && actionLabel ? (
+          <Link
+            href={actionHref}
+            className="inline-flex min-h-10 shrink-0 items-center justify-center gap-2 rounded-lg border border-ocean-900/10 bg-white px-3 text-sm font-bold text-ocean-900 transition hover:border-coral-500 hover:text-coral-700"
+          >
+            {actionLabel}
+            <ArrowUpRight className="size-4" aria-hidden="true" />
+          </Link>
+        ) : null}
+      </div>
+    </div>
   );
 }

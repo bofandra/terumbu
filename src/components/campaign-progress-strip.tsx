@@ -1,3 +1,4 @@
+import { ProgressMeter } from "@/components/ui/progress-meter";
 import { formatCurrency } from "@/lib/utils";
 
 type CampaignProgressStripProps = {
@@ -34,9 +35,12 @@ export function CampaignProgressStrip({ raised, goal, progress, donors, daysLeft
       </div>
 
       <div className="mt-6">
-        <div className="relative h-3 overflow-hidden rounded-full bg-ocean-50">
-          <div className="h-full rounded-full bg-coral-500" style={{ width: `${Math.min(100, Math.max(0, progress))}%` }} />
-        </div>
+        <ProgressMeter
+          value={progress}
+          label={`Campaign is ${progress} percent funded, with ${formatCurrency(raised)} raised toward ${formatCurrency(goal)}.`}
+          className="h-3"
+          trackClassName="bg-ocean-50"
+        />
       </div>
 
       <div className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-xl bg-kelp-100/70 px-4 py-3 text-sm font-bold text-kelp-700">

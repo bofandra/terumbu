@@ -1,6 +1,6 @@
 import { randomBytes } from "node:crypto";
 
-import { Button } from "@/components/ui/button";
+import { Button, ButtonLink } from "@/components/ui/button";
 import { getSessionUser } from "@/lib/auth";
 import { bookExpeditionAction } from "@/lib/checkout-actions";
 import { getExpeditionCheckoutOptions } from "@/lib/queries";
@@ -30,13 +30,33 @@ export default async function ExpeditionCheckoutPage({ searchParams }: Expeditio
   const selectedParticipants = Math.max(1, Math.min(12, Number(params?.participants ?? 1) || 1));
   const idempotencyKey = `expedition-${randomBytes(12).toString("hex")}`;
 
+  if (visibleOptions.length === 0) {
+    return (
+      <main className="min-h-screen bg-sand-50 px-4 py-12 sm:px-6 lg:px-8">
+        <section className="mx-auto max-w-2xl rounded-2xl border border-dashed border-ocean-900/14 bg-white p-6 shadow-soft">
+          <p className="text-sm font-bold uppercase tracking-[0.16em] text-coral-700">Booking unavailable</p>
+          <h1 className="mt-3 text-3xl font-bold tracking-normal text-ocean-900">No public departures are currently scheduled.</h1>
+          <p className="mt-3 text-sm leading-6 text-ocean-900/62">
+            New expedition dates will appear after operator availability, safety requirements, and conservation partner details are confirmed.
+          </p>
+          <div className="mt-6 flex flex-wrap gap-2">
+            <ButtonLink href="/expeditions">View expeditions</ButtonLink>
+            <ButtonLink href="mailto:support@terumbu.eco?subject=Private expedition request" tone="secondary">
+              Request private trip
+            </ButtonLink>
+          </div>
+        </section>
+      </main>
+    );
+  }
+
   return (
     <main className="min-h-screen bg-sand-50 px-4 py-12 sm:px-6 lg:px-8">
       <section className="mx-auto max-w-2xl rounded-2xl bg-white p-6 shadow-soft">
         <p className="text-sm font-bold uppercase tracking-[0.16em] text-coral-700">Booking</p>
         <h1 className="mt-3 text-3xl font-bold tracking-normal text-ocean-900">Reserve expedition seats</h1>
         <p className="mt-3 text-ocean-900/68">
-          Availability, participant details, demo payment, booking records, and confirmation emails are recorded in PostgreSQL.
+          Confirm availability, participant details, and payment status before your seats are recorded.
         </p>
         {params?.error ? (
           <p className="mt-4 rounded-xl border border-coral-500/20 bg-coral-100 px-4 py-3 text-sm font-semibold text-coral-700">
@@ -73,7 +93,7 @@ export default async function ExpeditionCheckoutPage({ searchParams }: Expeditio
             <textarea name="participantNames" defaultValue={user?.displayName ?? user?.name ?? ""} className="min-h-24 rounded-xl border border-ocean-900/14 px-4 py-3 outline-none focus:border-coral-500" />
           </label>
           <label className="grid gap-2 text-sm font-semibold text-ocean-900">
-            Demo payment result
+            Payment result
             <select name="paymentState" defaultValue="paid" className="rounded-xl border border-ocean-900/14 px-4 py-3 outline-none focus:border-coral-500">
               <option value="paid">Paid</option>
               <option value="failed">Failed</option>

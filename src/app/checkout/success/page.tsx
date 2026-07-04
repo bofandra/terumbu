@@ -30,8 +30,8 @@ export default async function CheckoutSuccessPage({ searchParams }: CheckoutSucc
         </h1>
         <p className="mt-3 text-ocean-900/68">
           {failed
-            ? `The demo gateway marked this ${typeLabel} as failed, so it is available for retry or reconciliation.`
-            : `The demo gateway recorded this ${typeLabel}, updated related records, and queued the matching email log.`}
+            ? `This ${typeLabel} was not paid, so it remains available for retry or support review.`
+            : `This ${typeLabel} has been recorded, and the related dashboard and receipt details are being updated.`}
         </p>
         <ButtonLink href={failed ? (params?.type === "expedition" ? "/checkout/expedition" : "/checkout/donation") : "/dashboard"} className="mt-7">
           {failed ? "Try Again" : "View Dashboard"}

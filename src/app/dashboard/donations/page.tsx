@@ -1,4 +1,5 @@
 import { CreditCard, Heart, RefreshCw, RotateCcw, XCircle } from "lucide-react";
+import Link from "next/link";
 
 import {
   archivePaymentMethodAction,
@@ -65,8 +66,8 @@ export default async function DashboardDonationsPage({ searchParams }: Dashboard
           <div className="flex items-start justify-between gap-3">
             <div>
               <p className="text-sm font-bold uppercase tracking-[0.16em] text-coral-700">Payment methods</p>
-              <h2 className="mt-2 text-2xl font-bold tracking-normal text-ocean-900">Saved demo methods</h2>
-              <p className="mt-2 text-sm leading-6 text-ocean-900/62">Stored methods are demo gateway tokens used for monthly giving and retries.</p>
+              <h2 className="mt-2 text-2xl font-bold tracking-normal text-ocean-900">Saved payment methods</h2>
+              <p className="mt-2 text-sm leading-6 text-ocean-900/62">Saved methods support monthly giving, retries, and default payment selection.</p>
             </div>
             <CreditCard size={24} aria-hidden="true" className="text-coral-500" />
           </div>
@@ -110,7 +111,7 @@ export default async function DashboardDonationsPage({ searchParams }: Dashboard
           </div>
 
           <form action={createPaymentMethodAction} className="mt-5 grid gap-3 rounded-xl border border-ocean-900/10 bg-ocean-50 p-4">
-            <p className="font-bold text-ocean-900">Add demo method</p>
+            <p className="font-bold text-ocean-900">Add payment method</p>
             <div className="grid gap-3 sm:grid-cols-3">
               <label className="grid gap-2 text-sm font-semibold text-ocean-900 sm:col-span-1">
                 Label
@@ -118,7 +119,7 @@ export default async function DashboardDonationsPage({ searchParams }: Dashboard
               </label>
               <label className="grid gap-2 text-sm font-semibold text-ocean-900">
                 Brand
-                <input name="brand" defaultValue="Demo Card" className="rounded-xl border border-ocean-900/14 bg-white px-3 py-2 outline-none focus:border-coral-500" />
+                <input name="brand" defaultValue="Payment Card" className="rounded-xl border border-ocean-900/14 bg-white px-3 py-2 outline-none focus:border-coral-500" />
               </label>
               <label className="grid gap-2 text-sm font-semibold text-ocean-900">
                 Last 4
@@ -217,7 +218,18 @@ export default async function DashboardDonationsPage({ searchParams }: Dashboard
             </div>
           </article>
         ))}
-        {data.donations.length === 0 ? <p className="rounded-2xl border border-dashed border-ocean-900/14 bg-white p-6 text-sm font-semibold text-ocean-900/62">Donation records will appear after checkout.</p> : null}
+        {data.donations.length === 0 ? (
+          <div className="rounded-2xl border border-dashed border-ocean-900/14 bg-white p-6 shadow-soft">
+            <Heart size={30} aria-hidden="true" className="text-coral-500" />
+            <p className="mt-4 text-xl font-bold text-ocean-900">No donation records yet.</p>
+            <p className="mt-2 max-w-xl text-sm leading-6 text-ocean-900/62">
+              Support a verified project to create your first receipt, dashboard record, and Impact Passport milestone.
+            </p>
+            <Link href="/campaigns" className="mt-4 inline-flex text-sm font-bold text-coral-700 hover:text-coral-500">
+              Browse verified campaigns
+            </Link>
+          </div>
+        ) : null}
       </section>
 
       <section className="mt-6 rounded-2xl border border-ocean-900/10 bg-white p-5 shadow-soft">

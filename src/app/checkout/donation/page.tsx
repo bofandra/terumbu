@@ -1,6 +1,6 @@
 import { randomBytes } from "node:crypto";
 
-import { Button } from "@/components/ui/button";
+import { Button, ButtonLink } from "@/components/ui/button";
 import { getSessionUser } from "@/lib/auth";
 import { createDonationAction } from "@/lib/checkout-actions";
 import { suggestedDonationAmounts } from "@/lib/domain";
@@ -33,13 +33,31 @@ export default async function DonationCheckoutPage({ searchParams }: DonationChe
   const contributionIntent = params?.intent === "monthly" || params?.intent === "coral" ? params.intent : "one-time";
   const idempotencyKey = `donation-${randomBytes(12).toString("hex")}`;
 
+  if (campaigns.length === 0) {
+    return (
+      <main className="min-h-screen bg-sand-50 px-4 py-12 sm:px-6 lg:px-8">
+        <section className="mx-auto max-w-2xl rounded-2xl border border-dashed border-ocean-900/14 bg-white p-6 shadow-soft">
+          <p className="text-sm font-bold uppercase tracking-[0.16em] text-coral-700">Checkout unavailable</p>
+          <h1 className="mt-3 text-3xl font-bold tracking-normal text-ocean-900">No active campaigns are ready for donation.</h1>
+          <p className="mt-3 text-sm leading-6 text-ocean-900/62">
+            Published campaigns will appear here after partner details, impact targets, and verification records are ready.
+          </p>
+          <div className="mt-6 flex flex-wrap gap-2">
+            <ButtonLink href="/campaigns">View campaigns</ButtonLink>
+            <ButtonLink href="/impact-map" tone="secondary">Explore impact map</ButtonLink>
+          </div>
+        </section>
+      </main>
+    );
+  }
+
   return (
     <main className="min-h-screen bg-sand-50 px-4 py-12 sm:px-6 lg:px-8">
       <section className="mx-auto max-w-2xl rounded-2xl bg-white p-6 shadow-soft">
         <p className="text-sm font-bold uppercase tracking-[0.16em] text-coral-700">Checkout</p>
         <h1 className="mt-3 text-3xl font-bold tracking-normal text-ocean-900">Complete your donation</h1>
         <p className="mt-3 text-ocean-900/68">
-          Demo gateway checkout creates donation, payment, receipt, email log, and dashboard records.
+          Your contribution creates a receipt and, when paid, adds a verified activity record to your dashboard.
         </p>
         {params?.error ? (
           <p className="mt-4 rounded-xl border border-coral-500/20 bg-coral-100 px-4 py-3 text-sm font-semibold text-coral-700">
@@ -52,8 +70,8 @@ export default async function DonationCheckoutPage({ searchParams }: DonationChe
           {contributionIntent !== "one-time" ? (
             <p className="rounded-xl border border-kelp-500/20 bg-kelp-100 px-4 py-3 text-sm font-semibold text-kelp-700">
               {contributionIntent === "monthly"
-                ? "Monthly giving will create a subscription record. Cancel anytime from your dashboard."
-                : "Coral sponsorship intent will create a sponsored ecosystem record after paid checkout."}
+                ? "Monthly giving can be managed or cancelled from your dashboard."
+                : "Coral sponsorship creates a sponsored ecosystem record after paid checkout."}
             </p>
           ) : null}
           <label className="grid gap-2 text-sm font-semibold text-ocean-900">
@@ -106,9 +124,9 @@ export default async function DonationCheckoutPage({ searchParams }: DonationChe
                 className="mt-1 size-4 rounded border-ocean-900/20"
               />
               <span>
-                Save demo payment method
+                Save payment method
                 <span className="mt-1 block text-xs font-medium leading-5 text-ocean-900/58">
-                  Required for monthly giving. This stores a demo token, card label, and last four digits only.
+                  Required for monthly giving. Only a payment label and last four digits are shown in this workspace.
                 </span>
               </span>
             </label>
@@ -134,7 +152,7 @@ export default async function DonationCheckoutPage({ searchParams }: DonationChe
             </div>
           </div>
           <label className="grid gap-2 text-sm font-semibold text-ocean-900">
-            Demo payment result
+            Payment result
             <select name="paymentState" defaultValue="paid" className="rounded-xl border border-ocean-900/14 px-4 py-3 outline-none focus:border-coral-500">
               <option value="paid">Paid</option>
               <option value="failed">Failed</option>

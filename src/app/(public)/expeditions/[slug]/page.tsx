@@ -25,6 +25,7 @@ import { ExpeditionHeroGallery } from "@/components/expedition-hero-gallery";
 import { ExpeditionSectionTabs } from "@/components/expedition-section-tabs";
 import { ExpeditionCard } from "@/components/expedition-card";
 import { ButtonLink } from "@/components/ui/button";
+import { ProgressMeter } from "@/components/ui/progress-meter";
 import { getExpeditionDetail } from "@/lib/queries";
 import { cn, formatCurrency } from "@/lib/utils";
 
@@ -242,9 +243,7 @@ export default async function ExpeditionDetailPage({ params }: { params: Promise
                           <span>{item.label}</span>
                           <span>{item.percent}% · {formatCurrency(percentAmount(expedition.price, item.percent))}</span>
                         </div>
-                        <div className="mt-2 h-2 overflow-hidden rounded-full bg-ocean-50">
-                          <div className="h-full rounded-full bg-kelp-500" style={{ width: `${item.percent}%` }} />
-                        </div>
+                        <ProgressMeter value={item.percent} label={`${item.label} allocation`} className="mt-2 h-2" indicatorClassName="bg-kelp-500" trackClassName="bg-ocean-50" />
                       </div>
                     ))}
                   </div>
@@ -262,9 +261,13 @@ export default async function ExpeditionDetailPage({ params }: { params: Promise
                         <p className="text-xs font-bold uppercase tracking-[0.14em] text-kelp-700">{expedition.associatedCampaign.verification}</p>
                         <h3 className="mt-1 font-bold text-ocean-900">{expedition.associatedCampaign.title}</h3>
                         <p className="mt-2 text-sm text-ocean-900/62">{expedition.associatedCampaign.progress}% funded · {expedition.associatedCampaign.impact}</p>
-                        <div className="mt-3 h-2 overflow-hidden rounded-full bg-ocean-50">
-                          <div className="h-full rounded-full bg-kelp-500" style={{ width: `${expedition.associatedCampaign.progress}%` }} />
-                        </div>
+                        <ProgressMeter
+                          value={expedition.associatedCampaign.progress}
+                          label={`${expedition.associatedCampaign.title} funding progress`}
+                          className="mt-3 h-2"
+                          indicatorClassName="bg-kelp-500"
+                          trackClassName="bg-ocean-50"
+                        />
                       </div>
                       <div className="flex flex-col gap-2">
                         <ButtonLink href={`/campaigns/${expedition.associatedCampaign.slug}`} tone="secondary">View Campaign</ButtonLink>

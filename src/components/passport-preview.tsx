@@ -1,6 +1,7 @@
 import { Award, Leaf, MapPinned, Waves } from "lucide-react";
 import Link from "next/link";
 
+import { ProgressMeter } from "@/components/ui/progress-meter";
 import type { PassportPreviewData } from "@/lib/domain";
 
 const iconByLabel = {
@@ -30,9 +31,7 @@ export function PassportPreview({ passport }: PassportPreviewProps) {
             <p className="mt-1 text-sm text-white/68">{passport.levelLabel}</p>
           </div>
         </div>
-        <div className="mt-8 h-3 overflow-hidden rounded-full bg-white/14">
-          <div className="h-full rounded-full bg-coral-500" style={{ width: `${progress}%` }} />
-        </div>
+        <ProgressMeter value={progress} label={`${passport.displayName} XP progress`} className="mt-8 h-3" trackClassName="bg-white/14" />
         <p className="mt-3 text-sm text-white/72">
           {passport.xp.toLocaleString("id-ID")} / {passport.xpTarget.toLocaleString("id-ID")} XP to Ocean Champion
         </p>

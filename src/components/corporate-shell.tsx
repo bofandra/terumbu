@@ -87,7 +87,7 @@ export function CorporateShell({
   const pathname = usePathname();
 
   return (
-    <div className="min-h-screen bg-[#f5f8fb] pb-16 xl:pb-0">
+    <div className="min-h-screen bg-mist-50 pb-16 xl:pb-0">
       <aside className="fixed inset-y-0 left-0 hidden w-72 flex-col bg-ocean-900 px-5 py-6 text-white shadow-2xl xl:flex">
         <Link href="/" className="flex items-center gap-3">
           <span className="flex size-10 items-center justify-center rounded-xl bg-white/10 text-lg font-bold">T</span>

@@ -41,6 +41,15 @@ export default async function DashboardAcademyPage() {
                 </Link>
               </article>
             ))}
+            {data.enrollments.length === 0 ? (
+              <div className="rounded-xl border border-dashed border-ocean-900/14 bg-sand-50 p-4">
+                <p className="font-bold text-ocean-900">No active courses yet.</p>
+                <p className="mt-2 text-sm leading-6 text-ocean-900/62">Start a course to build field-ready conservation knowledge and add learning records to your Impact Passport.</p>
+                <Link href="/academy" className="mt-3 inline-flex text-sm font-bold text-coral-700">
+                  Browse recommended courses
+                </Link>
+              </div>
+            ) : null}
           </div>
         </div>
 
@@ -59,6 +68,15 @@ export default async function DashboardAcademyPage() {
                 </p>
               </article>
             ))}
+            {data.certificates.length === 0 ? (
+              <div className="rounded-xl border border-dashed border-ocean-900/14 bg-sand-50 p-4">
+                <p className="font-bold text-ocean-900">No verified certificates yet.</p>
+                <p className="mt-2 text-sm leading-6 text-ocean-900/62">Complete an eligible Academy course to earn your first credential.</p>
+                <Link href="/academy" className="mt-3 inline-flex text-sm font-bold text-coral-700">
+                  Find certificate courses
+                </Link>
+              </div>
+            ) : null}
           </div>
         </div>
       </section>

@@ -25,6 +25,7 @@ import Link from "next/link";
 import { DashboardPersonalImpactMap } from "@/components/dashboard-personal-impact-map";
 import { PassportCopyButton } from "@/components/passport-copy-button";
 import { Button, ButtonLink } from "@/components/ui/button";
+import { ProgressMeter } from "@/components/ui/progress-meter";
 import { requireUser } from "@/lib/auth";
 import { updatePassportVisibilityAction } from "@/lib/auth-actions";
 import { getDashboardData } from "@/lib/queries";
@@ -169,7 +170,7 @@ function metricCards(data: DashboardData) {
       value: data.summary.fieldActivities.toLocaleString("id-ID"),
       support: `${data.summary.upcomingTrips.toLocaleString("id-ID")} upcoming`,
       icon: MapPinned,
-      tone: "bg-purple-600 text-white"
+      tone: "bg-credential-700 text-white"
     },
     {
       label: "Courses",
@@ -306,16 +307,7 @@ export default async function DashboardPassportPage({ searchParams }: DashboardP
             </div>
 
             <div className="mt-6 max-w-xl">
-              <div
-                className="h-3 overflow-hidden rounded-full bg-white/16"
-                role="progressbar"
-                aria-label="Ocean Hero level progress"
-                aria-valuenow={xpProgress}
-                aria-valuemin={0}
-                aria-valuemax={100}
-              >
-                <div className="h-full rounded-full bg-kelp-400" style={{ width: `${xpProgress}%` }} />
-              </div>
+              <ProgressMeter value={xpProgress} label="Ocean Hero level progress" className="h-3" indicatorClassName="bg-kelp-400" trackClassName="bg-white/16" />
               <p className="mt-3 text-sm font-semibold text-white/76">
                 {xp.toLocaleString("id-ID")} / {xpTarget.toLocaleString("id-ID")} XP · {xpRemaining.toLocaleString("id-ID")} XP to reach Ocean Champion
               </p>
@@ -436,9 +428,7 @@ export default async function DashboardPassportPage({ searchParams }: DashboardP
           <article className="rounded-2xl border border-ocean-900/10 bg-white p-5 shadow-soft">
             <p className="text-sm font-bold uppercase tracking-[0.16em] text-coral-700">Profile completion</p>
             <p className="mt-3 text-3xl font-bold tracking-normal text-ocean-900">{data.profileCompleteness.percent}%</p>
-            <div className="mt-4 h-2 overflow-hidden rounded-full bg-ocean-50">
-              <div className="h-full rounded-full bg-kelp-500" style={{ width: `${data.profileCompleteness.percent}%` }} />
-            </div>
+            <ProgressMeter value={data.profileCompleteness.percent} label="Profile completion progress" className="mt-4 h-2" indicatorClassName="bg-kelp-500" trackClassName="bg-ocean-50" />
             <div className="mt-4 grid gap-2 text-sm text-ocean-900/62">
               {data.profileCompleteness.missing.length > 0 ? (
                 data.profileCompleteness.missing.map((item) => (
@@ -492,9 +482,7 @@ export default async function DashboardPassportPage({ searchParams }: DashboardP
                       </div>
                       <span className="text-xl font-bold text-ocean-900">{category.value.toLocaleString("id-ID")}</span>
                     </div>
-                    <div className="mt-4 h-2 overflow-hidden rounded-full bg-white">
-                      <div className="h-full rounded-full bg-coral-500" style={{ width: `${progress}%` }} />
-                    </div>
+                    <ProgressMeter value={progress} label={`${category.label} progress`} className="mt-4 h-2" trackClassName="bg-white" />
                   </div>
                 );
               })}
@@ -616,9 +604,7 @@ export default async function DashboardPassportPage({ searchParams }: DashboardP
                         <p className="mt-1 text-xs leading-5 text-ocean-900/58">{achievement.description}</p>
                       </div>
                     </div>
-                    <div className="mt-4 h-2 overflow-hidden rounded-full bg-white">
-                      <div className="h-full rounded-full bg-coral-500" style={{ width: `${achievement.progressPercent}%` }} />
-                    </div>
+                    <ProgressMeter value={achievement.progressPercent} label={`${achievement.name} achievement progress`} className="mt-4 h-2" trackClassName="bg-white" />
                     <p className="mt-2 text-xs font-bold text-ocean-900/56">
                       {achievement.earned ? `Earned ${formatDate(achievement.earnedAt)}` : `${achievement.progress}/${achievement.target} progress`}
                     </p>

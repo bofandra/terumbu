@@ -42,9 +42,16 @@ export default async function DashboardCertificatesPage() {
           </article>
         ))}
         {data.certificates.length === 0 ? (
-          <p className="rounded-2xl border border-ocean-900/10 bg-white p-5 text-sm font-semibold text-ocean-900/62 shadow-soft">
-            Completed course certificates will appear here.
-          </p>
+          <div className="rounded-2xl border border-dashed border-ocean-900/14 bg-white p-6 shadow-soft">
+            <FileBadge size={30} aria-hidden="true" className="text-credential-700" />
+            <p className="mt-4 text-xl font-bold text-ocean-900">No verified certificates yet.</p>
+            <p className="mt-2 max-w-xl text-sm leading-6 text-ocean-900/62">
+              Complete an eligible Terumbu Academy course to earn a certificate that can appear in your Impact Passport.
+            </p>
+            <Link href="/academy" className="mt-4 inline-flex text-sm font-bold text-coral-700 hover:text-coral-500">
+              Browse certificate courses
+            </Link>
+          </div>
         ) : null}
       </section>
     </main>

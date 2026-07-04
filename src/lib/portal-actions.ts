@@ -231,28 +231,43 @@ async function imageFromForm(formData: FormData, uploadKey: string, urlKey: stri
   return upload.dataUrl ?? normalizeEvidenceUrl(formData.get(urlKey));
 }
 
-function redirectAdminPartnerError(code: string): never {
-  redirect(`/admin/partners?error=${encodeURIComponent(code)}`);
+function adminReturnPath(formData: FormData | undefined, fallbackPath: string, outcome: "error" | "saved") {
+  const outcomeReturnTo = formData ? formText(formData, `${outcome}ReturnTo`) : "";
+  const returnTo = outcomeReturnTo || (formData ? formText(formData, "returnTo") : "");
+
+  if (returnTo.startsWith("/admin/") && !returnTo.startsWith("//")) {
+    return returnTo;
+  }
+
+  return fallbackPath;
 }
 
-function redirectAdminPartnerSaved(code: string): never {
-  redirect(`/admin/partners?saved=${encodeURIComponent(code)}`);
+function redirectAdminForm(path: string, key: "error" | "saved", code: string): never {
+  redirect(`${path}?${key}=${encodeURIComponent(code)}`);
 }
 
-function redirectAdminCampaignError(code: string): never {
-  redirect(`/admin/campaigns?error=${encodeURIComponent(code)}`);
+function redirectAdminPartnerError(code: string, formData?: FormData): never {
+  redirectAdminForm(adminReturnPath(formData, "/admin/partners", "error"), "error", code);
 }
 
-function redirectAdminCampaignSaved(code: string): never {
-  redirect(`/admin/campaigns?saved=${encodeURIComponent(code)}`);
+function redirectAdminPartnerSaved(code: string, formData?: FormData): never {
+  redirectAdminForm(adminReturnPath(formData, "/admin/partners", "saved"), "saved", code);
 }
 
-function redirectAdminExpeditionError(code: string): never {
-  redirect(`/admin/expeditions?error=${encodeURIComponent(code)}`);
+function redirectAdminCampaignError(code: string, formData?: FormData): never {
+  redirectAdminForm(adminReturnPath(formData, "/admin/campaigns", "error"), "error", code);
 }
 
-function redirectAdminExpeditionSaved(code: string): never {
-  redirect(`/admin/expeditions?saved=${encodeURIComponent(code)}`);
+function redirectAdminCampaignSaved(code: string, formData?: FormData): never {
+  redirectAdminForm(adminReturnPath(formData, "/admin/campaigns", "saved"), "saved", code);
+}
+
+function redirectAdminExpeditionError(code: string, formData?: FormData): never {
+  redirectAdminForm(adminReturnPath(formData, "/admin/expeditions", "error"), "error", code);
+}
+
+function redirectAdminExpeditionSaved(code: string, formData?: FormData): never {
+  redirectAdminForm(adminReturnPath(formData, "/admin/expeditions", "saved"), "saved", code);
 }
 
 function departureMetadata(formData: FormData) {
@@ -328,7 +343,7 @@ async function imageFromAdminCampaignForm(formData: FormData) {
   const upload = await readUploadedImageAsDataUrl(formData.get("imageFile"));
 
   if (upload.error) {
-    redirectAdminCampaignError(`image-${upload.error}`);
+    redirectAdminCampaignError(`image-${upload.error}`, formData);
   }
 
   return upload.dataUrl ?? normalizeEvidenceUrl(formData.get("imageUrl"));
@@ -413,13 +428,13 @@ export async function createOrganizationAction(formData: FormData) {
   const verification = verificationFromForm(formData.get("verification"));
 
   if (!name || !slug || !type) {
-    redirectAdminPartnerError("partner-invalid");
+    redirectAdminPartnerError("partner-invalid", formData);
   }
 
   const [existing] = await db.select({ id: organizations.id }).from(organizations).where(eq(organizations.slug, slug)).limit(1);
 
   if (existing) {
-    redirectAdminPartnerError("partner-slug");
+    redirectAdminPartnerError("partner-slug", formData);
   }
 
   const [organization] = await db
@@ -444,7 +459,7 @@ export async function createOrganizationAction(formData: FormData) {
     metadata: { slug, verification }
   });
 
-  redirectAdminPartnerSaved("partner-created");
+  redirectAdminPartnerSaved("partner-created", formData);
 }
 
 export async function updateOrganizationAction(formData: FormData) {
@@ -456,13 +471,13 @@ export async function updateOrganizationAction(formData: FormData) {
   const verification = verificationFromForm(formData.get("verification"));
 
   if (!organizationId || !name || !slug || !type) {
-    redirectAdminPartnerError("partner-invalid");
+    redirectAdminPartnerError("partner-invalid", formData);
   }
 
   const [existing] = await db.select({ id: organizations.id }).from(organizations).where(eq(organizations.slug, slug)).limit(1);
 
   if (existing && existing.id !== organizationId) {
-    redirectAdminPartnerError("partner-slug");
+    redirectAdminPartnerError("partner-slug", formData);
   }
 
   await db
@@ -487,7 +502,7 @@ export async function updateOrganizationAction(formData: FormData) {
     metadata: { slug, verification }
   });
 
-  redirectAdminPartnerSaved("partner-updated");
+  redirectAdminPartnerSaved("partner-updated", formData);
 }
 
 export async function deleteOrganizationAction(formData: FormData) {
@@ -496,13 +511,13 @@ export async function deleteOrganizationAction(formData: FormData) {
   const confirmed = formData.get("confirmDelete") === "delete";
 
   if (!organizationId || !confirmed) {
-    redirectAdminPartnerError("partner-delete");
+    redirectAdminPartnerError("partner-delete", formData);
   }
 
   const [campaign] = await db.select({ id: campaigns.id }).from(campaigns).where(eq(campaigns.organizationId, organizationId)).limit(1);
 
   if (campaign) {
-    redirectAdminPartnerError("partner-has-campaigns");
+    redirectAdminPartnerError("partner-has-campaigns", formData);
   }
 
   const memberRows = await db.select({ userId: organizationUsers.userId }).from(organizationUsers).where(eq(organizationUsers.organizationId, organizationId));
@@ -524,7 +539,7 @@ export async function deleteOrganizationAction(formData: FormData) {
     metadata: { membersDetached: memberRows.length }
   });
 
-  redirectAdminPartnerSaved("partner-deleted");
+  redirectAdminPartnerSaved("partner-deleted", formData);
 }
 
 export async function addOrganizationUserAction(formData: FormData) {
@@ -535,19 +550,19 @@ export async function addOrganizationUserAction(formData: FormData) {
   const status = organizationUserStatusFromForm(formData.get("status"));
 
   if (!organizationId || !email) {
-    redirectAdminPartnerError("partner-user-invalid");
+    redirectAdminPartnerError("partner-user-invalid", formData);
   }
 
   const [user] = await db.select({ id: users.id }).from(users).where(eq(users.email, email)).limit(1);
 
   if (!user) {
-    redirectAdminPartnerError("partner-user-missing");
+    redirectAdminPartnerError("partner-user-missing", formData);
   }
 
   const [organization] = await db.select({ id: organizations.id }).from(organizations).where(eq(organizations.id, organizationId)).limit(1);
 
   if (!organization) {
-    redirectAdminPartnerError("partner-missing");
+    redirectAdminPartnerError("partner-missing", formData);
   }
 
   await db
@@ -578,7 +593,7 @@ export async function addOrganizationUserAction(formData: FormData) {
     metadata: { userId: user.id, email, role, status }
   });
 
-  redirectAdminPartnerSaved("partner-user-assigned");
+  redirectAdminPartnerSaved("partner-user-assigned", formData);
 }
 
 export async function createOrganizationUserAction(formData: FormData) {
@@ -591,19 +606,19 @@ export async function createOrganizationUserAction(formData: FormData) {
   const status = organizationUserStatusFromForm(formData.get("status"));
 
   if (!organizationId || !name || !email || password.length < 8) {
-    redirectAdminPartnerError("partner-user-invalid");
+    redirectAdminPartnerError("partner-user-invalid", formData);
   }
 
   const [organization] = await db.select({ id: organizations.id }).from(organizations).where(eq(organizations.id, organizationId)).limit(1);
 
   if (!organization) {
-    redirectAdminPartnerError("partner-missing");
+    redirectAdminPartnerError("partner-missing", formData);
   }
 
   const [existingUser] = await db.select({ id: users.id }).from(users).where(eq(users.email, email)).limit(1);
 
   if (existingUser) {
-    redirectAdminPartnerError("partner-user-exists");
+    redirectAdminPartnerError("partner-user-exists", formData);
   }
 
   const now = new Date();
@@ -661,7 +676,7 @@ export async function createOrganizationUserAction(formData: FormData) {
     metadata: { userId: createdUser.id, email, role, status }
   });
 
-  redirectAdminPartnerSaved("partner-user-created");
+  redirectAdminPartnerSaved("partner-user-created", formData);
 }
 
 export async function updateOrganizationUserAction(formData: FormData) {
@@ -671,7 +686,7 @@ export async function updateOrganizationUserAction(formData: FormData) {
   const status = organizationUserStatusFromForm(formData.get("status"));
 
   if (!organizationUserId) {
-    redirectAdminPartnerError("partner-user-invalid");
+    redirectAdminPartnerError("partner-user-invalid", formData);
   }
 
   const [membership] = await db
@@ -684,7 +699,7 @@ export async function updateOrganizationUserAction(formData: FormData) {
     });
 
   if (!membership) {
-    redirectAdminPartnerError("partner-user-missing");
+    redirectAdminPartnerError("partner-user-missing", formData);
   }
 
   await syncPartnerRoleForUser(membership.userId);
@@ -697,7 +712,7 @@ export async function updateOrganizationUserAction(formData: FormData) {
     metadata: { userId: membership.userId, role, status }
   });
 
-  redirectAdminPartnerSaved("partner-user-updated");
+  redirectAdminPartnerSaved("partner-user-updated", formData);
 }
 
 export async function removeOrganizationUserAction(formData: FormData) {
@@ -705,7 +720,7 @@ export async function removeOrganizationUserAction(formData: FormData) {
   const organizationUserId = formText(formData, "organizationUserId");
 
   if (!organizationUserId) {
-    redirectAdminPartnerError("partner-user-invalid");
+    redirectAdminPartnerError("partner-user-invalid", formData);
   }
 
   const [membership] = await db
@@ -717,7 +732,7 @@ export async function removeOrganizationUserAction(formData: FormData) {
     });
 
   if (!membership) {
-    redirectAdminPartnerError("partner-user-missing");
+    redirectAdminPartnerError("partner-user-missing", formData);
   }
 
   await syncPartnerRoleForUser(membership.userId);
@@ -730,7 +745,7 @@ export async function removeOrganizationUserAction(formData: FormData) {
     metadata: { userId: membership.userId }
   });
 
-  redirectAdminPartnerSaved("partner-user-removed");
+  redirectAdminPartnerSaved("partner-user-removed", formData);
 }
 
 export async function createPartnerCampaignAction(formData: FormData) {
@@ -930,20 +945,20 @@ export async function createExpeditionAction(formData: FormData) {
   const relatedCampaignId = nullableText(formData, "relatedCampaignId");
 
   if (!title || !slug || !region || !durationDays || !basePrice || !summary) {
-    redirectAdminExpeditionError("expedition-invalid");
+    redirectAdminExpeditionError("expedition-invalid", formData);
   }
 
   const [existing] = await db.select({ id: expeditions.id }).from(expeditions).where(eq(expeditions.slug, slug)).limit(1);
 
   if (existing) {
-    redirectAdminExpeditionError("expedition-slug");
+    redirectAdminExpeditionError("expedition-slug", formData);
   }
 
   if (relatedCampaignId) {
     const [campaign] = await db.select({ id: campaigns.id }).from(campaigns).where(eq(campaigns.id, relatedCampaignId)).limit(1);
 
     if (!campaign) {
-      redirectAdminExpeditionError("campaign-missing");
+      redirectAdminExpeditionError("campaign-missing", formData);
     }
   }
 
@@ -969,7 +984,7 @@ export async function createExpeditionAction(formData: FormData) {
     metadata: { slug, relatedCampaignId }
   });
 
-  redirectAdminExpeditionSaved("expedition-created");
+  redirectAdminExpeditionSaved("expedition-created", formData);
 }
 
 export async function updateExpeditionAction(formData: FormData) {
@@ -984,20 +999,20 @@ export async function updateExpeditionAction(formData: FormData) {
   const relatedCampaignId = nullableText(formData, "relatedCampaignId");
 
   if (!expeditionId || !title || !slug || !region || !durationDays || !basePrice || !summary) {
-    redirectAdminExpeditionError("expedition-invalid");
+    redirectAdminExpeditionError("expedition-invalid", formData);
   }
 
   const [existingSlug] = await db.select({ id: expeditions.id }).from(expeditions).where(eq(expeditions.slug, slug)).limit(1);
 
   if (existingSlug && existingSlug.id !== expeditionId) {
-    redirectAdminExpeditionError("expedition-slug");
+    redirectAdminExpeditionError("expedition-slug", formData);
   }
 
   if (relatedCampaignId) {
     const [campaign] = await db.select({ id: campaigns.id }).from(campaigns).where(eq(campaigns.id, relatedCampaignId)).limit(1);
 
     if (!campaign) {
-      redirectAdminExpeditionError("campaign-missing");
+      redirectAdminExpeditionError("campaign-missing", formData);
     }
   }
 
@@ -1017,7 +1032,7 @@ export async function updateExpeditionAction(formData: FormData) {
     .returning({ id: expeditions.id });
 
   if (!expedition) {
-    redirectAdminExpeditionError("expedition-missing");
+    redirectAdminExpeditionError("expedition-missing", formData);
   }
 
   await db.insert(adminAuditLogs).values({
@@ -1028,7 +1043,7 @@ export async function updateExpeditionAction(formData: FormData) {
     metadata: { slug, relatedCampaignId }
   });
 
-  redirectAdminExpeditionSaved("expedition-updated");
+  redirectAdminExpeditionSaved("expedition-updated", formData);
 }
 
 export async function deleteExpeditionAction(formData: FormData) {
@@ -1037,19 +1052,19 @@ export async function deleteExpeditionAction(formData: FormData) {
   const confirmed = formData.get("confirmDelete") === "delete";
 
   if (!expeditionId || !confirmed) {
-    redirectAdminExpeditionError("expedition-delete");
+    redirectAdminExpeditionError("expedition-delete", formData);
   }
 
   const [booking] = await db.select({ id: expeditionBookings.id }).from(expeditionBookings).where(eq(expeditionBookings.expeditionId, expeditionId)).limit(1);
 
   if (booking) {
-    redirectAdminExpeditionError("expedition-has-bookings");
+    redirectAdminExpeditionError("expedition-has-bookings", formData);
   }
 
   const [expedition] = await db.delete(expeditions).where(eq(expeditions.id, expeditionId)).returning({ id: expeditions.id, slug: expeditions.slug });
 
   if (!expedition) {
-    redirectAdminExpeditionError("expedition-missing");
+    redirectAdminExpeditionError("expedition-missing", formData);
   }
 
   await db.insert(adminAuditLogs).values({
@@ -1060,7 +1075,7 @@ export async function deleteExpeditionAction(formData: FormData) {
     metadata: { slug: expedition.slug }
   });
 
-  redirectAdminExpeditionSaved("expedition-deleted");
+  redirectAdminExpeditionSaved("expedition-deleted", formData);
 }
 
 export async function createExpeditionDepartureAction(formData: FormData) {
@@ -1073,13 +1088,13 @@ export async function createExpeditionDepartureAction(formData: FormData) {
   const status = expeditionDepartureStatusFromForm(formData.get("status"));
 
   if (!expeditionId || !startsAt || !endsAt || !capacity || endsAt <= startsAt || seatsBooked > capacity) {
-    redirectAdminExpeditionError("departure-invalid");
+    redirectAdminExpeditionError("departure-invalid", formData);
   }
 
   const [expedition] = await db.select({ id: expeditions.id }).from(expeditions).where(eq(expeditions.id, expeditionId)).limit(1);
 
   if (!expedition) {
-    redirectAdminExpeditionError("expedition-missing");
+    redirectAdminExpeditionError("expedition-missing", formData);
   }
 
   const [existing] = await db
@@ -1089,7 +1104,7 @@ export async function createExpeditionDepartureAction(formData: FormData) {
     .limit(1);
 
   if (existing) {
-    redirectAdminExpeditionError("departure-duplicate");
+    redirectAdminExpeditionError("departure-duplicate", formData);
   }
 
   const [departure] = await db
@@ -1113,7 +1128,7 @@ export async function createExpeditionDepartureAction(formData: FormData) {
     metadata: { expeditionId, status, capacity }
   });
 
-  redirectAdminExpeditionSaved("departure-created");
+  redirectAdminExpeditionSaved("departure-created", formData);
 }
 
 export async function updateExpeditionDepartureAction(formData: FormData) {
@@ -1125,7 +1140,7 @@ export async function updateExpeditionDepartureAction(formData: FormData) {
   const status = expeditionDepartureStatusFromForm(formData.get("status"));
 
   if (!departureId || !startsAt || !endsAt || !capacity || endsAt <= startsAt) {
-    redirectAdminExpeditionError("departure-invalid");
+    redirectAdminExpeditionError("departure-invalid", formData);
   }
 
   const [existingDeparture] = await db
@@ -1139,11 +1154,11 @@ export async function updateExpeditionDepartureAction(formData: FormData) {
     .limit(1);
 
   if (!existingDeparture) {
-    redirectAdminExpeditionError("departure-missing");
+    redirectAdminExpeditionError("departure-missing", formData);
   }
 
   if (capacity < existingDeparture.seatsBooked) {
-    redirectAdminExpeditionError("departure-capacity");
+    redirectAdminExpeditionError("departure-capacity", formData);
   }
 
   const [duplicate] = await db
@@ -1153,7 +1168,7 @@ export async function updateExpeditionDepartureAction(formData: FormData) {
     .limit(1);
 
   if (duplicate && duplicate.id !== departureId) {
-    redirectAdminExpeditionError("departure-duplicate");
+    redirectAdminExpeditionError("departure-duplicate", formData);
   }
 
   await db
@@ -1175,7 +1190,7 @@ export async function updateExpeditionDepartureAction(formData: FormData) {
     metadata: { expeditionId: existingDeparture.expeditionId, status, capacity }
   });
 
-  redirectAdminExpeditionSaved("departure-updated");
+  redirectAdminExpeditionSaved("departure-updated", formData);
 }
 
 export async function deleteExpeditionDepartureAction(formData: FormData) {
@@ -1184,13 +1199,13 @@ export async function deleteExpeditionDepartureAction(formData: FormData) {
   const confirmed = formData.get("confirmDelete") === "delete";
 
   if (!departureId || !confirmed) {
-    redirectAdminExpeditionError("departure-delete");
+    redirectAdminExpeditionError("departure-delete", formData);
   }
 
   const [booking] = await db.select({ id: expeditionBookings.id }).from(expeditionBookings).where(eq(expeditionBookings.departureId, departureId)).limit(1);
 
   if (booking) {
-    redirectAdminExpeditionError("departure-has-bookings");
+    redirectAdminExpeditionError("departure-has-bookings", formData);
   }
 
   const [departure] = await db
@@ -1202,7 +1217,7 @@ export async function deleteExpeditionDepartureAction(formData: FormData) {
     });
 
   if (!departure) {
-    redirectAdminExpeditionError("departure-missing");
+    redirectAdminExpeditionError("departure-missing", formData);
   }
 
   await db.insert(adminAuditLogs).values({
@@ -1213,7 +1228,7 @@ export async function deleteExpeditionDepartureAction(formData: FormData) {
     metadata: { expeditionId: departure.expeditionId }
   });
 
-  redirectAdminExpeditionSaved("departure-deleted");
+  redirectAdminExpeditionSaved("departure-deleted", formData);
 }
 
 export async function createAdminCampaignAction(formData: FormData) {
@@ -1233,19 +1248,19 @@ export async function createAdminCampaignAction(formData: FormData) {
   const endsAt = parseOptionalDate(formData.get("endsAt"));
 
   if (!organizationId || !title || !slug || !summary || !category || !region || !goalAmount || !impactUnit || !impactTarget) {
-    redirectAdminCampaignError("campaign-invalid");
+    redirectAdminCampaignError("campaign-invalid", formData);
   }
 
   const [organization] = await db.select({ id: organizations.id }).from(organizations).where(eq(organizations.id, organizationId)).limit(1);
 
   if (!organization) {
-    redirectAdminCampaignError("organization-missing");
+    redirectAdminCampaignError("organization-missing", formData);
   }
 
   const [existingSlug] = await db.select({ id: campaigns.id }).from(campaigns).where(eq(campaigns.slug, slug)).limit(1);
 
   if (existingSlug) {
-    redirectAdminCampaignError("campaign-slug");
+    redirectAdminCampaignError("campaign-slug", formData);
   }
 
   const now = new Date();
@@ -1278,7 +1293,7 @@ export async function createAdminCampaignAction(formData: FormData) {
     metadata: { source: "admin", slug, status }
   });
 
-  redirectAdminCampaignSaved("campaign-created");
+  redirectAdminCampaignSaved("campaign-created", formData);
 }
 
 export async function updateAdminCampaignAction(formData: FormData) {
@@ -1300,7 +1315,7 @@ export async function updateAdminCampaignAction(formData: FormData) {
   const removeImage = formData.get("removeImage") === "on";
 
   if (!campaignId || !organizationId || !title || !slug || !summary || !category || !region || !goalAmount || !impactUnit || !impactTarget) {
-    redirectAdminCampaignError("campaign-invalid");
+    redirectAdminCampaignError("campaign-invalid", formData);
   }
 
   const [campaign] = await db
@@ -1315,19 +1330,19 @@ export async function updateAdminCampaignAction(formData: FormData) {
     .limit(1);
 
   if (!campaign) {
-    redirectAdminCampaignError("campaign-missing");
+    redirectAdminCampaignError("campaign-missing", formData);
   }
 
   const [organization] = await db.select({ id: organizations.id }).from(organizations).where(eq(organizations.id, organizationId)).limit(1);
 
   if (!organization) {
-    redirectAdminCampaignError("organization-missing");
+    redirectAdminCampaignError("organization-missing", formData);
   }
 
   const [existingSlug] = await db.select({ id: campaigns.id }).from(campaigns).where(eq(campaigns.slug, slug)).limit(1);
 
   if (existingSlug && existingSlug.id !== campaignId) {
-    redirectAdminCampaignError("campaign-slug");
+    redirectAdminCampaignError("campaign-slug", formData);
   }
 
   const now = new Date();
@@ -1361,7 +1376,7 @@ export async function updateAdminCampaignAction(formData: FormData) {
     metadata: { source: "admin", previousSlug: campaign.slug, slug, status }
   });
 
-  redirectAdminCampaignSaved("campaign-updated");
+  redirectAdminCampaignSaved("campaign-updated", formData);
 }
 
 export async function deleteAdminCampaignAction(formData: FormData) {
@@ -1370,19 +1385,19 @@ export async function deleteAdminCampaignAction(formData: FormData) {
   const confirmed = formData.get("confirmDelete") === "delete";
 
   if (!campaignId || !confirmed) {
-    redirectAdminCampaignError("campaign-delete");
+    redirectAdminCampaignError("campaign-delete", formData);
   }
 
   const [campaign] = await db.select({ id: campaigns.id, title: campaigns.title }).from(campaigns).where(eq(campaigns.id, campaignId)).limit(1);
 
   if (!campaign) {
-    redirectAdminCampaignError("campaign-missing");
+    redirectAdminCampaignError("campaign-missing", formData);
   }
 
   const blockers = await getCampaignDeleteBlockers(campaignId);
 
   if (blockers.blocked) {
-    redirectAdminCampaignError("campaign-has-history");
+    redirectAdminCampaignError("campaign-has-history", formData);
   }
 
   await db.delete(campaigns).where(eq(campaigns.id, campaignId));
@@ -1395,7 +1410,7 @@ export async function deleteAdminCampaignAction(formData: FormData) {
     metadata: { source: "admin", title: campaign.title }
   });
 
-  redirectAdminCampaignSaved("campaign-deleted");
+  redirectAdminCampaignSaved("campaign-deleted", formData);
 }
 
 export async function updateCampaignStatusAction(formData: FormData) {
@@ -1405,7 +1420,7 @@ export async function updateCampaignStatusAction(formData: FormData) {
   const now = new Date();
 
   if (!campaignId || !campaignStatuses.includes(status as (typeof campaignStatuses)[number])) {
-    redirect("/admin/campaigns?error=campaign");
+    redirectAdminCampaignError("campaign", formData);
   }
 
   const [campaign] = await db
@@ -1418,7 +1433,7 @@ export async function updateCampaignStatusAction(formData: FormData) {
     .limit(1);
 
   if (!campaign) {
-    redirect("/admin/campaigns?error=campaign");
+    redirectAdminCampaignError("campaign", formData);
   }
 
   await db
@@ -1438,7 +1453,7 @@ export async function updateCampaignStatusAction(formData: FormData) {
     metadata: { status }
   });
 
-  redirect("/admin/campaigns?saved=status");
+  redirectAdminCampaignSaved("status", formData);
 }
 
 export async function updateOrganizationVerificationAction(formData: FormData) {

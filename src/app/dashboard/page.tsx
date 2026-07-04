@@ -23,6 +23,7 @@ import { DashboardImpactTrend } from "@/components/dashboard-impact-trend";
 import { DashboardPersonalImpactMap } from "@/components/dashboard-personal-impact-map";
 import { PassportPreview } from "@/components/passport-preview";
 import { Button, ButtonLink } from "@/components/ui/button";
+import { ProgressMeter } from "@/components/ui/progress-meter";
 import { requireUser } from "@/lib/auth";
 import { getDashboardData } from "@/lib/queries";
 import {
@@ -124,7 +125,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
       support: `${data.summary.upcomingTrips.toLocaleString("id-ID")} upcoming trip`,
       delta: data.upcomingExpedition ? `Next: ${formatShortDate(data.upcomingExpedition.startsAt)}` : "No booking yet",
       icon: MapPinned,
-      tone: "bg-purple-600 text-white"
+      tone: "bg-credential-700 text-white"
     },
     {
       label: "Courses Completed",
@@ -201,9 +202,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
                 <p className="mt-1 text-sm text-white/68">{xp.toLocaleString("id-ID")} / {xpTarget.toLocaleString("id-ID")} XP</p>
               </div>
             </div>
-            <div className="mt-6 h-3 overflow-hidden rounded-full bg-white/18" role="progressbar" aria-valuenow={xpProgress} aria-valuemin={0} aria-valuemax={100} aria-label="Ocean Hero level progress">
-              <div className="h-full rounded-full bg-kelp-400" style={{ width: `${xpProgress}%` }} />
-            </div>
+            <ProgressMeter value={xpProgress} label="Ocean Hero level progress" className="mt-6 h-3" indicatorClassName="bg-kelp-400" trackClassName="bg-white/18" />
             <p className="mt-3 text-sm font-semibold text-white/78">{xpRemaining.toLocaleString("id-ID")} XP to reach Ocean Champion</p>
             <div className="mt-6 grid gap-3 text-sm font-semibold text-white/78 sm:grid-cols-3">
               <span className="flex items-center gap-2">
@@ -328,7 +327,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
                 </div>
               ))
             ) : (
-              <p className="rounded-xl border border-dashed border-ocean-900/14 p-4 text-sm font-semibold text-ocean-900/62">No notifications yet.</p>
+              <p className="rounded-xl border border-dashed border-ocean-900/14 p-4 text-sm font-semibold text-ocean-900/62">Notifications will appear here after account, donation, expedition, or certificate activity.</p>
             )}
           </div>
         </article>
@@ -489,9 +488,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
               <p className="mt-4 text-sm font-semibold text-ocean-900/68">
                 Module {Math.max(1, data.academy.continueLearning.completedLessons)} of {Math.max(1, data.academy.continueLearning.totalLessons)}
               </p>
-              <div className="mt-3 h-2 overflow-hidden rounded-full bg-ocean-50" role="progressbar" aria-valuenow={data.academy.continueLearning.progressPercent} aria-valuemin={0} aria-valuemax={100} aria-label="Academy progress">
-                <div className="h-full rounded-full bg-kelp-500" style={{ width: `${data.academy.continueLearning.progressPercent}%` }} />
-              </div>
+              <ProgressMeter value={data.academy.continueLearning.progressPercent} label="Academy progress" className="mt-3 h-2" indicatorClassName="bg-kelp-500" trackClassName="bg-ocean-50" />
               <p className="mt-2 text-sm text-ocean-900/62">{data.academy.continueLearning.progressPercent}% complete · {data.academy.continueLearning.remainingMinutes} min remaining</p>
               <ButtonLink href={`/academy/courses/${data.academy.continueLearning.courseSlug}`} className="mt-5">Continue Learning</ButtonLink>
             </div>
@@ -559,9 +556,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
                         <p className="mt-1 text-xs leading-5 text-ocean-900/58">{achievement.criteria}</p>
                       </div>
                     </div>
-                    <div className="mt-4 h-2 overflow-hidden rounded-full bg-white">
-                      <div className="h-full rounded-full bg-coral-500" style={{ width: `${achievement.progressPercent}%` }} />
-                    </div>
+                    <ProgressMeter value={achievement.progressPercent} label={`${achievement.name} achievement progress`} className="mt-4 h-2" trackClassName="bg-white" />
                     <p className="mt-2 text-xs font-semibold text-ocean-900/58">{achievement.earned ? `Earned ${formatShortDate(achievement.earnedAt)}` : `${achievement.progress}/${achievement.target} complete`}</p>
                   </div>
                 );
@@ -642,9 +637,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
                 </div>
                 <span className="text-2xl font-bold text-ocean-900">{data.profileCompleteness.percent}%</span>
               </div>
-              <div className="mt-4 h-2 overflow-hidden rounded-full bg-ocean-50">
-                <div className="h-full rounded-full bg-kelp-500" style={{ width: `${data.profileCompleteness.percent}%` }} />
-              </div>
+              <ProgressMeter value={data.profileCompleteness.percent} label="Profile completeness progress" className="mt-4 h-2" indicatorClassName="bg-kelp-500" trackClassName="bg-ocean-50" />
             </div>
             <div className="mt-5 grid gap-3">
               {data.privacyControls.map((control) => (

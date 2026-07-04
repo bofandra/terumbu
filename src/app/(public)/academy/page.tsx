@@ -18,6 +18,7 @@ import Image from "next/image";
 import Link from "next/link";
 
 import { Button, ButtonLink } from "@/components/ui/button";
+import { ProgressMeter } from "@/components/ui/progress-meter";
 import { getSessionUser } from "@/lib/auth";
 import { getAcademyHomeData } from "@/lib/queries";
 import { cn } from "@/lib/utils";
@@ -48,10 +49,6 @@ const footerTrust = [
   { label: "Field-connected curriculum", support: "Real conservation context", icon: Users }
 ];
 
-function progressWidth(value: number) {
-  return `${Math.max(0, Math.min(100, value))}%`;
-}
-
 function displayNameFor(user: Awaited<ReturnType<typeof getSessionUser>>) {
   return user?.displayName ?? user?.name ?? "Ocean learner";
 }
@@ -68,18 +65,7 @@ function courseMatches(course: AcademyCourse, query: string, topic: string, leve
 }
 
 function ProgressBar({ value, label, tone = "bg-coral-500" }: { value: number; label: string; tone?: string }) {
-  return (
-    <div
-      className="h-2 overflow-hidden rounded-full bg-ocean-900/10"
-      role="progressbar"
-      aria-label={label}
-      aria-valuemin={0}
-      aria-valuemax={100}
-      aria-valuenow={Math.round(value)}
-    >
-      <div className={cn("h-full rounded-full", tone)} style={{ width: progressWidth(value) }} />
-    </div>
-  );
+  return <ProgressMeter value={value} label={label} indicatorClassName={tone} trackClassName="bg-ocean-900/10" />;
 }
 
 function CourseCard({ course }: { course: AcademyCourse }) {
@@ -401,18 +387,18 @@ export default async function AcademyPage({
             </ButtonLink>
           </article>
 
-          <article className="rounded-2xl border border-[#cabdff]/60 bg-[#f5f1ff] p-5 shadow-soft">
-            <p className="text-sm font-bold uppercase text-[#5f3dc4]">Your certificates</p>
+          <article className="rounded-2xl border border-credential-300/60 bg-credential-50 p-5 shadow-soft">
+            <p className="text-sm font-bold uppercase text-credential-700">Your certificates</p>
             <div className="mt-4 grid grid-cols-[120px_1fr] gap-4">
-              <div className="grid min-h-24 place-items-center rounded-xl border border-[#cabdff] bg-white p-3 text-center">
-                <FileBadge size={32} aria-hidden="true" className="text-[#5f3dc4]" />
+              <div className="grid min-h-24 place-items-center rounded-xl border border-credential-300 bg-white p-3 text-center">
+                <FileBadge size={32} aria-hidden="true" className="text-credential-700" />
                 <p className="mt-2 text-xs font-bold text-ocean-900">Terumbu Academy</p>
               </div>
               <div>
                 <h2 className="font-bold text-ocean-900">{data.certificatePreview.title}</h2>
                 <p className="mt-2 text-sm text-ocean-900/62">Credential ID: {data.certificatePreview.credentialId}</p>
                 <p className="mt-1 text-sm text-ocean-900/62">{data.certificatePreview.issuedLabel}</p>
-                <Link href={data.certificatePreview.href} className="mt-3 inline-flex items-center gap-2 text-sm font-bold text-[#5f3dc4]">
+                <Link href={data.certificatePreview.href} className="mt-3 inline-flex items-center gap-2 text-sm font-bold text-credential-700">
                   {data.certificatePreview.verified ? "View certificate" : "View example"}
                   <ArrowRight size={16} aria-hidden="true" />
                 </Link>

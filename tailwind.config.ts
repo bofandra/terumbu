@@ -15,16 +15,22 @@ const config: Config = {
           300: "#78cfc7",
           500: "#188f8a",
           700: "#0b5d64",
-          900: "#07343f"
+          900: "#07343f",
+          950: "#04252f"
         },
         coral: {
           100: "#ffe2d7",
+          200: "#ffc5b6",
           300: "#ff9d83",
+          400: "#ff785f",
           500: "#f45d48",
           700: "#b9362d"
         },
         kelp: {
           100: "#dcefd8",
+          200: "#bfe4bd",
+          300: "#91c99a",
+          400: "#6daf77",
           500: "#4a8f57",
           700: "#285a37"
         },
@@ -32,6 +38,15 @@ const config: Config = {
           50: "#fbf7ef",
           100: "#f4ead7",
           300: "#d8be86"
+        },
+        mist: {
+          50: "#f5f8fb"
+        },
+        credential: {
+          50: "#f7f3ff",
+          100: "#eee7ff",
+          300: "#cabdff",
+          700: "#5f3dc4"
         }
       },
       boxShadow: {
@@ -43,4 +58,3 @@ const config: Config = {
 };
 
 export default config;
-

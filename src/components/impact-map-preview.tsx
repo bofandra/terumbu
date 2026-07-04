@@ -5,6 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 
+import { ProgressMeter } from "@/components/ui/progress-meter";
 import type { ImpactSiteData } from "@/lib/domain";
 import { cn } from "@/lib/utils";
 
@@ -271,9 +272,13 @@ export function ImpactMapPreview({ sites }: ImpactMapPreviewProps) {
               </div>
             ) : null}
 
-            <div className="mt-5 h-2 overflow-hidden rounded-full bg-white">
-              <div className="h-full rounded-full bg-kelp-500" style={{ width: `${selectedSite.progress}%` }} />
-            </div>
+            <ProgressMeter
+              value={selectedSite.progress}
+              label={`${selectedSite.name} is ${selectedSite.progress} percent through its current milestone.`}
+              className="mt-5 h-2"
+              indicatorClassName="bg-kelp-500"
+              trackClassName="bg-white"
+            />
 
             <div className="mt-5 flex flex-wrap gap-2">
               <Link
@@ -322,9 +327,13 @@ export function ImpactMapPreview({ sites }: ImpactMapPreviewProps) {
               <p className="mt-2 text-xs font-semibold text-ocean-900/58">
                 {site.verification} · {site.verifiedEvidenceCount} verified · {site.pendingEvidenceCount} in review
               </p>
-              <div className="mt-4 h-2 overflow-hidden rounded-full bg-ocean-50">
-                <div className="h-full rounded-full bg-kelp-500" style={{ width: `${site.progress}%` }} />
-              </div>
+              <ProgressMeter
+                value={site.progress}
+                label={`${site.name} is ${site.progress} percent through its current milestone.`}
+                className="mt-4 h-2"
+                indicatorClassName="bg-kelp-500"
+                trackClassName="bg-ocean-50"
+              />
               <p className="mt-2 text-xs font-semibold text-ocean-900/60">{site.progress}% milestone progress</p>
             </button>
           ))}

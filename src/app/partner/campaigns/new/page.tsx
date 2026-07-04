@@ -16,7 +16,7 @@ export default async function PartnerCreateCampaignPage() {
     <div className="space-y-8">
       <PartnerPageHeader
         title="Create campaign"
-        description="Set up the campaign essentials, upload the hero image, and save the record directly to the database."
+        description="Set up the campaign essentials, upload the hero image, and prepare the record for review."
         actionHref="/partner/campaigns"
         actionLabel="View campaigns"
       />

@@ -5,6 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
 
+import { ProgressMeter } from "@/components/ui/progress-meter";
 import type { ImpactSiteData } from "@/lib/domain";
 import { cn, formatCurrency } from "@/lib/utils";
 
@@ -176,9 +177,13 @@ export function DashboardPersonalImpactMap({ sites }: { sites: PersonalImpactSit
                   ))}
                 </div>
               ) : null}
-              <div className="mt-5 h-2 overflow-hidden rounded-full bg-white">
-                <div className="h-full rounded-full bg-kelp-500" style={{ width: `${selectedSite.progress}%` }} />
-              </div>
+              <ProgressMeter
+                value={selectedSite.progress}
+                label={`${selectedSite.name} is ${selectedSite.progress} percent through its current milestone.`}
+                className="mt-5 h-2"
+                indicatorClassName="bg-kelp-500"
+                trackClassName="bg-white"
+              />
               <div className="mt-5 grid gap-2 text-sm font-semibold text-ocean-900/68">
                 <span>{formatCurrency(selectedSite.contributed)} contributed here</span>
                 <span>{selectedSite.supportedUnits.toLocaleString("id-ID")} supported restoration units</span>

@@ -13,7 +13,9 @@ import {
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
+import { AdminEmptyState } from "@/components/admin-ui";
 import { Button } from "@/components/ui/button";
+import { ProgressMeter } from "@/components/ui/progress-meter";
 import { requireRole } from "@/lib/auth";
 import { reconcileDonationAction, reconcileExpeditionBookingAction, verifyEvidenceAction } from "@/lib/portal-actions";
 import { getAdminOperationsData, getAdminPortalData } from "@/lib/queries";
@@ -144,9 +146,9 @@ export default async function AdminPortalPage() {
 
   const sectionCards = [
     { label: "Campaigns", value: data.campaigns.length, detail: `${reviewCampaigns} in review`, href: "/admin/campaigns", icon: Megaphone },
-    { label: "Evidence", value: data.evidence.length, detail: `${pendingEvidence} pending`, href: "/admin/evidence", icon: FileCheck2 },
+    { label: "Evidence", value: data.evidence.length, detail: `${pendingEvidence} pending`, href: "/admin/campaigns/evidence", icon: FileCheck2 },
     { label: "Partners", value: operations.partners.length, detail: "Verification levels", href: "/admin/partners", icon: Handshake },
-    { label: "Impact sites", value: operations.impactSites.length, detail: "Field locations", href: "/admin/impact-sites", icon: MapPinned },
+    { label: "Impact sites", value: operations.impactSites.length, detail: "Field locations", href: "/admin/campaigns/impact-sites", icon: MapPinned },
     { label: "Expeditions", value: operations.expeditionCatalog.length, detail: "Departures and capacity", href: "/admin/expeditions", icon: ShipWheel },
     { label: "Users", value: operations.users.length, detail: "Recent accounts", href: "/admin/users", icon: Users }
   ];
@@ -227,9 +229,7 @@ export default async function AdminPortalPage() {
                         <StatusBadge value={campaign.status} />
                       </td>
                       <td className="min-w-56 px-4 py-4">
-                        <div className="h-2 rounded-full bg-sand-100">
-                          <div className="h-2 rounded-full bg-coral-500" style={{ width: `${progress}%` }} />
-                        </div>
+                        <ProgressMeter value={progress} label={`${campaign.title} funding progress`} trackClassName="bg-sand-100" />
                         <p className="mt-2 text-xs font-bold text-ocean-900/62">
                           {formatCurrency(Number(campaign.raisedAmount))} / {formatCurrency(Number(campaign.goalAmount))}
                         </p>
@@ -277,7 +277,15 @@ export default async function AdminPortalPage() {
                 </div>
               </form>
             ))}
-            {evidenceQueue.length === 0 ? <p className="p-4 text-sm font-semibold text-ocean-900/58">No evidence records found.</p> : null}
+            {evidenceQueue.length === 0 ? (
+              <AdminEmptyState
+                className="m-4"
+                title="Evidence queue is clear"
+                description="New partner evidence submissions will appear here when they need verification."
+                actionHref="/admin/campaigns/evidence"
+                actionLabel="Open evidence"
+              />
+            ) : null}
           </div>
         </section>
       </section>
@@ -323,7 +331,13 @@ export default async function AdminPortalPage() {
                 </div>
               </form>
             ))}
-            {donationQueue.length === 0 ? <p className="p-4 text-sm font-semibold text-ocean-900/58">No donation records found.</p> : null}
+            {donationQueue.length === 0 ? (
+              <AdminEmptyState
+                className="m-4"
+                title="Donation queue is clear"
+                description="Pending payments, failed payments, and refund requests will appear here when an admin decision is needed."
+              />
+            ) : null}
           </div>
 
           <div className="border-t border-ocean-900/10 p-4">
@@ -360,7 +374,15 @@ export default async function AdminPortalPage() {
                 </div>
               </form>
             ))}
-            {data.bookingPaymentOperations.length === 0 ? <p className="p-4 text-sm font-semibold text-ocean-900/58">No expedition billing requests found.</p> : null}
+            {data.bookingPaymentOperations.length === 0 ? (
+              <AdminEmptyState
+                className="m-4"
+                title="No expedition billing requests"
+                description="Booking refunds and payment decisions will appear here when travelers or admins request changes."
+                actionHref="/admin/expeditions"
+                actionLabel="Open expeditions"
+              />
+            ) : null}
           </div>
         </section>
 

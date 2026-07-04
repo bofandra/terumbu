@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { ExternalLink } from "lucide-react";
 
+import { CorporateEmptyState } from "@/components/corporate-empty-state";
 import { requireUser } from "@/lib/auth";
 import { getCorporateDashboardData } from "@/lib/queries";
 
@@ -15,7 +16,7 @@ export default async function CorporateEvidencePage() {
   const data = await getCorporateDashboardData(user.id);
 
   if (!data) {
-    return <main className="mx-auto max-w-[1500px] px-4 py-8 sm:px-6 lg:px-8">Corporate program not configured.</main>;
+    return <CorporateEmptyState />;
   }
 
   return (

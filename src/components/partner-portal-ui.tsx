@@ -19,6 +19,7 @@ import {
 import type { ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";
+import { ProgressMeter } from "@/components/ui/progress-meter";
 import {
   createCampaignUpdateAction,
   createPartnerCampaignAction,
@@ -86,7 +87,7 @@ function dateValue(date: Date | null) {
 }
 
 function dateLabel(date: Date | null) {
-  return date?.toLocaleDateString("id-ID", { dateStyle: "medium" }) ?? "No date recorded";
+  return date?.toLocaleDateString("id-ID", { dateStyle: "medium" }) ?? "Date pending";
 }
 
 function isImageRecord(value: string | null) {
@@ -308,7 +309,7 @@ export function CampaignCreateForm({ organizations }: { organizations: Organizat
       <div className="flex items-center justify-between gap-3">
         <div>
           <h2 className="text-xl font-bold tracking-normal text-ocean-900">Create campaign</h2>
-          <p className="mt-1 text-sm font-semibold text-ocean-900/58">New campaigns are stored directly in PostgreSQL.</p>
+          <p className="mt-1 text-sm font-semibold text-ocean-900/58">New campaigns start as partner-managed records for review and publishing.</p>
         </div>
         <Plus className="size-5 text-coral-700" aria-hidden="true" />
       </div>
@@ -388,7 +389,7 @@ function CampaignPublicDataPanel({
               </div>
               <div>
                 <dt className="font-bold text-ocean-900">Story</dt>
-                <dd className="mt-1 leading-6 text-ocean-900/64">{campaign.story || "No story recorded in database."}</dd>
+                <dd className="mt-1 leading-6 text-ocean-900/64">{campaign.story || "Story content will appear after the campaign narrative is completed."}</dd>
               </div>
               <div className="grid gap-2 sm:grid-cols-2">
                 <div>
@@ -422,7 +423,7 @@ function CampaignPublicDataPanel({
                 ) : null}
               </div>
             </div>
-            <p className="mt-3 text-sm leading-6 text-ocean-900/64">{campaign.partnerDescription || "No partner description recorded in database."}</p>
+            <p className="mt-3 text-sm leading-6 text-ocean-900/64">{campaign.partnerDescription || "Partner details will appear after the organization profile is completed."}</p>
           </section>
         </div>
 
@@ -442,7 +443,7 @@ function CampaignPublicDataPanel({
             </div>
           ) : (
             <div className="mt-3">
-              <EmptyRecord>No campaign, update, or evidence images recorded in database.</EmptyRecord>
+              <EmptyRecord>No campaign, update, or evidence images attached yet.</EmptyRecord>
             </div>
           )}
         </section>
@@ -459,7 +460,7 @@ function CampaignPublicDataPanel({
                       {site.type} / {site.region}
                     </p>
                     <p className="mt-2 text-xs font-bold text-ocean-900/50">
-                      {site.progress}% progress / {site.evidenceCount} evidence records / {site.latestSurvey || "No survey date recorded"}
+                      {site.progress}% progress / {site.evidenceCount} evidence records / {site.latestSurvey || "Survey date pending"}
                     </p>
                   </div>
                 ))
@@ -474,13 +475,13 @@ function CampaignPublicDataPanel({
             <div className="mt-3 grid gap-2 text-sm">
               <div className="rounded-lg bg-sand-50 p-3">
                 <p className="font-bold text-ocean-900">{updates.length.toLocaleString("id-ID")} updates</p>
-                <p className="mt-1 text-ocean-900/62">{updates[0] ? `Latest: ${updates[0].title} / ${dateLabel(updates[0].publishedAt)}` : "No updates recorded in database."}</p>
+                <p className="mt-1 text-ocean-900/62">{updates[0] ? `Latest: ${updates[0].title} / ${dateLabel(updates[0].publishedAt)}` : "Updates will appear after publication."}</p>
               </div>
               <div className="rounded-lg bg-sand-50 p-3">
                 <p className="font-bold text-ocean-900">
                   {evidence.length.toLocaleString("id-ID")} evidence records / {verifiedEvidence.toLocaleString("id-ID")} verified
                 </p>
-                <p className="mt-1 text-ocean-900/62">{evidence[0] ? `Latest: ${evidence[0].title} / ${dateLabel(evidence[0].createdAt)}` : "No evidence recorded in database."}</p>
+                <p className="mt-1 text-ocean-900/62">{evidence[0] ? `Latest: ${evidence[0].title} / ${dateLabel(evidence[0].createdAt)}` : "Evidence will appear after field submission."}</p>
               </div>
             </div>
           </section>
@@ -498,7 +499,7 @@ function CampaignPublicDataPanel({
                   </div>
                 ))
               ) : (
-                <EmptyRecord>No paid donor activity recorded for this campaign.</EmptyRecord>
+                <EmptyRecord>Paid donor activity will appear after checkout confirmations.</EmptyRecord>
               )}
             </div>
           </section>
@@ -511,7 +512,7 @@ function CampaignPublicDataPanel({
                   <div key={item.code} className="rounded-lg bg-sand-50 p-3 text-sm">
                     <p className="font-bold text-ocean-900">{item.code} / {item.label}</p>
                     <p className="mt-1 text-ocean-900/62">
-                      {item.status} / {item.fragments.toLocaleString("id-ID")} fragments / {item.siteName || item.region || "No site recorded"}
+                      {item.status} / {item.fragments.toLocaleString("id-ID")} fragments / {item.siteName || item.region || "Site pending"}
                     </p>
                   </div>
                 ))
@@ -603,9 +604,7 @@ export function CampaignList({
                 </div>
 
                 <div className="mt-4">
-                  <div className="h-2 rounded-full bg-white">
-                    <div className="h-2 rounded-full bg-coral-500" style={{ width: `${progress}%` }} />
-                  </div>
+                  <ProgressMeter value={progress} label={`${campaign.title} funding progress`} trackClassName="bg-white" />
                   <p className="mt-2 text-sm font-bold text-ocean-900">
                     {formatCurrency(Number(campaign.raisedAmount))} / {formatCurrency(Number(campaign.goalAmount))}
                   </p>
@@ -663,7 +662,15 @@ export function CampaignList({
             </article>
           );
         })}
-        {campaigns.length === 0 ? <p className="rounded-lg border border-dashed border-ocean-900/14 p-4 text-sm font-semibold text-ocean-900/58">No campaigns found.</p> : null}
+        {campaigns.length === 0 ? (
+          <div className="rounded-lg border border-dashed border-ocean-900/14 p-4">
+            <p className="font-bold text-ocean-900">No partner campaigns yet.</p>
+            <p className="mt-2 text-sm leading-6 text-ocean-900/58">Create a campaign before publishing field updates or submitting evidence.</p>
+            <Link href="/partner/campaigns/new" className="mt-3 inline-flex text-sm font-bold text-coral-700">
+              Create campaign
+            </Link>
+          </div>
+        ) : null}
       </div>
     </section>
   );
@@ -678,7 +685,7 @@ export function PublishUpdateForm({ campaigns }: { campaigns: Campaign[] }) {
       <div className="flex items-center justify-between gap-3">
         <div>
           <h2 className="text-xl font-bold tracking-normal text-ocean-900">Publish update</h2>
-          <p className="mt-1 text-sm font-semibold text-ocean-900/58">Field notes can include an uploaded image stored in the DB.</p>
+          <p className="mt-1 text-sm font-semibold text-ocean-900/58">Field notes can include an uploaded image and become visible on campaign timelines.</p>
         </div>
         <ImagePlus className="size-5 text-kelp-700" aria-hidden="true" />
       </div>
@@ -724,7 +731,7 @@ export function EvidenceSubmitForm({ campaigns }: { campaigns: Campaign[] }) {
       <div className="flex items-center justify-between gap-3">
         <div>
           <h2 className="text-xl font-bold tracking-normal text-ocean-900">Submit evidence</h2>
-          <p className="mt-1 text-sm font-semibold text-ocean-900/58">Uploaded image evidence is saved to the evidence record.</p>
+          <p className="mt-1 text-sm font-semibold text-ocean-900/58">Uploaded evidence is submitted for admin review before it becomes a public trust signal.</p>
         </div>
         <FileCheck2 className="size-5 text-kelp-700" aria-hidden="true" />
       </div>
@@ -785,7 +792,15 @@ export function EvidenceStatusList({ evidence }: { evidence: PartnerPortalData["
             </div>
           </article>
         ))}
-        {evidence.length === 0 ? <p className="rounded-lg border border-dashed border-ocean-900/14 p-4 text-sm font-semibold text-ocean-900/58">No evidence records found.</p> : null}
+        {evidence.length === 0 ? (
+          <div className="rounded-lg border border-dashed border-ocean-900/14 p-4">
+            <p className="font-bold text-ocean-900">No evidence submitted yet.</p>
+            <p className="mt-2 text-sm leading-6 text-ocean-900/58">Submit field photos or reports so admins can verify conservation progress.</p>
+            <Link href="/partner/evidence/submit" className="mt-3 inline-flex text-sm font-bold text-coral-700">
+              Submit evidence
+            </Link>
+          </div>
+        ) : null}
       </div>
     </section>
   );
@@ -809,7 +824,15 @@ export function RecentUpdatesList({ updates }: { updates: PartnerPortalData["upd
             </div>
           </article>
         ))}
-        {updates.length === 0 ? <p className="rounded-lg border border-dashed border-ocean-900/14 p-4 text-sm font-semibold text-ocean-900/58">No updates found.</p> : null}
+        {updates.length === 0 ? (
+          <div className="rounded-lg border border-dashed border-ocean-900/14 p-4">
+            <p className="font-bold text-ocean-900">No updates published yet.</p>
+            <p className="mt-2 text-sm leading-6 text-ocean-900/58">Publish a field note when restoration teams have progress to share.</p>
+            <Link href="/partner/updates" className="mt-3 inline-flex text-sm font-bold text-coral-700">
+              Publish update
+            </Link>
+          </div>
+        ) : null}
       </div>
     </section>
   );

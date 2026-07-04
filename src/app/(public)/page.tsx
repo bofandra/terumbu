@@ -9,6 +9,7 @@ import { PartnerLogoStrip } from "@/components/partner-logo-strip";
 import { SectionHeading } from "@/components/section-heading";
 import { StatStrip } from "@/components/stat-strip";
 import { ButtonLink } from "@/components/ui/button";
+import { ProgressMeter } from "@/components/ui/progress-meter";
 import type { PassportPreviewData } from "@/lib/domain";
 import {
   getCampaignCards,
@@ -140,9 +141,7 @@ export default async function HomePage() {
               <div className="w-full rounded-2xl border border-white/20 bg-white/12 p-5 text-white backdrop-blur-xl">
                 <p className="text-sm font-bold uppercase tracking-[0.16em] text-coral-100">Field update</p>
                 <p className="mt-4 text-2xl font-bold tracking-normal">{fieldUpdate.title}</p>
-                <div className="mt-6 h-3 overflow-hidden rounded-full bg-white/18">
-                  <div className="h-full rounded-full bg-coral-500" style={{ width: `${fieldUpdate.progress}%` }} />
-                </div>
+                <ProgressMeter value={fieldUpdate.progress} label={`${fieldUpdate.title} progress`} className="mt-6 h-3" trackClassName="bg-white/18" />
                 <p className="mt-4 text-sm leading-6 text-white/72">{fieldUpdate.description}</p>
                 <ButtonLink href="/impact-map" tone="ghost" className="mt-6 border border-white/24 text-white hover:bg-white/10">
                   <PlayCircle size={18} aria-hidden="true" />

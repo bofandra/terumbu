@@ -1,6 +1,6 @@
 import { ScrollText, UserRound } from "lucide-react";
 
-import { AdminPageHeader, adminPanelClassName } from "@/components/admin-ui";
+import { AdminEmptyState, AdminPageHeader, adminPanelClassName } from "@/components/admin-ui";
 import { requireRole } from "@/lib/auth";
 import { getAdminOperationsData } from "@/lib/queries";
 
@@ -73,7 +73,13 @@ export default async function AdminAuditPage() {
               </div>
             </article>
           ))}
-          {data.auditLogs.length === 0 ? <p className="p-4 text-sm font-semibold text-ocean-900/58">No audit logs found.</p> : null}
+          {data.auditLogs.length === 0 ? (
+            <AdminEmptyState
+              className="m-4"
+              title="No audit events yet"
+              description="Admin changes and system operations will appear here once the workspace starts recording activity."
+            />
+          ) : null}
         </div>
       </section>
     </div>

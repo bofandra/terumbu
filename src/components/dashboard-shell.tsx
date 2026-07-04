@@ -81,7 +81,7 @@ export function DashboardShell({ children, displayName, unreadNotificationCount 
   const notificationBadge = unreadNotificationCount > 0 ? String(Math.min(unreadNotificationCount, 99)) : null;
 
   return (
-    <div className="min-h-screen bg-[#f5f8fb] pb-20 lg:pb-0">
+    <div className="min-h-screen bg-mist-50 pb-20 lg:pb-0">
       <aside className="fixed inset-y-0 left-0 hidden w-72 bg-ocean-900 px-5 py-6 text-white shadow-2xl lg:flex lg:flex-col">
         <Link href="/" className="flex items-center gap-3">
           <span className="flex size-11 items-center justify-center rounded-2xl bg-white/10 text-2xl font-bold">T</span>
@@ -163,7 +163,7 @@ export function DashboardShell({ children, displayName, unreadNotificationCount 
                   const badge = item.label === "Notifications" ? notificationBadge : null;
 
                   return (
-                    <Link key={item.href} href={item.href} className="flex items-center justify-between rounded-xl px-3 py-2 text-sm font-bold text-ocean-900 hover:bg-ocean-50">
+                    <Link key={`${item.label}:${item.href}`} href={item.href} className="flex items-center justify-between rounded-xl px-3 py-2 text-sm font-bold text-ocean-900 hover:bg-ocean-50">
                       <span className="flex items-center gap-3">
                         <Icon size={17} aria-hidden="true" />
                         {item.label}
