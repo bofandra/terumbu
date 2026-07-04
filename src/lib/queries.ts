@@ -68,6 +68,12 @@ import {
   type PartnerLogoData,
   type PassportPreviewData
 } from "@/lib/domain";
+import {
+  buildDefaultExpeditionDetailMetadata,
+  expeditionMetadataEditorJson,
+  metadataDate,
+  normalizeExpeditionDetailMetadata
+} from "@/lib/expedition-metadata";
 import { formatCompact, formatCurrency } from "@/lib/utils";
 
 export async function getImpactStats(): Promise<ImpactStatData[]> {
@@ -728,6 +734,7 @@ export async function getExpeditionDetail(slug: string) {
       basePrice: expeditions.basePrice,
       imageUrl: expeditions.imageUrl,
       summary: expeditions.summary,
+      metadata: expeditions.metadata,
       relatedCampaignId: expeditions.relatedCampaignId,
       relatedCampaignSlug: campaigns.slug,
       relatedCampaignTitle: campaigns.title,
@@ -846,14 +853,11 @@ export async function getExpeditionDetail(slug: string) {
   const maxCapacity = mappedDepartures.reduce((capacity, departure) => Math.max(capacity, departure.capacity), 0);
   const primaryDeparture = mappedDepartures[0] ?? null;
   const price = toNumber(row.basePrice);
-  const conservationContribution = Math.round(price * 0.16);
-  const platformFee = Math.round(price * 0.04);
-  const equipmentRental = 250_000;
   const relatedCampaignProgress = Math.min(
     100,
     Math.round((toNumber(row.relatedCampaignRaisedAmount) / Math.max(1, toNumber(row.relatedCampaignGoalAmount))) * 100)
   );
-  const galleryImages = [
+  const defaultGalleryImages = [
     {
       src: row.imageUrl ?? "https://images.unsplash.com/photo-1582967788606-a171c1080cb0?auto=format&fit=crop&w=1400&q=80",
       label: "Destination",
@@ -885,11 +889,55 @@ export async function getExpeditionDetail(slug: string) {
       provenance: "Illustrative operating conditions"
     }
   ];
-  const preparationCourse =
+  const defaultTripUpdates = [
+    updateRows[0]
+      ? {
+          title: updateRows[0].title,
+          date: (updateRows[0].publishedAt ?? updateRows[0].createdAt).toISOString(),
+          body: updateRows[0].body
+        }
+      : {
+          title: "Seasonal weather advisory",
+          date: "2026-06-01T00:00:00.000Z",
+          body: "Boat schedules may shift when sea conditions require safer departure windows."
+        }
+  ];
+  const durationLabel = toExpeditionCard(row).duration;
+  const selectedPreparationCourse =
     courseRows.find((course) => course.title.toLowerCase().includes("coral")) ??
     courseRows.find((course) => course.title.toLowerCase().includes("ocean")) ??
     courseRows[0] ??
     null;
+  const expeditionMetadata = normalizeExpeditionDetailMetadata(
+    row.metadata,
+    buildDefaultExpeditionDetailMetadata({
+      title: row.title,
+      region: row.region,
+      durationLabel,
+      price,
+      maxCapacity,
+      galleryImages: defaultGalleryImages,
+      tripUpdates: defaultTripUpdates,
+      hostedBy: {
+        title: `Hosted by Terumbu.eco${row.partner ? ` and ${row.partner}` : ""}`,
+        verificationLabel: `${verificationLabel(row.verification)} Expedition Partner`,
+        profileHref: row.partnerSlug ? `/partners/${row.partnerSlug}` : "",
+        profileLabel: "View partner profile"
+      },
+      preparationCourse: selectedPreparationCourse
+        ? {
+            title: selectedPreparationCourse.title,
+            summary: selectedPreparationCourse.summary,
+            imageUrl: selectedPreparationCourse.imageUrl,
+            href: `/academy/courses/${selectedPreparationCourse.slug}`,
+            ctaLabel: "Preview Course"
+          }
+        : undefined
+    })
+  );
+  const conservationContribution = expeditionMetadata.impact.conservationContribution ?? Math.round((price * expeditionMetadata.impact.contributionPercent) / 100);
+  const platformFee = expeditionMetadata.priceBreakdown.platformFee ?? Math.round((price * expeditionMetadata.priceBreakdown.platformFeePercent) / 100);
+  const equipmentRental = expeditionMetadata.priceBreakdown.equipmentRental;
 
   return {
     ...toExpeditionCard(row),
@@ -903,48 +951,30 @@ export async function getExpeditionDetail(slug: string) {
     primaryDeparture,
     departures: mappedDepartures,
     programActivities: [...siteActivities, ...departureActivities].slice(0, 3),
-    galleryImages,
-    rating: 4.9,
-    reviewCount: 128,
-    participantCount: 340,
-    difficulty: "Moderate",
-    minimumAge: 16,
-    languages: ["English", "Bahasa Indonesia"],
-    skillRequirements: ["Snorkeling ability required", "Diving certification optional"],
-    tags: ["Coral restoration", "Reef monitoring", "Community-based conservation", "Snorkeling", "Small group", "SDG 14"],
-    quickFacts: [
-      { label: "Duration", value: toExpeditionCard(row).duration },
-      { label: "Small group", value: maxCapacity > 0 ? `Max ${maxCapacity} people` : "Capacity pending" },
-      { label: "Difficulty", value: "Moderate" },
-      { label: "Min. age", value: "16+ years old" },
-      { label: "Swimming ability", value: "Snorkeling required" },
-      { label: "Per person", value: formatCurrency(price) }
-    ],
-    highlights: [
-      { title: "Prepare coral fragments with trained restoration staff", status: "Weather-dependent" },
-      { title: "Visit an active coral nursery", status: "Weather-dependent" },
-      { title: "Record basic reef-monitoring observations", status: "Included" },
-      { title: "Learn from local marine conservation practitioners", status: "Guaranteed" },
-      { title: "Support community-led conservation", status: "Included" },
-      { title: "Receive a verified expedition record in your Impact Passport", status: "Included" }
-    ],
+    metadataJson: expeditionMetadataEditorJson(expeditionMetadata),
+    categoryLabel: expeditionMetadata.categoryLabel,
+    activitySummary: expeditionMetadata.activitySummary,
+    hostedBy: expeditionMetadata.hostedBy,
+    galleryImages: expeditionMetadata.galleryImages,
+    rating: expeditionMetadata.rating,
+    reviewCount: expeditionMetadata.reviewCount,
+    participantCount: expeditionMetadata.participantCount,
+    difficulty: expeditionMetadata.difficulty,
+    minimumAge: expeditionMetadata.minimumAge,
+    languages: expeditionMetadata.languages,
+    skillRequirements: expeditionMetadata.skillRequirements,
+    tags: expeditionMetadata.tags,
+    quickFacts: expeditionMetadata.quickFacts,
+    overview: expeditionMetadata.overview,
+    highlights: expeditionMetadata.highlights,
     impact: {
       conservationContribution,
-      methodologyUpdatedAt: "2026-06-01",
-      targets: [
-        { value: "500", label: "Coral fragments supported" },
-        { value: "3", label: "Monitoring visits funded" },
-        { value: "12", label: "Local workdays supported" },
-        { value: "1", label: "Community education session" }
-      ],
-      allocation: [
-        { label: "Field conservation activities", percent: 35 },
-        { label: "Local guides and community services", percent: 25 },
-        { label: "Accommodation and meals", percent: 18 },
-        { label: "Boats and local transport", percent: 12 },
-        { label: "Safety, insurance, and equipment", percent: 6 },
-        { label: "Platform operations", percent: 4 }
-      ]
+      title: expeditionMetadata.impact.title,
+      summary: expeditionMetadata.impact.summary,
+      methodologyUpdatedAt: expeditionMetadata.impact.methodologyUpdatedAt,
+      methodologyNote: expeditionMetadata.impact.methodologyNote,
+      targets: expeditionMetadata.impact.targets,
+      allocation: expeditionMetadata.impact.allocation
     },
     priceBreakdown: {
       basePrice: price,
@@ -965,140 +995,30 @@ export async function getExpeditionDetail(slug: string) {
           latestUpdate: updateRows[0] ?? null
         }
       : null,
-    itinerary: [
-      {
-        day: "Day 1",
-        title: "Arrival and Orientation",
-        meals: "Dinner",
-        physicalLevel: "Light",
-        activities: ["Sorong arrival", "Transfer to harbor", "Boat journey to base island", "Safety and conservation briefing", "Welcome dinner"]
-      },
-      {
-        day: "Day 2",
-        title: "Coral Nursery and Field Training",
-        meals: "Breakfast, lunch, dinner",
-        physicalLevel: "Moderate",
-        activities: ["Reef-ecology introduction", "Equipment familiarization", "Coral nursery visit", "Supervised conservation activity", "Field debrief"]
-      },
-      {
-        day: "Day 3",
-        title: "Reef Monitoring and Community Program",
-        meals: "Breakfast, lunch, dinner",
-        physicalLevel: "Moderate",
-        activities: ["Monitoring-site visit", "Photo and observation recording", "Community conservation discussion", "Optional snorkeling", "Impact-data review"]
-      },
-      {
-        day: "Day 4",
-        title: "Reflection and Departure",
-        meals: "Breakfast",
-        physicalLevel: "Light",
-        activities: ["Final learning session", "Participant feedback", "Impact Passport confirmation", "Boat transfer", "Departure from Sorong"]
-      }
-    ],
-    included: [
-      "Three nights of accommodation",
-      "Meals listed in the itinerary",
-      "Local boat transport",
-      "Harbor transfer",
-      "Conservation activities",
-      "Field equipment",
-      "Expedition leader and local guide",
-      "Participant insurance",
-      "Impact Passport record",
-      "Digital participation certificate"
-    ],
-    notIncluded: [
-      "Flight to Sorong",
-      "Personal travel insurance extension",
-      "Diving equipment unless selected",
-      "Personal expenses",
-      "Additional accommodation",
-      "Optional activities",
-      "Medical testing or certification"
-    ],
-    requirements: [
-      "Comfortable on small boats",
-      "Able to swim or snorkel",
-      "Able to walk on uneven and wet surfaces",
-      "Able to join outdoor activity for several hours",
-      "No conservation experience required"
-    ],
-    safety: [
-      "Life jackets provided",
-      "Certified boat operators",
-      "First-aid equipment",
-      "Emergency communication",
-      "Weather monitoring",
-      "Participant insurance",
-      "Maximum ratio: 1 facilitator for every 6 participants"
-    ],
-    sustainability: [
-      "No coral touching without direct instruction",
-      "No wildlife feeding",
-      "Reef-safe personal products encouraged",
-      "Local procurement where practical",
-      "Waste-management protocol",
-      "Community consent and conservation-first itinerary decisions"
-    ],
+    itineraryTitle: expeditionMetadata.itineraryTitle,
+    itineraryDisclaimer: expeditionMetadata.itineraryDisclaimer,
+    itinerary: expeditionMetadata.itinerary,
+    included: expeditionMetadata.included,
+    notIncluded: expeditionMetadata.notIncluded,
+    requirements: expeditionMetadata.requirements,
+    safety: expeditionMetadata.safety,
+    emergencyPlanSummary: expeditionMetadata.emergencyPlanSummary,
+    sustainability: expeditionMetadata.sustainability,
     route: {
-      steps: ["Sorong Airport", "Sorong Harbor", "Expedition Base Island", "General conservation zone"],
-      travelTimes: ["Airport to harbor: 20-30 min", "Harbor to island: 2-3 hours by boat", "Daily boat journey: 20-45 min depending on sea conditions"],
+      ...expeditionMetadata.route,
       sites: relatedSites
     },
-    accommodation: {
-      name: "Raja Ampat Eco-lodge partner stay",
-      type: "Shared twin room included",
-      details: ["Fan-cooled rooms", "Shared or private bathroom by availability", "Limited mobile coverage", "Refill drinking water", "Local meals served family-style"]
-    },
-    team: [
-      { name: "Dimas Pratama", role: "Expedition leader", detail: "8 years leading marine field programs · English and Bahasa Indonesia" },
-      { name: "Yayasan Bahari Lestari field team", role: "Marine conservation lead", detail: "Restoration and monitoring partner for the associated campaign" },
-      { name: "Local community coordinator", role: "Participant support", detail: "Coordinates village etiquette, meals, transfers, and local guides" },
-      { name: "Safety officer", role: "First-aid lead", detail: "Responsible for field briefings and emergency communication" }
-    ],
-    preparationCourse,
-    reviews: [
-      {
-        name: "Raka A.",
-        joinedAs: "First-time conservation traveler",
-        rating: 5,
-        date: "June 2026",
-        body: "The field team explained what we could safely help with and what should be left to trained restorers. It felt purposeful and careful."
-      },
-      {
-        name: "Maya S.",
-        joinedAs: "Student participant",
-        rating: 5,
-        date: "May 2026",
-        body: "The best part was reviewing monitoring photos and understanding how evidence becomes part of the campaign record."
-      }
-    ],
-    tripUpdates: [
-      updateRows[0]
-        ? {
-            title: updateRows[0].title,
-            date: updateRows[0].publishedAt ?? updateRows[0].createdAt,
-            body: updateRows[0].body
-          }
-        : {
-            title: "Seasonal weather advisory",
-            date: new Date("2026-06-01T00:00:00.000Z"),
-            body: "Boat schedules may shift when sea conditions require safer departure windows."
-          }
-    ],
-    cancellationPolicy: [
-      { label: "More than 30 days before departure", refund: "90%" },
-      { label: "15-30 days before departure", refund: "50%" },
-      { label: "Fewer than 15 days", refund: "Non-refundable" },
-      { label: "Operator cancellation", refund: "Full refund or reschedule" }
-    ],
-    faqs: [
-      ["Do I need conservation experience?", "No. Field activities are supervised and designed for beginners."],
-      ["Do I need to be able to dive?", "No. Snorkeling ability is required; diving certification is only needed for optional diving activities."],
-      ["Are flights included?", "Flights to Sorong are not included."],
-      ["How is my booking contribution used?", `${formatCurrency(conservationContribution)} per participant supports field conservation activity connected to the associated campaign.`],
-      ["Will this appear in my Impact Passport?", "Confirmed participants receive a verified expedition record after completion."]
-    ],
+    accommodation: expeditionMetadata.accommodation,
+    team: expeditionMetadata.team,
+    preparationCourse: expeditionMetadata.preparationCourse,
+    reviewCategories: expeditionMetadata.reviewCategories,
+    reviews: expeditionMetadata.reviews,
+    tripUpdates: expeditionMetadata.tripUpdates.map((update) => ({ ...update, date: metadataDate(update.date) })),
+    cancellationPolicy: expeditionMetadata.cancellationPolicy,
+    faqs: expeditionMetadata.faqs.map((item) => [item.question, item.answer] as const),
+    finalCta: expeditionMetadata.finalCta,
+    weatherAdvisory: expeditionMetadata.weatherAdvisory,
+    bookingTrustIndicators: expeditionMetadata.bookingTrustIndicators,
     relatedExpeditions: relatedExpeditionRows.filter((item) => item.slug !== row.slug).slice(0, 3)
   };
 }
@@ -2048,6 +1968,19 @@ function reportMonthKey(value: Date) {
 
 function addMonths(value: Date, offset: number) {
   return new Date(value.getFullYear(), value.getMonth() + offset, 1);
+}
+
+function governanceActor(permission: string | null | undefined) {
+  const labels: Record<string, string> = {
+    "program.manage": "ESG Program Manager",
+    executive_viewer: "Executive Viewer",
+    esg_manager: "ESG Program Manager",
+    finance_reviewer: "Finance Reviewer",
+    employee_engagement: "Employee Engagement Manager",
+    auditor: "External Reviewer"
+  };
+
+  return labels[permission ?? ""] ?? "Corporate user";
 }
 
 function isSameMonth(value: Date | null | undefined, reference: Date) {
@@ -3476,6 +3409,17 @@ export async function getCorporateDashboardData(userId: string) {
     const impactProgress = Math.min(100, Math.max(30, Math.round(progress * 0.95)));
     const statusLabel = normalizeProjectStatus(project.status, utilization);
     const nextMilestoneDate = project.endsAt ?? addMonths(now, 1);
+    const projectEvidenceRows = corporateEvidence.filter((item) => item.campaignSlug === project.campaignSlug);
+    const verifiedProjectEvidence = projectEvidenceRows.filter((item) => item.verificationStatus === "verified").length;
+    const evidenceScore = projectEvidenceRows.length > 0 ? Math.round((verifiedProjectEvidence / projectEvidenceRows.length) * 100) : 50;
+    const partnerScore = Math.min(100, Math.max(35, Math.round((utilization + impactProgress + evidenceScore) / 3)));
+    const utilizationStatus = utilization >= 85 ? "Complete" : utilization >= 65 ? "In Progress" : "Needs Review";
+    const evidenceStatus =
+      projectEvidenceRows.length === 0
+        ? "Evidence due"
+        : verifiedProjectEvidence === projectEvidenceRows.length
+          ? "Verified"
+          : "Reviewer action";
 
     return {
       ...project,
@@ -3495,7 +3439,49 @@ export async function getCorporateDashboardData(userId: string) {
                 ? "A material delivery or financial issue needs escalation."
                 : "Final activities and reporting are being closed.",
       nextMilestone: statusLabel === "Awaiting Verification" ? "Evidence review" : statusLabel === "Needs Attention" ? "Partner clarification" : "Next monitoring report",
-      nextMilestoneDate
+      nextMilestoneDate,
+      detailHref: `/corporate/projects?project=${project.campaignSlug}`,
+      partnerScore,
+      invoiceStatus: utilization >= 85 ? "Matched to evidence" : utilization >= 65 ? "Partially matched" : "Needs invoice review",
+      disbursementStatus: utilization >= 90 ? "Final tranche eligible" : utilization >= 65 ? "Next tranche pending review" : "Hold pending clarification",
+      evidenceSummary: {
+        total: projectEvidenceRows.length,
+        verified: verifiedProjectEvidence,
+        pending: Math.max(0, projectEvidenceRows.length - verifiedProjectEvidence),
+        latestTitle: projectEvidenceRows[0]?.title ?? "No evidence submitted",
+        status: evidenceStatus
+      },
+      milestones: [
+        {
+          label: "Funding allocation",
+          status: "Complete",
+          dueDate: project.createdAt,
+          owner: "Corporate finance"
+        },
+        {
+          label: "Utilization review",
+          status: utilizationStatus,
+          dueDate: addMonths(project.createdAt, 1),
+          owner: "Finance reviewer"
+        },
+        {
+          label: "Evidence verification",
+          status: evidenceStatus,
+          dueDate: addMonths(project.createdAt, 2),
+          owner: "Terumbu verification"
+        },
+        {
+          label: "Monitoring report",
+          status: statusLabel === "Completed" ? "Complete" : "Scheduled",
+          dueDate: nextMilestoneDate,
+          owner: project.organizationName
+        }
+      ],
+      nextActions: [
+        statusLabel === "Needs Attention" ? "Request partner clarification" : null,
+        utilization < 75 ? "Review invoices before next disbursement" : "Confirm next tranche readiness",
+        projectEvidenceRows.some((item) => item.verificationStatus !== "verified") ? "Assign evidence reviewer" : "Prepare report excerpt"
+      ].filter(isDefined)
     };
   });
 
@@ -3613,6 +3599,43 @@ export async function getCorporateDashboardData(userId: string) {
       academyCompletions: Math.max(0, Math.round(verifiedOutputs * multiplier))
     };
   });
+  const departmentLeaders = [...departmentEngagement]
+    .sort((left, right) => right.participationRate - left.participationRate || right.volunteerHours - left.volunteerHours)
+    .slice(0, 5);
+  const employeePrograms = {
+    upcomingEvents: [
+      {
+        title: "Coastal restoration field day",
+        date: addMonths(now, 1),
+        location: portfolioRows[0]?.region ?? "Indonesia field site",
+        capacity: Math.max(40, Math.round(eligibleEmployees * 0.08)),
+        registered: Math.max(8, Math.round(employeesEngaged * 0.06)),
+        status: "Registration open"
+      },
+      {
+        title: "ESG evidence review clinic",
+        date: addMonths(now, 2),
+        location: "Online",
+        capacity: Math.max(30, Math.round(eligibleEmployees * 0.06)),
+        registered: Math.max(6, Math.round(employeesEngaged * 0.04)),
+        status: "Invite draft"
+      }
+    ],
+    challenge: {
+      title: "Blue Office Challenge",
+      progress: Math.min(100, Math.max(12, participationRate + 18)),
+      targetDepartments: Math.max(3, departmentEngagement.length),
+      activeDepartments: departmentLeaders.filter((department) => department.active > 0).length,
+      leaderboard: departmentLeaders
+    },
+    donationMatching: {
+      policy: "1:1 employee matching",
+      pool: Math.round(committedFunding * 0.03),
+      matched: Math.min(Math.round(committedFunding * 0.03), employeesEngaged * 250000),
+      pending: Math.max(0, Math.round(employeesEngaged * 0.18)),
+      status: participationRate > 50 ? "Healthy" : "Needs promotion"
+    }
+  };
   const budgetVariance = budgets.map((budget) => {
     const planned = toNumber(budget.allocatedAmount);
     const actual = toNumber(budget.spentAmount);
@@ -3633,6 +3656,68 @@ export async function getCorporateDashboardData(userId: string) {
     { label: "Utilized", value: verifiedUtilization, percent: committedFunding > 0 ? Math.round((verifiedUtilization / committedFunding) * 100) : 0 },
     { label: "Verified", value: verifiedUtilization, percent: committedFunding > 0 ? Math.round((verifiedUtilization / committedFunding) * 100) : 0 }
   ];
+  const fundingSchedule = budgetVariance.map((budget, index) => {
+    const utilization = budget.planned > 0 ? Math.round((budget.actual / budget.planned) * 100) : 0;
+    const status = budget.actual <= 0 ? "Scheduled" : utilization >= 95 ? "Complete" : budget.status === "Requires explanation" ? "Needs Approval" : "In Progress";
+
+    return {
+      id: `${budget.category}-${index}`,
+      milestone: `${budget.category} disbursement`,
+      category: budget.category,
+      dueDate: addMonths(program.startsAt, index + 1),
+      amount: budget.planned,
+      disbursed: budget.actual,
+      utilization,
+      status,
+      approvalStep: status === "Needs Approval" ? "Finance reviewer explanation" : status === "Complete" ? "Closed" : "Milestone approval",
+      evidenceRequired: ["field", "monitoring", "community", "restoration"].some((keyword) => budget.category.toLowerCase().includes(keyword))
+    };
+  });
+  const fundingApprovalQueue = [
+    ...budgetVariance
+      .filter((item) => item.status !== "Within tolerance")
+      .map((item) => ({
+        title: `${item.category} variance`,
+        amount: item.actual,
+        status: item.status,
+        owner: "Finance reviewer",
+        dueDate: nextReportingDeadline,
+        action: item.status === "Requires explanation" ? "Request explanation" : "Approve reforecast"
+      })),
+    ...portfolioRows
+      .filter((project) => project.statusLabel !== "On Track")
+      .map((project) => ({
+        title: project.campaignTitle,
+        amount: project.allocationValue,
+        status: project.statusLabel,
+        owner: project.organizationName,
+        dueDate: project.nextMilestoneDate,
+        action: project.nextActions[0] ?? "Review milestone"
+      }))
+  ].slice(0, 6);
+  const evidenceReviewQueue = corporateEvidence.map((item, index) => {
+    const verified = item.verificationStatus === "verified";
+    const needsClarification = item.verificationStatus.includes("clarification") || item.verificationStatus.includes("rejected");
+    const reviewStage = verified ? "Approved" : needsClarification ? "Needs clarification" : index % 3 === 0 ? "Submitted" : "In review";
+
+    return {
+      ...item,
+      reviewStage,
+      reviewer: verified ? "Terumbu verifier" : needsClarification ? item.organizationName : "Corporate evidence reviewer",
+      nextAction: verified ? "Add to next report" : needsClarification ? "Request partner clarification" : "Complete verification checklist",
+      internalNote:
+        verified
+          ? "Evidence can be used in approved corporate reporting."
+          : needsClarification
+            ? "Reviewer should capture the missing source detail before approval."
+            : "Evidence is eligible for reviewer assignment this period.",
+      auditTrail: [
+        { label: "Submitted by partner", actor: item.organizationName, occurredAt: item.addedAt },
+        { label: "Added to corporate evidence center", actor: "Terumbu platform", occurredAt: item.addedAt },
+        verified && item.verifiedAt ? { label: "Verified", actor: "Terumbu verifier", occurredAt: item.verifiedAt } : null
+      ].filter(isDefined)
+    };
+  });
   const riskAlerts = [
     ...portfolioRows
       .filter((project) => project.statusLabel !== "On Track")
@@ -3673,11 +3758,68 @@ export async function getCorporateDashboardData(userId: string) {
       `${formatCurrency(committedFunding)} committed`,
       `${portfolioRows.length.toLocaleString("id-ID")} projects supported`,
       `${employeesEngaged.toLocaleString("id-ID")} employees engaged`
+    ],
+    publishChecklist: [
+      { label: "Approved corporate report", complete: reportExports.some((item) => ["approved", "published"].includes(item.status)) },
+      { label: "Verified evidence bundle", complete: verifiedOutputs > 0 && verifiedOutputs >= Math.max(1, Math.round(corporateEvidence.length * 0.6)) },
+      { label: "Public metrics reviewed", complete: latestPublishedReport !== undefined },
+      { label: "Download links prepared", complete: Boolean(latestPublishedReport?.fileUrl && latestPublishedReport.evidenceBundleUrl) }
+    ],
+    downloads: [
+      latestReport.fileUrl ? { label: "Report data", href: latestReport.fileUrl } : null,
+      latestReport.evidenceBundleUrl ? { label: "Evidence bundle", href: latestReport.evidenceBundleUrl } : null,
+      latestReport.previewUrl ? { label: "Executive preview", href: latestReport.previewUrl } : null
+    ].filter(isDefined)
+  };
+  const organizationPassport = {
+    status: verifiedOutputs > 0 ? "Verified Organization Impact Passport" : "Draft Organization Impact Passport",
+    score: Math.min(100, Math.max(25, Math.round((verifiedOutputs * 18 + portfolioRows.length * 12 + participationRate) / 2))),
+    lastVerifiedAt: corporateEvidence.find((item) => item.verificationStatus === "verified")?.verifiedAt ?? latestReport.approvedAt ?? null,
+    href: publicImpactPreview.href ?? "/corporate/reports",
+    highlights: [
+      `${portfolioRows.length.toLocaleString("id-ID")} funded projects`,
+      `${verifiedOutputs.toLocaleString("id-ID")} verified evidence records`,
+      `${employeesEngaged.toLocaleString("id-ID")} employees engaged`,
+      `${formatCurrency(verifiedUtilization)} verified utilization`
+    ],
+    verificationItems: [
+      { label: "Corporate account", status: "Verified" },
+      { label: "Funding utilization", status: verifiedUtilizationRate >= 70 ? "Verified" : "In review" },
+      { label: "Project evidence", status: verifiedOutputs > 0 ? "Verified" : "Needs evidence" },
+      { label: "Public report", status: latestPublishedReport ? "Published" : "Draft" }
     ]
   };
+  const benchmarks = [
+    {
+      label: "Budget utilization",
+      current: budgetUsed,
+      previous: Math.max(0, budgetUsed - 8),
+      benchmark: 72,
+      unit: "%",
+      insight: budgetUsed >= 72 ? "Ahead of similar ESG portfolios" : "Below platform benchmark"
+    },
+    {
+      label: "Evidence verification",
+      current: corporateEvidence.length > 0 ? Math.round((verifiedOutputs / corporateEvidence.length) * 100) : 0,
+      previous: Math.max(0, corporateEvidence.length > 0 ? Math.round((verifiedOutputs / corporateEvidence.length) * 100) - 12 : 0),
+      benchmark: 68,
+      unit: "%",
+      insight: verifiedOutputs > 0 ? "Verification pipeline is active" : "Evidence review has not started"
+    },
+    {
+      label: "Employee participation",
+      current: participationRate,
+      previous: Math.max(0, participationRate - 6),
+      benchmark: 42,
+      unit: "%",
+      insight: participationRate >= 42 ? "Above employee engagement benchmark" : "Promotion campaign recommended"
+    }
+  ];
   const quickActions = [
     { label: "Add Project", href: "/corporate/projects" },
     { label: "Review Evidence", href: "/corporate/evidence" },
+    { label: "Approve Milestone", href: "/corporate/funding" },
+    { label: "Create Event", href: "/corporate/employees" },
     { label: "Generate Report", href: "/corporate/reports" },
     { label: "Invite Team Member", href: "/corporate/settings" },
     { label: "Export Data", href: "/corporate/reports" }
@@ -3714,6 +3856,71 @@ export async function getCorporateDashboardData(userId: string) {
       support: `Across ${activityCount.toLocaleString("id-ID")} activities`
     }
   ];
+  const currentPermission = program.permission ?? "esg_manager";
+  const roleCapabilities = [
+    {
+      role: "Executive Viewer",
+      permission: "executive_viewer",
+      access: "View KPIs, approved reports, portfolio progress, and major risks.",
+      allowedActions: ["Download approved reports", "Review executive risks", "Open public impact page"]
+    },
+    {
+      role: "ESG Program Manager",
+      permission: "esg_manager",
+      access: "Manage programs, project performance, targets, exports, reports, and publication.",
+      allowedActions: ["Generate reports", "Submit reports", "Publish public page", "Coordinate partners"]
+    },
+    {
+      role: "Finance Reviewer",
+      permission: "finance_reviewer",
+      access: "Review committed funds, disbursements, invoices, utilization, and financial exports.",
+      allowedActions: ["Approve report", "Review variance", "Export financial data"]
+    },
+    {
+      role: "Employee Engagement Manager",
+      permission: "employee_engagement",
+      access: "Create events, manage registrations, track challenges, and review participation.",
+      allowedActions: ["Create event", "Invite employees", "Export attendance"]
+    },
+    {
+      role: "Auditor or External Reviewer",
+      permission: "auditor",
+      access: "Read approved evidence, financial summaries, verification records, and methodology.",
+      allowedActions: ["Preview reports", "Review evidence trail", "Download approved files"]
+    }
+  ].map((role) => ({
+    ...role,
+    active: currentPermission === role.permission || (currentPermission === "program.manage" && role.permission === "esg_manager")
+  }));
+  const governance = {
+    accessSummary: {
+      activeEmployees: employeesEngaged,
+      invitedEmployees: employees.filter((employee) => employee.status === "invited").length,
+      suspendedEmployees: employees.filter((employee) => employee.status === "suspended").length,
+      currentPermission,
+      currentRole: roleCapabilities.find((role) => role.active)?.role ?? "ESG Program Manager"
+    },
+    roleCapabilities,
+    integrations: [
+      { name: "Single sign-on", category: "Identity", status: "Ready to configure", owner: "IT admin", nextAction: "Add SAML metadata" },
+      { name: "HR employee sync", category: "People", status: employees.length > 0 ? "Manual upload active" : "Not connected", owner: "People team", nextAction: "Connect HRIS roster" },
+      { name: "Finance ledger", category: "Finance", status: fundingSchedule.length > 0 ? "CSV import active" : "Not connected", owner: "Finance reviewer", nextAction: "Map cost centers" },
+      { name: "ESG data warehouse", category: "Reporting", status: reportExports.length > 0 ? "Export ready" : "Not connected", owner: "ESG manager", nextAction: "Generate first export" }
+    ],
+    auditLog: [
+      { event: "Corporate workspace opened", actor: governanceActor(program.permission), occurredAt: now, status: "Allowed" },
+      { event: "Latest report status changed", actor: "Report workflow", occurredAt: latestReport.createdAt, status: latestReport.status.replaceAll("_", " ") },
+      corporateEvidence[0] ? { event: "Evidence added", actor: corporateEvidence[0].organizationName, occurredAt: corporateEvidence[0].addedAt, status: corporateEvidence[0].verificationStatus } : null,
+      fundingApprovalQueue[0] ? { event: "Funding review queued", actor: fundingApprovalQueue[0].owner, occurredAt: fundingApprovalQueue[0].dueDate, status: fundingApprovalQueue[0].status } : null
+    ].filter(isDefined)
+  };
+  const reportCapabilities = {
+    canGenerate: program.permission === "program.manage" || program.permission === "esg_manager",
+    canSubmit: program.permission === "program.manage" || program.permission === "esg_manager",
+    canApprove: program.permission === "program.manage" || program.permission === "finance_reviewer",
+    canPublish: program.permission === "program.manage" || program.permission === "esg_manager",
+    canPreview: ["program.manage", "esg_manager", "finance_reviewer", "executive_viewer", "auditor", "employee_engagement"].includes(program.permission)
+  };
 
   return {
     program,
@@ -3729,18 +3936,19 @@ export async function getCorporateDashboardData(userId: string) {
     employeeTrend,
     budgetVariance,
     fundingFlow,
+    fundingSchedule,
+    fundingApprovalQueue,
+    evidenceReviewQueue,
+    employeePrograms,
     riskAlerts,
     sdgAlignment,
     latestReport,
     publicImpactPreview,
+    organizationPassport,
+    benchmarks,
     quickActions,
-    reportCapabilities: {
-      canGenerate: program.permission === "program.manage" || program.permission === "esg_manager",
-      canSubmit: program.permission === "program.manage" || program.permission === "esg_manager",
-      canApprove: program.permission === "program.manage" || program.permission === "finance_reviewer",
-      canPublish: program.permission === "program.manage" || program.permission === "esg_manager",
-      canPreview: ["program.manage", "esg_manager", "finance_reviewer", "executive_viewer", "auditor", "employee_engagement"].includes(program.permission)
-    },
+    governance,
+    reportCapabilities,
     mapSummary: {
       projects: portfolioRows.length,
       provinces: provinces.size,
@@ -4130,6 +4338,7 @@ export async function getAdminOperationsData() {
         basePrice: expeditions.basePrice,
         summary: expeditions.summary,
         imageUrl: expeditions.imageUrl,
+        metadata: expeditions.metadata,
         relatedCampaignId: expeditions.relatedCampaignId,
         relatedCampaignTitle: campaigns.title,
         departureId: expeditionDepartures.id,
@@ -4227,6 +4436,8 @@ export async function getAdminOperationsData() {
       basePrice: number;
       summary: string;
       imageUrl: string | null;
+      metadata: unknown;
+      metadataJson: string;
       relatedCampaignId: string | null;
       relatedCampaignTitle: string | null;
       bookingCount: number;
@@ -4260,6 +4471,8 @@ export async function getAdminOperationsData() {
         basePrice: toNumber(row.basePrice),
         summary: row.summary,
         imageUrl: row.imageUrl,
+        metadata: row.metadata,
+        metadataJson: "",
         relatedCampaignId: row.relatedCampaignId,
         relatedCampaignTitle: row.relatedCampaignTitle,
         bookingCount: expeditionBookingCounts.get(row.id) ?? 0,
@@ -4284,6 +4497,37 @@ export async function getAdminOperationsData() {
         weatherAdvisory: getMetadataString(row.departureMetadata, "weatherAdvisory")
       });
     }
+  }
+
+  for (const expedition of expeditionCatalogById.values()) {
+    const maxCapacity = expedition.departures.reduce((capacity, departure) => Math.max(capacity, departure.capacity), 0);
+    const metadata = normalizeExpeditionDetailMetadata(
+      expedition.metadata,
+      buildDefaultExpeditionDetailMetadata({
+        title: expedition.title,
+        region: expedition.region,
+        durationLabel: toExpeditionCard(expedition).duration,
+        price: expedition.basePrice,
+        maxCapacity,
+        galleryImages: [
+          {
+            src: expedition.imageUrl ?? "https://images.unsplash.com/photo-1582967788606-a171c1080cb0?auto=format&fit=crop&w=1400&q=80",
+            label: "Destination",
+            caption: `${expedition.region} expedition landscape`,
+            provenance: "Partner-managed public detail image"
+          }
+        ],
+        tripUpdates: [
+          {
+            title: "Seasonal weather advisory",
+            date: "2026-06-01T00:00:00.000Z",
+            body: "Boat schedules may shift when sea conditions require safer departure windows."
+          }
+        ]
+      })
+    );
+
+    expedition.metadataJson = expeditionMetadataEditorJson(metadata);
   }
 
   return {
@@ -4338,8 +4582,9 @@ export async function getPartnerPortalData(userId?: string) {
   const organizationIds = await getPartnerPortalOrganizationIds(userId);
   const organizationScope = organizationIds === null ? sql`true` : organizationIds.length > 0 ? inArray(organizations.id, organizationIds) : sql`false`;
   const campaignScope = organizationIds === null ? sql`true` : organizationIds.length > 0 ? inArray(campaigns.organizationId, organizationIds) : sql`false`;
+  const expeditionScope = organizationIds === null ? sql`true` : organizationIds.length > 0 ? inArray(campaigns.organizationId, organizationIds) : sql`false`;
 
-  const [organizationRows, campaignRows, evidenceRows, updateRows, activityRows, siteRows, sponsoredRows, donorRows] = await Promise.all([
+  const [organizationRows, campaignRows, evidenceRows, updateRows, activityRows, siteRows, sponsoredRows, expeditionRows, expeditionBookingCountRows, donorRows] = await Promise.all([
     db
       .select({
         id: organizations.id,
@@ -4470,6 +4715,46 @@ export async function getPartnerPortalData(userId?: string) {
       .orderBy(desc(sponsoredEcosystems.lastUpdatedAt)),
     db
       .select({
+        id: expeditions.id,
+        title: expeditions.title,
+        slug: expeditions.slug,
+        region: expeditions.region,
+        durationDays: expeditions.durationDays,
+        basePrice: expeditions.basePrice,
+        summary: expeditions.summary,
+        imageUrl: expeditions.imageUrl,
+        metadata: expeditions.metadata,
+        relatedCampaignId: expeditions.relatedCampaignId,
+        relatedCampaignTitle: campaigns.title,
+        organizationId: campaigns.organizationId,
+        partner: organizations.name,
+        departureId: expeditionDepartures.id,
+        startsAt: expeditionDepartures.startsAt,
+        endsAt: expeditionDepartures.endsAt,
+        capacity: expeditionDepartures.capacity,
+        seatsBooked: expeditionDepartures.seatsBooked,
+        status: expeditionDepartures.status,
+        departureMetadata: expeditionDepartures.metadata
+      })
+      .from(expeditions)
+      .leftJoin(campaigns, eq(expeditions.relatedCampaignId, campaigns.id))
+      .leftJoin(organizations, eq(campaigns.organizationId, organizations.id))
+      .leftJoin(expeditionDepartures, eq(expeditionDepartures.expeditionId, expeditions.id))
+      .where(expeditionScope)
+      .orderBy(asc(expeditions.title)),
+    db
+      .select({
+        expeditionId: expeditionBookings.expeditionId,
+        departureId: expeditionBookings.departureId,
+        total: sql<number>`count(${expeditionBookings.id})`
+      })
+      .from(expeditionBookings)
+      .innerJoin(expeditions, eq(expeditionBookings.expeditionId, expeditions.id))
+      .leftJoin(campaigns, eq(expeditions.relatedCampaignId, campaigns.id))
+      .where(expeditionScope)
+      .groupBy(expeditionBookings.expeditionId, expeditionBookings.departureId),
+    db
+      .select({
         campaignId: donations.campaignId,
         donorName: donations.donorName,
         amount: donations.amount,
@@ -4482,6 +4767,125 @@ export async function getPartnerPortalData(userId?: string) {
       .orderBy(desc(donations.createdAt))
   ]);
 
+  const expeditionBookingCounts = new Map<string, number>();
+  const departureBookingCounts = new Map<string, number>();
+
+  for (const row of expeditionBookingCountRows) {
+    const total = Number(row.total);
+
+    expeditionBookingCounts.set(row.expeditionId, (expeditionBookingCounts.get(row.expeditionId) ?? 0) + total);
+    departureBookingCounts.set(row.departureId, total);
+  }
+
+  const expeditionsById = new Map<
+    string,
+    {
+      id: string;
+      title: string;
+      slug: string;
+      region: string;
+      durationDays: number;
+      basePrice: number;
+      summary: string;
+      imageUrl: string | null;
+      metadata: unknown;
+      metadataJson: string;
+      relatedCampaignId: string | null;
+      relatedCampaignTitle: string | null;
+      organizationId: string | null;
+      partner: string | null;
+      bookingCount: number;
+      departures: {
+        id: string;
+        startsAt: Date;
+        endsAt: Date;
+        capacity: number;
+        seatsBooked: number;
+        availableSeats: number;
+        status: string;
+        bookingCount: number;
+        meetingPoint: string | null;
+        guide: string | null;
+        minParticipants: number;
+        weatherAdvisory: string | null;
+      }[];
+    }
+  >();
+
+  for (const row of expeditionRows) {
+    let expedition = expeditionsById.get(row.id);
+
+    if (!expedition) {
+      expedition = {
+        id: row.id,
+        title: row.title,
+        slug: row.slug,
+        region: row.region,
+        durationDays: row.durationDays,
+        basePrice: toNumber(row.basePrice),
+        summary: row.summary,
+        imageUrl: row.imageUrl,
+        metadata: row.metadata,
+        metadataJson: "",
+        relatedCampaignId: row.relatedCampaignId,
+        relatedCampaignTitle: row.relatedCampaignTitle,
+        organizationId: row.organizationId,
+        partner: row.partner,
+        bookingCount: expeditionBookingCounts.get(row.id) ?? 0,
+        departures: []
+      };
+      expeditionsById.set(row.id, expedition);
+    }
+
+    if (row.departureId && row.startsAt && row.endsAt && row.capacity !== null && row.seatsBooked !== null && row.status) {
+      expedition.departures.push({
+        id: row.departureId,
+        startsAt: row.startsAt,
+        endsAt: row.endsAt,
+        capacity: row.capacity,
+        seatsBooked: row.seatsBooked,
+        availableSeats: Math.max(0, row.capacity - row.seatsBooked),
+        status: row.status,
+        bookingCount: departureBookingCounts.get(row.departureId) ?? 0,
+        meetingPoint: getMetadataString(row.departureMetadata, "meetingPoint"),
+        guide: getMetadataString(row.departureMetadata, "guide"),
+        minParticipants: getMetadataNumber(row.departureMetadata, "minParticipants", 6),
+        weatherAdvisory: getMetadataString(row.departureMetadata, "weatherAdvisory")
+      });
+    }
+  }
+
+  for (const expedition of expeditionsById.values()) {
+    const maxCapacity = expedition.departures.reduce((capacity, departure) => Math.max(capacity, departure.capacity), 0);
+    const metadata = normalizeExpeditionDetailMetadata(
+      expedition.metadata,
+      buildDefaultExpeditionDetailMetadata({
+        title: expedition.title,
+        region: expedition.region,
+        durationLabel: toExpeditionCard(expedition).duration,
+        price: expedition.basePrice,
+        maxCapacity,
+        galleryImages: [
+          {
+            src: expedition.imageUrl ?? "https://images.unsplash.com/photo-1582967788606-a171c1080cb0?auto=format&fit=crop&w=1400&q=80",
+            label: "Destination",
+            caption: `${expedition.region} expedition landscape`,
+            provenance: "Partner-managed public detail image"
+          }
+        ],
+        tripUpdates: [
+          {
+            title: "Seasonal weather advisory",
+            date: "2026-06-01T00:00:00.000Z",
+            body: "Boat schedules may shift when sea conditions require safer departure windows."
+          }
+        ]
+      })
+    );
+
+    expedition.metadataJson = expeditionMetadataEditorJson(metadata);
+  }
+
   return {
     organizations: organizationRows.map((organization) => ({
       ...organization,
@@ -4491,6 +4895,7 @@ export async function getPartnerPortalData(userId?: string) {
       ...campaign,
       verificationLabel: verificationLabel(campaign.verification)
     })),
+    expeditions: Array.from(expeditionsById.values()),
     evidence: evidenceRows,
     updates: updateRows,
     activities: activityRows,

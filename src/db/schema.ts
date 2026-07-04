@@ -469,6 +469,7 @@ export const expeditions = pgTable("expeditions", {
   summary: text("summary").notNull(),
   imageUrl: text("image_url"),
   relatedCampaignId: uuid("related_campaign_id").references(() => campaigns.id, { onDelete: "set null" }),
+  metadata: jsonb("metadata"),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull()
 }, (table) => ({
   slugIdx: uniqueIndex("expeditions_slug_idx").on(table.slug)

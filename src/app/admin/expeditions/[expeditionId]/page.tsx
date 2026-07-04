@@ -49,6 +49,7 @@ const errorMessages: Record<string, string> = {
   "expedition-delete": "Confirm expedition deletion by checking the delete box.",
   "expedition-has-bookings": "Expeditions with bookings cannot be deleted.",
   "expedition-invalid": "Enter a title, slug, region, duration, price, and summary.",
+  "expedition-metadata-json": "Trip detail content must be valid JSON object data.",
   "expedition-missing": "Expedition record was not found.",
   "expedition-slug": "That expedition slug is already in use."
 };
@@ -194,6 +195,9 @@ export default async function AdminExpeditionDetailPage({ params, searchParams }
           </div>
           <Field label="Summary">
             <textarea name="summary" defaultValue={expedition.summary} className={adminTextareaClassName} required />
+          </Field>
+          <Field label="Trip detail content JSON">
+            <textarea name="metadataJson" defaultValue={expedition.metadataJson} className={`${adminTextareaClassName} min-h-96 font-mono text-xs`} spellCheck={false} />
           </Field>
           <Button type="submit" tone="secondary" className="w-fit rounded-lg">
             <Save className="size-4" aria-hidden="true" />

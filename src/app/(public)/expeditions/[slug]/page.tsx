@@ -63,7 +63,8 @@ export default async function ExpeditionDetailPage({ params }: { params: Promise
     equipmentRental: expedition.priceBreakdown.equipmentRental,
     platformFee: expedition.priceBreakdown.platformFee,
     departures: expedition.departures,
-    conservationContribution: expedition.impact.conservationContribution
+    conservationContribution: expedition.impact.conservationContribution,
+    trustIndicators: expedition.bookingTrustIndicators
   };
   const primaryDeparture = expedition.primaryDeparture;
   const routeSite = expedition.route.sites[0];
@@ -91,7 +92,7 @@ export default async function ExpeditionDetailPage({ params }: { params: Promise
               <section className="flex flex-col justify-center">
                 <p className="inline-flex items-center gap-2 text-sm font-bold uppercase tracking-[0.16em] text-coral-700">
                   <Waves size={18} aria-hidden="true" />
-                  Coral Restoration Expedition
+                  {expedition.categoryLabel}
                 </p>
                 <h1 className="mt-4 text-4xl font-bold tracking-normal text-ocean-900 sm:text-5xl">{expedition.title}</h1>
                 <p className="mt-4 text-lg leading-8 text-ocean-900/68">{expedition.summary}</p>
@@ -112,7 +113,7 @@ export default async function ExpeditionDetailPage({ params }: { params: Promise
                   <span className="flex items-center gap-2">
                     <Activity size={17} aria-hidden="true" />
                     {expedition.difficulty}
-                    <span className="text-ocean-900/44">Boat travel, snorkeling, and outdoor field conditions.</span>
+                    <span className="text-ocean-900/44">{expedition.activitySummary}</span>
                   </span>
                   <span className="flex items-center gap-2">
                     <Users size={17} aria-hidden="true" />
@@ -131,15 +132,15 @@ export default async function ExpeditionDetailPage({ params }: { params: Promise
                     </div>
                     <div>
                       <p className="font-bold text-ocean-900">
-                        Hosted by Terumbu.eco{expedition.partner ? ` and ${expedition.partner}` : ""}
+                        {expedition.hostedBy.title}
                       </p>
                       <p className="mt-1 flex items-center gap-2 text-sm font-semibold text-kelp-700">
                         <BadgeCheck size={16} aria-hidden="true" />
-                        {expedition.verification} Expedition Partner
+                        {expedition.hostedBy.verificationLabel}
                       </p>
-                      {expedition.partnerSlug ? (
-                        <Link href={`/partners/${expedition.partnerSlug}`} className="mt-2 inline-flex text-sm font-bold text-coral-700 hover:text-coral-500">
-                          View partner profile <ArrowRight size={15} aria-hidden="true" />
+                      {expedition.hostedBy.profileHref ? (
+                        <Link href={expedition.hostedBy.profileHref} className="mt-2 inline-flex text-sm font-bold text-coral-700 hover:text-coral-500">
+                          {expedition.hostedBy.profileLabel} <ArrowRight size={15} aria-hidden="true" />
                         </Link>
                       ) : null}
                     </div>
@@ -175,22 +176,17 @@ export default async function ExpeditionDetailPage({ params }: { params: Promise
             <section id="overview" className="scroll-mt-32 grid gap-6 lg:grid-cols-[0.85fr_1fr]">
               <article className="rounded-2xl border border-ocean-900/10 bg-white p-6 shadow-soft">
                 <p className="text-sm font-bold uppercase tracking-[0.16em] text-coral-700">Experience overview</p>
-                <h2 className="mt-3 text-3xl font-bold tracking-normal text-ocean-900">A Conservation Journey, Not Just a Holiday</h2>
-                <p className="mt-4 text-sm leading-7 text-ocean-900/68">
-                  This expedition blends adventure and purpose. You will explore Raja Ampat&apos;s seascapes, learn from local conservation experts, and contribute to active coral restoration projects.
-                </p>
-                <p className="mt-3 text-sm leading-7 text-ocean-900/68">
-                  Participants support field teams through supervised preparation, documentation, and learning activities. The work is designed to help, not replace trained restoration practitioners.
-                </p>
+                <h2 className="mt-3 text-3xl font-bold tracking-normal text-ocean-900">{expedition.overview.title}</h2>
+                {expedition.overview.paragraphs.map((paragraph, index) => (
+                  <p key={paragraph} className={cn(index === 0 ? "mt-4" : "mt-3", "text-sm leading-7 text-ocean-900/68")}>
+                    {paragraph}
+                  </p>
+                ))}
                 <div className="mt-6 grid gap-3 sm:grid-cols-3">
-                  {[
-                    ["Explore", "Discover pristine lagoons, islands, and vibrant marine life."],
-                    ["Contribute", "Assist with supervised restoration, monitoring, and cleanups."],
-                    ["Learn", "Gain knowledge from marine professionals and local teams."]
-                  ].map(([title, body]) => (
-                    <div key={title} className="rounded-xl bg-sand-50 p-4">
-                      <p className="font-bold text-ocean-900">{title}</p>
-                      <p className="mt-2 text-xs leading-5 text-ocean-900/60">{body}</p>
+                  {expedition.overview.pillars.map((pillar) => (
+                    <div key={pillar.title} className="rounded-xl bg-sand-50 p-4">
+                      <p className="font-bold text-ocean-900">{pillar.title}</p>
+                      <p className="mt-2 text-xs leading-5 text-ocean-900/60">{pillar.body}</p>
                     </div>
                   ))}
                 </div>
@@ -206,16 +202,16 @@ export default async function ExpeditionDetailPage({ params }: { params: Promise
                     </div>
                   ))}
                 </div>
-                <p className="mt-5 rounded-xl bg-kelp-100 px-4 py-3 text-sm font-bold text-kelp-700">Impact recorded in your Passport after completion.</p>
+                <p className="mt-5 rounded-xl bg-kelp-100 px-4 py-3 text-sm font-bold text-kelp-700">{expedition.overview.passportNote}</p>
               </article>
             </section>
 
             <section id="impact" className="scroll-mt-32 grid gap-6 lg:grid-cols-[0.92fr_1.08fr]">
               <article className="rounded-2xl border border-ocean-900/10 bg-white p-6 shadow-soft">
                 <p className="text-sm font-bold uppercase tracking-[0.16em] text-coral-700">Conservation impact</p>
-                <h2 className="mt-3 text-3xl font-bold tracking-normal text-ocean-900">How This Expedition Creates Impact</h2>
+                <h2 className="mt-3 text-3xl font-bold tracking-normal text-ocean-900">{expedition.impact.title}</h2>
                 <p className="mt-3 text-sm leading-7 text-ocean-900/68">
-                  {formatCurrency(expedition.impact.conservationContribution)} from each booking directly supports the associated conservation program.
+                  {formatCurrency(expedition.impact.conservationContribution)} from each booking. {expedition.impact.summary}
                 </p>
                 <div className="mt-6 grid gap-3 sm:grid-cols-2">
                   {expedition.impact.targets.map((target) => (
@@ -228,7 +224,7 @@ export default async function ExpeditionDetailPage({ params }: { params: Promise
                 <details className="mt-5 rounded-xl border border-ocean-900/10 bg-sand-50 p-4">
                   <summary className="cursor-pointer text-sm font-bold text-ocean-900">How impact is calculated</summary>
                   <p className="mt-3 text-sm leading-6 text-ocean-900/62">
-                    Estimates use booking allocation, unit-cost assumptions from the related campaign, a monitoring period of one field cycle, and partner evidence records. Last methodology update: {expedition.impact.methodologyUpdatedAt}.
+                    {expedition.impact.methodologyNote} Last methodology update: {expedition.impact.methodologyUpdatedAt}.
                   </p>
                 </details>
               </article>
@@ -281,7 +277,7 @@ export default async function ExpeditionDetailPage({ params }: { params: Promise
 
             <section id="itinerary" className="scroll-mt-32 rounded-2xl border border-ocean-900/10 bg-white p-6 shadow-soft">
               <p className="text-sm font-bold uppercase tracking-[0.16em] text-coral-700">Detailed itinerary</p>
-              <h2 className="mt-3 text-3xl font-bold tracking-normal text-ocean-900">Four days in the field</h2>
+              <h2 className="mt-3 text-3xl font-bold tracking-normal text-ocean-900">{expedition.itineraryTitle}</h2>
               <div className="mt-6 grid gap-4">
                 {expedition.itinerary.map((day) => (
                   <details key={day.day} className="rounded-2xl border border-ocean-900/10 bg-sand-50 p-5" open={day.day === "Day 1"}>
@@ -309,7 +305,7 @@ export default async function ExpeditionDetailPage({ params }: { params: Promise
                 ))}
               </div>
               <p className="mt-5 rounded-xl bg-coral-100 px-4 py-3 text-sm font-semibold text-coral-700">
-                Itinerary may change because of weather, sea conditions, conservation priorities, or safety considerations.
+                {expedition.itineraryDisclaimer}
               </p>
             </section>
 
@@ -392,18 +388,18 @@ export default async function ExpeditionDetailPage({ params }: { params: Promise
             <section id="stay" className="scroll-mt-32 grid gap-6 lg:grid-cols-[1fr_0.9fr]">
               <article className="rounded-2xl border border-ocean-900/10 bg-white p-6 shadow-soft">
                 <p className="text-sm font-bold uppercase tracking-[0.16em] text-coral-700">Location and route</p>
-                <h2 className="mt-3 text-3xl font-bold tracking-normal text-ocean-900">Route without exposing sensitive reef coordinates</h2>
+                <h2 className="mt-3 text-3xl font-bold tracking-normal text-ocean-900">{expedition.route.title}</h2>
                 <div className="mt-5 rounded-2xl border border-ocean-900/10 bg-ocean-900 p-4 text-white">
                   <div className="relative h-64 overflow-hidden rounded-xl">
                     <iframe
-                      title="OpenStreetMap route preview for Raja Ampat expedition"
+                      title={expedition.route.mapTitle}
                       className="absolute inset-0 h-full w-full border-0 opacity-75"
                       loading="lazy"
-                      src="https://www.openstreetmap.org/export/embed.html?bbox=130.2%2C-0.7%2C131%2C0.2&layer=mapnik"
+                      src={expedition.route.mapEmbedUrl}
                     />
                     <div className="absolute inset-0 bg-[linear-gradient(135deg,rgba(7,52,63,0.52),rgba(24,143,138,0.22))]" />
                   </div>
-                  <p className="mt-3 text-sm font-semibold text-white/78">Precise restoration-site coordinates are hidden to protect the ecosystem.</p>
+                  <p className="mt-3 text-sm font-semibold text-white/78">{expedition.route.privacyNote}</p>
                 </div>
                 <div className="mt-5 grid gap-3">
                   {expedition.route.steps.map((step, index) => (
@@ -428,7 +424,7 @@ export default async function ExpeditionDetailPage({ params }: { params: Promise
                   ))}
                 </div>
                 <p className="mt-5 rounded-xl bg-sand-50 p-4 text-sm leading-6 text-ocean-900/62">
-                  Three breakfasts, three lunches, and three dinners are included. Vegetarian and halal-friendly meals can be requested; allergy-safe preparation cannot be guaranteed.
+                  {expedition.accommodation.mealNote}
                 </p>
               </article>
             </section>
@@ -460,7 +456,7 @@ export default async function ExpeditionDetailPage({ params }: { params: Promise
                 </div>
                 <details className="mt-5 rounded-xl border border-ocean-900/10 bg-sand-50 p-4">
                   <summary className="cursor-pointer text-sm font-bold text-ocean-900">View Emergency and Evacuation Plan</summary>
-                  <p className="mt-3 text-sm leading-6 text-ocean-900/62">A public summary is provided during briefing. Sensitive operational details are shared only with confirmed participants.</p>
+                  <p className="mt-3 text-sm leading-6 text-ocean-900/62">{expedition.emergencyPlanSummary}</p>
                 </details>
               </article>
             </section>
@@ -481,22 +477,20 @@ export default async function ExpeditionDetailPage({ params }: { params: Promise
 
               <article className="rounded-2xl border border-ocean-900/10 bg-white p-6 shadow-soft">
                 <p className="text-sm font-bold uppercase tracking-[0.16em] text-coral-700">Prepare for your expedition</p>
-                {expedition.preparationCourse ? (
-                  <div className="mt-5 grid gap-4">
-                    <div className="relative h-44 overflow-hidden rounded-2xl bg-ocean-900">
-                      {expedition.preparationCourse.imageUrl ? (
-                        <Image src={expedition.preparationCourse.imageUrl} alt={`${expedition.preparationCourse.title} course`} fill className="object-cover" sizes="(min-width: 1024px) 360px, 100vw" />
-                      ) : null}
-                    </div>
-                    <div>
-                      <h3 className="text-xl font-bold text-ocean-900">{expedition.preparationCourse.title}</h3>
-                      <p className="mt-2 text-sm leading-6 text-ocean-900/62">{expedition.preparationCourse.summary}</p>
-                      <Link href={`/academy/courses/${expedition.preparationCourse.slug}`} className="mt-4 inline-flex items-center gap-2 text-sm font-bold text-coral-700">
-                        Preview Course <ArrowRight size={15} aria-hidden="true" />
-                      </Link>
-                    </div>
+                <div className="mt-5 grid gap-4">
+                  <div className="relative h-44 overflow-hidden rounded-2xl bg-ocean-900">
+                    {expedition.preparationCourse.imageUrl ? (
+                      <Image src={expedition.preparationCourse.imageUrl} alt={`${expedition.preparationCourse.title} course`} fill className="object-cover" sizes="(min-width: 1024px) 360px, 100vw" />
+                    ) : null}
                   </div>
-                ) : null}
+                  <div>
+                    <h3 className="text-xl font-bold text-ocean-900">{expedition.preparationCourse.title}</h3>
+                    <p className="mt-2 text-sm leading-6 text-ocean-900/62">{expedition.preparationCourse.summary}</p>
+                    <Link href={expedition.preparationCourse.href} className="mt-4 inline-flex items-center gap-2 text-sm font-bold text-coral-700">
+                      {expedition.preparationCourse.ctaLabel} <ArrowRight size={15} aria-hidden="true" />
+                    </Link>
+                  </div>
+                </div>
               </article>
             </section>
 
@@ -519,10 +513,10 @@ export default async function ExpeditionDetailPage({ params }: { params: Promise
                 <p className="mt-4 text-5xl font-bold text-ocean-900">{expedition.rating}</p>
                 <p className="mt-2 text-sm font-semibold text-ocean-900/62">{expedition.reviewCount} verified participant reviews</p>
                 <div className="mt-5 grid gap-2 text-sm font-semibold text-ocean-900/64">
-                  {["Conservation experience", "Field-team quality", "Safety", "Accommodation", "Value"].map((item) => (
-                    <span key={item} className="flex items-center justify-between">
-                      {item}
-                      <span className="text-kelp-700">Excellent</span>
+                  {expedition.reviewCategories.map((item) => (
+                    <span key={item.label} className="flex items-center justify-between">
+                      {item.label}
+                      <span className="text-kelp-700">{item.value}</span>
                     </span>
                   ))}
                 </div>
@@ -598,14 +592,14 @@ export default async function ExpeditionDetailPage({ params }: { params: Promise
             ) : null}
 
             <section className="rounded-2xl bg-ocean-900 p-8 text-white shadow-soft">
-              <p className="text-sm font-bold uppercase tracking-[0.16em] text-coral-300">Final call</p>
-              <h2 className="mt-3 text-3xl font-bold tracking-normal">Join the Raja Ampat Restoration Journey</h2>
+              <p className="text-sm font-bold uppercase tracking-[0.16em] text-coral-300">{expedition.finalCta.eyebrow}</p>
+              <h2 className="mt-3 text-3xl font-bold tracking-normal">{expedition.finalCta.title}</h2>
               <p className="mt-3 max-w-2xl text-sm leading-7 text-white/70">
-                Learn from local conservation teams, contribute to active reef-restoration work, and bring the experience into your Impact Passport.
+                {expedition.finalCta.body}
               </p>
               <div className="mt-6 flex flex-wrap gap-3">
-                <ButtonLink href={primaryDeparture ? `/checkout/expedition?departure=${primaryDeparture.id}` : `/checkout/expedition?expedition=${expedition.slug}`}>Check Available Dates</ButtonLink>
-                <ButtonLink href={`mailto:support@terumbu.eco?subject=Question about ${encodeURIComponent(expedition.title)}`} tone="light">Ask the Expedition Team</ButtonLink>
+                <ButtonLink href={primaryDeparture ? `/checkout/expedition?departure=${primaryDeparture.id}` : `/checkout/expedition?expedition=${expedition.slug}`}>{expedition.finalCta.primaryLabel}</ButtonLink>
+                <ButtonLink href={`mailto:support@terumbu.eco?subject=Question about ${encodeURIComponent(expedition.title)}`} tone="light">{expedition.finalCta.secondaryLabel}</ButtonLink>
               </div>
             </section>
           </div>
@@ -614,8 +608,8 @@ export default async function ExpeditionDetailPage({ params }: { params: Promise
             <div className="grid gap-5">
               <ExpeditionBookingCard {...bookingProps} />
               <article className="rounded-2xl border border-ocean-900/10 bg-white p-5 shadow-soft">
-                <p className="text-sm font-bold uppercase tracking-[0.16em] text-coral-700">Route privacy</p>
-                <p className="mt-3 text-sm leading-6 text-ocean-900/62">Exact restoration coordinates are hidden. Public maps show approximate zones and travel sequence only.</p>
+                <p className="text-sm font-bold uppercase tracking-[0.16em] text-coral-700">{expedition.route.sidebarTitle}</p>
+                <p className="mt-3 text-sm leading-6 text-ocean-900/62">{expedition.route.sidebarNote}</p>
                 {routeSite ? (
                   <p className="mt-3 rounded-xl bg-sand-50 p-3 text-sm font-semibold text-ocean-900/68">
                     Related site: {routeSite.name}, {routeSite.region}
@@ -626,8 +620,8 @@ export default async function ExpeditionDetailPage({ params }: { params: Promise
                 <div className="flex items-start gap-3">
                   <AlertTriangle size={21} aria-hidden="true" className="mt-0.5 text-coral-700" />
                   <div>
-                    <p className="font-bold text-coral-700">Weather advisory</p>
-                    <p className="mt-2 text-sm leading-6 text-coral-700/78">Boat schedules may shift for sea conditions. Confirmed participants receive operational updates before departure.</p>
+                    <p className="font-bold text-coral-700">{expedition.weatherAdvisory.title}</p>
+                    <p className="mt-2 text-sm leading-6 text-coral-700/78">{expedition.weatherAdvisory.body}</p>
                   </div>
                 </div>
               </article>

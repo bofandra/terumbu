@@ -10,6 +10,7 @@ import {
   Pencil,
   Plus,
   Save,
+  ShipWheel,
   Trash2,
   type LucideIcon
 } from "lucide-react";
@@ -166,12 +167,13 @@ export function PartnerMetricCards({ data }: { data: PartnerPortalData }) {
   const pendingEvidence = data.evidence.filter((item) => item.verificationStatus !== "verified").length;
   const metrics: Array<{ label: string; value: string; detail: string; icon: LucideIcon }> = [
     { label: "Campaigns", value: data.campaigns.length.toLocaleString("id-ID"), detail: `${formatCurrency(totalRaised)} raised`, icon: Megaphone },
+    { label: "Expeditions", value: data.expeditions.length.toLocaleString("id-ID"), detail: `${data.expeditions.reduce((total, expedition) => total + expedition.departures.length, 0)} departures`, icon: ShipWheel },
     { label: "Evidence pending", value: pendingEvidence.toLocaleString("id-ID"), detail: `${data.evidence.length} evidence records`, icon: FileCheck2 },
     { label: "Activity", value: data.activities.length.toLocaleString("id-ID"), detail: `${data.updates.length} public / ${data.evidence.length} evidence`, icon: ClipboardList }
   ];
 
   return (
-    <section className="grid gap-3 md:grid-cols-3" aria-label="Partner metrics">
+    <section className="grid gap-3 md:grid-cols-4" aria-label="Partner metrics">
       {metrics.map((metric) => {
         const Icon = metric.icon;
 

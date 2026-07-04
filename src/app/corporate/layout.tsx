@@ -1,3 +1,5 @@
+import { notFound } from "next/navigation";
+
 import { CorporateShell } from "@/components/corporate-shell";
 import { requireUser } from "@/lib/auth";
 import { getCorporateDashboardData } from "@/lib/queries";
@@ -15,19 +17,24 @@ function roleLabel(permission: string | undefined) {
 }
 
 export default async function CorporateLayout({ children }: Readonly<{ children: React.ReactNode }>) {
-  const user = await requireUser("/corporate/dashboard");
+  const user = await requireUser("/corporate");
   const data = await getCorporateDashboardData(user.id);
+
+  if (!data) {
+    notFound();
+  }
+
   const displayName = user.displayName ?? user.name ?? user.email;
-  const nextReportDue = data?.reporting.nextReportingDeadline.toLocaleDateString("id-ID", { dateStyle: "medium" }) ?? "Setup pending";
+  const nextReportDue = data.reporting.nextReportingDeadline.toLocaleDateString("id-ID", { dateStyle: "medium" });
 
   return (
     <CorporateShell
       displayName={displayName}
-      roleLabel={roleLabel(data?.program.permission)}
-      accountName={data?.program.accountName ?? "Corporate Workspace"}
-      programName={data?.program.programName ?? "Impact Program"}
-      accountLogoUrl={data?.program.accountLogoUrl ?? null}
-      activeProjects={data?.portfolio.length ?? 0}
+      roleLabel={roleLabel(data.program.permission)}
+      accountName={data.program.accountName}
+      programName={data.program.programName}
+      accountLogoUrl={data.program.accountLogoUrl}
+      activeProjects={data.portfolio.length}
       nextReportDue={nextReportDue}
     >
       {children}

@@ -28,20 +28,20 @@ import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
 const mainNav = [
-  { label: "Overview", href: "/corporate/dashboard", icon: Home },
+  { label: "Overview", href: "/corporate", icon: Home },
   { label: "Programs", href: "/corporate/programs", icon: BriefcaseBusiness },
   { label: "Projects", href: "/corporate/projects", icon: ShieldCheck },
   { label: "Funding & Utilization", href: "/corporate/funding", icon: FileBadge },
-  { label: "Impact Metrics", href: "/corporate/dashboard#impact-metrics", icon: BarChart3 },
+  { label: "Impact Metrics", href: "/corporate#impact-metrics", icon: BarChart3 },
   { label: "Employees", href: "/corporate/employees", icon: Users },
-  { label: "Events & Volunteering", href: "/corporate/dashboard#events", icon: CalendarDays },
+  { label: "Events & Volunteering", href: "/corporate#events", icon: CalendarDays },
   { label: "Evidence Center", href: "/corporate/evidence", icon: FileText },
   { label: "Reports", href: "/corporate/reports", icon: FileBadge },
-  { label: "Public Impact Page", href: "/corporate/dashboard#public-impact-page", icon: Globe2 }
+  { label: "Public Impact Page", href: "/corporate#public-impact-page", icon: Globe2 }
 ];
 
 const managementNav = [
-  { label: "Partners", href: "/corporate/dashboard#partners", icon: Handshake },
+  { label: "Partners", href: "/corporate#partners", icon: Handshake },
   { label: "Team & Access", href: "/corporate/settings", icon: Users },
   { label: "Integrations", href: "/corporate/settings#integrations", icon: Puzzle },
   { label: "Settings", href: "/corporate/settings", icon: Settings },
@@ -62,7 +62,7 @@ function initialsForName(value: string) {
 function isActive(pathname: string, href: string) {
   const path = href.split("#")[0] ?? href;
 
-  return path === "/corporate/dashboard" ? pathname === path : pathname === path || pathname.startsWith(`${path}/`);
+  return path === "/corporate" ? pathname === path || pathname === "/corporate/dashboard" : pathname === path || pathname.startsWith(`${path}/`);
 }
 
 export function CorporateShell({
@@ -191,7 +191,7 @@ export function CorporateShell({
       <div className="xl:pl-72">
         <header className="sticky top-0 z-40 flex min-h-20 items-center justify-between gap-4 border-b border-ocean-900/10 bg-white/94 px-4 backdrop-blur sm:px-6 lg:px-8">
           <div className="flex min-w-0 items-center gap-3">
-            <Link href="/corporate/dashboard" aria-label="Corporate overview" className="flex size-11 items-center justify-center rounded-full bg-ocean-50 text-ocean-900 xl:hidden">
+            <Link href="/corporate" aria-label="Corporate overview" className="flex size-11 items-center justify-center rounded-full bg-ocean-50 text-ocean-900 xl:hidden">
               <Building2 size={20} aria-hidden="true" />
             </Link>
             <label className="hidden min-h-11 items-center gap-2 rounded-xl border border-ocean-900/10 bg-white px-4 text-sm font-bold text-ocean-900 shadow-sm md:flex">
@@ -222,7 +222,7 @@ export function CorporateShell({
           </label>
 
           <div className="flex items-center gap-2">
-            <Link href="/corporate/dashboard#notifications" aria-label="Notifications" className="relative flex size-11 items-center justify-center rounded-full hover:bg-ocean-50">
+            <Link href="/corporate#notifications" aria-label="Notifications" className="relative flex size-11 items-center justify-center rounded-full hover:bg-ocean-50">
               <Bell size={19} aria-hidden="true" />
               <span className="absolute right-1.5 top-1.5 size-3 rounded-full bg-coral-500 ring-2 ring-white" />
             </Link>

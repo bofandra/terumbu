@@ -2,7 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
-import { getSessionUser, safeRedirectPath } from "@/lib/auth";
+import { getDefaultAuthenticatedPath, getSessionUser, safeRedirectPath } from "@/lib/auth";
 import { loginAction } from "@/lib/auth-actions";
 
 export const metadata = {
@@ -19,11 +19,11 @@ type LoginPageProps = {
 
 export default async function LoginPage({ searchParams }: LoginPageProps) {
   const params = await searchParams;
-  const nextPath = safeRedirectPath(params?.next);
+  const nextPath = safeRedirectPath(params?.next, "");
   const sessionUser = await getSessionUser();
 
   if (sessionUser && !params?.loggedOut) {
-    redirect(nextPath);
+    redirect(nextPath || (await getDefaultAuthenticatedPath(sessionUser.id)));
   }
 
   return (

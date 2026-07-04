@@ -1,6 +1,9 @@
-import { redirect } from "next/navigation";
+import CorporateDashboardPage from "./dashboard/page";
 
-export default function CorporatePage() {
-  redirect("/corporate/dashboard");
-}
+export const metadata = {
+  title: "Corporate Portal"
+};
 
+export const dynamic = "force-dynamic";
+
+export default CorporateDashboardPage;

@@ -11,6 +11,7 @@ import {
   createPasswordHash,
   createSession,
   destroyCurrentSession,
+  getDefaultAuthenticatedPath,
   requireUser,
   safeRedirectPath,
   verifyPassword
@@ -39,7 +40,7 @@ export async function loginAction(formData: FormData) {
     .trim()
     .toLowerCase();
   const password = String(formData.get("password") ?? "");
-  const nextPath = safeRedirectPath(formData.get("next"));
+  const nextPath = safeRedirectPath(formData.get("next"), "");
 
   if (!email || !password) {
     redirect(loginErrorPath(nextPath));
@@ -59,7 +60,7 @@ export async function loginAction(formData: FormData) {
   }
 
   await createSession(user.id);
-  redirect(nextPath);
+  redirect(nextPath || (await getDefaultAuthenticatedPath(user.id)));
 }
 
 export async function signupAction(formData: FormData) {

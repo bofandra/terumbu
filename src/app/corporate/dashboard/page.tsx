@@ -29,7 +29,7 @@ import { getCorporateDashboardData } from "@/lib/queries";
 import { cn, formatCurrency } from "@/lib/utils";
 
 export const metadata = {
-  title: "Corporate Dashboard"
+  title: "Corporate Portal"
 };
 
 export const dynamic = "force-dynamic";
@@ -56,11 +56,11 @@ function compactCurrency(value: number) {
 }
 
 function statusClass(status: string) {
-  if (status === "On Track" || status === "Complete" || status === "Completed" || status === "published" || status === "approved" || status === "generated") {
+  if (status === "On Track" || status === "Complete" || status === "Completed" || status === "Verified" || status === "Published" || status === "published" || status === "approved" || status === "generated") {
     return "bg-kelp-100 text-kelp-700";
   }
 
-  if (status === "Needs Attention" || status === "Review" || status === "Requires explanation" || status === "review") {
+  if (status === "Needs Attention" || status === "Needs Approval" || status === "Needs Review" || status === "Review" || status === "Requires explanation" || status === "review") {
     return "bg-coral-100 text-coral-700";
   }
 
@@ -116,7 +116,7 @@ function healthTone(tone: string) {
 }
 
 export default async function CorporateDashboardPage() {
-  const user = await requireUser("/corporate/dashboard");
+  const user = await requireUser("/corporate");
   const data = await getCorporateDashboardData(user.id);
 
   if (!data) {
@@ -366,7 +366,7 @@ export default async function CorporateDashboardPage() {
                     <p className="mt-1 text-xs text-ocean-900/52">{formatDate(project.nextMilestoneDate)}</p>
                   </td>
                   <td className="border-b border-ocean-900/8 py-4 text-right">
-                    <Link href="/corporate/projects" aria-label={`Open ${project.campaignTitle} actions`} className="inline-flex size-10 items-center justify-center rounded-full hover:bg-ocean-50">
+                    <Link href={project.detailHref} aria-label={`Open ${project.campaignTitle} details`} className="inline-flex size-10 items-center justify-center rounded-full hover:bg-ocean-50">
                       <MoreVertical size={18} aria-hidden="true" />
                     </Link>
                   </td>
@@ -375,6 +375,84 @@ export default async function CorporateDashboardPage() {
             </tbody>
           </table>
         </div>
+      </section>
+
+      <section className="mt-6 grid gap-6 xl:grid-cols-[1fr_0.95fr_0.95fr]">
+        <article className="rounded-2xl border border-ocean-900/10 bg-white p-5 shadow-soft">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="text-sm font-bold uppercase text-coral-700">Funding workflow</p>
+              <h2 className="mt-2 text-xl font-bold tracking-normal text-ocean-900">Budget, disbursement, verification</h2>
+            </div>
+            <Link href="/corporate/funding" className="text-sm font-bold text-coral-700 hover:text-coral-500">
+              Open
+            </Link>
+          </div>
+          <div className="mt-5 grid gap-3">
+            {data.fundingFlow.map((step) => (
+              <div key={step.label}>
+                <div className="flex items-center justify-between gap-3 text-sm">
+                  <span className="font-bold text-ocean-900">{step.label}</span>
+                  <span className="font-bold text-ocean-900/62">{compactCurrency(step.value)}</span>
+                </div>
+                <ProgressMeter value={step.percent} label={`${step.label} funding progress`} className="mt-2 h-2" indicatorClassName="bg-ocean-700" trackClassName="bg-ocean-50" />
+              </div>
+            ))}
+          </div>
+          <div className="mt-5 grid gap-2">
+            {data.fundingSchedule.slice(0, 2).map((schedule) => (
+              <div key={schedule.id} className="rounded-xl border border-ocean-900/10 bg-sand-50 p-3">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-bold text-ocean-900">{schedule.milestone}</p>
+                    <p className="mt-1 text-xs text-ocean-900/52">{formatDate(schedule.dueDate)} · {schedule.approvalStep}</p>
+                  </div>
+                  <span className={cn("rounded-full px-2 py-1 text-xs font-bold", statusClass(schedule.status))}>{schedule.status}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </article>
+
+        <article className="rounded-2xl border border-ocean-900/10 bg-white p-5 shadow-soft">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="text-sm font-bold uppercase text-coral-700">Company passport</p>
+              <h2 className="mt-2 text-xl font-bold tracking-normal text-ocean-900">{data.organizationPassport.status}</h2>
+            </div>
+            <ShieldCheck className="text-kelp-700" size={23} aria-hidden="true" />
+          </div>
+          <p className="mt-4 text-4xl font-bold tracking-normal text-ocean-900">{data.organizationPassport.score}%</p>
+          <p className="mt-1 text-sm text-ocean-900/58">Verification readiness score</p>
+          <ProgressMeter value={data.organizationPassport.score} label="Organization passport verification readiness" className="mt-4 h-2" indicatorClassName="bg-kelp-500" trackClassName="bg-ocean-50" />
+          <div className="mt-5 grid gap-2">
+            {data.organizationPassport.verificationItems.map((item) => (
+              <div key={item.label} className="flex items-center justify-between gap-3 rounded-xl bg-sand-50 px-4 py-3 text-sm">
+                <span className="font-bold text-ocean-900">{item.label}</span>
+                <span className={cn("rounded-full px-2 py-1 text-xs font-bold", statusClass(item.status))}>{item.status}</span>
+              </div>
+            ))}
+          </div>
+        </article>
+
+        <article className="rounded-2xl border border-ocean-900/10 bg-white p-5 shadow-soft">
+          <p className="text-sm font-bold uppercase text-coral-700">Benchmarking and forecast</p>
+          <h2 className="mt-2 text-xl font-bold tracking-normal text-ocean-900">Portfolio comparison</h2>
+          <div className="mt-5 grid gap-4">
+            {data.benchmarks.map((benchmark) => (
+              <div key={benchmark.label}>
+                <div className="flex items-center justify-between gap-3 text-sm">
+                  <span className="font-bold text-ocean-900">{benchmark.label}</span>
+                  <span className="font-bold text-ocean-900/62">{benchmark.current}{benchmark.unit}</span>
+                </div>
+                <ProgressMeter value={benchmark.current} label={`${benchmark.label} benchmark`} className="mt-2 h-2" indicatorClassName={benchmark.current >= benchmark.benchmark ? "bg-kelp-500" : "bg-coral-500"} trackClassName="bg-ocean-50" />
+                <p className="mt-1 text-xs font-semibold text-ocean-900/52">
+                  Previous {benchmark.previous}{benchmark.unit} · benchmark {benchmark.benchmark}{benchmark.unit}. {benchmark.insight}.
+                </p>
+              </div>
+            ))}
+          </div>
+        </article>
       </section>
 
       <section className="mt-6 grid gap-6 xl:grid-cols-[1fr_0.95fr_0.95fr]">

@@ -31,6 +31,7 @@ import {
 } from "@/db/schema";
 import { createPasswordHash, requireRole } from "@/lib/auth";
 import { sendTransactionalEmail } from "@/lib/email";
+import { parseExpeditionMetadataJson } from "@/lib/expedition-metadata";
 import { transitionDonationPayment, transitionExpeditionBookingPayment } from "@/lib/payment-workflows";
 import { getEvidenceStorageProvider, normalizeEvidenceUrl, readUploadedImageAsDataUrl } from "@/lib/storage";
 
@@ -88,6 +89,7 @@ const partnerRedirectPaths = new Set([
   "/partner/activity",
   "/partner/campaigns",
   "/partner/campaigns/new",
+  "/partner/expeditions",
   "/partner/updates",
   "/partner/updates/recent",
   "/partner/evidence",
@@ -316,6 +318,16 @@ function departureMetadata(formData: FormData) {
   return Object.keys(metadata).length > 0 ? metadata : null;
 }
 
+function expeditionMetadataFromForm(formData: FormData, onError: (code: string, formData?: FormData) => never) {
+  const result = parseExpeditionMetadataJson(formText(formData, "metadataJson"));
+
+  if (result.error) {
+    onError(result.error, formData);
+  }
+
+  return result.metadata;
+}
+
 async function getRoleId(key: string, name: string) {
   const [role] = await db
     .insert(roles)
@@ -438,6 +450,38 @@ async function requireCampaignAccess(userId: string, campaignId: string, formDat
   await requireOrganizationAccess(userId, campaign.organizationId, formData, fallbackPath);
 
   return campaign;
+}
+
+async function requireExpeditionAccess(userId: string, expeditionId: string, formData: FormData, fallbackPath: string) {
+  const [expedition] = await db
+    .select({
+      id: expeditions.id,
+      title: expeditions.title,
+      relatedCampaignId: expeditions.relatedCampaignId,
+      organizationId: campaigns.organizationId
+    })
+    .from(expeditions)
+    .leftJoin(campaigns, eq(expeditions.relatedCampaignId, campaigns.id))
+    .where(eq(expeditions.id, expeditionId))
+    .limit(1);
+
+  if (!expedition) {
+    redirectPartnerError(formData, fallbackPath, "expedition-missing");
+  }
+
+  const roleKeys = await getPortalUserRoles(userId);
+
+  if (roleKeys.includes("admin")) {
+    return expedition;
+  }
+
+  if (!expedition.organizationId) {
+    redirectPartnerError(formData, fallbackPath, "expedition-campaign-required");
+  }
+
+  await requireOrganizationAccess(userId, expedition.organizationId, formData, fallbackPath);
+
+  return expedition;
 }
 
 export async function createOrganizationAction(formData: FormData) {
@@ -963,6 +1007,7 @@ export async function createExpeditionAction(formData: FormData) {
   const basePrice = parsePositiveDecimal(formData.get("basePrice"));
   const summary = formText(formData, "summary");
   const relatedCampaignId = nullableText(formData, "relatedCampaignId");
+  const metadata = expeditionMetadataFromForm(formData, redirectAdminExpeditionError);
 
   if (!title || !slug || !region || !durationDays || !basePrice || !summary) {
     redirectAdminExpeditionError("expedition-invalid", formData);
@@ -992,7 +1037,8 @@ export async function createExpeditionAction(formData: FormData) {
       basePrice,
       summary,
       imageUrl: nullableText(formData, "imageUrl"),
-      relatedCampaignId
+      relatedCampaignId,
+      metadata
     })
     .returning({ id: expeditions.id });
 
@@ -1017,6 +1063,7 @@ export async function updateExpeditionAction(formData: FormData) {
   const basePrice = parsePositiveDecimal(formData.get("basePrice"));
   const summary = formText(formData, "summary");
   const relatedCampaignId = nullableText(formData, "relatedCampaignId");
+  const metadata = expeditionMetadataFromForm(formData, redirectAdminExpeditionError);
 
   if (!expeditionId || !title || !slug || !region || !durationDays || !basePrice || !summary) {
     redirectAdminExpeditionError("expedition-invalid", formData);
@@ -1046,7 +1093,8 @@ export async function updateExpeditionAction(formData: FormData) {
       basePrice,
       summary,
       imageUrl: nullableText(formData, "imageUrl"),
-      relatedCampaignId
+      relatedCampaignId,
+      metadata
     })
     .where(eq(expeditions.id, expeditionId))
     .returning({ id: expeditions.id });
@@ -1249,6 +1297,175 @@ export async function deleteExpeditionDepartureAction(formData: FormData) {
   });
 
   redirectAdminExpeditionSaved("departure-deleted", formData);
+}
+
+export async function updatePartnerExpeditionAction(formData: FormData) {
+  const user = await requireRole(["partner", "admin"], "/partner/expeditions");
+  const expeditionId = formText(formData, "expeditionId");
+  const title = formText(formData, "title");
+  const slug = slugifyExpedition(formText(formData, "slug") || title);
+  const region = formText(formData, "region");
+  const durationDays = parsePositiveInteger(formData.get("durationDays"));
+  const basePrice = parsePositiveDecimal(formData.get("basePrice"));
+  const summary = formText(formData, "summary");
+  const relatedCampaignId = nullableText(formData, "relatedCampaignId");
+  const metadata = expeditionMetadataFromForm(formData, (code) => redirectPartnerError(formData, "/partner/expeditions", code));
+
+  if (!expeditionId || !title || !slug || !region || !durationDays || !basePrice || !summary || !relatedCampaignId) {
+    redirectPartnerError(formData, "/partner/expeditions", "expedition-invalid");
+  }
+
+  await requireExpeditionAccess(user.id, expeditionId, formData, "/partner/expeditions");
+  await requireCampaignAccess(user.id, relatedCampaignId, formData, "/partner/expeditions");
+
+  const [existingSlug] = await db.select({ id: expeditions.id }).from(expeditions).where(eq(expeditions.slug, slug)).limit(1);
+
+  if (existingSlug && existingSlug.id !== expeditionId) {
+    redirectPartnerError(formData, "/partner/expeditions", "expedition-slug");
+  }
+
+  const [expedition] = await db
+    .update(expeditions)
+    .set({
+      title,
+      slug,
+      region,
+      durationDays,
+      basePrice,
+      summary,
+      imageUrl: nullableText(formData, "imageUrl"),
+      relatedCampaignId,
+      metadata
+    })
+    .where(eq(expeditions.id, expeditionId))
+    .returning({ id: expeditions.id });
+
+  if (!expedition) {
+    redirectPartnerError(formData, "/partner/expeditions", "expedition-missing");
+  }
+
+  await db.insert(adminAuditLogs).values({
+    actorUserId: user.id,
+    action: "partner_expedition.updated",
+    entityType: "expedition",
+    entityId: expeditionId,
+    metadata: { source: "partner_portal", slug, relatedCampaignId }
+  });
+
+  redirectPartnerSaved(formData, "/partner/expeditions", "expedition-updated");
+}
+
+export async function createPartnerExpeditionDepartureAction(formData: FormData) {
+  const user = await requireRole(["partner", "admin"], "/partner/expeditions");
+  const expeditionId = formText(formData, "expeditionId");
+  const startsAt = parseDateTime(formData.get("startsAt"));
+  const endsAt = parseDateTime(formData.get("endsAt"));
+  const capacity = parsePositiveInteger(formData.get("capacity"));
+  const seatsBooked = parseNonNegativeInteger(formData.get("seatsBooked")) ?? 0;
+  const status = expeditionDepartureStatusFromForm(formData.get("status"));
+
+  if (!expeditionId || !startsAt || !endsAt || !capacity || endsAt <= startsAt || seatsBooked > capacity) {
+    redirectPartnerError(formData, "/partner/expeditions", "departure-invalid");
+  }
+
+  await requireExpeditionAccess(user.id, expeditionId, formData, "/partner/expeditions");
+
+  const [existing] = await db
+    .select({ id: expeditionDepartures.id })
+    .from(expeditionDepartures)
+    .where(and(eq(expeditionDepartures.expeditionId, expeditionId), eq(expeditionDepartures.startsAt, startsAt)))
+    .limit(1);
+
+  if (existing) {
+    redirectPartnerError(formData, "/partner/expeditions", "departure-duplicate");
+  }
+
+  const [departure] = await db
+    .insert(expeditionDepartures)
+    .values({
+      expeditionId,
+      startsAt,
+      endsAt,
+      capacity,
+      seatsBooked,
+      status,
+      metadata: departureMetadata(formData)
+    })
+    .returning({ id: expeditionDepartures.id });
+
+  await db.insert(adminAuditLogs).values({
+    actorUserId: user.id,
+    action: "partner_expedition_departure.created",
+    entityType: "expedition_departure",
+    entityId: departure.id,
+    metadata: { source: "partner_portal", expeditionId, status, capacity }
+  });
+
+  redirectPartnerSaved(formData, "/partner/expeditions", "departure-created");
+}
+
+export async function updatePartnerExpeditionDepartureAction(formData: FormData) {
+  const user = await requireRole(["partner", "admin"], "/partner/expeditions");
+  const departureId = formText(formData, "departureId");
+  const startsAt = parseDateTime(formData.get("startsAt"));
+  const endsAt = parseDateTime(formData.get("endsAt"));
+  const capacity = parsePositiveInteger(formData.get("capacity"));
+  const status = expeditionDepartureStatusFromForm(formData.get("status"));
+
+  if (!departureId || !startsAt || !endsAt || !capacity || endsAt <= startsAt) {
+    redirectPartnerError(formData, "/partner/expeditions", "departure-invalid");
+  }
+
+  const [existingDeparture] = await db
+    .select({
+      id: expeditionDepartures.id,
+      expeditionId: expeditionDepartures.expeditionId,
+      seatsBooked: expeditionDepartures.seatsBooked
+    })
+    .from(expeditionDepartures)
+    .where(eq(expeditionDepartures.id, departureId))
+    .limit(1);
+
+  if (!existingDeparture) {
+    redirectPartnerError(formData, "/partner/expeditions", "departure-missing");
+  }
+
+  await requireExpeditionAccess(user.id, existingDeparture.expeditionId, formData, "/partner/expeditions");
+
+  if (capacity < existingDeparture.seatsBooked) {
+    redirectPartnerError(formData, "/partner/expeditions", "departure-capacity");
+  }
+
+  const [duplicate] = await db
+    .select({ id: expeditionDepartures.id })
+    .from(expeditionDepartures)
+    .where(and(eq(expeditionDepartures.expeditionId, existingDeparture.expeditionId), eq(expeditionDepartures.startsAt, startsAt)))
+    .limit(1);
+
+  if (duplicate && duplicate.id !== departureId) {
+    redirectPartnerError(formData, "/partner/expeditions", "departure-duplicate");
+  }
+
+  await db
+    .update(expeditionDepartures)
+    .set({
+      startsAt,
+      endsAt,
+      capacity,
+      status,
+      metadata: departureMetadata(formData)
+    })
+    .where(eq(expeditionDepartures.id, departureId));
+
+  await db.insert(adminAuditLogs).values({
+    actorUserId: user.id,
+    action: "partner_expedition_departure.updated",
+    entityType: "expedition_departure",
+    entityId: departureId,
+    metadata: { source: "partner_portal", expeditionId: existingDeparture.expeditionId, status, capacity }
+  });
+
+  redirectPartnerSaved(formData, "/partner/expeditions", "departure-updated");
 }
 
 export async function createAdminCampaignAction(formData: FormData) {

@@ -24,6 +24,7 @@ type ExpeditionBookingCardProps = {
   platformFee: number;
   departures: Departure[];
   conservationContribution: number;
+  trustIndicators: string[];
   compact?: boolean;
   anchorId?: string;
 };
@@ -86,7 +87,7 @@ function Stepper({
   );
 }
 
-export function ExpeditionBookingCard({ slug, price, equipmentRental, platformFee, departures, conservationContribution, compact = false, anchorId }: ExpeditionBookingCardProps) {
+export function ExpeditionBookingCard({ slug, price, equipmentRental, platformFee, departures, conservationContribution, trustIndicators, compact = false, anchorId }: ExpeditionBookingCardProps) {
   const firstBookableDeparture = departures.find((departure) => departure.status === "open" && departure.availableSeats > 0) ?? departures[0] ?? null;
   const [selectedDepartureId, setSelectedDepartureId] = useState(firstBookableDeparture?.id ?? null);
   const [adults, setAdults] = useState(1);
@@ -199,7 +200,7 @@ export function ExpeditionBookingCard({ slug, price, equipmentRental, platformFe
       </button>
 
       <div className="mt-5 grid grid-cols-2 gap-3 border-t border-ocean-900/10 pt-5 text-xs font-bold text-ocean-900/64">
-        {["Secure payment", "Verified partner", "Insurance included", "Transparent pricing"].map((item) => (
+        {trustIndicators.map((item) => (
           <span key={item} className="flex items-center gap-2">
             <ShieldCheck size={15} aria-hidden="true" className="text-kelp-500" />
             {item}

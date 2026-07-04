@@ -5,7 +5,8 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
 import { db } from "@/db/client";
-import { profiles, roles, sessions, userRoles, users } from "@/db/schema";
+import { corporatePermissions, profiles, roles, sessions, userRoles, users } from "@/db/schema";
+import { defaultAuthenticatedPathForAccount, REGULAR_ACCOUNT_HOME } from "@/lib/account-destinations";
 import { shouldUseSecureSessionCookie } from "@/lib/session-cookie";
 export { createPasswordHash, verifyPassword } from "@/lib/password";
 
@@ -90,12 +91,33 @@ export async function getUserRoles(userId: string) {
   return rows.map((row) => row.key);
 }
 
+export async function getDefaultAuthenticatedPath(userId: string) {
+  const roleKeys = await getUserRoles(userId);
+
+  if (roleKeys.some((role) => ["admin", "partner", "corporate_admin"].includes(role))) {
+    return defaultAuthenticatedPathForAccount({ roles: roleKeys });
+  }
+
+  const [corporateAccess] = await db
+    .select({
+      id: corporatePermissions.id
+    })
+    .from(corporatePermissions)
+    .where(eq(corporatePermissions.userId, userId))
+    .limit(1);
+
+  return defaultAuthenticatedPathForAccount({
+    roles: roleKeys,
+    hasCorporateAccess: Boolean(corporateAccess)
+  });
+}
+
 export async function requireRole(allowedRoles: string[], nextPath = "/dashboard") {
   const user = await requireUser(nextPath);
   const roleKeys = await getUserRoles(user.id);
 
   if (!roleKeys.some((role) => allowedRoles.includes(role))) {
-    redirect("/dashboard?error=forbidden");
+    redirect(await getDefaultAuthenticatedPath(user.id));
   }
 
   return user;
@@ -112,9 +134,9 @@ export async function destroyCurrentSession() {
   cookieStore.delete(SESSION_COOKIE);
 }
 
-export function safeRedirectPath(value: FormDataEntryValue | string | null | undefined) {
+export function safeRedirectPath(value: FormDataEntryValue | string | null | undefined, fallback = REGULAR_ACCOUNT_HOME) {
   if (typeof value !== "string" || !value.startsWith("/") || value.startsWith("//")) {
-    return "/dashboard";
+    return fallback;
   }
 
   return value;

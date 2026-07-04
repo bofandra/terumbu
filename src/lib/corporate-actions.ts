@@ -217,11 +217,11 @@ async function writeReportArtifacts(input: {
 }
 
 export async function createCorporateReportExportAction(formData: FormData) {
-  const user = await requireUser("/corporate/dashboard");
+  const user = await requireUser("/corporate");
   const context = await corporateContext(user.id);
 
   if (!context) {
-    redirect("/corporate/dashboard?error=program");
+    redirect("/corporate?error=program");
   }
 
   const capabilities = roleCapabilities(context.permission);
@@ -235,7 +235,7 @@ export async function createCorporateReportExportAction(formData: FormData) {
   const data = await getCorporateDashboardData(user.id);
 
   if (!data) {
-    redirect("/corporate/dashboard?error=program");
+    redirect("/corporate?error=program");
   }
 
   const code = exportCode();
