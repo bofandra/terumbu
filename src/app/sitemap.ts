@@ -9,6 +9,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     "/expeditions",
     "/academy",
     "/impact-map",
+    "/platform",
     "/about",
     "/login",
     "/signup",

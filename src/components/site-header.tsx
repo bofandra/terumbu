@@ -23,7 +23,7 @@ export function SiteHeader() {
           <span className="text-lg font-bold tracking-normal">Terumbu.eco</span>
         </Link>
 
-        <nav className="hidden items-center gap-1 lg:flex" aria-label="Main navigation">
+        <nav className="hidden items-center gap-1 xl:flex" aria-label="Main navigation">
           {navItems.map((item) => {
             const isActive = item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
 
@@ -42,7 +42,7 @@ export function SiteHeader() {
           })}
         </nav>
 
-        <div className="hidden items-center gap-2 lg:flex">
+        <div className="hidden items-center gap-2 xl:flex">
           <button
             aria-label="Search"
             className="flex size-11 items-center justify-center rounded-full text-white/80 transition hover:bg-white/10 hover:text-white"
@@ -64,7 +64,7 @@ export function SiteHeader() {
 
         <button
           aria-label="Toggle menu"
-          className="flex size-11 items-center justify-center rounded-full text-white lg:hidden"
+          className="flex size-11 items-center justify-center rounded-full text-white xl:hidden"
           onClick={() => setIsOpen((value) => !value)}
         >
           {isOpen ? <X size={23} aria-hidden="true" /> : <Menu size={23} aria-hidden="true" />}
