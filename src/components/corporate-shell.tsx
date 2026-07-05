@@ -14,6 +14,7 @@ import {
   Handshake,
   Home,
   LifeBuoy,
+  LogOut,
   MessageSquare,
   Puzzle,
   Search,
@@ -25,6 +26,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 
+import { logoutAction } from "@/lib/auth-actions";
 import { cn } from "@/lib/utils";
 
 const mainNav = [
@@ -232,15 +234,34 @@ export function CorporateShell({
             <Link href="/corporate/settings" aria-label="Messages" className="hidden size-11 items-center justify-center rounded-full hover:bg-ocean-50 sm:flex">
               <MessageSquare size={19} aria-hidden="true" />
             </Link>
-            <Link href="/corporate/settings" className="flex items-center gap-3 rounded-full hover:bg-ocean-50 sm:py-1 sm:pl-1 sm:pr-3">
-              <span className="flex size-11 items-center justify-center rounded-full bg-ocean-900 text-sm font-bold text-white">
-                {initialsForName(displayName)}
-              </span>
-              <span className="hidden text-left sm:block">
-                <span className="block max-w-32 truncate text-sm font-bold text-ocean-900">{displayName}</span>
-                <span className="block text-xs font-semibold text-ocean-900/54">{roleLabel}</span>
-              </span>
-            </Link>
+            <details className="group relative">
+              <summary aria-label="Corporate account menu" className="flex cursor-pointer list-none items-center gap-3 rounded-full hover:bg-ocean-50 sm:py-1 sm:pl-1 sm:pr-3">
+                <span className="flex size-11 items-center justify-center rounded-full bg-ocean-900 text-sm font-bold text-white">
+                  {initialsForName(displayName)}
+                </span>
+                <span className="hidden min-w-0 text-left sm:block">
+                  <span className="block max-w-32 truncate text-sm font-bold text-ocean-900">{displayName}</span>
+                  <span className="block text-xs font-semibold text-ocean-900/54">{roleLabel}</span>
+                </span>
+              </summary>
+              <div className="absolute right-0 z-50 mt-3 w-64 rounded-2xl border border-ocean-900/10 bg-white p-2 shadow-soft">
+                <Link href="/corporate" className="block rounded-xl px-3 py-2 text-sm font-bold text-ocean-900 hover:bg-ocean-50">
+                  Corporate overview
+                </Link>
+                <Link href="/corporate/settings" className="block rounded-xl px-3 py-2 text-sm font-bold text-ocean-900 hover:bg-ocean-50">
+                  Team & access
+                </Link>
+                <Link href="/corporate/reports" className="block rounded-xl px-3 py-2 text-sm font-bold text-ocean-900 hover:bg-ocean-50">
+                  Report center
+                </Link>
+                <form action={logoutAction}>
+                  <button type="submit" className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-sm font-bold text-coral-700 hover:bg-coral-100">
+                    <LogOut size={16} aria-hidden="true" />
+                    Log out
+                  </button>
+                </form>
+              </div>
+            </details>
           </div>
         </header>
         {children}

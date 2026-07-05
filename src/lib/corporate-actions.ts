@@ -15,15 +15,21 @@ import {
   corporateContributions,
   corporateEmployees,
   corporateEvidenceCenter,
+  corporateIntegrations,
   corporatePermissions,
   corporateProgramBudgets,
   corporatePrograms,
   corporateProjectPortfolio,
   corporateReportExports,
+  corporateSecuritySettings,
   projectEvidence,
   users
 } from "@/db/schema";
 import { requireUser } from "@/lib/auth";
+import {
+  normalizeCorporateIntegrationStatus,
+  normalizeCorporateIntegrationType
+} from "@/lib/corporate-governance";
 import {
   buildCorporateContributionReference,
   campaignRaisedDelta,
@@ -730,6 +736,160 @@ export async function updateCorporateEvidenceStatusAction(formData: FormData) {
   });
 
   redirect("/corporate/evidence?saved=evidence");
+}
+
+
+function parseRetentionDays(value: FormDataEntryValue | null) {
+  const parsed = Number(String(value ?? "").trim());
+
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    return null;
+  }
+
+  return Math.min(3650, Math.round(parsed));
+}
+
+export async function updateCorporateIntegrationAction(formData: FormData) {
+  const user = await requireUser("/corporate/settings");
+  const context = await corporateContext(user.id);
+
+  if (!context || !roleCapabilities(context.permission).canManageProjects) {
+    redirect("/corporate/settings?error=permission");
+  }
+
+  const integrationType = normalizeCorporateIntegrationType(textValue(formData.get("integrationType"), 80));
+  const providerName = textValue(formData.get("providerName"), 160);
+  const owner = textValue(formData.get("owner"), 160);
+  const status = normalizeCorporateIntegrationStatus(textValue(formData.get("status"), 80));
+  const nextAction = textValue(formData.get("nextAction"), 240);
+  const lastSyncRaw = textValue(formData.get("lastSyncAt"), 40);
+  const lastSyncAt = lastSyncRaw ? new Date(lastSyncRaw) : null;
+
+  if (!providerName || !owner || !nextAction || (lastSyncAt && Number.isNaN(lastSyncAt.getTime()))) {
+    redirect("/corporate/settings?error=integration");
+  }
+
+  const now = new Date();
+  const [integration] = await db
+    .insert(corporateIntegrations)
+    .values({
+      corporateAccountId: context.accountId,
+      integrationType,
+      providerName,
+      owner,
+      status,
+      nextAction,
+      lastSyncAt,
+      metadata: {
+        updatedFrom: "corporate_settings"
+      },
+      updatedAt: now,
+      createdAt: now
+    })
+    .onConflictDoUpdate({
+      target: [corporateIntegrations.corporateAccountId, corporateIntegrations.integrationType, corporateIntegrations.providerName],
+      set: {
+        owner,
+        status,
+        nextAction,
+        lastSyncAt,
+        metadata: {
+          updatedFrom: "corporate_settings"
+        },
+        updatedAt: now
+      }
+    })
+    .returning({ id: corporateIntegrations.id });
+
+  await writeAuditLog({
+    actorUserId: user.id,
+    action: "corporate.integration.updated",
+    entityType: "corporate_integrations",
+    entityId: integration?.id,
+    metadata: {
+      accountId: context.accountId,
+      programId: context.programId,
+      integrationType,
+      providerName,
+      status
+    }
+  });
+
+  redirect("/corporate/settings?saved=integration");
+}
+
+export async function updateCorporateSecuritySettingsAction(formData: FormData) {
+  const user = await requireUser("/corporate/settings");
+  const context = await corporateContext(user.id);
+
+  if (!context || !roleCapabilities(context.permission).canManageProjects) {
+    redirect("/corporate/settings?error=permission");
+  }
+
+  const mfaRequired = formData.get("mfaRequired") === "on";
+  const exportLoggingEnabled = formData.get("exportLoggingEnabled") === "on";
+  const sessionHistoryEnabled = formData.get("sessionHistoryEnabled") === "on";
+  const retentionPolicyDays = parseRetentionDays(formData.get("retentionPolicyDays"));
+  const domainRestrictionEnabled = formData.get("domainRestrictionEnabled") === "on";
+  const allowedEmailDomains = textValue(formData.get("allowedEmailDomains"), 1000)
+    .split(/[\n,]+/)
+    .map((domain) => domain.trim().toLowerCase())
+    .filter(Boolean)
+    .join("\n") || null;
+
+  if (domainRestrictionEnabled && !allowedEmailDomains) {
+    redirect("/corporate/settings?error=security");
+  }
+
+  const now = new Date();
+  const [settings] = await db
+    .insert(corporateSecuritySettings)
+    .values({
+      corporateAccountId: context.accountId,
+      mfaRequired,
+      exportLoggingEnabled,
+      sessionHistoryEnabled,
+      retentionPolicyDays,
+      domainRestrictionEnabled,
+      allowedEmailDomains,
+      updatedByUserId: user.id,
+      updatedAt: now,
+      createdAt: now
+    })
+    .onConflictDoUpdate({
+      target: [corporateSecuritySettings.corporateAccountId],
+      set: {
+        mfaRequired,
+        exportLoggingEnabled,
+        sessionHistoryEnabled,
+        retentionPolicyDays,
+        domainRestrictionEnabled,
+        allowedEmailDomains,
+        updatedByUserId: user.id,
+        updatedAt: now
+      }
+    })
+    .returning({ id: corporateSecuritySettings.id });
+
+  await writeAuditLog({
+    actorUserId: user.id,
+    action: "corporate.security.updated",
+    entityType: "corporate_security_settings",
+    entityId: settings?.id,
+    metadata: {
+      accountId: context.accountId,
+      programId: context.programId,
+      status: "configured",
+      mfaRequired,
+      exportLoggingEnabled,
+      sessionHistoryEnabled,
+      retentionPolicyDays,
+      domainRestrictionEnabled,
+      allowedEmailDomainCount: allowedEmailDomains ? allowedEmailDomains.split("\n").length : 0
+    }
+  });
+
+  redirect("/corporate/settings?saved=security");
 }
 
 async function reportForUser(userId: string, reportId: string) {

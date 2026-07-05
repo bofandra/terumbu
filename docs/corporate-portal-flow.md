@@ -89,3 +89,24 @@ The existing local generated-report storage remains unchanged in this phase.
 - bank reconciliation
 - object-storage migration for report artifacts
 - employee matching automation
+
+## Making Governance Data Non-Seed
+
+The Corporate Settings page now reads governance data from real workspace records instead of hardcoded placeholders:
+
+- `corporate_integrations` stores SSO, HR, finance, ESG reporting, webhook, and storage integration readiness rows.
+- `corporate_security_settings` stores MFA expectations, export logging, session history, retention policy, and allowed email domains.
+- `admin_audit_logs` is queried for `corporate.*` events scoped to the current account/program so the audit timeline reflects real server actions.
+
+Real setup flow:
+
+```txt
+Admin creates corporate account/program
+→ Admin assigns a corporate user
+→ Corporate ESG manager opens Settings
+→ ESG manager saves security controls and integrations
+→ Actions write audit logs
+→ Settings cards, integration count, checklist, and audit timeline update from persisted DB records
+```
+
+This keeps the portal usable without real payment integration and removes dependency on seed-only governance values.

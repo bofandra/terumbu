@@ -854,6 +854,52 @@ export const corporateContributions = pgTable("corporate_contributions", {
   }).onDelete("cascade")
 }));
 
+
+
+export const corporateIntegrations = pgTable("corporate_integrations", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  corporateAccountId: uuid("corporate_account_id").notNull(),
+  integrationType: varchar("integration_type", { length: 80 }).notNull(),
+  providerName: varchar("provider_name", { length: 160 }).notNull(),
+  owner: varchar("owner", { length: 160 }).notNull(),
+  status: varchar("status", { length: 80 }).default("not_configured").notNull(),
+  nextAction: varchar("next_action", { length: 240 }).notNull(),
+  lastSyncAt: timestamp("last_sync_at", { withTimezone: true }),
+  metadata: jsonb("metadata"),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull()
+}, (table) => ({
+  accountProviderIdx: uniqueIndex("corporate_integrations_account_provider_idx").on(table.corporateAccountId, table.integrationType, table.providerName),
+  accountIdx: index("corporate_integrations_account_idx").on(table.corporateAccountId),
+  statusIdx: index("corporate_integrations_status_idx").on(table.status),
+  accountFk: foreignKey({
+    name: "corporate_integrations_account_fk",
+    columns: [table.corporateAccountId],
+    foreignColumns: [corporateAccounts.id]
+  }).onDelete("cascade")
+}));
+
+export const corporateSecuritySettings = pgTable("corporate_security_settings", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  corporateAccountId: uuid("corporate_account_id").notNull(),
+  mfaRequired: boolean("mfa_required").default(false).notNull(),
+  exportLoggingEnabled: boolean("export_logging_enabled").default(true).notNull(),
+  sessionHistoryEnabled: boolean("session_history_enabled").default(false).notNull(),
+  retentionPolicyDays: integer("retention_policy_days"),
+  domainRestrictionEnabled: boolean("domain_restriction_enabled").default(false).notNull(),
+  allowedEmailDomains: text("allowed_email_domains"),
+  updatedByUserId: uuid("updated_by_user_id").references(() => users.id, { onDelete: "set null" }),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull()
+}, (table) => ({
+  accountIdx: uniqueIndex("corporate_security_settings_account_idx").on(table.corporateAccountId),
+  accountFk: foreignKey({
+    name: "corporate_security_settings_account_fk",
+    columns: [table.corporateAccountId],
+    foreignColumns: [corporateAccounts.id]
+  }).onDelete("cascade")
+}));
+
 export const corporateProjectPortfolio = pgTable("corporate_project_portfolio", {
   id: uuid("id").defaultRandom().primaryKey(),
   programId: uuid("program_id").notNull().references(() => corporatePrograms.id, { onDelete: "cascade" }),

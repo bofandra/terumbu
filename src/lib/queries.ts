@@ -14,11 +14,13 @@ import {
   corporateContributions,
   corporateEmployees,
   corporateEvidenceCenter,
+  corporateIntegrations,
   corporatePermissions,
   corporateProgramBudgets,
   corporatePrograms,
   corporateProjectPortfolio,
   corporateReportExports,
+  corporateSecuritySettings,
   courseAssessments,
   courseCertificates,
   courseEnrollments,
@@ -72,6 +74,7 @@ import {
   type PartnerLogoData,
   type PassportPreviewData
 } from "@/lib/domain";
+import { buildCorporateSecurityChecklist, splitAllowedEmailDomains } from "@/lib/corporate-governance";
 import {
   buildDefaultExpeditionDetailMetadata,
   expeditionMetadataEditorJson,
@@ -3329,7 +3332,7 @@ export async function getCorporateDashboardData(userId: string) {
     return null;
   }
 
-  const [budgets, employees, portfolio, evidence, exports, contributions] = await Promise.all([
+  const [budgets, employees, portfolio, evidence, exports, contributions, integrations, securityRows, auditRows] = await Promise.all([
     db
       .select({
         category: corporateProgramBudgets.category,
@@ -3435,7 +3438,50 @@ export async function getCorporateDashboardData(userId: string) {
       .from(corporateContributions)
       .innerJoin(campaigns, eq(corporateContributions.campaignId, campaigns.id))
       .where(eq(corporateContributions.programId, program.programId))
-      .orderBy(desc(corporateContributions.contributionDate))
+      .orderBy(desc(corporateContributions.contributionDate)),
+    db
+      .select({
+        id: corporateIntegrations.id,
+        integrationType: corporateIntegrations.integrationType,
+        providerName: corporateIntegrations.providerName,
+        owner: corporateIntegrations.owner,
+        status: corporateIntegrations.status,
+        nextAction: corporateIntegrations.nextAction,
+        lastSyncAt: corporateIntegrations.lastSyncAt,
+        updatedAt: corporateIntegrations.updatedAt
+      })
+      .from(corporateIntegrations)
+      .where(eq(corporateIntegrations.corporateAccountId, program.accountId))
+      .orderBy(asc(corporateIntegrations.integrationType), asc(corporateIntegrations.providerName)),
+    db
+      .select({
+        id: corporateSecuritySettings.id,
+        mfaRequired: corporateSecuritySettings.mfaRequired,
+        exportLoggingEnabled: corporateSecuritySettings.exportLoggingEnabled,
+        sessionHistoryEnabled: corporateSecuritySettings.sessionHistoryEnabled,
+        retentionPolicyDays: corporateSecuritySettings.retentionPolicyDays,
+        domainRestrictionEnabled: corporateSecuritySettings.domainRestrictionEnabled,
+        allowedEmailDomains: corporateSecuritySettings.allowedEmailDomains,
+        updatedAt: corporateSecuritySettings.updatedAt
+      })
+      .from(corporateSecuritySettings)
+      .where(eq(corporateSecuritySettings.corporateAccountId, program.accountId))
+      .limit(1),
+    db
+      .select({
+        id: adminAuditLogs.id,
+        action: adminAuditLogs.action,
+        entityType: adminAuditLogs.entityType,
+        entityId: adminAuditLogs.entityId,
+        metadata: adminAuditLogs.metadata,
+        createdAt: adminAuditLogs.createdAt
+      })
+      .from(adminAuditLogs)
+      .where(
+        sql`(${adminAuditLogs.action} like 'corporate.%' and (${adminAuditLogs.metadata}->>'programId' = ${program.programId} or ${adminAuditLogs.metadata}->>'accountId' = ${program.accountId} or ${adminAuditLogs.entityId} = ${program.programId} or ${adminAuditLogs.entityId} = ${program.accountId}))`
+      )
+      .orderBy(desc(adminAuditLogs.createdAt))
+      .limit(12)
   ]);
 
   const contributionRows = contributions.map((contribution) => ({
@@ -4016,6 +4062,53 @@ export async function getCorporateDashboardData(userId: string) {
     ...role,
     active: currentPermission === role.permission || (currentPermission === "program.manage" && role.permission === "esg_manager")
   }));
+  const securitySettings = securityRows[0] ?? {
+    id: null,
+    mfaRequired: false,
+    exportLoggingEnabled: false,
+    sessionHistoryEnabled: false,
+    retentionPolicyDays: null,
+    domainRestrictionEnabled: false,
+    allowedEmailDomains: null,
+    updatedAt: null
+  };
+  const allowedEmailDomains = splitAllowedEmailDomains(securitySettings.allowedEmailDomains);
+  const governanceIntegrations = integrations.map((integration) => ({
+    id: integration.id,
+    name: integration.providerName,
+    category: integration.integrationType.replaceAll("_", " "),
+    status: integration.status.replaceAll("_", " "),
+    rawStatus: integration.status,
+    owner: integration.owner,
+    nextAction: integration.nextAction,
+    lastSyncAt: integration.lastSyncAt,
+    updatedAt: integration.updatedAt
+  }));
+  const securityChecklist = buildCorporateSecurityChecklist(securitySettings);
+  const governanceAuditLog = auditRows.map((row) => {
+    const metadata = row.metadata && typeof row.metadata === "object" && !Array.isArray(row.metadata) ? row.metadata as Record<string, unknown> : {};
+    const statusValue =
+      typeof metadata.status === "string"
+        ? metadata.status
+        : typeof metadata.contributionStatus === "string"
+          ? metadata.contributionStatus
+          : typeof metadata.verificationStatus === "string"
+            ? metadata.verificationStatus
+            : "recorded";
+    const actorValue =
+      typeof metadata.actor === "string"
+        ? metadata.actor
+        : typeof metadata.email === "string"
+          ? metadata.email
+          : governanceActor(program.permission);
+
+    return {
+      event: row.action.replace(/^corporate\./, "").replaceAll(".", " ").replaceAll("_", " "),
+      actor: actorValue,
+      occurredAt: row.createdAt,
+      status: statusValue.replaceAll("_", " ")
+    };
+  });
   const governance = {
     accessSummary: {
       activeEmployees: employeesEngaged,
@@ -4025,18 +4118,14 @@ export async function getCorporateDashboardData(userId: string) {
       currentRole: roleCapabilities.find((role) => role.active)?.role ?? "ESG Program Manager"
     },
     roleCapabilities,
-    integrations: [
-      { name: "Single sign-on", category: "Identity", status: "Ready to configure", owner: "IT admin", nextAction: "Add SAML metadata" },
-      { name: "HR employee sync", category: "People", status: employees.length > 0 ? "Manual upload active" : "Not connected", owner: "People team", nextAction: "Connect HRIS roster" },
-      { name: "Finance ledger", category: "Finance", status: fundingSchedule.length > 0 ? "CSV import active" : "Not connected", owner: "Finance reviewer", nextAction: "Map cost centers" },
-      { name: "ESG data warehouse", category: "Reporting", status: reportExports.length > 0 ? "Export ready" : "Not connected", owner: "ESG manager", nextAction: "Generate first export" }
-    ],
-    auditLog: [
-      { event: "Corporate workspace opened", actor: governanceActor(program.permission), occurredAt: now, status: "Allowed" },
-      { event: "Latest report status changed", actor: "Report workflow", occurredAt: latestReport.createdAt, status: latestReport.status.replaceAll("_", " ") },
-      corporateEvidence[0] ? { event: "Evidence added", actor: corporateEvidence[0].organizationName, occurredAt: corporateEvidence[0].addedAt, status: corporateEvidence[0].verificationStatus } : null,
-      fundingApprovalQueue[0] ? { event: "Funding review queued", actor: fundingApprovalQueue[0].owner, occurredAt: fundingApprovalQueue[0].dueDate, status: fundingApprovalQueue[0].status } : null
-    ].filter(isDefined)
+    integrations: governanceIntegrations,
+    securitySettings: {
+      ...securitySettings,
+      allowedEmailDomains,
+      configured: Boolean(securitySettings.id)
+    },
+    securityChecklist,
+    auditLog: governanceAuditLog
   };
   const reportCapabilities = {
     canGenerate: program.permission === "program.manage" || program.permission === "esg_manager",
