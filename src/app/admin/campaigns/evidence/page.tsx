@@ -1,6 +1,6 @@
 import { FileCheck2, ShieldCheck } from "lucide-react";
 
-import { AdminEmptyState, AdminPageHeader, AdminStatusBadge, adminPanelClassName, adminSelectClassName } from "@/components/admin-ui";
+import { AdminEmptyState, AdminPageHeader, AdminStatusBadge, adminInputClassName, adminPanelClassName, adminSelectClassName } from "@/components/admin-ui";
 import { Button } from "@/components/ui/button";
 import { requireRole } from "@/lib/auth";
 import { verifyEvidenceAction } from "@/lib/portal-actions";
@@ -55,6 +55,7 @@ export default async function AdminCampaignEvidencePage() {
           {data.evidence.map((item) => (
             <form key={item.id} action={verifyEvidenceAction} className="p-4">
               <input type="hidden" name="evidenceId" value={item.id} />
+              <input type="hidden" name="redirectTo" value="/admin/campaigns/evidence" />
               <div className="grid gap-4 lg:grid-cols-[1fr_auto] lg:items-center">
                 <div>
                   <div className="flex flex-wrap items-center gap-2">
@@ -63,14 +64,19 @@ export default async function AdminCampaignEvidencePage() {
                   </div>
                   <p className="mt-1 text-sm font-semibold text-ocean-900/58">{item.campaignTitle}</p>
                   <p className="mt-2 text-xs font-bold text-ocean-900/48">
-                    {item.evidenceCode} / {item.createdAt.toLocaleDateString("id-ID", { dateStyle: "medium" })}
+                    {item.evidenceCode} / {item.evidenceType} / {item.createdAt.toLocaleDateString("id-ID", { dateStyle: "medium" })}
                   </p>
+                  <a href={item.fileUrl} target="_blank" rel="noreferrer" className="mt-2 inline-flex text-xs font-bold text-coral-700 hover:text-coral-500">Open evidence file</a>
+                  {item.rejectionReason ? (
+                    <p className="mt-2 rounded-lg bg-coral-100 px-3 py-2 text-sm font-semibold text-coral-700">Previous rejection: {item.rejectionReason}</p>
+                  ) : null}
                 </div>
                 <div className="flex flex-wrap gap-2 lg:justify-end">
                   <select name="status" defaultValue={item.verificationStatus === "rejected" ? "rejected" : "verified"} className={adminSelectClassName}>
                     <option value="verified">Verified</option>
                     <option value="rejected">Rejected</option>
                   </select>
+                  <input name="rejectionReason" defaultValue={item.rejectionReason ?? ""} placeholder="Required when rejecting" className={adminInputClassName} />
                   <Button type="submit" tone="secondary" className="min-h-10 px-4">
                     <ShieldCheck className="size-4" aria-hidden="true" />
                     Save

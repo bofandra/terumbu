@@ -3,6 +3,8 @@ import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
 import { db } from "@/db/client";
 import {
   assessmentAttempts,
+  assessmentChoices,
+  assessmentQuestions,
   adminAuditLogs,
   campaignActivities,
   campaignUpdates,
@@ -446,6 +448,8 @@ export async function getPartnerProfile(slug: string) {
         evidenceType: projectEvidence.evidenceType,
         verificationStatus: projectEvidence.verificationStatus,
         fileUrl: projectEvidence.fileUrl,
+        rejectionReason: projectEvidence.rejectionReason,
+        reviewedAt: projectEvidence.reviewedAt,
         createdAt: projectEvidence.createdAt,
         campaignTitle: campaigns.title
       })
@@ -1227,9 +1231,11 @@ export async function getCourses() {
       level: courses.level,
       durationMinutes: courses.durationMinutes,
       summary: courses.summary,
-      imageUrl: courses.imageUrl
+      imageUrl: courses.imageUrl,
+      status: courses.status
     })
     .from(courses)
+    .where(eq(courses.status, "published"))
     .orderBy(asc(courses.durationMinutes));
 
   return rows.map((course) => ({
@@ -1407,9 +1413,11 @@ export async function getAcademyHomeData(userId?: string) {
         level: courses.level,
         durationMinutes: courses.durationMinutes,
         summary: courses.summary,
-        imageUrl: courses.imageUrl
+        imageUrl: courses.imageUrl,
+        status: courses.status
       })
       .from(courses)
+      .where(eq(courses.status, "published"))
       .orderBy(asc(courses.durationMinutes)),
     db
       .select({
@@ -1707,10 +1715,12 @@ export async function getCourseDetail(slug: string, userId?: string) {
       level: courses.level,
       durationMinutes: courses.durationMinutes,
       summary: courses.summary,
-      imageUrl: courses.imageUrl
+      description: courses.description,
+      imageUrl: courses.imageUrl,
+      status: courses.status
     })
     .from(courses)
-    .where(eq(courses.slug, slug))
+    .where(and(eq(courses.slug, slug), eq(courses.status, "published")))
     .limit(1);
 
   if (!course) {
@@ -1725,7 +1735,8 @@ export async function getCourseDetail(slug: string, userId?: string) {
         slug: courseLessons.slug,
         position: courseLessons.position,
         durationMinutes: courseLessons.durationMinutes,
-        body: courseLessons.body
+        body: courseLessons.body,
+        isPreview: courseLessons.isPreview
       })
       .from(courseLessons)
       .where(eq(courseLessons.courseId, course.id))
@@ -4296,6 +4307,10 @@ export async function getAdminPortalData() {
         title: projectEvidence.title,
         evidenceCode: projectEvidence.evidenceCode,
         verificationStatus: projectEvidence.verificationStatus,
+        fileUrl: projectEvidence.fileUrl,
+        evidenceType: projectEvidence.evidenceType,
+        rejectionReason: projectEvidence.rejectionReason,
+        reviewedAt: projectEvidence.reviewedAt,
         campaignTitle: campaigns.title,
         createdAt: projectEvidence.createdAt
       })
@@ -4742,6 +4757,7 @@ export async function getPartnerPortalData(userId?: string) {
       .orderBy(desc(campaigns.updatedAt)),
     db
       .select({
+        id: projectEvidence.id,
         campaignId: projectEvidence.campaignId,
         title: projectEvidence.title,
         evidenceCode: projectEvidence.evidenceCode,
@@ -4749,6 +4765,8 @@ export async function getPartnerPortalData(userId?: string) {
         verificationStatus: projectEvidence.verificationStatus,
         campaignTitle: campaigns.title,
         fileUrl: projectEvidence.fileUrl,
+        rejectionReason: projectEvidence.rejectionReason,
+        reviewedAt: projectEvidence.reviewedAt,
         createdAt: projectEvidence.createdAt
       })
       .from(projectEvidence)
@@ -4762,6 +4780,8 @@ export async function getPartnerPortalData(userId?: string) {
         title: campaignUpdates.title,
         body: campaignUpdates.body,
         imageUrl: campaignUpdates.imageUrl,
+        status: campaignUpdates.status,
+        rejectionReason: campaignUpdates.rejectionReason,
         campaignTitle: campaigns.title,
         publishedAt: campaignUpdates.publishedAt,
         createdAt: campaignUpdates.createdAt
@@ -5035,4 +5055,150 @@ export async function getPartnerPortalData(userId?: string) {
       amount: toNumber(donation.amount)
     }))
   };
+}
+
+export async function getAdminAcademyData() {
+  const [courseRows, lessonRows, assessmentRows, questionRows, choiceRows, enrollmentRows, certificateRows] = await Promise.all([
+    db
+      .select({
+        id: courses.id,
+        title: courses.title,
+        slug: courses.slug,
+        level: courses.level,
+        durationMinutes: courses.durationMinutes,
+        summary: courses.summary,
+        description: courses.description,
+        status: courses.status,
+        imageUrl: courses.imageUrl,
+        publishedAt: courses.publishedAt,
+        createdAt: courses.createdAt,
+        updatedAt: courses.updatedAt
+      })
+      .from(courses)
+      .orderBy(desc(courses.updatedAt)),
+    db
+      .select({
+        id: courseLessons.id,
+        courseId: courseLessons.courseId,
+        title: courseLessons.title,
+        slug: courseLessons.slug,
+        position: courseLessons.position,
+        durationMinutes: courseLessons.durationMinutes,
+        body: courseLessons.body,
+        isPreview: courseLessons.isPreview
+      })
+      .from(courseLessons)
+      .orderBy(asc(courseLessons.position)),
+    db
+      .select({
+        id: courseAssessments.id,
+        courseId: courseAssessments.courseId,
+        title: courseAssessments.title,
+        slug: courseAssessments.slug,
+        passingScore: courseAssessments.passingScore
+      })
+      .from(courseAssessments),
+    db
+      .select({
+        id: assessmentQuestions.id,
+        assessmentId: assessmentQuestions.assessmentId,
+        questionText: assessmentQuestions.questionText,
+        position: assessmentQuestions.position,
+        points: assessmentQuestions.points,
+        status: assessmentQuestions.status
+      })
+      .from(assessmentQuestions)
+      .orderBy(asc(assessmentQuestions.position)),
+    db
+      .select({
+        id: assessmentChoices.id,
+        questionId: assessmentChoices.questionId,
+        choiceText: assessmentChoices.choiceText,
+        isCorrect: assessmentChoices.isCorrect,
+        position: assessmentChoices.position
+      })
+      .from(assessmentChoices)
+      .orderBy(asc(assessmentChoices.position)),
+    db
+      .select({
+        courseId: courseEnrollments.courseId,
+        total: sql<string>`count(${courseEnrollments.id})`,
+        completed: sql<string>`sum(case when ${courseEnrollments.status} = 'completed' then 1 else 0 end)`
+      })
+      .from(courseEnrollments)
+      .groupBy(courseEnrollments.courseId),
+    db
+      .select({
+        courseId: courseCertificates.courseId,
+        total: sql<string>`count(${courseCertificates.id})`
+      })
+      .from(courseCertificates)
+      .groupBy(courseCertificates.courseId)
+  ]);
+
+  const lessonsByCourse = lessonRows.reduce((groups, lesson) => {
+    const items = groups.get(lesson.courseId) ?? [];
+    items.push(lesson);
+    groups.set(lesson.courseId, items);
+    return groups;
+  }, new Map<string, typeof lessonRows>());
+  const assessmentsByCourse = assessmentRows.reduce((groups, assessment) => {
+    const items = groups.get(assessment.courseId) ?? [];
+    items.push(assessment);
+    groups.set(assessment.courseId, items);
+    return groups;
+  }, new Map<string, typeof assessmentRows>());
+  const questionsByAssessment = questionRows.reduce((groups, question) => {
+    const items = groups.get(question.assessmentId) ?? [];
+    items.push({
+      ...question,
+      choices: choiceRows.filter((choice) => choice.questionId === question.id)
+    });
+    groups.set(question.assessmentId, items);
+    return groups;
+  }, new Map<string, Array<(typeof questionRows)[number] & { choices: typeof choiceRows }>>());
+  const enrollmentByCourse = new Map(enrollmentRows.map((row) => [row.courseId, row]));
+  const certificateByCourse = new Map(certificateRows.map((row) => [row.courseId, row]));
+
+  return {
+    courses: courseRows.map((course) => ({
+      ...course,
+      duration: academyDuration(course.durationMinutes),
+      lessons: lessonsByCourse.get(course.id) ?? [],
+      assessments: (assessmentsByCourse.get(course.id) ?? []).map((assessment) => ({
+        ...assessment,
+        questions: questionsByAssessment.get(assessment.id) ?? []
+      })),
+      enrollmentCount: toNumber(enrollmentByCourse.get(course.id)?.total),
+      completedCount: toNumber(enrollmentByCourse.get(course.id)?.completed),
+      certificateCount: toNumber(certificateByCourse.get(course.id)?.total)
+    }))
+  };
+}
+
+export async function getAdminAcademyCourse(courseId: string) {
+  const data = await getAdminAcademyData();
+  return data.courses.find((course) => course.id === courseId) ?? null;
+}
+
+export async function getCertificateVerification(publicSlug: string) {
+  const [certificate] = await db
+    .select({
+      certificateNumber: courseCertificates.certificateNumber,
+      publicSlug: courseCertificates.publicSlug,
+      issuedAt: courseCertificates.issuedAt,
+      metadata: courseCertificates.metadata,
+      courseTitle: courses.title,
+      courseSlug: courses.slug,
+      userName: users.name,
+      displayName: profiles.displayName
+    })
+    .from(courseCertificates)
+    .innerJoin(courses, eq(courseCertificates.courseId, courses.id))
+    .innerJoin(users, eq(courseCertificates.userId, users.id))
+    .leftJoin(profiles, eq(profiles.userId, users.id))
+    .where(eq(courseCertificates.publicSlug, publicSlug))
+    .limit(1);
+
+  return certificate ?? null;
 }

@@ -29,7 +29,7 @@ import {
   userRoles,
   users
 } from "@/db/schema";
-import { createPasswordHash, requireRole } from "@/lib/auth";
+import { createPasswordHash, requireRole, safeRedirectPath } from "@/lib/auth";
 import { sendTransactionalEmail } from "@/lib/email";
 import {
   buildDefaultExpeditionDetailMetadata,
@@ -2361,20 +2361,101 @@ export async function submitEvidenceAction(formData: FormData) {
   return createCampaignActivityAction(formData);
 }
 
+export async function reviseEvidenceAction(formData: FormData) {
+  const user = await requireRole(["partner", "admin"], "/partner/evidence");
+  const evidenceId = formText(formData, "evidenceId");
+  const title = formText(formData, "title");
+  const body = formText(formData, "body");
+  const attachmentUrl = await imageFromForm(formData, "imageFile", "fileUrl", "/partner/evidence");
+
+  if (!evidenceId || !title || !attachmentUrl) {
+    redirectPartnerError(formData, "/partner/evidence", "evidence-revision");
+  }
+
+  const [evidence] = await db
+    .select({
+      id: projectEvidence.id,
+      campaignId: projectEvidence.campaignId,
+      impactSiteId: projectEvidence.impactSiteId,
+      evidenceCode: projectEvidence.evidenceCode,
+      evidenceType: projectEvidence.evidenceType
+    })
+    .from(projectEvidence)
+    .where(eq(projectEvidence.id, evidenceId))
+    .limit(1);
+
+  if (!evidence) {
+    redirectPartnerError(formData, "/partner/evidence", "evidence-missing");
+  }
+
+  await requireCampaignAccess(user.id, evidence.campaignId, formData, "/partner/evidence");
+
+  const now = new Date();
+  const storageProvider = attachmentUrl.startsWith("data:image/") ? "database_inline" : getEvidenceStorageProvider();
+
+  await db.transaction(async (tx) => {
+    await tx
+      .update(projectEvidence)
+      .set({
+        title,
+        fileUrl: attachmentUrl,
+        storageProvider,
+        verificationStatus: "submitted",
+        verifiedAt: null,
+        reviewedByUserId: null,
+        reviewedAt: null,
+        rejectionReason: null,
+        updatedAt: now,
+        metadata: {
+          observation: body || null,
+          revisedAt: now.toISOString(),
+          revisedByUserId: user.id
+        }
+      })
+      .where(eq(projectEvidence.id, evidenceId));
+
+    await tx
+      .update(campaignActivities)
+      .set({
+        title,
+        body: body || null,
+        mediaUrl: attachmentUrl,
+        verificationStatus: "submitted",
+        verifiedAt: null,
+        storageProvider
+      })
+      .where(eq(campaignActivities.sourceEvidenceId, evidenceId));
+  });
+
+  redirectPartnerSaved(formData, "/partner/evidence", "evidence-resubmitted");
+}
+
 export async function verifyEvidenceAction(formData: FormData) {
   const user = await requireRole(["admin"], "/admin");
   const evidenceId = String(formData.get("evidenceId") ?? "");
   const status = formData.get("status") === "rejected" ? "rejected" : "verified";
+  const rejectionReason = formText(formData, "rejectionReason");
+  const redirectTo = safeRedirectPath(formData.get("redirectTo"), "/admin/campaigns/evidence");
 
   if (!evidenceId) {
     redirect("/admin?error=evidence");
   }
 
+  if (status === "rejected" && !rejectionReason) {
+    redirect(`${redirectTo}?error=rejection-reason`);
+  }
+
+  const now = new Date();
+
   await db
     .update(projectEvidence)
     .set({
       verificationStatus: status,
-      verifiedAt: status === "verified" ? new Date() : null
+      verifiedAt: status === "verified" ? now : null,
+      reviewedByUserId: user.id,
+      reviewedAt: now,
+      rejectionReason: status === "rejected" ? rejectionReason : null,
+      updatedAt: now
     })
     .where(eq(projectEvidence.id, evidenceId));
 
@@ -2382,19 +2463,24 @@ export async function verifyEvidenceAction(formData: FormData) {
     .update(campaignActivities)
     .set({
       verificationStatus: status,
-      verifiedAt: status === "verified" ? new Date() : null
+      verifiedAt: status === "verified" ? now : null,
+      metadata: {
+        reviewedByUserId: user.id,
+        reviewedAt: now.toISOString(),
+        rejectionReason: status === "rejected" ? rejectionReason : null
+      }
     })
     .where(eq(campaignActivities.sourceEvidenceId, evidenceId));
 
   await db.insert(adminAuditLogs).values({
     actorUserId: user.id,
-    action: "evidence.verification.updated",
+    action: status === "verified" ? "evidence.verified" : "evidence.rejected",
     entityType: "project_evidence",
     entityId: evidenceId,
-    metadata: { status }
+    metadata: { status, rejectionReason: status === "rejected" ? rejectionReason : null }
   });
 
-  redirect("/admin?saved=evidence");
+  redirect(`${redirectTo}?saved=evidence`);
 }
 
 export async function reconcileDonationAction(formData: FormData) {

@@ -255,6 +255,7 @@ export default async function AdminPortalPage() {
             {evidenceQueue.map((item) => (
               <form key={item.id} action={verifyEvidenceAction} className="p-4">
                 <input type="hidden" name="evidenceId" value={item.id} />
+                <input type="hidden" name="redirectTo" value="/admin" />
                 <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-start">
                   <div>
                     <div className="flex flex-wrap items-center gap-2">
@@ -269,6 +270,7 @@ export default async function AdminPortalPage() {
                       <option value="verified">Verified</option>
                       <option value="rejected">Rejected</option>
                     </select>
+                    <input name="rejectionReason" placeholder="Reason if rejected" className={selectClassName} />
                     <Button type="submit" tone="secondary" className="min-h-10 px-4">
                       <ShieldCheck className="size-4" aria-hidden="true" />
                       Save
