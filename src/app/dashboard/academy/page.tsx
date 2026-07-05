@@ -36,7 +36,7 @@ export default async function DashboardAcademyPage() {
               <article key={enrollment.courseSlug} className="rounded-xl bg-sand-50 p-4">
                 <h3 className="font-bold text-ocean-900">{enrollment.courseTitle}</h3>
                 <p className="mt-1 text-sm text-ocean-900/58">{enrollment.status}</p>
-                <Link href={`/academy/courses/${enrollment.courseSlug}`} className="mt-3 inline-flex text-sm font-bold text-coral-700">
+                <Link href={`/dashboard/academy/courses/${enrollment.courseSlug}`} className="mt-3 inline-flex text-sm font-bold text-coral-700">
                   Continue course
                 </Link>
               </article>

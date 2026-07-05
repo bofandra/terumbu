@@ -34,8 +34,8 @@ export default async function DashboardCertificatesPage() {
                 <p className="mt-2 text-sm text-ocean-900/58">
                   Issued {certificate.issuedAt.toLocaleDateString("id-ID", { dateStyle: "medium" })}
                 </p>
-                <Link href={`/passport/${data.profile?.publicSlug ?? ""}`} className="mt-4 inline-flex text-sm font-bold text-coral-700 hover:text-coral-500">
-                  View in Impact Passport
+                <Link href={`/certificates/verify/${certificate.publicSlug}`} className="mt-4 inline-flex text-sm font-bold text-coral-700 hover:text-coral-500">
+                  Verify certificate
                 </Link>
               </div>
             </div>
