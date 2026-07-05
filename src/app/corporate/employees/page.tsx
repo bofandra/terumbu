@@ -1,9 +1,10 @@
 import { CalendarDays, Download, Gift, Trophy, Users } from "lucide-react";
 
 import { CorporateEmptyState } from "@/components/corporate-empty-state";
-import { ButtonLink } from "@/components/ui/button";
+import { Button, ButtonLink } from "@/components/ui/button";
 import { ProgressMeter } from "@/components/ui/progress-meter";
 import { requireUser } from "@/lib/auth";
+import { inviteCorporateEmployeeAction } from "@/lib/corporate-actions";
 import { getCorporateDashboardData } from "@/lib/queries";
 import { cn, formatCurrency } from "@/lib/utils";
 
@@ -12,6 +13,13 @@ export const metadata = {
 };
 
 export const dynamic = "force-dynamic";
+
+type CorporateEmployeesPageProps = {
+  searchParams?: Promise<{
+    error?: string;
+    saved?: string;
+  }>;
+};
 
 function formatDate(value: Date | null | undefined) {
   return value ? value.toLocaleDateString("id-ID", { dateStyle: "medium" }) : "Pending";
@@ -29,7 +37,8 @@ function statusClass(status: string) {
   return "bg-ocean-50 text-ocean-700";
 }
 
-export default async function CorporateEmployeesPage() {
+export default async function CorporateEmployeesPage({ searchParams }: CorporateEmployeesPageProps) {
+  const params = await searchParams;
   const user = await requireUser("/corporate/employees");
   const data = await getCorporateDashboardData(user.id);
 
@@ -53,6 +62,13 @@ export default async function CorporateEmployeesPage() {
         </ButtonLink>
       </div>
 
+      {params?.saved ? (
+        <p className="mt-6 rounded-xl border border-kelp-500/20 bg-kelp-100 px-4 py-3 text-sm font-bold text-kelp-700">Employee roster updated.</p>
+      ) : null}
+      {params?.error ? (
+        <p className="mt-6 rounded-xl border border-coral-500/20 bg-coral-100 px-4 py-3 text-sm font-bold text-coral-700">Employee invite could not be saved with the current input or permission.</p>
+      ) : null}
+
       <section className="mt-6 grid gap-4 md:grid-cols-4">
         {[
           { label: "Active employees", value: data.metrics.employeesEngaged.toLocaleString("id-ID"), icon: Users },
@@ -70,6 +86,47 @@ export default async function CorporateEmployeesPage() {
             </article>
           );
         })}
+      </section>
+
+      <section className="mt-6 rounded-2xl border border-ocean-900/10 bg-white p-5 shadow-soft">
+        <p className="text-sm font-bold uppercase text-coral-700">Team actions</p>
+        <h2 className="mt-2 text-xl font-bold tracking-normal text-ocean-900">Invite or update an employee</h2>
+        <form action={inviteCorporateEmployeeAction} className="mt-5 grid gap-3 lg:grid-cols-[1fr_1fr_180px_170px_140px_auto]">
+          <label className="grid gap-2 text-sm font-bold text-ocean-900">
+            Name
+            <input name="name" className="min-h-11 rounded-xl border border-ocean-900/12 px-3 text-sm font-semibold text-ocean-900 outline-none" required />
+          </label>
+          <label className="grid gap-2 text-sm font-bold text-ocean-900">
+            Email
+            <input name="email" type="email" className="min-h-11 rounded-xl border border-ocean-900/12 px-3 text-sm font-semibold text-ocean-900 outline-none" required />
+          </label>
+          <label className="grid gap-2 text-sm font-bold text-ocean-900">
+            Department
+            <input name="department" className="min-h-11 rounded-xl border border-ocean-900/12 px-3 text-sm font-semibold text-ocean-900 outline-none" />
+          </label>
+          <label className="grid gap-2 text-sm font-bold text-ocean-900">
+            Role
+            <select name="role" defaultValue="member" className="min-h-11 rounded-xl border border-ocean-900/12 bg-white px-3 text-sm font-semibold text-ocean-900 outline-none">
+              <option value="member">Member</option>
+              <option value="report_viewer">Report viewer</option>
+              <option value="employee_engagement">Engagement</option>
+              <option value="finance_reviewer">Finance reviewer</option>
+              <option value="auditor">Auditor</option>
+              <option value="program_admin">Program admin</option>
+            </select>
+          </label>
+          <label className="grid gap-2 text-sm font-bold text-ocean-900">
+            Status
+            <select name="status" defaultValue="invited" className="min-h-11 rounded-xl border border-ocean-900/12 bg-white px-3 text-sm font-semibold text-ocean-900 outline-none">
+              <option value="invited">Invited</option>
+              <option value="active">Active</option>
+              <option value="suspended">Suspended</option>
+            </select>
+          </label>
+          <Button type="submit" tone="secondary" className="self-end">
+            Save Employee
+          </Button>
+        </form>
       </section>
 
       <section className="mt-6 grid gap-6 xl:grid-cols-[1fr_0.95fr_0.95fr]">

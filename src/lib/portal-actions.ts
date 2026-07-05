@@ -31,9 +31,15 @@ import {
 } from "@/db/schema";
 import { createPasswordHash, requireRole } from "@/lib/auth";
 import { sendTransactionalEmail } from "@/lib/email";
-import { parseExpeditionMetadataJson, type ExpeditionDetailMetadata } from "@/lib/expedition-metadata";
+import {
+  buildDefaultExpeditionDetailMetadata,
+  normalizeExpeditionDetailMetadata,
+  parseExpeditionMetadataJson,
+  type ExpeditionDetailMetadata
+} from "@/lib/expedition-metadata";
 import { transitionDonationPayment, transitionExpeditionBookingPayment } from "@/lib/payment-workflows";
 import { getEvidenceStorageProvider, normalizeEvidenceUrl, readUploadedImageAsDataUrl } from "@/lib/storage";
+import { formatCurrency } from "@/lib/utils";
 
 function evidenceCode() {
   return `EVD-${randomBytes(5).toString("hex").toUpperCase()}`;
@@ -51,6 +57,12 @@ const organizationUserStatuses = ["active", "inactive"] as const;
 const expeditionDepartureStatuses = ["open", "waitlist", "full", "private_group", "cancelled"] as const;
 const activityUses = ["public_update", "evidence", "update_and_evidence"] as const;
 const evidenceTypes = ["field_photo", "document", "field_report"] as const;
+const partnerExpeditionCategoryLabels = ["Coral Restoration Expedition", "Reef Monitoring Expedition", "Marine Conservation Expedition", "Community Conservation Expedition"] as const;
+const partnerExpeditionDifficulties = ["Light", "Moderate", "Challenging", "Advanced"] as const;
+const partnerExpeditionSwimmingAbilities = ["No swimming required", "Basic swimming required", "Comfortable swimming required", "Snorkeling required", "Diving certification required"] as const;
+const partnerExpeditionPhysicalLevels = ["Light", "Moderate", "Active", "Challenging"] as const;
+const partnerExpeditionHighlightStatuses = ["Included", "Guaranteed", "Weather-dependent", "Optional", "Add-on", "Not included"] as const;
+const partnerExpeditionAccommodationTypes = ["Shared twin room included", "Private room upgrade", "Homestay", "Eco-lodge", "Liveaboard", "Hotel partner stay"] as const;
 
 function formText(formData: FormData, key: string) {
   return String(formData.get(key) ?? "").trim();
@@ -176,6 +188,18 @@ function expeditionDepartureStatusFromForm(value: FormDataEntryValue | null) {
     : "open";
 }
 
+function optionFromForm<T extends readonly string[]>(formData: FormData, key: string, options: T, fallback: string) {
+  const value = formText(formData, key);
+
+  return options.includes(value as T[number]) || value === fallback ? value : fallback;
+}
+
+function optionValue<T extends readonly string[]>(value: string | undefined, options: T, fallback: string) {
+  const normalized = String(value ?? "").trim();
+
+  return options.includes(normalized as T[number]) || normalized === fallback ? normalized : fallback;
+}
+
 function activityUseFromForm(value: FormDataEntryValue | null) {
   const activityUse = String(value ?? "public_update");
 
@@ -251,6 +275,32 @@ async function imageFromForm(formData: FormData, uploadKey: string, urlKey: stri
   }
 
   return upload.dataUrl ?? normalizeEvidenceUrl(formData.get(urlKey));
+}
+
+async function uploadedPartnerImage(formData: FormData, key: string, redirectPath = "/partner/expeditions") {
+  const upload = await readUploadedImageAsDataUrl(formData.get(key));
+
+  if (upload.error) {
+    redirectPartnerError(formData, redirectPath, `image-${upload.error}`);
+  }
+
+  return upload.dataUrl;
+}
+
+async function uploadedPartnerImages(formData: FormData, key: string, redirectPath = "/partner/expeditions") {
+  const uploads: Array<string | null> = [];
+
+  for (const value of formData.getAll(key)) {
+    const upload = await readUploadedImageAsDataUrl(value);
+
+    if (upload.error) {
+      redirectPartnerError(formData, redirectPath, `image-${upload.error}`);
+    }
+
+    uploads.push(upload.dataUrl);
+  }
+
+  return uploads;
 }
 
 function adminReturnPath(formData: FormData | undefined, fallbackPath: string, outcome: "error" | "saved") {
@@ -355,24 +405,26 @@ function formParagraphs(formData: FormData, key: string) {
     .filter(Boolean);
 }
 
+function formTextOrFallback(formData: FormData, key: string, fallback: string) {
+  return formData.has(key) ? formText(formData, key) : fallback;
+}
+
+function formLinesOrFallback(formData: FormData, key: string, fallback: string[]) {
+  return formData.has(key) ? formLines(formData, key) : fallback;
+}
+
+function formParagraphsOrFallback(formData: FormData, key: string, fallback: string[]) {
+  return formData.has(key) ? formParagraphs(formData, key) : fallback;
+}
+
 function formArray(formData: FormData, key: string) {
   return formData
     .getAll(key)
     .map((value) => String(value ?? "").trim());
 }
 
-function maxLength(...items: string[][]) {
+function maxLength(...items: unknown[][]) {
   return Math.max(0, ...items.map((item) => item.length));
-}
-
-function formPairs(formData: FormData, labelKey: string, valueKey: string) {
-  const labels = formArray(formData, labelKey);
-  const values = formArray(formData, valueKey);
-
-  return Array.from({ length: maxLength(labels, values) }, (_, index) => ({
-    label: labels[index] ?? "",
-    value: values[index] ?? ""
-  })).filter((item) => item.label || item.value);
 }
 
 function formPercentPairs(formData: FormData, labelKey: string, percentKey: string) {
@@ -385,8 +437,54 @@ function formPercentPairs(formData: FormData, labelKey: string, percentKey: stri
   })).filter((item) => item.label || item.percent > 0);
 }
 
-function partnerExpeditionMetadataFromForm(formData: FormData): ExpeditionDetailMetadata {
-  const gallerySrc = formArray(formData, "gallerySrc");
+function expeditionDurationLabel(durationDays: number) {
+  return `${durationDays} days / ${Math.max(0, durationDays - 1)} nights`;
+}
+
+function expeditionCapacityLabel(maxCapacity: number) {
+  return maxCapacity > 0 ? `Max ${maxCapacity} people` : "Capacity pending";
+}
+
+function partnerExpeditionQuickFacts({
+  durationDays,
+  maxCapacity,
+  basePrice,
+  difficulty,
+  minimumAge,
+  swimmingAbility
+}: {
+  durationDays: number;
+  maxCapacity: number;
+  basePrice: number;
+  difficulty: string;
+  minimumAge: number;
+  swimmingAbility: string;
+}) {
+  return [
+    { label: "Duration", value: expeditionDurationLabel(durationDays) },
+    { label: "Small group", value: expeditionCapacityLabel(maxCapacity) },
+    { label: "Difficulty", value: difficulty },
+    { label: "Min. age", value: minimumAge > 0 ? `${minimumAge}+ years old` : "All ages" },
+    { label: "Swimming ability", value: swimmingAbility },
+    { label: "Per person", value: formatCurrency(basePrice) }
+  ];
+}
+
+function trustedExistingImage(value: string, allowedImages: Set<string>) {
+  return value && allowedImages.has(value) ? value : "";
+}
+
+type PartnerExpeditionMetadataContext = {
+  currentMetadata: ExpeditionDetailMetadata;
+  durationDays: number;
+  basePrice: number;
+  maxCapacity: number;
+};
+
+async function partnerExpeditionMetadataFromForm(formData: FormData, context: PartnerExpeditionMetadataContext): Promise<ExpeditionDetailMetadata> {
+  const galleryUploads = await uploadedPartnerImages(formData, "galleryImageFile");
+  const galleryExistingSrc = formArray(formData, "galleryExistingSrc");
+  const existingGalleryImages = new Set(context.currentMetadata.galleryImages.map((image) => image.src).filter(Boolean));
   const galleryLabel = formArray(formData, "galleryLabel");
   const galleryCaption = formArray(formData, "galleryCaption");
   const galleryProvenance = formArray(formData, "galleryProvenance");
@@ -404,11 +502,6 @@ function partnerExpeditionMetadataFromForm(formData: FormData): ExpeditionDetail
   const teamNames = formArray(formData, "teamName");
   const teamRoles = formArray(formData, "teamRole");
   const teamDetails = formArray(formData, "teamDetail");
-  const reviewNames = formArray(formData, "reviewName");
-  const reviewJoinedAs = formArray(formData, "reviewJoinedAs");
-  const reviewRatings = formArray(formData, "reviewRating");
-  const reviewDates = formArray(formData, "reviewDate");
-  const reviewBodies = formArray(formData, "reviewBody");
   const tripUpdateTitles = formArray(formData, "tripUpdateTitle");
   const tripUpdateDates = formArray(formData, "tripUpdateDate");
   const tripUpdateBodies = formArray(formData, "tripUpdateBody");
@@ -416,143 +509,198 @@ function partnerExpeditionMetadataFromForm(formData: FormData): ExpeditionDetail
   const cancellationRefunds = formArray(formData, "cancellationRefund");
   const faqQuestions = formArray(formData, "faqQuestion");
   const faqAnswers = formArray(formData, "faqAnswer");
-  const contribution = formOptionalNumber(formData, "conservationContribution");
-  const platformFee = formOptionalNumber(formData, "platformFee");
+  const contribution = formData.has("conservationContribution") ? formOptionalNumber(formData, "conservationContribution") : context.currentMetadata.impact.conservationContribution;
+  const platformFee = formData.has("platformFee") ? formOptionalNumber(formData, "platformFee") : context.currentMetadata.priceBreakdown.platformFee;
+  const preparationCourseImageUpload = await uploadedPartnerImage(formData, "preparationCourseImageFile");
+  const existingPreparationImage = trustedExistingImage(
+    formText(formData, "preparationCourseExistingImageUrl"),
+    new Set([context.currentMetadata.preparationCourse.imageUrl ?? ""].filter(Boolean))
+  );
+  const currentDifficulty = optionValue(context.currentMetadata.difficulty, partnerExpeditionDifficulties, "Moderate");
+  const currentSwimmingAbility = context.currentMetadata.quickFacts.find((fact) => fact.label === "Swimming ability")?.value ?? "Snorkeling required";
+  const difficulty = optionFromForm(formData, "difficulty", partnerExpeditionDifficulties, currentDifficulty);
+  const minimumAge = formNumber(formData, "minimumAge", context.currentMetadata.minimumAge);
+  const swimmingAbility = optionFromForm(formData, "swimmingAbility", partnerExpeditionSwimmingAbilities, currentSwimmingAbility);
+  const hasGalleryFields = formData.has("galleryLabel") || formData.has("galleryImageFile") || formData.has("galleryExistingSrc") || formData.has("galleryCaption") || formData.has("galleryProvenance");
+  const hasPillarFields = formData.has("pillarTitle") || formData.has("pillarBody");
+  const hasHighlightFields = formData.has("highlightTitle") || formData.has("highlightStatus");
+  const hasImpactTargetFields = formData.has("impactTargetValue") || formData.has("impactTargetLabel");
+  const hasItineraryFields = formData.has("itineraryDay") || formData.has("itineraryDayTitle") || formData.has("itineraryMeals") || formData.has("itineraryPhysicalLevel") || formData.has("itineraryActivities");
+  const hasTeamFields = formData.has("teamName") || formData.has("teamRole") || formData.has("teamDetail");
+  const hasTripUpdateFields = formData.has("tripUpdateTitle") || formData.has("tripUpdateDate") || formData.has("tripUpdateBody");
+  const hasCancellationFields = formData.has("cancellationLabel") || formData.has("cancellationRefund");
+  const hasFaqFields = formData.has("faqQuestion") || formData.has("faqAnswer");
+  const hasHostedByFields = formData.has("hostedByTitle") || formData.has("hostedByVerificationLabel") || formData.has("hostedByProfileHref") || formData.has("hostedByProfileLabel");
+  const hasPreparationFields =
+    formData.has("preparationCourseTitle") ||
+    formData.has("preparationCourseSummary") ||
+    formData.has("preparationCourseHref") ||
+    formData.has("preparationCourseCtaLabel") ||
+    formData.has("preparationCourseExistingImageUrl") ||
+    formData.has("preparationCourseImageFile");
+  const hasFinalCtaFields = formData.has("finalCtaEyebrow") || formData.has("finalCtaTitle") || formData.has("finalCtaBody") || formData.has("finalCtaPrimaryLabel") || formData.has("finalCtaSecondaryLabel");
 
   return {
-    categoryLabel: formText(formData, "categoryLabel"),
-    activitySummary: formText(formData, "activitySummary"),
-    rating: formNumber(formData, "rating", 0),
-    reviewCount: formNumber(formData, "reviewCount", 0),
-    participantCount: formNumber(formData, "participantCount", 0),
-    difficulty: formText(formData, "difficulty"),
-    minimumAge: formNumber(formData, "minimumAge", 0),
-    languages: formLines(formData, "languages"),
-    skillRequirements: formLines(formData, "skillRequirements"),
-    tags: formLines(formData, "tags"),
-    quickFacts: formPairs(formData, "quickFactLabel", "quickFactValue"),
-    galleryImages: Array.from({ length: maxLength(gallerySrc, galleryLabel, galleryCaption, galleryProvenance) }, (_, index) => ({
-      src: gallerySrc[index] ?? "",
-      label: galleryLabel[index] ?? "",
-      caption: galleryCaption[index] ?? "",
-      provenance: galleryProvenance[index] ?? ""
-    })).filter((item) => item.src || item.label || item.caption || item.provenance),
-    hostedBy: {
-      title: formText(formData, "hostedByTitle"),
-      verificationLabel: formText(formData, "hostedByVerificationLabel"),
-      profileHref: formText(formData, "hostedByProfileHref"),
-      profileLabel: formText(formData, "hostedByProfileLabel")
-    },
+    categoryLabel: optionFromForm(formData, "categoryLabel", partnerExpeditionCategoryLabels, context.currentMetadata.categoryLabel || "Coral Restoration Expedition"),
+    activitySummary: formTextOrFallback(formData, "activitySummary", context.currentMetadata.activitySummary),
+    rating: context.currentMetadata.rating,
+    reviewCount: context.currentMetadata.reviewCount,
+    participantCount: context.currentMetadata.participantCount,
+    difficulty,
+    minimumAge,
+    languages: formLinesOrFallback(formData, "languages", context.currentMetadata.languages),
+    skillRequirements: formLinesOrFallback(formData, "skillRequirements", context.currentMetadata.skillRequirements),
+    tags: formLinesOrFallback(formData, "tags", context.currentMetadata.tags),
+    quickFacts: partnerExpeditionQuickFacts({
+      durationDays: context.durationDays,
+      maxCapacity: context.maxCapacity,
+      basePrice: context.basePrice,
+      difficulty,
+      minimumAge,
+      swimmingAbility
+    }),
+    galleryImages: hasGalleryFields
+      ? Array.from({ length: maxLength(galleryUploads, galleryExistingSrc, galleryLabel, galleryCaption, galleryProvenance) }, (_, index) => ({
+          src: galleryUploads[index] ?? trustedExistingImage(galleryExistingSrc[index] ?? "", existingGalleryImages),
+          label: galleryLabel[index] ?? "",
+          caption: galleryCaption[index] ?? "",
+          provenance: galleryProvenance[index] ?? ""
+        })).filter((item) => item.src)
+      : context.currentMetadata.galleryImages,
+    hostedBy: hasHostedByFields
+      ? {
+          title: formText(formData, "hostedByTitle"),
+          verificationLabel: formText(formData, "hostedByVerificationLabel"),
+          profileHref: formText(formData, "hostedByProfileHref"),
+          profileLabel: formText(formData, "hostedByProfileLabel")
+        }
+      : context.currentMetadata.hostedBy,
     overview: {
-      title: formText(formData, "overviewTitle"),
-      paragraphs: formParagraphs(formData, "overviewParagraphs"),
-      pillars: Array.from({ length: maxLength(pillarTitles, pillarBodies) }, (_, index) => ({
-        title: pillarTitles[index] ?? "",
-        body: pillarBodies[index] ?? ""
-      })).filter((item) => item.title || item.body),
-      passportNote: formText(formData, "passportNote")
+      title: formTextOrFallback(formData, "overviewTitle", context.currentMetadata.overview.title),
+      paragraphs: formParagraphsOrFallback(formData, "overviewParagraphs", context.currentMetadata.overview.paragraphs),
+      pillars: hasPillarFields
+        ? Array.from({ length: maxLength(pillarTitles, pillarBodies) }, (_, index) => ({
+            title: pillarTitles[index] ?? "",
+            body: pillarBodies[index] ?? ""
+          })).filter((item) => item.title || item.body)
+        : context.currentMetadata.overview.pillars,
+      passportNote: formTextOrFallback(formData, "passportNote", context.currentMetadata.overview.passportNote)
     },
-    highlights: Array.from({ length: maxLength(highlightTitles, highlightStatuses) }, (_, index) => ({
-      title: highlightTitles[index] ?? "",
-      status: highlightStatuses[index] ?? ""
-    })).filter((item) => item.title || item.status),
+    highlights: hasHighlightFields
+      ? Array.from({ length: maxLength(highlightTitles, highlightStatuses) }, (_, index) => ({
+          title: highlightTitles[index] ?? "",
+          status: optionValue(highlightStatuses[index], partnerExpeditionHighlightStatuses, context.currentMetadata.highlights[index]?.status ?? "Included")
+        })).filter((item) => item.title || item.status)
+      : context.currentMetadata.highlights,
     impact: {
-      title: formText(formData, "impactTitle"),
-      summary: formText(formData, "impactSummary"),
-      contributionPercent: formNumber(formData, "contributionPercent", 0),
+      title: formTextOrFallback(formData, "impactTitle", context.currentMetadata.impact.title),
+      summary: formTextOrFallback(formData, "impactSummary", context.currentMetadata.impact.summary),
+      contributionPercent: formData.has("contributionPercent") ? formNumber(formData, "contributionPercent", context.currentMetadata.impact.contributionPercent) : context.currentMetadata.impact.contributionPercent,
       ...(contribution === undefined ? {} : { conservationContribution: contribution }),
-      methodologyUpdatedAt: formText(formData, "methodologyUpdatedAt"),
-      methodologyNote: formText(formData, "methodologyNote"),
-      targets: Array.from({ length: maxLength(impactTargetValues, impactTargetLabels) }, (_, index) => ({
-        value: impactTargetValues[index] ?? "",
-        label: impactTargetLabels[index] ?? ""
-      })).filter((item) => item.value || item.label),
-      allocation: formPercentPairs(formData, "allocationLabel", "allocationPercent")
+      methodologyUpdatedAt: formTextOrFallback(formData, "methodologyUpdatedAt", context.currentMetadata.impact.methodologyUpdatedAt),
+      methodologyNote: formTextOrFallback(formData, "methodologyNote", context.currentMetadata.impact.methodologyNote),
+      targets: hasImpactTargetFields
+        ? Array.from({ length: maxLength(impactTargetValues, impactTargetLabels) }, (_, index) => ({
+            value: impactTargetValues[index] ?? "",
+            label: impactTargetLabels[index] ?? ""
+          })).filter((item) => item.value || item.label)
+        : context.currentMetadata.impact.targets,
+      allocation: formData.has("allocationLabel") || formData.has("allocationPercent") ? formPercentPairs(formData, "allocationLabel", "allocationPercent") : context.currentMetadata.impact.allocation
     },
     priceBreakdown: {
-      equipmentRental: formNumber(formData, "equipmentRental", 0),
-      platformFeePercent: formNumber(formData, "platformFeePercent", 0),
+      equipmentRental: formData.has("equipmentRental") ? formNumber(formData, "equipmentRental", context.currentMetadata.priceBreakdown.equipmentRental) : context.currentMetadata.priceBreakdown.equipmentRental,
+      platformFeePercent: formData.has("platformFeePercent")
+        ? formNumber(formData, "platformFeePercent", context.currentMetadata.priceBreakdown.platformFeePercent)
+        : context.currentMetadata.priceBreakdown.platformFeePercent,
       ...(platformFee === undefined ? {} : { platformFee })
     },
-    itineraryTitle: formText(formData, "itineraryTitle"),
-    itineraryDisclaimer: formText(formData, "itineraryDisclaimer"),
-    itinerary: Array.from({ length: maxLength(dayLabels, dayTitles, dayMeals, dayLevels, dayActivities) }, (_, index) => ({
-      day: dayLabels[index] ?? "",
-      title: dayTitles[index] ?? "",
-      meals: dayMeals[index] ?? "",
-      physicalLevel: dayLevels[index] ?? "",
-      activities: (dayActivities[index] ?? "")
-        .split(/\r?\n/)
-        .map((item) => item.trim())
-        .filter(Boolean)
-    })).filter((item) => item.day || item.title || item.meals || item.physicalLevel || item.activities.length > 0),
-    included: formLines(formData, "included"),
-    notIncluded: formLines(formData, "notIncluded"),
-    requirements: formLines(formData, "requirements"),
-    safety: formLines(formData, "safety"),
-    emergencyPlanSummary: formText(formData, "emergencyPlanSummary"),
-    sustainability: formLines(formData, "sustainability"),
+    itineraryTitle: formTextOrFallback(formData, "itineraryTitle", context.currentMetadata.itineraryTitle),
+    itineraryDisclaimer: formTextOrFallback(formData, "itineraryDisclaimer", context.currentMetadata.itineraryDisclaimer),
+    itinerary: hasItineraryFields
+      ? Array.from({ length: maxLength(dayLabels, dayTitles, dayMeals, dayLevels, dayActivities) }, (_, index) => ({
+          day: dayLabels[index] ?? "",
+          title: dayTitles[index] ?? "",
+          meals: dayMeals[index] ?? "",
+          physicalLevel: optionValue(dayLevels[index], partnerExpeditionPhysicalLevels, context.currentMetadata.itinerary[index]?.physicalLevel ?? "Light"),
+          activities: (dayActivities[index] ?? "")
+            .split(/\r?\n/)
+            .map((item) => item.trim())
+            .filter(Boolean)
+        })).filter((item) => item.day || item.title || item.meals || item.physicalLevel || item.activities.length > 0)
+      : context.currentMetadata.itinerary,
+    included: formLinesOrFallback(formData, "included", context.currentMetadata.included),
+    notIncluded: formLinesOrFallback(formData, "notIncluded", context.currentMetadata.notIncluded),
+    requirements: formLinesOrFallback(formData, "requirements", context.currentMetadata.requirements),
+    safety: formLinesOrFallback(formData, "safety", context.currentMetadata.safety),
+    emergencyPlanSummary: formTextOrFallback(formData, "emergencyPlanSummary", context.currentMetadata.emergencyPlanSummary),
+    sustainability: formLinesOrFallback(formData, "sustainability", context.currentMetadata.sustainability),
     route: {
-      title: formText(formData, "routeTitle"),
-      mapTitle: formText(formData, "mapTitle"),
-      mapEmbedUrl: formText(formData, "mapEmbedUrl"),
-      privacyNote: formText(formData, "routePrivacyNote"),
-      sidebarTitle: formText(formData, "routeSidebarTitle"),
-      sidebarNote: formText(formData, "routeSidebarNote"),
-      steps: formLines(formData, "routeSteps"),
-      travelTimes: formLines(formData, "routeTravelTimes")
+      title: formTextOrFallback(formData, "routeTitle", context.currentMetadata.route.title),
+      mapTitle: formTextOrFallback(formData, "mapTitle", context.currentMetadata.route.mapTitle),
+      mapEmbedUrl: formTextOrFallback(formData, "mapEmbedUrl", context.currentMetadata.route.mapEmbedUrl),
+      privacyNote: formTextOrFallback(formData, "routePrivacyNote", context.currentMetadata.route.privacyNote),
+      sidebarTitle: formTextOrFallback(formData, "routeSidebarTitle", context.currentMetadata.route.sidebarTitle),
+      sidebarNote: formTextOrFallback(formData, "routeSidebarNote", context.currentMetadata.route.sidebarNote),
+      steps: formLinesOrFallback(formData, "routeSteps", context.currentMetadata.route.steps),
+      travelTimes: formLinesOrFallback(formData, "routeTravelTimes", context.currentMetadata.route.travelTimes)
     },
     accommodation: {
-      name: formText(formData, "accommodationName"),
-      type: formText(formData, "accommodationType"),
-      details: formLines(formData, "accommodationDetails"),
-      mealNote: formText(formData, "mealNote")
+      name: formTextOrFallback(formData, "accommodationName", context.currentMetadata.accommodation.name),
+      type: optionFromForm(formData, "accommodationType", partnerExpeditionAccommodationTypes, context.currentMetadata.accommodation.type || "Shared twin room included"),
+      details: formLinesOrFallback(formData, "accommodationDetails", context.currentMetadata.accommodation.details),
+      mealNote: formTextOrFallback(formData, "mealNote", context.currentMetadata.accommodation.mealNote)
     },
-    team: Array.from({ length: maxLength(teamNames, teamRoles, teamDetails) }, (_, index) => ({
-      name: teamNames[index] ?? "",
-      role: teamRoles[index] ?? "",
-      detail: teamDetails[index] ?? ""
-    })).filter((item) => item.name || item.role || item.detail),
-    preparationCourse: {
-      title: formText(formData, "preparationCourseTitle"),
-      summary: formText(formData, "preparationCourseSummary"),
-      imageUrl: nullableText(formData, "preparationCourseImageUrl"),
-      href: formText(formData, "preparationCourseHref"),
-      ctaLabel: formText(formData, "preparationCourseCtaLabel")
-    },
-    reviewCategories: formPairs(formData, "reviewCategoryLabel", "reviewCategoryValue"),
-    reviews: Array.from({ length: maxLength(reviewNames, reviewJoinedAs, reviewRatings, reviewDates, reviewBodies) }, (_, index) => ({
-      name: reviewNames[index] ?? "",
-      joinedAs: reviewJoinedAs[index] ?? "",
-      rating: Number(reviewRatings[index] ?? 0),
-      date: reviewDates[index] ?? "",
-      body: reviewBodies[index] ?? ""
-    })).filter((item) => item.name || item.joinedAs || item.rating > 0 || item.date || item.body),
-    tripUpdates: Array.from({ length: maxLength(tripUpdateTitles, tripUpdateDates, tripUpdateBodies) }, (_, index) => ({
-      title: tripUpdateTitles[index] ?? "",
-      date: tripUpdateDates[index] ?? "",
-      body: tripUpdateBodies[index] ?? ""
-    })).filter((item) => item.title || item.date || item.body),
-    cancellationPolicy: Array.from({ length: maxLength(cancellationLabels, cancellationRefunds) }, (_, index) => ({
-      label: cancellationLabels[index] ?? "",
-      refund: cancellationRefunds[index] ?? ""
-    })).filter((item) => item.label || item.refund),
-    faqs: Array.from({ length: maxLength(faqQuestions, faqAnswers) }, (_, index) => ({
-      question: faqQuestions[index] ?? "",
-      answer: faqAnswers[index] ?? ""
-    })).filter((item) => item.question || item.answer),
-    finalCta: {
-      eyebrow: formText(formData, "finalCtaEyebrow"),
-      title: formText(formData, "finalCtaTitle"),
-      body: formText(formData, "finalCtaBody"),
-      primaryLabel: formText(formData, "finalCtaPrimaryLabel"),
-      secondaryLabel: formText(formData, "finalCtaSecondaryLabel")
-    },
+    team: hasTeamFields
+      ? Array.from({ length: maxLength(teamNames, teamRoles, teamDetails) }, (_, index) => ({
+          name: teamNames[index] ?? "",
+          role: teamRoles[index] ?? "",
+          detail: teamDetails[index] ?? ""
+        })).filter((item) => item.name || item.role || item.detail)
+      : context.currentMetadata.team,
+    preparationCourse: hasPreparationFields
+      ? {
+          title: formText(formData, "preparationCourseTitle"),
+          summary: formText(formData, "preparationCourseSummary"),
+          imageUrl: (preparationCourseImageUpload ?? existingPreparationImage) || null,
+          href: formText(formData, "preparationCourseHref"),
+          ctaLabel: formText(formData, "preparationCourseCtaLabel")
+        }
+      : context.currentMetadata.preparationCourse,
+    reviewCategories: context.currentMetadata.reviewCategories,
+    reviews: context.currentMetadata.reviews,
+    tripUpdates: hasTripUpdateFields
+      ? Array.from({ length: maxLength(tripUpdateTitles, tripUpdateDates, tripUpdateBodies) }, (_, index) => ({
+          title: tripUpdateTitles[index] ?? "",
+          date: tripUpdateDates[index] ?? "",
+          body: tripUpdateBodies[index] ?? ""
+        })).filter((item) => item.title || item.date || item.body)
+      : context.currentMetadata.tripUpdates,
+    cancellationPolicy: hasCancellationFields
+      ? Array.from({ length: maxLength(cancellationLabels, cancellationRefunds) }, (_, index) => ({
+          label: cancellationLabels[index] ?? "",
+          refund: cancellationRefunds[index] ?? ""
+        })).filter((item) => item.label || item.refund)
+      : context.currentMetadata.cancellationPolicy,
+    faqs: hasFaqFields
+      ? Array.from({ length: maxLength(faqQuestions, faqAnswers) }, (_, index) => ({
+          question: faqQuestions[index] ?? "",
+          answer: faqAnswers[index] ?? ""
+        })).filter((item) => item.question || item.answer)
+      : context.currentMetadata.faqs,
+    finalCta: hasFinalCtaFields
+      ? {
+          eyebrow: formText(formData, "finalCtaEyebrow"),
+          title: formText(formData, "finalCtaTitle"),
+          body: formText(formData, "finalCtaBody"),
+          primaryLabel: formText(formData, "finalCtaPrimaryLabel"),
+          secondaryLabel: formText(formData, "finalCtaSecondaryLabel")
+        }
+      : context.currentMetadata.finalCta,
     weatherAdvisory: {
-      title: formText(formData, "weatherAdvisoryTitle"),
-      body: formText(formData, "weatherAdvisoryBody")
+      title: formTextOrFallback(formData, "weatherAdvisoryTitle", context.currentMetadata.weatherAdvisory.title),
+      body: formTextOrFallback(formData, "weatherAdvisoryBody", context.currentMetadata.weatherAdvisory.body)
     },
-    bookingTrustIndicators: formLines(formData, "bookingTrustIndicators")
+    bookingTrustIndicators: formLinesOrFallback(formData, "bookingTrustIndicators", context.currentMetadata.bookingTrustIndicators)
   };
 }
 
@@ -685,6 +833,13 @@ async function requireExpeditionAccess(userId: string, expeditionId: string, for
     .select({
       id: expeditions.id,
       title: expeditions.title,
+      slug: expeditions.slug,
+      region: expeditions.region,
+      durationDays: expeditions.durationDays,
+      basePrice: expeditions.basePrice,
+      summary: expeditions.summary,
+      imageUrl: expeditions.imageUrl,
+      metadata: expeditions.metadata,
       relatedCampaignId: expeditions.relatedCampaignId,
       organizationId: campaigns.organizationId
     })
@@ -710,6 +865,44 @@ async function requireExpeditionAccess(userId: string, expeditionId: string, for
   await requireOrganizationAccess(userId, expedition.organizationId, formData, fallbackPath);
 
   return expedition;
+}
+
+async function expeditionMaxCapacity(expeditionId: string) {
+  const departures = await db
+    .select({ capacity: expeditionDepartures.capacity })
+    .from(expeditionDepartures)
+    .where(eq(expeditionDepartures.expeditionId, expeditionId));
+
+  return departures.reduce((max, departure) => Math.max(max, departure.capacity), 0);
+}
+
+function defaultPartnerExpeditionMetadata(
+  expedition: Awaited<ReturnType<typeof requireExpeditionAccess>>,
+  maxCapacity: number,
+  imageUrl = expedition.imageUrl
+) {
+  return buildDefaultExpeditionDetailMetadata({
+    title: expedition.title,
+    region: expedition.region,
+    durationLabel: expeditionDurationLabel(expedition.durationDays),
+    price: Number(expedition.basePrice),
+    maxCapacity,
+    galleryImages: [
+      {
+        src: imageUrl ?? "https://images.unsplash.com/photo-1582967788606-a171c1080cb0?auto=format&fit=crop&w=1400&q=80",
+        label: "Destination",
+        caption: `${expedition.region} expedition landscape`,
+        provenance: "Partner-managed public detail image"
+      }
+    ],
+    tripUpdates: [
+      {
+        title: "Seasonal weather advisory",
+        date: "2026-06-01T00:00:00.000Z",
+        body: "Boat schedules may shift when sea conditions require safer departure windows."
+      }
+    ]
+  });
 }
 
 export async function createOrganizationAction(formData: FormData) {
@@ -1537,13 +1730,12 @@ export async function updatePartnerExpeditionAction(formData: FormData) {
   const basePrice = parsePositiveDecimal(formData.get("basePrice"));
   const summary = formText(formData, "summary");
   const relatedCampaignId = nullableText(formData, "relatedCampaignId");
-  const metadata = partnerExpeditionMetadataFromForm(formData);
 
   if (!expeditionId || !title || !slug || !region || !durationDays || !basePrice || !summary || !relatedCampaignId) {
     redirectPartnerError(formData, "/partner/expeditions", "expedition-invalid");
   }
 
-  await requireExpeditionAccess(user.id, expeditionId, formData, "/partner/expeditions");
+  const existingExpedition = await requireExpeditionAccess(user.id, expeditionId, formData, "/partner/expeditions");
   await requireCampaignAccess(user.id, relatedCampaignId, formData, "/partner/expeditions");
 
   const [existingSlug] = await db.select({ id: expeditions.id }).from(expeditions).where(eq(expeditions.slug, slug)).limit(1);
@@ -1551,6 +1743,16 @@ export async function updatePartnerExpeditionAction(formData: FormData) {
   if (existingSlug && existingSlug.id !== expeditionId) {
     redirectPartnerError(formData, "/partner/expeditions", "expedition-slug");
   }
+
+  const [uploadedImageUrl, maxCapacity] = await Promise.all([uploadedPartnerImage(formData, "imageFile"), expeditionMaxCapacity(expeditionId)]);
+  const imageUrl = uploadedImageUrl ?? existingExpedition.imageUrl;
+  const currentMetadata = normalizeExpeditionDetailMetadata(existingExpedition.metadata, defaultPartnerExpeditionMetadata(existingExpedition, maxCapacity));
+  const metadata = await partnerExpeditionMetadataFromForm(formData, {
+    currentMetadata,
+    durationDays,
+    basePrice: Number(basePrice),
+    maxCapacity
+  });
 
   const [expedition] = await db
     .update(expeditions)
@@ -1561,7 +1763,7 @@ export async function updatePartnerExpeditionAction(formData: FormData) {
       durationDays,
       basePrice,
       summary,
-      imageUrl: nullableText(formData, "imageUrl"),
+      imageUrl,
       relatedCampaignId,
       metadata
     })
@@ -1605,6 +1807,31 @@ export async function createPartnerExpeditionAction(formData: FormData) {
     redirectPartnerError(formData, "/partner/expeditions", "expedition-slug");
   }
 
+  const imageUrl = await uploadedPartnerImage(formData, "imageFile");
+  const currentMetadata = defaultPartnerExpeditionMetadata(
+    {
+      id: "",
+      title,
+      slug,
+      region,
+      durationDays,
+      basePrice,
+      summary,
+      imageUrl,
+      metadata: null,
+      relatedCampaignId,
+      organizationId: null
+    },
+    0,
+    imageUrl
+  );
+  const metadata = await partnerExpeditionMetadataFromForm(formData, {
+    currentMetadata,
+    durationDays,
+    basePrice: Number(basePrice),
+    maxCapacity: 0
+  });
+
   const [expedition] = await db
     .insert(expeditions)
     .values({
@@ -1614,9 +1841,9 @@ export async function createPartnerExpeditionAction(formData: FormData) {
       durationDays,
       basePrice,
       summary,
-      imageUrl: nullableText(formData, "imageUrl"),
+      imageUrl,
       relatedCampaignId,
-      metadata: null
+      metadata
     })
     .returning({ id: expeditions.id });
 

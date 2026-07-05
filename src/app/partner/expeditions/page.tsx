@@ -26,6 +26,8 @@ const errorMessages: Record<string, string> = {
   "expedition-invalid": "Enter a title, slug, region, duration, price, summary, and related campaign.",
   "expedition-missing": "Expedition record was not found.",
   "expedition-slug": "That expedition slug is already in use.",
+  "image-size": "Uploaded image is too large.",
+  "image-type": "Upload a supported image file.",
   "organization-access": "You do not have access to that partner organization."
 };
 

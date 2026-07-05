@@ -1,8 +1,9 @@
 import Link from "next/link";
-import { CalendarDays, RefreshCw, RotateCcw } from "lucide-react";
+import { CalendarDays, RefreshCw, RotateCcw, Star } from "lucide-react";
 
 import { requestExpeditionRefundAction, retryExpeditionPaymentAction } from "@/lib/billing-actions";
-import { ButtonLink } from "@/components/ui/button";
+import { submitExpeditionReviewAction } from "@/lib/expedition-review-actions";
+import { Button, ButtonLink } from "@/components/ui/button";
 import { requireUser } from "@/lib/auth";
 import { getBillingData, getDashboardData } from "@/lib/queries";
 import { formatCurrency } from "@/lib/utils";
@@ -48,10 +49,14 @@ export default async function DashboardExpeditionsPage({ searchParams }: Dashboa
       </header>
 
       {params?.saved ? (
-        <p className="mt-5 rounded-2xl border border-kelp-500/20 bg-kelp-100 px-4 py-3 text-sm font-bold text-kelp-700">Booking billing changes saved.</p>
+        <p className="mt-5 rounded-2xl border border-kelp-500/20 bg-kelp-100 px-4 py-3 text-sm font-bold text-kelp-700">
+          {params.saved === "review" ? "Thanks, your expedition review is now published." : "Booking billing changes saved."}
+        </p>
       ) : null}
       {params?.error ? (
-        <p className="mt-5 rounded-2xl border border-coral-500/20 bg-coral-100 px-4 py-3 text-sm font-bold text-coral-700">Could not complete that booking billing action.</p>
+        <p className="mt-5 rounded-2xl border border-coral-500/20 bg-coral-100 px-4 py-3 text-sm font-bold text-coral-700">
+          {params.error.startsWith("review") ? "Reviews are available after expedition completion. Add a rating and at least 10 characters." : "Could not complete that booking billing action."}
+        </p>
       ) : null}
 
       <section className="mt-6 grid gap-4">
@@ -100,6 +105,65 @@ export default async function DashboardExpeditionsPage({ searchParams }: Dashboa
                 ) : null}
               </div>
             </div>
+            {booking.status === "completed" ? (
+              <div className="mt-5 rounded-2xl border border-ocean-900/10 bg-sand-50 p-4">
+                <div className="flex flex-col justify-between gap-3 md:flex-row md:items-start">
+                  <div>
+                    <p className="font-bold text-ocean-900">{booking.reviewId ? "Your published review" : "Review this completed expedition"}</p>
+                    <p className="mt-1 text-sm text-ocean-900/62">Your review appears on the expedition public page as a verified completed-participant review.</p>
+                  </div>
+                  {booking.reviewId ? (
+                    <span className="inline-flex w-fit items-center gap-1 rounded-full bg-kelp-100 px-3 py-1 text-xs font-bold text-kelp-700">
+                      <Star size={13} aria-hidden="true" className="fill-kelp-500" />
+                      {booking.reviewRating}
+                    </span>
+                  ) : null}
+                </div>
+                <form action={submitExpeditionReviewAction} className="mt-4 grid gap-3">
+                  <input type="hidden" name="bookingId" value={booking.id} />
+                  <div className="grid gap-3 md:grid-cols-[160px_1fr]">
+                    <label className="grid gap-1.5 text-sm font-bold text-ocean-900">
+                      Rating
+                      <select
+                        name="rating"
+                        defaultValue={String(booking.reviewRating ?? 5)}
+                        className="min-h-11 rounded-lg border border-ocean-900/14 bg-white px-3 text-sm font-semibold text-ocean-900 outline-none focus:border-coral-500"
+                        required
+                      >
+                        {[5, 4, 3, 2, 1].map((rating) => (
+                          <option key={rating} value={rating}>
+                            {rating} stars
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <label className="grid gap-1.5 text-sm font-bold text-ocean-900">
+                      Review title
+                      <input
+                        name="title"
+                        defaultValue={booking.reviewTitle ?? ""}
+                        placeholder="Purposeful and well-run"
+                        className="min-h-11 rounded-lg border border-ocean-900/14 bg-white px-3 text-sm font-semibold text-ocean-900 outline-none placeholder:text-ocean-900/36 focus:border-coral-500"
+                      />
+                    </label>
+                  </div>
+                  <label className="grid gap-1.5 text-sm font-bold text-ocean-900">
+                    Review
+                    <textarea
+                      name="body"
+                      defaultValue={booking.reviewBody ?? ""}
+                      placeholder="Share what future participants should know."
+                      className="min-h-28 rounded-lg border border-ocean-900/14 bg-white px-3 py-3 text-sm font-semibold text-ocean-900 outline-none placeholder:text-ocean-900/36 focus:border-coral-500"
+                      required
+                    />
+                  </label>
+                  <Button type="submit" className="w-fit">
+                    <Star size={16} aria-hidden="true" />
+                    {booking.reviewId ? "Update Review" : "Publish Review"}
+                  </Button>
+                </form>
+              </div>
+            ) : null}
           </article>
         ))}
         {data.bookings.length === 0 ? (

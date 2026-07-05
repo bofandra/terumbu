@@ -26,6 +26,7 @@ import {
   donations,
   expeditionBookings,
   expeditionDepartures,
+  expeditionReviews,
   expeditions,
   impactPassportItems,
   impactPassports,
@@ -759,7 +760,7 @@ export async function getExpeditionDetail(slug: string) {
     return null;
   }
 
-  const [departures, relatedSites, updateRows, evidenceRows, courseRows, relatedExpeditionRows] = await Promise.all([
+  const [departures, relatedSites, updateRows, evidenceRows, courseRows, relatedExpeditionRows, reviewRows, participantSummaryRows] = await Promise.all([
     db
       .select({
         id: expeditionDepartures.id,
@@ -809,7 +810,30 @@ export async function getExpeditionDetail(slug: string) {
           .limit(4)
       : Promise.resolve([]),
     getCourses(),
-    getExpeditionCards(4, row.region)
+    getExpeditionCards(4, row.region),
+    db
+      .select({
+        id: expeditionReviews.id,
+        rating: expeditionReviews.rating,
+        title: expeditionReviews.title,
+        body: expeditionReviews.body,
+        createdAt: expeditionReviews.createdAt,
+        reviewerName: users.name,
+        reviewerDisplayName: profiles.displayName
+      })
+      .from(expeditionReviews)
+      .leftJoin(users, eq(expeditionReviews.userId, users.id))
+      .leftJoin(profiles, eq(profiles.userId, users.id))
+      .where(and(eq(expeditionReviews.expeditionId, row.id), eq(expeditionReviews.status, "published")))
+      .orderBy(desc(expeditionReviews.createdAt))
+      .limit(24),
+    db
+      .select({
+        participantCount: sql<number>`coalesce(sum(${expeditionBookings.participantsCount}), 0)`,
+        bookingCount: sql<number>`count(${expeditionBookings.id})`
+      })
+      .from(expeditionBookings)
+      .where(and(eq(expeditionBookings.expeditionId, row.id), inArray(expeditionBookings.status, ["confirmed", "completed"])))
   ]);
 
   const mappedDepartures = departures.map((departure) => ({
@@ -935,6 +959,26 @@ export async function getExpeditionDetail(slug: string) {
         : undefined
     })
   );
+  const reviewCount = reviewRows.length;
+  const averageRating = reviewCount > 0 ? Number((reviewRows.reduce((total, review) => total + review.rating, 0) / reviewCount).toFixed(1)) : 0;
+  const participantSummary = participantSummaryRows[0] ?? { participantCount: 0, bookingCount: 0 };
+  const publicParticipantCount = Number(participantSummary.participantCount ?? 0);
+  const publicReviews = reviewRows.map((review) => ({
+    id: review.id,
+    name: review.reviewerDisplayName ?? review.reviewerName ?? "Verified participant",
+    joinedAs: "Completed expedition participant",
+    rating: review.rating,
+    date: review.createdAt.toLocaleDateString("id-ID", { month: "long", year: "numeric" }),
+    body: review.title ? `${review.title}. ${review.body}` : review.body
+  }));
+  const publicReviewCategories =
+    reviewCount > 0
+      ? [
+          { label: "Average rating", value: `${averageRating.toFixed(1)} / 5` },
+          { label: "Verified reviews", value: reviewCount.toLocaleString("id-ID") },
+          { label: "Completed bookings", value: Number(participantSummary.bookingCount ?? 0).toLocaleString("id-ID") }
+        ]
+      : [];
   const conservationContribution = expeditionMetadata.impact.conservationContribution ?? Math.round((price * expeditionMetadata.impact.contributionPercent) / 100);
   const platformFee = expeditionMetadata.priceBreakdown.platformFee ?? Math.round((price * expeditionMetadata.priceBreakdown.platformFeePercent) / 100);
   const equipmentRental = expeditionMetadata.priceBreakdown.equipmentRental;
@@ -956,9 +1000,9 @@ export async function getExpeditionDetail(slug: string) {
     activitySummary: expeditionMetadata.activitySummary,
     hostedBy: expeditionMetadata.hostedBy,
     galleryImages: expeditionMetadata.galleryImages,
-    rating: expeditionMetadata.rating,
-    reviewCount: expeditionMetadata.reviewCount,
-    participantCount: expeditionMetadata.participantCount,
+    rating: averageRating,
+    reviewCount,
+    participantCount: publicParticipantCount,
     difficulty: expeditionMetadata.difficulty,
     minimumAge: expeditionMetadata.minimumAge,
     languages: expeditionMetadata.languages,
@@ -1011,8 +1055,8 @@ export async function getExpeditionDetail(slug: string) {
     accommodation: expeditionMetadata.accommodation,
     team: expeditionMetadata.team,
     preparationCourse: expeditionMetadata.preparationCourse,
-    reviewCategories: expeditionMetadata.reviewCategories,
-    reviews: expeditionMetadata.reviews,
+    reviewCategories: publicReviewCategories,
+    reviews: publicReviews,
     tripUpdates: expeditionMetadata.tripUpdates.map((update) => ({ ...update, date: metadataDate(update.date) })),
     cancellationPolicy: expeditionMetadata.cancellationPolicy,
     faqs: expeditionMetadata.faqs.map((item) => [item.question, item.answer] as const),
@@ -2190,11 +2234,19 @@ export async function getDashboardData(userId: string) {
         startsAt: expeditionDepartures.startsAt,
         endsAt: expeditionDepartures.endsAt,
         departureStatus: expeditionDepartures.status,
-        departureMetadata: expeditionDepartures.metadata
+        departureMetadata: expeditionDepartures.metadata,
+        reviewId: expeditionReviews.id,
+        reviewRating: expeditionReviews.rating,
+        reviewTitle: expeditionReviews.title,
+        reviewBody: expeditionReviews.body,
+        reviewStatus: expeditionReviews.status,
+        reviewCreatedAt: expeditionReviews.createdAt,
+        reviewUpdatedAt: expeditionReviews.updatedAt
       })
       .from(expeditionBookings)
       .innerJoin(expeditions, eq(expeditionBookings.expeditionId, expeditions.id))
       .innerJoin(expeditionDepartures, eq(expeditionBookings.departureId, expeditionDepartures.id))
+      .leftJoin(expeditionReviews, eq(expeditionReviews.bookingId, expeditionBookings.id))
       .where(eq(expeditionBookings.userId, userId))
       .orderBy(desc(expeditionBookings.bookedAt)),
     db
@@ -3987,6 +4039,66 @@ export async function getCorporateDashboardData(userId: string) {
       restorationUnits
     }
   };
+}
+
+export async function getCorporateProjectOptions(userId: string) {
+  const [context] = await db
+    .select({
+      programId: corporatePrograms.id
+    })
+    .from(corporatePermissions)
+    .innerJoin(corporateAccounts, eq(corporatePermissions.corporateAccountId, corporateAccounts.id))
+    .innerJoin(corporatePrograms, eq(corporatePrograms.corporateAccountId, corporateAccounts.id))
+    .where(eq(corporatePermissions.userId, userId))
+    .limit(1);
+
+  if (!context) {
+    return [];
+  }
+
+  const [campaignRows, portfolioRows] = await Promise.all([
+    db
+      .select({
+        id: campaigns.id,
+        slug: campaigns.slug,
+        title: campaigns.title,
+        category: campaigns.category,
+        region: campaigns.region,
+        goalAmount: campaigns.goalAmount,
+        raisedAmount: campaigns.raisedAmount,
+        impactTarget: campaigns.impactTarget,
+        impactUnit: campaigns.impactUnit,
+        status: campaigns.status,
+        organizationName: organizations.name
+      })
+      .from(campaigns)
+      .innerJoin(organizations, eq(campaigns.organizationId, organizations.id))
+      .where(inArray(campaigns.status, ["published", "funded", "completed"]))
+      .orderBy(desc(campaigns.publishedAt), asc(campaigns.title)),
+    db
+      .select({
+        campaignId: corporateProjectPortfolio.campaignId,
+        allocationAmount: corporateProjectPortfolio.allocationAmount,
+        status: corporateProjectPortfolio.status
+      })
+      .from(corporateProjectPortfolio)
+      .where(eq(corporateProjectPortfolio.programId, context.programId))
+  ]);
+
+  const portfolioByCampaign = new Map(portfolioRows.map((row) => [row.campaignId, row]));
+
+  return campaignRows.map((campaign) => {
+    const portfolio = portfolioByCampaign.get(campaign.id);
+
+    return {
+      ...campaign,
+      goalAmountValue: toNumber(campaign.goalAmount),
+      raisedAmountValue: toNumber(campaign.raisedAmount),
+      allocationValue: portfolio ? toNumber(portfolio.allocationAmount) : null,
+      portfolioStatus: portfolio?.status ?? null,
+      alreadyFunded: Boolean(portfolio)
+    };
+  });
 }
 
 export async function getPublicCorporateImpactReport(publicSlug: string) {

@@ -8,7 +8,20 @@ import { and, eq } from "drizzle-orm";
 import { redirect } from "next/navigation";
 
 import { db } from "@/db/client";
-import { corporateAccounts, corporatePermissions, corporatePrograms, corporateReportExports } from "@/db/schema";
+import {
+  adminAuditLogs,
+  campaigns,
+  corporateAccounts,
+  corporateEmployees,
+  corporateEvidenceCenter,
+  corporatePermissions,
+  corporateProgramBudgets,
+  corporatePrograms,
+  corporateProjectPortfolio,
+  corporateReportExports,
+  projectEvidence,
+  users
+} from "@/db/schema";
 import { requireUser } from "@/lib/auth";
 import { getCorporateDashboardData } from "@/lib/queries";
 import { formatCurrency } from "@/lib/utils";
@@ -39,7 +52,11 @@ function roleCapabilities(permission: string | null | undefined) {
     canSubmit: isManager,
     canApprove: isManager || isFinance,
     canPublish: isManager,
-    canPreview: isManager || isFinance || isExecutive || isAuditor || value === "employee_engagement"
+    canPreview: isManager || isFinance || isExecutive || isAuditor || value === "employee_engagement",
+    canManageProjects: isManager,
+    canManageEmployees: isManager || value === "employee_engagement",
+    canManageFunding: isManager || isFinance,
+    canReviewEvidence: isManager || isFinance || isAuditor
   };
 }
 
@@ -69,6 +86,62 @@ async function corporateContext(userId: string) {
     .limit(1);
 
   return context ?? null;
+}
+
+function parsePositiveAmount(value: FormDataEntryValue | null) {
+  const normalized = String(value ?? "")
+    .replace(/[^\d.]/g, "")
+    .trim();
+  const amount = Number(normalized);
+
+  return Number.isFinite(amount) && amount > 0 ? amount : null;
+}
+
+function parseNonNegativeAmount(value: FormDataEntryValue | null) {
+  const normalized = String(value ?? "")
+    .replace(/[^\d.]/g, "")
+    .trim();
+
+  if (!normalized) {
+    return null;
+  }
+
+  const amount = Number(normalized);
+
+  return Number.isFinite(amount) && amount >= 0 ? amount : null;
+}
+
+function textValue(value: FormDataEntryValue | null, maxLength: number) {
+  return String(value ?? "")
+    .trim()
+    .slice(0, maxLength);
+}
+
+function isUuid(value: string) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
+}
+
+function auditMetadata(values: Record<string, unknown>) {
+  return {
+    source: "corporate_portal",
+    ...values
+  };
+}
+
+async function writeAuditLog(input: {
+  actorUserId: string;
+  action: string;
+  entityType: string;
+  entityId?: string | null;
+  metadata?: Record<string, unknown>;
+}) {
+  await db.insert(adminAuditLogs).values({
+    actorUserId: input.actorUserId,
+    action: input.action,
+    entityType: input.entityType,
+    entityId: input.entityId,
+    metadata: auditMetadata(input.metadata ?? {})
+  });
 }
 
 function reportHtml(input: {
@@ -262,6 +335,293 @@ export async function createCorporateReportExportAction(formData: FormData) {
   });
 
   redirect("/corporate/reports?saved=export");
+}
+
+export async function fundCorporateProjectAction(formData: FormData) {
+  const user = await requireUser("/corporate/projects");
+  const context = await corporateContext(user.id);
+
+  if (!context || !roleCapabilities(context.permission).canManageProjects) {
+    redirect("/corporate/projects?error=permission");
+  }
+
+  const campaignId = textValue(formData.get("campaignId"), 80);
+  const allocationAmount = parsePositiveAmount(formData.get("allocationAmount"));
+  const requestedStatus = textValue(formData.get("status"), 80);
+  const status = ["funded", "monitoring", "review", "completed"].includes(requestedStatus) ? requestedStatus : "funded";
+
+  if (!campaignId || !isUuid(campaignId) || !allocationAmount) {
+    redirect("/corporate/projects?error=project");
+  }
+
+  const [campaign] = await db
+    .select({
+      id: campaigns.id,
+      title: campaigns.title
+    })
+    .from(campaigns)
+    .where(eq(campaigns.id, campaignId))
+    .limit(1);
+
+  if (!campaign) {
+    redirect("/corporate/projects?error=project");
+  }
+
+  const [portfolioRow] = await db
+    .insert(corporateProjectPortfolio)
+    .values({
+      programId: context.programId,
+      campaignId: campaign.id,
+      allocationAmount: allocationAmount.toFixed(2),
+      status
+    })
+    .onConflictDoUpdate({
+      target: [corporateProjectPortfolio.programId, corporateProjectPortfolio.campaignId],
+      set: {
+        allocationAmount: allocationAmount.toFixed(2),
+        status
+      }
+    })
+    .returning({ id: corporateProjectPortfolio.id });
+
+  const evidenceRows = await db
+    .select({
+      id: projectEvidence.id
+    })
+    .from(projectEvidence)
+    .where(eq(projectEvidence.campaignId, campaign.id));
+
+  if (evidenceRows.length > 0) {
+    await db
+      .insert(corporateEvidenceCenter)
+      .values(
+        evidenceRows.map((evidence) => ({
+          programId: context.programId,
+          evidenceId: evidence.id,
+          visibility: "reportable"
+        }))
+      )
+      .onConflictDoNothing({
+        target: [corporateEvidenceCenter.programId, corporateEvidenceCenter.evidenceId]
+      });
+  }
+
+  await writeAuditLog({
+    actorUserId: user.id,
+    action: "corporate.project.funded",
+    entityType: "corporate_project_portfolio",
+    entityId: portfolioRow?.id,
+    metadata: {
+      programId: context.programId,
+      campaignId: campaign.id,
+      campaignTitle: campaign.title,
+      allocationAmount,
+      status,
+      evidenceLinked: evidenceRows.length
+    }
+  });
+
+  redirect("/corporate/projects?saved=project");
+}
+
+function permissionForEmployeeRole(role: string) {
+  const permissions: Record<string, string> = {
+    program_admin: "program.manage",
+    finance_reviewer: "finance_reviewer",
+    employee_engagement: "employee_engagement",
+    auditor: "auditor",
+    report_viewer: "executive_viewer"
+  };
+
+  return permissions[role] ?? "executive_viewer";
+}
+
+export async function inviteCorporateEmployeeAction(formData: FormData) {
+  const user = await requireUser("/corporate/employees");
+  const context = await corporateContext(user.id);
+
+  if (!context || !roleCapabilities(context.permission).canManageEmployees) {
+    redirect("/corporate/employees?error=permission");
+  }
+
+  const name = textValue(formData.get("name"), 160);
+  const email = textValue(formData.get("email"), 255).toLowerCase();
+  const department = textValue(formData.get("department"), 120) || null;
+  const requestedRole = textValue(formData.get("role"), 120);
+  const role = ["program_admin", "finance_reviewer", "employee_engagement", "auditor", "report_viewer", "member"].includes(requestedRole) ? requestedRole : "member";
+  const requestedStatus = textValue(formData.get("status"), 80);
+  const status = ["active", "invited", "suspended"].includes(requestedStatus) ? requestedStatus : "invited";
+
+  if (!name || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    redirect("/corporate/employees?error=employee");
+  }
+
+  const [linkedUser] = await db
+    .select({
+      id: users.id
+    })
+    .from(users)
+    .where(eq(users.email, email))
+    .limit(1);
+
+  const [employee] = await db
+    .insert(corporateEmployees)
+    .values({
+      corporateAccountId: context.accountId,
+      userId: linkedUser?.id,
+      email,
+      name,
+      department,
+      role,
+      status
+    })
+    .onConflictDoUpdate({
+      target: [corporateEmployees.corporateAccountId, corporateEmployees.email],
+      set: {
+        userId: linkedUser?.id,
+        name,
+        department,
+        role,
+        status
+      }
+    })
+    .returning({ id: corporateEmployees.id });
+
+  if (linkedUser) {
+    await db
+      .insert(corporatePermissions)
+      .values({
+        corporateAccountId: context.accountId,
+        userId: linkedUser.id,
+        permission: permissionForEmployeeRole(role)
+      })
+      .onConflictDoNothing({
+        target: [corporatePermissions.corporateAccountId, corporatePermissions.userId, corporatePermissions.permission]
+      });
+  }
+
+  await writeAuditLog({
+    actorUserId: user.id,
+    action: "corporate.employee.invited",
+    entityType: "corporate_employees",
+    entityId: employee?.id,
+    metadata: {
+      accountId: context.accountId,
+      email,
+      role,
+      status,
+      linkedUserId: linkedUser?.id ?? null
+    }
+  });
+
+  redirect("/corporate/employees?saved=employee");
+}
+
+export async function updateCorporateBudgetAction(formData: FormData) {
+  const user = await requireUser("/corporate/funding");
+  const context = await corporateContext(user.id);
+
+  if (!context || !roleCapabilities(context.permission).canManageFunding) {
+    redirect("/corporate/funding?error=permission");
+  }
+
+  const category = textValue(formData.get("category"), 120);
+  const allocatedAmount = parsePositiveAmount(formData.get("allocatedAmount"));
+  const spentAmount = parseNonNegativeAmount(formData.get("spentAmount"));
+
+  if (!category || !allocatedAmount || spentAmount === null) {
+    redirect("/corporate/funding?error=budget");
+  }
+
+  const [budget] = await db
+    .insert(corporateProgramBudgets)
+    .values({
+      programId: context.programId,
+      category,
+      allocatedAmount: allocatedAmount.toFixed(2),
+      spentAmount: spentAmount.toFixed(2),
+      metadata: {
+        updatedFrom: "corporate_portal"
+      }
+    })
+    .onConflictDoUpdate({
+      target: [corporateProgramBudgets.programId, corporateProgramBudgets.category],
+      set: {
+        allocatedAmount: allocatedAmount.toFixed(2),
+        spentAmount: spentAmount.toFixed(2),
+        metadata: {
+          updatedFrom: "corporate_portal"
+        }
+      }
+    })
+    .returning({ id: corporateProgramBudgets.id });
+
+  await writeAuditLog({
+    actorUserId: user.id,
+    action: "corporate.budget.updated",
+    entityType: "corporate_program_budgets",
+    entityId: budget?.id,
+    metadata: {
+      programId: context.programId,
+      category,
+      allocatedAmount,
+      spentAmount
+    }
+  });
+
+  redirect("/corporate/funding?saved=budget");
+}
+
+export async function updateCorporateEvidenceStatusAction(formData: FormData) {
+  const user = await requireUser("/corporate/evidence");
+  const context = await corporateContext(user.id);
+
+  if (!context || !roleCapabilities(context.permission).canReviewEvidence) {
+    redirect("/corporate/evidence?error=permission");
+  }
+
+  const evidenceId = textValue(formData.get("evidenceId"), 80);
+  const requestedStatus = textValue(formData.get("verificationStatus"), 80);
+  const evidenceStatuses = ["submitted", "in_review", "verified", "rejected"] as const;
+  type EvidenceStatusValue = (typeof evidenceStatuses)[number];
+  const verificationStatus = evidenceStatuses.includes(requestedStatus as EvidenceStatusValue) ? (requestedStatus as EvidenceStatusValue) : null;
+
+  if (!evidenceId || !isUuid(evidenceId) || !verificationStatus) {
+    redirect("/corporate/evidence?error=evidence");
+  }
+
+  const [evidenceAccess] = await db
+    .select({
+      id: corporateEvidenceCenter.id
+    })
+    .from(corporateEvidenceCenter)
+    .where(and(eq(corporateEvidenceCenter.programId, context.programId), eq(corporateEvidenceCenter.evidenceId, evidenceId)))
+    .limit(1);
+
+  if (!evidenceAccess) {
+    redirect("/corporate/evidence?error=evidence");
+  }
+
+  await db
+    .update(projectEvidence)
+    .set({
+      verificationStatus,
+      verifiedAt: verificationStatus === "verified" ? new Date() : null
+    })
+    .where(eq(projectEvidence.id, evidenceId));
+
+  await writeAuditLog({
+    actorUserId: user.id,
+    action: "corporate.evidence.status_updated",
+    entityType: "project_evidence",
+    entityId: evidenceId,
+    metadata: {
+      programId: context.programId,
+      verificationStatus
+    }
+  });
+
+  redirect("/corporate/evidence?saved=evidence");
 }
 
 async function reportForUser(userId: string, reportId: string) {

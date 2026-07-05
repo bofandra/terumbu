@@ -515,6 +515,24 @@ export const expeditionBookings = pgTable("expedition_bookings", {
   statusIdx: index("expedition_bookings_status_idx").on(table.status)
 }));
 
+export const expeditionReviews = pgTable("expedition_reviews", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  expeditionId: uuid("expedition_id").notNull().references(() => expeditions.id, { onDelete: "cascade" }),
+  bookingId: uuid("booking_id").notNull().references(() => expeditionBookings.id, { onDelete: "cascade" }),
+  userId: uuid("user_id").references(() => users.id, { onDelete: "set null" }),
+  rating: integer("rating").notNull(),
+  title: varchar("title", { length: 160 }),
+  body: text("body").notNull(),
+  status: varchar("status", { length: 80 }).default("published").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull()
+}, (table) => ({
+  bookingIdx: uniqueIndex("expedition_reviews_booking_idx").on(table.bookingId),
+  expeditionIdx: index("expedition_reviews_expedition_idx").on(table.expeditionId),
+  userIdx: index("expedition_reviews_user_idx").on(table.userId),
+  statusIdx: index("expedition_reviews_status_idx").on(table.status)
+}));
+
 export const expeditionParticipants = pgTable("expedition_participants", {
   id: uuid("id").defaultRandom().primaryKey(),
   bookingId: uuid("booking_id").notNull().references(() => expeditionBookings.id, { onDelete: "cascade" }),

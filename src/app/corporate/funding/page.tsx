@@ -1,9 +1,10 @@
 import { AlertTriangle, CheckCircle2, CircleDollarSign, FileBadge, ShieldCheck } from "lucide-react";
 
 import { CorporateEmptyState } from "@/components/corporate-empty-state";
-import { ButtonLink } from "@/components/ui/button";
+import { Button, ButtonLink } from "@/components/ui/button";
 import { ProgressMeter } from "@/components/ui/progress-meter";
 import { requireUser } from "@/lib/auth";
+import { updateCorporateBudgetAction } from "@/lib/corporate-actions";
 import { getCorporateDashboardData } from "@/lib/queries";
 import { cn, formatCurrency } from "@/lib/utils";
 
@@ -12,6 +13,13 @@ export const metadata = {
 };
 
 export const dynamic = "force-dynamic";
+
+type CorporateFundingPageProps = {
+  searchParams?: Promise<{
+    error?: string;
+    saved?: string;
+  }>;
+};
 
 function formatDate(value: Date | null | undefined) {
   return value ? value.toLocaleDateString("id-ID", { dateStyle: "medium" }) : "Pending";
@@ -29,7 +37,8 @@ function statusClass(status: string) {
   return "bg-ocean-50 text-ocean-700";
 }
 
-export default async function CorporateFundingPage() {
+export default async function CorporateFundingPage({ searchParams }: CorporateFundingPageProps) {
+  const params = await searchParams;
   const user = await requireUser("/corporate/funding");
   const data = await getCorporateDashboardData(user.id);
 
@@ -53,6 +62,13 @@ export default async function CorporateFundingPage() {
         </ButtonLink>
       </div>
 
+      {params?.saved ? (
+        <p className="mt-6 rounded-xl border border-kelp-500/20 bg-kelp-100 px-4 py-3 text-sm font-bold text-kelp-700">Budget utilization updated.</p>
+      ) : null}
+      {params?.error ? (
+        <p className="mt-6 rounded-xl border border-coral-500/20 bg-coral-100 px-4 py-3 text-sm font-bold text-coral-700">Budget update could not be saved with the current input or permission.</p>
+      ) : null}
+
       <section className="mt-6 grid gap-4 md:grid-cols-4">
         {[
           { label: "Committed", value: formatCurrency(data.financials.committedFunding), icon: CircleDollarSign },
@@ -70,6 +86,50 @@ export default async function CorporateFundingPage() {
             </article>
           );
         })}
+      </section>
+
+      <section className="mt-6 rounded-2xl border border-ocean-900/10 bg-white p-5 shadow-soft">
+        <p className="text-sm font-bold uppercase text-coral-700">Budget actions</p>
+        <h2 className="mt-2 text-xl font-bold tracking-normal text-ocean-900">Update allocation and verified utilization</h2>
+        <form action={updateCorporateBudgetAction} className="mt-5 grid gap-3 md:grid-cols-[minmax(220px,1fr)_180px_180px_auto]">
+          <label className="grid gap-2 text-sm font-bold text-ocean-900">
+            Category
+            <select name="category" className="min-h-11 rounded-xl border border-ocean-900/12 bg-white px-3 text-sm font-semibold text-ocean-900 outline-none">
+              {data.budgetVariance.map((budget) => (
+                <option key={budget.category} value={budget.category}>
+                  {budget.category}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="grid gap-2 text-sm font-bold text-ocean-900">
+            Allocated
+            <input
+              name="allocatedAmount"
+              type="number"
+              min="1"
+              step="1000000"
+              placeholder="IDR"
+              className="min-h-11 rounded-xl border border-ocean-900/12 px-3 text-sm font-semibold text-ocean-900 outline-none"
+              required
+            />
+          </label>
+          <label className="grid gap-2 text-sm font-bold text-ocean-900">
+            Verified spent
+            <input
+              name="spentAmount"
+              type="number"
+              min="0"
+              step="1000000"
+              placeholder="IDR"
+              className="min-h-11 rounded-xl border border-ocean-900/12 px-3 text-sm font-semibold text-ocean-900 outline-none"
+              required
+            />
+          </label>
+          <Button type="submit" tone="secondary" className="self-end">
+            Save Budget
+          </Button>
+        </form>
       </section>
 
       <section className="mt-6 grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">

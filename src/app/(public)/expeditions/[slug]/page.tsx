@@ -100,7 +100,9 @@ export default async function ExpeditionDetailPage({ params }: { params: Promise
                 <div className="mt-6 grid gap-3 text-sm font-semibold text-ocean-900/72">
                   <span className="flex items-center gap-2">
                     <Star size={17} aria-hidden="true" className="fill-coral-500 text-coral-500" />
-                    {expedition.rating} · {expedition.reviewCount} verified reviews · {expedition.participantCount} participants
+                    {expedition.reviewCount > 0
+                      ? `${expedition.rating.toFixed(1)} · ${expedition.reviewCount} verified reviews · ${expedition.participantCount} participants`
+                      : `${expedition.participantCount} completed participants · reviews open after completion`}
                   </span>
                   <span className="flex items-center gap-2">
                     <MapPin size={17} aria-hidden="true" />
@@ -510,8 +512,10 @@ export default async function ExpeditionDetailPage({ params }: { params: Promise
             <section id="reviews" className="scroll-mt-32 grid gap-6 lg:grid-cols-[0.85fr_1.15fr]">
               <article className="rounded-2xl border border-ocean-900/10 bg-white p-6 shadow-soft">
                 <p className="text-sm font-bold uppercase tracking-[0.16em] text-coral-700">Verified reviews</p>
-                <p className="mt-4 text-5xl font-bold text-ocean-900">{expedition.rating}</p>
-                <p className="mt-2 text-sm font-semibold text-ocean-900/62">{expedition.reviewCount} verified participant reviews</p>
+                <p className="mt-4 text-5xl font-bold text-ocean-900">{expedition.reviewCount > 0 ? expedition.rating.toFixed(1) : "-"}</p>
+                <p className="mt-2 text-sm font-semibold text-ocean-900/62">
+                  {expedition.reviewCount > 0 ? `${expedition.reviewCount} verified participant reviews` : "Reviews appear after completed participants submit them."}
+                </p>
                 <div className="mt-5 grid gap-2 text-sm font-semibold text-ocean-900/64">
                   {expedition.reviewCategories.map((item) => (
                     <span key={item.label} className="flex items-center justify-between">
@@ -522,22 +526,29 @@ export default async function ExpeditionDetailPage({ params }: { params: Promise
                 </div>
               </article>
               <div className="grid gap-4">
-                {expedition.reviews.map((review) => (
-                  <article key={`${review.name}-${review.date}`} className="rounded-2xl border border-ocean-900/10 bg-white p-5 shadow-soft">
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <p className="font-bold text-ocean-900">{review.name}</p>
-                        <p className="mt-1 text-xs font-semibold text-ocean-900/52">{review.joinedAs} · {review.date}</p>
+                {expedition.reviews.length > 0 ? (
+                  expedition.reviews.map((review) => (
+                    <article key={review.id} className="rounded-2xl border border-ocean-900/10 bg-white p-5 shadow-soft">
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <p className="font-bold text-ocean-900">{review.name}</p>
+                          <p className="mt-1 text-xs font-semibold text-ocean-900/52">{review.joinedAs} · {review.date}</p>
+                        </div>
+                        <span className="flex items-center gap-1 rounded-full bg-kelp-100 px-3 py-1 text-xs font-bold text-kelp-700">
+                          <Star size={13} aria-hidden="true" className="fill-kelp-500" />
+                          {review.rating}
+                        </span>
                       </div>
-                      <span className="flex items-center gap-1 rounded-full bg-kelp-100 px-3 py-1 text-xs font-bold text-kelp-700">
-                        <Star size={13} aria-hidden="true" className="fill-kelp-500" />
-                        {review.rating}
-                      </span>
-                    </div>
-                    <p className="mt-4 text-sm leading-6 text-ocean-900/68">{review.body}</p>
-                    <p className="mt-3 text-xs font-bold text-ocean-900/48">Verified participant review. Moderated for privacy and relevance, not for negative opinions.</p>
+                      <p className="mt-4 text-sm leading-6 text-ocean-900/68">{review.body}</p>
+                      <p className="mt-3 text-xs font-bold text-ocean-900/48">Verified participant review. Moderated for privacy and relevance, not for negative opinions.</p>
+                    </article>
+                  ))
+                ) : (
+                  <article className="rounded-2xl border border-dashed border-ocean-900/14 bg-white p-5 shadow-soft">
+                    <p className="font-bold text-ocean-900">No completed-participant reviews yet.</p>
+                    <p className="mt-2 text-sm leading-6 text-ocean-900/62">Participants can review from their dashboard once the expedition is marked completed.</p>
                   </article>
-                ))}
+                )}
               </div>
             </section>
 

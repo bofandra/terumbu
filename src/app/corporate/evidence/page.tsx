@@ -2,7 +2,9 @@ import Link from "next/link";
 import { CheckCircle2, ClipboardList, Clock3, ExternalLink, MessageSquare, ShieldCheck } from "lucide-react";
 
 import { CorporateEmptyState } from "@/components/corporate-empty-state";
+import { Button } from "@/components/ui/button";
 import { requireUser } from "@/lib/auth";
+import { updateCorporateEvidenceStatusAction } from "@/lib/corporate-actions";
 import { getCorporateDashboardData } from "@/lib/queries";
 import { cn } from "@/lib/utils";
 
@@ -11,6 +13,13 @@ export const metadata = {
 };
 
 export const dynamic = "force-dynamic";
+
+type CorporateEvidencePageProps = {
+  searchParams?: Promise<{
+    error?: string;
+    saved?: string;
+  }>;
+};
 
 function formatDate(value: Date | null | undefined) {
   return value ? value.toLocaleDateString("id-ID", { dateStyle: "medium" }) : "Pending";
@@ -32,7 +41,8 @@ function statusClass(status: string) {
   return "bg-sand-100 text-ocean-900/62";
 }
 
-export default async function CorporateEvidencePage() {
+export default async function CorporateEvidencePage({ searchParams }: CorporateEvidencePageProps) {
+  const params = await searchParams;
   const user = await requireUser("/corporate/evidence");
   const data = await getCorporateDashboardData(user.id);
 
@@ -56,6 +66,13 @@ export default async function CorporateEvidencePage() {
           Review submitted field records, request clarification, approve evidence for reports, and keep an immutable trail for auditors.
         </p>
       </div>
+
+      {params?.saved ? (
+        <p className="mt-6 rounded-xl border border-kelp-500/20 bg-kelp-100 px-4 py-3 text-sm font-bold text-kelp-700">Evidence review status updated.</p>
+      ) : null}
+      {params?.error ? (
+        <p className="mt-6 rounded-xl border border-coral-500/20 bg-coral-100 px-4 py-3 text-sm font-bold text-coral-700">Evidence status could not be saved with the current input or permission.</p>
+      ) : null}
 
       <section className="mt-6 grid gap-4 md:grid-cols-4">
         {reviewStages.map((stage) => {
@@ -113,6 +130,21 @@ export default async function CorporateEvidencePage() {
                   </div>
                 </div>
                 <p className="mt-4 rounded-xl bg-white p-3 text-xs font-semibold leading-5 text-ocean-900/62">{item.internalNote}</p>
+                <form action={updateCorporateEvidenceStatusAction} className="mt-4 grid gap-2 sm:grid-cols-[1fr_auto]">
+                  <input type="hidden" name="evidenceId" value={item.id} />
+                  <label className="grid gap-2 text-xs font-bold uppercase tracking-[0.14em] text-ocean-900/46">
+                    Review status
+                    <select name="verificationStatus" defaultValue={item.verificationStatus} className="min-h-10 rounded-xl border border-ocean-900/12 bg-white px-3 text-sm font-semibold normal-case tracking-normal text-ocean-900 outline-none">
+                      <option value="submitted">Submitted</option>
+                      <option value="in_review">In review</option>
+                      <option value="verified">Verified</option>
+                      <option value="rejected">Rejected</option>
+                    </select>
+                  </label>
+                  <Button type="submit" tone="light" className="self-end">
+                    Save Status
+                  </Button>
+                </form>
                 <div className="mt-4 border-t border-ocean-900/10 pt-4">
                   <p className="text-xs font-bold uppercase tracking-[0.14em] text-ocean-900/46">Audit trail</p>
                   <div className="mt-3 grid gap-2">

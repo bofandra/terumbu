@@ -57,6 +57,13 @@
       "when": 1783182780793,
       "tag": "0007_colossal_guardian",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1783209290467,
+      "tag": "0008_expedition_reviews",
+      "breakpoints": true
     }
   ]
 }
