@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import {
   BarChart3,
   Bell,
+  Building2,
   GraduationCap,
   CircleHelp,
   FileCheck2,
@@ -45,6 +46,7 @@ const adminNavItems: AdminNavItem[] = [
     ]
   },
   { href: "/admin/expeditions", label: "Expeditions", icon: ShipWheel },
+  { href: "/admin/corporate", label: "Corporate", icon: Building2 },
   { href: "/admin/academy", label: "Academy", icon: GraduationCap },
   { href: "/admin/partners", label: "Partners", icon: Handshake },
   { href: "/admin/reports", label: "Reports", icon: BarChart3 },

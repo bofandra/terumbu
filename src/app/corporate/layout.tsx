@@ -1,5 +1,3 @@
-import { notFound } from "next/navigation";
-
 import { CorporateShell } from "@/components/corporate-shell";
 import { requireUser } from "@/lib/auth";
 import { getCorporateDashboardData } from "@/lib/queries";
@@ -21,7 +19,7 @@ export default async function CorporateLayout({ children }: Readonly<{ children:
   const data = await getCorporateDashboardData(user.id);
 
   if (!data) {
-    notFound();
+    return <>{children}</>;
   }
 
   const displayName = user.displayName ?? user.name ?? user.email;

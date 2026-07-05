@@ -18,6 +18,7 @@ const {
   campaigns,
   campaignFollowSubscriptions,
   corporateAccounts,
+  corporateContributions,
   corporateEmployees,
   corporateEvidenceCenter,
   corporatePermissions,
@@ -145,6 +146,8 @@ const ids = {
   corporateEmployeeFinance: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbe2",
   corporatePortfolioRaja: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbf1",
   corporatePortfolioBali: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbf2",
+  corporateContributionRaja: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbc1",
+  corporateContributionBali: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbc2",
   corporateEvidenceRaja: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbba1",
   corporateEvidenceBali: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbba2",
   corporateReportExport: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbb91",
@@ -1893,6 +1896,59 @@ async function seed() {
       set: {
         allocationAmount: sql`excluded.allocation_amount`,
         status: sql`excluded.status`
+      }
+    });
+
+  await db
+    .insert(corporateContributions)
+    .values([
+      {
+        id: ids.corporateContributionRaja,
+        corporateAccountId: ids.corporateAccount,
+        programId: ids.corporateProgram,
+        campaignId: campaignBySlug.get("restore-raja-ampat-reefs")!,
+        createdByUserId: demoUser.id,
+        referenceCode: "TRB-CORP-2026-DEMO-RAJA-CSR",
+        contributionType: "csr",
+        amount: "120000000.00",
+        currency: "IDR",
+        status: "disbursed",
+        countsTowardCampaignGoal: true,
+        contributionDate: date("2026-05-18"),
+        notes: "Seeded corporate CSR disbursement that counts toward public campaign progress.",
+        metadata: { source: "seed", portfolioStatus: "monitoring" },
+        updatedAt: now,
+        createdAt: date("2026-05-18")
+      },
+      {
+        id: ids.corporateContributionBali,
+        corporateAccountId: ids.corporateAccount,
+        programId: ids.corporateProgram,
+        campaignId: campaignBySlug.get("mangrove-shield-bali")!,
+        createdByUserId: demoUser.id,
+        referenceCode: "TRB-CORP-2026-DEMO-BALI-GRANT",
+        contributionType: "grant",
+        amount: "85000000.00",
+        currency: "IDR",
+        status: "committed",
+        countsTowardCampaignGoal: false,
+        contributionDate: date("2026-06-02"),
+        notes: "Seeded grant commitment for corporate reporting only.",
+        metadata: { source: "seed", portfolioStatus: "review" },
+        updatedAt: now,
+        createdAt: date("2026-06-02")
+      }
+    ])
+    .onConflictDoUpdate({
+      target: corporateContributions.referenceCode,
+      set: {
+        programId: ids.corporateProgram,
+        status: sql`excluded.status`,
+        amount: sql`excluded.amount`,
+        countsTowardCampaignGoal: sql`excluded.counts_toward_campaign_goal`,
+        notes: sql`excluded.notes`,
+        metadata: sql`excluded.metadata`,
+        updatedAt: now
       }
     });
 

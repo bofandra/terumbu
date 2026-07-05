@@ -11,6 +11,7 @@ import {
   campaigns,
   campaignFollowSubscriptions,
   corporateAccounts,
+  corporateContributions,
   corporateEmployees,
   corporateEvidenceCenter,
   corporatePermissions,
@@ -2179,6 +2180,7 @@ export async function getDashboardData(userId: string) {
     db
       .select({
         id: donations.id,
+        campaignId: campaigns.id,
         campaignSlug: campaigns.slug,
         campaignTitle: campaigns.title,
         campaignCategory: campaigns.category,
@@ -2212,6 +2214,7 @@ export async function getDashboardData(userId: string) {
         plantedAt: sponsoredEcosystems.plantedAt,
         lastUpdatedAt: sponsoredEcosystems.lastUpdatedAt,
         metadata: sponsoredEcosystems.metadata,
+        campaignId: campaigns.id,
         campaignSlug: campaigns.slug,
         campaignTitle: campaigns.title,
         campaignImageUrl: campaigns.imageUrl,
@@ -2311,6 +2314,7 @@ export async function getDashboardData(userId: string) {
     db
       .select({
         id: campaignUpdates.id,
+        campaignId: campaigns.id,
         campaignSlug: campaigns.slug,
         campaignTitle: campaigns.title,
         title: campaignUpdates.title,
@@ -2329,6 +2333,7 @@ export async function getDashboardData(userId: string) {
       .select({
         id: projectEvidence.id,
         impactSiteId: projectEvidence.impactSiteId,
+        campaignId: campaigns.id,
         campaignSlug: campaigns.slug,
         campaignTitle: campaigns.title,
         evidenceCode: projectEvidence.evidenceCode,
@@ -2373,6 +2378,7 @@ export async function getDashboardData(userId: string) {
         latitude: impactSites.latitude,
         longitude: impactSites.longitude,
         metadata: impactSites.metadata,
+        campaignId: campaigns.id,
         campaignSlug: campaigns.slug,
         campaignTitle: campaigns.title,
         amount: donations.amount
@@ -2414,6 +2420,7 @@ export async function getDashboardData(userId: string) {
         title: campaignUpdates.title,
         publishedAt: campaignUpdates.publishedAt,
         createdAt: campaignUpdates.createdAt,
+        campaignId: campaigns.id,
         campaignSlug: campaigns.slug,
         campaignTitle: campaigns.title,
         frequency: campaignFollowSubscriptions.frequency
@@ -3168,6 +3175,7 @@ export async function getBillingData(userId: string) {
     db
       .select({
         id: donationSubscriptions.id,
+        campaignId: campaigns.id,
         campaignSlug: campaigns.slug,
         campaignTitle: campaigns.title,
         campaignImageUrl: campaigns.imageUrl,
@@ -3321,7 +3329,7 @@ export async function getCorporateDashboardData(userId: string) {
     return null;
   }
 
-  const [budgets, employees, portfolio, evidence, exports] = await Promise.all([
+  const [budgets, employees, portfolio, evidence, exports, contributions] = await Promise.all([
     db
       .select({
         category: corporateProgramBudgets.category,
@@ -3343,6 +3351,7 @@ export async function getCorporateDashboardData(userId: string) {
       .where(eq(corporateEmployees.corporateAccountId, program.accountId)),
     db
       .select({
+        campaignId: campaigns.id,
         campaignSlug: campaigns.slug,
         campaignTitle: campaigns.title,
         campaignCategory: campaigns.category,
@@ -3373,6 +3382,7 @@ export async function getCorporateDashboardData(userId: string) {
         verificationStatus: projectEvidence.verificationStatus,
         fileUrl: projectEvidence.fileUrl,
         metadata: projectEvidence.metadata,
+        campaignId: campaigns.id,
         campaignSlug: campaigns.slug,
         campaignTitle: campaigns.title,
         organizationName: organizations.name,
@@ -3406,11 +3416,59 @@ export async function getCorporateDashboardData(userId: string) {
       })
       .from(corporateReportExports)
       .where(eq(corporateReportExports.programId, program.programId))
-      .orderBy(desc(corporateReportExports.createdAt))
+      .orderBy(desc(corporateReportExports.createdAt)),
+    db
+      .select({
+        id: corporateContributions.id,
+        referenceCode: corporateContributions.referenceCode,
+        contributionType: corporateContributions.contributionType,
+        amount: corporateContributions.amount,
+        currency: corporateContributions.currency,
+        status: corporateContributions.status,
+        countsTowardCampaignGoal: corporateContributions.countsTowardCampaignGoal,
+        contributionDate: corporateContributions.contributionDate,
+        notes: corporateContributions.notes,
+        campaignId: campaigns.id,
+        campaignSlug: campaigns.slug,
+        campaignTitle: campaigns.title
+      })
+      .from(corporateContributions)
+      .innerJoin(campaigns, eq(corporateContributions.campaignId, campaigns.id))
+      .where(eq(corporateContributions.programId, program.programId))
+      .orderBy(desc(corporateContributions.contributionDate))
   ]);
+
+  const contributionRows = contributions.map((contribution) => ({
+    ...contribution,
+    amountValue: toNumber(contribution.amount),
+    statusLabel: contribution.status.replace(/_/g, " "),
+    publicGoalLabel: contribution.countsTowardCampaignGoal ? "Counts toward campaign goal" : "Corporate reporting only"
+  }));
+  const contributionsByCampaign = new Map<string, typeof contributionRows>();
+
+  for (const contribution of contributionRows) {
+    const rows = contributionsByCampaign.get(contribution.campaignId) ?? [];
+    rows.push(contribution);
+    contributionsByCampaign.set(contribution.campaignId, rows);
+  }
 
   const totalAllocated = budgets.reduce((total, budget) => total + toNumber(budget.allocatedAmount), 0);
   const totalSpent = budgets.reduce((total, budget) => total + toNumber(budget.spentAmount), 0);
+  const contributionTotal = contributionRows
+    .filter((contribution) => contribution.status !== "cancelled")
+    .reduce((total, contribution) => total + contribution.amountValue, 0);
+  const contributionCommitted = contributionRows
+    .filter((contribution) => ["committed", "disbursed", "verified"].includes(contribution.status))
+    .reduce((total, contribution) => total + contribution.amountValue, 0);
+  const contributionDisbursed = contributionRows
+    .filter((contribution) => ["disbursed", "verified"].includes(contribution.status))
+    .reduce((total, contribution) => total + contribution.amountValue, 0);
+  const contributionVerified = contributionRows
+    .filter((contribution) => contribution.status === "verified")
+    .reduce((total, contribution) => total + contribution.amountValue, 0);
+  const campaignGoalContribution = contributionRows
+    .filter((contribution) => contribution.countsTowardCampaignGoal && ["committed", "disbursed", "verified"].includes(contribution.status))
+    .reduce((total, contribution) => total + contribution.amountValue, 0);
   const budgetUsed = totalAllocated > 0 ? Math.round((totalSpent / totalAllocated) * 100) : 0;
   const committedFunding = toNumber(program.budgetAmount);
   const fundsDisbursed = totalAllocated;
@@ -3488,6 +3546,9 @@ export async function getCorporateDashboardData(userId: string) {
       ...project,
       organizationVerification: verificationLabel(project.organizationVerification),
       allocationValue: toNumber(project.allocationAmount),
+      contributions: contributionsByCampaign.get(project.campaignId) ?? [],
+      contributionTotal: (contributionsByCampaign.get(project.campaignId) ?? []).reduce((total, contribution) => total + contribution.amountValue, 0),
+      latestContributionStatus: contributionsByCampaign.get(project.campaignId)?.[0]?.status ?? "not_recorded",
       utilization,
       impactProgress,
       statusLabel,
@@ -3989,6 +4050,7 @@ export async function getCorporateDashboardData(userId: string) {
     program,
     budgets,
     employees,
+    contributions: contributionRows,
     portfolio: portfolioRows,
     evidence: corporateEvidence,
     exports: reportExports,
@@ -4026,7 +4088,12 @@ export async function getCorporateDashboardData(userId: string) {
       remainingCommitment,
       disbursementRate,
       verifiedUtilizationRate,
-      budgetUsed
+      budgetUsed,
+      contributionTotal,
+      contributionCommitted,
+      contributionDisbursed,
+      contributionVerified,
+      campaignGoalContribution
     },
     impactOutputs: {
       restorationUnits,
@@ -4067,7 +4134,7 @@ export async function getCorporateProjectOptions(userId: string) {
     return [];
   }
 
-  const [campaignRows, portfolioRows] = await Promise.all([
+  const [campaignRows, portfolioRows, contributionRows] = await Promise.all([
     db
       .select({
         id: campaigns.id,
@@ -4093,13 +4160,25 @@ export async function getCorporateProjectOptions(userId: string) {
         status: corporateProjectPortfolio.status
       })
       .from(corporateProjectPortfolio)
-      .where(eq(corporateProjectPortfolio.programId, context.programId))
+      .where(eq(corporateProjectPortfolio.programId, context.programId)),
+    db
+      .select({
+        campaignId: corporateContributions.campaignId,
+        contributionType: corporateContributions.contributionType,
+        amount: corporateContributions.amount,
+        status: corporateContributions.status,
+        countsTowardCampaignGoal: corporateContributions.countsTowardCampaignGoal
+      })
+      .from(corporateContributions)
+      .where(eq(corporateContributions.programId, context.programId))
   ]);
 
   const portfolioByCampaign = new Map(portfolioRows.map((row) => [row.campaignId, row]));
+  const contributionByCampaign = new Map(contributionRows.map((row) => [row.campaignId, row]));
 
   return campaignRows.map((campaign) => {
     const portfolio = portfolioByCampaign.get(campaign.id);
+    const contribution = contributionByCampaign.get(campaign.id);
 
     return {
       ...campaign,
@@ -4107,6 +4186,10 @@ export async function getCorporateProjectOptions(userId: string) {
       raisedAmountValue: toNumber(campaign.raisedAmount),
       allocationValue: portfolio ? toNumber(portfolio.allocationAmount) : null,
       portfolioStatus: portfolio?.status ?? null,
+      contributionAmountValue: contribution ? toNumber(contribution.amount) : null,
+      contributionStatus: contribution?.status ?? null,
+      contributionType: contribution?.contributionType ?? null,
+      countsTowardCampaignGoal: contribution?.countsTowardCampaignGoal ?? false,
       alreadyFunded: Boolean(portfolio)
     };
   });
@@ -4151,6 +4234,7 @@ export async function getPublicCorporateImpactReport(publicSlug: string) {
   const [portfolioRows, evidenceRows] = await Promise.all([
     db
       .select({
+        campaignId: campaigns.id,
         campaignSlug: campaigns.slug,
         campaignTitle: campaigns.title,
         campaignCategory: campaigns.category,
@@ -4177,6 +4261,7 @@ export async function getPublicCorporateImpactReport(publicSlug: string) {
         evidenceType: projectEvidence.evidenceType,
         verificationStatus: projectEvidence.verificationStatus,
         fileUrl: projectEvidence.fileUrl,
+        campaignId: campaigns.id,
         campaignSlug: campaigns.slug,
         campaignTitle: campaigns.title,
         organizationName: organizations.name,
@@ -4224,6 +4309,131 @@ export async function getPublicCorporateImpactReport(publicSlug: string) {
     }
   };
 }
+
+export async function getAdminCorporateData() {
+  const [accountRows, programRows, permissionRows, contributionRows] = await Promise.all([
+    db
+      .select({
+        id: corporateAccounts.id,
+        name: corporateAccounts.name,
+        slug: corporateAccounts.slug,
+        logoUrl: corporateAccounts.logoUrl,
+        createdAt: corporateAccounts.createdAt
+      })
+      .from(corporateAccounts)
+      .orderBy(asc(corporateAccounts.name)),
+    db
+      .select({
+        id: corporatePrograms.id,
+        corporateAccountId: corporatePrograms.corporateAccountId,
+        accountName: corporateAccounts.name,
+        name: corporatePrograms.name,
+        slug: corporatePrograms.slug,
+        startsAt: corporatePrograms.startsAt,
+        endsAt: corporatePrograms.endsAt,
+        budgetAmount: corporatePrograms.budgetAmount,
+        currency: corporatePrograms.currency,
+        status: corporatePrograms.status,
+        createdAt: corporatePrograms.createdAt
+      })
+      .from(corporatePrograms)
+      .innerJoin(corporateAccounts, eq(corporatePrograms.corporateAccountId, corporateAccounts.id))
+      .orderBy(desc(corporatePrograms.createdAt)),
+    db
+      .select({
+        id: corporatePermissions.id,
+        corporateAccountId: corporatePermissions.corporateAccountId,
+        accountName: corporateAccounts.name,
+        permission: corporatePermissions.permission,
+        userId: users.id,
+        email: users.email,
+        name: users.name,
+        displayName: profiles.displayName,
+        createdAt: corporatePermissions.createdAt
+      })
+      .from(corporatePermissions)
+      .innerJoin(corporateAccounts, eq(corporatePermissions.corporateAccountId, corporateAccounts.id))
+      .innerJoin(users, eq(corporatePermissions.userId, users.id))
+      .leftJoin(profiles, eq(profiles.userId, users.id))
+      .orderBy(desc(corporatePermissions.createdAt)),
+    db
+      .select({
+        id: corporateContributions.id,
+        corporateAccountId: corporateContributions.corporateAccountId,
+        programId: corporateContributions.programId,
+        referenceCode: corporateContributions.referenceCode,
+        contributionType: corporateContributions.contributionType,
+        amount: corporateContributions.amount,
+        currency: corporateContributions.currency,
+        status: corporateContributions.status,
+        countsTowardCampaignGoal: corporateContributions.countsTowardCampaignGoal,
+        contributionDate: corporateContributions.contributionDate,
+        accountName: corporateAccounts.name,
+        programName: corporatePrograms.name,
+        campaignTitle: campaigns.title,
+        campaignSlug: campaigns.slug
+      })
+      .from(corporateContributions)
+      .innerJoin(corporateAccounts, eq(corporateContributions.corporateAccountId, corporateAccounts.id))
+      .innerJoin(corporatePrograms, eq(corporateContributions.programId, corporatePrograms.id))
+      .innerJoin(campaigns, eq(corporateContributions.campaignId, campaigns.id))
+      .orderBy(desc(corporateContributions.contributionDate))
+  ]);
+
+  const programsByAccount = new Map<string, typeof programRows>();
+  const permissionsByAccount = new Map<string, typeof permissionRows>();
+  const contributionsByAccount = new Map<string, typeof contributionRows>();
+
+  for (const program of programRows) {
+    const rows = programsByAccount.get(program.corporateAccountId) ?? [];
+    rows.push(program);
+    programsByAccount.set(program.corporateAccountId, rows);
+  }
+
+  for (const permission of permissionRows) {
+    const rows = permissionsByAccount.get(permission.corporateAccountId) ?? [];
+    rows.push(permission);
+    permissionsByAccount.set(permission.corporateAccountId, rows);
+  }
+
+  for (const contribution of contributionRows) {
+    const rows = contributionsByAccount.get(contribution.corporateAccountId) ?? [];
+    rows.push(contribution);
+    contributionsByAccount.set(contribution.corporateAccountId, rows);
+  }
+
+  const contributions = contributionRows.map((contribution) => ({
+    ...contribution,
+    amountValue: toNumber(contribution.amount),
+    publicGoalLabel: contribution.countsTowardCampaignGoal ? "Public campaign goal" : "Corporate reporting only"
+  }));
+
+  return {
+    accounts: accountRows.map((account) => ({
+      ...account,
+      programs: programsByAccount.get(account.id) ?? [],
+      permissions: permissionsByAccount.get(account.id) ?? [],
+      contributions: contributionsByAccount.get(account.id) ?? [],
+      contributionTotal: (contributionsByAccount.get(account.id) ?? []).reduce((total, contribution) => total + toNumber(contribution.amount), 0)
+    })),
+    programs: programRows.map((program) => ({
+      ...program,
+      budgetAmountValue: toNumber(program.budgetAmount)
+    })),
+    permissions: permissionRows,
+    contributions,
+    metrics: {
+      accounts: accountRows.length,
+      activePrograms: programRows.filter((program) => program.status === "active").length,
+      corporateUsers: new Set(permissionRows.map((permission) => permission.userId)).size,
+      contributionTotal: contributions.reduce((total, contribution) => total + contribution.amountValue, 0),
+      publicGoalContribution: contributions
+        .filter((contribution) => contribution.countsTowardCampaignGoal && ["committed", "disbursed", "verified"].includes(contribution.status))
+        .reduce((total, contribution) => total + contribution.amountValue, 0)
+    }
+  };
+}
+
 
 export async function getAdminPortalData() {
   const [
