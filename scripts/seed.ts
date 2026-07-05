@@ -11,6 +11,8 @@ const {
   accounts,
   adminAuditLogs,
   assessmentAttempts,
+  assessmentChoices,
+  assessmentQuestions,
   campaignActivities,
   campaignUpdates,
   campaigns,
@@ -1442,6 +1444,52 @@ async function seed() {
       }
     })
     .returning({ id: courseAssessments.id });
+
+  const oceanQuestionRows = await db
+    .insert(assessmentQuestions)
+    .values([
+      {
+        assessmentId: oceanAssessment.id,
+        questionText: "Which signal is commonly used to assess reef health during a field observation?",
+        position: 1,
+        points: 1
+      },
+      {
+        assessmentId: oceanAssessment.id,
+        questionText: "What should evidence records connect to in Terumbu.eco?",
+        position: 2,
+        points: 1
+      }
+    ])
+    .onConflictDoUpdate({
+      target: [assessmentQuestions.assessmentId, assessmentQuestions.position],
+      set: {
+        questionText: sql`excluded.question_text`,
+        points: sql`excluded.points`,
+        status: "active"
+      }
+    })
+    .returning({ id: assessmentQuestions.id, position: assessmentQuestions.position });
+
+  const oceanQuestionByPosition = new Map(oceanQuestionRows.map((question) => [question.position, question.id]));
+
+  await db
+    .insert(assessmentChoices)
+    .values([
+      { questionId: oceanQuestionByPosition.get(1)!, choiceText: "Coral cover, fish presence, and visible stress", isCorrect: true, position: 1 },
+      { questionId: oceanQuestionByPosition.get(1)!, choiceText: "Only the number of boats near the reef", isCorrect: false, position: 2 },
+      { questionId: oceanQuestionByPosition.get(1)!, choiceText: "Random social media comments", isCorrect: false, position: 3 },
+      { questionId: oceanQuestionByPosition.get(2)!, choiceText: "Campaign, site, and impact claim being verified", isCorrect: true, position: 1 },
+      { questionId: oceanQuestionByPosition.get(2)!, choiceText: "Only the uploader profile picture", isCorrect: false, position: 2 },
+      { questionId: oceanQuestionByPosition.get(2)!, choiceText: "A payment provider dashboard only", isCorrect: false, position: 3 }
+    ])
+    .onConflictDoUpdate({
+      target: [assessmentChoices.questionId, assessmentChoices.position],
+      set: {
+        choiceText: sql`excluded.choice_text`,
+        isCorrect: sql`excluded.is_correct`
+      }
+    });
 
   await db
     .insert(assessmentAttempts)

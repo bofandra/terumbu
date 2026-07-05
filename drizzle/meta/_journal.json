@@ -64,6 +64,13 @@
       "when": 1783209290467,
       "tag": "0008_expedition_reviews",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1783215475340,
+      "tag": "0009_academy_partner_admin",
+      "breakpoints": true
     }
   ]
 }

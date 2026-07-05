@@ -257,10 +257,16 @@ export const campaignUpdates = pgTable("campaign_updates", {
   title: varchar("title", { length: 220 }).notNull(),
   body: text("body").notNull(),
   imageUrl: text("image_url"),
+  status: varchar("status", { length: 80 }).default("published").notNull(),
+  reviewedByUserId: uuid("reviewed_by_user_id").references(() => users.id, { onDelete: "set null" }),
+  reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
+  rejectionReason: text("rejection_reason"),
   publishedAt: timestamp("published_at", { withTimezone: true }),
-  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull()
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull()
 }, (table) => ({
-  campaignIdx: index("campaign_updates_campaign_idx").on(table.campaignId)
+  campaignIdx: index("campaign_updates_campaign_idx").on(table.campaignId),
+  statusIdx: index("campaign_updates_status_idx").on(table.status)
 }));
 
 export const userSavedCampaigns = pgTable("user_saved_campaigns", {
@@ -359,8 +365,12 @@ export const projectEvidence = pgTable("project_evidence", {
   storageProvider: varchar("storage_provider", { length: 80 }).default("local_demo").notNull(),
   verificationStatus: evidenceStatus("verification_status").default("submitted").notNull(),
   verifiedAt: timestamp("verified_at", { withTimezone: true }),
+  reviewedByUserId: uuid("reviewed_by_user_id").references(() => users.id, { onDelete: "set null" }),
+  reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
+  rejectionReason: text("rejection_reason"),
   metadata: jsonb("metadata"),
-  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull()
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull()
 }, (table) => ({
   codeIdx: uniqueIndex("project_evidence_code_idx").on(table.evidenceCode),
   campaignIdx: index("project_evidence_campaign_idx").on(table.campaignId),
@@ -601,10 +611,15 @@ export const courses = pgTable("courses", {
   level: varchar("level", { length: 80 }).notNull(),
   durationMinutes: integer("duration_minutes").notNull(),
   summary: text("summary").notNull(),
+  description: text("description"),
+  status: varchar("status", { length: 80 }).default("published").notNull(),
   imageUrl: text("image_url"),
-  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull()
+  publishedAt: timestamp("published_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull()
 }, (table) => ({
-  slugIdx: uniqueIndex("courses_slug_idx").on(table.slug)
+  slugIdx: uniqueIndex("courses_slug_idx").on(table.slug),
+  statusIdx: index("courses_status_idx").on(table.status)
 }));
 
 export const courseLessons = pgTable("course_lessons", {
@@ -615,7 +630,9 @@ export const courseLessons = pgTable("course_lessons", {
   position: integer("position").notNull(),
   durationMinutes: integer("duration_minutes").notNull(),
   body: text("body"),
-  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull()
+  isPreview: boolean("is_preview").default(false).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull()
 }, (table) => ({
   slugIdx: uniqueIndex("course_lessons_course_slug_idx").on(table.courseId, table.slug),
   courseIdx: index("course_lessons_course_idx").on(table.courseId)
@@ -658,6 +675,33 @@ export const courseAssessments = pgTable("course_assessments", {
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull()
 }, (table) => ({
   slugIdx: uniqueIndex("course_assessments_course_slug_idx").on(table.courseId, table.slug)
+}));
+
+export const assessmentQuestions = pgTable("assessment_questions", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  assessmentId: uuid("assessment_id").notNull().references(() => courseAssessments.id, { onDelete: "cascade" }),
+  questionText: text("question_text").notNull(),
+  position: integer("position").notNull(),
+  points: integer("points").default(1).notNull(),
+  status: varchar("status", { length: 80 }).default("active").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull()
+}, (table) => ({
+  assessmentIdx: index("assessment_questions_assessment_idx").on(table.assessmentId),
+  assessmentPositionIdx: uniqueIndex("assessment_questions_position_idx").on(table.assessmentId, table.position)
+}));
+
+export const assessmentChoices = pgTable("assessment_choices", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  questionId: uuid("question_id").notNull().references(() => assessmentQuestions.id, { onDelete: "cascade" }),
+  choiceText: text("choice_text").notNull(),
+  isCorrect: boolean("is_correct").default(false).notNull(),
+  position: integer("position").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull()
+}, (table) => ({
+  questionIdx: index("assessment_choices_question_idx").on(table.questionId),
+  questionPositionIdx: uniqueIndex("assessment_choices_position_idx").on(table.questionId, table.position)
 }));
 
 export const assessmentAttempts = pgTable("assessment_attempts", {
