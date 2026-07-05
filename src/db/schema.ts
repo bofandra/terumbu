@@ -823,6 +823,31 @@ export const corporateEmployees = pgTable("corporate_employees", {
   }).onDelete("cascade")
 }));
 
+export const corporateEmployeeInvites = pgTable("corporate_employee_invites", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  corporateAccountId: uuid("corporate_account_id").notNull(),
+  employeeId: uuid("employee_id").notNull().references(() => corporateEmployees.id, { onDelete: "cascade" }),
+  invitedByUserId: uuid("invited_by_user_id").references(() => users.id, { onDelete: "set null" }),
+  acceptedByUserId: uuid("accepted_by_user_id").references(() => users.id, { onDelete: "set null" }),
+  email: varchar("email", { length: 255 }).notNull(),
+  token: varchar("token", { length: 160 }).notNull(),
+  permission: varchar("permission", { length: 120 }).notNull(),
+  status: varchar("status", { length: 80 }).default("pending").notNull(),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  acceptedAt: timestamp("accepted_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull()
+}, (table) => ({
+  tokenIdx: uniqueIndex("corporate_employee_invites_token_idx").on(table.token),
+  employeeStatusIdx: index("corporate_employee_invites_employee_status_idx").on(table.employeeId, table.status),
+  accountIdx: index("corporate_employee_invites_account_idx").on(table.corporateAccountId),
+  accountFk: foreignKey({
+    name: "corporate_employee_invites_account_fk",
+    columns: [table.corporateAccountId],
+    foreignColumns: [corporateAccounts.id]
+  }).onDelete("cascade")
+}));
+
 export const corporateContributions = pgTable("corporate_contributions", {
   id: uuid("id").defaultRandom().primaryKey(),
   corporateAccountId: uuid("corporate_account_id").notNull(),

@@ -200,6 +200,13 @@ export default async function CorporateEmployeesPage({ searchParams }: Corporate
                 <span className="rounded-full bg-white px-3 py-1 text-ocean-900">{employee.role}</span>
                 <span className={cn("rounded-full px-3 py-1", statusClass(employee.status))}>{employee.status}</span>
               </div>
+              {employee.invite ? (
+                <div className="mt-4 rounded-xl border border-ocean-900/10 bg-white px-3 py-2 text-xs text-ocean-900/62">
+                  <p className="font-bold text-ocean-900">Invite acceptance link</p>
+                  <code className="mt-1 block break-all rounded-lg bg-ocean-50 px-2 py-1 font-semibold text-ocean-800">{employee.invite.acceptHref}</code>
+                  <p className="mt-1">Expires {employee.invite.expiresAt.toLocaleDateString("id-ID", { dateStyle: "medium" })}</p>
+                </div>
+              ) : null}
             </article>
           ))}
         </div>

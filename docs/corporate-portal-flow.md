@@ -110,3 +110,50 @@ Admin creates corporate account/program
 ```
 
 This keeps the portal usable without real payment integration and removes dependency on seed-only governance values.
+
+## Corporate lifecycle closure additions
+
+This phase closes three remaining corporate lifecycle gaps without adding real payment integration.
+
+### Corporate-managed programs
+
+Corporate users with `program.manage` or `esg_manager` permission can manage ESG/CSR program records from `/corporate/programs`:
+
+```txt
+Corporate manager opens /corporate/programs
+→ creates a program with name, period, budget, currency, and status
+→ updates existing programs when the reporting period or budget changes
+→ audit logs record `corporate.program.created` and `corporate.program.updated`
+```
+
+This keeps program names, periods, budgets, and status values driven by real workspace actions instead of seed-only data.
+
+### Employee invite acceptance
+
+Corporate employee rows now have a lightweight invite acceptance flow:
+
+```txt
+Corporate manager opens /corporate/employees
+→ adds employee with status `invited`
+→ app creates a pending invite token and acceptance link
+→ invited user signs in with the invited email
+→ user opens /corporate/invite/[token]
+→ app validates email, token status, and expiry
+→ employee becomes active and corporate permission is granted
+```
+
+The invite link is displayed in the employee roster so it can be copied into an email or chat message in this phase. A production email delivery worker can be attached later.
+
+### Verified evidence auto-linking
+
+When an admin verifies partner evidence, the app now links that evidence into every corporate program that funds the same campaign:
+
+```txt
+Partner submits evidence for campaign
+→ Admin verifies evidence
+→ app finds corporate project portfolio rows for that campaign
+→ app inserts corporate evidence center rows for the funded programs
+→ corporate evidence/report pages can use the verified evidence automatically
+```
+
+This removes the previous workaround where corporate users had to re-save a project contribution to pull newly verified evidence into their evidence center.

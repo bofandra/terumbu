@@ -12,6 +12,7 @@ import {
   campaignActivities,
   campaignUpdates,
   campaigns,
+  corporateEvidenceCenter,
   corporateProjectPortfolio,
   donations,
   expeditionBookings,
@@ -30,6 +31,7 @@ import {
   users
 } from "@/db/schema";
 import { createPasswordHash, requireRole, safeRedirectPath } from "@/lib/auth";
+import { corporateEvidenceVisibilityForStatus, shouldLinkEvidenceToCorporateProgram } from "@/lib/corporate-lifecycle";
 import { sendTransactionalEmail } from "@/lib/email";
 import {
   buildDefaultExpeditionDetailMetadata,
@@ -2430,6 +2432,50 @@ export async function reviseEvidenceAction(formData: FormData) {
   redirectPartnerSaved(formData, "/partner/evidence", "evidence-resubmitted");
 }
 
+async function linkEvidenceToCorporatePrograms(evidenceId: string, status: string) {
+  if (!shouldLinkEvidenceToCorporateProgram(status)) {
+    return [];
+  }
+
+  const [evidence] = await db
+    .select({
+      campaignId: projectEvidence.campaignId
+    })
+    .from(projectEvidence)
+    .where(eq(projectEvidence.id, evidenceId))
+    .limit(1);
+
+  if (!evidence) {
+    return [];
+  }
+
+  const fundedPrograms = await db
+    .select({
+      programId: corporateProjectPortfolio.programId
+    })
+    .from(corporateProjectPortfolio)
+    .where(eq(corporateProjectPortfolio.campaignId, evidence.campaignId));
+
+  if (fundedPrograms.length === 0) {
+    return [];
+  }
+
+  await db
+    .insert(corporateEvidenceCenter)
+    .values(
+      fundedPrograms.map((program) => ({
+        programId: program.programId,
+        evidenceId,
+        visibility: corporateEvidenceVisibilityForStatus(status)
+      }))
+    )
+    .onConflictDoNothing({
+      target: [corporateEvidenceCenter.programId, corporateEvidenceCenter.evidenceId]
+    });
+
+  return fundedPrograms.map((program) => program.programId);
+}
+
 export async function verifyEvidenceAction(formData: FormData) {
   const user = await requireRole(["admin"], "/admin");
   const evidenceId = String(formData.get("evidenceId") ?? "");
@@ -2472,13 +2518,36 @@ export async function verifyEvidenceAction(formData: FormData) {
     })
     .where(eq(campaignActivities.sourceEvidenceId, evidenceId));
 
+  const linkedCorporateProgramIds = await linkEvidenceToCorporatePrograms(evidenceId, status);
+  const linkedCorporatePrograms = linkedCorporateProgramIds.length;
+
   await db.insert(adminAuditLogs).values({
     actorUserId: user.id,
     action: status === "verified" ? "evidence.verified" : "evidence.rejected",
     entityType: "project_evidence",
     entityId: evidenceId,
-    metadata: { status, rejectionReason: status === "rejected" ? rejectionReason : null }
+    metadata: {
+      status,
+      rejectionReason: status === "rejected" ? rejectionReason : null,
+      linkedCorporatePrograms
+    }
   });
+
+  if (linkedCorporateProgramIds.length > 0) {
+    await db.insert(adminAuditLogs).values(
+      linkedCorporateProgramIds.map((programId) => ({
+        actorUserId: user.id,
+        action: "corporate.evidence.auto_linked",
+        entityType: "project_evidence",
+        entityId: evidenceId,
+        metadata: {
+          status,
+          programId,
+          linkedCorporatePrograms
+        }
+      }))
+    );
+  }
 
   redirect(`${redirectTo}?saved=evidence`);
 }

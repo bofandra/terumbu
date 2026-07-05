@@ -13,6 +13,7 @@ import {
   corporateAccounts,
   corporateContributions,
   corporateEmployees,
+  corporateEmployeeInvites,
   corporateEvidenceCenter,
   corporateIntegrations,
   corporatePermissions,
@@ -3332,7 +3333,7 @@ export async function getCorporateDashboardData(userId: string) {
     return null;
   }
 
-  const [budgets, employees, portfolio, evidence, exports, contributions, integrations, securityRows, auditRows] = await Promise.all([
+  const [budgets, employees, employeeInvites, portfolio, evidence, exports, contributions, integrations, securityRows, auditRows] = await Promise.all([
     db
       .select({
         category: corporateProgramBudgets.category,
@@ -3344,6 +3345,7 @@ export async function getCorporateDashboardData(userId: string) {
       .where(eq(corporateProgramBudgets.programId, program.programId)),
     db
       .select({
+        id: corporateEmployees.id,
         name: corporateEmployees.name,
         email: corporateEmployees.email,
         department: corporateEmployees.department,
@@ -3352,6 +3354,21 @@ export async function getCorporateDashboardData(userId: string) {
       })
       .from(corporateEmployees)
       .where(eq(corporateEmployees.corporateAccountId, program.accountId)),
+    db
+      .select({
+        id: corporateEmployeeInvites.id,
+        employeeId: corporateEmployeeInvites.employeeId,
+        email: corporateEmployeeInvites.email,
+        token: corporateEmployeeInvites.token,
+        permission: corporateEmployeeInvites.permission,
+        status: corporateEmployeeInvites.status,
+        expiresAt: corporateEmployeeInvites.expiresAt,
+        acceptedAt: corporateEmployeeInvites.acceptedAt,
+        createdAt: corporateEmployeeInvites.createdAt
+      })
+      .from(corporateEmployeeInvites)
+      .where(and(eq(corporateEmployeeInvites.corporateAccountId, program.accountId), eq(corporateEmployeeInvites.status, "pending")))
+      .orderBy(desc(corporateEmployeeInvites.createdAt)),
     db
       .select({
         campaignId: campaigns.id,
@@ -3483,6 +3500,27 @@ export async function getCorporateDashboardData(userId: string) {
       .orderBy(desc(adminAuditLogs.createdAt))
       .limit(12)
   ]);
+
+  const inviteByEmployee = new Map(employeeInvites.map((invite) => [invite.employeeId, invite]));
+  const employeeRows = employees.map((employee) => {
+    const invite = inviteByEmployee.get(employee.id);
+
+    return {
+      ...employee,
+      invite: invite
+        ? {
+            id: invite.id,
+            token: invite.token,
+            permission: invite.permission,
+            status: invite.status,
+            expiresAt: invite.expiresAt,
+            acceptedAt: invite.acceptedAt,
+            createdAt: invite.createdAt,
+            acceptHref: `/corporate/invite/${invite.token}`
+          }
+        : null
+    };
+  });
 
   const contributionRows = contributions.map((contribution) => ({
     ...contribution,
@@ -3662,8 +3700,8 @@ export async function getCorporateDashboardData(userId: string) {
   const mangroveUnits = portfolioRows
     .filter((project) => `${project.campaignCategory} ${project.impactUnit}`.toLowerCase().includes("mangrove"))
     .reduce((total, project) => total + project.impactTarget, 0);
-  const employeesEngaged = employees.filter((employee) => employee.status === "active").length;
-  const eligibleEmployees = Math.max(employees.length, employeesEngaged);
+  const employeesEngaged = employeeRows.filter((employee) => employee.status === "active").length;
+  const eligibleEmployees = Math.max(employeeRows.length, employeesEngaged);
   const participationRate = eligibleEmployees > 0 ? Math.round((employeesEngaged / eligibleEmployees) * 100) : 0;
   const activityCount = Math.max(1, corporateEvidence.length + portfolioRows.length);
   const volunteerHours = employeesEngaged * 5;
@@ -3744,7 +3782,7 @@ export async function getCorporateDashboardData(userId: string) {
     status: goal.current >= goal.target ? "Complete" : goal.current / Math.max(1, goal.target) >= 0.75 ? "On Track" : "Needs Attention"
   }));
 
-  const departmentMap = employees.reduce((departments, employee) => {
+  const departmentMap = employeeRows.reduce((departments, employee) => {
     const key = employee.department ?? "Unassigned";
     const existing = departments.get(key) ?? { department: key, employees: 0, active: 0, volunteerHours: 0 };
     existing.employees += 1;
@@ -4112,8 +4150,8 @@ export async function getCorporateDashboardData(userId: string) {
   const governance = {
     accessSummary: {
       activeEmployees: employeesEngaged,
-      invitedEmployees: employees.filter((employee) => employee.status === "invited").length,
-      suspendedEmployees: employees.filter((employee) => employee.status === "suspended").length,
+      invitedEmployees: employeeRows.filter((employee) => employee.status === "invited").length,
+      suspendedEmployees: employeeRows.filter((employee) => employee.status === "suspended").length,
       currentPermission,
       currentRole: roleCapabilities.find((role) => role.active)?.role ?? "ESG Program Manager"
     },
@@ -4138,7 +4176,7 @@ export async function getCorporateDashboardData(userId: string) {
   return {
     program,
     budgets,
-    employees,
+    employees: employeeRows,
     contributions: contributionRows,
     portfolio: portfolioRows,
     evidence: corporateEvidence,
@@ -4205,6 +4243,49 @@ export async function getCorporateDashboardData(userId: string) {
       volunteerHours,
       restorationUnits
     }
+  };
+}
+
+export async function getCorporateProgramsForUser(userId: string) {
+  const [context] = await db
+    .select({
+      accountId: corporateAccounts.id,
+      accountName: corporateAccounts.name,
+      accountSlug: corporateAccounts.slug,
+      permission: corporatePermissions.permission
+    })
+    .from(corporatePermissions)
+    .innerJoin(corporateAccounts, eq(corporatePermissions.corporateAccountId, corporateAccounts.id))
+    .where(eq(corporatePermissions.userId, userId))
+    .limit(1);
+
+  if (!context) {
+    return null;
+  }
+
+  const programs = await db
+    .select({
+      id: corporatePrograms.id,
+      name: corporatePrograms.name,
+      slug: corporatePrograms.slug,
+      startsAt: corporatePrograms.startsAt,
+      endsAt: corporatePrograms.endsAt,
+      budgetAmount: corporatePrograms.budgetAmount,
+      currency: corporatePrograms.currency,
+      status: corporatePrograms.status,
+      createdAt: corporatePrograms.createdAt
+    })
+    .from(corporatePrograms)
+    .where(eq(corporatePrograms.corporateAccountId, context.accountId))
+    .orderBy(desc(corporatePrograms.startsAt), desc(corporatePrograms.createdAt));
+
+  return {
+    account: context,
+    canManagePrograms: context.permission === "program.manage" || context.permission === "esg_manager",
+    programs: programs.map((program) => ({
+      ...program,
+      budgetAmountValue: toNumber(program.budgetAmount)
+    }))
   };
 }
 

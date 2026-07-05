@@ -14,6 +14,7 @@ import {
   corporateAccounts,
   corporateContributions,
   corporateEmployees,
+  corporateEmployeeInvites,
   corporateEvidenceCenter,
   corporateIntegrations,
   corporatePermissions,
@@ -30,6 +31,11 @@ import {
   normalizeCorporateIntegrationStatus,
   normalizeCorporateIntegrationType
 } from "@/lib/corporate-governance";
+import {
+  canAcceptCorporateEmployeeInvite,
+  corporateInviteExpiresAt,
+  normalizeCorporateProgramStatus
+} from "@/lib/corporate-lifecycle";
 import {
   buildCorporateContributionReference,
   campaignRaisedDelta,
@@ -69,7 +75,8 @@ function roleCapabilities(permission: string | null | undefined) {
     canManageProjects: isManager,
     canManageEmployees: isManager || value === "employee_engagement",
     canManageFunding: isManager || isFinance,
-    canReviewEvidence: isManager || isFinance || isAuditor
+    canReviewEvidence: isManager || isFinance || isAuditor,
+    canManagePrograms: isManager
   };
 }
 
@@ -122,6 +129,13 @@ function parseNonNegativeAmount(value: FormDataEntryValue | null) {
   const amount = Number(normalized);
 
   return Number.isFinite(amount) && amount >= 0 ? amount : null;
+}
+
+function dateValue(value: FormDataEntryValue | null) {
+  const text = String(value ?? "").trim();
+  const parsed = text ? new Date(text) : null;
+
+  return parsed && !Number.isNaN(parsed.getTime()) ? parsed : null;
 }
 
 function textValue(value: FormDataEntryValue | null, maxLength: number) {
@@ -301,6 +315,113 @@ async function writeReportArtifacts(input: {
       generatedBy: "corporate_report_generator"
     }
   };
+}
+
+export async function createCorporateProgramAction(formData: FormData) {
+  const user = await requireUser("/corporate/programs");
+  const context = await corporateContext(user.id);
+
+  if (!context || !roleCapabilities(context.permission).canManagePrograms) {
+    redirect("/corporate/programs?error=permission");
+  }
+
+  const name = textValue(formData.get("name"), 220);
+  const startsAt = dateValue(formData.get("startsAt"));
+  const endsAt = dateValue(formData.get("endsAt"));
+  const budgetAmount = parsePositiveAmount(formData.get("budgetAmount"));
+  const currency = textValue(formData.get("currency"), 8).toUpperCase() || "IDR";
+  const status = normalizeCorporateProgramStatus(textValue(formData.get("status"), 80));
+
+  if (!name || !startsAt || !endsAt || startsAt >= endsAt || !budgetAmount) {
+    redirect("/corporate/programs?error=program");
+  }
+
+  const slug = `${context.accountSlug}-${toSlug(name)}-${startsAt.getUTCFullYear()}-${randomBytes(2).toString("hex")}`;
+  const [program] = await db
+    .insert(corporatePrograms)
+    .values({
+      corporateAccountId: context.accountId,
+      name,
+      slug,
+      startsAt,
+      endsAt,
+      budgetAmount: budgetAmount.toFixed(2),
+      currency,
+      status
+    })
+    .returning({ id: corporatePrograms.id });
+
+  await writeAuditLog({
+    actorUserId: user.id,
+    action: "corporate.program.created",
+    entityType: "corporate_programs",
+    entityId: program?.id,
+    metadata: {
+      accountId: context.accountId,
+      programId: program?.id ?? null,
+      name,
+      status,
+      budgetAmount,
+      currency
+    }
+  });
+
+  redirect("/corporate/programs?saved=program");
+}
+
+export async function updateCorporateProgramAction(formData: FormData) {
+  const user = await requireUser("/corporate/programs");
+  const context = await corporateContext(user.id);
+
+  if (!context || !roleCapabilities(context.permission).canManagePrograms) {
+    redirect("/corporate/programs?error=permission");
+  }
+
+  const programId = textValue(formData.get("programId"), 80);
+  const name = textValue(formData.get("name"), 220);
+  const startsAt = dateValue(formData.get("startsAt"));
+  const endsAt = dateValue(formData.get("endsAt"));
+  const budgetAmount = parsePositiveAmount(formData.get("budgetAmount"));
+  const currency = textValue(formData.get("currency"), 8).toUpperCase() || "IDR";
+  const status = normalizeCorporateProgramStatus(textValue(formData.get("status"), 80));
+
+  if (!programId || !isUuid(programId) || !name || !startsAt || !endsAt || startsAt >= endsAt || !budgetAmount) {
+    redirect("/corporate/programs?error=program");
+  }
+
+  const [program] = await db
+    .update(corporatePrograms)
+    .set({
+      name,
+      startsAt,
+      endsAt,
+      budgetAmount: budgetAmount.toFixed(2),
+      currency,
+      status
+    })
+    .where(and(eq(corporatePrograms.id, programId), eq(corporatePrograms.corporateAccountId, context.accountId)))
+    .returning({ id: corporatePrograms.id });
+
+  if (!program) {
+    redirect("/corporate/programs?error=program");
+  }
+
+  await writeAuditLog({
+    actorUserId: user.id,
+    action: "corporate.program.updated",
+    entityType: "corporate_programs",
+    entityId: program.id,
+    metadata: {
+      accountId: context.accountId,
+      programId: program.id,
+      name,
+      status,
+      budgetAmount,
+      currency
+    }
+  });
+
+  redirect("/corporate/programs?saved=program");
 }
 
 export async function createCorporateReportExportAction(formData: FormData) {
@@ -578,11 +699,12 @@ export async function inviteCorporateEmployeeAction(formData: FormData) {
     .where(eq(users.email, email))
     .limit(1);
 
+  const now = new Date();
   const [employee] = await db
     .insert(corporateEmployees)
     .values({
       corporateAccountId: context.accountId,
-      userId: linkedUser?.id,
+      userId: status === "active" ? linkedUser?.id : null,
       email,
       name,
       department,
@@ -592,7 +714,7 @@ export async function inviteCorporateEmployeeAction(formData: FormData) {
     .onConflictDoUpdate({
       target: [corporateEmployees.corporateAccountId, corporateEmployees.email],
       set: {
-        userId: linkedUser?.id,
+        userId: status === "active" ? linkedUser?.id : null,
         name,
         department,
         role,
@@ -601,17 +723,44 @@ export async function inviteCorporateEmployeeAction(formData: FormData) {
     })
     .returning({ id: corporateEmployees.id });
 
-  if (linkedUser) {
+  const permission = permissionForEmployeeRole(role);
+  let inviteToken: string | null = null;
+
+  if (status === "active" && linkedUser) {
     await db
       .insert(corporatePermissions)
       .values({
         corporateAccountId: context.accountId,
         userId: linkedUser.id,
-        permission: permissionForEmployeeRole(role)
+        permission
       })
       .onConflictDoNothing({
         target: [corporatePermissions.corporateAccountId, corporatePermissions.userId, corporatePermissions.permission]
       });
+  }
+
+  if (status === "invited" && employee?.id) {
+    inviteToken = randomBytes(24).toString("hex");
+    await db
+      .update(corporateEmployeeInvites)
+      .set({
+        status: "superseded",
+        updatedAt: now
+      })
+      .where(and(eq(corporateEmployeeInvites.employeeId, employee.id), eq(corporateEmployeeInvites.status, "pending")));
+
+    await db.insert(corporateEmployeeInvites).values({
+      corporateAccountId: context.accountId,
+      employeeId: employee.id,
+      invitedByUserId: user.id,
+      email,
+      token: inviteToken,
+      permission,
+      status: "pending",
+      expiresAt: corporateInviteExpiresAt(now),
+      createdAt: now,
+      updatedAt: now
+    });
   }
 
   await writeAuditLog({
@@ -624,11 +773,98 @@ export async function inviteCorporateEmployeeAction(formData: FormData) {
       email,
       role,
       status,
-      linkedUserId: linkedUser?.id ?? null
+      linkedUserId: linkedUser?.id ?? null,
+      inviteCreated: Boolean(inviteToken)
     }
   });
 
   redirect("/corporate/employees?saved=employee");
+}
+
+export async function acceptCorporateEmployeeInviteAction(formData: FormData) {
+  const token = textValue(formData.get("token"), 160);
+  const user = await requireUser(token ? `/corporate/invite/${token}` : "/corporate");
+
+  if (!token) {
+    redirect("/corporate?error=invite");
+  }
+
+  const [invite] = await db
+    .select({
+      id: corporateEmployeeInvites.id,
+      corporateAccountId: corporateEmployeeInvites.corporateAccountId,
+      employeeId: corporateEmployeeInvites.employeeId,
+      email: corporateEmployeeInvites.email,
+      permission: corporateEmployeeInvites.permission,
+      status: corporateEmployeeInvites.status,
+      expiresAt: corporateEmployeeInvites.expiresAt
+    })
+    .from(corporateEmployeeInvites)
+    .where(eq(corporateEmployeeInvites.token, token))
+    .limit(1);
+
+  if (!invite) {
+    redirect(`/corporate/invite/${token}?error=missing`);
+  }
+
+  const decision = canAcceptCorporateEmployeeInvite({
+    inviteEmail: invite.email,
+    userEmail: user.email,
+    inviteStatus: invite.status,
+    expiresAt: invite.expiresAt
+  });
+
+  if (!decision.ok) {
+    redirect(`/corporate/invite/${token}?error=${decision.reason}`);
+  }
+
+  const now = new Date();
+
+  await db.transaction(async (tx) => {
+    await tx
+      .update(corporateEmployees)
+      .set({
+        userId: user.id,
+        status: "active"
+      })
+      .where(eq(corporateEmployees.id, invite.employeeId));
+
+    await tx
+      .update(corporateEmployeeInvites)
+      .set({
+        status: "accepted",
+        acceptedByUserId: user.id,
+        acceptedAt: now,
+        updatedAt: now
+      })
+      .where(eq(corporateEmployeeInvites.id, invite.id));
+
+    await tx
+      .insert(corporatePermissions)
+      .values({
+        corporateAccountId: invite.corporateAccountId,
+        userId: user.id,
+        permission: invite.permission
+      })
+      .onConflictDoNothing({
+        target: [corporatePermissions.corporateAccountId, corporatePermissions.userId, corporatePermissions.permission]
+      });
+
+    await tx.insert(adminAuditLogs).values({
+      actorUserId: user.id,
+      action: "corporate.employee.invite_accepted",
+      entityType: "corporate_employee_invites",
+      entityId: invite.id,
+      metadata: auditMetadata({
+        accountId: invite.corporateAccountId,
+        employeeId: invite.employeeId,
+        email: invite.email,
+        permission: invite.permission
+      })
+    });
+  });
+
+  redirect("/corporate?saved=invite-accepted");
 }
 
 export async function updateCorporateBudgetAction(formData: FormData) {
