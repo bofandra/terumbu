@@ -4,7 +4,7 @@ import { randomBytes } from "node:crypto";
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 
-import { and, eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { redirect } from "next/navigation";
 
 import { db } from "@/db/client";
@@ -12,6 +12,7 @@ import {
   adminAuditLogs,
   campaigns,
   corporateAccounts,
+  corporateContributions,
   corporateEmployees,
   corporateEvidenceCenter,
   corporatePermissions,
@@ -23,6 +24,12 @@ import {
   users
 } from "@/db/schema";
 import { requireUser } from "@/lib/auth";
+import {
+  buildCorporateContributionReference,
+  campaignRaisedDelta,
+  normalizeCorporateContributionStatus,
+  normalizeCorporateContributionType
+} from "@/lib/corporate-contributions";
 import { getCorporateDashboardData } from "@/lib/queries";
 import { formatCurrency } from "@/lib/utils";
 
@@ -249,6 +256,7 @@ async function writeReportArtifacts(input: {
     executiveMetrics: input.data.executiveMetrics,
     financials: input.data.financials,
     impactOutputs: input.data.impactOutputs,
+    contributions: input.data.contributions,
     portfolio: input.data.portfolio,
     evidence: input.data.evidence,
     reporting: input.data.reporting
@@ -347,8 +355,12 @@ export async function fundCorporateProjectAction(formData: FormData) {
 
   const campaignId = textValue(formData.get("campaignId"), 80);
   const allocationAmount = parsePositiveAmount(formData.get("allocationAmount"));
-  const requestedStatus = textValue(formData.get("status"), 80);
-  const status = ["funded", "monitoring", "review", "completed"].includes(requestedStatus) ? requestedStatus : "funded";
+  const requestedPortfolioStatus = textValue(formData.get("status"), 80);
+  const portfolioStatus = ["funded", "monitoring", "review", "completed"].includes(requestedPortfolioStatus) ? requestedPortfolioStatus : "funded";
+  const contributionType = normalizeCorporateContributionType(textValue(formData.get("contributionType"), 80));
+  const contributionStatus = normalizeCorporateContributionStatus(textValue(formData.get("contributionStatus"), 80));
+  const countsTowardCampaignGoal = formData.get("countsTowardCampaignGoal") === "on";
+  const notes = textValue(formData.get("notes"), 500) || null;
 
   if (!campaignId || !isUuid(campaignId) || !allocationAmount) {
     redirect("/corporate/projects?error=project");
@@ -357,6 +369,7 @@ export async function fundCorporateProjectAction(formData: FormData) {
   const [campaign] = await db
     .select({
       id: campaigns.id,
+      slug: campaigns.slug,
       title: campaigns.title
     })
     .from(campaigns)
@@ -367,22 +380,112 @@ export async function fundCorporateProjectAction(formData: FormData) {
     redirect("/corporate/projects?error=project");
   }
 
+  const [previousContribution] = await db
+    .select({
+      id: corporateContributions.id,
+      amount: corporateContributions.amount,
+      status: corporateContributions.status,
+      countsTowardCampaignGoal: corporateContributions.countsTowardCampaignGoal
+    })
+    .from(corporateContributions)
+    .where(
+      and(
+        eq(corporateContributions.programId, context.programId),
+        eq(corporateContributions.campaignId, campaign.id),
+        eq(corporateContributions.contributionType, contributionType)
+      )
+    )
+    .limit(1);
+
+  const now = new Date();
+  const baseReferenceCode = buildCorporateContributionReference({
+    accountSlug: context.accountSlug,
+    campaignSlug: campaign.slug,
+    contributionType,
+    date: now
+  });
+  const referenceCode = previousContribution?.id ? undefined : `${baseReferenceCode}-${context.programId.slice(0, 8).toUpperCase()}`;
+
   const [portfolioRow] = await db
     .insert(corporateProjectPortfolio)
     .values({
       programId: context.programId,
       campaignId: campaign.id,
       allocationAmount: allocationAmount.toFixed(2),
-      status
+      status: portfolioStatus
     })
     .onConflictDoUpdate({
       target: [corporateProjectPortfolio.programId, corporateProjectPortfolio.campaignId],
       set: {
         allocationAmount: allocationAmount.toFixed(2),
-        status
+        status: portfolioStatus
       }
     })
     .returning({ id: corporateProjectPortfolio.id });
+
+  const [contributionRow] = await db
+    .insert(corporateContributions)
+    .values({
+      corporateAccountId: context.accountId,
+      programId: context.programId,
+      campaignId: campaign.id,
+      createdByUserId: user.id,
+      referenceCode: referenceCode ?? `${context.programId}-${campaign.id}-${contributionType}`,
+      contributionType,
+      amount: allocationAmount.toFixed(2),
+      currency: "IDR",
+      status: contributionStatus,
+      countsTowardCampaignGoal,
+      contributionDate: now,
+      notes,
+      metadata: {
+        source: "corporate_projects_form",
+        portfolioStatus
+      },
+      updatedAt: now,
+      createdAt: now
+    })
+    .onConflictDoUpdate({
+      target: [corporateContributions.programId, corporateContributions.campaignId, corporateContributions.contributionType],
+      set: {
+        amount: allocationAmount.toFixed(2),
+        status: contributionStatus,
+        countsTowardCampaignGoal,
+        contributionDate: now,
+        notes,
+        metadata: {
+          source: "corporate_projects_form",
+          portfolioStatus
+        },
+        updatedAt: now
+      }
+    })
+    .returning({ id: corporateContributions.id });
+
+  const raisedDelta = campaignRaisedDelta(
+    previousContribution
+      ? {
+          amount: Number(previousContribution.amount),
+          status: previousContribution.status,
+          countsTowardCampaignGoal: previousContribution.countsTowardCampaignGoal
+        }
+      : null,
+    {
+      amount: allocationAmount,
+      status: contributionStatus,
+      countsTowardCampaignGoal
+    }
+  );
+
+  if (raisedDelta !== 0) {
+    await db
+      .update(campaigns)
+      .set({
+        raisedAmount: sql`greatest(0, ${campaigns.raisedAmount} + ${raisedDelta.toFixed(2)}::numeric)`,
+        updatedAt: now
+      })
+      .where(eq(campaigns.id, campaign.id));
+  }
 
   const evidenceRows = await db
     .select({
@@ -408,15 +511,20 @@ export async function fundCorporateProjectAction(formData: FormData) {
 
   await writeAuditLog({
     actorUserId: user.id,
-    action: "corporate.project.funded",
-    entityType: "corporate_project_portfolio",
-    entityId: portfolioRow?.id,
+    action: "corporate.project.contribution_recorded",
+    entityType: "corporate_contributions",
+    entityId: contributionRow?.id,
     metadata: {
       programId: context.programId,
+      portfolioId: portfolioRow?.id ?? null,
       campaignId: campaign.id,
       campaignTitle: campaign.title,
+      contributionType,
+      contributionStatus,
       allocationAmount,
-      status,
+      countsTowardCampaignGoal,
+      raisedDelta,
+      portfolioStatus,
       evidenceLinked: evidenceRows.length
     }
   });

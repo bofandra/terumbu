@@ -779,6 +779,37 @@ export const corporateEmployees = pgTable("corporate_employees", {
   }).onDelete("cascade")
 }));
 
+export const corporateContributions = pgTable("corporate_contributions", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  corporateAccountId: uuid("corporate_account_id").notNull(),
+  programId: uuid("program_id").notNull().references(() => corporatePrograms.id, { onDelete: "cascade" }),
+  campaignId: uuid("campaign_id").notNull().references(() => campaigns.id),
+  createdByUserId: uuid("created_by_user_id").references(() => users.id, { onDelete: "set null" }),
+  referenceCode: varchar("reference_code", { length: 160 }).notNull(),
+  contributionType: varchar("contribution_type", { length: 80 }).default("csr").notNull(),
+  amount: numeric("amount", { precision: 14, scale: 2 }).notNull(),
+  currency: varchar("currency", { length: 8 }).default("IDR").notNull(),
+  status: varchar("status", { length: 80 }).default("committed").notNull(),
+  countsTowardCampaignGoal: boolean("counts_toward_campaign_goal").default(false).notNull(),
+  contributionDate: timestamp("contribution_date", { withTimezone: true }).defaultNow().notNull(),
+  notes: text("notes"),
+  metadata: jsonb("metadata"),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull()
+}, (table) => ({
+  referenceIdx: uniqueIndex("corporate_contributions_reference_idx").on(table.referenceCode),
+  programCampaignTypeIdx: uniqueIndex("corporate_contributions_program_campaign_type_idx").on(table.programId, table.campaignId, table.contributionType),
+  accountIdx: index("corporate_contributions_account_idx").on(table.corporateAccountId),
+  programIdx: index("corporate_contributions_program_idx").on(table.programId),
+  campaignIdx: index("corporate_contributions_campaign_idx").on(table.campaignId),
+  statusIdx: index("corporate_contributions_status_idx").on(table.status),
+  accountFk: foreignKey({
+    name: "corporate_contributions_account_fk",
+    columns: [table.corporateAccountId],
+    foreignColumns: [corporateAccounts.id]
+  }).onDelete("cascade")
+}));
+
 export const corporateProjectPortfolio = pgTable("corporate_project_portfolio", {
   id: uuid("id").defaultRandom().primaryKey(),
   programId: uuid("program_id").notNull().references(() => corporatePrograms.id, { onDelete: "cascade" }),
