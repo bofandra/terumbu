@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowUpRight, CalendarDays, CalendarPlus, Plus, ShipWheel, Users } from "lucide-react";
+import { ArrowUpRight, CalendarDays, CalendarPlus, MessageSquareText, Plus, ShipWheel, Users } from "lucide-react";
 
 import { AdminEmptyState, AdminPageHeader, AdminStatusBadge, adminPanelClassName } from "@/components/admin-ui";
 import { requireRole } from "@/lib/auth";
@@ -57,6 +57,7 @@ export default async function AdminExpeditionsPage({ searchParams }: AdminExpedi
     (total, expedition) => total + expedition.departures.filter((departure) => departure.status === "open").length,
     0
   );
+  const pendingReviews = data.expeditionCatalog.reduce((total, expedition) => total + expedition.reviews.filter((review) => review.status === "pending").length, 0);
   const savedMessage = params?.saved ? statusMessages[params.saved] : null;
   const errorMessage = params?.error ? errorMessages[params.error] : null;
 
@@ -73,12 +74,13 @@ export default async function AdminExpeditionsPage({ searchParams }: AdminExpedi
       {savedMessage ? <p className="rounded-lg border border-kelp-700/20 bg-kelp-100 px-4 py-3 text-sm font-bold text-kelp-700">{savedMessage}</p> : null}
       {errorMessage ? <p className="rounded-lg border border-coral-700/20 bg-coral-100 px-4 py-3 text-sm font-bold text-coral-700">{errorMessage}</p> : null}
 
-      <section className="grid gap-3 md:grid-cols-4" aria-label="Expedition summary">
+      <section className="grid gap-3 md:grid-cols-5" aria-label="Expedition summary">
         {[
           { label: "Catalog rows", value: data.expeditionCatalog.length.toLocaleString("id-ID"), icon: ShipWheel },
           { label: "Departures", value: scheduledDepartures.toLocaleString("id-ID"), icon: CalendarDays },
           { label: "Open departures", value: openDepartures.toLocaleString("id-ID"), icon: CalendarPlus },
-          { label: "Available seats", value: totalSeats.toLocaleString("id-ID"), icon: Users }
+          { label: "Available seats", value: totalSeats.toLocaleString("id-ID"), icon: Users },
+          { label: "Pending reviews", value: pendingReviews.toLocaleString("id-ID"), icon: MessageSquareText }
         ].map((item) => {
           const Icon = item.icon;
 
@@ -126,7 +128,8 @@ export default async function AdminExpeditionsPage({ searchParams }: AdminExpedi
                     {expedition.region} / {expedition.durationDays} days / {formatCurrency(expedition.basePrice)}
                   </p>
                   <p className="mt-2 text-xs font-bold uppercase tracking-[0.12em] text-ocean-900/44">
-                    {expedition.departures.length.toLocaleString("id-ID")} departures / {expedition.bookingCount.toLocaleString("id-ID")} bookings
+                    {expedition.departures.length.toLocaleString("id-ID")} departures / {expedition.bookingCount.toLocaleString("id-ID")} bookings /{" "}
+                    {expedition.reviews.filter((review) => review.status === "pending").length.toLocaleString("id-ID")} pending reviews
                   </p>
                 </div>
                 <div className="flex flex-wrap gap-2 lg:justify-end">

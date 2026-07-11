@@ -1,11 +1,10 @@
 import Link from "next/link";
 import { CheckCircle2, ClipboardList, Clock3, ExternalLink, MessageSquare, ShieldCheck } from "lucide-react";
 
-import { CorporateEmptyState } from "@/components/corporate-empty-state";
 import { Button } from "@/components/ui/button";
 import { requireUser } from "@/lib/auth";
+import { requireCorporateDashboardData } from "@/lib/corporate-access";
 import { updateCorporateEvidenceStatusAction } from "@/lib/corporate-actions";
-import { getCorporateDashboardData } from "@/lib/queries";
 import { cn } from "@/lib/utils";
 
 export const metadata = {
@@ -44,11 +43,8 @@ function statusClass(status: string) {
 export default async function CorporateEvidencePage({ searchParams }: CorporateEvidencePageProps) {
   const params = await searchParams;
   const user = await requireUser("/corporate/evidence");
-  const data = await getCorporateDashboardData(user.id);
-
-  if (!data) {
-    return <CorporateEmptyState />;
-  }
+  const data = await requireCorporateDashboardData(user.id, "/corporate/evidence");
+  const canUpdateEvidenceStatus = data.capabilities.canUpdateEvidenceStatus;
 
   const reviewStages = [
     { label: "Submitted", count: data.evidenceReviewQueue.filter((item) => item.reviewStage === "Submitted").length, icon: ClipboardList },
@@ -130,21 +126,27 @@ export default async function CorporateEvidencePage({ searchParams }: CorporateE
                   </div>
                 </div>
                 <p className="mt-4 rounded-xl bg-white p-3 text-xs font-semibold leading-5 text-ocean-900/62">{item.internalNote}</p>
-                <form action={updateCorporateEvidenceStatusAction} className="mt-4 grid gap-2 sm:grid-cols-[1fr_auto]">
-                  <input type="hidden" name="evidenceId" value={item.id} />
-                  <label className="grid gap-2 text-xs font-bold uppercase tracking-[0.14em] text-ocean-900/46">
-                    Review status
-                    <select name="verificationStatus" defaultValue={item.verificationStatus} className="min-h-10 rounded-xl border border-ocean-900/12 bg-white px-3 text-sm font-semibold normal-case tracking-normal text-ocean-900 outline-none">
-                      <option value="submitted">Submitted</option>
-                      <option value="in_review">In review</option>
-                      <option value="verified">Verified</option>
-                      <option value="rejected">Rejected</option>
-                    </select>
-                  </label>
-                  <Button type="submit" tone="light" className="self-end">
-                    Save Status
-                  </Button>
-                </form>
+                {canUpdateEvidenceStatus ? (
+                  <form action={updateCorporateEvidenceStatusAction} className="mt-4 grid gap-2 sm:grid-cols-[1fr_auto]">
+                    <input type="hidden" name="evidenceId" value={item.id} />
+                    <label className="grid gap-2 text-xs font-bold uppercase tracking-[0.14em] text-ocean-900/46">
+                      Review status
+                      <select name="verificationStatus" defaultValue={item.verificationStatus} className="min-h-10 rounded-xl border border-ocean-900/12 bg-white px-3 text-sm font-semibold normal-case tracking-normal text-ocean-900 outline-none">
+                        <option value="submitted">Submitted</option>
+                        <option value="in_review">In review</option>
+                        <option value="verified">Verified</option>
+                        <option value="rejected">Rejected</option>
+                      </select>
+                    </label>
+                    <Button type="submit" tone="light" className="self-end">
+                      Save Status
+                    </Button>
+                  </form>
+                ) : (
+                  <p className="mt-4 rounded-xl border border-ocean-900/10 bg-white p-3 text-xs font-semibold leading-5 text-ocean-900/62">
+                    Your corporate role can inspect evidence and audit history, but cannot change verification status.
+                  </p>
+                )}
                 <div className="mt-4 border-t border-ocean-900/10 pt-4">
                   <p className="text-xs font-bold uppercase tracking-[0.14em] text-ocean-900/46">Audit trail</p>
                   <div className="mt-3 grid gap-2">

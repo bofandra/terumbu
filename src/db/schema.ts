@@ -533,7 +533,7 @@ export const expeditionReviews = pgTable("expedition_reviews", {
   rating: integer("rating").notNull(),
   title: varchar("title", { length: 160 }),
   body: text("body").notNull(),
-  status: varchar("status", { length: 80 }).default("published").notNull(),
+  status: varchar("status", { length: 80 }).default("pending").notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull()
 }, (table) => ({

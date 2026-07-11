@@ -39,6 +39,11 @@ import {
   parseExpeditionMetadataJson,
   type ExpeditionDetailMetadata
 } from "@/lib/expedition-metadata";
+import {
+  normalizePartnerOrganizationRole,
+  partnerRoleAllows,
+  type PartnerOrganizationPermission
+} from "@/lib/partner-permissions";
 import { transitionDonationPayment, transitionExpeditionBookingPayment } from "@/lib/payment-workflows";
 import { getEvidenceStorageProvider, normalizeEvidenceUrl, readUploadedImageAsDataUrl } from "@/lib/storage";
 import { formatCurrency } from "@/lib/utils";
@@ -54,7 +59,6 @@ function activityCode() {
 const campaignStatuses = ["draft", "review", "published", "funded", "completed", "archived"] as const;
 const partnerCampaignStatuses = ["draft", "review"] as const;
 const verificationStatuses = ["basic", "document", "field"] as const;
-const organizationUserRoles = ["owner", "manager", "contributor", "viewer"] as const;
 const organizationUserStatuses = ["active", "inactive"] as const;
 const expeditionDepartureStatuses = ["open", "waitlist", "full", "private_group", "cancelled"] as const;
 const activityUses = ["public_update", "evidence", "update_and_evidence"] as const;
@@ -87,9 +91,7 @@ function verificationFromForm(value: FormDataEntryValue | null) {
 }
 
 function organizationUserRoleFromForm(value: FormDataEntryValue | null) {
-  const role = String(value ?? "manager");
-
-  return organizationUserRoles.includes(role as (typeof organizationUserRoles)[number]) ? (role as (typeof organizationUserRoles)[number]) : "manager";
+  return normalizePartnerOrganizationRole(String(value ?? "manager"), "manager");
 }
 
 function organizationUserStatusFromForm(value: FormDataEntryValue | null) {
@@ -802,13 +804,53 @@ async function userCanAccessOrganization(userId: string, organizationId: string)
   return Boolean(membership);
 }
 
+async function userCanUseOrganizationPermission(
+  userId: string,
+  organizationId: string,
+  permission: PartnerOrganizationPermission
+) {
+  const roleKeys = await getPortalUserRoles(userId);
+
+  if (roleKeys.includes("admin")) {
+    return true;
+  }
+
+  const [membership] = await db
+    .select({ role: organizationUsers.role })
+    .from(organizationUsers)
+    .where(and(eq(organizationUsers.userId, userId), eq(organizationUsers.organizationId, organizationId), eq(organizationUsers.status, "active")))
+    .limit(1);
+
+  return partnerRoleAllows(membership?.role, permission);
+}
+
 async function requireOrganizationAccess(userId: string, organizationId: string, formData: FormData, fallbackPath: string) {
   if (!(await userCanAccessOrganization(userId, organizationId))) {
     redirectPartnerError(formData, fallbackPath, "organization-access");
   }
 }
 
-async function requireCampaignAccess(userId: string, campaignId: string, formData: FormData, fallbackPath: string) {
+async function requireOrganizationPermission(
+  userId: string,
+  organizationId: string,
+  permission: PartnerOrganizationPermission,
+  formData: FormData,
+  fallbackPath: string
+) {
+  await requireOrganizationAccess(userId, organizationId, formData, fallbackPath);
+
+  if (!(await userCanUseOrganizationPermission(userId, organizationId, permission))) {
+    redirectPartnerError(formData, fallbackPath, "partner-permission");
+  }
+}
+
+async function requireCampaignAccess(
+  userId: string,
+  campaignId: string,
+  formData: FormData,
+  fallbackPath: string,
+  permission?: PartnerOrganizationPermission
+) {
   const [campaign] = await db
     .select({
       id: campaigns.id,
@@ -827,10 +869,20 @@ async function requireCampaignAccess(userId: string, campaignId: string, formDat
 
   await requireOrganizationAccess(userId, campaign.organizationId, formData, fallbackPath);
 
+  if (permission) {
+    await requireOrganizationPermission(userId, campaign.organizationId, permission, formData, fallbackPath);
+  }
+
   return campaign;
 }
 
-async function requireExpeditionAccess(userId: string, expeditionId: string, formData: FormData, fallbackPath: string) {
+async function requireExpeditionAccess(
+  userId: string,
+  expeditionId: string,
+  formData: FormData,
+  fallbackPath: string,
+  permission?: PartnerOrganizationPermission
+) {
   const [expedition] = await db
     .select({
       id: expeditions.id,
@@ -865,6 +917,10 @@ async function requireExpeditionAccess(userId: string, expeditionId: string, for
   }
 
   await requireOrganizationAccess(userId, expedition.organizationId, formData, fallbackPath);
+
+  if (permission) {
+    await requireOrganizationPermission(userId, expedition.organizationId, permission, formData, fallbackPath);
+  }
 
   return expedition;
 }
@@ -1262,7 +1318,7 @@ export async function createPartnerCampaignAction(formData: FormData) {
     redirectPartnerError(formData, "/partner/campaigns/new", "organization");
   }
 
-  await requireOrganizationAccess(user.id, organizationId, formData, "/partner/campaigns/new");
+  await requireOrganizationPermission(user.id, organizationId, "campaign:create", formData, "/partner/campaigns/new");
 
   const now = new Date();
   const slug = `${slugifyTitle(title)}-${randomBytes(3).toString("hex")}`;
@@ -1337,7 +1393,7 @@ export async function updatePartnerCampaignAction(formData: FormData) {
     redirectPartnerError(formData, "/partner/campaigns", "campaign-missing");
   }
 
-  await requireOrganizationAccess(user.id, campaign.organizationId, formData, "/partner/campaigns");
+  await requireOrganizationPermission(user.id, campaign.organizationId, "campaign:update", formData, "/partner/campaigns");
 
   const [organization] = await db.select({ id: organizations.id }).from(organizations).where(eq(organizations.id, organizationId)).limit(1);
 
@@ -1345,7 +1401,7 @@ export async function updatePartnerCampaignAction(formData: FormData) {
     redirectPartnerError(formData, "/partner/campaigns", "organization");
   }
 
-  await requireOrganizationAccess(user.id, organizationId, formData, "/partner/campaigns");
+  await requireOrganizationPermission(user.id, organizationId, "campaign:update", formData, "/partner/campaigns");
 
   const now = new Date();
   const status = isAdmin
@@ -1400,7 +1456,7 @@ export async function deletePartnerCampaignAction(formData: FormData) {
     redirectPartnerError(formData, "/partner/campaigns", "campaign-missing");
   }
 
-  await requireOrganizationAccess(user.id, campaign.organizationId, formData, "/partner/campaigns");
+  await requireOrganizationPermission(user.id, campaign.organizationId, "campaign:delete", formData, "/partner/campaigns");
 
   const blockers = await getCampaignDeleteBlockers(campaignId);
 
@@ -1737,8 +1793,8 @@ export async function updatePartnerExpeditionAction(formData: FormData) {
     redirectPartnerError(formData, "/partner/expeditions", "expedition-invalid");
   }
 
-  const existingExpedition = await requireExpeditionAccess(user.id, expeditionId, formData, "/partner/expeditions");
-  await requireCampaignAccess(user.id, relatedCampaignId, formData, "/partner/expeditions");
+  const existingExpedition = await requireExpeditionAccess(user.id, expeditionId, formData, "/partner/expeditions", "expedition:manage");
+  await requireCampaignAccess(user.id, relatedCampaignId, formData, "/partner/expeditions", "expedition:manage");
 
   const [existingSlug] = await db.select({ id: expeditions.id }).from(expeditions).where(eq(expeditions.slug, slug)).limit(1);
 
@@ -1801,7 +1857,7 @@ export async function createPartnerExpeditionAction(formData: FormData) {
     redirectPartnerError(formData, "/partner/expeditions", "expedition-invalid");
   }
 
-  await requireCampaignAccess(user.id, relatedCampaignId, formData, "/partner/expeditions");
+  await requireCampaignAccess(user.id, relatedCampaignId, formData, "/partner/expeditions", "expedition:manage");
 
   const [existing] = await db.select({ id: expeditions.id }).from(expeditions).where(eq(expeditions.slug, slug)).limit(1);
 
@@ -1873,7 +1929,7 @@ export async function createPartnerExpeditionDepartureAction(formData: FormData)
     redirectPartnerError(formData, "/partner/expeditions", "departure-invalid");
   }
 
-  await requireExpeditionAccess(user.id, expeditionId, formData, "/partner/expeditions");
+  await requireExpeditionAccess(user.id, expeditionId, formData, "/partner/expeditions", "expedition:manage");
 
   const [existing] = await db
     .select({ id: expeditionDepartures.id })
@@ -1935,7 +1991,7 @@ export async function updatePartnerExpeditionDepartureAction(formData: FormData)
     redirectPartnerError(formData, "/partner/expeditions", "departure-missing");
   }
 
-  await requireExpeditionAccess(user.id, existingDeparture.expeditionId, formData, "/partner/expeditions");
+  await requireExpeditionAccess(user.id, existingDeparture.expeditionId, formData, "/partner/expeditions", "expedition:manage");
 
   if (capacity < existingDeparture.seatsBooked) {
     redirectPartnerError(formData, "/partner/expeditions", "departure-capacity");
@@ -2242,7 +2298,7 @@ export async function createCampaignActivityAction(formData: FormData) {
     redirectPartnerError(formData, "/partner/activity", "activity");
   }
 
-  await requireCampaignAccess(user.id, campaignId, formData, "/partner/activity");
+  await requireCampaignAccess(user.id, campaignId, formData, "/partner/activity", "activity:create");
 
   if (impactSiteId) {
     const [site] = await db.select({ campaignId: impactSites.campaignId }).from(impactSites).where(eq(impactSites.id, impactSiteId)).limit(1);
@@ -2390,7 +2446,7 @@ export async function reviseEvidenceAction(formData: FormData) {
     redirectPartnerError(formData, "/partner/evidence", "evidence-missing");
   }
 
-  await requireCampaignAccess(user.id, evidence.campaignId, formData, "/partner/evidence");
+  await requireCampaignAccess(user.id, evidence.campaignId, formData, "/partner/evidence", "evidence:revise");
 
   const now = new Date();
   const storageProvider = attachmentUrl.startsWith("data:image/") ? "database_inline" : getEvidenceStorageProvider();

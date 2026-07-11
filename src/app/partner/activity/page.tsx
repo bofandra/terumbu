@@ -18,7 +18,7 @@ export default async function PartnerActivityPage() {
         title="Activity"
         description="Create and review campaign activity as public progress, verification evidence, or both."
       />
-      <CampaignActivityForm campaigns={data.campaigns} />
+      <CampaignActivityForm campaigns={data.campaigns} canCreateActivity={data.capabilities.canCreateActivity} />
       <CampaignActivityList activities={data.activities} />
     </div>
   );

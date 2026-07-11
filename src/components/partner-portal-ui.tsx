@@ -300,8 +300,9 @@ export function CampaignFields({ campaign, organizations }: { campaign?: Campaig
   );
 }
 
-export function CampaignCreateForm({ organizations }: { organizations: Organization[] }) {
+export function CampaignCreateForm({ organizations, canCreateCampaign }: { organizations: Organization[]; canCreateCampaign: boolean }) {
   const hasOrganizations = organizations.length > 0;
+  const canSubmit = hasOrganizations && canCreateCampaign;
 
   return (
     <form action={createPartnerCampaignAction} data-testid="partner-create-campaign-form" className="rounded-lg border border-ocean-900/10 bg-white p-5 shadow-soft">
@@ -309,14 +310,18 @@ export function CampaignCreateForm({ organizations }: { organizations: Organizat
       <div className="flex items-center justify-between gap-3">
         <div>
           <h2 className="text-xl font-bold tracking-normal text-ocean-900">Create campaign</h2>
-          <p className="mt-1 text-sm font-semibold text-ocean-900/58">New campaigns start as partner-managed records for review and publishing.</p>
+          <p className="mt-1 text-sm font-semibold text-ocean-900/58">
+            {canCreateCampaign
+              ? "New campaigns start as partner-managed records for review and publishing."
+              : "Your partner role can view campaign records, but cannot create new campaigns."}
+          </p>
         </div>
         <Plus className="size-5 text-coral-700" aria-hidden="true" />
       </div>
       <div className="mt-5 grid gap-4">
         <CampaignFields organizations={organizations} />
       </div>
-      <Button type="submit" className="mt-5" disabled={!hasOrganizations}>
+      <Button type="submit" className="mt-5" disabled={!canSubmit}>
         <Plus className="size-4" aria-hidden="true" />
         Create Campaign
       </Button>
@@ -545,7 +550,10 @@ export function CampaignList({
   evidence,
   impactSites,
   sponsoredEcosystems,
-  donorActivity
+  donorActivity,
+  canCreateCampaign,
+  canDeleteCampaign,
+  canUpdateCampaign
 }: {
   campaigns: Campaign[];
   organizations: Organization[];
@@ -554,6 +562,9 @@ export function CampaignList({
   impactSites: CampaignImpactSite[];
   sponsoredEcosystems: CampaignSponsorship[];
   donorActivity: CampaignDonation[];
+  canCreateCampaign: boolean;
+  canDeleteCampaign: boolean;
+  canUpdateCampaign: boolean;
 }) {
   return (
     <section className="rounded-lg border border-ocean-900/10 bg-white p-5 shadow-soft">
@@ -562,10 +573,14 @@ export function CampaignList({
           <h2 className="text-xl font-bold tracking-normal text-ocean-900">Campaigns</h2>
           <p className="mt-1 text-sm font-semibold text-ocean-900/58">Edit campaign records and images.</p>
         </div>
-        <Link href="/partner/campaigns/new" className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border border-ocean-900/10 px-3 text-sm font-bold text-ocean-900 hover:border-coral-500 hover:text-coral-700">
-          <Plus className="size-4" aria-hidden="true" />
-          New campaign
-        </Link>
+        {canCreateCampaign ? (
+          <Link href="/partner/campaigns/new" className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border border-ocean-900/10 px-3 text-sm font-bold text-ocean-900 hover:border-coral-500 hover:text-coral-700">
+            <Plus className="size-4" aria-hidden="true" />
+            New campaign
+          </Link>
+        ) : (
+          <span className="inline-flex min-h-10 items-center rounded-lg bg-ocean-50 px-3 text-sm font-bold text-ocean-700">Read only</span>
+        )}
       </div>
 
       <div className="mt-5 grid gap-4">
@@ -607,25 +622,27 @@ export function CampaignList({
                   <p className="mt-1 text-xs font-semibold text-ocean-900/58">{campaign.donorCount.toLocaleString("id-ID")} donors</p>
                 </div>
 
-                <details className="mt-4 rounded-lg border border-ocean-900/10 bg-white">
-                  <summary className="flex cursor-pointer items-center gap-2 px-4 py-3 text-sm font-bold text-ocean-900">
-                    <Pencil className="size-4" aria-hidden="true" />
-                    Edit campaign
-                  </summary>
-                  <form action={updatePartnerCampaignAction} className="grid gap-4 border-t border-ocean-900/10 p-4">
-                    <input type="hidden" name="campaignId" value={campaign.id} />
-                    <input type="hidden" name="redirectTo" value="/partner/campaigns" />
-                    <CampaignFields campaign={campaign} organizations={organizations} />
-                    <label className="flex items-center gap-2 text-sm font-bold text-ocean-900">
-                      <input name="removeImage" type="checkbox" className="size-4 accent-coral-500" />
-                      Remove current image
-                    </label>
-                    <Button type="submit" tone="secondary" className="w-fit">
-                      <Save className="size-4" aria-hidden="true" />
-                      Save Campaign
-                    </Button>
-                  </form>
-                </details>
+                {canUpdateCampaign ? (
+                  <details className="mt-4 rounded-lg border border-ocean-900/10 bg-white">
+                    <summary className="flex cursor-pointer items-center gap-2 px-4 py-3 text-sm font-bold text-ocean-900">
+                      <Pencil className="size-4" aria-hidden="true" />
+                      Edit campaign
+                    </summary>
+                    <form action={updatePartnerCampaignAction} className="grid gap-4 border-t border-ocean-900/10 p-4">
+                      <input type="hidden" name="campaignId" value={campaign.id} />
+                      <input type="hidden" name="redirectTo" value="/partner/campaigns" />
+                      <CampaignFields campaign={campaign} organizations={organizations} />
+                      <label className="flex items-center gap-2 text-sm font-bold text-ocean-900">
+                        <input name="removeImage" type="checkbox" className="size-4 accent-coral-500" />
+                        Remove current image
+                      </label>
+                      <Button type="submit" tone="secondary" className="w-fit">
+                        <Save className="size-4" aria-hidden="true" />
+                        Save Campaign
+                      </Button>
+                    </form>
+                  </details>
+                ) : null}
 
                 <CampaignPublicDataPanel
                   campaign={campaign}
@@ -636,24 +653,26 @@ export function CampaignList({
                   donorActivity={campaignDonations}
                 />
 
-                <details className="mt-3 rounded-lg border border-coral-700/20 bg-white">
-                  <summary className="flex cursor-pointer items-center gap-2 px-4 py-3 text-sm font-bold text-coral-700">
-                    <Trash2 className="size-4" aria-hidden="true" />
-                    Delete campaign
-                  </summary>
-                  <form action={deletePartnerCampaignAction} className="grid gap-3 border-t border-coral-700/20 p-4">
-                    <input type="hidden" name="campaignId" value={campaign.id} />
-                    <input type="hidden" name="redirectTo" value="/partner/campaigns" />
-                    <label className="flex items-start gap-2 text-sm font-bold text-ocean-900">
-                      <input name="confirmDelete" type="checkbox" value="delete" className="mt-1 size-4 accent-coral-500" required />
-                      Delete this campaign only if it has no donations, sponsorships, corporate portfolio links, or related expeditions.
-                    </label>
-                    <Button type="submit" className="w-fit bg-coral-500 hover:bg-coral-700">
+                {canDeleteCampaign ? (
+                  <details className="mt-3 rounded-lg border border-coral-700/20 bg-white">
+                    <summary className="flex cursor-pointer items-center gap-2 px-4 py-3 text-sm font-bold text-coral-700">
                       <Trash2 className="size-4" aria-hidden="true" />
-                      Delete Campaign
-                    </Button>
-                  </form>
-                </details>
+                      Delete campaign
+                    </summary>
+                    <form action={deletePartnerCampaignAction} className="grid gap-3 border-t border-coral-700/20 p-4">
+                      <input type="hidden" name="campaignId" value={campaign.id} />
+                      <input type="hidden" name="redirectTo" value="/partner/campaigns" />
+                      <label className="flex items-start gap-2 text-sm font-bold text-ocean-900">
+                        <input name="confirmDelete" type="checkbox" value="delete" className="mt-1 size-4 accent-coral-500" required />
+                        Delete this campaign only if it has no donations, sponsorships, corporate portfolio links, or related expeditions.
+                      </label>
+                      <Button type="submit" className="w-fit bg-coral-500 hover:bg-coral-700">
+                        <Trash2 className="size-4" aria-hidden="true" />
+                        Delete Campaign
+                      </Button>
+                    </form>
+                  </details>
+                ) : null}
               </div>
             </article>
           );
@@ -662,9 +681,11 @@ export function CampaignList({
           <div className="rounded-lg border border-dashed border-ocean-900/14 p-4">
             <p className="font-bold text-ocean-900">No partner campaigns yet.</p>
             <p className="mt-2 text-sm leading-6 text-ocean-900/58">Create a campaign before adding field activity.</p>
-            <Link href="/partner/campaigns/new" className="mt-3 inline-flex text-sm font-bold text-coral-700">
-              Create campaign
-            </Link>
+            {canCreateCampaign ? (
+              <Link href="/partner/campaigns/new" className="mt-3 inline-flex text-sm font-bold text-coral-700">
+                Create campaign
+              </Link>
+            ) : null}
           </div>
         ) : null}
       </div>
@@ -672,8 +693,9 @@ export function CampaignList({
   );
 }
 
-export function CampaignActivityForm({ campaigns }: { campaigns: Campaign[] }) {
+export function CampaignActivityForm({ campaigns, canCreateActivity }: { campaigns: Campaign[]; canCreateActivity: boolean }) {
   const hasCampaigns = campaigns.length > 0;
+  const canSubmit = hasCampaigns && canCreateActivity;
 
   return (
     <form action={createCampaignActivityAction} data-testid="partner-activity-form" className="rounded-lg border border-ocean-900/10 bg-white p-5 shadow-soft">
@@ -681,14 +703,18 @@ export function CampaignActivityForm({ campaigns }: { campaigns: Campaign[] }) {
       <div className="flex items-center justify-between gap-3">
         <div>
           <h2 className="text-xl font-bold tracking-normal text-ocean-900">Add activity</h2>
-          <p className="mt-1 text-sm font-semibold text-ocean-900/58">Create one campaign activity for public progress, verification evidence, or both.</p>
+          <p className="mt-1 text-sm font-semibold text-ocean-900/58">
+            {canCreateActivity
+              ? "Create one campaign activity for public progress, verification evidence, or both."
+              : "Your partner role can review activity, but cannot submit new field activity."}
+          </p>
         </div>
         <ClipboardList className="size-5 text-kelp-700" aria-hidden="true" />
       </div>
       <div className="mt-5 grid gap-4">
         <div className="grid gap-3 md:grid-cols-2">
           <Field label="Campaign">
-            <select name="campaignId" className={inputClassName} disabled={!hasCampaigns} required>
+            <select name="campaignId" className={inputClassName} disabled={!canSubmit} required>
               {campaigns.map((campaign) => (
                 <option key={campaign.id} value={campaign.id}>
                   {campaign.title}
@@ -697,7 +723,7 @@ export function CampaignActivityForm({ campaigns }: { campaigns: Campaign[] }) {
             </select>
           </Field>
           <Field label="Activity use">
-            <select name="activityUse" defaultValue="public_update" className={inputClassName} disabled={!hasCampaigns}>
+            <select name="activityUse" defaultValue="public_update" className={inputClassName} disabled={!canSubmit}>
               <option value="public_update">Public update</option>
               <option value="evidence">Evidence only</option>
               <option value="update_and_evidence">Public update + evidence</option>
@@ -705,28 +731,28 @@ export function CampaignActivityForm({ campaigns }: { campaigns: Campaign[] }) {
           </Field>
         </div>
         <Field label="Activity title">
-          <input name="title" placeholder="Activity title" className={inputClassName} required />
+          <input name="title" placeholder="Activity title" className={inputClassName} disabled={!canSubmit} required />
         </Field>
         <Field label="Field note">
-          <textarea name="body" placeholder="Progress note or reviewer context" className={textareaClassName} required />
+          <textarea name="body" placeholder="Progress note or reviewer context" className={textareaClassName} disabled={!canSubmit} required />
         </Field>
         <div className="grid gap-3 md:grid-cols-3">
           <Field label="Evidence type">
-            <select name="evidenceType" defaultValue="field_photo" className={inputClassName} disabled={!hasCampaigns}>
+            <select name="evidenceType" defaultValue="field_photo" className={inputClassName} disabled={!canSubmit}>
               <option value="field_photo">Field photo</option>
               <option value="document">Document</option>
               <option value="field_report">Field report</option>
             </select>
           </Field>
           <Field label="Upload attachment">
-            <input name="imageFile" type="file" accept="image/png,image/jpeg,image/webp,image/gif" className={inputClassName} />
+            <input name="imageFile" type="file" accept="image/png,image/jpeg,image/webp,image/gif" className={inputClassName} disabled={!canSubmit} />
           </Field>
           <Field label="Attachment URL">
-            <input name="attachmentUrl" placeholder="https://..." className={inputClassName} />
+            <input name="attachmentUrl" placeholder="https://..." className={inputClassName} disabled={!canSubmit} />
           </Field>
         </div>
       </div>
-      <Button type="submit" className="mt-5" disabled={!hasCampaigns}>
+      <Button type="submit" className="mt-5" disabled={!canSubmit}>
         <ClipboardList className="size-4" aria-hidden="true" />
         Save Activity
       </Button>

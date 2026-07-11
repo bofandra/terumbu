@@ -28,6 +28,9 @@ export default async function PartnerCampaignsPage() {
         impactSites={data.impactSites}
         sponsoredEcosystems={data.sponsoredEcosystems}
         donorActivity={data.donorActivity}
+        canCreateCampaign={data.capabilities.canCreateCampaign}
+        canDeleteCampaign={data.capabilities.canDeleteCampaign}
+        canUpdateCampaign={data.capabilities.canUpdateCampaign}
       />
     </div>
   );

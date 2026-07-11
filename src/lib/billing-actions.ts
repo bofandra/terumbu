@@ -2,7 +2,7 @@
 
 import { randomBytes } from "node:crypto";
 
-import { and, eq } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 import { redirect } from "next/navigation";
 
 import { db } from "@/db/client";
@@ -10,12 +10,22 @@ import {
   donationSubscriptions,
   donations,
   expeditionBookings,
+  expeditionDepartures,
   paymentOperations,
   paymentTransactions,
   userPaymentMethods
 } from "@/db/schema";
 import { requireUser } from "@/lib/auth";
+import {
+  activeSubscriptionStatuses,
+  canArchivePaymentMethod,
+  canCancelSubscription,
+  canUsePaymentMethodForSubscription,
+  parseExpiryMonth,
+  parseExpiryYear
+} from "@/lib/billing-lifecycle";
 import { normalizeCardLast4 } from "@/lib/checkout";
+import { expeditionDepartureAvailability } from "@/lib/expedition-booking-lifecycle";
 import { sendTransactionalEmail } from "@/lib/email";
 import {
   ensureUserPaymentMethod,
@@ -37,6 +47,8 @@ export async function createPaymentMethodAction(formData: FormData) {
   const label = String(formData.get("label") ?? "").trim() || "Demo payment method";
   const brand = String(formData.get("brand") ?? "").trim() || "Demo Card";
   const last4 = normalizeCardLast4(formData.get("last4") ?? "4242");
+  const expMonth = parseExpiryMonth(formData.get("expMonth"));
+  const expYear = parseExpiryYear(formData.get("expYear"));
   const makeDefault = formData.get("makeDefault") === "on";
   const now = new Date();
 
@@ -46,6 +58,8 @@ export async function createPaymentMethodAction(formData: FormData) {
       label,
       brand,
       last4,
+      expMonth,
+      expYear,
       makeDefault,
       now
     });
@@ -122,12 +136,21 @@ export async function archivePaymentMethodAction(formData: FormData) {
   const now = new Date();
 
   const [paymentMethod] = await db
-    .select({ id: userPaymentMethods.id })
+    .select({
+      id: userPaymentMethods.id,
+      status: userPaymentMethods.status
+    })
     .from(userPaymentMethods)
     .where(and(eq(userPaymentMethods.id, paymentMethodId), eq(userPaymentMethods.userId, user.id)))
     .limit(1);
 
-  if (!paymentMethod) {
+  const [activeSubscription] = await db
+    .select({ id: donationSubscriptions.id })
+    .from(donationSubscriptions)
+    .where(and(eq(donationSubscriptions.paymentMethodId, paymentMethodId), eq(donationSubscriptions.userId, user.id), inArray(donationSubscriptions.status, [...activeSubscriptionStatuses])))
+    .limit(1);
+
+  if (!paymentMethod || !canArchivePaymentMethod({ status: paymentMethod.status, activeSubscriptionCount: activeSubscription ? 1 : 0 })) {
     redirect("/dashboard/donations?error=payment_method");
   }
 
@@ -140,14 +163,6 @@ export async function archivePaymentMethodAction(formData: FormData) {
         updatedAt: now
       })
       .where(eq(userPaymentMethods.id, paymentMethod.id));
-
-    await tx
-      .update(donationSubscriptions)
-      .set({
-        paymentMethodId: null,
-        updatedAt: now
-      })
-      .where(eq(donationSubscriptions.paymentMethodId, paymentMethod.id));
 
     await recordPaymentOperation(tx as unknown as typeof db, {
       operationType: "payment_method_archived",
@@ -180,7 +195,7 @@ export async function cancelSubscriptionAction(formData: FormData) {
     .where(and(eq(donationSubscriptions.id, subscriptionId), eq(donationSubscriptions.userId, user.id)))
     .limit(1);
 
-  if (!subscription) {
+  if (!subscription || !canCancelSubscription(subscription.status)) {
     redirect("/dashboard/donations?error=subscription");
   }
 
@@ -207,6 +222,72 @@ export async function cancelSubscriptionAction(formData: FormData) {
       metadata: {
         previousStatus: subscription.status,
         nextStatus: "cancelled"
+      },
+      processedAt: now,
+      now
+    });
+  });
+
+  redirectToDashboardDonations();
+}
+
+export async function updateSubscriptionPaymentMethodAction(formData: FormData) {
+  const user = await requireUser("/dashboard/donations");
+  const subscriptionId = String(formData.get("subscriptionId") ?? "");
+  const paymentMethodId = String(formData.get("paymentMethodId") ?? "");
+  const now = new Date();
+
+  const [subscription] = await db
+    .select({
+      id: donationSubscriptions.id,
+      amount: donationSubscriptions.amount,
+      currency: donationSubscriptions.currency,
+      status: donationSubscriptions.status,
+      paymentMethodId: donationSubscriptions.paymentMethodId,
+      providerSubscriptionReference: donationSubscriptions.providerSubscriptionReference
+    })
+    .from(donationSubscriptions)
+    .where(and(eq(donationSubscriptions.id, subscriptionId), eq(donationSubscriptions.userId, user.id)))
+    .limit(1);
+
+  const [paymentMethod] = await db
+    .select({
+      id: userPaymentMethods.id,
+      status: userPaymentMethods.status,
+      expMonth: userPaymentMethods.expMonth,
+      expYear: userPaymentMethods.expYear
+    })
+    .from(userPaymentMethods)
+    .where(and(eq(userPaymentMethods.id, paymentMethodId), eq(userPaymentMethods.userId, user.id)))
+    .limit(1);
+
+  if (!subscription || !canCancelSubscription(subscription.status) || !paymentMethod || !canUsePaymentMethodForSubscription(paymentMethod, now)) {
+    redirect("/dashboard/donations?error=payment_method");
+  }
+
+  await db.transaction(async (tx) => {
+    await tx
+      .update(donationSubscriptions)
+      .set({
+        paymentMethodId: paymentMethod.id,
+        updatedAt: now
+      })
+      .where(eq(donationSubscriptions.id, subscription.id));
+
+    await recordPaymentOperation(tx as unknown as typeof db, {
+      operationType: "subscription_payment_method_updated",
+      entityType: "subscription",
+      subscriptionId: subscription.id,
+      requestedByUserId: user.id,
+      processedByUserId: user.id,
+      status: "completed",
+      amount: subscription.amount,
+      currency: subscription.currency,
+      providerReference: subscription.providerSubscriptionReference,
+      metadata: {
+        previousPaymentMethodId: subscription.paymentMethodId,
+        paymentMethodId: paymentMethod.id,
+        subscriptionStatus: subscription.status
       },
       processedAt: now,
       now
@@ -334,14 +415,34 @@ export async function retryExpeditionPaymentAction(formData: FormData) {
   const [booking] = await db
     .select({
       id: expeditionBookings.id,
-      paymentStatus: expeditionBookings.paymentStatus
+      paymentStatus: expeditionBookings.paymentStatus,
+      participantsCount: expeditionBookings.participantsCount,
+      departureStatus: expeditionDepartures.status,
+      capacity: expeditionDepartures.capacity,
+      seatsBooked: expeditionDepartures.seatsBooked,
+      departureMetadata: expeditionDepartures.metadata
     })
     .from(expeditionBookings)
+    .innerJoin(expeditionDepartures, eq(expeditionBookings.departureId, expeditionDepartures.id))
     .where(and(eq(expeditionBookings.id, bookingId), eq(expeditionBookings.userId, user.id)))
     .limit(1);
 
   if (!booking || booking.paymentStatus === "paid" || booking.paymentStatus === "refunded") {
     redirect("/dashboard/expeditions?error=retry");
+  }
+
+  const availability = expeditionDepartureAvailability(
+    {
+      status: booking.departureStatus,
+      capacity: booking.capacity,
+      seatsBooked: booking.seatsBooked,
+      minParticipants: Number((booking.departureMetadata as Record<string, unknown> | null)?.minParticipants ?? 6)
+    },
+    booking.participantsCount
+  );
+
+  if (!availability.canBook) {
+    redirect("/dashboard/expeditions?error=availability");
   }
 
   await db.transaction(async (tx) => {

@@ -6,7 +6,7 @@ import { redirect } from "next/navigation";
 
 import { db } from "@/db/client";
 import { corporatePermissions, profiles, roles, sessions, userRoles, users } from "@/db/schema";
-import { defaultAuthenticatedPathForAccount, REGULAR_ACCOUNT_HOME } from "@/lib/account-destinations";
+import { defaultAuthenticatedPathForAccount, forbiddenRedirectPath, internalRedirectPath, REGULAR_ACCOUNT_HOME } from "@/lib/account-destinations";
 import { shouldUseSecureSessionCookie } from "@/lib/session-cookie";
 export { createPasswordHash, verifyPassword } from "@/lib/password";
 
@@ -117,7 +117,7 @@ export async function requireRole(allowedRoles: string[], nextPath = "/dashboard
   const roleKeys = await getUserRoles(user.id);
 
   if (!roleKeys.some((role) => allowedRoles.includes(role))) {
-    redirect(await getDefaultAuthenticatedPath(user.id));
+    redirect(forbiddenRedirectPath(nextPath));
   }
 
   return user;
@@ -135,9 +135,5 @@ export async function destroyCurrentSession() {
 }
 
 export function safeRedirectPath(value: FormDataEntryValue | string | null | undefined, fallback = REGULAR_ACCOUNT_HOME) {
-  if (typeof value !== "string" || !value.startsWith("/") || value.startsWith("//")) {
-    return fallback;
-  }
-
-  return value;
+  return internalRedirectPath(typeof value === "string" ? value : null, fallback);
 }

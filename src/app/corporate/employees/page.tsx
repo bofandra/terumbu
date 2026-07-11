@@ -1,11 +1,11 @@
 import { CalendarDays, Download, Gift, Trophy, Users } from "lucide-react";
 
-import { CorporateEmptyState } from "@/components/corporate-empty-state";
 import { Button, ButtonLink } from "@/components/ui/button";
 import { ProgressMeter } from "@/components/ui/progress-meter";
 import { requireUser } from "@/lib/auth";
+import { requireCorporateDashboardData } from "@/lib/corporate-access";
 import { inviteCorporateEmployeeAction } from "@/lib/corporate-actions";
-import { getCorporateDashboardData } from "@/lib/queries";
+import { assignableCorporateEmployeeRoleOptions } from "@/lib/corporate-permissions";
 import { cn, formatCurrency } from "@/lib/utils";
 
 export const metadata = {
@@ -40,11 +40,9 @@ function statusClass(status: string) {
 export default async function CorporateEmployeesPage({ searchParams }: CorporateEmployeesPageProps) {
   const params = await searchParams;
   const user = await requireUser("/corporate/employees");
-  const data = await getCorporateDashboardData(user.id);
-
-  if (!data) {
-    return <CorporateEmptyState />;
-  }
+  const data = await requireCorporateDashboardData(user.id, "/corporate/employees");
+  const roleOptions = assignableCorporateEmployeeRoleOptions(data.governance.accessSummary.currentPermission);
+  const canManageEmployees = data.capabilities.canManageEmployees && roleOptions.length > 0;
 
   return (
     <main className="mx-auto max-w-[1500px] px-4 py-8 sm:px-6 lg:px-8">
@@ -91,42 +89,47 @@ export default async function CorporateEmployeesPage({ searchParams }: Corporate
       <section className="mt-6 rounded-2xl border border-ocean-900/10 bg-white p-5 shadow-soft">
         <p className="text-sm font-bold uppercase text-coral-700">Team actions</p>
         <h2 className="mt-2 text-xl font-bold tracking-normal text-ocean-900">Invite or update an employee</h2>
-        <form action={inviteCorporateEmployeeAction} className="mt-5 grid gap-3 lg:grid-cols-[1fr_1fr_180px_170px_140px_auto]">
-          <label className="grid gap-2 text-sm font-bold text-ocean-900">
-            Name
-            <input name="name" className="min-h-11 rounded-xl border border-ocean-900/12 px-3 text-sm font-semibold text-ocean-900 outline-none" required />
-          </label>
-          <label className="grid gap-2 text-sm font-bold text-ocean-900">
-            Email
-            <input name="email" type="email" className="min-h-11 rounded-xl border border-ocean-900/12 px-3 text-sm font-semibold text-ocean-900 outline-none" required />
-          </label>
-          <label className="grid gap-2 text-sm font-bold text-ocean-900">
-            Department
-            <input name="department" className="min-h-11 rounded-xl border border-ocean-900/12 px-3 text-sm font-semibold text-ocean-900 outline-none" />
-          </label>
-          <label className="grid gap-2 text-sm font-bold text-ocean-900">
-            Role
-            <select name="role" defaultValue="member" className="min-h-11 rounded-xl border border-ocean-900/12 bg-white px-3 text-sm font-semibold text-ocean-900 outline-none">
-              <option value="member">Member</option>
-              <option value="report_viewer">Report viewer</option>
-              <option value="employee_engagement">Engagement</option>
-              <option value="finance_reviewer">Finance reviewer</option>
-              <option value="auditor">Auditor</option>
-              <option value="program_admin">Program admin</option>
-            </select>
-          </label>
-          <label className="grid gap-2 text-sm font-bold text-ocean-900">
-            Status
-            <select name="status" defaultValue="invited" className="min-h-11 rounded-xl border border-ocean-900/12 bg-white px-3 text-sm font-semibold text-ocean-900 outline-none">
-              <option value="invited">Invited</option>
-              <option value="active">Active</option>
-              <option value="suspended">Suspended</option>
-            </select>
-          </label>
-          <Button type="submit" tone="secondary" className="self-end">
-            Save Employee
-          </Button>
-        </form>
+        {canManageEmployees ? (
+          <form action={inviteCorporateEmployeeAction} className="mt-5 grid gap-3 lg:grid-cols-[1fr_1fr_180px_170px_140px_auto]">
+            <label className="grid gap-2 text-sm font-bold text-ocean-900">
+              Name
+              <input name="name" className="min-h-11 rounded-xl border border-ocean-900/12 px-3 text-sm font-semibold text-ocean-900 outline-none" required />
+            </label>
+            <label className="grid gap-2 text-sm font-bold text-ocean-900">
+              Email
+              <input name="email" type="email" className="min-h-11 rounded-xl border border-ocean-900/12 px-3 text-sm font-semibold text-ocean-900 outline-none" required />
+            </label>
+            <label className="grid gap-2 text-sm font-bold text-ocean-900">
+              Department
+              <input name="department" className="min-h-11 rounded-xl border border-ocean-900/12 px-3 text-sm font-semibold text-ocean-900 outline-none" />
+            </label>
+            <label className="grid gap-2 text-sm font-bold text-ocean-900">
+              Role
+              <select name="role" defaultValue={roleOptions[0]?.value ?? "member"} className="min-h-11 rounded-xl border border-ocean-900/12 bg-white px-3 text-sm font-semibold text-ocean-900 outline-none">
+                {roleOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="grid gap-2 text-sm font-bold text-ocean-900">
+              Status
+              <select name="status" defaultValue="invited" className="min-h-11 rounded-xl border border-ocean-900/12 bg-white px-3 text-sm font-semibold text-ocean-900 outline-none">
+                <option value="invited">Invited</option>
+                <option value="active">Active</option>
+                <option value="suspended">Suspended</option>
+              </select>
+            </label>
+            <Button type="submit" tone="secondary" className="self-end">
+              Save Employee
+            </Button>
+          </form>
+        ) : (
+          <p className="mt-5 max-w-xl rounded-xl border border-ocean-900/10 bg-ocean-50 px-4 py-3 text-sm font-semibold leading-6 text-ocean-900/68">
+            Your corporate role can review participation and access status, but cannot invite employees or change employee roles.
+          </p>
+        )}
       </section>
 
       <section className="mt-6 grid gap-6 xl:grid-cols-[1fr_0.95fr_0.95fr]">

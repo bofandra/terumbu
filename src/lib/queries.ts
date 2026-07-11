@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, or, sql } from "drizzle-orm";
 
 import { db } from "@/db/client";
 import {
@@ -46,6 +46,7 @@ import {
   paymentTransactions,
   profiles,
   projectEvidence,
+  sessions,
   roles,
   sponsoredEcosystems,
   userPaymentMethods,
@@ -75,13 +76,25 @@ import {
   type PartnerLogoData,
   type PassportPreviewData
 } from "@/lib/domain";
+import { systemGlobalRoleOptions } from "@/lib/admin-user-management";
+import {
+  activeSubscriptionStatuses,
+  canArchivePaymentMethod,
+  canCancelSubscription,
+  canUsePaymentMethodForSubscription,
+  isPaymentMethodExpired
+} from "@/lib/billing-lifecycle";
 import { buildCorporateSecurityChecklist, splitAllowedEmailDomains } from "@/lib/corporate-governance";
+import { corporateCapabilitiesForPermission } from "@/lib/corporate-permissions";
 import {
   buildDefaultExpeditionDetailMetadata,
   expeditionMetadataEditorJson,
   metadataDate,
   normalizeExpeditionDetailMetadata
 } from "@/lib/expedition-metadata";
+import { expeditionDepartureAvailability } from "@/lib/expedition-booking-lifecycle";
+import { normalizeExpeditionReviewStatus } from "@/lib/expedition-reviews";
+import { partnerCapabilitiesForRoles } from "@/lib/partner-permissions";
 import { formatCompact, formatCurrency } from "@/lib/utils";
 
 export async function getImpactStats(): Promise<ImpactStatData[]> {
@@ -694,26 +707,51 @@ export async function getExpeditionCards(limit?: number, region?: string): Promi
         expeditionId: expeditionDepartures.expeditionId,
         capacity: expeditionDepartures.capacity,
         seatsBooked: expeditionDepartures.seatsBooked,
+        status: expeditionDepartures.status,
+        metadata: expeditionDepartures.metadata,
         startsAt: expeditionDepartures.startsAt
       })
       .from(expeditionDepartures)
-      .where(eq(expeditionDepartures.status, "open"))
       .orderBy(asc(expeditionDepartures.startsAt))
   ]);
 
   const nextDepartureByExpeditionId = new Map<string, (typeof departureRows)[number]>();
 
   for (const departure of departureRows) {
-    if (!nextDepartureByExpeditionId.has(departure.expeditionId)) {
+    const current = nextDepartureByExpeditionId.get(departure.expeditionId);
+    const availability = expeditionDepartureAvailability({
+      status: departure.status,
+      capacity: departure.capacity,
+      seatsBooked: departure.seatsBooked,
+      minParticipants: getMetadataNumber(departure.metadata, "minParticipants", 6)
+    });
+    const currentAvailability = current
+      ? expeditionDepartureAvailability({
+          status: current.status,
+          capacity: current.capacity,
+          seatsBooked: current.seatsBooked,
+          minParticipants: getMetadataNumber(current.metadata, "minParticipants", 6)
+        })
+      : null;
+
+    if (!current || (!currentAvailability?.canBook && availability.canBook)) {
       nextDepartureByExpeditionId.set(departure.expeditionId, departure);
     }
   }
 
   const cards = rows.map((row) => {
     const nextDeparture = nextDepartureByExpeditionId.get(row.id);
-    const availabilityLabel = nextDeparture
-      ? `${Math.max(0, nextDeparture.capacity - nextDeparture.seatsBooked)} seats available`
-      : "No open departures";
+    const nextAvailability = nextDeparture
+      ? expeditionDepartureAvailability({
+          status: nextDeparture.status,
+          capacity: nextDeparture.capacity,
+          seatsBooked: nextDeparture.seatsBooked,
+          minParticipants: getMetadataNumber(nextDeparture.metadata, "minParticipants", 6)
+        })
+      : null;
+    const availabilityLabel = nextAvailability?.canBook
+      ? `${nextAvailability.availableSeats} seats available`
+      : nextAvailability?.label ?? "No open departures";
 
     return toExpeditionCard(row, availabilityLabel);
   });
@@ -845,31 +883,29 @@ export async function getExpeditionDetail(slug: string) {
       .where(and(eq(expeditionBookings.expeditionId, row.id), inArray(expeditionBookings.status, ["confirmed", "completed"])))
   ]);
 
-  const mappedDepartures = departures.map((departure) => ({
-    ...departure,
-    availableSeats: Math.max(0, departure.capacity - departure.seatsBooked),
-    meetingPoint: getMetadataString(departure.metadata, "meetingPoint"),
-    guide: getMetadataString(departure.metadata, "guide"),
-    minParticipants: getMetadataNumber(departure.metadata, "minParticipants", 6),
-    weatherAdvisory: getMetadataString(departure.metadata, "weatherAdvisory"),
-    statusLabel:
-      departure.status === "cancelled"
-        ? "Cancelled"
-        : departure.status === "waitlist"
-          ? "Waitlist"
-          : departure.status === "private_group"
-            ? "Private group"
-            : departure.status === "full"
-              ? "Full"
-        : departure.capacity - departure.seatsBooked <= 0
-          ? "Full"
-          : departure.capacity - departure.seatsBooked <= 4
-            ? "Few places left"
-            : departure.seatsBooked >= getMetadataNumber(departure.metadata, "minParticipants", 6)
-              ? "Confirmed"
-              : "Minimum not yet reached",
-    dateRangeLabel: `${departure.startsAt.toLocaleDateString("id-ID", { day: "2-digit", month: "short" })} - ${departure.endsAt.toLocaleDateString("id-ID", { day: "2-digit", month: "short", year: "numeric" })}`
-  }));
+  const mappedDepartures = departures.map((departure) => {
+    const minParticipants = getMetadataNumber(departure.metadata, "minParticipants", 6);
+    const availability = expeditionDepartureAvailability({
+      status: departure.status,
+      capacity: departure.capacity,
+      seatsBooked: departure.seatsBooked,
+      minParticipants
+    });
+
+    return {
+      ...departure,
+      availableSeats: availability.availableSeats,
+      canBook: availability.canBook,
+      availabilityCode: availability.code,
+      availabilityMessage: availability.message,
+      meetingPoint: getMetadataString(departure.metadata, "meetingPoint"),
+      guide: getMetadataString(departure.metadata, "guide"),
+      minParticipants,
+      weatherAdvisory: getMetadataString(departure.metadata, "weatherAdvisory"),
+      statusLabel: availability.label,
+      dateRangeLabel: `${departure.startsAt.toLocaleDateString("id-ID", { day: "2-digit", month: "short" })} - ${departure.endsAt.toLocaleDateString("id-ID", { day: "2-digit", month: "short", year: "numeric" })}`
+    };
+  });
 
   const siteActivities = relatedSites.map((site) => ({
     title: `${site.type} milestone: ${site.name}`,
@@ -3163,6 +3199,8 @@ export async function getBillingData(userId: string) {
     db
       .select({
         id: userPaymentMethods.id,
+        provider: userPaymentMethods.provider,
+        providerPaymentMethodId: userPaymentMethods.providerPaymentMethodId,
         label: userPaymentMethods.label,
         brand: userPaymentMethods.brand,
         last4: userPaymentMethods.last4,
@@ -3187,6 +3225,7 @@ export async function getBillingData(userId: string) {
         currency: donationSubscriptions.currency,
         interval: donationSubscriptions.interval,
         status: donationSubscriptions.status,
+        paymentMethodId: donationSubscriptions.paymentMethodId,
         providerSubscriptionReference: donationSubscriptions.providerSubscriptionReference,
         startedAt: donationSubscriptions.startedAt,
         nextBillingAt: donationSubscriptions.nextBillingAt,
@@ -3221,9 +3260,37 @@ export async function getBillingData(userId: string) {
       .limit(30)
   ]);
 
+  const activeSubscriptionCountsByPaymentMethod = new Map<string, number>();
+
+  for (const subscription of subscriptionRows) {
+    if (!subscription.paymentMethodId || !activeSubscriptionStatuses.includes(subscription.status as (typeof activeSubscriptionStatuses)[number])) {
+      continue;
+    }
+
+    activeSubscriptionCountsByPaymentMethod.set(subscription.paymentMethodId, (activeSubscriptionCountsByPaymentMethod.get(subscription.paymentMethodId) ?? 0) + 1);
+  }
+
+  const paymentMethods = paymentMethodRows.map((method) => {
+    const activeSubscriptionCount = activeSubscriptionCountsByPaymentMethod.get(method.id) ?? 0;
+
+    return {
+      ...method,
+      isExpired: isPaymentMethodExpired(method.expMonth, method.expYear),
+      canUseForSubscriptions: canUsePaymentMethodForSubscription(method),
+      activeSubscriptionCount,
+      canArchive: canArchivePaymentMethod({
+        status: method.status,
+        activeSubscriptionCount
+      })
+    };
+  });
+
   return {
-    paymentMethods: paymentMethodRows,
-    subscriptions: subscriptionRows,
+    paymentMethods,
+    subscriptions: subscriptionRows.map((subscription) => ({
+      ...subscription,
+      canCancel: canCancelSubscription(subscription.status)
+    })),
     operations: operationRows,
     pendingRefundDonationIds: new Set(
       operationRows
@@ -3292,18 +3359,33 @@ export async function getExpeditionCheckoutOptions() {
       endsAt: expeditionDepartures.endsAt,
       capacity: expeditionDepartures.capacity,
       seatsBooked: expeditionDepartures.seatsBooked,
-      status: expeditionDepartures.status
+      status: expeditionDepartures.status,
+      metadata: expeditionDepartures.metadata
     })
     .from(expeditionDepartures)
     .innerJoin(expeditions, eq(expeditionDepartures.expeditionId, expeditions.id))
-    .where(eq(expeditionDepartures.status, "open"))
     .orderBy(asc(expeditionDepartures.startsAt));
 
-  return rows.map((row) => ({
-    ...row,
-    basePrice: toNumber(row.basePrice),
-    availableSeats: Math.max(0, row.capacity - row.seatsBooked)
-  }));
+  return rows
+    .map((row) => {
+      const availability = expeditionDepartureAvailability({
+        status: row.status,
+        capacity: row.capacity,
+        seatsBooked: row.seatsBooked,
+        minParticipants: getMetadataNumber(row.metadata, "minParticipants", 6)
+      });
+
+      return {
+        ...row,
+        basePrice: toNumber(row.basePrice),
+        availableSeats: availability.availableSeats,
+        canBook: availability.canBook,
+        availabilityCode: availability.code,
+        availabilityLabel: availability.label,
+        availabilityMessage: availability.message
+      };
+    })
+    .filter((row) => row.canBook);
 }
 
 export async function getCorporateDashboardData(userId: string) {
@@ -4065,6 +4147,7 @@ export async function getCorporateDashboardData(userId: string) {
     }
   ];
   const currentPermission = program.permission ?? "esg_manager";
+  const capabilities = corporateCapabilitiesForPermission(currentPermission);
   const roleCapabilities = [
     {
       role: "Executive Viewer",
@@ -4166,14 +4249,15 @@ export async function getCorporateDashboardData(userId: string) {
     auditLog: governanceAuditLog
   };
   const reportCapabilities = {
-    canGenerate: program.permission === "program.manage" || program.permission === "esg_manager",
-    canSubmit: program.permission === "program.manage" || program.permission === "esg_manager",
-    canApprove: program.permission === "program.manage" || program.permission === "finance_reviewer",
-    canPublish: program.permission === "program.manage" || program.permission === "esg_manager",
-    canPreview: ["program.manage", "esg_manager", "finance_reviewer", "executive_viewer", "auditor", "employee_engagement"].includes(program.permission)
+    canGenerate: capabilities.canGenerateReport,
+    canSubmit: capabilities.canSubmitReport,
+    canApprove: capabilities.canApproveReport,
+    canPublish: capabilities.canPublishReport,
+    canPreview: capabilities.canPreviewReport
   };
 
   return {
+    capabilities,
     program,
     budgets,
     employees: employeeRows,
@@ -4281,7 +4365,7 @@ export async function getCorporateProgramsForUser(userId: string) {
 
   return {
     account: context,
-    canManagePrograms: context.permission === "program.manage" || context.permission === "esg_manager",
+    canManagePrograms: corporateCapabilitiesForPermission(context.permission).canManagePrograms,
     programs: programs.map((program) => ({
       ...program,
       budgetAmountValue: toNumber(program.budgetAmount)
@@ -4785,7 +4869,19 @@ export async function getAdminPortalData() {
 }
 
 export async function getAdminOperationsData() {
-  const [partners, partnerMemberRows, partnerCampaignCountRows, campaignOptionRows, expeditionRows, expeditionBookingCountRows, impactSiteRows, reportRows, userRows, auditRows] = await Promise.all([
+  const [
+    partners,
+    partnerMemberRows,
+    partnerCampaignCountRows,
+    campaignOptionRows,
+    expeditionRows,
+    expeditionBookingCountRows,
+    expeditionReviewRows,
+    impactSiteRows,
+    reportRows,
+    userRows,
+    auditRows
+  ] = await Promise.all([
     db
       .select({
         id: organizations.id,
@@ -4868,6 +4964,31 @@ export async function getAdminOperationsData() {
       })
       .from(expeditionBookings)
       .groupBy(expeditionBookings.expeditionId, expeditionBookings.departureId),
+    db
+      .select({
+        id: expeditionReviews.id,
+        expeditionId: expeditionReviews.expeditionId,
+        bookingId: expeditionReviews.bookingId,
+        rating: expeditionReviews.rating,
+        title: expeditionReviews.title,
+        body: expeditionReviews.body,
+        status: expeditionReviews.status,
+        createdAt: expeditionReviews.createdAt,
+        updatedAt: expeditionReviews.updatedAt,
+        bookingCode: expeditionBookings.bookingCode,
+        bookingStatus: expeditionBookings.status,
+        contactName: expeditionBookings.contactName,
+        contactEmail: expeditionBookings.contactEmail,
+        userEmail: users.email,
+        userName: users.name,
+        reviewerDisplayName: profiles.displayName
+      })
+      .from(expeditionReviews)
+      .innerJoin(expeditionBookings, eq(expeditionReviews.bookingId, expeditionBookings.id))
+      .leftJoin(users, eq(expeditionReviews.userId, users.id))
+      .leftJoin(profiles, eq(profiles.userId, users.id))
+      .orderBy(desc(expeditionReviews.updatedAt))
+      .limit(250),
     db
       .select({
         id: impactSites.id,
@@ -4961,7 +5082,24 @@ export async function getAdminOperationsData() {
         meetingPoint: string | null;
         guide: string | null;
         minParticipants: number;
+        availabilityCode: ReturnType<typeof expeditionDepartureAvailability>["code"];
+        availabilityLabel: string;
+        availabilityMessage: string;
         weatherAdvisory: string | null;
+      }[];
+      reviews: {
+        id: string;
+        bookingId: string;
+        bookingCode: string;
+        bookingStatus: string;
+        reviewerName: string;
+        reviewerEmail: string;
+        rating: number;
+        title: string | null;
+        body: string;
+        status: ReturnType<typeof normalizeExpeditionReviewStatus>;
+        createdAt: Date;
+        updatedAt: Date;
       }[];
     }
   >();
@@ -4985,27 +5123,62 @@ export async function getAdminOperationsData() {
         relatedCampaignId: row.relatedCampaignId,
         relatedCampaignTitle: row.relatedCampaignTitle,
         bookingCount: expeditionBookingCounts.get(row.id) ?? 0,
-        departures: []
+        departures: [],
+        reviews: []
       };
       expeditionCatalogById.set(row.id, expedition);
     }
 
     if (row.departureId && row.startsAt && row.endsAt && row.capacity !== null && row.seatsBooked !== null && row.status) {
+      const minParticipants = getMetadataNumber(row.departureMetadata, "minParticipants", 6);
+      const availability = expeditionDepartureAvailability({
+        status: row.status,
+        capacity: row.capacity,
+        seatsBooked: row.seatsBooked,
+        minParticipants
+      });
+
       expedition.departures.push({
         id: row.departureId,
         startsAt: row.startsAt,
         endsAt: row.endsAt,
         capacity: row.capacity,
         seatsBooked: row.seatsBooked,
-        availableSeats: Math.max(0, row.capacity - row.seatsBooked),
+        availableSeats: availability.availableSeats,
         status: row.status,
         bookingCount: departureBookingCounts.get(row.departureId) ?? 0,
         meetingPoint: getMetadataString(row.departureMetadata, "meetingPoint"),
         guide: getMetadataString(row.departureMetadata, "guide"),
-        minParticipants: getMetadataNumber(row.departureMetadata, "minParticipants", 6),
+        minParticipants,
+        availabilityCode: availability.code,
+        availabilityLabel: availability.label,
+        availabilityMessage: availability.message,
         weatherAdvisory: getMetadataString(row.departureMetadata, "weatherAdvisory")
       });
     }
+  }
+
+  for (const row of expeditionReviewRows) {
+    const expedition = expeditionCatalogById.get(row.expeditionId);
+
+    if (!expedition) {
+      continue;
+    }
+
+    expedition.reviews.push({
+      id: row.id,
+      bookingId: row.bookingId,
+      bookingCode: row.bookingCode,
+      bookingStatus: row.bookingStatus,
+      reviewerName: row.reviewerDisplayName ?? row.userName ?? row.contactName,
+      reviewerEmail: row.userEmail ?? row.contactEmail,
+      rating: row.rating,
+      title: row.title,
+      body: row.body,
+      status: normalizeExpeditionReviewStatus(row.status),
+      createdAt: row.createdAt,
+      updatedAt: row.updatedAt
+    });
   }
 
   for (const expedition of expeditionCatalogById.values()) {
@@ -5065,6 +5238,335 @@ export async function getAdminOperationsData() {
   };
 }
 
+export type AdminAuditFilters = {
+  action?: string;
+  actor?: string;
+  entityType?: string;
+  q?: string;
+};
+
+function cleanAuditFilter(value: string | null | undefined, maxLength = 160) {
+  return String(value ?? "")
+    .trim()
+    .slice(0, maxLength);
+}
+
+export async function getAdminAuditData(filters: AdminAuditFilters = {}) {
+  const q = cleanAuditFilter(filters.q, 240).toLowerCase();
+  const action = cleanAuditFilter(filters.action);
+  const actor = cleanAuditFilter(filters.actor, 255).toLowerCase();
+  const entityType = cleanAuditFilter(filters.entityType, 120);
+  const conditions = [];
+
+  if (q) {
+    const pattern = `%${q}%`;
+
+    conditions.push(or(
+      sql`lower(${adminAuditLogs.action}) like ${pattern}`,
+      sql`lower(${adminAuditLogs.entityType}) like ${pattern}`,
+      sql`cast(${adminAuditLogs.entityId} as text) like ${pattern}`,
+      sql`lower(coalesce(${users.email}, 'system')) like ${pattern}`,
+      sql`lower(cast(${adminAuditLogs.metadata} as text)) like ${pattern}`
+    ));
+  }
+
+  if (action && action !== "all") {
+    conditions.push(eq(adminAuditLogs.action, action));
+  }
+
+  if (entityType && entityType !== "all") {
+    conditions.push(eq(adminAuditLogs.entityType, entityType));
+  }
+
+  if (actor && actor !== "all") {
+    conditions.push(actor === "system" ? sql`${adminAuditLogs.actorUserId} is null` : eq(users.email, actor));
+  }
+
+  const whereClause = conditions.length > 0 ? and(...conditions) : sql`true`;
+
+  const [eventRows, actionRows, entityRows, actorRows] = await Promise.all([
+    db
+      .select({
+        id: adminAuditLogs.id,
+        action: adminAuditLogs.action,
+        entityType: adminAuditLogs.entityType,
+        entityId: adminAuditLogs.entityId,
+        metadata: adminAuditLogs.metadata,
+        createdAt: adminAuditLogs.createdAt,
+        actorEmail: users.email
+      })
+      .from(adminAuditLogs)
+      .leftJoin(users, eq(adminAuditLogs.actorUserId, users.id))
+      .where(whereClause)
+      .orderBy(desc(adminAuditLogs.createdAt))
+      .limit(200),
+    db
+      .select({ action: adminAuditLogs.action })
+      .from(adminAuditLogs)
+      .groupBy(adminAuditLogs.action)
+      .orderBy(asc(adminAuditLogs.action)),
+    db
+      .select({ entityType: adminAuditLogs.entityType })
+      .from(adminAuditLogs)
+      .groupBy(adminAuditLogs.entityType)
+      .orderBy(asc(adminAuditLogs.entityType)),
+    db
+      .select({ email: users.email })
+      .from(adminAuditLogs)
+      .leftJoin(users, eq(adminAuditLogs.actorUserId, users.id))
+      .groupBy(users.email)
+      .orderBy(asc(users.email))
+  ]);
+
+  const systemActions = eventRows.filter((item) => !item.actorEmail).length;
+
+  return {
+    auditLogs: eventRows,
+    filters: {
+      action,
+      actor,
+      entityType,
+      q
+    },
+    options: {
+      actions: actionRows.map((row) => row.action),
+      actors: [
+        ...actorRows
+          .map((row) => row.email)
+          .filter((email): email is string => Boolean(email)),
+        "system"
+      ],
+      entityTypes: entityRows.map((row) => row.entityType)
+    },
+    metrics: {
+      visibleActions: eventRows.length,
+      humanActions: eventRows.length - systemActions,
+      systemActions
+    }
+  };
+}
+
+export async function getAdminUserManagementData(searchTerm?: string) {
+  const [
+    userRows,
+    roleRows,
+    userRoleRows,
+    organizationRows,
+    partnerMembershipRows,
+    corporateAccountRows,
+    corporatePermissionRows,
+    sessionRows
+  ] = await Promise.all([
+    db
+      .select({
+        id: users.id,
+        email: users.email,
+        name: users.name,
+        imageUrl: users.imageUrl,
+        hasPassword: sql<boolean>`${users.passwordHash} is not null`,
+        emailVerifiedAt: users.emailVerifiedAt,
+        createdAt: users.createdAt,
+        updatedAt: users.updatedAt,
+        displayName: profiles.displayName,
+        location: profiles.location,
+        bio: profiles.bio,
+        isPublic: profiles.isPublic
+      })
+      .from(users)
+      .leftJoin(profiles, eq(profiles.userId, users.id))
+      .orderBy(desc(users.createdAt)),
+    db
+      .select({
+        id: roles.id,
+        key: roles.key,
+        name: roles.name
+      })
+      .from(roles)
+      .orderBy(asc(roles.key)),
+    db
+      .select({
+        id: userRoles.id,
+        userId: userRoles.userId,
+        roleId: userRoles.roleId,
+        key: roles.key,
+        name: roles.name,
+        createdAt: userRoles.createdAt
+      })
+      .from(userRoles)
+      .innerJoin(roles, eq(userRoles.roleId, roles.id))
+      .orderBy(asc(roles.key)),
+    db
+      .select({
+        id: organizations.id,
+        name: organizations.name,
+        slug: organizations.slug,
+        type: organizations.type,
+        verification: organizations.verification
+      })
+      .from(organizations)
+      .orderBy(asc(organizations.name)),
+    db
+      .select({
+        id: organizationUsers.id,
+        organizationId: organizationUsers.organizationId,
+        organizationName: organizations.name,
+        organizationSlug: organizations.slug,
+        userId: organizationUsers.userId,
+        role: organizationUsers.role,
+        status: organizationUsers.status,
+        createdAt: organizationUsers.createdAt,
+        updatedAt: organizationUsers.updatedAt
+      })
+      .from(organizationUsers)
+      .innerJoin(organizations, eq(organizationUsers.organizationId, organizations.id))
+      .orderBy(asc(organizations.name)),
+    db
+      .select({
+        id: corporateAccounts.id,
+        name: corporateAccounts.name,
+        slug: corporateAccounts.slug
+      })
+      .from(corporateAccounts)
+      .orderBy(asc(corporateAccounts.name)),
+    db
+      .select({
+        id: corporatePermissions.id,
+        corporateAccountId: corporatePermissions.corporateAccountId,
+        accountName: corporateAccounts.name,
+        accountSlug: corporateAccounts.slug,
+        userId: corporatePermissions.userId,
+        permission: corporatePermissions.permission,
+        createdAt: corporatePermissions.createdAt
+      })
+      .from(corporatePermissions)
+      .innerJoin(corporateAccounts, eq(corporatePermissions.corporateAccountId, corporateAccounts.id))
+      .orderBy(asc(corporateAccounts.name)),
+    db
+      .select({
+        userId: sessions.userId,
+        total: sql<number>`count(${sessions.id})`
+      })
+      .from(sessions)
+      .groupBy(sessions.userId)
+  ]);
+
+  const rolesByUser = new Map<string, typeof userRoleRows>();
+  const partnerMembershipsByUser = new Map<string, typeof partnerMembershipRows>();
+  const corporatePermissionsByUser = new Map<string, typeof corporatePermissionRows>();
+  const activeSessionsByUser = new Map(sessionRows.map((row) => [row.userId, Number(row.total)]));
+  const roleAssignmentCounts = new Map<string, number>();
+
+  for (const role of userRoleRows) {
+    rolesByUser.set(role.userId, [...(rolesByUser.get(role.userId) ?? []), role]);
+    roleAssignmentCounts.set(role.roleId, (roleAssignmentCounts.get(role.roleId) ?? 0) + 1);
+  }
+
+  for (const membership of partnerMembershipRows) {
+    partnerMembershipsByUser.set(membership.userId, [...(partnerMembershipsByUser.get(membership.userId) ?? []), membership]);
+  }
+
+  for (const permission of corporatePermissionRows) {
+    corporatePermissionsByUser.set(permission.userId, [...(corporatePermissionsByUser.get(permission.userId) ?? []), permission]);
+  }
+
+  const query = String(searchTerm ?? "").trim().toLowerCase();
+  const systemRoleKeys = new Set<string>(systemGlobalRoleOptions.map((role) => role.key));
+  const roleOptionMap = new Map<string, { key: string; name: string }>();
+
+  for (const option of systemGlobalRoleOptions) {
+    roleOptionMap.set(option.key, option);
+  }
+
+  for (const role of roleRows) {
+    roleOptionMap.set(role.key, { key: role.key, name: role.name });
+  }
+
+  const usersWithAccess = userRows
+    .map((user) => {
+      const globalRoles = rolesByUser.get(user.id) ?? [];
+      const partnerMemberships = partnerMembershipsByUser.get(user.id) ?? [];
+      const corporatePermissions = corporatePermissionsByUser.get(user.id) ?? [];
+      const searchable = [
+        user.email,
+        user.name,
+        user.displayName,
+        user.location,
+        ...globalRoles.map((role) => `${role.key} ${role.name}`),
+        ...partnerMemberships.map((membership) => `${membership.organizationName} ${membership.role} ${membership.status}`),
+        ...corporatePermissions.map((permission) => `${permission.accountName} ${permission.permission}`)
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+
+      return {
+        ...user,
+        roles: globalRoles,
+        partnerMemberships,
+        corporatePermissions,
+        activeSessions: activeSessionsByUser.get(user.id) ?? 0,
+        matchesSearch: !query || searchable.includes(query)
+      };
+    })
+    .flatMap((user) => {
+      if (!user.matchesSearch) {
+        return [];
+      }
+
+      return [{
+        activeSessions: user.activeSessions,
+        bio: user.bio,
+        corporatePermissions: user.corporatePermissions,
+        createdAt: user.createdAt,
+        displayName: user.displayName,
+        email: user.email,
+        emailVerifiedAt: user.emailVerifiedAt,
+        hasPassword: user.hasPassword,
+        id: user.id,
+        imageUrl: user.imageUrl,
+        isPublic: user.isPublic,
+        location: user.location,
+        name: user.name,
+        partnerMemberships: user.partnerMemberships,
+        roles: user.roles,
+        updatedAt: user.updatedAt
+      }];
+    });
+
+  const globalAdminUserIds = new Set(userRoleRows.filter((role) => role.key === "admin").map((role) => role.userId));
+  const globalPartnerUserIds = new Set(userRoleRows.filter((role) => role.key === "partner").map((role) => role.userId));
+  const activePartnerUserIds = new Set(partnerMembershipRows.filter((membership) => membership.status === "active").map((membership) => membership.userId));
+  const globalCorporateUserIds = new Set(userRoleRows.filter((role) => role.key === "corporate_admin").map((role) => role.userId));
+  const scopedCorporateUserIds = new Set(corporatePermissionRows.map((permission) => permission.userId));
+  const roleUserIds = new Set(userRoleRows.map((role) => role.userId));
+
+  return {
+    metrics: {
+      users: userRows.length,
+      visibleUsers: usersWithAccess.length,
+      verifiedUsers: userRows.filter((user) => user.emailVerifiedAt).length,
+      admins: globalAdminUserIds.size,
+      partnerUsers: new Set([...globalPartnerUserIds, ...activePartnerUserIds]).size,
+      corporateUsers: new Set([...globalCorporateUserIds, ...scopedCorporateUserIds]).size,
+      noRoleUsers: userRows.filter((user) => !roleUserIds.has(user.id)).length
+    },
+    users: usersWithAccess,
+    roles: roleRows.map((role) => ({
+      ...role,
+      assignmentCount: roleAssignmentCounts.get(role.id) ?? 0,
+      isSystem: systemRoleKeys.has(role.key)
+    })),
+    roleOptions: Array.from(roleOptionMap.values()).sort((a, b) => a.key.localeCompare(b.key)),
+    organizations: organizationRows.map((organization) => ({
+      ...organization,
+      verificationLabel: verificationLabel(organization.verification)
+    })),
+    corporateAccounts: corporateAccountRows,
+    partnerMemberships: partnerMembershipRows,
+    corporatePermissions: corporatePermissionRows
+  };
+}
+
 async function getPartnerPortalOrganizationIds(userId?: string) {
   if (!userId) {
     return null;
@@ -5090,6 +5592,21 @@ async function getPartnerPortalOrganizationIds(userId?: string) {
 
 export async function getPartnerPortalData(userId?: string) {
   const organizationIds = await getPartnerPortalOrganizationIds(userId);
+  const [roleRows, activeMembershipRows] = userId
+    ? await Promise.all([
+        db
+          .select({ key: roles.key })
+          .from(userRoles)
+          .innerJoin(roles, eq(userRoles.roleId, roles.id))
+          .where(eq(userRoles.userId, userId)),
+        db
+          .select({ role: organizationUsers.role })
+          .from(organizationUsers)
+          .where(and(eq(organizationUsers.userId, userId), eq(organizationUsers.status, "active")))
+      ])
+    : [[], []];
+  const isAdmin = roleRows.some((role) => role.key === "admin");
+  const capabilities = partnerCapabilitiesForRoles(activeMembershipRows.map((membership) => membership.role), isAdmin);
   const organizationScope = organizationIds === null ? sql`true` : organizationIds.length > 0 ? inArray(organizations.id, organizationIds) : sql`false`;
   const campaignScope = organizationIds === null ? sql`true` : organizationIds.length > 0 ? inArray(campaigns.organizationId, organizationIds) : sql`false`;
   const expeditionScope = organizationIds === null ? sql`true` : organizationIds.length > 0 ? inArray(campaigns.organizationId, organizationIds) : sql`false`;
@@ -5405,6 +5922,7 @@ export async function getPartnerPortalData(userId?: string) {
   }
 
   return {
+    capabilities,
     organizations: organizationRows.map((organization) => ({
       ...organization,
         verificationLabel: verificationLabel(organization.verification)

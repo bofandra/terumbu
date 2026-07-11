@@ -7,7 +7,8 @@ import {
   createPaymentMethodAction,
   requestDonationRefundAction,
   retryDonationPaymentAction,
-  setDefaultPaymentMethodAction
+  setDefaultPaymentMethodAction,
+  updateSubscriptionPaymentMethodAction
 } from "@/lib/billing-actions";
 import { requireUser } from "@/lib/auth";
 import { getBillingData, getDashboardData } from "@/lib/queries";
@@ -31,7 +32,7 @@ function statusClass(status: string) {
     return "bg-kelp-100 text-kelp-700";
   }
 
-  if (status === "failed" || status === "refunded" || status === "cancelled") {
+  if (status === "failed" || status === "refunded" || status === "cancelled" || status === "expired") {
     return "bg-coral-100 text-coral-700";
   }
 
@@ -46,6 +47,13 @@ export default async function DashboardDonationsPage({ searchParams }: Dashboard
   const params = await searchParams;
   const user = await requireUser("/dashboard/donations");
   const [data, billing] = await Promise.all([getDashboardData(user.id), getBillingData(user.id)]);
+  const usablePaymentMethods = billing.paymentMethods.filter((method) => method.canUseForSubscriptions);
+  const billingError =
+    params?.error === "payment_method"
+      ? "Choose an active payment method that is not attached to another required billing flow."
+      : params?.error === "subscription"
+        ? "That subscription cannot be changed from the dashboard."
+        : "Could not complete that billing action.";
 
   return (
     <main className="mx-auto max-w-5xl px-4 py-8 sm:px-6 lg:px-8">
@@ -58,7 +66,7 @@ export default async function DashboardDonationsPage({ searchParams }: Dashboard
         <p className="mt-5 rounded-2xl border border-kelp-500/20 bg-kelp-100 px-4 py-3 text-sm font-bold text-kelp-700">Billing changes saved.</p>
       ) : null}
       {params?.error ? (
-        <p className="mt-5 rounded-2xl border border-coral-500/20 bg-coral-100 px-4 py-3 text-sm font-bold text-coral-700">Could not complete that billing action.</p>
+        <p className="mt-5 rounded-2xl border border-coral-500/20 bg-coral-100 px-4 py-3 text-sm font-bold text-coral-700">{billingError}</p>
       ) : null}
 
       <section className="mt-6 grid gap-5 lg:grid-cols-[1fr_0.9fr]">
@@ -83,7 +91,13 @@ export default async function DashboardDonationsPage({ searchParams }: Dashboard
                     </p>
                     <div className="mt-3 flex flex-wrap gap-2">
                       <span className={`rounded-full px-3 py-1 text-xs font-bold ${statusClass(method.status)}`}>{method.status}</span>
+                      {method.isExpired ? <span className={`rounded-full px-3 py-1 text-xs font-bold ${statusClass("expired")}`}>Expired</span> : null}
                       {method.isDefault ? <span className="rounded-full bg-ocean-50 px-3 py-1 text-xs font-bold text-ocean-700">Default</span> : null}
+                      {method.activeSubscriptionCount > 0 ? (
+                        <span className="rounded-full bg-ocean-50 px-3 py-1 text-xs font-bold text-ocean-700">
+                          {method.activeSubscriptionCount} monthly {method.activeSubscriptionCount === 1 ? "gift" : "gifts"}
+                        </span>
+                      ) : null}
                     </div>
                   </div>
                   {method.status === "active" ? (
@@ -96,12 +110,14 @@ export default async function DashboardDonationsPage({ searchParams }: Dashboard
                           </button>
                         </form>
                       ) : null}
-                      <form action={archivePaymentMethodAction}>
-                        <input type="hidden" name="paymentMethodId" value={method.id} />
-                        <button className="min-h-9 rounded-full border border-ocean-900/10 px-3 text-xs font-bold text-coral-700 hover:border-coral-500" type="submit">
-                          Archive
-                        </button>
-                      </form>
+                      {method.canArchive ? (
+                        <form action={archivePaymentMethodAction}>
+                          <input type="hidden" name="paymentMethodId" value={method.id} />
+                          <button className="min-h-9 rounded-full border border-ocean-900/10 px-3 text-xs font-bold text-coral-700 hover:border-coral-500" type="submit">
+                            Archive
+                          </button>
+                        </form>
+                      ) : null}
                     </div>
                   ) : null}
                 </div>
@@ -124,6 +140,14 @@ export default async function DashboardDonationsPage({ searchParams }: Dashboard
               <label className="grid gap-2 text-sm font-semibold text-ocean-900">
                 Last 4
                 <input name="last4" inputMode="numeric" maxLength={4} defaultValue="4242" className="rounded-xl border border-ocean-900/14 bg-white px-3 py-2 outline-none focus:border-coral-500" />
+              </label>
+              <label className="grid gap-2 text-sm font-semibold text-ocean-900">
+                Exp month
+                <input name="expMonth" type="number" min={1} max={12} defaultValue={12} className="rounded-xl border border-ocean-900/14 bg-white px-3 py-2 outline-none focus:border-coral-500" />
+              </label>
+              <label className="grid gap-2 text-sm font-semibold text-ocean-900">
+                Exp year
+                <input name="expYear" type="number" min={new Date().getUTCFullYear()} defaultValue={new Date().getUTCFullYear() + 3} className="rounded-xl border border-ocean-900/14 bg-white px-3 py-2 outline-none focus:border-coral-500" />
               </label>
             </div>
             <label className="flex items-center gap-2 text-sm font-semibold text-ocean-900">
@@ -151,9 +175,10 @@ export default async function DashboardDonationsPage({ searchParams }: Dashboard
                     <p className="mt-1 text-xs font-semibold text-ocean-900/52">
                       {subscription.paymentMethodLabel ? `${subscription.paymentMethodLabel} ending ${subscription.paymentMethodLast4}` : "No active payment method"}
                     </p>
+                    <p className="mt-1 text-xs font-semibold text-ocean-900/44">{subscription.providerSubscriptionReference}</p>
                     <span className={`mt-3 inline-flex rounded-full px-3 py-1 text-xs font-bold ${statusClass(subscription.status)}`}>{subscription.status}</span>
                   </div>
-                  {subscription.status === "active" || subscription.status === "past_due" ? (
+                  {subscription.canCancel ? (
                     <form action={cancelSubscriptionAction}>
                       <input type="hidden" name="subscriptionId" value={subscription.id} />
                       <button className="inline-flex min-h-9 items-center gap-2 rounded-full border border-ocean-900/10 px-3 text-xs font-bold text-coral-700 hover:border-coral-500" type="submit">
@@ -163,6 +188,31 @@ export default async function DashboardDonationsPage({ searchParams }: Dashboard
                     </form>
                   ) : null}
                 </div>
+                {subscription.canCancel ? (
+                  <form action={updateSubscriptionPaymentMethodAction} className="mt-4 grid gap-2 sm:grid-cols-[1fr_auto]">
+                    <input type="hidden" name="subscriptionId" value={subscription.id} />
+                    <select
+                      name="paymentMethodId"
+                      defaultValue={subscription.paymentMethodId ?? usablePaymentMethods[0]?.id ?? ""}
+                      className="min-h-10 rounded-xl border border-ocean-900/14 bg-white px-3 text-sm font-semibold text-ocean-900 outline-none focus:border-coral-500"
+                      disabled={usablePaymentMethods.length === 0}
+                    >
+                      {usablePaymentMethods.length === 0 ? <option value="">No active method available</option> : null}
+                      {usablePaymentMethods.map((method) => (
+                        <option key={method.id} value={method.id}>
+                          {method.label} ending {method.last4}
+                        </option>
+                      ))}
+                    </select>
+                    <button
+                      className="inline-flex min-h-10 items-center justify-center rounded-full border border-ocean-900/10 px-3 text-xs font-bold text-ocean-900 hover:border-coral-500 disabled:cursor-not-allowed disabled:opacity-45"
+                      type="submit"
+                      disabled={usablePaymentMethods.length === 0}
+                    >
+                      Update method
+                    </button>
+                  </form>
+                ) : null}
               </div>
             ))}
             {billing.subscriptions.length === 0 ? <p className="rounded-xl border border-dashed border-ocean-900/14 p-4 text-sm font-semibold text-ocean-900/62">Monthly giving records will appear here after your first monthly checkout.</p> : null}

@@ -1,9 +1,9 @@
 import { CorporateProjectInspector } from "@/components/corporate-project-inspector";
-import { CorporateEmptyState } from "@/components/corporate-empty-state";
 import { Button } from "@/components/ui/button";
 import { requireUser } from "@/lib/auth";
+import { requireCorporateDashboardData } from "@/lib/corporate-access";
 import { fundCorporateProjectAction } from "@/lib/corporate-actions";
-import { getCorporateDashboardData, getCorporateProjectOptions } from "@/lib/queries";
+import { getCorporateProjectOptions } from "@/lib/queries";
 import { formatCurrency } from "@/lib/utils";
 
 export const metadata = {
@@ -27,11 +27,9 @@ function dateString(value: Date | null | undefined) {
 export default async function CorporateProjectsPage({ searchParams }: CorporateProjectsPageProps) {
   const params = await searchParams;
   const user = await requireUser("/corporate/projects");
-  const [data, projectOptions] = await Promise.all([getCorporateDashboardData(user.id), getCorporateProjectOptions(user.id)]);
-
-  if (!data) {
-    return <CorporateEmptyState />;
-  }
+  const data = await requireCorporateDashboardData(user.id, "/corporate/projects");
+  const projectOptions = await getCorporateProjectOptions(user.id);
+  const canManageProjects = data.capabilities.canManageProjects;
 
   const inspectorProjects = data.portfolio.map((project) => ({
     campaignSlug: project.campaignSlug,
@@ -94,74 +92,80 @@ export default async function CorporateProjectsPage({ searchParams }: CorporateP
             <p className="text-sm font-bold uppercase text-coral-700">Portfolio actions</p>
             <h2 className="mt-2 text-xl font-bold tracking-normal text-ocean-900">Fund or update a conservation project</h2>
           </div>
-          <form action={fundCorporateProjectAction} className="grid gap-2 xl:grid-cols-[minmax(260px,1fr)_160px_150px_150px_auto]">
-            <label className="grid gap-2 text-sm font-bold text-ocean-900">
-              Project
-              <select name="campaignId" className="min-h-11 rounded-xl border border-ocean-900/12 bg-white px-3 text-sm font-semibold text-ocean-900 outline-none">
-                {projectOptions.map((option) => (
-                  <option key={option.id} value={option.id}>
-                    {option.title} · {option.region}{option.alreadyFunded ? ` · ${formatCurrency(option.allocationValue ?? 0)}` : ""}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="grid gap-2 text-sm font-bold text-ocean-900">
-              Amount
-              <input
-                name="allocationAmount"
-                type="number"
-                min="1"
-                step="1000000"
-                placeholder="IDR"
-                className="min-h-11 rounded-xl border border-ocean-900/12 px-3 text-sm font-semibold text-ocean-900 outline-none"
-                required
-              />
-            </label>
-            <label className="grid gap-2 text-sm font-bold text-ocean-900">
-              Contribution
-              <select name="contributionType" defaultValue="csr" className="min-h-11 rounded-xl border border-ocean-900/12 bg-white px-3 text-sm font-semibold text-ocean-900 outline-none">
-                <option value="csr">CSR</option>
-                <option value="grant">Grant</option>
-                <option value="sponsorship">Sponsorship</option>
-                <option value="employee_matching">Employee matching</option>
-                <option value="in_kind">In-kind</option>
-              </select>
-            </label>
-            <label className="grid gap-2 text-sm font-bold text-ocean-900">
-              Contribution status
-              <select name="contributionStatus" defaultValue="committed" className="min-h-11 rounded-xl border border-ocean-900/12 bg-white px-3 text-sm font-semibold text-ocean-900 outline-none">
-                <option value="pledged">Pledged</option>
-                <option value="committed">Committed</option>
-                <option value="disbursed">Disbursed</option>
-                <option value="verified">Verified</option>
-                <option value="cancelled">Cancelled</option>
-              </select>
-            </label>
-            <label className="grid gap-2 text-sm font-bold text-ocean-900">
-              Portfolio status
-              <select name="status" defaultValue="funded" className="min-h-11 rounded-xl border border-ocean-900/12 bg-white px-3 text-sm font-semibold text-ocean-900 outline-none">
-                <option value="funded">Funded</option>
-                <option value="monitoring">Monitoring</option>
-                <option value="review">Review</option>
-                <option value="completed">Completed</option>
-              </select>
-            </label>
-            <label className="flex min-h-11 items-center gap-2 rounded-xl border border-ocean-900/12 px-3 text-sm font-bold text-ocean-900 xl:col-span-2">
-              <input name="countsTowardCampaignGoal" type="checkbox" className="size-4 rounded border-ocean-900/20" />
-              Count this corporate contribution toward the public campaign goal
-            </label>
-            <label className="grid gap-2 text-sm font-bold text-ocean-900 xl:col-span-2">
-              Notes
-              <input
-                name="notes"
-                placeholder="Optional internal note / PO / CSR reference"
-                className="min-h-11 rounded-xl border border-ocean-900/12 px-3 text-sm font-semibold text-ocean-900 outline-none"
-              />
-            </label>
-            <Button type="submit" tone="secondary" className="self-end" disabled={projectOptions.length === 0}>
-              Save Contribution
-            </Button>
-          </form>
+          {canManageProjects ? (
+            <form action={fundCorporateProjectAction} className="grid gap-2 xl:grid-cols-[minmax(260px,1fr)_160px_150px_150px_auto]">
+              <label className="grid gap-2 text-sm font-bold text-ocean-900">
+                Project
+                <select name="campaignId" className="min-h-11 rounded-xl border border-ocean-900/12 bg-white px-3 text-sm font-semibold text-ocean-900 outline-none">
+                  {projectOptions.map((option) => (
+                    <option key={option.id} value={option.id}>
+                      {option.title} · {option.region}{option.alreadyFunded ? ` · ${formatCurrency(option.allocationValue ?? 0)}` : ""}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="grid gap-2 text-sm font-bold text-ocean-900">
+                Amount
+                <input
+                  name="allocationAmount"
+                  type="number"
+                  min="1"
+                  step="1000000"
+                  placeholder="IDR"
+                  className="min-h-11 rounded-xl border border-ocean-900/12 px-3 text-sm font-semibold text-ocean-900 outline-none"
+                  required
+                />
+              </label>
+              <label className="grid gap-2 text-sm font-bold text-ocean-900">
+                Contribution
+                <select name="contributionType" defaultValue="csr" className="min-h-11 rounded-xl border border-ocean-900/12 bg-white px-3 text-sm font-semibold text-ocean-900 outline-none">
+                  <option value="csr">CSR</option>
+                  <option value="grant">Grant</option>
+                  <option value="sponsorship">Sponsorship</option>
+                  <option value="employee_matching">Employee matching</option>
+                  <option value="in_kind">In-kind</option>
+                </select>
+              </label>
+              <label className="grid gap-2 text-sm font-bold text-ocean-900">
+                Contribution status
+                <select name="contributionStatus" defaultValue="committed" className="min-h-11 rounded-xl border border-ocean-900/12 bg-white px-3 text-sm font-semibold text-ocean-900 outline-none">
+                  <option value="pledged">Pledged</option>
+                  <option value="committed">Committed</option>
+                  <option value="disbursed">Disbursed</option>
+                  <option value="verified">Verified</option>
+                  <option value="cancelled">Cancelled</option>
+                </select>
+              </label>
+              <label className="grid gap-2 text-sm font-bold text-ocean-900">
+                Portfolio status
+                <select name="status" defaultValue="funded" className="min-h-11 rounded-xl border border-ocean-900/12 bg-white px-3 text-sm font-semibold text-ocean-900 outline-none">
+                  <option value="funded">Funded</option>
+                  <option value="monitoring">Monitoring</option>
+                  <option value="review">Review</option>
+                  <option value="completed">Completed</option>
+                </select>
+              </label>
+              <label className="flex min-h-11 items-center gap-2 rounded-xl border border-ocean-900/12 px-3 text-sm font-bold text-ocean-900 xl:col-span-2">
+                <input name="countsTowardCampaignGoal" type="checkbox" className="size-4 rounded border-ocean-900/20" />
+                Count this corporate contribution toward the public campaign goal
+              </label>
+              <label className="grid gap-2 text-sm font-bold text-ocean-900 xl:col-span-2">
+                Notes
+                <input
+                  name="notes"
+                  placeholder="Optional internal note / PO / CSR reference"
+                  className="min-h-11 rounded-xl border border-ocean-900/12 px-3 text-sm font-semibold text-ocean-900 outline-none"
+                />
+              </label>
+              <Button type="submit" tone="secondary" className="self-end" disabled={projectOptions.length === 0}>
+                Save Contribution
+              </Button>
+            </form>
+          ) : (
+            <p className="max-w-lg rounded-xl border border-ocean-900/10 bg-ocean-50 px-4 py-3 text-sm font-semibold leading-6 text-ocean-900/68">
+              Your corporate role can inspect project status and evidence, but cannot change portfolio funding.
+            </p>
+          )}
         </div>
       </section>
 

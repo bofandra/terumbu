@@ -30,6 +30,7 @@ import {
   normalizeCardLast4
 } from "@/lib/checkout";
 import { getMetadataNumber, getMetadataString, toNumber } from "@/lib/domain";
+import { departureStatusAfterSeatChange } from "@/lib/expedition-booking-lifecycle";
 import { formatCurrency } from "@/lib/utils";
 
 export type ManagedPaymentStatus = "created" | "pending" | "paid" | "failed" | "expired" | "refunded";
@@ -669,6 +670,9 @@ export async function transitionExpeditionBookingPayment(
       id: expeditionBookings.id,
       userId: expeditionBookings.userId,
       departureId: expeditionBookings.departureId,
+      departureStatus: expeditionDepartures.status,
+      departureCapacity: expeditionDepartures.capacity,
+      departureSeatsBooked: expeditionDepartures.seatsBooked,
       previousStatus: expeditionBookings.paymentStatus,
       bookingStatus: expeditionBookings.status,
       confirmedAt: expeditionBookings.confirmedAt,
@@ -684,6 +688,7 @@ export async function transitionExpeditionBookingPayment(
     })
     .from(expeditionBookings)
     .innerJoin(expeditions, eq(expeditionBookings.expeditionId, expeditions.id))
+    .innerJoin(expeditionDepartures, eq(expeditionBookings.departureId, expeditionDepartures.id))
     .leftJoin(expeditionBookingPayments, eq(expeditionBookingPayments.bookingId, expeditionBookings.id))
     .where(eq(expeditionBookings.id, input.bookingId))
     .orderBy(desc(expeditionBookingPayments.updatedAt))
@@ -722,10 +727,13 @@ export async function transitionExpeditionBookingPayment(
     .where(eq(expeditionBookings.id, booking.id));
 
   if (!wasPaid && isPaid) {
+    const nextSeatsBooked = Math.max(0, booking.departureSeatsBooked + booking.participantsCount);
+
     await database
       .update(expeditionDepartures)
       .set({
-        seatsBooked: sql`greatest(${expeditionDepartures.seatsBooked} + ${booking.participantsCount}, 0)`
+        seatsBooked: nextSeatsBooked,
+        status: departureStatusAfterSeatChange(booking.departureStatus, booking.departureCapacity, nextSeatsBooked)
       })
       .where(eq(expeditionDepartures.id, booking.departureId));
 
@@ -733,10 +741,13 @@ export async function transitionExpeditionBookingPayment(
   }
 
   if (wasPaid && !isPaid) {
+    const nextSeatsBooked = Math.max(0, booking.departureSeatsBooked - booking.participantsCount);
+
     await database
       .update(expeditionDepartures)
       .set({
-        seatsBooked: sql`greatest(${expeditionDepartures.seatsBooked} - ${booking.participantsCount}, 0)`
+        seatsBooked: nextSeatsBooked,
+        status: departureStatusAfterSeatChange(booking.departureStatus, booking.departureCapacity, nextSeatsBooked)
       })
       .where(eq(expeditionDepartures.id, booking.departureId));
 

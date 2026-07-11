@@ -1,16 +1,15 @@
 import { CheckCircle2, Download, Eye, FileArchive, Send, UploadCloud } from "lucide-react";
 import Link from "next/link";
 
-import { CorporateEmptyState } from "@/components/corporate-empty-state";
 import { Button } from "@/components/ui/button";
 import { requireUser } from "@/lib/auth";
+import { requireCorporateDashboardData } from "@/lib/corporate-access";
 import {
   approveCorporateReportAction,
   createCorporateReportExportAction,
   publishCorporateReportAction,
   submitCorporateReportForApprovalAction
 } from "@/lib/corporate-actions";
-import { getCorporateDashboardData } from "@/lib/queries";
 import { cn } from "@/lib/utils";
 
 export const metadata = {
@@ -49,11 +48,7 @@ function formatDate(value: Date | null | undefined) {
 export default async function CorporateReportsPage({ searchParams }: CorporateReportsPageProps) {
   const params = await searchParams;
   const user = await requireUser("/corporate/reports");
-  const data = await getCorporateDashboardData(user.id);
-
-  if (!data) {
-    return <CorporateEmptyState />;
-  }
+  const data = await requireCorporateDashboardData(user.id, "/corporate/reports");
 
   return (
     <main className="mx-auto max-w-[1500px] px-4 py-8 sm:px-6 lg:px-8">

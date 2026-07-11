@@ -26,6 +26,7 @@ import {
 import { getSessionUser, safeRedirectPath } from "@/lib/auth";
 import { trackEvent } from "@/lib/analytics";
 import { sendTransactionalEmail } from "@/lib/email";
+import { expeditionDepartureAvailability } from "@/lib/expedition-booking-lifecycle";
 import {
   ensureUserPaymentMethod,
   paymentStatusFromValue,
@@ -226,6 +227,7 @@ export async function bookExpeditionAction(formData: FormData) {
       capacity: expeditionDepartures.capacity,
       seatsBooked: expeditionDepartures.seatsBooked,
       status: expeditionDepartures.status,
+      metadata: expeditionDepartures.metadata,
       startsAt: expeditionDepartures.startsAt
     })
     .from(expeditionDepartures)
@@ -233,7 +235,19 @@ export async function bookExpeditionAction(formData: FormData) {
     .where(eq(expeditionDepartures.id, departureId))
     .limit(1);
 
-  if (!departure || departure.status !== "open" || departure.capacity - departure.seatsBooked < participantCount) {
+  const availability = departure
+    ? expeditionDepartureAvailability(
+        {
+          status: departure.status,
+          capacity: departure.capacity,
+          seatsBooked: departure.seatsBooked,
+          minParticipants: Number((departure.metadata as Record<string, unknown> | null)?.minParticipants ?? 6)
+        },
+        participantCount
+      )
+    : null;
+
+  if (!departure || !availability?.canBook) {
     redirect(`${nextPath}?error=availability`);
   }
 
@@ -280,7 +294,9 @@ export async function bookExpeditionAction(formData: FormData) {
         confirmedAt: null,
         metadata: {
           providerReference,
-          participantNames
+          participantNames,
+          availabilityCode: availability.code,
+          availabilityMessage: availability.message
         }
       })
       .returning({ id: expeditionBookings.id });

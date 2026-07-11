@@ -1,11 +1,10 @@
 import { KeyRound, LockKeyhole, Puzzle, ShieldCheck, Users } from "lucide-react";
 
-import { CorporateEmptyState } from "@/components/corporate-empty-state";
 import { Button } from "@/components/ui/button";
 import { requireUser } from "@/lib/auth";
+import { requireCorporateDashboardData } from "@/lib/corporate-access";
 import { updateCorporateIntegrationAction, updateCorporateSecuritySettingsAction } from "@/lib/corporate-actions";
 import { configuredIntegrationCount } from "@/lib/corporate-governance";
-import { getCorporateDashboardData } from "@/lib/queries";
 import { cn } from "@/lib/utils";
 
 export const metadata = {
@@ -60,16 +59,12 @@ type CorporateSettingsPageProps = {
 
 export default async function CorporateSettingsPage({ searchParams }: CorporateSettingsPageProps) {
   const user = await requireUser("/corporate/settings");
-  const data = await getCorporateDashboardData(user.id);
+  const data = await requireCorporateDashboardData(user.id, "/corporate/settings");
   const params = await searchParams;
-
-  if (!data) {
-    return <CorporateEmptyState />;
-  }
 
   const savedMessage = params?.saved ? savedMessages[params.saved] : null;
   const errorMessage = params?.error ? errorMessages[params.error] : null;
-  const canManageSettings = ["program.manage", "esg_manager"].includes(data.governance.accessSummary.currentPermission);
+  const canManageSettings = data.capabilities.canManageSettings;
   const retentionPolicyDays = data.governance.securitySettings.retentionPolicyDays ?? "";
   const allowedEmailDomains = data.governance.securitySettings.allowedEmailDomains.join("\n");
 

@@ -1,10 +1,10 @@
 import { BriefcaseBusiness, PlusCircle, Save } from "lucide-react";
 
-import { CorporateEmptyState } from "@/components/corporate-empty-state";
 import { Button } from "@/components/ui/button";
 import { requireUser } from "@/lib/auth";
+import { requireCorporateDashboardData } from "@/lib/corporate-access";
 import { createCorporateProgramAction, updateCorporateProgramAction } from "@/lib/corporate-actions";
-import { getCorporateDashboardData, getCorporateProgramsForUser } from "@/lib/queries";
+import { getCorporateProgramsForUser } from "@/lib/queries";
 import { formatCurrency } from "@/lib/utils";
 
 export const metadata = {
@@ -29,10 +29,11 @@ const programStatuses = ["draft", "active", "paused", "completed", "archived"];
 export default async function CorporateProgramsPage({ searchParams }: CorporateProgramsPageProps) {
   const params = await searchParams;
   const user = await requireUser("/corporate/programs");
-  const [data, registry] = await Promise.all([getCorporateDashboardData(user.id), getCorporateProgramsForUser(user.id)]);
+  const data = await requireCorporateDashboardData(user.id, "/corporate/programs");
+  const registry = await getCorporateProgramsForUser(user.id);
 
-  if (!data || !registry) {
-    return <CorporateEmptyState />;
+  if (!registry) {
+    throw new Error("Corporate program registry was unavailable after access was granted.");
   }
 
   return (

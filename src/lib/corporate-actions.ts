@@ -32,6 +32,12 @@ import {
   normalizeCorporateIntegrationType
 } from "@/lib/corporate-governance";
 import {
+  canAssignCorporateEmployeeRole,
+  corporateCapabilitiesForPermission,
+  normalizeCorporateEmployeeRole,
+  permissionForCorporateEmployeeRole
+} from "@/lib/corporate-permissions";
+import {
   canAcceptCorporateEmployeeInvite,
   corporateInviteExpiresAt,
   normalizeCorporateProgramStatus
@@ -57,27 +63,6 @@ function toSlug(value: string) {
     .slice(0, 96);
 
   return slug || "corporate-impact";
-}
-
-function roleCapabilities(permission: string | null | undefined) {
-  const value = permission ?? "";
-  const isManager = value === "program.manage" || value === "esg_manager";
-  const isFinance = value === "finance_reviewer";
-  const isExecutive = value === "executive_viewer";
-  const isAuditor = value === "auditor";
-
-  return {
-    canGenerate: isManager,
-    canSubmit: isManager,
-    canApprove: isManager || isFinance,
-    canPublish: isManager,
-    canPreview: isManager || isFinance || isExecutive || isAuditor || value === "employee_engagement",
-    canManageProjects: isManager,
-    canManageEmployees: isManager || value === "employee_engagement",
-    canManageFunding: isManager || isFinance,
-    canReviewEvidence: isManager || isFinance || isAuditor,
-    canManagePrograms: isManager
-  };
 }
 
 function escapeHtml(value: string | number | null | undefined) {
@@ -321,7 +306,7 @@ export async function createCorporateProgramAction(formData: FormData) {
   const user = await requireUser("/corporate/programs");
   const context = await corporateContext(user.id);
 
-  if (!context || !roleCapabilities(context.permission).canManagePrograms) {
+  if (!context || !corporateCapabilitiesForPermission(context.permission).canManagePrograms) {
     redirect("/corporate/programs?error=permission");
   }
 
@@ -373,7 +358,7 @@ export async function updateCorporateProgramAction(formData: FormData) {
   const user = await requireUser("/corporate/programs");
   const context = await corporateContext(user.id);
 
-  if (!context || !roleCapabilities(context.permission).canManagePrograms) {
+  if (!context || !corporateCapabilitiesForPermission(context.permission).canManagePrograms) {
     redirect("/corporate/programs?error=permission");
   }
 
@@ -432,9 +417,9 @@ export async function createCorporateReportExportAction(formData: FormData) {
     redirect("/corporate?error=program");
   }
 
-  const capabilities = roleCapabilities(context.permission);
+  const capabilities = corporateCapabilitiesForPermission(context.permission);
 
-  if (!capabilities.canGenerate) {
+  if (!capabilities.canGenerateReport) {
     redirect("/corporate/reports?error=permission");
   }
 
@@ -476,7 +461,7 @@ export async function fundCorporateProjectAction(formData: FormData) {
   const user = await requireUser("/corporate/projects");
   const context = await corporateContext(user.id);
 
-  if (!context || !roleCapabilities(context.permission).canManageProjects) {
+  if (!context || !corporateCapabilitiesForPermission(context.permission).canManageProjects) {
     redirect("/corporate/projects?error=permission");
   }
 
@@ -659,23 +644,11 @@ export async function fundCorporateProjectAction(formData: FormData) {
   redirect("/corporate/projects?saved=project");
 }
 
-function permissionForEmployeeRole(role: string) {
-  const permissions: Record<string, string> = {
-    program_admin: "program.manage",
-    finance_reviewer: "finance_reviewer",
-    employee_engagement: "employee_engagement",
-    auditor: "auditor",
-    report_viewer: "executive_viewer"
-  };
-
-  return permissions[role] ?? "executive_viewer";
-}
-
 export async function inviteCorporateEmployeeAction(formData: FormData) {
   const user = await requireUser("/corporate/employees");
   const context = await corporateContext(user.id);
 
-  if (!context || !roleCapabilities(context.permission).canManageEmployees) {
+  if (!context || !corporateCapabilitiesForPermission(context.permission).canManageEmployees) {
     redirect("/corporate/employees?error=permission");
   }
 
@@ -683,9 +656,13 @@ export async function inviteCorporateEmployeeAction(formData: FormData) {
   const email = textValue(formData.get("email"), 255).toLowerCase();
   const department = textValue(formData.get("department"), 120) || null;
   const requestedRole = textValue(formData.get("role"), 120);
-  const role = ["program_admin", "finance_reviewer", "employee_engagement", "auditor", "report_viewer", "member"].includes(requestedRole) ? requestedRole : "member";
+  const role = normalizeCorporateEmployeeRole(requestedRole);
   const requestedStatus = textValue(formData.get("status"), 80);
   const status = ["active", "invited", "suspended"].includes(requestedStatus) ? requestedStatus : "invited";
+
+  if (!canAssignCorporateEmployeeRole(context.permission, role)) {
+    redirect("/corporate/employees?error=permission");
+  }
 
   if (!name || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
     redirect("/corporate/employees?error=employee");
@@ -723,7 +700,7 @@ export async function inviteCorporateEmployeeAction(formData: FormData) {
     })
     .returning({ id: corporateEmployees.id });
 
-  const permission = permissionForEmployeeRole(role);
+  const permission = permissionForCorporateEmployeeRole(role);
   let inviteToken: string | null = null;
 
   if (status === "active" && linkedUser) {
@@ -871,7 +848,7 @@ export async function updateCorporateBudgetAction(formData: FormData) {
   const user = await requireUser("/corporate/funding");
   const context = await corporateContext(user.id);
 
-  if (!context || !roleCapabilities(context.permission).canManageFunding) {
+  if (!context || !corporateCapabilitiesForPermission(context.permission).canManageFunding) {
     redirect("/corporate/funding?error=permission");
   }
 
@@ -926,7 +903,7 @@ export async function updateCorporateEvidenceStatusAction(formData: FormData) {
   const user = await requireUser("/corporate/evidence");
   const context = await corporateContext(user.id);
 
-  if (!context || !roleCapabilities(context.permission).canReviewEvidence) {
+  if (!context || !corporateCapabilitiesForPermission(context.permission).canUpdateEvidenceStatus) {
     redirect("/corporate/evidence?error=permission");
   }
 
@@ -989,7 +966,7 @@ export async function updateCorporateIntegrationAction(formData: FormData) {
   const user = await requireUser("/corporate/settings");
   const context = await corporateContext(user.id);
 
-  if (!context || !roleCapabilities(context.permission).canManageProjects) {
+  if (!context || !corporateCapabilitiesForPermission(context.permission).canManageSettings) {
     redirect("/corporate/settings?error=permission");
   }
 
@@ -1058,7 +1035,7 @@ export async function updateCorporateSecuritySettingsAction(formData: FormData) 
   const user = await requireUser("/corporate/settings");
   const context = await corporateContext(user.id);
 
-  if (!context || !roleCapabilities(context.permission).canManageProjects) {
+  if (!context || !corporateCapabilitiesForPermission(context.permission).canManageSettings) {
     redirect("/corporate/settings?error=permission");
   }
 
@@ -1155,7 +1132,7 @@ export async function submitCorporateReportForApprovalAction(formData: FormData)
   const reportId = String(formData.get("reportId") ?? "");
   const access = await reportForUser(user.id, reportId);
 
-  if (!access || !roleCapabilities(access.context.permission).canSubmit) {
+  if (!access || !corporateCapabilitiesForPermission(access.context.permission).canSubmitReport) {
     redirect("/corporate/reports?error=permission");
   }
 
@@ -1175,7 +1152,7 @@ export async function approveCorporateReportAction(formData: FormData) {
   const reportId = String(formData.get("reportId") ?? "");
   const access = await reportForUser(user.id, reportId);
 
-  if (!access || !roleCapabilities(access.context.permission).canApprove) {
+  if (!access || !corporateCapabilitiesForPermission(access.context.permission).canApproveReport) {
     redirect("/corporate/reports?error=permission");
   }
 
@@ -1199,7 +1176,7 @@ export async function publishCorporateReportAction(formData: FormData) {
   const reportId = String(formData.get("reportId") ?? "");
   const access = await reportForUser(user.id, reportId);
 
-  if (!access || !roleCapabilities(access.context.permission).canPublish) {
+  if (!access || !corporateCapabilitiesForPermission(access.context.permission).canPublishReport) {
     redirect("/corporate/reports?error=permission");
   }
 

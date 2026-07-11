@@ -87,7 +87,7 @@ export default async function PartnerEvidencePage() {
                   </div>
                 ) : null}
 
-                {item.verificationStatus === "rejected" ? (
+                {item.verificationStatus === "rejected" && data.capabilities.canReviseEvidence ? (
                   <form action={reviseEvidenceAction} className="mt-4 grid gap-3 rounded-xl bg-sand-50 p-4">
                     <input type="hidden" name="evidenceId" value={item.id} />
                     <label className="grid gap-1.5 text-sm font-bold text-ocean-900">Title<input name="title" className={inputClassName} defaultValue={item.title} required /></label>

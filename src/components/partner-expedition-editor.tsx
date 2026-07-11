@@ -52,8 +52,9 @@ function optionsWithCurrentValues(options: string[], values: string[]) {
   return values.reduce((choices, value) => optionsWithCurrent(choices, value), options);
 }
 
-function CreateExpeditionForm({ campaigns }: { campaigns: Campaign[] }) {
+function CreateExpeditionForm({ campaigns, canManageExpeditions }: { campaigns: Campaign[]; canManageExpeditions: boolean }) {
   const hasCampaigns = campaigns.length > 0;
+  const canSubmit = hasCampaigns && canManageExpeditions;
 
   return (
     <details id="add-expedition" className="rounded-lg border border-ocean-900/10 bg-white shadow-soft">
@@ -84,7 +85,7 @@ function CreateExpeditionForm({ campaigns }: { campaigns: Campaign[] }) {
         </div>
         <div className="grid gap-3 md:grid-cols-2">
           <Field label="Related campaign">
-            <select name="relatedCampaignId" className={inputClassName} required disabled={!hasCampaigns}>
+            <select name="relatedCampaignId" className={inputClassName} required disabled={!canSubmit}>
               <option value="">Choose campaign</option>
               {campaigns.map((campaign) => (
                 <option key={campaign.id} value={campaign.id}>
@@ -141,7 +142,7 @@ function CreateExpeditionForm({ campaigns }: { campaigns: Campaign[] }) {
             </Field>
           </div>
         </details>
-        <Button type="submit" className="w-fit" disabled={!hasCampaigns}>
+        <Button type="submit" className="w-fit" disabled={!canSubmit}>
           <Plus className="size-4" aria-hidden="true" />
           Create Expedition
         </Button>
@@ -637,10 +638,24 @@ function DepartureForms({ expedition }: { expedition: Expedition }) {
   );
 }
 
-export function PartnerExpeditionWorkspace({ campaigns, expeditions }: { campaigns: Campaign[]; expeditions: Expedition[] }) {
+export function PartnerExpeditionWorkspace({
+  campaigns,
+  expeditions,
+  canManageExpeditions
+}: {
+  campaigns: Campaign[];
+  expeditions: Expedition[];
+  canManageExpeditions: boolean;
+}) {
   return (
     <section className="grid gap-4">
-      <CreateExpeditionForm campaigns={campaigns} />
+      {canManageExpeditions ? (
+        <CreateExpeditionForm campaigns={campaigns} canManageExpeditions={canManageExpeditions} />
+      ) : (
+        <div className="rounded-lg border border-ocean-900/10 bg-white p-5 text-sm font-semibold text-ocean-900/62 shadow-soft">
+          Your partner role can view expedition records, but cannot change trip details or departures.
+        </div>
+      )}
 
       {expeditions.map((expedition) => (
         <article key={expedition.id} className="overflow-hidden rounded-lg border border-ocean-900/10 bg-white shadow-soft">
@@ -663,21 +678,25 @@ export function PartnerExpeditionWorkspace({ campaigns, expeditions }: { campaig
             </Link>
           </div>
 
-          <details className="border-b border-ocean-900/10">
-            <summary className="flex cursor-pointer items-center gap-2 px-5 py-4 text-sm font-bold text-ocean-900">
-              <Edit3 className="size-4" aria-hidden="true" />
-              Edit public trip detail
-            </summary>
-            <ExpeditionDetailForm expedition={expedition} campaigns={campaigns} />
-          </details>
+          {canManageExpeditions ? (
+            <>
+              <details className="border-b border-ocean-900/10">
+                <summary className="flex cursor-pointer items-center gap-2 px-5 py-4 text-sm font-bold text-ocean-900">
+                  <Edit3 className="size-4" aria-hidden="true" />
+                  Edit public trip detail
+                </summary>
+                <ExpeditionDetailForm expedition={expedition} campaigns={campaigns} />
+              </details>
 
-          <details>
-            <summary className="flex cursor-pointer items-center gap-2 px-5 py-4 text-sm font-bold text-ocean-900">
-              <CalendarPlus className="size-4" aria-hidden="true" />
-              Manage departures
-            </summary>
-            <DepartureForms expedition={expedition} />
-          </details>
+              <details>
+                <summary className="flex cursor-pointer items-center gap-2 px-5 py-4 text-sm font-bold text-ocean-900">
+                  <CalendarPlus className="size-4" aria-hidden="true" />
+                  Manage departures
+                </summary>
+                <DepartureForms expedition={expedition} />
+              </details>
+            </>
+          ) : null}
         </article>
       ))}
 

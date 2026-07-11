@@ -20,7 +20,7 @@ export default async function PartnerCreateCampaignPage() {
         actionHref="/partner/campaigns"
         actionLabel="View campaigns"
       />
-      <CampaignCreateForm organizations={data.organizations} />
+      <CampaignCreateForm organizations={data.organizations} canCreateCampaign={data.capabilities.canCreateCampaign} />
     </div>
   );
 }

@@ -20,12 +20,11 @@ import {
 import Image from "next/image";
 import Link from "next/link";
 
-import { CorporateEmptyState } from "@/components/corporate-empty-state";
 import { Button, ButtonLink } from "@/components/ui/button";
 import { ProgressMeter } from "@/components/ui/progress-meter";
 import { requireUser } from "@/lib/auth";
+import { requireCorporateDashboardData, type CorporateDashboardData } from "@/lib/corporate-access";
 import { createCorporateReportExportAction } from "@/lib/corporate-actions";
-import { getCorporateDashboardData } from "@/lib/queries";
 import { cn, formatCurrency } from "@/lib/utils";
 
 export const metadata = {
@@ -36,7 +35,6 @@ export const dynamic = "force-dynamic";
 
 const heroImage = "https://images.unsplash.com/photo-1544551763-46a013bb70d5?auto=format&fit=crop&w=1800&q=80";
 
-type CorporateDashboardData = NonNullable<Awaited<ReturnType<typeof getCorporateDashboardData>>>;
 type CorporateProject = CorporateDashboardData["portfolio"][number];
 
 function formatDate(value: Date | null | undefined) {
@@ -117,16 +115,14 @@ function healthTone(tone: string) {
 
 export default async function CorporateDashboardPage() {
   const user = await requireUser("/corporate");
-  const data = await getCorporateDashboardData(user.id);
-
-  if (!data) {
-    return <CorporateEmptyState />;
-  }
+  const data = await requireCorporateDashboardData(user.id, "/corporate");
 
   const maxTrendEmployees = Math.max(1, ...data.employeeTrend.map((item) => item.employees));
   const maxTrendHours = Math.max(1, ...data.employeeTrend.map((item) => item.volunteerHours));
   const publicImpactHref = data.publicImpactPreview.href ?? "/corporate/reports";
   const publicImpactCta = data.publicImpactPreview.href ? "View Public Impact Page" : "Prepare Public Page";
+  const canGenerateReport = data.capabilities.canGenerateReport;
+  const canManageProjects = data.capabilities.canManageProjects;
 
   return (
     <main className="mx-auto max-w-[1500px] px-4 py-6 sm:px-6 lg:px-8">
@@ -146,15 +142,17 @@ export default async function CorporateDashboardPage() {
               Supporting reef restoration, mangrove rehabilitation, community conservation, and employee participation across Indonesia.
             </p>
             <div className="mt-6 flex flex-wrap gap-2">
-              <form action={createCorporateReportExportAction}>
-                <Button type="submit" tone="secondary">
-                  <Download size={17} aria-hidden="true" />
-                  Generate ESG Report
-                </Button>
-              </form>
+              {canGenerateReport ? (
+                <form action={createCorporateReportExportAction}>
+                  <Button type="submit" tone="secondary">
+                    <Download size={17} aria-hidden="true" />
+                    Generate ESG Report
+                  </Button>
+                </form>
+              ) : null}
               <ButtonLink href="/corporate/projects" tone="light">
                 <Plus size={17} aria-hidden="true" />
-                Add New Project
+                {canManageProjects ? "Add New Project" : "View Projects"}
               </ButtonLink>
               <ButtonLink href={publicImpactHref} tone="light">
                 <Globe2 size={17} aria-hidden="true" />
@@ -608,14 +606,14 @@ export default async function CorporateDashboardPage() {
                 Preview Latest
                 <ArrowRight size={17} aria-hidden="true" />
               </ButtonLink>
-            ) : (
+            ) : canGenerateReport ? (
               <form action={createCorporateReportExportAction}>
                 <Button type="submit" tone="secondary">
                   Generate Report
                   <ArrowRight size={17} aria-hidden="true" />
                 </Button>
               </form>
-            )}
+            ) : null}
           </div>
         </article>
 

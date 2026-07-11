@@ -60,7 +60,7 @@ export default async function ExpeditionCheckoutPage({ searchParams }: Expeditio
         </p>
         {params?.error ? (
           <p className="mt-4 rounded-xl border border-coral-500/20 bg-coral-100 px-4 py-3 text-sm font-semibold text-coral-700">
-            Check departure availability and contact details.
+            {params.error === "availability" ? "That departure is no longer available for the requested seats." : "Check departure availability and contact details."}
           </p>
         ) : null}
         <form action={bookExpeditionAction} className="mt-6 grid gap-4">
@@ -71,7 +71,7 @@ export default async function ExpeditionCheckoutPage({ searchParams }: Expeditio
             <select name="departureId" defaultValue={selectedDeparture} className="rounded-xl border border-ocean-900/14 px-4 py-3 outline-none focus:border-coral-500">
               {visibleOptions.map((option) => (
                 <option key={option.departureId} value={option.departureId}>
-                  {option.expeditionTitle} · {option.startsAt.toLocaleDateString("id-ID", { dateStyle: "medium" })} · {option.availableSeats} seats · {formatCurrency(option.basePrice)}
+                  {option.expeditionTitle} · {option.startsAt.toLocaleDateString("id-ID", { dateStyle: "medium" })} · {option.availabilityLabel} · {option.availableSeats} seats · {formatCurrency(option.basePrice)}
                 </option>
               ))}
             </select>

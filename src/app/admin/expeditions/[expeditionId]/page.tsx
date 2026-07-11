@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowUpRight, CalendarDays, CalendarPlus, Save, Trash2 } from "lucide-react";
+import { ArrowUpRight, CalendarDays, CalendarPlus, CheckCircle2, MessageSquareText, Save, Star, Trash2, XCircle } from "lucide-react";
 import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
 
@@ -13,6 +13,8 @@ import {
 } from "@/components/admin-ui";
 import { Button } from "@/components/ui/button";
 import { requireRole } from "@/lib/auth";
+import { moderateExpeditionReviewAction } from "@/lib/expedition-review-actions";
+import { expeditionReviewStatusLabel, expeditionReviewStatuses, type ExpeditionReviewStatus } from "@/lib/expedition-reviews";
 import {
   createExpeditionDepartureAction,
   deleteExpeditionAction,
@@ -35,7 +37,8 @@ const statusMessages: Record<string, string> = {
   "departure-created": "Departure created.",
   "departure-deleted": "Departure deleted.",
   "departure-updated": "Departure updated.",
-  "expedition-updated": "Expedition updated."
+  "expedition-updated": "Expedition updated.",
+  "review-moderated": "Review moderation status updated."
 };
 
 const errorMessages: Record<string, string> = {
@@ -51,7 +54,9 @@ const errorMessages: Record<string, string> = {
   "expedition-invalid": "Enter a title, slug, region, duration, price, and summary.",
   "expedition-metadata-json": "Trip detail content must be valid JSON object data.",
   "expedition-missing": "Expedition record was not found.",
-  "expedition-slug": "That expedition slug is already in use."
+  "expedition-slug": "That expedition slug is already in use.",
+  "review-invalid": "Choose a review and moderation status.",
+  "review-missing": "Review record was not found."
 };
 
 type AdminExpeditionDetailPageProps = {
@@ -70,6 +75,26 @@ function labelize(value: string) {
 
 function formatDateTimeInput(date: Date) {
   return date.toISOString().slice(0, 16);
+}
+
+function reviewStatusClass(status: ExpeditionReviewStatus) {
+  if (status === "published") {
+    return "bg-kelp-100 text-kelp-700";
+  }
+
+  if (status === "rejected") {
+    return "bg-coral-100 text-coral-700";
+  }
+
+  return "bg-sand-100 text-ocean-900";
+}
+
+function ReviewStatusBadge({ status }: { status: ExpeditionReviewStatus }) {
+  return (
+    <span className={`inline-flex min-h-7 items-center rounded-full px-2.5 text-xs font-bold ${reviewStatusClass(status)}`}>
+      {expeditionReviewStatusLabel(status)}
+    </span>
+  );
 }
 
 function Field({
@@ -122,6 +147,7 @@ export default async function AdminExpeditionDetailPage({ params, searchParams }
   const returnTo = `/admin/expeditions/${expedition.id}`;
   const openDepartures = expedition.departures.filter((departure) => departure.status === "open").length;
   const availableSeats = expedition.departures.reduce((total, departure) => total + departure.availableSeats, 0);
+  const pendingReviews = expedition.reviews.filter((review) => review.status === "pending").length;
   const savedMessage = query?.saved ? statusMessages[query.saved] : null;
   const errorMessage = query?.error ? errorMessages[query.error] : null;
 
@@ -138,12 +164,13 @@ export default async function AdminExpeditionDetailPage({ params, searchParams }
       {savedMessage ? <p className="rounded-lg border border-kelp-700/20 bg-kelp-100 px-4 py-3 text-sm font-bold text-kelp-700">{savedMessage}</p> : null}
       {errorMessage ? <p className="rounded-lg border border-coral-700/20 bg-coral-100 px-4 py-3 text-sm font-bold text-coral-700">{errorMessage}</p> : null}
 
-      <section className="grid gap-3 md:grid-cols-4" aria-label="Expedition detail summary">
+      <section className="grid gap-3 md:grid-cols-5" aria-label="Expedition detail summary">
         {[
           { label: "Departures", value: expedition.departures.length.toLocaleString("id-ID") },
           { label: "Open", value: openDepartures.toLocaleString("id-ID") },
           { label: "Available seats", value: availableSeats.toLocaleString("id-ID") },
-          { label: "Bookings", value: expedition.bookingCount.toLocaleString("id-ID") }
+          { label: "Bookings", value: expedition.bookingCount.toLocaleString("id-ID") },
+          { label: "Pending reviews", value: pendingReviews.toLocaleString("id-ID") }
         ].map((item) => (
           <article key={item.label} className="rounded-lg border border-ocean-900/10 bg-white p-4 shadow-soft">
             <p className="text-sm font-bold text-ocean-900/58">{item.label}</p>
@@ -209,6 +236,85 @@ export default async function AdminExpeditionDetailPage({ params, searchParams }
       <section className={adminPanelClassName}>
         <div className="flex flex-col justify-between gap-3 border-b border-ocean-900/10 p-4 sm:flex-row sm:items-center">
           <div>
+            <h2 className="text-xl font-bold tracking-normal text-ocean-900">Review moderation</h2>
+            <p className="mt-1 text-sm font-semibold text-ocean-900/58">Approve completed-participant reviews before they appear on the public expedition page.</p>
+          </div>
+          <MessageSquareText className="size-5 text-kelp-700" aria-hidden="true" />
+        </div>
+
+        <div className="divide-y divide-ocean-900/10">
+          {expedition.reviews.map((review) => (
+            <article key={review.id} className="p-4">
+              <div className="flex flex-col justify-between gap-3 lg:flex-row lg:items-start">
+                <div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h3 className="font-bold text-ocean-900">{review.reviewerName}</h3>
+                    <ReviewStatusBadge status={review.status} />
+                  </div>
+                  <p className="mt-1 text-sm font-semibold text-ocean-900/58">
+                    {review.reviewerEmail} / {review.bookingCode} / {review.createdAt.toLocaleDateString("id-ID", { dateStyle: "medium" })}
+                  </p>
+                </div>
+                <span className="inline-flex w-fit items-center gap-1 rounded-full bg-ocean-50 px-3 py-1 text-xs font-bold text-ocean-700">
+                  <Star className="size-3.5 fill-ocean-500" aria-hidden="true" />
+                  {review.rating} / 5
+                </span>
+              </div>
+
+              <div className="mt-4 rounded-lg border border-ocean-900/10 bg-sand-50 p-3">
+                {review.title ? <p className="font-bold text-ocean-900">{review.title}</p> : null}
+                <p className="mt-2 text-sm font-semibold leading-6 text-ocean-900/68">{review.body}</p>
+                <p className="mt-3 text-xs font-bold uppercase tracking-[0.12em] text-ocean-900/44">
+                  Last updated {review.updatedAt.toLocaleString("id-ID", { dateStyle: "medium", timeStyle: "short" })} / Booking {review.bookingStatus}
+                </p>
+              </div>
+
+              <div className="mt-4 flex flex-wrap gap-2">
+                <form action={moderateExpeditionReviewAction}>
+                  <input type="hidden" name="returnTo" value={returnTo} />
+                  <input type="hidden" name="reviewId" value={review.id} />
+                  <input type="hidden" name="status" value="published" />
+                  <Button type="submit" tone="secondary" className="min-h-10 rounded-lg px-3" disabled={review.status === "published"}>
+                    <CheckCircle2 className="size-4" aria-hidden="true" />
+                    Approve
+                  </Button>
+                </form>
+                <form action={moderateExpeditionReviewAction}>
+                  <input type="hidden" name="returnTo" value={returnTo} />
+                  <input type="hidden" name="reviewId" value={review.id} />
+                  <input type="hidden" name="status" value="rejected" />
+                  <Button type="submit" tone="ghost" className="min-h-10 rounded-lg px-3 text-coral-700 hover:bg-coral-100" disabled={review.status === "rejected"}>
+                    <XCircle className="size-4" aria-hidden="true" />
+                    Reject
+                  </Button>
+                </form>
+                <form action={moderateExpeditionReviewAction} className="flex flex-wrap gap-2">
+                  <input type="hidden" name="returnTo" value={returnTo} />
+                  <input type="hidden" name="reviewId" value={review.id} />
+                  <select name="status" defaultValue={review.status} className={adminSelectClassName} aria-label="Review moderation status">
+                    {expeditionReviewStatuses.map((status) => (
+                      <option key={status} value={status}>
+                        {expeditionReviewStatusLabel(status)}
+                      </option>
+                    ))}
+                  </select>
+                  <Button type="submit" tone="light" className="min-h-10 rounded-lg px-3">
+                    <Save className="size-4" aria-hidden="true" />
+                    Set status
+                  </Button>
+                </form>
+              </div>
+            </article>
+          ))}
+          {expedition.reviews.length === 0 ? (
+            <p className="p-4 text-sm font-semibold text-ocean-900/58">No participant reviews have been submitted for this expedition.</p>
+          ) : null}
+        </div>
+      </section>
+
+      <section className={adminPanelClassName}>
+        <div className="flex flex-col justify-between gap-3 border-b border-ocean-900/10 p-4 sm:flex-row sm:items-center">
+          <div>
             <h2 className="text-xl font-bold tracking-normal text-ocean-900">Departures</h2>
             <p className="mt-1 text-sm font-semibold text-ocean-900/58">Only open departures can be booked from checkout.</p>
           </div>
@@ -225,6 +331,9 @@ export default async function AdminExpeditionDetailPage({ params, searchParams }
                   </p>
                   <p className="mt-1 text-sm font-semibold text-ocean-900/58">
                     {departure.availableSeats} of {departure.capacity} seats available / {departure.seatsBooked} booked
+                  </p>
+                  <p className="mt-1 text-xs font-bold uppercase tracking-[0.12em] text-ocean-900/44">
+                    {departure.availabilityLabel} / Minimum {departure.minParticipants} / {departure.availabilityMessage}
                   </p>
                 </div>
                 <div className="flex flex-wrap gap-2">

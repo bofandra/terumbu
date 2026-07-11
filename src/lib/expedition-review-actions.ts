@@ -4,8 +4,9 @@ import { and, eq } from "drizzle-orm";
 import { redirect } from "next/navigation";
 
 import { db } from "@/db/client";
-import { expeditionBookings, expeditionReviews } from "@/db/schema";
-import { requireUser } from "@/lib/auth";
+import { adminAuditLogs, expeditionBookings, expeditionReviews } from "@/db/schema";
+import { requireRole, requireUser } from "@/lib/auth";
+import { normalizeExpeditionReviewStatus, safeAdminExpeditionReturnPath } from "@/lib/expedition-reviews";
 
 function reviewText(formData: FormData, key: string) {
   return String(formData.get(key) ?? "").trim();
@@ -19,6 +20,13 @@ function reviewRating(value: FormDataEntryValue | null) {
   }
 
   return rating;
+}
+
+function redirectAdminExpedition(returnTo: string, key: "error" | "saved", value: string): never {
+  const url = new URL(returnTo, "http://terumbu.local");
+
+  url.searchParams.set(key, value);
+  redirect(`${url.pathname}${url.search}`);
 }
 
 export async function submitExpeditionReviewAction(formData: FormData) {
@@ -56,7 +64,7 @@ export async function submitExpeditionReviewAction(formData: FormData) {
       rating,
       title,
       body,
-      status: "published",
+      status: "pending",
       updatedAt: now
     })
     .onConflictDoUpdate({
@@ -65,10 +73,59 @@ export async function submitExpeditionReviewAction(formData: FormData) {
         rating,
         title,
         body,
-        status: "published",
+        status: "pending",
         updatedAt: now
       }
     });
 
   redirect("/dashboard/expeditions?saved=review");
+}
+
+export async function moderateExpeditionReviewAction(formData: FormData) {
+  const actor = await requireRole(["admin"], "/admin/expeditions");
+  const reviewId = reviewText(formData, "reviewId");
+  const status = normalizeExpeditionReviewStatus(formData.get("status"), "pending");
+  const returnTo = safeAdminExpeditionReturnPath(formData.get("returnTo"));
+
+  if (!reviewId) {
+    redirectAdminExpedition(returnTo, "error", "review-invalid");
+  }
+
+  const [review] = await db
+    .select({
+      id: expeditionReviews.id,
+      expeditionId: expeditionReviews.expeditionId,
+      bookingId: expeditionReviews.bookingId,
+      previousStatus: expeditionReviews.status
+    })
+    .from(expeditionReviews)
+    .where(eq(expeditionReviews.id, reviewId))
+    .limit(1);
+
+  if (!review) {
+    redirectAdminExpedition(returnTo, "error", "review-missing");
+  }
+
+  await db
+    .update(expeditionReviews)
+    .set({
+      status,
+      updatedAt: new Date()
+    })
+    .where(eq(expeditionReviews.id, review.id));
+
+  await db.insert(adminAuditLogs).values({
+    actorUserId: actor.id,
+    action: "expedition_review.moderated",
+    entityType: "expedition_review",
+    entityId: review.id,
+    metadata: {
+      bookingId: review.bookingId,
+      expeditionId: review.expeditionId,
+      previousStatus: normalizeExpeditionReviewStatus(review.previousStatus, "pending"),
+      status
+    }
+  });
+
+  redirectAdminExpedition(returnTo, "saved", "review-moderated");
 }
