@@ -28,6 +28,8 @@ const badgeClasses: Record<string, string> = {
   failed: "bg-coral-100 text-coral-700",
   field: "bg-kelp-100 text-kelp-700",
   funded: "bg-kelp-100 text-kelp-700",
+  in_review: "bg-ocean-50 text-ocean-700",
+  needs_clarification: "bg-coral-100 text-coral-700",
   paid: "bg-kelp-100 text-kelp-700",
   pending: "bg-sand-100 text-ocean-900",
   pending_payment: "bg-sand-100 text-ocean-900",

@@ -13,9 +13,12 @@ import {
 } from "@/components/admin-ui";
 import { Button } from "@/components/ui/button";
 import { requireRole } from "@/lib/auth";
+import { processExpeditionInterestRequestAction } from "@/lib/expedition-interest-actions";
 import { moderateExpeditionReviewAction } from "@/lib/expedition-review-actions";
 import { expeditionReviewStatusLabel, expeditionReviewStatuses, type ExpeditionReviewStatus } from "@/lib/expedition-reviews";
 import {
+  cancelExpeditionBookingAction,
+  cancelExpeditionDepartureAction,
   createExpeditionDepartureAction,
   deleteExpeditionAction,
   deleteExpeditionDepartureAction,
@@ -37,7 +40,10 @@ const statusMessages: Record<string, string> = {
   "departure-created": "Departure created.",
   "departure-deleted": "Departure deleted.",
   "departure-updated": "Departure updated.",
+  "booking-cancelled": "Booking cancelled and payment operation recorded.",
+  "departure-cancelled": "Departure cancelled and affected bookings were updated.",
   "expedition-updated": "Expedition updated.",
+  "interest-request": "Expedition interest request updated.",
   "review-moderated": "Review moderation status updated."
 };
 
@@ -49,12 +55,16 @@ const errorMessages: Record<string, string> = {
   "departure-has-bookings": "Departures with bookings cannot be deleted.",
   "departure-invalid": "Enter valid departure dates and capacity.",
   "departure-missing": "Departure record was not found.",
+  "booking-cancel": "That booking cannot be cancelled from this workflow.",
+  "departure-cancel": "That departure cannot be cancelled.",
   "expedition-delete": "Confirm expedition deletion by checking the delete box.",
   "expedition-has-bookings": "Expeditions with bookings cannot be deleted.",
   "expedition-invalid": "Enter a title, slug, region, duration, price, and summary.",
   "expedition-metadata-json": "Trip detail content must be valid JSON object data.",
   "expedition-missing": "Expedition record was not found.",
   "expedition-slug": "That expedition slug is already in use.",
+  "interest-request-invalid": "Choose an interest request and final processing status.",
+  "interest-request-missing": "Interest request record was not found.",
   "review-invalid": "Choose a review and moderation status.",
   "review-missing": "Review record was not found."
 };
@@ -147,6 +157,7 @@ export default async function AdminExpeditionDetailPage({ params, searchParams }
   const returnTo = `/admin/expeditions/${expedition.id}`;
   const openDepartures = expedition.departures.filter((departure) => departure.status === "open").length;
   const availableSeats = expedition.departures.reduce((total, departure) => total + departure.availableSeats, 0);
+  const pendingInterestRequests = expedition.interestRequests.filter((request) => request.status === "pending").length;
   const pendingReviews = expedition.reviews.filter((review) => review.status === "pending").length;
   const savedMessage = query?.saved ? statusMessages[query.saved] : null;
   const errorMessage = query?.error ? errorMessages[query.error] : null;
@@ -164,12 +175,13 @@ export default async function AdminExpeditionDetailPage({ params, searchParams }
       {savedMessage ? <p className="rounded-lg border border-kelp-700/20 bg-kelp-100 px-4 py-3 text-sm font-bold text-kelp-700">{savedMessage}</p> : null}
       {errorMessage ? <p className="rounded-lg border border-coral-700/20 bg-coral-100 px-4 py-3 text-sm font-bold text-coral-700">{errorMessage}</p> : null}
 
-      <section className="grid gap-3 md:grid-cols-5" aria-label="Expedition detail summary">
+      <section className="grid gap-3 md:grid-cols-6" aria-label="Expedition detail summary">
         {[
           { label: "Departures", value: expedition.departures.length.toLocaleString("id-ID") },
           { label: "Open", value: openDepartures.toLocaleString("id-ID") },
           { label: "Available seats", value: availableSeats.toLocaleString("id-ID") },
           { label: "Bookings", value: expedition.bookingCount.toLocaleString("id-ID") },
+          { label: "Interest requests", value: pendingInterestRequests.toLocaleString("id-ID") },
           { label: "Pending reviews", value: pendingReviews.toLocaleString("id-ID") }
         ].map((item) => (
           <article key={item.label} className="rounded-lg border border-ocean-900/10 bg-white p-4 shadow-soft">
@@ -177,6 +189,107 @@ export default async function AdminExpeditionDetailPage({ params, searchParams }
             <p className="mt-3 text-2xl font-bold tracking-normal text-ocean-900">{item.value}</p>
           </article>
         ))}
+      </section>
+
+      <section className={adminPanelClassName}>
+        <div className="flex flex-col justify-between gap-3 border-b border-ocean-900/10 p-4 sm:flex-row sm:items-center">
+          <div>
+            <h2 className="text-xl font-bold tracking-normal text-ocean-900">Interest requests</h2>
+            <p className="mt-1 text-sm font-semibold text-ocean-900/58">Waitlist and private departure demand captured from the public expedition page.</p>
+          </div>
+          <MessageSquareText className="size-5 text-kelp-700" aria-hidden="true" />
+        </div>
+        <div className="divide-y divide-ocean-900/10">
+          {expedition.interestRequests.map((request) => (
+            <article key={request.id} className="p-4">
+              <div className="flex flex-col justify-between gap-3 lg:flex-row lg:items-start">
+                <div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h3 className="font-bold text-ocean-900">{request.contactName}</h3>
+                    <AdminStatusBadge value={labelize(request.requestType)} />
+                    <AdminStatusBadge value={request.status} />
+                  </div>
+                  <p className="mt-1 text-sm font-semibold text-ocean-900/58">
+                    {request.contactEmail} / {request.participantsCount} participants / {request.requestCode}
+                  </p>
+                  <p className="mt-1 text-xs font-bold uppercase tracking-[0.12em] text-ocean-900/44">
+                    Created {request.createdAt.toLocaleString("id-ID", { dateStyle: "medium", timeStyle: "short" })}
+                    {request.preferredStartAt ? ` / Preferred ${request.preferredStartAt.toLocaleDateString("id-ID", { dateStyle: "medium" })}` : ""}
+                  </p>
+                  {request.message ? <p className="mt-3 rounded-lg bg-sand-50 p-3 text-sm font-semibold text-ocean-900/68">{request.message}</p> : null}
+                </div>
+                {request.processedAt ? (
+                  <p className="text-xs font-bold uppercase tracking-[0.12em] text-ocean-900/44">
+                    Processed {request.processedAt.toLocaleDateString("id-ID", { dateStyle: "medium" })}
+                    {request.processedByEmail ? ` by ${request.processedByEmail}` : ""}
+                  </p>
+                ) : null}
+              </div>
+              <form action={processExpeditionInterestRequestAction} className="mt-4 grid gap-2 lg:grid-cols-[180px_1fr_auto]">
+                <input type="hidden" name="returnTo" value={returnTo} />
+                <input type="hidden" name="requestId" value={request.id} />
+                <select name="status" defaultValue={request.status === "pending" ? "contacted" : request.status} className={adminSelectClassName} aria-label="Interest request status">
+                  {["contacted", "converted", "declined", "cancelled"].map((status) => (
+                    <option key={status} value={status}>
+                      {labelize(status)}
+                    </option>
+                  ))}
+                </select>
+                <input name="note" placeholder="Admin note" className={adminInputClassName} />
+                <Button type="submit" tone="secondary" className="min-h-10 rounded-lg px-3">
+                  <Save className="size-4" aria-hidden="true" />
+                  Update request
+                </Button>
+              </form>
+            </article>
+          ))}
+          {expedition.interestRequests.length === 0 ? (
+            <p className="p-4 text-sm font-semibold text-ocean-900/58">No waitlist or private departure requests yet.</p>
+          ) : null}
+        </div>
+      </section>
+
+      <section className={adminPanelClassName}>
+        <div className="flex flex-col justify-between gap-3 border-b border-ocean-900/10 p-4 sm:flex-row sm:items-center">
+          <div>
+            <h2 className="text-xl font-bold tracking-normal text-ocean-900">Bookings</h2>
+            <p className="mt-1 text-sm font-semibold text-ocean-900/58">Cancel individual bookings when the operator confirms a schedule or eligibility issue.</p>
+          </div>
+          <CalendarDays className="size-5 text-kelp-700" aria-hidden="true" />
+        </div>
+        <div className="divide-y divide-ocean-900/10">
+          {expedition.bookings.map((booking) => (
+            <article key={booking.id} className="p-4">
+              <div className="flex flex-col justify-between gap-3 lg:flex-row lg:items-start">
+                <div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h3 className="font-bold text-ocean-900">{booking.bookingCode}</h3>
+                    <AdminStatusBadge value={booking.status} />
+                    <AdminStatusBadge value={booking.paymentStatus} />
+                  </div>
+                  <p className="mt-1 text-sm font-semibold text-ocean-900/58">
+                    {booking.contactName} / {booking.contactEmail} / {booking.participantsCount} participants
+                  </p>
+                  <p className="mt-1 text-xs font-bold uppercase tracking-[0.12em] text-ocean-900/44">
+                    Departure {booking.startsAt.toLocaleDateString("id-ID", { dateStyle: "medium" })} / {formatCurrency(booking.totalAmount)}
+                  </p>
+                </div>
+                <form action={cancelExpeditionBookingAction} className="grid gap-2 sm:min-w-80">
+                  <input type="hidden" name="returnTo" value={returnTo} />
+                  <input type="hidden" name="bookingId" value={booking.id} />
+                  <input name="reason" placeholder="Cancellation reason" className={adminInputClassName} disabled={!booking.canCancel} />
+                  <Button type="submit" tone="ghost" className="min-h-10 rounded-lg px-3 text-coral-700 hover:bg-coral-100 disabled:cursor-not-allowed disabled:opacity-45" disabled={!booking.canCancel}>
+                    <XCircle className="size-4" aria-hidden="true" />
+                    Cancel booking
+                  </Button>
+                </form>
+              </div>
+            </article>
+          ))}
+          {expedition.bookings.length === 0 ? (
+            <p className="p-4 text-sm font-semibold text-ocean-900/58">No bookings for this expedition yet.</p>
+          ) : null}
+        </div>
       </section>
 
       <section className={adminPanelClassName}>
@@ -386,6 +499,24 @@ export default async function AdminExpeditionDetailPage({ params, searchParams }
                 <Button type="submit" tone="secondary" className="w-fit rounded-lg">
                   <Save className="size-4" aria-hidden="true" />
                   Save Departure
+                </Button>
+              </form>
+
+              <form action={cancelExpeditionDepartureAction} className="mt-3 rounded-lg border border-coral-700/20 bg-white p-3">
+                <input type="hidden" name="returnTo" value={returnTo} />
+                <input type="hidden" name="departureId" value={departure.id} />
+                <label className="grid gap-1.5 text-sm font-bold text-ocean-900">
+                  Cancellation reason
+                  <input name="reason" placeholder="Weather, operator change, or safety issue" className={adminInputClassName} disabled={departure.status === "cancelled"} />
+                </label>
+                <Button
+                  type="submit"
+                  tone="ghost"
+                  className="mt-3 w-fit rounded-lg text-coral-700 hover:bg-coral-100 disabled:cursor-not-allowed disabled:opacity-45"
+                  disabled={departure.status === "cancelled"}
+                >
+                  <XCircle className="size-4" aria-hidden="true" />
+                  Cancel departure and bookings
                 </Button>
               </form>
 

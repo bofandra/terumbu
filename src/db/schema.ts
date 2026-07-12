@@ -49,6 +49,7 @@ export const enrollmentStatus = pgEnum("enrollment_status", [
 export const evidenceStatus = pgEnum("evidence_status", [
   "submitted",
   "in_review",
+  "needs_clarification",
   "verified",
   "rejected"
 ]);
@@ -365,8 +366,12 @@ export const projectEvidence = pgTable("project_evidence", {
   storageProvider: varchar("storage_provider", { length: 80 }).default("local_demo").notNull(),
   verificationStatus: evidenceStatus("verification_status").default("submitted").notNull(),
   verifiedAt: timestamp("verified_at", { withTimezone: true }),
+  assignedReviewerUserId: uuid("assigned_reviewer_user_id").references(() => users.id, { onDelete: "set null" }),
   reviewedByUserId: uuid("reviewed_by_user_id").references(() => users.id, { onDelete: "set null" }),
   reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
+  clarificationNote: text("clarification_note"),
+  clarificationRequestedAt: timestamp("clarification_requested_at", { withTimezone: true }),
+  clarificationResolvedAt: timestamp("clarification_resolved_at", { withTimezone: true }),
   rejectionReason: text("rejection_reason"),
   metadata: jsonb("metadata"),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
@@ -375,6 +380,24 @@ export const projectEvidence = pgTable("project_evidence", {
   codeIdx: uniqueIndex("project_evidence_code_idx").on(table.evidenceCode),
   campaignIdx: index("project_evidence_campaign_idx").on(table.campaignId),
   statusIdx: index("project_evidence_status_idx").on(table.verificationStatus)
+}));
+
+export const evidenceReviewEvents = pgTable("evidence_review_events", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  evidenceId: uuid("evidence_id").notNull().references(() => projectEvidence.id, { onDelete: "cascade" }),
+  actorUserId: uuid("actor_user_id").references(() => users.id, { onDelete: "set null" }),
+  assignedToUserId: uuid("assigned_to_user_id").references(() => users.id, { onDelete: "set null" }),
+  action: varchar("action", { length: 80 }).notNull(),
+  fromStatus: evidenceStatus("from_status"),
+  toStatus: evidenceStatus("to_status"),
+  note: text("note"),
+  visibility: varchar("visibility", { length: 80 }).default("internal").notNull(),
+  metadata: jsonb("metadata"),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull()
+}, (table) => ({
+  evidenceIdx: index("evidence_review_events_evidence_idx").on(table.evidenceId),
+  actionIdx: index("evidence_review_events_action_idx").on(table.action),
+  actorIdx: index("evidence_review_events_actor_idx").on(table.actorUserId)
 }));
 
 export const campaignActivities = pgTable("campaign_activity", {
@@ -523,6 +546,32 @@ export const expeditionBookings = pgTable("expedition_bookings", {
   userIdx: index("expedition_bookings_user_idx").on(table.userId),
   departureIdx: index("expedition_bookings_departure_idx").on(table.departureId),
   statusIdx: index("expedition_bookings_status_idx").on(table.status)
+}));
+
+export const expeditionInterestRequests = pgTable("expedition_interest_requests", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  expeditionId: uuid("expedition_id").notNull().references(() => expeditions.id, { onDelete: "cascade" }),
+  departureId: uuid("departure_id").references(() => expeditionDepartures.id, { onDelete: "set null" }),
+  userId: uuid("user_id").references(() => users.id, { onDelete: "set null" }),
+  requestCode: varchar("request_code", { length: 120 }).notNull(),
+  requestType: varchar("request_type", { length: 80 }).notNull(),
+  status: varchar("status", { length: 80 }).default("pending").notNull(),
+  contactName: varchar("contact_name", { length: 160 }).notNull(),
+  contactEmail: varchar("contact_email", { length: 255 }).notNull(),
+  participantsCount: integer("participants_count").default(1).notNull(),
+  preferredStartAt: timestamp("preferred_start_at", { withTimezone: true }),
+  message: text("message"),
+  processedByUserId: uuid("processed_by_user_id").references(() => users.id, { onDelete: "set null" }),
+  processedAt: timestamp("processed_at", { withTimezone: true }),
+  metadata: jsonb("metadata"),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull()
+}, (table) => ({
+  codeIdx: uniqueIndex("expedition_interest_requests_code_idx").on(table.requestCode),
+  expeditionIdx: index("expedition_interest_requests_expedition_idx").on(table.expeditionId),
+  departureIdx: index("expedition_interest_requests_departure_idx").on(table.departureId),
+  userIdx: index("expedition_interest_requests_user_idx").on(table.userId),
+  statusIdx: index("expedition_interest_requests_status_idx").on(table.status, table.requestType)
 }));
 
 export const expeditionReviews = pgTable("expedition_reviews", {
@@ -738,6 +787,12 @@ export const impactPassports = pgTable("impact_passports", {
   publicSlug: varchar("public_slug", { length: 180 }).notNull(),
   visibility: varchar("visibility", { length: 40 }).default("private").notNull(),
   story: text("story"),
+  shareToken: varchar("share_token", { length: 160 }),
+  shareExpiresAt: timestamp("share_expires_at", { withTimezone: true }),
+  shareAccessHash: text("share_access_hash"),
+  categoryVisibility: jsonb("category_visibility"),
+  evidenceConsent: varchar("evidence_consent", { length: 40 }).default("show_evidence").notNull(),
+  shareUpdatedAt: timestamp("share_updated_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull()
 }, (table) => ({
@@ -953,20 +1008,26 @@ export const corporateReportExports = pgTable("corporate_report_exports", {
   approvedByUserId: uuid("approved_by_user_id").references(() => users.id, { onDelete: "set null" }),
   exportCode: varchar("export_code", { length: 120 }).notNull(),
   reportType: varchar("report_type", { length: 80 }).default("esg").notNull(),
+  exportFormat: varchar("export_format", { length: 80 }).default("html_json").notNull(),
+  artifactVersion: integer("artifact_version").default(1).notNull(),
   status: varchar("status", { length: 80 }).default("queued").notNull(),
   fileUrl: text("file_url"),
   previewUrl: text("preview_url"),
   evidenceBundleUrl: text("evidence_bundle_url"),
   publicSlug: varchar("public_slug", { length: 180 }),
+  scheduledFor: timestamp("scheduled_for", { withTimezone: true }),
+  generatedAt: timestamp("generated_at", { withTimezone: true }),
   approvedAt: timestamp("approved_at", { withTimezone: true }),
   publishedAt: timestamp("published_at", { withTimezone: true }),
+  artifactManifest: jsonb("artifact_manifest"),
   metadata: jsonb("metadata"),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull()
 }, (table) => ({
   exportCodeIdx: uniqueIndex("corporate_report_exports_code_idx").on(table.exportCode),
   publicSlugIdx: uniqueIndex("corporate_report_exports_public_slug_idx").on(table.publicSlug),
-  programIdx: index("corporate_report_exports_program_idx").on(table.programId)
+  programIdx: index("corporate_report_exports_program_idx").on(table.programId),
+  scheduleIdx: index("corporate_report_exports_schedule_idx").on(table.status, table.scheduledFor)
 }));
 
 export const corporatePermissions = pgTable("corporate_permissions", {

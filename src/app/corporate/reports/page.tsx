@@ -8,6 +8,7 @@ import {
   approveCorporateReportAction,
   createCorporateReportExportAction,
   publishCorporateReportAction,
+  runDueCorporateReportExportsAction,
   submitCorporateReportForApprovalAction
 } from "@/lib/corporate-actions";
 import { cn } from "@/lib/utils";
@@ -22,12 +23,17 @@ type CorporateReportsPageProps = {
   searchParams?: Promise<{
     saved?: string;
     error?: string;
+    generated?: string;
   }>;
 };
 
 function statusClass(status: string) {
   if (status === "published") {
     return "bg-kelp-100 text-kelp-700";
+  }
+
+  if (status === "scheduled") {
+    return "bg-sand-100 text-ocean-900";
   }
 
   if (status === "approved" || status === "generated") {
@@ -49,6 +55,7 @@ export default async function CorporateReportsPage({ searchParams }: CorporateRe
   const params = await searchParams;
   const user = await requireUser("/corporate/reports");
   const data = await requireCorporateDashboardData(user.id, "/corporate/reports");
+  const scheduledDueCount = data.exports.filter((item) => item.isScheduledDue).length;
 
   return (
     <main className="mx-auto max-w-[1500px] px-4 py-8 sm:px-6 lg:px-8">
@@ -61,22 +68,34 @@ export default async function CorporateReportsPage({ searchParams }: CorporateRe
           </p>
         </div>
         {data.reportCapabilities.canGenerate ? (
-          <form action={createCorporateReportExportAction} className="grid gap-2 rounded-2xl border border-ocean-900/10 bg-white p-3 shadow-soft sm:grid-cols-[160px_auto]">
+          <form action={createCorporateReportExportAction} className="grid gap-2 rounded-2xl border border-ocean-900/10 bg-white p-3 shadow-soft md:grid-cols-[150px_150px_210px_auto]">
             <select name="reportType" defaultValue="esg" className="min-h-11 rounded-full border border-ocean-900/12 bg-white px-4 text-sm font-bold text-ocean-900 outline-none">
               <option value="esg">ESG report</option>
               <option value="csr">CSR report</option>
               <option value="evidence">Evidence bundle</option>
             </select>
+            <select name="exportFormat" defaultValue="html_json" className="min-h-11 rounded-full border border-ocean-900/12 bg-white px-4 text-sm font-bold text-ocean-900 outline-none">
+              <option value="html_json">HTML + JSON</option>
+              <option value="evidence_json">Evidence JSON</option>
+              <option value="full_archive">Full archive</option>
+            </select>
+            <input name="scheduledFor" type="datetime-local" className="min-h-11 rounded-full border border-ocean-900/12 bg-white px-4 text-sm font-bold text-ocean-900 outline-none" aria-label="Schedule report generation" />
             <Button type="submit" tone="secondary">
               <Download size={18} aria-hidden="true" />
-              Generate Files
+              Generate
             </Button>
           </form>
         ) : null}
       </div>
 
       {params?.saved ? (
-        <p className="mt-6 rounded-xl border border-kelp-500/20 bg-kelp-100 px-4 py-3 text-sm font-bold text-kelp-700">Report workflow updated.</p>
+        <p className="mt-6 rounded-xl border border-kelp-500/20 bg-kelp-100 px-4 py-3 text-sm font-bold text-kelp-700">
+          {params.saved === "scheduled"
+            ? "Report generation was scheduled."
+            : params.saved === "scheduled-run"
+              ? `Scheduled report run complete: ${Number(params.generated ?? 0).toLocaleString("id-ID")} generated.`
+              : "Report workflow updated."}
+        </p>
       ) : null}
       {params?.error ? (
         <p className="mt-6 rounded-xl border border-coral-500/20 bg-coral-100 px-4 py-3 text-sm font-bold text-coral-700">This report action needs a different corporate permission or approval state.</p>
@@ -85,8 +104,8 @@ export default async function CorporateReportsPage({ searchParams }: CorporateRe
       <section className="mt-6 grid gap-4 md:grid-cols-4">
         {[
           ["Generated reports", data.exports.length.toLocaleString("id-ID")],
+          ["Due schedules", scheduledDueCount.toLocaleString("id-ID")],
           ["Verified metrics", String(data.latestReport.verifiedMetrics)],
-          ["Pending metrics", String(data.latestReport.pendingMetrics)],
           ["Evidence records", data.evidence.length.toLocaleString("id-ID")]
         ].map(([label, value]) => (
           <article key={label} className="rounded-2xl border border-ocean-900/10 bg-white p-5 shadow-soft">
@@ -97,6 +116,18 @@ export default async function CorporateReportsPage({ searchParams }: CorporateRe
       </section>
 
       <section className="mt-6 grid gap-4">
+        {data.reportCapabilities.canGenerate && scheduledDueCount > 0 ? (
+          <form action={runDueCorporateReportExportsAction} className="flex flex-col justify-between gap-3 rounded-2xl border border-sand-300 bg-sand-50 p-4 shadow-soft sm:flex-row sm:items-center">
+            <div>
+              <p className="font-bold text-ocean-900">Scheduled reports are due</p>
+              <p className="mt-1 text-sm font-semibold text-ocean-900/58">{scheduledDueCount.toLocaleString("id-ID")} report export can be generated now.</p>
+            </div>
+            <Button type="submit" tone="secondary">
+              <Download size={18} aria-hidden="true" />
+              Run due schedules
+            </Button>
+          </form>
+        ) : null}
         {data.exports.map((item) => (
           <article key={item.exportCode} className="rounded-2xl border border-ocean-900/10 bg-white p-5 shadow-soft">
             <div className="grid gap-5 lg:grid-cols-[1fr_auto] lg:items-start">
@@ -105,10 +136,13 @@ export default async function CorporateReportsPage({ searchParams }: CorporateRe
                   <h2 className="text-xl font-bold tracking-normal text-ocean-900">{item.exportCode}</h2>
                   <span className={cn("rounded-full px-3 py-1 text-xs font-bold", statusClass(item.status))}>{item.status}</span>
                   <span className="rounded-full bg-ocean-50 px-3 py-1 text-xs font-bold text-ocean-900">{item.reportTypeLabel}</span>
+                  <span className="rounded-full bg-sand-50 px-3 py-1 text-xs font-bold text-ocean-900">{item.exportFormatLabel}</span>
+                  <span className="rounded-full bg-white px-3 py-1 text-xs font-bold text-ocean-900 ring-1 ring-ocean-900/10">{item.artifactVersionLabel}</span>
                 </div>
                 <p className="mt-2 text-sm text-ocean-900/58">
-                  Generated {formatDate(item.createdAt)} · approved {formatDate(item.approvedAt)} · published {formatDate(item.publishedAt)}
+                  Scheduled {formatDate(item.scheduledFor)} · generated {formatDate(item.generatedAt)} · approved {formatDate(item.approvedAt)} · published {formatDate(item.publishedAt)}
                 </p>
+                <p className="mt-2 text-xs font-bold uppercase tracking-[0.14em] text-ocean-900/46">Artifact readiness: {item.artifactReadiness}</p>
                 <div className="mt-4 flex flex-wrap gap-3">
                   {item.previewUrl ? (
                     <Link href={item.previewUrl} className="inline-flex min-h-10 items-center gap-2 rounded-full bg-ocean-900 px-4 text-sm font-bold text-white">
@@ -126,6 +160,11 @@ export default async function CorporateReportsPage({ searchParams }: CorporateRe
                     <Link href={item.evidenceBundleUrl} className="inline-flex min-h-10 items-center gap-2 rounded-full bg-ocean-50 px-4 text-sm font-bold text-ocean-900">
                       <FileArchive size={16} aria-hidden="true" />
                       Evidence Bundle
+                    </Link>
+                  ) : null}
+                  {item.manifestUrl ? (
+                    <Link href={item.manifestUrl} className="inline-flex min-h-10 items-center gap-2 rounded-full bg-ocean-50 px-4 text-sm font-bold text-ocean-900">
+                      Manifest
                     </Link>
                   ) : null}
                   {item.publicHref ? (

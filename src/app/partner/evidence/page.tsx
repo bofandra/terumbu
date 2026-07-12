@@ -1,5 +1,5 @@
 import Image from "next/image";
-import { Camera, FileCheck2, RotateCcw } from "lucide-react";
+import { Camera, FileCheck2, MessageSquare, RotateCcw } from "lucide-react";
 
 import { PartnerPageHeader, StatusBadge, inputClassName, textareaClassName } from "@/components/partner-portal-ui";
 import { Button } from "@/components/ui/button";
@@ -21,7 +21,7 @@ export default async function PartnerEvidencePage() {
   const user = await requireRole(["partner", "admin"], "/partner/evidence");
   const data = await getPartnerPortalData(user.id);
   const pending = data.evidence.filter((item) => item.verificationStatus === "submitted" || item.verificationStatus === "in_review");
-  const rejected = data.evidence.filter((item) => item.verificationStatus === "rejected");
+  const needsResponse = data.evidence.filter((item) => item.verificationStatus === "needs_clarification" || item.verificationStatus === "rejected");
   const verified = data.evidence.filter((item) => item.verificationStatus === "verified");
 
   return (
@@ -33,10 +33,11 @@ export default async function PartnerEvidencePage() {
         actionLabel="Submit activity"
       />
 
-      <section className="grid gap-3 md:grid-cols-3" aria-label="Evidence status summary">
+      <section className="grid gap-3 md:grid-cols-4" aria-label="Evidence status summary">
         {[
-          { label: "Pending review", value: pending.length, icon: FileCheck2 },
-          { label: "Rejected", value: rejected.length, icon: RotateCcw },
+          { label: "Evidence records", value: data.evidence.length, icon: FileCheck2 },
+          { label: "Pending review", value: pending.length, icon: MessageSquare },
+          { label: "Needs response", value: needsResponse.length, icon: RotateCcw },
           { label: "Verified", value: verified.length, icon: Camera }
         ].map((item) => {
           const Icon = item.icon;
@@ -81,22 +82,34 @@ export default async function PartnerEvidencePage() {
                 </div>
                 <p className="mt-1 text-sm font-semibold text-ocean-900/58">{item.campaignTitle} · {item.evidenceType}</p>
                 <p className="mt-1 text-xs font-bold text-ocean-900/46">{item.evidenceCode} · submitted {item.createdAt.toLocaleDateString("id-ID", { dateStyle: "medium" })}</p>
-                {item.rejectionReason ? (
+                {item.latestReviewNote ? (
                   <div className="mt-3 rounded-xl bg-coral-100 p-3 text-sm font-semibold leading-6 text-coral-700">
-                    Rejection reason: {item.rejectionReason}
+                    Review note: {item.latestReviewNote}
+                  </div>
+                ) : null}
+                {item.reviewEvents.length > 0 ? (
+                  <div className="mt-4 grid gap-2">
+                    <p className="text-xs font-bold uppercase tracking-[0.14em] text-ocean-900/46">Review history</p>
+                    {item.reviewEvents.slice(-3).map((event) => (
+                      <div key={event.id} className="rounded-xl bg-sand-50 px-3 py-2 text-xs font-semibold leading-5 text-ocean-900/62">
+                        <p className="font-bold text-ocean-900">{event.label}</p>
+                        <p>{event.actor} · {event.occurredAt.toLocaleDateString("id-ID", { dateStyle: "medium" })}</p>
+                        {event.note ? <p className="mt-1">{event.note}</p> : null}
+                      </div>
+                    ))}
                   </div>
                 ) : null}
 
-                {item.verificationStatus === "rejected" && data.capabilities.canReviseEvidence ? (
+                {(item.verificationStatus === "rejected" || item.verificationStatus === "needs_clarification") && data.capabilities.canReviseEvidence ? (
                   <form action={reviseEvidenceAction} className="mt-4 grid gap-3 rounded-xl bg-sand-50 p-4">
                     <input type="hidden" name="evidenceId" value={item.id} />
                     <label className="grid gap-1.5 text-sm font-bold text-ocean-900">Title<input name="title" className={inputClassName} defaultValue={item.title} required /></label>
-                    <label className="grid gap-1.5 text-sm font-bold text-ocean-900">Revision note<textarea name="body" className={textareaClassName} placeholder="Explain what changed in this revision." /></label>
+                    <label className="grid gap-1.5 text-sm font-bold text-ocean-900">Response note<textarea name="body" className={textareaClassName} placeholder="Explain the clarification or what changed in this revision." /></label>
                     <div className="grid gap-3 md:grid-cols-2">
                       <label className="grid gap-1.5 text-sm font-bold text-ocean-900">Evidence URL<input name="fileUrl" className={inputClassName} defaultValue={item.fileUrl} required /></label>
                       <label className="grid gap-1.5 text-sm font-bold text-ocean-900">Replace file<input name="imageFile" type="file" accept="image/png,image/jpeg,image/webp" className={inputClassName} /></label>
                     </div>
-                    <Button type="submit" className="justify-self-start"><RotateCcw size={17} /> Resubmit evidence</Button>
+                    <Button type="submit" className="justify-self-start"><RotateCcw size={17} /> {item.verificationStatus === "needs_clarification" ? "Submit clarification" : "Resubmit evidence"}</Button>
                   </form>
                 ) : null}
               </div>

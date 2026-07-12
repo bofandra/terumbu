@@ -29,7 +29,7 @@ function statusClass(status: string) {
     return "bg-kelp-100 text-kelp-700";
   }
 
-  if (status === "Needs clarification") {
+  if (status === "Needs clarification" || status === "Rejected") {
     return "bg-coral-100 text-coral-700";
   }
 
@@ -50,6 +50,7 @@ export default async function CorporateEvidencePage({ searchParams }: CorporateE
     { label: "Submitted", count: data.evidenceReviewQueue.filter((item) => item.reviewStage === "Submitted").length, icon: ClipboardList },
     { label: "In review", count: data.evidenceReviewQueue.filter((item) => item.reviewStage === "In review").length, icon: Clock3 },
     { label: "Needs clarification", count: data.evidenceReviewQueue.filter((item) => item.reviewStage === "Needs clarification").length, icon: MessageSquare },
+    { label: "Rejected", count: data.evidenceReviewQueue.filter((item) => item.reviewStage === "Rejected").length, icon: MessageSquare },
     { label: "Approved", count: data.evidenceReviewQueue.filter((item) => item.reviewStage === "Approved").length, icon: CheckCircle2 }
   ];
 
@@ -70,7 +71,7 @@ export default async function CorporateEvidencePage({ searchParams }: CorporateE
         <p className="mt-6 rounded-xl border border-coral-500/20 bg-coral-100 px-4 py-3 text-sm font-bold text-coral-700">Evidence status could not be saved with the current input or permission.</p>
       ) : null}
 
-      <section className="mt-6 grid gap-4 md:grid-cols-4">
+      <section className="mt-6 grid gap-4 md:grid-cols-5">
         {reviewStages.map((stage) => {
           const Icon = stage.icon;
 
@@ -134,12 +135,17 @@ export default async function CorporateEvidencePage({ searchParams }: CorporateE
                       <select name="verificationStatus" defaultValue={item.verificationStatus} className="min-h-10 rounded-xl border border-ocean-900/12 bg-white px-3 text-sm font-semibold normal-case tracking-normal text-ocean-900 outline-none">
                         <option value="submitted">Submitted</option>
                         <option value="in_review">In review</option>
+                        <option value="needs_clarification">Needs clarification</option>
                         <option value="verified">Verified</option>
                         <option value="rejected">Rejected</option>
                       </select>
                     </label>
+                    <label className="grid gap-2 text-xs font-bold uppercase tracking-[0.14em] text-ocean-900/46 sm:col-span-2">
+                      Review note
+                      <textarea name="reviewNote" defaultValue={item.latestReviewNote ?? ""} placeholder="Required for clarification or rejection" className="min-h-24 rounded-xl border border-ocean-900/12 bg-white px-3 py-2 text-sm font-semibold leading-6 normal-case tracking-normal text-ocean-900 outline-none" />
+                    </label>
                     <Button type="submit" tone="light" className="self-end">
-                      Save Status
+                      Save Review
                     </Button>
                   </form>
                 ) : (
@@ -154,6 +160,7 @@ export default async function CorporateEvidencePage({ searchParams }: CorporateE
                       <div key={`${item.id}-${event.label}-${event.actor}`} className="rounded-xl bg-white px-3 py-2">
                         <p className="text-sm font-bold text-ocean-900">{event.label}</p>
                         <p className="mt-1 text-xs text-ocean-900/52">{event.actor} · {formatDate(event.occurredAt)}</p>
+                        {event.note ? <p className="mt-2 text-xs font-semibold leading-5 text-ocean-900/62">{event.note}</p> : null}
                       </div>
                     ))}
                   </div>

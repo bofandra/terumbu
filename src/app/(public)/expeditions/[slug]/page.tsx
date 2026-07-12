@@ -24,7 +24,8 @@ import { ExpeditionBookingCard, ExpeditionMobileBookingBar } from "@/components/
 import { ExpeditionHeroGallery } from "@/components/expedition-hero-gallery";
 import { ExpeditionSectionTabs } from "@/components/expedition-section-tabs";
 import { ExpeditionCard } from "@/components/expedition-card";
-import { ButtonLink } from "@/components/ui/button";
+import { Button, ButtonLink } from "@/components/ui/button";
+import { submitExpeditionInterestRequestAction } from "@/lib/expedition-interest-actions";
 import { ProgressMeter } from "@/components/ui/progress-meter";
 import { getExpeditionDetail } from "@/lib/queries";
 import { cn, formatCurrency } from "@/lib/utils";
@@ -49,8 +50,15 @@ function percentAmount(price: number, percent: number) {
   return Math.round((price * percent) / 100);
 }
 
-export default async function ExpeditionDetailPage({ params }: { params: Promise<{ slug: string }> }) {
+export default async function ExpeditionDetailPage({
+  params,
+  searchParams
+}: {
+  params: Promise<{ slug: string }>;
+  searchParams?: Promise<{ saved?: string; error?: string }>;
+}) {
   const { slug } = await params;
+  const query = await searchParams;
   const expedition = await getExpeditionDetail(slug);
 
   if (!expedition) {
@@ -68,6 +76,7 @@ export default async function ExpeditionDetailPage({ params }: { params: Promise
   };
   const primaryDeparture = expedition.primaryDeparture;
   const routeSite = expedition.route.sites[0];
+  const requestNextPath = `/expeditions/${expedition.slug}#dates`;
 
   return (
     <>
@@ -175,6 +184,16 @@ export default async function ExpeditionDetailPage({ params }: { params: Promise
 
         <div className="mx-auto grid max-w-7xl gap-8 px-4 py-10 sm:px-6 lg:grid-cols-[minmax(0,1fr)_360px] lg:px-8">
           <div className="grid gap-8">
+            {query?.saved?.startsWith("interest") ? (
+              <p className="rounded-2xl border border-kelp-500/20 bg-kelp-100 px-4 py-3 text-sm font-bold text-kelp-700">
+                Thanks, your expedition request was captured. Our team will follow up by email.
+              </p>
+            ) : null}
+            {query?.error?.startsWith("interest") ? (
+              <p className="rounded-2xl border border-coral-500/20 bg-coral-100 px-4 py-3 text-sm font-bold text-coral-700">
+                We could not save that expedition request. Add your name, email, and try again.
+              </p>
+            ) : null}
             <section id="overview" className="scroll-mt-32 grid gap-6 lg:grid-cols-[0.85fr_1fr]">
               <article className="rounded-2xl border border-ocean-900/10 bg-white p-6 shadow-soft">
                 <p className="text-sm font-bold uppercase tracking-[0.16em] text-coral-700">Experience overview</p>
@@ -317,9 +336,6 @@ export default async function ExpeditionDetailPage({ params }: { params: Promise
                   <p className="text-sm font-bold uppercase tracking-[0.16em] text-coral-700">Dates and availability</p>
                   <h2 className="mt-3 text-3xl font-bold tracking-normal text-ocean-900">Upcoming departures</h2>
                 </div>
-                <ButtonLink href={`mailto:support@terumbu.eco?subject=Private departure for ${encodeURIComponent(expedition.title)}`} tone="light">
-                  Request private departure
-                </ButtonLink>
               </div>
               <div className="mt-6 grid gap-4 md:grid-cols-2">
                 {expedition.departures.length > 0 ? (
@@ -344,22 +360,70 @@ export default async function ExpeditionDetailPage({ params }: { params: Promise
                           Select Date
                         </ButtonLink>
                       ) : (
-                        <ButtonLink href={`mailto:support@terumbu.eco?subject=Join waitlist for ${encodeURIComponent(expedition.title)}`} tone="light" className="mt-5">
-                          Join Waitlist
-                        </ButtonLink>
+                        <form action={submitExpeditionInterestRequestAction} className="mt-5 grid gap-2 rounded-xl border border-ocean-900/10 bg-white p-3">
+                          <input type="hidden" name="next" value={requestNextPath} />
+                          <input type="hidden" name="expeditionId" value={expedition.id} />
+                          <input type="hidden" name="departureId" value={departure.id} />
+                          <input type="hidden" name="requestType" value="waitlist" />
+                          <div className="grid gap-2 sm:grid-cols-2">
+                            <input name="contactName" placeholder="Name" className="min-h-10 rounded-lg border border-ocean-900/14 px-3 text-sm font-semibold outline-none focus:border-coral-500" required />
+                            <input name="contactEmail" type="email" placeholder="Email" className="min-h-10 rounded-lg border border-ocean-900/14 px-3 text-sm font-semibold outline-none focus:border-coral-500" required />
+                          </div>
+                          <div className="grid gap-2 sm:grid-cols-[120px_1fr]">
+                            <input name="participantsCount" type="number" min={1} max={12} defaultValue={1} className="min-h-10 rounded-lg border border-ocean-900/14 px-3 text-sm font-semibold outline-none focus:border-coral-500" required />
+                            <input name="message" placeholder="Timing or access notes" className="min-h-10 rounded-lg border border-ocean-900/14 px-3 text-sm font-semibold outline-none focus:border-coral-500" />
+                          </div>
+                          <Button type="submit" tone="light" className="min-h-10 rounded-lg">
+                            Join Waitlist
+                          </Button>
+                        </form>
                       )}
                     </article>
                   ))
                 ) : (
                   <div className="rounded-2xl border border-dashed border-ocean-900/16 bg-sand-50 p-6 md:col-span-2">
                     <p className="font-bold text-ocean-900">No public departures are currently scheduled.</p>
-                    <div className="mt-4 flex flex-wrap gap-2">
-                      <ButtonLink href="mailto:support@terumbu.eco?subject=Join expedition waitlist">Join Waitlist</ButtonLink>
-                      <ButtonLink href="/expeditions" tone="light">View Similar Expeditions</ButtonLink>
-                    </div>
+                    <p className="mt-2 text-sm font-semibold text-ocean-900/62">Leave your details and we will contact you when a new date opens.</p>
+                    <form action={submitExpeditionInterestRequestAction} className="mt-4 grid gap-2 rounded-xl border border-ocean-900/10 bg-white p-3">
+                      <input type="hidden" name="next" value={requestNextPath} />
+                      <input type="hidden" name="expeditionId" value={expedition.id} />
+                      <input type="hidden" name="requestType" value="waitlist" />
+                      <div className="grid gap-2 sm:grid-cols-2">
+                        <input name="contactName" placeholder="Name" className="min-h-10 rounded-lg border border-ocean-900/14 px-3 text-sm font-semibold outline-none focus:border-coral-500" required />
+                        <input name="contactEmail" type="email" placeholder="Email" className="min-h-10 rounded-lg border border-ocean-900/14 px-3 text-sm font-semibold outline-none focus:border-coral-500" required />
+                      </div>
+                      <div className="grid gap-2 sm:grid-cols-[120px_1fr]">
+                        <input name="participantsCount" type="number" min={1} max={12} defaultValue={1} className="min-h-10 rounded-lg border border-ocean-900/14 px-3 text-sm font-semibold outline-none focus:border-coral-500" required />
+                        <input name="message" placeholder="Preferred month or access notes" className="min-h-10 rounded-lg border border-ocean-900/14 px-3 text-sm font-semibold outline-none focus:border-coral-500" />
+                      </div>
+                      <Button type="submit" tone="light" className="min-h-10 rounded-lg">
+                        Join Waitlist
+                      </Button>
+                    </form>
                   </div>
                 )}
               </div>
+              <form action={submitExpeditionInterestRequestAction} className="mt-5 grid gap-3 rounded-2xl border border-ocean-900/10 bg-sand-50 p-4">
+                <input type="hidden" name="next" value={requestNextPath} />
+                <input type="hidden" name="expeditionId" value={expedition.id} />
+                <input type="hidden" name="requestType" value="private_departure" />
+                <div>
+                  <p className="font-bold text-ocean-900">Request private departure</p>
+                  <p className="mt-1 text-sm font-semibold text-ocean-900/58">For teams, families, or corporate groups that need a custom schedule.</p>
+                </div>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  <input name="contactName" placeholder="Name" className="min-h-11 rounded-lg border border-ocean-900/14 bg-white px-3 text-sm font-semibold outline-none focus:border-coral-500" required />
+                  <input name="contactEmail" type="email" placeholder="Email" className="min-h-11 rounded-lg border border-ocean-900/14 bg-white px-3 text-sm font-semibold outline-none focus:border-coral-500" required />
+                </div>
+                <div className="grid gap-2 sm:grid-cols-[130px_180px_1fr]">
+                  <input name="participantsCount" type="number" min={1} max={12} defaultValue={6} className="min-h-11 rounded-lg border border-ocean-900/14 bg-white px-3 text-sm font-semibold outline-none focus:border-coral-500" required />
+                  <input name="preferredStartAt" type="date" className="min-h-11 rounded-lg border border-ocean-900/14 bg-white px-3 text-sm font-semibold outline-none focus:border-coral-500" />
+                  <input name="message" placeholder="Preferred dates, group profile, accessibility needs" className="min-h-11 rounded-lg border border-ocean-900/14 bg-white px-3 text-sm font-semibold outline-none focus:border-coral-500" />
+                </div>
+                <Button type="submit" tone="secondary" className="w-fit">
+                  Request private departure
+                </Button>
+              </form>
             </section>
 
             <section className="grid gap-6 lg:grid-cols-2">

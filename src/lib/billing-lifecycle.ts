@@ -64,3 +64,29 @@ export function canArchivePaymentMethod(
 export function canCancelSubscription(status: unknown) {
   return activeSubscriptionStatuses.includes(normalizeSubscriptionStatus(status) as (typeof activeSubscriptionStatuses)[number]);
 }
+
+export function isSubscriptionDue(
+  subscription: {
+    status: unknown;
+    nextBillingAt?: Date | null;
+  },
+  now = new Date()
+) {
+  const status = normalizeSubscriptionStatus(subscription.status);
+
+  return activeSubscriptionStatuses.includes(status as (typeof activeSubscriptionStatuses)[number]) && Boolean(subscription.nextBillingAt && subscription.nextBillingAt <= now);
+}
+
+export function nextFailedSubscriptionRetryDate(now = new Date()) {
+  const retryAt = new Date(now);
+  retryAt.setUTCDate(retryAt.getUTCDate() + 3);
+
+  return retryAt;
+}
+
+export function monthlySubscriptionCycleKey(subscriptionId: string, billingAt: Date) {
+  const year = billingAt.getUTCFullYear();
+  const month = String(billingAt.getUTCMonth() + 1).padStart(2, "0");
+
+  return `monthly:${subscriptionId}:${year}-${month}`;
+}

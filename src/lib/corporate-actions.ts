@@ -4,12 +4,13 @@ import { randomBytes } from "node:crypto";
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq, lte, sql } from "drizzle-orm";
 import { redirect } from "next/navigation";
 
 import { db } from "@/db/client";
 import {
   adminAuditLogs,
+  campaignActivities,
   campaigns,
   corporateAccounts,
   corporateContributions,
@@ -23,6 +24,7 @@ import {
   corporateProjectPortfolio,
   corporateReportExports,
   corporateSecuritySettings,
+  evidenceReviewEvents,
   projectEvidence,
   users
 } from "@/db/schema";
@@ -43,6 +45,16 @@ import {
   normalizeCorporateProgramStatus
 } from "@/lib/corporate-lifecycle";
 import {
+  buildCorporateReportArtifactManifest,
+  normalizeCorporateReportFormat,
+  normalizeCorporateReportType
+} from "@/lib/corporate-report-lifecycle";
+import {
+  evidenceReviewActionForTransition,
+  evidenceReviewNoteRequired,
+  normalizeEvidenceVerificationStatus
+} from "@/lib/evidence-review-workflow";
+import {
   buildCorporateContributionReference,
   campaignRaisedDelta,
   normalizeCorporateContributionStatus,
@@ -53,6 +65,10 @@ import { formatCurrency } from "@/lib/utils";
 
 function exportCode() {
   return `TRB-ESG-${new Date().getUTCFullYear()}-${randomBytes(4).toString("hex").toUpperCase()}`;
+}
+
+function nextArtifactVersion(existingCount: number) {
+  return Math.max(1, existingCount + 1);
 }
 
 function toSlug(value: string) {
@@ -245,6 +261,8 @@ function reportHtml(input: {
 async function writeReportArtifacts(input: {
   exportCode: string;
   reportType: string;
+  exportFormat: string;
+  artifactVersion: number;
   accountName: string;
   programName: string;
   data: NonNullable<Awaited<ReturnType<typeof getCorporateDashboardData>>>;
@@ -255,6 +273,8 @@ async function writeReportArtifacts(input: {
   const reportPayload = {
     exportCode: input.exportCode,
     reportType: input.reportType,
+    exportFormat: input.exportFormat,
+    artifactVersion: input.artifactVersion,
     generatedAt: generatedAt.toISOString(),
     account: input.accountName,
     program: input.programName,
@@ -268,6 +288,9 @@ async function writeReportArtifacts(input: {
   };
   const evidencePayload = {
     exportCode: input.exportCode,
+    reportType: input.reportType,
+    exportFormat: input.exportFormat,
+    artifactVersion: input.artifactVersion,
     generatedAt: generatedAt.toISOString(),
     evidence: input.data.evidence.map((item) => ({
       evidenceCode: item.evidenceCode,
@@ -279,25 +302,47 @@ async function writeReportArtifacts(input: {
       fileUrl: item.fileUrl
     }))
   };
+  const fileUrl = `/generated/corporate-reports/${baseName}.json`;
+  const previewUrl = `/generated/corporate-reports/${baseName}.html`;
+  const evidenceBundleUrl = `/generated/corporate-reports/${baseName}-evidence.json`;
+  const manifest = buildCorporateReportArtifactManifest({
+    exportCode: input.exportCode,
+    reportType: input.reportType,
+    exportFormat: input.exportFormat,
+    artifactVersion: input.artifactVersion,
+    generatedAt,
+    files: [
+      { label: "Report data", format: "json", url: fileUrl, required: true },
+      { label: "HTML preview", format: "html", url: previewUrl, required: input.exportFormat !== "evidence_json" },
+      { label: "Evidence bundle", format: "json", url: evidenceBundleUrl, required: input.exportFormat !== "html_json" }
+    ]
+  });
 
   await mkdir(folder, { recursive: true });
   await Promise.all([
     writeFile(path.join(folder, `${baseName}.json`), `${JSON.stringify(reportPayload, null, 2)}\n`, "utf8"),
     writeFile(path.join(folder, `${baseName}.html`), reportHtml({ ...input, generatedAt }), "utf8"),
-    writeFile(path.join(folder, `${baseName}-evidence.json`), `${JSON.stringify(evidencePayload, null, 2)}\n`, "utf8")
+    writeFile(path.join(folder, `${baseName}-evidence.json`), `${JSON.stringify(evidencePayload, null, 2)}\n`, "utf8"),
+    writeFile(path.join(folder, `${baseName}-manifest.json`), `${JSON.stringify(manifest, null, 2)}\n`, "utf8")
   ]);
 
   return {
-    fileUrl: `/generated/corporate-reports/${baseName}.json`,
-    previewUrl: `/generated/corporate-reports/${baseName}.html`,
-    evidenceBundleUrl: `/generated/corporate-reports/${baseName}-evidence.json`,
+    fileUrl,
+    previewUrl,
+    evidenceBundleUrl,
     generatedAt,
+    artifactManifest: {
+      ...manifest,
+      manifestUrl: `/generated/corporate-reports/${baseName}-manifest.json`
+    },
     metadata: {
       portfolioCount: input.data.portfolio.length,
       evidenceCount: input.data.evidence.length,
       verifiedOutputs: input.data.impactOutputs.verifiedOutputs,
       committedFunding: input.data.financials.committedFunding,
-      generatedBy: "corporate_report_generator"
+      generatedBy: "corporate_report_generator",
+      exportFormat: input.exportFormat,
+      artifactVersion: input.artifactVersion
     }
   };
 }
@@ -423,38 +468,204 @@ export async function createCorporateReportExportAction(formData: FormData) {
     redirect("/corporate/reports?error=permission");
   }
 
-  const reportTypeValue = String(formData.get("reportType") ?? "esg").toLowerCase();
-  const reportType = ["esg", "csr", "evidence"].includes(reportTypeValue) ? reportTypeValue : "esg";
+  const reportType = normalizeCorporateReportType(String(formData.get("reportType") ?? "esg").toLowerCase());
+  const exportFormat = normalizeCorporateReportFormat(String(formData.get("exportFormat") ?? "html_json").toLowerCase());
+  const scheduledFor = dateValue(formData.get("scheduledFor"));
+  const now = new Date();
   const data = await getCorporateDashboardData(user.id);
 
   if (!data) {
     redirect("/corporate?error=program");
   }
 
+  const [{ count: existingCount }] = await db
+    .select({ count: sql<number>`count(${corporateReportExports.id})` })
+    .from(corporateReportExports)
+    .where(and(eq(corporateReportExports.programId, context.programId), eq(corporateReportExports.reportType, reportType)));
   const code = exportCode();
+  const artifactVersion = nextArtifactVersion(Number(existingCount ?? 0));
+
+  if (scheduledFor && scheduledFor.getTime() > now.getTime()) {
+    const manifest = buildCorporateReportArtifactManifest({
+      exportCode: code,
+      reportType,
+      exportFormat,
+      artifactVersion,
+      generatedAt: null,
+      scheduledFor,
+      files: []
+    });
+
+    const [report] = await db
+      .insert(corporateReportExports)
+      .values({
+        programId: context.programId,
+        requestedByUserId: user.id,
+        exportCode: code,
+        reportType,
+        exportFormat,
+        artifactVersion,
+        status: "scheduled",
+        scheduledFor,
+        artifactManifest: manifest,
+        metadata: {
+          exportFormat,
+          artifactVersion,
+          scheduledFor: scheduledFor.toISOString(),
+          scheduledByUserId: user.id
+        },
+        createdAt: now,
+        updatedAt: now
+      })
+      .returning({ id: corporateReportExports.id });
+
+    await writeAuditLog({
+      actorUserId: user.id,
+      action: "corporate.report.scheduled",
+      entityType: "corporate_report_exports",
+      entityId: report?.id,
+      metadata: {
+        programId: context.programId,
+        exportCode: code,
+        reportType,
+        exportFormat,
+        artifactVersion,
+        scheduledFor: scheduledFor.toISOString()
+      }
+    });
+
+    redirect("/corporate/reports?saved=scheduled");
+  }
+
   const artifacts = await writeReportArtifacts({
     exportCode: code,
     reportType,
+    exportFormat,
+    artifactVersion,
     accountName: context.accountName,
     programName: context.programName,
     data
   });
 
-  await db.insert(corporateReportExports).values({
-    programId: context.programId,
-    requestedByUserId: user.id,
-    exportCode: code,
-    reportType,
-    status: "generated",
-    fileUrl: artifacts.fileUrl,
-    previewUrl: artifacts.previewUrl,
-    evidenceBundleUrl: artifacts.evidenceBundleUrl,
-    metadata: artifacts.metadata,
-    createdAt: artifacts.generatedAt,
-    updatedAt: artifacts.generatedAt
+  const [report] = await db.insert(corporateReportExports).values({
+      programId: context.programId,
+      requestedByUserId: user.id,
+      exportCode: code,
+      reportType,
+      exportFormat,
+      artifactVersion,
+      status: "generated",
+      fileUrl: artifacts.fileUrl,
+      previewUrl: artifacts.previewUrl,
+      evidenceBundleUrl: artifacts.evidenceBundleUrl,
+      generatedAt: artifacts.generatedAt,
+      artifactManifest: artifacts.artifactManifest,
+      metadata: artifacts.metadata,
+      createdAt: artifacts.generatedAt,
+      updatedAt: artifacts.generatedAt
+    })
+    .returning({ id: corporateReportExports.id });
+
+  await writeAuditLog({
+    actorUserId: user.id,
+    action: "corporate.report.generated",
+    entityType: "corporate_report_exports",
+    entityId: report?.id,
+    metadata: {
+      programId: context.programId,
+      exportCode: code,
+      reportType,
+      exportFormat,
+      artifactVersion,
+      fileCount: artifacts.artifactManifest.fileCount
+    }
   });
 
   redirect("/corporate/reports?saved=export");
+}
+
+export async function runDueCorporateReportExportsAction(_formData: FormData) {
+  void _formData;
+
+  const user = await requireUser("/corporate/reports");
+  const context = await corporateContext(user.id);
+
+  if (!context || !corporateCapabilitiesForPermission(context.permission).canGenerateReport) {
+    redirect("/corporate/reports?error=permission");
+  }
+
+  const now = new Date();
+  const data = await getCorporateDashboardData(user.id);
+
+  if (!data) {
+    redirect("/corporate/reports?error=program");
+  }
+
+  const dueReports = await db
+    .select({
+      id: corporateReportExports.id,
+      exportCode: corporateReportExports.exportCode,
+      reportType: corporateReportExports.reportType,
+      exportFormat: corporateReportExports.exportFormat,
+      artifactVersion: corporateReportExports.artifactVersion,
+      scheduledFor: corporateReportExports.scheduledFor
+    })
+    .from(corporateReportExports)
+    .where(and(eq(corporateReportExports.programId, context.programId), eq(corporateReportExports.status, "scheduled"), lte(corporateReportExports.scheduledFor, now)));
+
+  for (const report of dueReports) {
+    const reportType = normalizeCorporateReportType(report.reportType);
+    const exportFormat = normalizeCorporateReportFormat(report.exportFormat);
+    const artifactVersion = Math.max(1, report.artifactVersion);
+    const artifacts = await writeReportArtifacts({
+      exportCode: report.exportCode,
+      reportType,
+      exportFormat,
+      artifactVersion,
+      accountName: context.accountName,
+      programName: context.programName,
+      data
+    });
+
+    await db
+      .update(corporateReportExports)
+      .set({
+        status: "generated",
+        reportType,
+        exportFormat,
+        artifactVersion,
+        fileUrl: artifacts.fileUrl,
+        previewUrl: artifacts.previewUrl,
+        evidenceBundleUrl: artifacts.evidenceBundleUrl,
+        generatedAt: artifacts.generatedAt,
+        artifactManifest: artifacts.artifactManifest,
+        metadata: {
+          ...artifacts.metadata,
+          scheduledFor: report.scheduledFor?.toISOString() ?? null,
+          generatedFromSchedule: true
+        },
+        updatedAt: artifacts.generatedAt
+      })
+      .where(eq(corporateReportExports.id, report.id));
+
+    await writeAuditLog({
+      actorUserId: user.id,
+      action: "corporate.report.scheduled_generated",
+      entityType: "corporate_report_exports",
+      entityId: report.id,
+      metadata: {
+        programId: context.programId,
+        exportCode: report.exportCode,
+        reportType,
+        exportFormat,
+        artifactVersion,
+        scheduledFor: report.scheduledFor?.toISOString() ?? null,
+        fileCount: artifacts.artifactManifest.fileCount
+      }
+    });
+  }
+
+  redirect(`/corporate/reports?saved=scheduled-run&generated=${dueReports.length}`);
 }
 
 export async function fundCorporateProjectAction(formData: FormData) {
@@ -909,19 +1120,26 @@ export async function updateCorporateEvidenceStatusAction(formData: FormData) {
 
   const evidenceId = textValue(formData.get("evidenceId"), 80);
   const requestedStatus = textValue(formData.get("verificationStatus"), 80);
-  const evidenceStatuses = ["submitted", "in_review", "verified", "rejected"] as const;
-  type EvidenceStatusValue = (typeof evidenceStatuses)[number];
-  const verificationStatus = evidenceStatuses.includes(requestedStatus as EvidenceStatusValue) ? (requestedStatus as EvidenceStatusValue) : null;
+  const verificationStatus = normalizeEvidenceVerificationStatus(requestedStatus, "submitted");
+  const reviewNote = textValue(formData.get("reviewNote"), 1000);
 
-  if (!evidenceId || !isUuid(evidenceId) || !verificationStatus) {
+  if (!evidenceId || !isUuid(evidenceId)) {
+    redirect("/corporate/evidence?error=evidence");
+  }
+
+  if (evidenceReviewNoteRequired(verificationStatus) && !reviewNote) {
     redirect("/corporate/evidence?error=evidence");
   }
 
   const [evidenceAccess] = await db
     .select({
-      id: corporateEvidenceCenter.id
+      id: corporateEvidenceCenter.id,
+      currentStatus: projectEvidence.verificationStatus,
+      assignedReviewerUserId: projectEvidence.assignedReviewerUserId,
+      evidenceCode: projectEvidence.evidenceCode
     })
     .from(corporateEvidenceCenter)
+    .innerJoin(projectEvidence, eq(corporateEvidenceCenter.evidenceId, projectEvidence.id))
     .where(and(eq(corporateEvidenceCenter.programId, context.programId), eq(corporateEvidenceCenter.evidenceId, evidenceId)))
     .limit(1);
 
@@ -929,13 +1147,69 @@ export async function updateCorporateEvidenceStatusAction(formData: FormData) {
     redirect("/corporate/evidence?error=evidence");
   }
 
-  await db
-    .update(projectEvidence)
-    .set({
-      verificationStatus,
-      verifiedAt: verificationStatus === "verified" ? new Date() : null
-    })
-    .where(eq(projectEvidence.id, evidenceId));
+  const now = new Date();
+  const assignedReviewerUserId = evidenceAccess.assignedReviewerUserId ?? user.id;
+  const reviewAction = evidenceReviewActionForTransition({
+    fromStatus: evidenceAccess.currentStatus,
+    toStatus: verificationStatus,
+    assignedReviewerChanged: assignedReviewerUserId !== evidenceAccess.assignedReviewerUserId
+  });
+
+  await db.transaction(async (tx) => {
+    await tx
+      .update(projectEvidence)
+      .set({
+        verificationStatus,
+        verifiedAt: verificationStatus === "verified" ? now : null,
+        assignedReviewerUserId,
+        reviewedByUserId: user.id,
+        reviewedAt: now,
+        clarificationNote: verificationStatus === "needs_clarification" ? reviewNote : verificationStatus === "verified" ? null : undefined,
+        clarificationRequestedAt: verificationStatus === "needs_clarification" ? now : undefined,
+        clarificationResolvedAt: evidenceAccess.currentStatus === "needs_clarification" && verificationStatus !== "needs_clarification" ? now : undefined,
+        rejectionReason: verificationStatus === "rejected" ? reviewNote : null,
+        updatedAt: now
+      })
+      .where(eq(projectEvidence.id, evidenceId));
+
+    await tx
+      .update(campaignActivities)
+      .set({
+        verificationStatus,
+        verifiedAt: verificationStatus === "verified" ? now : null,
+        metadata: {
+          reviewedByUserId: user.id,
+          reviewedAt: now.toISOString(),
+          reviewAction,
+          reviewNote: reviewNote || null,
+          source: "corporate_portal"
+        }
+      })
+      .where(eq(campaignActivities.sourceEvidenceId, evidenceId));
+
+    await tx
+      .update(corporateEvidenceCenter)
+      .set({
+        visibility: verificationStatus === "verified" ? "reportable" : "internal"
+      })
+      .where(and(eq(corporateEvidenceCenter.programId, context.programId), eq(corporateEvidenceCenter.evidenceId, evidenceId)));
+
+    await tx.insert(evidenceReviewEvents).values({
+      evidenceId,
+      actorUserId: user.id,
+      assignedToUserId: assignedReviewerUserId,
+      action: reviewAction,
+      fromStatus: evidenceAccess.currentStatus,
+      toStatus: verificationStatus,
+      note: reviewNote || null,
+      visibility: verificationStatus === "in_review" ? "internal" : "partner_visible",
+      metadata: {
+        evidenceCode: evidenceAccess.evidenceCode,
+        programId: context.programId,
+        source: "corporate_portal"
+      }
+    });
+  });
 
   await writeAuditLog({
     actorUserId: user.id,
@@ -944,7 +1218,9 @@ export async function updateCorporateEvidenceStatusAction(formData: FormData) {
     entityId: evidenceId,
     metadata: {
       programId: context.programId,
-      verificationStatus
+      verificationStatus,
+      reviewAction,
+      reviewNote: reviewNote || null
     }
   });
 
@@ -1136,13 +1412,32 @@ export async function submitCorporateReportForApprovalAction(formData: FormData)
     redirect("/corporate/reports?error=permission");
   }
 
+  if (access.report.status !== "generated") {
+    redirect("/corporate/reports?error=status");
+  }
+
+  const now = new Date();
+
   await db
     .update(corporateReportExports)
     .set({
       status: "review",
-      updatedAt: new Date()
+      updatedAt: now
     })
     .where(eq(corporateReportExports.id, access.report.id));
+
+  await writeAuditLog({
+    actorUserId: user.id,
+    action: "corporate.report.submitted",
+    entityType: "corporate_report_exports",
+    entityId: access.report.id,
+    metadata: {
+      programId: access.context.programId,
+      exportCode: access.report.exportCode,
+      fromStatus: access.report.status,
+      toStatus: "review"
+    }
+  });
 
   redirect("/corporate/reports?saved=review");
 }
@@ -1156,6 +1451,10 @@ export async function approveCorporateReportAction(formData: FormData) {
     redirect("/corporate/reports?error=permission");
   }
 
+  if (access.report.status !== "review") {
+    redirect("/corporate/reports?error=status");
+  }
+
   const now = new Date();
 
   await db
@@ -1167,6 +1466,19 @@ export async function approveCorporateReportAction(formData: FormData) {
       updatedAt: now
     })
     .where(eq(corporateReportExports.id, access.report.id));
+
+  await writeAuditLog({
+    actorUserId: user.id,
+    action: "corporate.report.approved",
+    entityType: "corporate_report_exports",
+    entityId: access.report.id,
+    metadata: {
+      programId: access.context.programId,
+      exportCode: access.report.exportCode,
+      fromStatus: access.report.status,
+      toStatus: "approved"
+    }
+  });
 
   redirect("/corporate/reports?saved=approved");
 }
@@ -1198,6 +1510,20 @@ export async function publishCorporateReportAction(formData: FormData) {
       updatedAt: now
     })
     .where(eq(corporateReportExports.id, access.report.id));
+
+  await writeAuditLog({
+    actorUserId: user.id,
+    action: "corporate.report.published",
+    entityType: "corporate_report_exports",
+    entityId: access.report.id,
+    metadata: {
+      programId: access.context.programId,
+      exportCode: access.report.exportCode,
+      publicSlug,
+      fromStatus: access.report.status,
+      toStatus: "published"
+    }
+  });
 
   redirect("/corporate/reports?saved=published");
 }

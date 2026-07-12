@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 
 import { ProgressMeter } from "@/components/ui/progress-meter";
+import { isVisualEvidenceUrl } from "@/lib/coral-monitoring";
 import type { ImpactSiteData } from "@/lib/domain";
 import { cn } from "@/lib/utils";
 
@@ -46,10 +47,6 @@ function pinTone(type: string) {
   }
 
   return "bg-white text-coral-500 ring-white/60";
-}
-
-function isImageUrl(value: string | null | undefined) {
-  return Boolean(value && (value.startsWith("data:image/") || /\.(jpg|jpeg|png|webp|gif)(\?|$)/i.test(value)));
 }
 
 export function ImpactMapPreview({ sites }: ImpactMapPreviewProps) {
@@ -215,7 +212,7 @@ export function ImpactMapPreview({ sites }: ImpactMapPreviewProps) {
                   { label: "After", evidence: selectedSite.beforeAfter.after }
                 ].map(({ label, evidence }) => (
                   <div key={label} className="overflow-hidden rounded-xl bg-white">
-                    {evidence && isImageUrl(evidence.fileUrl) ? (
+                    {evidence && isVisualEvidenceUrl(evidence.fileUrl) ? (
                       <Image
                         src={evidence.fileUrl}
                         alt={`${label} evidence for ${selectedSite.name}`}

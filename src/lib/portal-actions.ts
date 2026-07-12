@@ -15,6 +15,7 @@ import {
   corporateEvidenceCenter,
   corporateProjectPortfolio,
   donations,
+  evidenceReviewEvents,
   expeditionBookings,
   expeditionDepartures,
   expeditions,
@@ -34,17 +35,26 @@ import { createPasswordHash, requireRole, safeRedirectPath } from "@/lib/auth";
 import { corporateEvidenceVisibilityForStatus, shouldLinkEvidenceToCorporateProgram } from "@/lib/corporate-lifecycle";
 import { sendTransactionalEmail } from "@/lib/email";
 import {
+  evidenceCanBeRevisedByPartner,
+  evidenceReviewActionForTransition,
+  evidenceReviewNoteRequired,
+  normalizeEvidenceVerificationStatus
+} from "@/lib/evidence-review-workflow";
+import {
   buildDefaultExpeditionDetailMetadata,
   normalizeExpeditionDetailMetadata,
   parseExpeditionMetadataJson,
   type ExpeditionDetailMetadata
 } from "@/lib/expedition-metadata";
+import { canCancelExpeditionBooking } from "@/lib/expedition-booking-lifecycle";
 import {
   normalizePartnerOrganizationRole,
   partnerRoleAllows,
   type PartnerOrganizationPermission
 } from "@/lib/partner-permissions";
 import { transitionDonationPayment, transitionExpeditionBookingPayment } from "@/lib/payment-workflows";
+import { demoGatewaySettleRefund } from "@/lib/payment-provider";
+import { processDueDonationSubscriptions } from "@/lib/subscription-billing";
 import { getEvidenceStorageProvider, normalizeEvidenceUrl, readUploadedImageAsDataUrl } from "@/lib/storage";
 import { formatCurrency } from "@/lib/utils";
 
@@ -370,6 +380,10 @@ function departureMetadata(formData: FormData) {
   }
 
   return Object.keys(metadata).length > 0 ? metadata : null;
+}
+
+function objectMetadata(value: unknown) {
+  return value && typeof value === "object" && !Array.isArray(value) ? (value as Record<string, unknown>) : {};
 }
 
 function expeditionMetadataFromForm(formData: FormData, onError: (code: string, formData?: FormData) => never) {
@@ -1778,6 +1792,182 @@ export async function deleteExpeditionDepartureAction(formData: FormData) {
   redirectAdminExpeditionSaved("departure-deleted", formData);
 }
 
+export async function cancelExpeditionBookingAction(formData: FormData) {
+  const user = await requireRole(["admin"], "/admin/expeditions");
+  const bookingId = formText(formData, "bookingId");
+  const reason = formText(formData, "reason") || "Operator cancellation";
+  const now = new Date();
+
+  const [booking] = await db
+    .select({
+      id: expeditionBookings.id,
+      expeditionId: expeditionBookings.expeditionId,
+      departureId: expeditionBookings.departureId,
+      bookingCode: expeditionBookings.bookingCode,
+      status: expeditionBookings.status,
+      paymentStatus: expeditionBookings.paymentStatus,
+      metadata: expeditionBookings.metadata,
+      startsAt: expeditionDepartures.startsAt
+    })
+    .from(expeditionBookings)
+    .innerJoin(expeditionDepartures, eq(expeditionBookings.departureId, expeditionDepartures.id))
+    .where(eq(expeditionBookings.id, bookingId))
+    .limit(1);
+
+  if (!booking || !canCancelExpeditionBooking({ bookingStatus: booking.status, paymentStatus: booking.paymentStatus, startsAt: booking.startsAt }, now)) {
+    redirectAdminExpeditionError("booking-cancel", formData);
+  }
+
+  const nextPaymentStatus = booking.paymentStatus === "paid" ? "refunded" : "expired";
+
+  await db.transaction(async (tx) => {
+    await transitionExpeditionBookingPayment(tx as unknown as typeof db, {
+      bookingId: booking.id,
+      nextStatus: nextPaymentStatus,
+      processedByUserId: user.id,
+      providerPayload: {
+        method: "operator_cancellation",
+        cancellationReason: reason,
+        cancelledAt: now.toISOString()
+      },
+      operationType: "operator_cancellation",
+      now
+    });
+
+    await tx
+      .update(expeditionBookings)
+      .set({
+        status: "cancelled",
+        metadata: {
+          ...objectMetadata(booking.metadata),
+          cancellationReason: reason,
+          cancelledByUserId: user.id,
+          cancelledAt: now.toISOString()
+        }
+      })
+      .where(eq(expeditionBookings.id, booking.id));
+  });
+
+  await db.insert(adminAuditLogs).values({
+    actorUserId: user.id,
+    action: "expedition_booking.cancelled",
+    entityType: "expedition_booking",
+    entityId: booking.id,
+    metadata: {
+      expeditionId: booking.expeditionId,
+      departureId: booking.departureId,
+      bookingCode: booking.bookingCode,
+      previousStatus: booking.status,
+      previousPaymentStatus: booking.paymentStatus,
+      nextPaymentStatus,
+      reason
+    }
+  });
+
+  redirectAdminExpeditionSaved("booking-cancelled", formData);
+}
+
+export async function cancelExpeditionDepartureAction(formData: FormData) {
+  const user = await requireRole(["admin"], "/admin/expeditions");
+  const departureId = formText(formData, "departureId");
+  const reason = formText(formData, "reason") || "Operator cancelled this departure";
+  const now = new Date();
+
+  const [departure] = await db
+    .select({
+      id: expeditionDepartures.id,
+      expeditionId: expeditionDepartures.expeditionId,
+      status: expeditionDepartures.status,
+      metadata: expeditionDepartures.metadata
+    })
+    .from(expeditionDepartures)
+    .where(eq(expeditionDepartures.id, departureId))
+    .limit(1);
+
+  if (!departure || departure.status === "cancelled") {
+    redirectAdminExpeditionError("departure-cancel", formData);
+  }
+
+  const bookingRows = await db
+    .select({
+      id: expeditionBookings.id,
+      bookingCode: expeditionBookings.bookingCode,
+      status: expeditionBookings.status,
+      paymentStatus: expeditionBookings.paymentStatus,
+      metadata: expeditionBookings.metadata,
+      startsAt: expeditionDepartures.startsAt
+    })
+    .from(expeditionBookings)
+    .innerJoin(expeditionDepartures, eq(expeditionBookings.departureId, expeditionDepartures.id))
+    .where(eq(expeditionBookings.departureId, departure.id));
+
+  const cancellableBookings = bookingRows.filter((booking) =>
+    canCancelExpeditionBooking({ bookingStatus: booking.status, paymentStatus: booking.paymentStatus, startsAt: booking.startsAt }, now)
+  );
+
+  await db.transaction(async (tx) => {
+    await tx
+      .update(expeditionDepartures)
+      .set({
+        status: "cancelled",
+        metadata: {
+          ...objectMetadata(departure.metadata),
+          cancellationReason: reason,
+          cancelledByUserId: user.id,
+          cancelledAt: now.toISOString()
+        }
+      })
+      .where(eq(expeditionDepartures.id, departure.id));
+
+    for (const booking of cancellableBookings) {
+      const nextPaymentStatus = booking.paymentStatus === "paid" ? "refunded" : "expired";
+
+      await transitionExpeditionBookingPayment(tx as unknown as typeof db, {
+        bookingId: booking.id,
+        nextStatus: nextPaymentStatus,
+        processedByUserId: user.id,
+        providerPayload: {
+          method: "operator_departure_cancellation",
+          cancellationReason: reason,
+          cancelledAt: now.toISOString()
+        },
+        operationType: "operator_departure_cancellation",
+        now
+      });
+
+      await tx
+        .update(expeditionBookings)
+        .set({
+          status: "cancelled",
+          metadata: {
+            ...objectMetadata(booking.metadata),
+            cancellationReason: reason,
+            cancelledByUserId: user.id,
+            cancelledAt: now.toISOString(),
+            source: "departure_cancellation"
+          }
+        })
+        .where(eq(expeditionBookings.id, booking.id));
+    }
+  });
+
+  await db.insert(adminAuditLogs).values({
+    actorUserId: user.id,
+    action: "expedition_departure.cancelled",
+    entityType: "expedition_departure",
+    entityId: departure.id,
+    metadata: {
+      expeditionId: departure.expeditionId,
+      previousStatus: departure.status,
+      cancelledBookings: cancellableBookings.length,
+      skippedBookings: bookingRows.length - cancellableBookings.length,
+      reason
+    }
+  });
+
+  redirectAdminExpeditionSaved("departure-cancelled", formData);
+}
+
 export async function updatePartnerExpeditionAction(formData: FormData) {
   const user = await requireRole(["partner", "admin"], "/partner/expeditions");
   const expeditionId = formText(formData, "expeditionId");
@@ -2356,6 +2546,20 @@ export async function createCampaignActivityAction(formData: FormData) {
         .returning({ id: projectEvidence.id });
 
       sourceEvidenceId = evidence.id;
+
+      await tx.insert(evidenceReviewEvents).values({
+        evidenceId: evidence.id,
+        actorUserId: user.id,
+        action: "submitted",
+        toStatus: "submitted",
+        note: body || null,
+        visibility: "partner_visible",
+        metadata: {
+          activityCode: generatedActivityCode,
+          evidenceCode: generatedEvidenceCode,
+          submittedFrom: "partner_activity"
+        }
+      });
     }
 
     await tx.insert(campaignActivities).values({
@@ -2436,7 +2640,8 @@ export async function reviseEvidenceAction(formData: FormData) {
       campaignId: projectEvidence.campaignId,
       impactSiteId: projectEvidence.impactSiteId,
       evidenceCode: projectEvidence.evidenceCode,
-      evidenceType: projectEvidence.evidenceType
+      evidenceType: projectEvidence.evidenceType,
+      verificationStatus: projectEvidence.verificationStatus
     })
     .from(projectEvidence)
     .where(eq(projectEvidence.id, evidenceId))
@@ -2448,8 +2653,16 @@ export async function reviseEvidenceAction(formData: FormData) {
 
   await requireCampaignAccess(user.id, evidence.campaignId, formData, "/partner/evidence", "evidence:revise");
 
+  if (!evidenceCanBeRevisedByPartner(evidence.verificationStatus)) {
+    redirectPartnerError(formData, "/partner/evidence", "evidence-state");
+  }
+
   const now = new Date();
   const storageProvider = attachmentUrl.startsWith("data:image/") ? "database_inline" : getEvidenceStorageProvider();
+  const reviewAction = evidenceReviewActionForTransition({
+    fromStatus: evidence.verificationStatus,
+    toStatus: "submitted"
+  });
 
   await db.transaction(async (tx) => {
     await tx
@@ -2460,8 +2673,10 @@ export async function reviseEvidenceAction(formData: FormData) {
         storageProvider,
         verificationStatus: "submitted",
         verifiedAt: null,
+        assignedReviewerUserId: null,
         reviewedByUserId: null,
         reviewedAt: null,
+        clarificationResolvedAt: evidence.verificationStatus === "needs_clarification" ? now : null,
         rejectionReason: null,
         updatedAt: now,
         metadata: {
@@ -2483,6 +2698,21 @@ export async function reviseEvidenceAction(formData: FormData) {
         storageProvider
       })
       .where(eq(campaignActivities.sourceEvidenceId, evidenceId));
+
+    await tx.insert(evidenceReviewEvents).values({
+      evidenceId,
+      actorUserId: user.id,
+      action: reviewAction,
+      fromStatus: evidence.verificationStatus,
+      toStatus: "submitted",
+      note: body || null,
+      visibility: "partner_visible",
+      metadata: {
+        evidenceCode: evidence.evidenceCode,
+        evidenceType: evidence.evidenceType,
+        revisedAt: now.toISOString()
+      }
+    });
   });
 
   redirectPartnerSaved(formData, "/partner/evidence", "evidence-resubmitted");
@@ -2535,56 +2765,123 @@ async function linkEvidenceToCorporatePrograms(evidenceId: string, status: strin
 export async function verifyEvidenceAction(formData: FormData) {
   const user = await requireRole(["admin"], "/admin");
   const evidenceId = String(formData.get("evidenceId") ?? "");
-  const status = formData.get("status") === "rejected" ? "rejected" : "verified";
-  const rejectionReason = formText(formData, "rejectionReason");
+  const status = normalizeEvidenceVerificationStatus(String(formData.get("status") ?? "verified"), "verified");
+  const reviewNote = formText(formData, "reviewNote") || formText(formData, "rejectionReason");
+  const reviewerAssignment = formText(formData, "reviewerAssignment");
   const redirectTo = safeRedirectPath(formData.get("redirectTo"), "/admin/campaigns/evidence");
 
   if (!evidenceId) {
     redirect("/admin?error=evidence");
   }
 
-  if (status === "rejected" && !rejectionReason) {
-    redirect(`${redirectTo}?error=rejection-reason`);
+  if (evidenceReviewNoteRequired(status) && !reviewNote) {
+    redirect(`${redirectTo}?error=review-note`);
   }
 
   const now = new Date();
-
-  await db
-    .update(projectEvidence)
-    .set({
-      verificationStatus: status,
-      verifiedAt: status === "verified" ? now : null,
-      reviewedByUserId: user.id,
-      reviewedAt: now,
-      rejectionReason: status === "rejected" ? rejectionReason : null,
-      updatedAt: now
+  const [evidence] = await db
+    .select({
+      id: projectEvidence.id,
+      evidenceCode: projectEvidence.evidenceCode,
+      verificationStatus: projectEvidence.verificationStatus,
+      assignedReviewerUserId: projectEvidence.assignedReviewerUserId
     })
-    .where(eq(projectEvidence.id, evidenceId));
+    .from(projectEvidence)
+    .where(eq(projectEvidence.id, evidenceId))
+    .limit(1);
 
-  await db
-    .update(campaignActivities)
-    .set({
-      verificationStatus: status,
-      verifiedAt: status === "verified" ? now : null,
-      metadata: {
+  if (!evidence) {
+    redirect(`${redirectTo}?error=evidence-missing`);
+  }
+
+  const assignedReviewerUserId =
+    reviewerAssignment === "clear"
+      ? null
+      : reviewerAssignment === "keep"
+        ? evidence.assignedReviewerUserId
+        : status === "in_review" || status === "needs_clarification"
+          ? user.id
+          : evidence.assignedReviewerUserId ?? user.id;
+  const reviewAction = evidenceReviewActionForTransition({
+    fromStatus: evidence.verificationStatus,
+    toStatus: status,
+    assignedReviewerChanged: assignedReviewerUserId !== evidence.assignedReviewerUserId
+  });
+
+  await db.transaction(async (tx) => {
+    await tx
+      .update(projectEvidence)
+      .set({
+        verificationStatus: status,
+        verifiedAt: status === "verified" ? now : null,
+        assignedReviewerUserId,
         reviewedByUserId: user.id,
-        reviewedAt: now.toISOString(),
-        rejectionReason: status === "rejected" ? rejectionReason : null
+        reviewedAt: now,
+        clarificationNote: status === "needs_clarification" ? reviewNote : status === "verified" ? null : undefined,
+        clarificationRequestedAt: status === "needs_clarification" ? now : undefined,
+        clarificationResolvedAt: evidence.verificationStatus === "needs_clarification" && status !== "needs_clarification" ? now : undefined,
+        rejectionReason: status === "rejected" ? reviewNote : null,
+        updatedAt: now
+      })
+      .where(eq(projectEvidence.id, evidenceId));
+
+    await tx
+      .update(campaignActivities)
+      .set({
+        verificationStatus: status,
+        verifiedAt: status === "verified" ? now : null,
+        metadata: {
+          reviewedByUserId: user.id,
+          reviewedAt: now.toISOString(),
+          reviewAction,
+          reviewNote: reviewNote || null,
+          rejectionReason: status === "rejected" ? reviewNote : null,
+          clarificationNote: status === "needs_clarification" ? reviewNote : null
+        }
+      })
+      .where(eq(campaignActivities.sourceEvidenceId, evidenceId));
+
+    await tx.insert(evidenceReviewEvents).values({
+      evidenceId,
+      actorUserId: user.id,
+      assignedToUserId: assignedReviewerUserId,
+      action: reviewAction,
+      fromStatus: evidence.verificationStatus,
+      toStatus: status,
+      note: reviewNote || null,
+      visibility: status === "in_review" ? "internal" : "partner_visible",
+      metadata: {
+        evidenceCode: evidence.evidenceCode,
+        reviewerAssignment,
+        reviewedAt: now.toISOString()
       }
-    })
-    .where(eq(campaignActivities.sourceEvidenceId, evidenceId));
+    });
+
+    if (status !== "verified") {
+      await tx.update(corporateEvidenceCenter).set({ visibility: "internal" }).where(eq(corporateEvidenceCenter.evidenceId, evidenceId));
+    }
+  });
 
   const linkedCorporateProgramIds = await linkEvidenceToCorporatePrograms(evidenceId, status);
   const linkedCorporatePrograms = linkedCorporateProgramIds.length;
 
   await db.insert(adminAuditLogs).values({
     actorUserId: user.id,
-    action: status === "verified" ? "evidence.verified" : "evidence.rejected",
+    action:
+      status === "verified"
+        ? "evidence.verified"
+        : status === "rejected"
+          ? "evidence.rejected"
+          : status === "needs_clarification"
+            ? "evidence.clarification_requested"
+            : "evidence.in_review",
     entityType: "project_evidence",
     entityId: evidenceId,
     metadata: {
       status,
-      rejectionReason: status === "rejected" ? rejectionReason : null,
+      reviewAction,
+      reviewNote: reviewNote || null,
+      rejectionReason: status === "rejected" ? reviewNote : null,
       linkedCorporatePrograms
     }
   });
@@ -2699,6 +2996,324 @@ export async function reconcileDonationAction(formData: FormData) {
   });
 
   redirect("/admin?saved=donation");
+}
+
+export async function runMonthlyBillingAction(formData: FormData) {
+  const user = await requireRole(["admin"], "/admin");
+  const limit = parsePositiveInteger(formData.get("limit")) ?? 25;
+  const now = new Date();
+  const summary = await processDueDonationSubscriptions({
+    limit,
+    processedByUserId: user.id,
+    now
+  });
+
+  await db.insert(adminAuditLogs).values({
+    actorUserId: user.id,
+    action: "billing.monthly_run",
+    entityType: "billing",
+    metadata: {
+      ...summary,
+      limit,
+      processedAt: now.toISOString()
+    }
+  });
+
+  redirect(`/admin?saved=billing-run&charged=${summary.charged}&failed=${summary.failed}&skipped=${summary.skipped}`);
+}
+
+export async function settlePaymentOperationAction(formData: FormData) {
+  const user = await requireRole(["admin"], "/admin");
+  const operationId = formText(formData, "operationId");
+  const decision = formText(formData, "decision");
+  const adminNote = formText(formData, "adminNote") || null;
+  const now = new Date();
+
+  const [operation] = await db
+    .select({
+      id: paymentOperations.id,
+      operationType: paymentOperations.operationType,
+      entityType: paymentOperations.entityType,
+      donationId: paymentOperations.donationId,
+      bookingId: paymentOperations.bookingId,
+      requestedByUserId: paymentOperations.requestedByUserId,
+      status: paymentOperations.status,
+      amount: paymentOperations.amount,
+      currency: paymentOperations.currency,
+      reason: paymentOperations.reason,
+      providerReference: paymentOperations.providerReference
+    })
+    .from(paymentOperations)
+    .where(eq(paymentOperations.id, operationId))
+    .limit(1);
+
+  if (!operation || operation.status !== "pending" || operation.operationType !== "refund") {
+    redirect("/admin?error=operation");
+  }
+
+  if (decision === "reject") {
+    await db
+      .update(paymentOperations)
+      .set({
+        processedByUserId: user.id,
+        status: "rejected",
+        processedAt: now,
+        updatedAt: now,
+        metadata: {
+          decision: "rejected",
+          adminNote
+        }
+      })
+      .where(eq(paymentOperations.id, operation.id));
+
+    if (operation.entityType === "donation" && operation.donationId) {
+      const [donation] = await db
+        .select({ donorEmail: donations.donorEmail })
+        .from(donations)
+        .where(eq(donations.id, operation.donationId))
+        .limit(1);
+
+      if (donation?.donorEmail) {
+        await sendTransactionalEmail({
+          userId: operation.requestedByUserId,
+          recipientEmail: donation.donorEmail,
+          subject: "Your Terumbu refund request update",
+          template: "refund_rejected",
+          payload: {
+            operationId: operation.id,
+            reason: adminNote ?? operation.reason ?? "Refund request rejected"
+          }
+        });
+      }
+    }
+
+    if (operation.entityType === "expedition_booking" && operation.bookingId) {
+      const [booking] = await db
+        .select({ contactEmail: expeditionBookings.contactEmail })
+        .from(expeditionBookings)
+        .where(eq(expeditionBookings.id, operation.bookingId))
+        .limit(1);
+
+      await sendTransactionalEmail({
+        userId: operation.requestedByUserId,
+        recipientEmail: booking?.contactEmail ?? "support@terumbu.eco",
+        subject: "Your expedition refund request update",
+        template: "refund_rejected",
+        payload: {
+          operationId: operation.id,
+          reason: adminNote ?? operation.reason ?? "Refund request rejected"
+        }
+      });
+    }
+
+    await db.insert(adminAuditLogs).values({
+      actorUserId: user.id,
+      action: "payment_operation.rejected",
+      entityType: operation.entityType,
+      entityId: operation.donationId ?? operation.bookingId,
+      metadata: {
+        operationId: operation.id,
+        operationType: operation.operationType,
+        adminNote
+      }
+    });
+
+    redirect("/admin?saved=operation-rejected");
+  }
+
+  if (decision !== "approve") {
+    redirect("/admin?error=operation");
+  }
+
+  if (operation.entityType === "donation" && operation.donationId) {
+    const [donation] = await db
+      .select({
+        id: donations.id,
+        donorEmail: donations.donorEmail,
+        amount: donations.amount,
+        currency: donations.currency,
+        status: donations.status,
+        campaignTitle: campaigns.title
+      })
+      .from(donations)
+      .innerJoin(campaigns, eq(donations.campaignId, campaigns.id))
+      .where(eq(donations.id, operation.donationId))
+      .limit(1);
+
+    if (!donation || donation.status !== "paid") {
+      redirect("/admin?error=operation");
+    }
+
+    const providerResult = demoGatewaySettleRefund({
+      idempotencyKey: `refund:${operation.id}`,
+      amount: Number(operation.amount ?? donation.amount),
+      currency: operation.currency ?? donation.currency,
+      providerReference: operation.providerReference,
+      now
+    });
+
+    await db.transaction(async (tx) => {
+      await transitionDonationPayment(tx as unknown as typeof db, {
+        donationId: donation.id,
+        nextStatus: providerResult.status,
+        providerReference: providerResult.providerReference,
+        providerPayload: {
+          method: "refund_settlement",
+          operationId: operation.id,
+          providerStatus: providerResult.rawStatus,
+          providerProcessedAt: providerResult.processedAt.toISOString(),
+          idempotencyKey: providerResult.idempotencyKey,
+          adminNote,
+          ...providerResult.metadata
+        },
+        processedByUserId: user.id,
+        operationType: "refund_settlement",
+        now
+      });
+
+      await tx
+        .update(paymentOperations)
+        .set({
+          processedByUserId: user.id,
+          status: "completed",
+          providerReference: providerResult.providerReference,
+          processedAt: now,
+          updatedAt: now,
+          metadata: {
+            decision: "approved",
+            providerStatus: providerResult.rawStatus,
+            adminNote
+          }
+        })
+        .where(eq(paymentOperations.id, operation.id));
+    });
+
+    if (donation.donorEmail) {
+      await sendTransactionalEmail({
+        userId: operation.requestedByUserId,
+        recipientEmail: donation.donorEmail,
+        subject: "Your Terumbu refund was processed",
+        template: "refund_processed",
+        payload: {
+          operationId: operation.id,
+          donationId: donation.id,
+          campaign: donation.campaignTitle,
+          amount: Number(operation.amount ?? donation.amount),
+          currency: operation.currency ?? donation.currency
+        }
+      });
+    }
+
+    await db.insert(adminAuditLogs).values({
+      actorUserId: user.id,
+      action: "payment_operation.refund_processed",
+      entityType: "donation",
+      entityId: donation.id,
+      metadata: {
+        operationId: operation.id,
+        providerReference: providerResult.providerReference,
+        adminNote
+      }
+    });
+
+    redirect("/admin?saved=refund-processed");
+  }
+
+  if (operation.entityType === "expedition_booking" && operation.bookingId) {
+    const [booking] = await db
+      .select({
+        id: expeditionBookings.id,
+        bookingCode: expeditionBookings.bookingCode,
+        contactEmail: expeditionBookings.contactEmail,
+        totalAmount: expeditionBookings.totalAmount,
+        currency: expeditionBookings.currency,
+        paymentStatus: expeditionBookings.paymentStatus,
+        expeditionTitle: expeditions.title
+      })
+      .from(expeditionBookings)
+      .innerJoin(expeditions, eq(expeditionBookings.expeditionId, expeditions.id))
+      .where(eq(expeditionBookings.id, operation.bookingId))
+      .limit(1);
+
+    if (!booking || booking.paymentStatus !== "paid") {
+      redirect("/admin?error=operation");
+    }
+
+    const providerResult = demoGatewaySettleRefund({
+      idempotencyKey: `refund:${operation.id}`,
+      amount: Number(operation.amount ?? booking.totalAmount),
+      currency: operation.currency ?? booking.currency,
+      providerReference: operation.providerReference,
+      now
+    });
+
+    await db.transaction(async (tx) => {
+      await transitionExpeditionBookingPayment(tx as unknown as typeof db, {
+        bookingId: booking.id,
+        nextStatus: providerResult.status,
+        providerReference: providerResult.providerReference,
+        providerPayload: {
+          method: "refund_settlement",
+          operationId: operation.id,
+          providerStatus: providerResult.rawStatus,
+          providerProcessedAt: providerResult.processedAt.toISOString(),
+          idempotencyKey: providerResult.idempotencyKey,
+          adminNote,
+          ...providerResult.metadata
+        },
+        processedByUserId: user.id,
+        operationType: "refund_settlement",
+        now
+      });
+
+      await tx
+        .update(paymentOperations)
+        .set({
+          processedByUserId: user.id,
+          status: "completed",
+          providerReference: providerResult.providerReference,
+          processedAt: now,
+          updatedAt: now,
+          metadata: {
+            decision: "approved",
+            providerStatus: providerResult.rawStatus,
+            adminNote
+          }
+        })
+        .where(eq(paymentOperations.id, operation.id));
+    });
+
+    await sendTransactionalEmail({
+      userId: operation.requestedByUserId,
+      recipientEmail: booking.contactEmail,
+      subject: "Your expedition refund was processed",
+      template: "refund_processed",
+      payload: {
+        operationId: operation.id,
+        bookingId: booking.id,
+        bookingCode: booking.bookingCode,
+        expedition: booking.expeditionTitle,
+        amount: Number(operation.amount ?? booking.totalAmount),
+        currency: operation.currency ?? booking.currency
+      }
+    });
+
+    await db.insert(adminAuditLogs).values({
+      actorUserId: user.id,
+      action: "payment_operation.refund_processed",
+      entityType: "expedition_booking",
+      entityId: booking.id,
+      metadata: {
+        operationId: operation.id,
+        providerReference: providerResult.providerReference,
+        adminNote
+      }
+    });
+
+    redirect("/admin?saved=refund-processed");
+  }
+
+  redirect("/admin?error=operation");
 }
 
 export async function reconcileExpeditionBookingAction(formData: FormData) {

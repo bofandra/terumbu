@@ -42,6 +42,13 @@ export function buildBookingCode(sequence: string | number, issuedAt = new Date(
   return `TRB-EXP-${year}-${suffix}`;
 }
 
+export function buildExpeditionInterestRequestCode(sequence: string | number, issuedAt = new Date()) {
+  const year = issuedAt.getUTCFullYear();
+  const suffix = String(sequence).replace(/[^0-9a-z]/gi, "").toUpperCase().slice(-8).padStart(4, "0");
+
+  return `TRB-EXP-REQ-${year}-${suffix}`;
+}
+
 export function buildSponsoredEcosystemCode(sequence: string | number, issuedAt = new Date()) {
   const year = issuedAt.getUTCFullYear();
   const suffix = String(sequence).replace(/[^0-9a-z]/gi, "").toUpperCase().slice(-8).padStart(4, "0");

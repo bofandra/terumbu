@@ -51,6 +51,7 @@ const badgeClasses: Record<string, string> = {
   draft: "bg-ocean-900/8 text-ocean-900/62",
   funded: "bg-kelp-100 text-kelp-700",
   in_review: "bg-sand-100 text-ocean-900",
+  needs_clarification: "bg-coral-100 text-coral-700",
   published: "bg-ocean-50 text-ocean-700",
   rejected: "bg-coral-100 text-coral-700",
   review: "bg-sand-100 text-ocean-900",

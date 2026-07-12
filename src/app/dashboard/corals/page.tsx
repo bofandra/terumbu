@@ -75,6 +75,7 @@ export default async function DashboardCoralsPage() {
                     <span>{ecosystem.quantity.toLocaleString("id-ID")} {ecosystem.unit}</span>
                     <span>Planted: {formatDate(ecosystem.plantedAt)}</span>
                     <span>Last monitored: {formatDate(ecosystem.lastUpdatedAt)}</span>
+                    <span>{ecosystem.verifiedEvidenceCount.toLocaleString("id-ID")} verified evidence records</span>
                     <span>Next update expected: {ecosystem.nextUpdateLabel}</span>
                   </div>
                 </div>

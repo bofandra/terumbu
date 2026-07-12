@@ -7,6 +7,7 @@ import {
   MapPinned,
   Megaphone,
   ReceiptText,
+  RefreshCw,
   ShieldCheck,
   ShipWheel,
   Users
@@ -17,7 +18,13 @@ import { AdminEmptyState } from "@/components/admin-ui";
 import { Button } from "@/components/ui/button";
 import { ProgressMeter } from "@/components/ui/progress-meter";
 import { requireRole } from "@/lib/auth";
-import { reconcileDonationAction, reconcileExpeditionBookingAction, verifyEvidenceAction } from "@/lib/portal-actions";
+import {
+  reconcileDonationAction,
+  reconcileExpeditionBookingAction,
+  runMonthlyBillingAction,
+  settlePaymentOperationAction,
+  verifyEvidenceAction
+} from "@/lib/portal-actions";
 import { getAdminOperationsData, getAdminPortalData } from "@/lib/queries";
 import { cn, formatCurrency } from "@/lib/utils";
 
@@ -37,6 +44,8 @@ const badgeClasses: Record<string, string> = {
   funded: "bg-kelp-100 text-kelp-700",
   paid: "bg-kelp-100 text-kelp-700",
   pending: "bg-sand-100 text-ocean-900",
+  in_review: "bg-ocean-50 text-ocean-700",
+  needs_clarification: "bg-coral-100 text-coral-700",
   published: "bg-ocean-50 text-ocean-700",
   refund: "bg-coral-100 text-coral-700",
   refunded: "bg-coral-100 text-coral-700",
@@ -87,7 +96,18 @@ const metricToneClasses: Record<MetricCard["tone"], string> = {
   sand: "bg-sand-100 text-ocean-900"
 };
 
-export default async function AdminPortalPage() {
+type AdminPortalPageProps = {
+  searchParams?: Promise<{
+    saved?: string;
+    error?: string;
+    charged?: string;
+    failed?: string;
+    skipped?: string;
+  }>;
+};
+
+export default async function AdminPortalPage({ searchParams }: AdminPortalPageProps) {
+  const params = await searchParams;
   await requireRole(["admin"], "/admin");
   const [data, operations] = await Promise.all([getAdminPortalData(), getAdminOperationsData()]);
 
@@ -100,7 +120,7 @@ export default async function AdminPortalPage() {
   const pendingEvidence = data.evidence.filter((item) => item.verificationStatus !== "verified").length;
   const donationsToReconcile = data.donations.filter((donation) => donation.status !== "paid" || donation.pendingOperation).length;
 
-  const evidencePriority: Record<string, number> = { submitted: 0, in_review: 1, rejected: 2, verified: 3 };
+  const evidencePriority: Record<string, number> = { needs_clarification: 0, submitted: 1, in_review: 2, rejected: 3, verified: 4 };
   const donationPriority: Record<string, number> = { created: 0, pending: 1, failed: 2, expired: 3, refunded: 4, paid: 5 };
   const evidenceQueue = [...data.evidence].sort((a, b) => (evidencePriority[a.verificationStatus] ?? 9) - (evidencePriority[b.verificationStatus] ?? 9)).slice(0, 5);
   const donationQueue = [...data.donations]
@@ -171,6 +191,23 @@ export default async function AdminPortalPage() {
           <ArrowUpRight className="size-4" aria-hidden="true" />
         </Link>
       </header>
+
+      {params?.saved ? (
+        <p className="rounded-lg border border-kelp-700/20 bg-kelp-100 px-4 py-3 text-sm font-bold text-kelp-700">
+          {params.saved === "billing-run"
+            ? `Monthly billing run complete: ${Number(params.charged ?? 0).toLocaleString("id-ID")} charged, ${Number(params.failed ?? 0).toLocaleString("id-ID")} failed, ${Number(params.skipped ?? 0).toLocaleString("id-ID")} skipped.`
+            : params.saved === "refund-processed"
+              ? "Refund was approved and processed through the payment workflow."
+              : params.saved === "operation-rejected"
+                ? "Payment operation was rejected and the requester was notified."
+                : "Admin operation saved."}
+        </p>
+      ) : null}
+      {params?.error ? (
+        <p className="rounded-lg border border-coral-700/20 bg-coral-100 px-4 py-3 text-sm font-bold text-coral-700">
+          Could not complete that billing operation. Check whether the payment/refund request is still pending and eligible.
+        </p>
+      ) : null}
 
       <section className="grid gap-3 md:grid-cols-2 2xl:grid-cols-4" aria-label="Admin metrics">
         {metrics.map((metric) => {
@@ -265,15 +302,19 @@ export default async function AdminPortalPage() {
                     <p className="mt-1 text-sm font-semibold text-ocean-900/58">{item.campaignTitle}</p>
                     <p className="mt-2 text-xs font-bold text-ocean-900/48">{item.evidenceCode}</p>
                   </div>
-                  <div className="flex flex-wrap gap-2">
-                    <select name="status" defaultValue={item.verificationStatus === "rejected" ? "rejected" : "verified"} className={selectClassName}>
+                  <div className="grid gap-2 sm:min-w-64">
+                    <input type="hidden" name="reviewerAssignment" value={item.assignedReviewerUserId ? "keep" : "assign_me"} />
+                    <select name="status" defaultValue={item.verificationStatus} className={selectClassName}>
+                      <option value="submitted">Submitted</option>
+                      <option value="in_review">In review</option>
+                      <option value="needs_clarification">Needs clarification</option>
                       <option value="verified">Verified</option>
                       <option value="rejected">Rejected</option>
                     </select>
-                    <input name="rejectionReason" placeholder="Reason if rejected" className={selectClassName} />
+                    <textarea name="reviewNote" defaultValue={item.latestReviewNote ?? ""} placeholder="Note for clarification or rejection" className={`${selectClassName} min-h-20 py-2`} />
                     <Button type="submit" tone="secondary" className="min-h-10 px-4">
                       <ShieldCheck className="size-4" aria-hidden="true" />
-                      Save
+                      Save review
                     </Button>
                   </div>
                 </div>
@@ -301,11 +342,36 @@ export default async function AdminPortalPage() {
             </div>
             <ReceiptText className="size-5 text-coral-700" aria-hidden="true" />
           </div>
+          <div className="border-b border-ocean-900/10 bg-sand-50 p-4">
+            <div className="flex flex-col justify-between gap-3 lg:flex-row lg:items-start">
+              <div>
+                <h3 className="font-bold text-ocean-900">Monthly billing scheduler</h3>
+                <p className="mt-1 text-sm font-semibold text-ocean-900/58">
+                  {data.dueSubscriptions.length.toLocaleString("id-ID")} subscriptions are due now. The run creates monthly donation records, provider transactions, receipts, and failure notices.
+                </p>
+                {data.dueSubscriptions.length > 0 ? (
+                  <div className="mt-3 grid gap-2">
+                    {data.dueSubscriptions.slice(0, 3).map((subscription) => (
+                      <p key={subscription.id} className="rounded-lg bg-white px-3 py-2 text-xs font-bold text-ocean-900/68">
+                        {subscription.campaignTitle} / {subscription.donorEmail} / {formatCurrency(Number(subscription.amount))}
+                        {subscription.paymentMethodLast4 ? ` / card ${subscription.paymentMethodLast4}` : " / no payment method"}
+                      </p>
+                    ))}
+                  </div>
+                ) : null}
+              </div>
+              <form action={runMonthlyBillingAction} className="flex flex-wrap items-center gap-2">
+                <input type="hidden" name="limit" value="25" />
+                <Button type="submit" tone="secondary" className="min-h-10 rounded-lg px-4">
+                  <RefreshCw className="size-4" aria-hidden="true" />
+                  Run due billing
+                </Button>
+              </form>
+            </div>
+          </div>
           <div className="divide-y divide-ocean-900/10">
             {donationQueue.map((donation) => (
-              <form key={donation.id} action={reconcileDonationAction} className="p-4">
-                <input type="hidden" name="donationId" value={donation.id} />
-                {donation.pendingOperation ? <input type="hidden" name="operationId" value={donation.pendingOperation.id} /> : null}
+              <div key={donation.id} className="p-4">
                 <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-start">
                   <div>
                     <div className="flex flex-wrap items-center gap-2">
@@ -319,19 +385,43 @@ export default async function AdminPortalPage() {
                       <p className="mt-2 text-xs font-semibold text-ocean-900/52">{donation.pendingOperation.reason}</p>
                     ) : null}
                   </div>
-                  <div className="flex flex-wrap gap-2">
-                    <select name="status" defaultValue={donation.pendingOperation?.operationType === "refund" ? "refunded" : donation.status === "failed" ? "failed" : "paid"} className={selectClassName}>
-                      <option value="paid">Paid</option>
-                      <option value="failed">Failed</option>
-                      <option value="refunded">Refunded</option>
-                    </select>
-                    <Button type="submit" tone="secondary" className="min-h-10 px-4">
-                      <ReceiptText className="size-4" aria-hidden="true" />
-                      Reconcile
-                    </Button>
-                  </div>
+                  {donation.pendingOperation?.operationType === "refund" ? (
+                    <div className="grid gap-2 sm:min-w-80">
+                      <form action={settlePaymentOperationAction} className="grid gap-2">
+                        <input type="hidden" name="operationId" value={donation.pendingOperation.id} />
+                        <input type="hidden" name="decision" value="approve" />
+                        <input name="adminNote" placeholder="Settlement note" className={selectClassName} />
+                        <Button type="submit" tone="secondary" className="min-h-10 px-4">
+                          <ReceiptText className="size-4" aria-hidden="true" />
+                          Approve refund
+                        </Button>
+                      </form>
+                      <form action={settlePaymentOperationAction} className="flex flex-wrap gap-2">
+                        <input type="hidden" name="operationId" value={donation.pendingOperation.id} />
+                        <input type="hidden" name="decision" value="reject" />
+                        <input name="adminNote" placeholder="Reject reason" className={selectClassName} />
+                        <Button type="submit" tone="ghost" className="min-h-10 px-4 text-coral-700 hover:bg-coral-100">
+                          Reject
+                        </Button>
+                      </form>
+                    </div>
+                  ) : (
+                    <form action={reconcileDonationAction} className="flex flex-wrap gap-2">
+                      <input type="hidden" name="donationId" value={donation.id} />
+                      {donation.pendingOperation ? <input type="hidden" name="operationId" value={donation.pendingOperation.id} /> : null}
+                      <select name="status" defaultValue={donation.status === "failed" ? "failed" : "paid"} className={selectClassName}>
+                        <option value="paid">Paid</option>
+                        <option value="failed">Failed</option>
+                        <option value="refunded">Refunded</option>
+                      </select>
+                      <Button type="submit" tone="secondary" className="min-h-10 px-4">
+                        <ReceiptText className="size-4" aria-hidden="true" />
+                        Reconcile
+                      </Button>
+                    </form>
+                  )}
                 </div>
-              </form>
+              </div>
             ))}
             {donationQueue.length === 0 ? (
               <AdminEmptyState
@@ -348,9 +438,7 @@ export default async function AdminPortalPage() {
           </div>
           <div className="divide-y divide-ocean-900/10">
             {data.bookingPaymentOperations.slice(0, 4).map((operation) => (
-              <form key={operation.id} action={reconcileExpeditionBookingAction} className="p-4">
-                <input type="hidden" name="bookingId" value={operation.bookingId ?? ""} />
-                <input type="hidden" name="operationId" value={operation.id} />
+              <div key={operation.id} className="p-4">
                 <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-start">
                   <div>
                     <div className="flex flex-wrap items-center gap-2">
@@ -362,19 +450,43 @@ export default async function AdminPortalPage() {
                     <p className="mt-2 text-sm font-bold text-ocean-900">{formatCurrency(Number(operation.amount ?? 0))}</p>
                     {operation.reason ? <p className="mt-2 text-xs font-semibold text-ocean-900/52">{operation.reason}</p> : null}
                   </div>
-                  <div className="flex flex-wrap gap-2">
-                    <select name="status" defaultValue={operation.operationType === "refund" ? "refunded" : "paid"} className={selectClassName}>
-                      <option value="paid">Paid</option>
-                      <option value="failed">Failed</option>
-                      <option value="refunded">Refunded</option>
-                    </select>
-                    <Button type="submit" tone="secondary" className="min-h-10 px-4">
-                      <ReceiptText className="size-4" aria-hidden="true" />
-                      Reconcile
-                    </Button>
-                  </div>
+                  {operation.operationType === "refund" ? (
+                    <div className="grid gap-2 sm:min-w-80">
+                      <form action={settlePaymentOperationAction} className="grid gap-2">
+                        <input type="hidden" name="operationId" value={operation.id} />
+                        <input type="hidden" name="decision" value="approve" />
+                        <input name="adminNote" placeholder="Settlement note" className={selectClassName} />
+                        <Button type="submit" tone="secondary" className="min-h-10 px-4">
+                          <ReceiptText className="size-4" aria-hidden="true" />
+                          Approve refund
+                        </Button>
+                      </form>
+                      <form action={settlePaymentOperationAction} className="flex flex-wrap gap-2">
+                        <input type="hidden" name="operationId" value={operation.id} />
+                        <input type="hidden" name="decision" value="reject" />
+                        <input name="adminNote" placeholder="Reject reason" className={selectClassName} />
+                        <Button type="submit" tone="ghost" className="min-h-10 px-4 text-coral-700 hover:bg-coral-100">
+                          Reject
+                        </Button>
+                      </form>
+                    </div>
+                  ) : (
+                    <form action={reconcileExpeditionBookingAction} className="flex flex-wrap gap-2">
+                      <input type="hidden" name="bookingId" value={operation.bookingId ?? ""} />
+                      <input type="hidden" name="operationId" value={operation.id} />
+                      <select name="status" defaultValue="paid" className={selectClassName}>
+                        <option value="paid">Paid</option>
+                        <option value="failed">Failed</option>
+                        <option value="refunded">Refunded</option>
+                      </select>
+                      <Button type="submit" tone="secondary" className="min-h-10 px-4">
+                        <ReceiptText className="size-4" aria-hidden="true" />
+                        Reconcile
+                      </Button>
+                    </form>
+                  )}
                 </div>
-              </form>
+              </div>
             ))}
             {data.bookingPaymentOperations.length === 0 ? (
               <AdminEmptyState

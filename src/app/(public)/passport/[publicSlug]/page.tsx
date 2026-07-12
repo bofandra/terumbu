@@ -6,20 +6,25 @@ import {
   Globe2,
   Heart,
   Info,
+  KeyRound,
+  Lock,
   MapPinned,
   ShieldCheck,
   Trophy,
   Users,
   Waves
 } from "lucide-react";
+import { cookies } from "next/headers";
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { PassportCopyButton } from "@/components/passport-copy-button";
-import { ButtonLink } from "@/components/ui/button";
+import { Button, ButtonLink } from "@/components/ui/button";
 import { evidenceSourceHref } from "@/lib/domain";
-import { getPublicPassport } from "@/lib/queries";
+import { unlockPassportShareAction } from "@/lib/passport-share-actions";
+import { passportShareAccessCookieName, publicPassportShareUrl } from "@/lib/passport-sharing";
+import { getPublicPassport, getPublicPassportAccessHint } from "@/lib/queries";
 
 export const dynamic = "force-dynamic";
 
@@ -27,6 +32,13 @@ const heroImage = "https://images.unsplash.com/photo-1544551763-46a013bb70d5?aut
 
 type PublicPassport = NonNullable<Awaited<ReturnType<typeof getPublicPassport>>>;
 type PassportItem = PublicPassport["items"][number];
+type PublicPassportPageProps = {
+  params: Promise<{ publicSlug: string }>;
+  searchParams?: Promise<{
+    token?: string;
+    error?: string;
+  }>;
+};
 
 export async function generateMetadata({ params }: { params: Promise<{ publicSlug: string }> }) {
   const { publicSlug } = await params;
@@ -101,8 +113,12 @@ function passportId(publicSlug: string, issuedAt: Date | null | undefined) {
   return `TE-ID-${year}-${String(checksum).padStart(6, "0")}`;
 }
 
-function publicPassportUrl(publicSlug: string) {
-  return `https://terumbu.eco/passport/${publicSlug}`;
+function publicPassportUrl(publicSlug: string, visibility: string, shareToken: string | null) {
+  return publicPassportShareUrl({
+    publicSlug,
+    visibility,
+    shareToken
+  });
 }
 
 function activityTypeLabel(value: string) {
@@ -179,15 +195,28 @@ function itemLocations(items: PassportItem[]) {
   ) as string[];
 }
 
-export default async function PublicPassportPage({ params }: { params: Promise<{ publicSlug: string }> }) {
+export default async function PublicPassportPage({ params, searchParams }: PublicPassportPageProps) {
   const { publicSlug } = await params;
-  const passport = await getPublicPassport(publicSlug);
+  const query = await searchParams;
+  const token = typeof query?.token === "string" ? query.token : null;
+  const cookieStore = await cookies();
+  const accessProof = cookieStore.get(passportShareAccessCookieName(publicSlug))?.value ?? null;
+  const passport = await getPublicPassport(publicSlug, {
+    token,
+    accessProof
+  });
 
   if (!passport) {
+    const accessHint = await getPublicPassportAccessHint(publicSlug, { token });
+
+    if (accessHint?.requiresAccessCode) {
+      return <PassportAccessGate publicSlug={publicSlug} token={token} hasError={query?.error === "access"} />;
+    }
+
     notFound();
   }
 
-  const publicUrl = publicPassportUrl(passport.publicSlug);
+  const publicUrl = publicPassportUrl(passport.publicSlug, passport.visibility, token);
   const qrSrc = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(publicUrl)}`;
   const locations = itemLocations(passport.items);
   const ecosystems = passport.items.filter((item) => item.itemType === "ecosystem" || metadataNumber(item.metadata, "fragments") > 0).slice(0, 3);
@@ -258,6 +287,12 @@ export default async function PublicPassportPage({ params }: { params: Promise<{
                 <dt className="text-white/52">Visibility</dt>
                 <dd className="font-bold capitalize">{passport.visibility === "link" ? "Link only" : passport.visibility}</dd>
               </div>
+              {passport.shareExpiresAt ? (
+                <div>
+                  <dt className="text-white/52">Link expires</dt>
+                  <dd className="font-bold">{formatDate(passport.shareExpiresAt)}</dd>
+                </div>
+              ) : null}
             </dl>
           </aside>
         </div>
@@ -372,7 +407,7 @@ export default async function PublicPassportPage({ params }: { params: Promise<{
                     <p className="mt-1 text-sm leading-6 text-ocean-900/58">{item.description ?? "Verified activity added to this Impact Passport."}</p>
                     <div className="mt-3 flex flex-wrap gap-2 text-xs font-bold">
                       <span className="rounded-full bg-kelp-100 px-2 py-1 text-kelp-700">{metadataString(item.metadata, "verificationStatus") ?? "Verified by Terumbu.eco"}</span>
-                      {passportItemSourceHref(item) ? (
+                      {passport.evidenceConsent !== "hide_evidence" && passportItemSourceHref(item) ? (
                         <Link href={passportItemSourceHref(item)!} className="inline-flex items-center gap-1 rounded-full bg-ocean-50 px-2 py-1 text-ocean-900 hover:text-coral-700">
                           Evidence source
                           <ExternalLink size={13} aria-hidden="true" />
@@ -470,6 +505,41 @@ export default async function PublicPassportPage({ params }: { params: Promise<{
             </div>
           </article>
         </aside>
+      </section>
+    </main>
+  );
+}
+
+function PassportAccessGate({ publicSlug, token, hasError }: { publicSlug: string; token: string | null; hasError: boolean }) {
+  return (
+    <main className="flex min-h-screen items-center justify-center bg-sand-50 px-4 py-12">
+      <section className="w-full max-w-md rounded-2xl border border-ocean-900/10 bg-white p-6 shadow-soft">
+        <span className="flex size-12 items-center justify-center rounded-full bg-ocean-900 text-white">
+          <Lock size={22} aria-hidden="true" />
+        </span>
+        <p className="mt-5 text-sm font-bold uppercase tracking-[0.16em] text-coral-700">Protected passport</p>
+        <h1 className="mt-2 text-2xl font-bold tracking-normal text-ocean-900">Enter access code</h1>
+        <p className="mt-3 text-sm leading-6 text-ocean-900/62">This share link is protected by the passport owner.</p>
+        {hasError ? <p className="mt-4 rounded-xl border border-coral-500/20 bg-coral-50 p-3 text-sm font-bold text-coral-700">Access code did not match.</p> : null}
+        <form action={unlockPassportShareAction} className="mt-5 grid gap-3">
+          <input type="hidden" name="publicSlug" value={publicSlug} />
+          {token ? <input type="hidden" name="token" value={token} /> : null}
+          <label className="grid gap-2 text-sm font-bold text-ocean-900">
+            Access code
+            <span className="relative">
+              <KeyRound className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ocean-900/38" size={17} aria-hidden="true" />
+              <input
+                name="accessCode"
+                type="password"
+                autoComplete="off"
+                className="min-h-11 w-full rounded-xl border border-ocean-900/12 bg-white py-2 pl-10 pr-3 text-sm outline-none focus:border-coral-500"
+              />
+            </span>
+          </label>
+          <Button type="submit" className="w-full">
+            Unlock passport
+          </Button>
+        </form>
       </section>
     </main>
   );

@@ -16,6 +16,13 @@ import {
   safeRedirectPath,
   verifyPassword
 } from "@/lib/auth";
+import {
+  normalizePassportEvidenceConsent,
+  normalizePassportVisibility,
+  passportShareCategories,
+  passportShareExpiresAtFromDateInput,
+  type PassportCategoryVisibility
+} from "@/lib/passport-sharing";
 
 function loginErrorPath(nextPath: string) {
   return `/login?error=invalid&next=${encodeURIComponent(nextPath)}`;
@@ -33,6 +40,36 @@ function toSlug(value: string) {
     .slice(0, 72);
 
   return slug || "ocean-hero";
+}
+
+function newPassportShareToken() {
+  return randomBytes(32).toString("hex");
+}
+
+function passportCategoryVisibilityFromForm(formData: FormData): PassportCategoryVisibility {
+  return passportShareCategories.reduce((visibility, category) => {
+    visibility[category.key] = formData.get(`categoryVisibility:${category.key}`) === "on";
+
+    return visibility;
+  }, {} as PassportCategoryVisibility);
+}
+
+function shareAccessHashFromForm(formData: FormData, existingHash: string | null) {
+  if (formData.get("clearShareAccessCode") === "on") {
+    return null;
+  }
+
+  const accessCode = String(formData.get("shareAccessCode") ?? "").trim();
+
+  if (!accessCode) {
+    return existingHash;
+  }
+
+  if (accessCode.length < 4 || accessCode.length > 80) {
+    redirect("/dashboard/passport?error=access_code");
+  }
+
+  return createPasswordHash(accessCode);
 }
 
 export async function loginAction(formData: FormData) {
@@ -161,8 +198,7 @@ export async function updateAccountAction(formData: FormData) {
   const displayName = String(formData.get("displayName") ?? "").trim();
   const location = String(formData.get("location") ?? "").trim();
   const bio = String(formData.get("bio") ?? "").trim();
-  const requestedVisibility = String(formData.get("passportVisibility") ?? "private");
-  const passportVisibility = ["private", "link", "public"].includes(requestedVisibility) ? requestedVisibility : "private";
+  const passportVisibility = normalizePassportVisibility(formData.get("passportVisibility"));
   const isPublic = passportVisibility !== "private";
   const now = new Date();
 
@@ -171,6 +207,14 @@ export async function updateAccountAction(formData: FormData) {
   }
 
   await db.update(users).set({ name, updatedAt: now }).where(eq(users.id, user.id));
+
+  const [passport] = await db
+    .select({
+      shareToken: impactPassports.shareToken
+    })
+    .from(impactPassports)
+    .where(eq(impactPassports.userId, user.id))
+    .limit(1);
 
   await db
     .insert(profiles)
@@ -197,6 +241,8 @@ export async function updateAccountAction(formData: FormData) {
     .update(impactPassports)
     .set({
       visibility: passportVisibility,
+      shareToken: passportVisibility === "link" ? passport?.shareToken ?? newPassportShareToken() : passport?.shareToken ?? null,
+      ...(passportVisibility === "link" ? { shareUpdatedAt: now } : {}),
       updatedAt: now
     })
     .where(eq(impactPassports.userId, user.id));
@@ -206,10 +252,30 @@ export async function updateAccountAction(formData: FormData) {
 
 export async function updatePassportVisibilityAction(formData: FormData) {
   const user = await requireUser("/dashboard/passport");
-  const requestedVisibility = String(formData.get("passportVisibility") ?? "private");
-  const passportVisibility = ["private", "link", "public"].includes(requestedVisibility) ? requestedVisibility : "private";
+  const passportVisibility = normalizePassportVisibility(formData.get("passportVisibility"));
   const isPublic = passportVisibility !== "private";
   const now = new Date();
+
+  const [passport] = await db
+    .select({
+      shareToken: impactPassports.shareToken,
+      shareAccessHash: impactPassports.shareAccessHash
+    })
+    .from(impactPassports)
+    .where(eq(impactPassports.userId, user.id))
+    .limit(1);
+
+  const shouldRotateShareToken = formData.get("rotateShareToken") === "on";
+  const shareToken =
+    passportVisibility === "link"
+      ? shouldRotateShareToken || !passport?.shareToken
+        ? newPassportShareToken()
+        : passport.shareToken
+      : passport?.shareToken ?? null;
+  const shareAccessHash = shareAccessHashFromForm(formData, passport?.shareAccessHash ?? null);
+  const shareExpiresAt = passportVisibility === "link" ? passportShareExpiresAtFromDateInput(formData.get("shareExpiresAt"), now) : null;
+  const categoryVisibility = passportCategoryVisibilityFromForm(formData);
+  const evidenceConsent = normalizePassportEvidenceConsent(formData.get("evidenceConsent"));
 
   await db.update(profiles).set({ isPublic, updatedAt: now }).where(eq(profiles.userId, user.id));
 
@@ -217,6 +283,12 @@ export async function updatePassportVisibilityAction(formData: FormData) {
     .update(impactPassports)
     .set({
       visibility: passportVisibility,
+      shareToken,
+      shareExpiresAt,
+      shareAccessHash,
+      categoryVisibility,
+      evidenceConsent,
+      shareUpdatedAt: now,
       updatedAt: now
     })
     .where(eq(impactPassports.userId, user.id));

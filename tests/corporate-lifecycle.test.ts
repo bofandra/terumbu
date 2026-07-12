@@ -19,7 +19,9 @@ test("corporate program statuses are normalized defensively", () => {
 test("only verified evidence is automatically reportable for corporate programs", () => {
   assert.equal(shouldLinkEvidenceToCorporateProgram("verified"), true);
   assert.equal(shouldLinkEvidenceToCorporateProgram("submitted"), false);
+  assert.equal(shouldLinkEvidenceToCorporateProgram("needs_clarification"), false);
   assert.equal(corporateEvidenceVisibilityForStatus("verified"), "reportable");
+  assert.equal(corporateEvidenceVisibilityForStatus("needs_clarification"), "internal");
   assert.equal(corporateEvidenceVisibilityForStatus("rejected"), "internal");
 });
 

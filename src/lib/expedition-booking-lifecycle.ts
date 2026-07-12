@@ -1,6 +1,10 @@
 export const expeditionDepartureStatuses = ["open", "waitlist", "full", "private_group", "cancelled"] as const;
+export const expeditionInterestRequestTypes = ["waitlist", "private_departure"] as const;
+export const expeditionInterestRequestStatuses = ["pending", "contacted", "converted", "declined", "cancelled"] as const;
 
 export type ExpeditionDepartureStatus = (typeof expeditionDepartureStatuses)[number];
+export type ExpeditionInterestRequestType = (typeof expeditionInterestRequestTypes)[number];
+export type ExpeditionInterestRequestStatus = (typeof expeditionInterestRequestStatuses)[number];
 
 export type DepartureAvailabilityCode =
   | "bookable"
@@ -15,6 +19,18 @@ export function normalizeExpeditionDepartureStatus(value: unknown, fallback: Exp
   const status = String(value ?? "").trim().toLowerCase();
 
   return expeditionDepartureStatuses.includes(status as ExpeditionDepartureStatus) ? (status as ExpeditionDepartureStatus) : fallback;
+}
+
+export function normalizeExpeditionInterestRequestType(value: unknown, fallback: ExpeditionInterestRequestType = "waitlist"): ExpeditionInterestRequestType {
+  const type = String(value ?? "").trim().toLowerCase();
+
+  return expeditionInterestRequestTypes.includes(type as ExpeditionInterestRequestType) ? (type as ExpeditionInterestRequestType) : fallback;
+}
+
+export function normalizeExpeditionInterestRequestStatus(value: unknown, fallback: ExpeditionInterestRequestStatus = "pending"): ExpeditionInterestRequestStatus {
+  const status = String(value ?? "").trim().toLowerCase();
+
+  return expeditionInterestRequestStatuses.includes(status as ExpeditionInterestRequestStatus) ? (status as ExpeditionInterestRequestStatus) : fallback;
 }
 
 export function expeditionDepartureAvailability(
@@ -101,6 +117,27 @@ export function expeditionDepartureAvailability(
     label: "Confirmed",
     message: "This departure is open for confirmed booking."
   };
+}
+
+export function preferredInterestTypeForDepartureStatus(status: unknown): ExpeditionInterestRequestType {
+  const normalized = normalizeExpeditionDepartureStatus(status);
+
+  return normalized === "private_group" ? "private_departure" : "waitlist";
+}
+
+export function canCancelExpeditionBooking(input: { bookingStatus: unknown; paymentStatus: unknown; startsAt?: Date | null }, now = new Date()) {
+  const bookingStatus = String(input.bookingStatus ?? "");
+  const paymentStatus = String(input.paymentStatus ?? "");
+
+  if (bookingStatus === "cancelled" || bookingStatus === "completed" || paymentStatus === "refunded") {
+    return false;
+  }
+
+  if (input.startsAt && input.startsAt <= now) {
+    return false;
+  }
+
+  return ["paid", "pending", "created", "failed", "expired"].includes(paymentStatus);
 }
 
 export function departureStatusAfterSeatChange(status: unknown, capacity: number, nextSeatsBooked: number): ExpeditionDepartureStatus {

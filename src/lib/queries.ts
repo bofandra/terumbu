@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, inArray, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, lte, or, sql } from "drizzle-orm";
 
 import { db } from "@/db/client";
 import {
@@ -30,8 +30,10 @@ import {
   donationReceipts,
   donationSubscriptions,
   donations,
+  evidenceReviewEvents,
   expeditionBookings,
   expeditionDepartures,
+  expeditionInterestRequests,
   expeditionReviews,
   expeditions,
   impactPassportItems,
@@ -84,18 +86,100 @@ import {
   canUsePaymentMethodForSubscription,
   isPaymentMethodExpired
 } from "@/lib/billing-lifecycle";
+import { buildCoralEvidenceStream, buildMonitoringHistory } from "@/lib/coral-monitoring";
 import { buildCorporateSecurityChecklist, splitAllowedEmailDomains } from "@/lib/corporate-governance";
+import { verifyPassword } from "@/lib/password";
+import {
+  normalizePassportCategoryVisibility,
+  normalizePassportEvidenceConsent,
+  passportItemIsVisible,
+  passportShareAccessProof,
+  passportShareAccessStatus
+} from "@/lib/passport-sharing";
 import { corporateCapabilitiesForPermission } from "@/lib/corporate-permissions";
+import { corporateReportFormatLabel, corporateReportTypeLabel, scheduledReportIsDue } from "@/lib/corporate-report-lifecycle";
+import { evidenceReviewActionLabel, evidenceReviewStage, evidenceStatusLabel } from "@/lib/evidence-review-workflow";
 import {
   buildDefaultExpeditionDetailMetadata,
   expeditionMetadataEditorJson,
   metadataDate,
   normalizeExpeditionDetailMetadata
 } from "@/lib/expedition-metadata";
-import { expeditionDepartureAvailability } from "@/lib/expedition-booking-lifecycle";
+import {
+  canCancelExpeditionBooking,
+  expeditionDepartureAvailability,
+  normalizeExpeditionInterestRequestStatus,
+  normalizeExpeditionInterestRequestType
+} from "@/lib/expedition-booking-lifecycle";
 import { normalizeExpeditionReviewStatus } from "@/lib/expedition-reviews";
 import { partnerCapabilitiesForRoles } from "@/lib/partner-permissions";
 import { formatCompact, formatCurrency } from "@/lib/utils";
+
+type EvidenceReviewEventSummary = {
+  id: string;
+  action: string;
+  label: string;
+  actor: string;
+  assignedToUserId: string | null;
+  fromStatus: string | null;
+  toStatus: string | null;
+  note: string | null;
+  visibility: string;
+  occurredAt: Date;
+};
+
+async function getEvidenceReviewEventsByEvidenceIds(evidenceIds: string[]) {
+  const uniqueIds = Array.from(new Set(evidenceIds.filter(Boolean)));
+  const grouped = new Map<string, EvidenceReviewEventSummary[]>();
+
+  if (uniqueIds.length === 0) {
+    return grouped;
+  }
+
+  const rows = await db
+    .select({
+      id: evidenceReviewEvents.id,
+      evidenceId: evidenceReviewEvents.evidenceId,
+      action: evidenceReviewEvents.action,
+      assignedToUserId: evidenceReviewEvents.assignedToUserId,
+      fromStatus: evidenceReviewEvents.fromStatus,
+      toStatus: evidenceReviewEvents.toStatus,
+      note: evidenceReviewEvents.note,
+      visibility: evidenceReviewEvents.visibility,
+      createdAt: evidenceReviewEvents.createdAt,
+      actorName: users.name,
+      actorEmail: users.email
+    })
+    .from(evidenceReviewEvents)
+    .leftJoin(users, eq(evidenceReviewEvents.actorUserId, users.id))
+    .where(inArray(evidenceReviewEvents.evidenceId, uniqueIds))
+    .orderBy(asc(evidenceReviewEvents.createdAt));
+
+  for (const row of rows) {
+    const events = grouped.get(row.evidenceId) ?? [];
+    events.push({
+      id: row.id,
+      action: row.action,
+      label: evidenceReviewActionLabel(row.action),
+      actor: row.actorName ?? row.actorEmail ?? "Terumbu platform",
+      assignedToUserId: row.assignedToUserId,
+      fromStatus: row.fromStatus,
+      toStatus: row.toStatus,
+      note: row.note,
+      visibility: row.visibility,
+      occurredAt: row.createdAt
+    });
+    grouped.set(row.evidenceId, events);
+  }
+
+  return grouped;
+}
+
+function latestEvidenceReviewNote(events: EvidenceReviewEventSummary[], fallback?: string | null) {
+  const event = [...events].reverse().find((item) => item.note && item.visibility !== "internal");
+
+  return event?.note ?? fallback ?? null;
+}
 
 export async function getImpactStats(): Promise<ImpactStatData[]> {
   const [donationSummary] = await db
@@ -1159,17 +1243,7 @@ function toEvidenceSourceData(evidence: EvidenceSourceRow): EvidenceSourceData {
 }
 
 function monitoringHistoryForEvidence(evidence: EvidenceSourceData[]) {
-  return evidence
-    .filter((item) => ["before", "after", "monitoring", "survey"].includes(item.stage))
-    .slice(0, 6)
-    .map((item) => ({
-      id: item.id,
-      label: item.stageLabel,
-      date: item.surveyDate ?? item.createdAt.toISOString().slice(0, 10),
-      status: item.verificationStatus,
-      summary: item.observation ?? item.title,
-      evidenceHref: item.sourceHref
-    }));
+  return buildMonitoringHistory(evidence);
 }
 
 export async function getImpactMapSites(campaignId?: string): Promise<ImpactSiteData[]> {
@@ -1896,12 +1970,24 @@ export async function getPassportPreviewForUser(userId: string): Promise<Passpor
   });
 }
 
-export async function getPublicPassport(publicSlug: string) {
+type PublicPassportAccessOptions = {
+  token?: string | null;
+  accessProof?: string | null;
+  now?: Date;
+};
+
+export async function getPublicPassport(publicSlug: string, options: PublicPassportAccessOptions = {}) {
+  const providedToken = typeof options.token === "string" ? options.token : null;
   const [passport] = await db
     .select({
       id: impactPassports.id,
       publicSlug: impactPassports.publicSlug,
       visibility: impactPassports.visibility,
+      shareToken: impactPassports.shareToken,
+      shareExpiresAt: impactPassports.shareExpiresAt,
+      shareAccessHash: impactPassports.shareAccessHash,
+      categoryVisibility: impactPassports.categoryVisibility,
+      evidenceConsent: impactPassports.evidenceConsent,
       createdAt: impactPassports.createdAt,
       updatedAt: impactPassports.updatedAt,
       story: impactPassports.story,
@@ -1920,11 +2006,29 @@ export async function getPublicPassport(publicSlug: string) {
     .where(eq(impactPassports.publicSlug, publicSlug))
     .limit(1);
 
-  if (!passport || !["public", "link"].includes(passport.visibility) || !passport.isPublic) {
+  if (!passport) {
     return null;
   }
 
-  const [preview, items] = await Promise.all([
+  const accessProof = Boolean(
+    passport.shareAccessHash && providedToken && options.accessProof === passportShareAccessProof(passport.publicSlug, providedToken, passport.shareAccessHash)
+  );
+  const accessStatus = passportShareAccessStatus({
+    visibility: passport.visibility,
+    isPublic: passport.isPublic,
+    shareToken: passport.shareToken,
+    providedToken,
+    shareExpiresAt: passport.shareExpiresAt,
+    now: options.now,
+    requiresAccessCode: Boolean(passport.shareAccessHash),
+    accessCodeValid: accessProof
+  });
+
+  if (!accessStatus.ok) {
+    return null;
+  }
+
+  const [preview, itemRows] = await Promise.all([
     buildPassportPreview(passport.id, {
       displayName: passport.displayName,
       heroLevel: passport.heroLevel,
@@ -1945,6 +2049,11 @@ export async function getPublicPassport(publicSlug: string) {
       .orderBy(desc(impactPassportItems.occurredAt))
   ]);
 
+  const categoryVisibility = normalizePassportCategoryVisibility(passport.categoryVisibility);
+  const evidenceConsent = normalizePassportEvidenceConsent(passport.evidenceConsent);
+  const items = itemRows
+    .filter((item) => passportItemIsVisible(item.itemType, categoryVisibility))
+    .map((item) => (evidenceConsent === "hide_evidence" ? { ...item, evidenceUrl: null } : item));
   const donationCount = items.filter((item) => item.itemType === "donation").length;
   const fieldCount = items.filter((item) => item.itemType === "expedition").length;
   const certificateCount = items.filter((item) => item.itemType === "certificate").length;
@@ -1986,7 +2095,24 @@ export async function getPublicPassport(publicSlug: string) {
   ].filter((category) => category.value > 0 || category.label !== "Volunteering");
 
   return {
-    ...passport,
+    id: passport.id,
+    publicSlug: passport.publicSlug,
+    visibility: passport.visibility,
+    shareExpiresAt: passport.visibility === "link" ? passport.shareExpiresAt : null,
+    hasAccessCode: Boolean(passport.shareAccessHash),
+    categoryVisibility,
+    evidenceConsent,
+    createdAt: passport.createdAt,
+    updatedAt: passport.updatedAt,
+    story: passport.story,
+    userId: passport.userId,
+    imageUrl: passport.imageUrl,
+    displayName: passport.displayName,
+    location: passport.location,
+    bio: passport.bio,
+    heroLevel: passport.heroLevel,
+    xp: passport.xp,
+    isPublic: passport.isPublic,
     preview,
     items,
     summary: {
@@ -2029,6 +2155,92 @@ export async function getPublicPassport(publicSlug: string) {
           }
         : null
     ].filter(isDefined)
+  };
+}
+
+export async function getPublicPassportAccessHint(publicSlug: string, options: Pick<PublicPassportAccessOptions, "token" | "now"> = {}) {
+  const providedToken = typeof options.token === "string" ? options.token : null;
+  const [passport] = await db
+    .select({
+      publicSlug: impactPassports.publicSlug,
+      visibility: impactPassports.visibility,
+      shareToken: impactPassports.shareToken,
+      shareExpiresAt: impactPassports.shareExpiresAt,
+      shareAccessHash: impactPassports.shareAccessHash,
+      isPublic: profiles.isPublic
+    })
+    .from(impactPassports)
+    .innerJoin(profiles, eq(impactPassports.userId, profiles.userId))
+    .where(eq(impactPassports.publicSlug, publicSlug))
+    .limit(1);
+
+  if (!passport?.shareAccessHash) {
+    return null;
+  }
+
+  const accessStatus = passportShareAccessStatus({
+    visibility: passport.visibility,
+    isPublic: passport.isPublic,
+    shareToken: passport.shareToken,
+    providedToken,
+    shareExpiresAt: passport.shareExpiresAt,
+    now: options.now
+  });
+
+  return accessStatus.ok
+    ? {
+        publicSlug: passport.publicSlug,
+        visibility: passport.visibility,
+        shareExpiresAt: passport.shareExpiresAt,
+        requiresAccessCode: true
+      }
+    : null;
+}
+
+export async function getPassportShareUnlock({
+  publicSlug,
+  token,
+  accessCode,
+  now = new Date()
+}: {
+  publicSlug: string;
+  token: string | null;
+  accessCode: string;
+  now?: Date;
+}) {
+  const [passport] = await db
+    .select({
+      visibility: impactPassports.visibility,
+      shareToken: impactPassports.shareToken,
+      shareExpiresAt: impactPassports.shareExpiresAt,
+      shareAccessHash: impactPassports.shareAccessHash,
+      isPublic: profiles.isPublic
+    })
+    .from(impactPassports)
+    .innerJoin(profiles, eq(impactPassports.userId, profiles.userId))
+    .where(eq(impactPassports.publicSlug, publicSlug))
+    .limit(1);
+
+  if (!passport?.shareAccessHash || !token) {
+    return null;
+  }
+
+  const tokenStatus = passportShareAccessStatus({
+    visibility: passport.visibility,
+    isPublic: passport.isPublic,
+    shareToken: passport.shareToken,
+    providedToken: token,
+    shareExpiresAt: passport.shareExpiresAt,
+    now
+  });
+
+  if (!tokenStatus.ok || !verifyPassword(accessCode, passport.shareAccessHash)) {
+    return null;
+  }
+
+  return {
+    accessProof: passportShareAccessProof(publicSlug, token, passport.shareAccessHash),
+    shareExpiresAt: passport.shareExpiresAt
   };
 }
 
@@ -2207,10 +2419,16 @@ export async function getDashboardData(userId: string) {
         heroLevel: profiles.heroLevel,
         xp: profiles.xp,
         isPublic: profiles.isPublic,
-      publicSlug: impactPassports.publicSlug,
-      passportVisibility: impactPassports.visibility,
-      passportCreatedAt: impactPassports.createdAt,
-      passportUpdatedAt: impactPassports.updatedAt
+        publicSlug: impactPassports.publicSlug,
+        passportVisibility: impactPassports.visibility,
+        passportShareToken: impactPassports.shareToken,
+        passportShareExpiresAt: impactPassports.shareExpiresAt,
+        passportHasAccessCode: sql<boolean>`(${impactPassports.shareAccessHash} is not null)`,
+        passportCategoryVisibility: impactPassports.categoryVisibility,
+        passportEvidenceConsent: impactPassports.evidenceConsent,
+        passportShareUpdatedAt: impactPassports.shareUpdatedAt,
+        passportCreatedAt: impactPassports.createdAt,
+        passportUpdatedAt: impactPassports.updatedAt
       })
       .from(users)
       .leftJoin(profiles, eq(profiles.userId, users.id))
@@ -2259,6 +2477,7 @@ export async function getDashboardData(userId: string) {
         campaignTitle: campaigns.title,
         campaignImageUrl: campaigns.imageUrl,
         campaignRegion: campaigns.region,
+        impactSiteId: sponsoredEcosystems.impactSiteId,
         siteName: impactSites.name,
         siteType: impactSites.ecosystemType,
         siteRegion: impactSites.region,
@@ -2744,7 +2963,11 @@ export async function getDashboardData(userId: string) {
   const coralCards = ecosystemRows.map((ecosystem) => {
     const quantity = ecosystemQuantity(ecosystem.metadata);
     const survivalRate = getMetadataNumber(ecosystem.metadata, "survivalRate");
-    const latestSurvey = getMetadataString(ecosystem.siteMetadata, "latestSurvey") ?? getMetadataString(ecosystem.metadata, "latestSurvey");
+    const evidenceStream = buildCoralEvidenceStream(ecosystem.impactSiteId ? evidenceByImpactSite.get(ecosystem.impactSiteId) ?? [] : []);
+    const latestSurvey =
+      evidenceStream.latestSurvey ??
+      getMetadataString(ecosystem.siteMetadata, "latestSurvey") ??
+      getMetadataString(ecosystem.metadata, "latestSurvey");
 
     return {
       code: ecosystem.code,
@@ -2763,7 +2986,10 @@ export async function getDashboardData(userId: string) {
       fragments: getMetadataNumber(ecosystem.metadata, "fragments"),
       seedlings: getMetadataNumber(ecosystem.metadata, "seedlings"),
       survivalRate,
-      latestSurvey
+      latestSurvey,
+      evidenceCount: evidenceStream.evidence.length,
+      verifiedEvidenceCount: evidenceStream.verifiedEvidenceCount,
+      pendingEvidenceCount: evidenceStream.pendingEvidenceCount
     };
   });
 
@@ -3308,6 +3534,9 @@ export async function getBillingData(userId: string) {
 export async function getSponsoredEcosystemDetail(userId: string, code: string) {
   const [ecosystem] = await db
     .select({
+      id: sponsoredEcosystems.id,
+      campaignId: sponsoredEcosystems.campaignId,
+      impactSiteId: sponsoredEcosystems.impactSiteId,
       code: sponsoredEcosystems.code,
       label: sponsoredEcosystems.label,
       status: sponsoredEcosystems.status,
@@ -3316,9 +3545,11 @@ export async function getSponsoredEcosystemDetail(userId: string, code: string) 
       metadata: sponsoredEcosystems.metadata,
       campaignTitle: campaigns.title,
       campaignSlug: campaigns.slug,
+      campaignImageUrl: campaigns.imageUrl,
       siteName: impactSites.name,
       siteType: impactSites.ecosystemType,
       siteRegion: impactSites.region,
+      siteMetadata: impactSites.metadata,
       latitude: impactSites.latitude,
       longitude: impactSites.longitude
     })
@@ -3332,14 +3563,75 @@ export async function getSponsoredEcosystemDetail(userId: string, code: string) 
     return null;
   }
 
+  const allEvidenceRows = await db
+    .select({
+      id: projectEvidence.id,
+      impactSiteId: projectEvidence.impactSiteId,
+      evidenceCode: projectEvidence.evidenceCode,
+      title: projectEvidence.title,
+      evidenceType: projectEvidence.evidenceType,
+      fileUrl: projectEvidence.fileUrl,
+      verificationStatus: projectEvidence.verificationStatus,
+      verifiedAt: projectEvidence.verifiedAt,
+      metadata: projectEvidence.metadata,
+      createdAt: projectEvidence.createdAt,
+      campaignSlug: campaigns.slug
+    })
+    .from(projectEvidence)
+    .innerJoin(campaigns, eq(projectEvidence.campaignId, campaigns.id))
+    .where(eq(projectEvidence.campaignId, ecosystem.campaignId))
+    .orderBy(desc(projectEvidence.verifiedAt), desc(projectEvidence.createdAt))
+    .limit(12);
+
+  const siteEvidenceRows = ecosystem.impactSiteId ? allEvidenceRows.filter((evidence) => evidence.impactSiteId === ecosystem.impactSiteId) : [];
+  const evidence = (siteEvidenceRows.length > 0 ? siteEvidenceRows : allEvidenceRows).map(toEvidenceSourceData);
+  const evidenceStream = buildCoralEvidenceStream(evidence);
+  const fallbackLatestSurvey = getMetadataString(ecosystem.siteMetadata, "latestSurvey") ?? getMetadataString(ecosystem.metadata, "latestSurvey");
+  const latitude = ecosystem.latitude ? toNumber(ecosystem.latitude) : null;
+  const longitude = ecosystem.longitude ? toNumber(ecosystem.longitude) : null;
+
   return {
     ...ecosystem,
     fragments: getMetadataNumber(ecosystem.metadata, "fragments"),
     seedlings: getMetadataNumber(ecosystem.metadata, "seedlings"),
+    quantity: ecosystemQuantity(ecosystem.metadata),
+    unit: ecosystemUnit(ecosystem.metadata),
     progress: getMetadataNumber(ecosystem.metadata, "progress"),
-    latestSurvey: getMetadataString(ecosystem.metadata, "latestSurvey"),
-    latitude: ecosystem.latitude ? toNumber(ecosystem.latitude) : null,
-    longitude: ecosystem.longitude ? toNumber(ecosystem.longitude) : null
+    survivalRate: getMetadataNumber(ecosystem.metadata, "survivalRate"),
+    latestSurvey: evidenceStream.latestSurvey ?? fallbackLatestSurvey,
+    latitude,
+    longitude,
+    evidenceCount: evidenceStream.evidence.length,
+    verifiedEvidenceCount: evidenceStream.verifiedEvidenceCount,
+    pendingEvidenceCount: evidenceStream.pendingEvidenceCount,
+    latestEvidence: evidenceStream.latestEvidence,
+    beforeAfter: evidenceStream.beforeAfter,
+    monitoringHistory: evidenceStream.monitoringHistory,
+    evidence: evidenceStream.evidence,
+    mediaGallery: evidenceStream.mediaGallery,
+    mapSite:
+      latitude !== null && longitude !== null && ecosystem.siteName
+        ? {
+            id: ecosystem.impactSiteId ?? ecosystem.id,
+            name: ecosystem.siteName,
+            type: ecosystem.siteType ?? "Ecosystem",
+            region: ecosystem.siteRegion ?? "Region pending",
+            campaignSlug: ecosystem.campaignSlug,
+            campaignTitle: ecosystem.campaignTitle,
+            progress: getMetadataNumber(ecosystem.siteMetadata, "progress") || getMetadataNumber(ecosystem.metadata, "progress"),
+            latitude,
+            longitude,
+            verification: evidenceStream.verifiedEvidenceCount > 0 ? "Verified evidence linked" : "Linked site",
+            evidenceCount: evidenceStream.evidence.length,
+            verifiedEvidenceCount: evidenceStream.verifiedEvidenceCount,
+            pendingEvidenceCount: evidenceStream.pendingEvidenceCount,
+            latestSurvey: evidenceStream.latestSurvey ?? fallbackLatestSurvey,
+            latestEvidence: evidenceStream.latestEvidence,
+            beforeAfter: evidenceStream.beforeAfter,
+            monitoringHistory: evidenceStream.monitoringHistory,
+            evidence: evidenceStream.evidence
+          }
+        : null
   };
 }
 
@@ -3484,6 +3776,12 @@ export async function getCorporateDashboardData(userId: string) {
         verificationStatus: projectEvidence.verificationStatus,
         fileUrl: projectEvidence.fileUrl,
         metadata: projectEvidence.metadata,
+        assignedReviewerUserId: projectEvidence.assignedReviewerUserId,
+        clarificationNote: projectEvidence.clarificationNote,
+        clarificationRequestedAt: projectEvidence.clarificationRequestedAt,
+        clarificationResolvedAt: projectEvidence.clarificationResolvedAt,
+        rejectionReason: projectEvidence.rejectionReason,
+        reviewedAt: projectEvidence.reviewedAt,
         campaignId: campaigns.id,
         campaignSlug: campaigns.slug,
         campaignTitle: campaigns.title,
@@ -3506,13 +3804,18 @@ export async function getCorporateDashboardData(userId: string) {
         id: corporateReportExports.id,
         exportCode: corporateReportExports.exportCode,
         reportType: corporateReportExports.reportType,
+        exportFormat: corporateReportExports.exportFormat,
+        artifactVersion: corporateReportExports.artifactVersion,
         status: corporateReportExports.status,
         fileUrl: corporateReportExports.fileUrl,
         previewUrl: corporateReportExports.previewUrl,
         evidenceBundleUrl: corporateReportExports.evidenceBundleUrl,
         publicSlug: corporateReportExports.publicSlug,
+        scheduledFor: corporateReportExports.scheduledFor,
+        generatedAt: corporateReportExports.generatedAt,
         approvedAt: corporateReportExports.approvedAt,
         publishedAt: corporateReportExports.publishedAt,
+        artifactManifest: corporateReportExports.artifactManifest,
         metadata: corporateReportExports.metadata,
         createdAt: corporateReportExports.createdAt
       })
@@ -3646,6 +3949,7 @@ export async function getCorporateDashboardData(userId: string) {
   const periodTotal = Math.max(1, program.endsAt.getTime() - program.startsAt.getTime());
   const periodProgress = Math.min(100, Math.max(0, Math.round(((now.getTime() - program.startsAt.getTime()) / periodTotal) * 100)));
   const nextReportingDeadline = new Date(now.getFullYear(), now.getMonth() + 1, 15);
+  const evidenceReviewEventsById = await getEvidenceReviewEventsByEvidenceIds(evidence.map((item) => item.id));
   const corporateEvidence = evidence.map((item) => {
     const stage = evidenceStage(item.metadata, item.evidenceType);
     const survivalRate = getMetadataNumberOrString(item.metadata, "survivalRate");
@@ -3657,10 +3961,15 @@ export async function getCorporateDashboardData(userId: string) {
       (survivalRate ? "Survival rate" : sortedWaste ? "Waste sorted" : seedlingsReady ? "Seedlings ready" : null);
     const derivedMetricValue = survivalRate ? `${survivalRate}%` : sortedWaste ? `${sortedWaste} kg` : seedlingsReady;
     const metricValue = explicitMetricValue ?? derivedMetricValue;
+    const reviewEvents = evidenceReviewEventsById.get(item.id) ?? [];
 
     return {
       ...item,
       stageLabel: evidenceStageLabel(stage),
+      reviewStage: evidenceReviewStage(item.verificationStatus),
+      statusLabel: evidenceStatusLabel(item.verificationStatus),
+      latestReviewNote: latestEvidenceReviewNote(reviewEvents, item.clarificationNote ?? item.rejectionReason),
+      reviewEvents,
       observation: getMetadataString(item.metadata, "observation") ?? getMetadataString(item.metadata, "summary"),
       metricLabel,
       metricValue,
@@ -3799,13 +4108,25 @@ export async function getCorporateDashboardData(userId: string) {
   const atRiskProjects = projectHealth.find((item) => item.label === "At Risk")?.count ?? 0;
   const needsAttentionProjects = projectHealth.find((item) => item.label === "Needs Attention")?.count ?? 0;
   const verifiedOutputs = corporateEvidence.filter((item) => item.verificationStatus === "verified").length;
-  const reportExports = exports.map((item) => ({
-    ...item,
-    reportTypeLabel: item.reportType === "csr" ? "CSR Impact Report" : item.reportType === "evidence" ? "Evidence Bundle" : "ESG Report",
-    verifiedMetrics: Math.max(verifiedOutputs, portfolioRows.length * 3),
-    pendingMetrics: Math.max(0, corporateEvidence.length - verifiedOutputs),
-    publicHref: item.publicSlug ? `/corporate-impact/${item.publicSlug}` : null
-  }));
+  const reportExports = exports.map((item) => {
+    const manifest = item.artifactManifest && typeof item.artifactManifest === "object" && !Array.isArray(item.artifactManifest) ? (item.artifactManifest as Record<string, unknown>) : {};
+    const readiness = typeof manifest.readiness === "string" ? manifest.readiness : item.status === "scheduled" ? "scheduled" : item.fileUrl ? "ready" : "incomplete";
+    const manifestUrl = typeof manifest.manifestUrl === "string" ? manifest.manifestUrl : null;
+
+    return {
+      ...item,
+      reportTypeLabel: corporateReportTypeLabel(item.reportType),
+      exportFormatLabel: corporateReportFormatLabel(item.exportFormat),
+      artifactVersionLabel: `v${item.artifactVersion}`,
+      artifactReadiness: readiness,
+      manifestUrl,
+      isScheduledDue: item.status === "scheduled" && scheduledReportIsDue(item.scheduledFor, now),
+      generatedAt: item.generatedAt ?? (item.status === "scheduled" ? null : item.createdAt),
+      verifiedMetrics: Math.max(verifiedOutputs, portfolioRows.length * 3),
+      pendingMetrics: Math.max(0, corporateEvidence.length - verifiedOutputs),
+      publicHref: item.publicSlug ? `/corporate-impact/${item.publicSlug}` : null
+    };
+  });
   const latestPublishedReport = reportExports.find((item) => item.status === "published" && item.publicHref);
   const latestReport = reportExports[0] ?? {
     exportCode: "Q2-2026-ESG-DRAFT",
@@ -3816,8 +4137,17 @@ export async function getCorporateDashboardData(userId: string) {
     publicSlug: null,
     publicHref: null,
     createdAt: now,
+    scheduledFor: null,
+    generatedAt: null,
     reportType: "Q2 2026 ESG Report",
     reportTypeLabel: "Q2 2026 ESG Report",
+    exportFormat: "html_json",
+    exportFormatLabel: "HTML + JSON",
+    artifactVersion: 1,
+    artifactVersionLabel: "v1",
+    artifactReadiness: "draft",
+    manifestUrl: null,
+    isScheduledDue: false,
     verifiedMetrics: Math.max(verifiedOutputs, portfolioRows.length * 3),
     pendingMetrics: Math.max(0, corporateEvidence.length - verifiedOutputs)
   };
@@ -3985,27 +4315,45 @@ export async function getCorporateDashboardData(userId: string) {
         action: project.nextActions[0] ?? "Review milestone"
       }))
   ].slice(0, 6);
-  const evidenceReviewQueue = corporateEvidence.map((item, index) => {
+  const evidenceReviewQueue = corporateEvidence.map((item) => {
     const verified = item.verificationStatus === "verified";
-    const needsClarification = item.verificationStatus.includes("clarification") || item.verificationStatus.includes("rejected");
-    const reviewStage = verified ? "Approved" : needsClarification ? "Needs clarification" : index % 3 === 0 ? "Submitted" : "In review";
+    const needsClarification = item.verificationStatus === "needs_clarification" || item.verificationStatus === "rejected";
+    const reviewStage = item.reviewStage;
+    const latestEvent = item.reviewEvents.at(-1);
 
     return {
       ...item,
       reviewStage,
-      reviewer: verified ? "Terumbu verifier" : needsClarification ? item.organizationName : "Corporate evidence reviewer",
-      nextAction: verified ? "Add to next report" : needsClarification ? "Request partner clarification" : "Complete verification checklist",
+      reviewer: latestEvent?.actor ?? (verified ? "Terumbu verifier" : needsClarification ? item.organizationName : "Corporate evidence reviewer"),
+      nextAction:
+        verified
+          ? "Add to next report"
+          : item.verificationStatus === "needs_clarification"
+            ? "Await partner clarification"
+            : item.verificationStatus === "rejected"
+              ? "Review rejected evidence"
+              : item.assignedReviewerUserId
+                ? "Complete verification checklist"
+                : "Assign evidence reviewer",
       internalNote:
         verified
           ? "Evidence can be used in approved corporate reporting."
           : needsClarification
-            ? "Reviewer should capture the missing source detail before approval."
+            ? item.latestReviewNote ?? "Reviewer should capture the missing source detail before approval."
             : "Evidence is eligible for reviewer assignment this period.",
-      auditTrail: [
-        { label: "Submitted by partner", actor: item.organizationName, occurredAt: item.addedAt },
-        { label: "Added to corporate evidence center", actor: "Terumbu platform", occurredAt: item.addedAt },
-        verified && item.verifiedAt ? { label: "Verified", actor: "Terumbu verifier", occurredAt: item.verifiedAt } : null
-      ].filter(isDefined)
+      auditTrail:
+        item.reviewEvents.length > 0
+          ? item.reviewEvents.map((event) => ({
+              label: event.label,
+              actor: event.actor,
+              occurredAt: event.occurredAt,
+              note: event.note
+            }))
+          : [
+              { label: "Submitted by partner", actor: item.organizationName, occurredAt: item.addedAt, note: null },
+              { label: "Added to corporate evidence center", actor: "Terumbu platform", occurredAt: item.addedAt, note: null },
+              verified && item.verifiedAt ? { label: "Verified", actor: "Terumbu verifier", occurredAt: item.verifiedAt, note: null } : null
+            ].filter(isDefined)
     };
   });
   const riskAlerts = [
@@ -4690,6 +5038,7 @@ export async function getAdminCorporateData() {
 
 
 export async function getAdminPortalData() {
+  const now = new Date();
   const [
     campaignRows,
     organizationRows,
@@ -4699,6 +5048,7 @@ export async function getAdminPortalData() {
     campaignExpeditionCountRows,
     evidenceRows,
     donationRows,
+    subscriptionDueRows,
     operationRows,
     bookingOperationRows
   ] = await Promise.all([
@@ -4774,6 +5124,10 @@ export async function getAdminPortalData() {
         fileUrl: projectEvidence.fileUrl,
         evidenceType: projectEvidence.evidenceType,
         rejectionReason: projectEvidence.rejectionReason,
+        assignedReviewerUserId: projectEvidence.assignedReviewerUserId,
+        clarificationNote: projectEvidence.clarificationNote,
+        clarificationRequestedAt: projectEvidence.clarificationRequestedAt,
+        clarificationResolvedAt: projectEvidence.clarificationResolvedAt,
         reviewedAt: projectEvidence.reviewedAt,
         campaignTitle: campaigns.title,
         createdAt: projectEvidence.createdAt
@@ -4794,6 +5148,26 @@ export async function getAdminPortalData() {
       .innerJoin(campaigns, eq(donations.campaignId, campaigns.id))
       .leftJoin(paymentTransactions, eq(paymentTransactions.donationId, donations.id))
       .orderBy(desc(donations.createdAt)),
+    db
+      .select({
+        id: donationSubscriptions.id,
+        donorName: donationSubscriptions.donorName,
+        donorEmail: donationSubscriptions.donorEmail,
+        amount: donationSubscriptions.amount,
+        currency: donationSubscriptions.currency,
+        status: donationSubscriptions.status,
+        nextBillingAt: donationSubscriptions.nextBillingAt,
+        campaignTitle: campaigns.title,
+        paymentMethodLabel: userPaymentMethods.label,
+        paymentMethodLast4: userPaymentMethods.last4,
+        paymentMethodStatus: userPaymentMethods.status
+      })
+      .from(donationSubscriptions)
+      .innerJoin(campaigns, eq(donationSubscriptions.campaignId, campaigns.id))
+      .leftJoin(userPaymentMethods, eq(donationSubscriptions.paymentMethodId, userPaymentMethods.id))
+      .where(and(inArray(donationSubscriptions.status, [...activeSubscriptionStatuses]), lte(donationSubscriptions.nextBillingAt, now)))
+      .orderBy(asc(donationSubscriptions.nextBillingAt))
+      .limit(25),
     db
       .select({
         id: paymentOperations.id,
@@ -4833,6 +5207,7 @@ export async function getAdminPortalData() {
       .where(and(eq(paymentOperations.status, "pending"), eq(paymentOperations.entityType, "expedition_booking")))
       .orderBy(desc(paymentOperations.createdAt))
   ]);
+  const evidenceReviewEventsById = await getEvidenceReviewEventsByEvidenceIds(evidenceRows.map((item) => item.id));
   const pendingOperationsByDonationId = new Map(
     operationRows
       .filter((operation) => operation.donationId)
@@ -4858,11 +5233,22 @@ export async function getAdminPortalData() {
       corporatePortfolioCount: portfolioCounts.get(campaign.id) ?? 0,
       relatedExpeditionCount: expeditionCounts.get(campaign.id) ?? 0
     })),
-    evidence: evidenceRows,
+    evidence: evidenceRows.map((item) => {
+      const reviewEvents = evidenceReviewEventsById.get(item.id) ?? [];
+
+      return {
+        ...item,
+        reviewStage: evidenceReviewStage(item.verificationStatus),
+        statusLabel: evidenceStatusLabel(item.verificationStatus),
+        latestReviewNote: latestEvidenceReviewNote(reviewEvents, item.clarificationNote ?? item.rejectionReason),
+        reviewEvents
+      };
+    }),
     donations: donationRows.map((donation) => ({
       ...donation,
       pendingOperation: pendingOperationsByDonationId.get(donation.id) ?? null
     })),
+    dueSubscriptions: subscriptionDueRows,
     bookingPaymentOperations: bookingOperationRows,
     paymentOperations: operationRows
   };
@@ -4876,6 +5262,8 @@ export async function getAdminOperationsData() {
     campaignOptionRows,
     expeditionRows,
     expeditionBookingCountRows,
+    expeditionBookingRows,
+    expeditionInterestRequestRows,
     expeditionReviewRows,
     impactSiteRows,
     reportRows,
@@ -4964,6 +5352,47 @@ export async function getAdminOperationsData() {
       })
       .from(expeditionBookings)
       .groupBy(expeditionBookings.expeditionId, expeditionBookings.departureId),
+    db
+      .select({
+        id: expeditionBookings.id,
+        expeditionId: expeditionBookings.expeditionId,
+        departureId: expeditionBookings.departureId,
+        bookingCode: expeditionBookings.bookingCode,
+        contactName: expeditionBookings.contactName,
+        contactEmail: expeditionBookings.contactEmail,
+        participantsCount: expeditionBookings.participantsCount,
+        status: expeditionBookings.status,
+        paymentStatus: expeditionBookings.paymentStatus,
+        totalAmount: expeditionBookings.totalAmount,
+        currency: expeditionBookings.currency,
+        bookedAt: expeditionBookings.bookedAt,
+        startsAt: expeditionDepartures.startsAt
+      })
+      .from(expeditionBookings)
+      .innerJoin(expeditionDepartures, eq(expeditionBookings.departureId, expeditionDepartures.id))
+      .orderBy(desc(expeditionBookings.bookedAt))
+      .limit(500),
+    db
+      .select({
+        id: expeditionInterestRequests.id,
+        expeditionId: expeditionInterestRequests.expeditionId,
+        departureId: expeditionInterestRequests.departureId,
+        requestCode: expeditionInterestRequests.requestCode,
+        requestType: expeditionInterestRequests.requestType,
+        status: expeditionInterestRequests.status,
+        contactName: expeditionInterestRequests.contactName,
+        contactEmail: expeditionInterestRequests.contactEmail,
+        participantsCount: expeditionInterestRequests.participantsCount,
+        preferredStartAt: expeditionInterestRequests.preferredStartAt,
+        message: expeditionInterestRequests.message,
+        createdAt: expeditionInterestRequests.createdAt,
+        processedAt: expeditionInterestRequests.processedAt,
+        processedByEmail: users.email
+      })
+      .from(expeditionInterestRequests)
+      .leftJoin(users, eq(expeditionInterestRequests.processedByUserId, users.id))
+      .orderBy(desc(expeditionInterestRequests.createdAt))
+      .limit(500),
     db
       .select({
         id: expeditionReviews.id,
@@ -5087,6 +5516,36 @@ export async function getAdminOperationsData() {
         availabilityMessage: string;
         weatherAdvisory: string | null;
       }[];
+      bookings: {
+        id: string;
+        departureId: string;
+        bookingCode: string;
+        contactName: string;
+        contactEmail: string;
+        participantsCount: number;
+        status: string;
+        paymentStatus: string;
+        totalAmount: number;
+        currency: string;
+        bookedAt: Date;
+        startsAt: Date;
+        canCancel: boolean;
+      }[];
+      interestRequests: {
+        id: string;
+        departureId: string | null;
+        requestCode: string;
+        requestType: ReturnType<typeof normalizeExpeditionInterestRequestType>;
+        status: ReturnType<typeof normalizeExpeditionInterestRequestStatus>;
+        contactName: string;
+        contactEmail: string;
+        participantsCount: number;
+        preferredStartAt: Date | null;
+        message: string | null;
+        createdAt: Date;
+        processedAt: Date | null;
+        processedByEmail: string | null;
+      }[];
       reviews: {
         id: string;
         bookingId: string;
@@ -5124,6 +5583,8 @@ export async function getAdminOperationsData() {
         relatedCampaignTitle: row.relatedCampaignTitle,
         bookingCount: expeditionBookingCounts.get(row.id) ?? 0,
         departures: [],
+        bookings: [],
+        interestRequests: [],
         reviews: []
       };
       expeditionCatalogById.set(row.id, expedition);
@@ -5156,6 +5617,56 @@ export async function getAdminOperationsData() {
         weatherAdvisory: getMetadataString(row.departureMetadata, "weatherAdvisory")
       });
     }
+  }
+
+  const now = new Date();
+
+  for (const row of expeditionBookingRows) {
+    const expedition = expeditionCatalogById.get(row.expeditionId);
+
+    if (!expedition) {
+      continue;
+    }
+
+    expedition.bookings.push({
+      id: row.id,
+      departureId: row.departureId,
+      bookingCode: row.bookingCode,
+      contactName: row.contactName,
+      contactEmail: row.contactEmail,
+      participantsCount: row.participantsCount,
+      status: row.status,
+      paymentStatus: row.paymentStatus,
+      totalAmount: toNumber(row.totalAmount),
+      currency: row.currency,
+      bookedAt: row.bookedAt,
+      startsAt: row.startsAt,
+      canCancel: canCancelExpeditionBooking({ bookingStatus: row.status, paymentStatus: row.paymentStatus, startsAt: row.startsAt }, now)
+    });
+  }
+
+  for (const row of expeditionInterestRequestRows) {
+    const expedition = expeditionCatalogById.get(row.expeditionId);
+
+    if (!expedition) {
+      continue;
+    }
+
+    expedition.interestRequests.push({
+      id: row.id,
+      departureId: row.departureId,
+      requestCode: row.requestCode,
+      requestType: normalizeExpeditionInterestRequestType(row.requestType),
+      status: normalizeExpeditionInterestRequestStatus(row.status),
+      contactName: row.contactName,
+      contactEmail: row.contactEmail,
+      participantsCount: row.participantsCount,
+      preferredStartAt: row.preferredStartAt,
+      message: row.message,
+      createdAt: row.createdAt,
+      processedAt: row.processedAt,
+      processedByEmail: row.processedByEmail
+    });
   }
 
   for (const row of expeditionReviewRows) {
@@ -5663,6 +6174,10 @@ export async function getPartnerPortalData(userId?: string) {
         campaignTitle: campaigns.title,
         fileUrl: projectEvidence.fileUrl,
         rejectionReason: projectEvidence.rejectionReason,
+        assignedReviewerUserId: projectEvidence.assignedReviewerUserId,
+        clarificationNote: projectEvidence.clarificationNote,
+        clarificationRequestedAt: projectEvidence.clarificationRequestedAt,
+        clarificationResolvedAt: projectEvidence.clarificationResolvedAt,
         reviewedAt: projectEvidence.reviewedAt,
         createdAt: projectEvidence.createdAt
       })
@@ -5921,6 +6436,8 @@ export async function getPartnerPortalData(userId?: string) {
     expedition.detailMetadata = metadata;
   }
 
+  const evidenceReviewEventsById = await getEvidenceReviewEventsByEvidenceIds(evidenceRows.map((item) => item.id));
+
   return {
     capabilities,
     organizations: organizationRows.map((organization) => ({
@@ -5932,7 +6449,17 @@ export async function getPartnerPortalData(userId?: string) {
       verificationLabel: verificationLabel(campaign.verification)
     })),
     expeditions: Array.from(expeditionsById.values()),
-    evidence: evidenceRows,
+    evidence: evidenceRows.map((item) => {
+      const reviewEvents = (evidenceReviewEventsById.get(item.id) ?? []).filter((event) => event.visibility !== "internal");
+
+      return {
+        ...item,
+        reviewStage: evidenceReviewStage(item.verificationStatus),
+        statusLabel: evidenceStatusLabel(item.verificationStatus),
+        latestReviewNote: latestEvidenceReviewNote(reviewEvents, item.clarificationNote ?? item.rejectionReason),
+        reviewEvents
+      };
+    }),
     updates: updateRows,
     activities: activityRows,
     impactSites: siteRows.map((site) => ({

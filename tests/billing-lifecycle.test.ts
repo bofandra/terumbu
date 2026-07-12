@@ -6,11 +6,19 @@ import {
   canCancelSubscription,
   canUsePaymentMethodForSubscription,
   isPaymentMethodExpired,
+  isSubscriptionDue,
+  monthlySubscriptionCycleKey,
+  nextFailedSubscriptionRetryDate,
   normalizePaymentMethodStatus,
   normalizeSubscriptionStatus,
   parseExpiryMonth,
   parseExpiryYear
 } from "../src/lib/billing-lifecycle";
+import {
+  demoGatewayChargeSubscription,
+  demoGatewaySettleRefund,
+  paymentStatusFromProviderStatus
+} from "../src/lib/payment-provider";
 
 const now = new Date("2026-07-11T00:00:00.000Z");
 
@@ -45,4 +53,44 @@ test("only active subscription states are dashboard-cancellable", () => {
   assert.equal(canCancelSubscription("past_due"), true);
   assert.equal(canCancelSubscription("cancelled"), false);
   assert.equal(canCancelSubscription("incomplete"), false);
+});
+
+test("subscription scheduler helpers identify due cycles and retry dates", () => {
+  assert.equal(isSubscriptionDue({ status: "active", nextBillingAt: new Date("2026-07-10T00:00:00.000Z") }, now), true);
+  assert.equal(isSubscriptionDue({ status: "past_due", nextBillingAt: new Date("2026-07-11T00:00:00.000Z") }, now), true);
+  assert.equal(isSubscriptionDue({ status: "cancelled", nextBillingAt: new Date("2026-07-10T00:00:00.000Z") }, now), false);
+  assert.equal(isSubscriptionDue({ status: "active", nextBillingAt: new Date("2026-07-12T00:00:00.000Z") }, now), false);
+  assert.equal(monthlySubscriptionCycleKey("sub_123", new Date("2026-07-05T00:00:00.000Z")), "monthly:sub_123:2026-07");
+  assert.equal(nextFailedSubscriptionRetryDate(now).toISOString(), "2026-07-14T00:00:00.000Z");
+});
+
+test("demo payment provider maps charge and refund outcomes into managed statuses", () => {
+  assert.equal(paymentStatusFromProviderStatus("succeeded"), "paid");
+  assert.equal(paymentStatusFromProviderStatus("refunded"), "refunded");
+  assert.equal(paymentStatusFromProviderStatus("declined"), "failed");
+
+  const paid = demoGatewayChargeSubscription({
+    idempotencyKey: "cycle-1",
+    amount: 100_000,
+    currency: "IDR",
+    paymentMethod: { status: "active", last4: "4242" },
+    now
+  });
+  const failed = demoGatewayChargeSubscription({
+    idempotencyKey: "cycle-2",
+    amount: 100_000,
+    currency: "IDR",
+    paymentMethod: { status: "active", last4: "0000" },
+    now
+  });
+  const refund = demoGatewaySettleRefund({
+    idempotencyKey: "refund-1",
+    amount: 100_000,
+    currency: "IDR",
+    now
+  });
+
+  assert.equal(paid.status, "paid");
+  assert.equal(failed.status, "failed");
+  assert.equal(refund.status, "refunded");
 });

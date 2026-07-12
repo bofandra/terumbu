@@ -2,9 +2,13 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  canCancelExpeditionBooking,
   departureStatusAfterSeatChange,
   expeditionDepartureAvailability,
-  normalizeExpeditionDepartureStatus
+  normalizeExpeditionDepartureStatus,
+  normalizeExpeditionInterestRequestStatus,
+  normalizeExpeditionInterestRequestType,
+  preferredInterestTypeForDepartureStatus
 } from "../src/lib/expedition-booking-lifecycle";
 
 test("departure statuses normalize defensively", () => {
@@ -38,4 +42,25 @@ test("departure status follows seat changes without overriding operator statuses
   assert.equal(departureStatusAfterSeatChange("full", 10, 9), "open");
   assert.equal(departureStatusAfterSeatChange("waitlist", 10, 4), "waitlist");
   assert.equal(departureStatusAfterSeatChange("cancelled", 10, 4), "cancelled");
+});
+
+test("interest request types and statuses normalize defensively", () => {
+  assert.equal(normalizeExpeditionInterestRequestType("PRIVATE_DEPARTURE"), "private_departure");
+  assert.equal(normalizeExpeditionInterestRequestType("unknown"), "waitlist");
+  assert.equal(normalizeExpeditionInterestRequestStatus("converted"), "converted");
+  assert.equal(normalizeExpeditionInterestRequestStatus("unknown"), "pending");
+  assert.equal(preferredInterestTypeForDepartureStatus("private_group"), "private_departure");
+  assert.equal(preferredInterestTypeForDepartureStatus("full"), "waitlist");
+});
+
+test("operator cancellation blocks completed, refunded, and already-started bookings", () => {
+  const tomorrow = new Date("2026-07-13T00:00:00.000Z");
+  const yesterday = new Date("2026-07-11T00:00:00.000Z");
+  const now = new Date("2026-07-12T00:00:00.000Z");
+
+  assert.equal(canCancelExpeditionBooking({ bookingStatus: "confirmed", paymentStatus: "paid", startsAt: tomorrow }, now), true);
+  assert.equal(canCancelExpeditionBooking({ bookingStatus: "pending_payment", paymentStatus: "failed", startsAt: tomorrow }, now), true);
+  assert.equal(canCancelExpeditionBooking({ bookingStatus: "completed", paymentStatus: "paid", startsAt: tomorrow }, now), false);
+  assert.equal(canCancelExpeditionBooking({ bookingStatus: "cancelled", paymentStatus: "refunded", startsAt: tomorrow }, now), false);
+  assert.equal(canCancelExpeditionBooking({ bookingStatus: "confirmed", paymentStatus: "paid", startsAt: yesterday }, now), false);
 });

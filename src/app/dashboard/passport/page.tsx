@@ -1,6 +1,7 @@
 import {
   Award,
   BookOpen,
+  CalendarClock,
   CheckCircle2,
   ChevronRight,
   Download,
@@ -8,10 +9,12 @@ import {
   FileBadge,
   Globe2,
   Heart,
+  KeyRound,
   Lock,
   MapPinned,
   Pencil,
   QrCode,
+  RefreshCw,
   Share2,
   ShieldCheck,
   Sparkles,
@@ -28,6 +31,12 @@ import { Button, ButtonLink } from "@/components/ui/button";
 import { ProgressMeter } from "@/components/ui/progress-meter";
 import { requireUser } from "@/lib/auth";
 import { updatePassportVisibilityAction } from "@/lib/auth-actions";
+import {
+  normalizePassportCategoryVisibility,
+  normalizePassportEvidenceConsent,
+  passportShareCategories,
+  publicPassportShareUrl
+} from "@/lib/passport-sharing";
 import { getDashboardData } from "@/lib/queries";
 import { cn, formatCurrency } from "@/lib/utils";
 
@@ -43,6 +52,7 @@ const ecosystemFallback = "https://images.unsplash.com/photo-1546026423-cc464262
 type DashboardPassportPageProps = {
   searchParams?: Promise<{
     saved?: string;
+    error?: string;
   }>;
 };
 
@@ -75,12 +85,12 @@ function passportId(publicSlug: string | null | undefined, issuedAt: Date | null
   return `TE-ID-${year}-${String(checksum).padStart(6, "0")}`;
 }
 
-function publicPassportUrl(publicSlug: string | null | undefined) {
-  return publicSlug ? `https://terumbu.eco/passport/${publicSlug}` : "https://terumbu.eco/passport";
-}
-
 function canUseOptimizedImage(src: string | null | undefined) {
   return Boolean(src?.startsWith("/") || src?.startsWith("https://images.unsplash.com/"));
+}
+
+function dateInputValue(value: Date | null | undefined) {
+  return value ? value.toISOString().slice(0, 10) : "";
 }
 
 function visibilityCopy(value: string | null | undefined) {
@@ -202,9 +212,20 @@ export default async function DashboardPassportPage({ searchParams }: DashboardP
   const data = await getDashboardData(user.id);
   const displayName = data.profile?.displayName ?? user.displayName ?? user.name ?? "Ocean Hero";
   const publicSlug = data.profile?.publicSlug;
-  const publicHref = publicSlug ? `/passport/${publicSlug}` : "/dashboard/settings";
-  const publicUrl = publicPassportUrl(publicSlug);
   const currentVisibility = data.profile?.passportVisibility ?? "private";
+  const passportShareToken = data.profile?.passportShareToken ?? null;
+  const publicHref =
+    publicSlug && currentVisibility !== "private"
+      ? `/passport/${publicSlug}${currentVisibility === "link" && passportShareToken ? `?token=${encodeURIComponent(passportShareToken)}` : ""}`
+      : "/dashboard/settings";
+  const publicUrl = publicPassportShareUrl({
+    publicSlug,
+    visibility: currentVisibility,
+    shareToken: passportShareToken
+  });
+  const canSharePassport = Boolean(publicSlug && currentVisibility !== "private" && (currentVisibility !== "link" || passportShareToken));
+  const categoryVisibility = normalizePassportCategoryVisibility(data.profile?.passportCategoryVisibility);
+  const evidenceConsent = normalizePassportEvidenceConsent(data.profile?.passportEvidenceConsent);
   const visibility = visibilityCopy(currentVisibility);
   const VisibilityIcon = visibility.icon;
   const heroLevel = data.profile?.heroLevel ?? user.heroLevel ?? 1;
@@ -248,12 +269,12 @@ export default async function DashboardPassportPage({ searchParams }: DashboardP
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <PassportCopyButton value={publicUrl} label="Share Passport" className="border-transparent bg-ocean-900 text-white hover:bg-ocean-700" />
+          {canSharePassport ? <PassportCopyButton value={publicUrl} label="Share Passport" className="border-transparent bg-ocean-900 text-white hover:bg-ocean-700" /> : null}
           <ButtonLink href="/dashboard/settings" tone="light">
             <Pencil size={17} aria-hidden="true" />
             Edit Passport
           </ButtonLink>
-          <ButtonLink href={publicHref} tone="light" target={publicSlug ? "_blank" : undefined}>
+          <ButtonLink href={publicHref} tone="light" target={canSharePassport ? "_blank" : undefined}>
             <ExternalLink size={17} aria-hidden="true" />
             Preview Public Profile
           </ButtonLink>
@@ -262,6 +283,9 @@ export default async function DashboardPassportPage({ searchParams }: DashboardP
 
       {params?.saved === "visibility" ? (
         <p className="mt-5 rounded-2xl border border-kelp-500/20 bg-kelp-100 px-4 py-3 text-sm font-bold text-kelp-700">Passport visibility updated.</p>
+      ) : null}
+      {params?.error === "access_code" ? (
+        <p className="mt-5 rounded-2xl border border-coral-500/20 bg-coral-50 px-4 py-3 text-sm font-bold text-coral-700">Access code must be 4-80 characters.</p>
       ) : null}
 
       {isNewPassport ? (
@@ -372,7 +396,7 @@ export default async function DashboardPassportPage({ searchParams }: DashboardP
               </div>
             </div>
             <div className="mt-8 rounded-2xl bg-white p-4 text-ocean-900">
-              {publicSlug ? <Image src={qrSrc} alt={`QR code for ${displayName}'s Impact Passport`} width={144} height={144} className="mx-auto size-36" /> : <QrCode className="mx-auto text-ocean-900/40" size={120} aria-hidden="true" />}
+              {canSharePassport ? <Image src={qrSrc} alt={`QR code for ${displayName}'s Impact Passport`} width={144} height={144} className="mx-auto size-36" /> : <QrCode className="mx-auto text-ocean-900/40" size={120} aria-hidden="true" />}
             </div>
             <div className="mt-5 space-y-3 text-sm">
               <div>
@@ -400,7 +424,7 @@ export default async function DashboardPassportPage({ searchParams }: DashboardP
                 <p className="mt-1 text-sm leading-6 text-ocean-900/62">{visibility.description}</p>
               </div>
             </div>
-            <form action={updatePassportVisibilityAction} className="mt-5 grid gap-3">
+            <form action={updatePassportVisibilityAction} className="mt-5 grid gap-4">
               <label className="grid gap-2 text-sm font-bold text-ocean-900">
                 Visibility
                 <select
@@ -413,14 +437,74 @@ export default async function DashboardPassportPage({ searchParams }: DashboardP
                   <option value="private">Private</option>
                 </select>
               </label>
+              <label className="grid gap-2 text-sm font-bold text-ocean-900">
+                Link expiry
+                <span className="relative">
+                  <CalendarClock className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ocean-900/38" size={17} aria-hidden="true" />
+                  <input
+                    type="date"
+                    name="shareExpiresAt"
+                    defaultValue={dateInputValue(data.profile?.passportShareExpiresAt)}
+                    className="min-h-11 w-full rounded-xl border border-ocean-900/12 bg-white py-2 pl-10 pr-3 text-sm outline-none focus:border-coral-500"
+                  />
+                </span>
+              </label>
+              <label className="grid gap-2 text-sm font-bold text-ocean-900">
+                Access code
+                <span className="relative">
+                  <KeyRound className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ocean-900/38" size={17} aria-hidden="true" />
+                  <input
+                    type="password"
+                    name="shareAccessCode"
+                    placeholder={data.profile?.passportHasAccessCode ? "Access code active" : "Optional"}
+                    className="min-h-11 w-full rounded-xl border border-ocean-900/12 bg-white py-2 pl-10 pr-3 text-sm outline-none focus:border-coral-500"
+                  />
+                </span>
+              </label>
+              <div className="grid gap-2 rounded-xl border border-ocean-900/10 bg-sand-50 p-3 text-sm font-bold text-ocean-900">
+                {passportShareCategories.map((category) => (
+                  <label key={category.key} className="flex items-center justify-between gap-3">
+                    <span>{category.label}</span>
+                    <input name={`categoryVisibility:${category.key}`} type="checkbox" defaultChecked={categoryVisibility[category.key]} className="size-4 accent-coral-500" />
+                  </label>
+                ))}
+              </div>
+              <label className="grid gap-2 text-sm font-bold text-ocean-900">
+                Evidence links
+                <select
+                  name="evidenceConsent"
+                  defaultValue={evidenceConsent}
+                  className="min-h-11 rounded-xl border border-ocean-900/12 bg-white px-3 text-sm outline-none focus:border-coral-500"
+                >
+                  <option value="show_evidence">Show evidence links</option>
+                  <option value="hide_evidence">Hide evidence links</option>
+                </select>
+              </label>
+              <label className="flex items-center gap-2 text-sm font-bold text-ocean-900">
+                <input name="rotateShareToken" type="checkbox" className="size-4 accent-coral-500" />
+                <RefreshCw size={16} aria-hidden="true" />
+                Rotate link token
+              </label>
+              {data.profile?.passportHasAccessCode ? (
+                <label className="flex items-center gap-2 text-sm font-bold text-ocean-900">
+                  <input name="clearShareAccessCode" type="checkbox" className="size-4 accent-coral-500" />
+                  Clear access code
+                </label>
+              ) : null}
               <Button type="submit" className="w-full">
-                Save visibility
+                Save share settings
               </Button>
             </form>
             {publicSlug ? (
               <div className="mt-4 rounded-xl border border-ocean-900/10 bg-sand-50 p-3">
-                <p className="break-all text-xs font-bold text-ocean-900">{publicUrl}</p>
-                <PassportCopyButton value={publicUrl} label="Copy verification link" className="mt-3 w-full bg-white" />
+                {canSharePassport ? (
+                  <>
+                    <p className="break-all text-xs font-bold text-ocean-900">{publicUrl}</p>
+                    <PassportCopyButton value={publicUrl} label="Copy verification link" className="mt-3 w-full bg-white" />
+                  </>
+                ) : (
+                  <p className="text-xs font-bold leading-5 text-ocean-900/62">Set visibility to Link only or Public, then save to generate a shareable passport link.</p>
+                )}
               </div>
             ) : null}
           </article>
