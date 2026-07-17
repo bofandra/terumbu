@@ -9,6 +9,7 @@ import {
   adminSelectClassName
 } from "@/components/admin-ui";
 import { Button } from "@/components/ui/button";
+import { FormTabs } from "@/components/ui/form-tabs";
 import { createCorporateWorkspaceAction, assignCorporatePermissionAction } from "@/lib/admin-corporate-actions";
 import { requireRole } from "@/lib/auth";
 import { getAdminCorporateData } from "@/lib/queries";
@@ -91,13 +92,19 @@ export default async function AdminCorporatePage({ searchParams }: AdminCorporat
         })}
       </section>
 
-      <section className="grid gap-4 xl:grid-cols-[1.15fr_0.85fr]">
-        <form action={createCorporateWorkspaceAction} className={`${adminPanelClassName} p-4`}>
+      <FormTabs
+        ariaLabel="Corporate administration actions"
+        tabs={[
+          { id: "workspace", label: "Workspace", description: "Company and first program" },
+          { id: "access", label: "Access", description: "Assign existing users", badge: data.accounts.length.toLocaleString("id-ID") }
+        ]}
+      >
+        <form action={createCorporateWorkspaceAction} className="grid gap-4">
           <h2 className="text-xl font-bold tracking-normal text-ocean-900">Create or update workspace</h2>
           <p className="mt-1 text-sm font-semibold leading-6 text-ocean-900/58">
             This creates the corporate account and first reporting program. No real payment gateway is used in this phase.
           </p>
-          <div className="mt-4 grid gap-3 md:grid-cols-2">
+          <div className="grid gap-3 md:grid-cols-2">
             <label className="grid gap-2 text-sm font-bold text-ocean-900">
               Company name
               <input name="accountName" className={adminInputClassName} placeholder="Blue Carbon Indonesia" required />
@@ -135,15 +142,15 @@ export default async function AdminCorporatePage({ searchParams }: AdminCorporat
               <input name="currency" defaultValue="IDR" className={adminInputClassName} maxLength={8} />
             </label>
           </div>
-          <Button type="submit" className="mt-4">Save Workspace</Button>
+          <Button type="submit" className="justify-self-start">Save Workspace</Button>
         </form>
 
-        <form action={assignCorporatePermissionAction} className={`${adminPanelClassName} p-4`}>
+        <form action={assignCorporatePermissionAction} className="grid gap-4">
           <h2 className="text-xl font-bold tracking-normal text-ocean-900">Assign corporate access</h2>
           <p className="mt-1 text-sm font-semibold leading-6 text-ocean-900/58">
             Assign an existing app user to a corporate account. Create the user first from Admin Users if the email does not exist.
           </p>
-          <div className="mt-4 grid gap-3">
+          <div className="grid gap-3">
             <label className="grid gap-2 text-sm font-bold text-ocean-900">
               Corporate account
               <select name="corporateAccountId" className={adminSelectClassName} required>
@@ -168,9 +175,9 @@ export default async function AdminCorporatePage({ searchParams }: AdminCorporat
               </select>
             </label>
           </div>
-          <Button type="submit" className="mt-4" disabled={data.accounts.length === 0}>Assign Access</Button>
+          <Button type="submit" className="justify-self-start" disabled={data.accounts.length === 0}>Assign Access</Button>
         </form>
-      </section>
+      </FormTabs>
 
       <section className={adminPanelClassName}>
         <div className="border-b border-ocean-900/10 p-4">

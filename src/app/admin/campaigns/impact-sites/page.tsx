@@ -24,7 +24,7 @@ export default async function AdminCampaignImpactSitesPage() {
       <AdminPageHeader
         eyebrow="Campaigns / Impact sites"
         title="Impact site management"
-        description="Track conservation locations, field progress, and attached evidence counts."
+        description="Impact sites are the real conservation locations behind campaign claims: the reef, mangrove, or community area where progress and evidence are tracked."
         actionHref="/admin/campaigns"
         actionLabel="Campaigns"
       />

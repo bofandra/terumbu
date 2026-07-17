@@ -71,6 +71,7 @@ import {
   selectedChoiceIdsFromAssessmentMetadata
 } from "@/lib/academy-assessment";
 import { campaignBudgetUtilization, campaignContentCompleteness } from "@/lib/campaign-content";
+import { corporateReportArtifactSourceUrl } from "@/lib/corporate-report-artifact-links";
 import {
   getMetadataNumber,
   getMetadataNumberOrString,
@@ -4483,7 +4484,6 @@ export async function getCorporateDashboardData(userId: string) {
   const reportExports = exports.map((item) => {
     const manifest = item.artifactManifest && typeof item.artifactManifest === "object" && !Array.isArray(item.artifactManifest) ? (item.artifactManifest as Record<string, unknown>) : {};
     const readiness = typeof manifest.readiness === "string" ? manifest.readiness : item.status === "scheduled" ? "scheduled" : item.fileUrl ? "ready" : "incomplete";
-    const manifestUrl = typeof manifest.manifestUrl === "string" ? manifest.manifestUrl : null;
     const artifactFiles = Array.isArray(manifest.files)
       ? manifest.files
           .filter((file): file is Record<string, unknown> => Boolean(file && typeof file === "object" && !Array.isArray(file)))
@@ -4495,21 +4495,30 @@ export async function getCorporateDashboardData(userId: string) {
           }))
           .filter((file) => file.url)
       : [];
-    const artifactUrl = (format: string, labelIncludes?: string) =>
-      artifactFiles.find((file) => file.format === format && (!labelIncludes || file.label.toLowerCase().includes(labelIncludes)))?.url ?? null;
+    const artifactSource = {
+      fileUrl: item.fileUrl,
+      previewUrl: item.previewUrl,
+      evidenceBundleUrl: item.evidenceBundleUrl,
+      artifactManifest: item.artifactManifest,
+      metadata: item.metadata,
+      exportCode: item.exportCode
+    };
 
     return {
       ...item,
+      fileUrl: corporateReportArtifactSourceUrl(artifactSource, "data"),
+      previewUrl: corporateReportArtifactSourceUrl(artifactSource, "preview"),
+      evidenceBundleUrl: corporateReportArtifactSourceUrl(artifactSource, "evidence"),
       reportTypeLabel: corporateReportTypeLabel(item.reportType),
       exportFormatLabel: corporateReportFormatLabel(item.exportFormat),
       artifactVersionLabel: `v${item.artifactVersion}`,
       artifactReadiness: readiness,
-      manifestUrl,
+      manifestUrl: corporateReportArtifactSourceUrl(artifactSource, "manifest"),
       artifactFiles,
-      pdfUrl: artifactUrl("pdf"),
-      workbookUrl: artifactUrl("xlsx"),
-      portfolioCsvUrl: artifactUrl("csv", "portfolio"),
-      evidenceCsvUrl: artifactUrl("csv", "evidence"),
+      pdfUrl: corporateReportArtifactSourceUrl(artifactSource, "pdf"),
+      workbookUrl: corporateReportArtifactSourceUrl(artifactSource, "workbook"),
+      portfolioCsvUrl: corporateReportArtifactSourceUrl(artifactSource, "portfolio-csv"),
+      evidenceCsvUrl: corporateReportArtifactSourceUrl(artifactSource, "evidence-csv"),
       isScheduledDue: item.status === "scheduled" && scheduledReportIsDue(item.scheduledFor, now),
       generatedAt: item.generatedAt ?? (item.status === "scheduled" ? null : item.createdAt),
       verifiedMetrics: Math.max(verifiedOutputs, portfolioRows.length * 3),

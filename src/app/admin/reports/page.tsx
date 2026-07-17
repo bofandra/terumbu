@@ -3,6 +3,7 @@ import { ArrowUpRight, BarChart3, CalendarClock, FileText, Filter, Mail, Refresh
 
 import { AdminEmptyState, AdminPageHeader, AdminStatusBadge, adminInputClassName, adminPanelClassName, adminSelectClassName } from "@/components/admin-ui";
 import { Button } from "@/components/ui/button";
+import { FormTabs } from "@/components/ui/form-tabs";
 import { requireRole } from "@/lib/auth";
 import { getAdminOperationsData } from "@/lib/queries";
 import { runMonthlyImpactReportCycleAction } from "@/lib/retention-actions";
@@ -103,6 +104,13 @@ export default async function AdminReportsPage({ searchParams }: AdminReportsPag
         })}
       </section>
 
+      <FormTabs
+        ariaLabel="Admin report workspaces"
+        tabs={[
+          { id: "monthly", label: "Monthly Cycle", description: "Generate user digests", badge: latestMonthlyReports.length.toLocaleString("id-ID") },
+          { id: "exports", label: "Exports", description: "Search corporate artifacts", badge: filteredReports.length.toLocaleString("id-ID") }
+        ]}
+      >
       <section id="monthly-impact-reports" className={adminPanelClassName}>
         <div className="grid gap-4 border-b border-ocean-900/10 p-4 lg:grid-cols-[1fr_auto] lg:items-start">
           <div>
@@ -253,6 +261,7 @@ export default async function AdminReportsPage({ searchParams }: AdminReportsPag
           ) : null}
         </div>
       </section>
+      </FormTabs>
     </div>
   );
 }

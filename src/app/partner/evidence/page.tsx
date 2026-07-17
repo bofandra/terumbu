@@ -28,7 +28,7 @@ export default async function PartnerEvidencePage() {
     <div className="space-y-8">
       <PartnerPageHeader
         title="Evidence"
-        description="Track partner-submitted photos, documents, and field notes through admin review. Revise rejected records and resubmit them without creating duplicates."
+        description="Evidence is the proof record created from activity submissions. Track review status, respond to clarification requests, and resubmit without creating duplicates."
         actionHref="/partner/activity"
         actionLabel="Submit activity"
       />

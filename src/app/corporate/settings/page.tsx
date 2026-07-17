@@ -1,6 +1,7 @@
 import { KeyRound, LockKeyhole, Puzzle, ShieldCheck, Users } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { FormTabs } from "@/components/ui/form-tabs";
 import { requireUser } from "@/lib/auth";
 import { requireCorporateDashboardData } from "@/lib/corporate-access";
 import { updateCorporateIntegrationAction, updateCorporateSecuritySettingsAction } from "@/lib/corporate-actions";
@@ -100,7 +101,15 @@ export default async function CorporateSettingsPage({ searchParams }: CorporateS
         })}
       </section>
 
-      <section className="mt-6 grid gap-6 xl:grid-cols-[1.05fr_0.95fr]">
+      <div className="mt-6">
+        <FormTabs
+          ariaLabel="Corporate settings workspace"
+          tabs={[
+            { id: "security", label: "Security", description: "Roles and controls" },
+            { id: "integrations", label: "Integrations", description: "Connections and audit", badge: configuredIntegrationCount(data.governance.integrations).toLocaleString("id-ID") }
+          ]}
+        >
+      <section className="grid gap-6 xl:grid-cols-[1.05fr_0.95fr]">
         <article className="rounded-lg border border-ocean-900/10 bg-white p-5 shadow-soft">
           <p className="text-sm font-bold uppercase text-coral-700">Team and access management</p>
           <h2 className="mt-2 text-xl font-bold tracking-normal text-ocean-900">Role-specific capabilities</h2>
@@ -186,7 +195,7 @@ export default async function CorporateSettingsPage({ searchParams }: CorporateS
         </article>
       </section>
 
-      <section className="mt-6 grid gap-6 xl:grid-cols-[0.95fr_1.05fr]" id="integrations">
+      <section className="grid gap-6 xl:grid-cols-[0.95fr_1.05fr]" id="integrations">
         <article className="rounded-lg border border-ocean-900/10 bg-white p-5 shadow-soft">
           <p className="text-sm font-bold uppercase text-coral-700">Integrations</p>
           <h2 className="mt-2 text-xl font-bold tracking-normal text-ocean-900">Enterprise connection status</h2>
@@ -281,6 +290,8 @@ export default async function CorporateSettingsPage({ searchParams }: CorporateS
           </div>
         </article>
       </section>
+        </FormTabs>
+      </div>
     </main>
   );
 }

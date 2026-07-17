@@ -1,6 +1,7 @@
-import { CalendarDays, Coins, ImagePlus, Save, Trash2, UserRound, type LucideIcon } from "lucide-react";
+import { Save, Trash2 } from "lucide-react";
 import type { ReactNode } from "react";
 
+import { FormTabs } from "@/components/ui/form-tabs";
 import { Button } from "@/components/ui/button";
 import {
   deleteCampaignBudgetLineItemAction,
@@ -332,29 +333,6 @@ function TeamForm({
   );
 }
 
-function EditorSection({
-  title,
-  detail,
-  icon: Icon,
-  children
-}: {
-  title: string;
-  detail: string;
-  icon: LucideIcon;
-  children: ReactNode;
-}) {
-  return (
-    <details className="rounded-lg border border-ocean-900/10 bg-white" open>
-      <summary className="flex cursor-pointer items-center gap-2 px-4 py-3 text-sm font-bold text-ocean-900">
-        <Icon className="size-4 text-coral-700" aria-hidden="true" />
-        {title}
-        <span className="ml-auto text-xs font-semibold text-ocean-900/50">{detail}</span>
-      </summary>
-      <div className="grid gap-3 border-t border-ocean-900/10 p-4">{children}</div>
-    </details>
-  );
-}
-
 export function CampaignContentDepthEditor({
   campaign,
   mediaItems,
@@ -368,8 +346,8 @@ export function CampaignContentDepthEditor({
   const spentBudget = budgetLineItems.reduce((total, item) => total + item.spentAmount, 0);
 
   return (
-    <section className="rounded-lg border border-ocean-900/10 bg-white shadow-soft">
-      <div className="border-b border-ocean-900/10 p-4">
+    <section className="grid gap-4">
+      <div className="rounded-lg border border-ocean-900/10 bg-white p-4 shadow-soft">
         <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-start">
           <div>
             <h2 className="text-xl font-bold tracking-normal text-ocean-900">Campaign content depth</h2>
@@ -388,8 +366,16 @@ export function CampaignContentDepthEditor({
         ) : null}
       </div>
 
-      <div className="grid gap-4 p-4">
-        <EditorSection title="Media gallery" detail={`${mediaItems.length} records`} icon={ImagePlus}>
+      <FormTabs
+        ariaLabel={`${campaign.title} content editors`}
+        tabs={[
+          { id: "media", label: "Media", description: "Gallery assets", badge: mediaItems.length.toLocaleString("id-ID") },
+          { id: "budget", label: "Budget", description: "Planned and spent", badge: `${formatCurrency(spentBudget)} / ${formatCurrency(plannedBudget)}` },
+          { id: "timeline", label: "Timeline", description: "Field phases", badge: timelinePhases.length.toLocaleString("id-ID") },
+          { id: "team", label: "Team", description: "Public partner profiles", badge: teamMembers.length.toLocaleString("id-ID") }
+        ]}
+      >
+        <div className="grid gap-3">
           {mediaItems.map((item) => (
             <details key={item.id} className="rounded-lg border border-ocean-900/10 bg-white">
               <summary className="cursor-pointer px-4 py-3 text-sm font-bold text-ocean-900">{item.title}</summary>
@@ -400,9 +386,9 @@ export function CampaignContentDepthEditor({
             </details>
           ))}
           {canManage ? <MediaForm campaign={campaign} returnTo={returnTo} /> : null}
-        </EditorSection>
+        </div>
 
-        <EditorSection title="Budget line items" detail={`${formatCurrency(spentBudget)} / ${formatCurrency(plannedBudget)}`} icon={Coins}>
+        <div className="grid gap-3">
           {budgetLineItems.map((item) => (
             <details key={item.id} className="rounded-lg border border-ocean-900/10 bg-white">
               <summary className="cursor-pointer px-4 py-3 text-sm font-bold text-ocean-900">
@@ -415,9 +401,9 @@ export function CampaignContentDepthEditor({
             </details>
           ))}
           {canManage ? <BudgetForm campaign={campaign} returnTo={returnTo} /> : null}
-        </EditorSection>
+        </div>
 
-        <EditorSection title="Timeline phases" detail={`${timelinePhases.length} phases`} icon={CalendarDays}>
+        <div className="grid gap-3">
           {timelinePhases.map((item) => (
             <details key={item.id} className="rounded-lg border border-ocean-900/10 bg-white">
               <summary className="cursor-pointer px-4 py-3 text-sm font-bold capitalize text-ocean-900">
@@ -430,9 +416,9 @@ export function CampaignContentDepthEditor({
             </details>
           ))}
           {canManage ? <TimelineForm campaign={campaign} returnTo={returnTo} /> : null}
-        </EditorSection>
+        </div>
 
-        <EditorSection title="Organization team" detail={`${teamMembers.length} members`} icon={UserRound}>
+        <div className="grid gap-3">
           {teamMembers.map((item) => (
             <details key={item.id} className="rounded-lg border border-ocean-900/10 bg-white">
               <summary className="cursor-pointer px-4 py-3 text-sm font-bold text-ocean-900">
@@ -445,8 +431,8 @@ export function CampaignContentDepthEditor({
             </details>
           ))}
           {canManage ? <TeamForm campaign={campaign} returnTo={returnTo} /> : null}
-        </EditorSection>
-      </div>
+        </div>
+      </FormTabs>
     </section>
   );
 }

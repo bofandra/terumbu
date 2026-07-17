@@ -119,7 +119,7 @@ export default async function AdminCampaignsPage({ searchParams }: AdminCampaign
       <section className="grid gap-3 md:grid-cols-3" aria-label="Campaign workspace shortcuts">
         {[
           { label: "Create campaign", detail: "Add a public fundraising record", href: "/admin/campaigns/new", icon: Plus },
-          { label: "Impact sites", detail: `${operations.impactSites.length.toLocaleString("id-ID")} field locations`, href: "/admin/campaigns/impact-sites", icon: MapPinned },
+          { label: "Impact sites", detail: `${operations.impactSites.length.toLocaleString("id-ID")} conservation locations`, href: "/admin/campaigns/impact-sites", icon: MapPinned },
           { label: "Evidence", detail: `${pendingEvidence.toLocaleString("id-ID")} records need decisions`, href: "/admin/campaigns/evidence", icon: FileCheck2 }
         ].map((item) => {
           const Icon = item.icon;
@@ -137,6 +137,21 @@ export default async function AdminCampaignsPage({ searchParams }: AdminCampaign
             </Link>
           );
         })}
+      </section>
+
+      <section className="grid gap-3 md:grid-cols-2" aria-label="Campaign terminology">
+        <article className="rounded-lg border border-ocean-900/10 bg-white p-4 shadow-soft">
+          <h2 className="text-sm font-bold text-ocean-900">Campaign</h2>
+          <p className="mt-2 text-sm font-semibold leading-6 text-ocean-900/58">
+            The public fundraising and storytelling record: title, partner, goal, story, status, donations, and public page.
+          </p>
+        </article>
+        <article className="rounded-lg border border-ocean-900/10 bg-white p-4 shadow-soft">
+          <h2 className="text-sm font-bold text-ocean-900">Impact site</h2>
+          <p className="mt-2 text-sm font-semibold leading-6 text-ocean-900/58">
+            The field location attached to a campaign: reef, mangrove, or community site with coordinates, progress, surveys, and evidence.
+          </p>
+        </article>
       </section>
 
       <section className={adminPanelClassName}>

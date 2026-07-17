@@ -85,7 +85,7 @@ export default async function CorporateDashboardPage() {
   const tasks: CorporateTask[] = [
     {
       title: "Projects",
-      description: "Inspect funded conservation projects and milestones.",
+      description: "Inspect the funded conservation campaigns inside your program.",
       href: "/corporate/projects",
       icon: ShieldCheck,
       count: data.portfolio.length
@@ -120,7 +120,7 @@ export default async function CorporateDashboardPage() {
     },
     {
       title: "Programs",
-      description: "Review goals, program period, partners, and reporting scope.",
+      description: "Review the CSR/ESG container: goals, budget, period, partners, and reporting scope.",
       href: "/corporate/programs",
       icon: BriefcaseBusiness,
       count: `${data.reporting.periodProgress}% period`
@@ -168,6 +168,21 @@ export default async function CorporateDashboardPage() {
             </div>
           </div>
         </div>
+      </section>
+
+      <section className="mt-6 grid gap-3 md:grid-cols-2" aria-label="Corporate terminology">
+        <article className="rounded-lg border border-ocean-900/10 bg-white p-4">
+          <h2 className="text-sm font-bold text-ocean-900">Program</h2>
+          <p className="mt-2 text-sm font-semibold leading-6 text-ocean-900/58">
+            The CSR/ESG container owned by the company: reporting period, budget, governance scope, and roll-up goals.
+          </p>
+        </article>
+        <article className="rounded-lg border border-ocean-900/10 bg-white p-4">
+          <h2 className="text-sm font-bold text-ocean-900">Project</h2>
+          <p className="mt-2 text-sm font-semibold leading-6 text-ocean-900/58">
+            A funded conservation campaign inside a program, with partner delivery, milestones, evidence, and allocation tracking.
+          </p>
+        </article>
       </section>
 
       <section className="mt-6 grid gap-3" aria-labelledby="recommended-corporate-task">
