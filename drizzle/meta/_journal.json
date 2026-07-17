@@ -85,6 +85,62 @@
       "when": 1783239000000,
       "tag": "0011_corporate_lifecycle_closure",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1783749601000,
+      "tag": "0012_expedition_review_moderation",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1783815459000,
+      "tag": "0013_expedition_interest_requests",
+      "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1783820999000,
+      "tag": "0014_evidence_review_workflow",
+      "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "7",
+      "when": 1783840207000,
+      "tag": "0015_corporate_report_artifact_lifecycle",
+      "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1783841022000,
+      "tag": "0016_passport_share_hardening",
+      "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1784041591000,
+      "tag": "0017_academy_saved_courses",
+      "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1784293025000,
+      "tag": "0018_corporate_employee_events_attendance",
+      "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1784299748000,
+      "tag": "0019_campaign_content_depth",
+      "breakpoints": true
     }
   ]
 }
