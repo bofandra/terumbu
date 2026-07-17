@@ -1,6 +1,8 @@
 import {
   ArrowRight,
   Award,
+  Bookmark,
+  BookmarkCheck,
   BookOpen,
   CheckCircle2,
   Clock,
@@ -19,6 +21,7 @@ import Link from "next/link";
 
 import { Button, ButtonLink } from "@/components/ui/button";
 import { ProgressMeter } from "@/components/ui/progress-meter";
+import { removeSavedCourseAction, saveCourseAction } from "@/lib/academy-actions";
 import { getSessionUser } from "@/lib/auth";
 import { getAcademyHomeData } from "@/lib/queries";
 import { cn } from "@/lib/utils";
@@ -68,7 +71,40 @@ function ProgressBar({ value, label, tone = "bg-coral-500" }: { value: number; l
   return <ProgressMeter value={value} label={label} indicatorClassName={tone} trackClassName="bg-ocean-900/10" />;
 }
 
-function CourseCard({ course }: { course: AcademyCourse }) {
+function CourseSaveControl({
+  course,
+  isAuthenticated,
+  next = "/academy"
+}: {
+  course: AcademyCourse;
+  isAuthenticated: boolean;
+  next?: string;
+}) {
+  const Icon = course.isSaved ? BookmarkCheck : Bookmark;
+  const label = course.isSaved ? "Saved" : "Save";
+
+  if (!isAuthenticated) {
+    return (
+      <ButtonLink href={`/login?next=${encodeURIComponent(next)}`} tone="ghost" className="min-h-10 border border-ocean-900/10 px-4">
+        <Bookmark size={16} aria-hidden="true" />
+        Save
+      </ButtonLink>
+    );
+  }
+
+  return (
+    <form action={course.isSaved ? removeSavedCourseAction : saveCourseAction}>
+      <input type="hidden" name="courseSlug" value={course.slug} />
+      <input type="hidden" name="next" value={next} />
+      <Button type="submit" tone={course.isSaved ? "secondary" : "ghost"} className="min-h-10 border border-ocean-900/10 px-4">
+        <Icon size={16} aria-hidden="true" />
+        {label}
+      </Button>
+    </form>
+  );
+}
+
+function CourseCard({ course, isAuthenticated }: { course: AcademyCourse; isAuthenticated: boolean }) {
   return (
     <article className="overflow-hidden rounded-2xl border border-ocean-900/10 bg-white shadow-soft">
       <Link href={`/academy/courses/${course.slug}`} className="relative block aspect-[16/9] bg-ocean-900">
@@ -106,12 +142,15 @@ function CourseCard({ course }: { course: AcademyCourse }) {
             <ProgressBar value={course.progressPercent} label={`${course.title} progress`} tone="bg-kelp-500" />
           </div>
         ) : null}
-        <div className="mt-5 flex items-center justify-between gap-3">
+        <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
           <span className="text-xs font-semibold text-ocean-900/56">{course.learnerLabel}</span>
-          <Link href={`/academy/courses/${course.slug}`} className="inline-flex min-h-10 items-center gap-2 rounded-full bg-ocean-900 px-4 text-sm font-bold text-white hover:bg-ocean-700">
-            {course.enrollment ? "Continue" : "View Course"}
-            <ArrowRight size={16} aria-hidden="true" />
-          </Link>
+          <div className="flex flex-wrap items-center gap-2">
+            <CourseSaveControl course={course} isAuthenticated={isAuthenticated} />
+            <Link href={`/academy/courses/${course.slug}`} className="inline-flex min-h-10 items-center gap-2 rounded-full bg-ocean-900 px-4 text-sm font-bold text-white hover:bg-ocean-700">
+              {course.enrollment ? "Continue" : "View Course"}
+              <ArrowRight size={16} aria-hidden="true" />
+            </Link>
+          </div>
         </div>
       </div>
     </article>
@@ -133,6 +172,7 @@ export default async function AcademyPage({
   const filteredCourses = data.courses.filter((course) => courseMatches(course, query, topic, level));
   const firstCourseHref = data.courses[0] ? `/academy/courses/${data.courses[0].slug}` : "/academy";
   const heroCourse = data.featuredCourse ?? data.courses[0] ?? null;
+  const isAuthenticated = Boolean(user);
 
   return (
     <>
@@ -496,7 +536,7 @@ export default async function AcademyPage({
         {filteredCourses.length > 0 ? (
           <div className="mt-8 grid gap-5 md:grid-cols-2 xl:grid-cols-3">
             {filteredCourses.map((course) => (
-              <CourseCard key={course.slug} course={course} />
+              <CourseCard key={course.slug} course={course} isAuthenticated={isAuthenticated} />
             ))}
           </div>
         ) : (

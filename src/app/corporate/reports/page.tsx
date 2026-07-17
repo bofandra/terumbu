@@ -162,6 +162,23 @@ export default async function CorporateReportsPage({ searchParams }: CorporateRe
                       Evidence Bundle
                     </Link>
                   ) : null}
+                  {item.pdfUrl ? (
+                    <Link href={item.pdfUrl} className="inline-flex min-h-10 items-center gap-2 rounded-full bg-ocean-50 px-4 text-sm font-bold text-ocean-900">
+                      <Download size={16} aria-hidden="true" />
+                      PDF
+                    </Link>
+                  ) : null}
+                  {item.workbookUrl ? (
+                    <Link href={item.workbookUrl} className="inline-flex min-h-10 items-center gap-2 rounded-full bg-ocean-50 px-4 text-sm font-bold text-ocean-900">
+                      <Download size={16} aria-hidden="true" />
+                      XLSX
+                    </Link>
+                  ) : null}
+                  {item.portfolioCsvUrl ? (
+                    <Link href={item.portfolioCsvUrl} className="inline-flex min-h-10 items-center gap-2 rounded-full bg-ocean-50 px-4 text-sm font-bold text-ocean-900">
+                      Portfolio CSV
+                    </Link>
+                  ) : null}
                   {item.manifestUrl ? (
                     <Link href={item.manifestUrl} className="inline-flex min-h-10 items-center gap-2 rounded-full bg-ocean-50 px-4 text-sm font-bold text-ocean-900">
                       Manifest

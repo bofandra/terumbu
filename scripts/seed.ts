@@ -14,9 +14,12 @@ const {
   assessmentChoices,
   assessmentQuestions,
   campaignActivities,
+  campaignBudgetLineItems,
   campaignUpdates,
   campaigns,
   campaignFollowSubscriptions,
+  campaignMediaItems,
+  campaignTimelinePhases,
   corporateAccounts,
   corporateContributions,
   corporateEmployees,
@@ -45,6 +48,7 @@ const {
   lessonProgress,
   monthlyImpactReports,
   notificationPreferences,
+  organizationTeamMembers,
   organizationUsers,
   organizations,
   paymentTransactions,
@@ -55,6 +59,7 @@ const {
   userRoles,
   userNotifications,
   userSavedCampaigns,
+  userSavedCourses,
   users
 } = schema;
 
@@ -91,6 +96,16 @@ const ids = {
   campaignActivityBaliEvidence: "55555555-5555-4555-8555-555555555567",
   campaignActivityKomodoBefore: "55555555-5555-4555-8555-555555555568",
   campaignActivityKomodoEvidence: "55555555-5555-4555-8555-555555555569",
+  campaignMediaRajaHero: "55555555-5555-4555-8555-555555555571",
+  campaignMediaRajaNursery: "55555555-5555-4555-8555-555555555572",
+  campaignBudgetRajaRestoration: "55555555-5555-4555-8555-555555555581",
+  campaignBudgetRajaMonitoring: "55555555-5555-4555-8555-555555555582",
+  campaignBudgetRajaCommunity: "55555555-5555-4555-8555-555555555583",
+  campaignTimelineRajaPrep: "55555555-5555-4555-8555-555555555591",
+  campaignTimelineRajaInstall: "55555555-5555-4555-8555-555555555592",
+  campaignTimelineRajaMonitor: "55555555-5555-4555-8555-555555555593",
+  organizationTeamMaya: "55555555-5555-4555-8555-5555555555a1",
+  organizationTeamArif: "55555555-5555-4555-8555-5555555555a2",
   impactSiteRajaAmpat: "66666666-6666-4666-8666-666666666661",
   impactSiteBali: "66666666-6666-4666-8666-666666666662",
   impactSiteKomodo: "66666666-6666-4666-8666-666666666663",
@@ -133,6 +148,7 @@ const ids = {
   assessmentOceanExplorer: "eeeeeeee-eeee-4eee-8eee-eeeeeeeeee31",
   assessmentAttemptOceanExplorer: "eeeeeeee-eeee-4eee-8eee-eeeeeeeeee41",
   certificateOceanExplorer: "eeeeeeee-eeee-4eee-8eee-eeeeeeeeee51",
+  savedCourseCoralGuardian: "eeeeeeee-eeee-4eee-8eee-eeeeeeeeee61",
   passportItemDonation: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa1",
   passportItemCoral: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa2",
   passportItemExpedition: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa3",
@@ -437,6 +453,198 @@ async function seed() {
     [baliCampaign.slug, baliCampaign.id],
     [komodoCampaign.slug, komodoCampaign.id]
   ]);
+
+  await db
+    .insert(campaignMediaItems)
+    .values([
+      {
+        id: ids.campaignMediaRajaHero,
+        campaignId: campaignBySlug.get("restore-raja-ampat-reefs")!,
+        title: "Restoration site overview",
+        mediaType: "image",
+        fileUrl: "https://images.unsplash.com/photo-1583212292454-1fe6229603b7?auto=format&fit=crop&w=1400&q=80",
+        altText: "Divers above a coral restoration site in clear water",
+        caption: "Primary public view of the reef restoration zone.",
+        provenance: "Partner-managed campaign gallery",
+        sortOrder: 0,
+        isFeatured: true,
+        updatedAt: now
+      },
+      {
+        id: ids.campaignMediaRajaNursery,
+        campaignId: campaignBySlug.get("restore-raja-ampat-reefs")!,
+        title: "Coral nursery preparation",
+        mediaType: "image",
+        fileUrl: "https://images.unsplash.com/photo-1559827260-dc66d52bef19?auto=format&fit=crop&w=1400&q=80",
+        altText: "Coral nursery structures underwater",
+        caption: "Nursery structures prepared before fragment attachment.",
+        provenance: "Field team photo log",
+        sortOrder: 1,
+        isFeatured: false,
+        updatedAt: now
+      }
+    ])
+    .onConflictDoUpdate({
+      target: campaignMediaItems.id,
+      set: {
+        campaignId: sql`excluded.campaign_id`,
+        title: sql`excluded.title`,
+        mediaType: sql`excluded.media_type`,
+        fileUrl: sql`excluded.file_url`,
+        altText: sql`excluded.alt_text`,
+        caption: sql`excluded.caption`,
+        provenance: sql`excluded.provenance`,
+        sortOrder: sql`excluded.sort_order`,
+        isFeatured: sql`excluded.is_featured`,
+        updatedAt: now
+      }
+    });
+
+  await db
+    .insert(campaignBudgetLineItems)
+    .values([
+      {
+        id: ids.campaignBudgetRajaRestoration,
+        campaignId: campaignBySlug.get("restore-raja-ampat-reefs")!,
+        category: "Restoration materials",
+        description: "Coral tables, ties, tags, and nursery maintenance supplies.",
+        amount: "175000000.00",
+        spentAmount: "94000000.00",
+        sortOrder: 0,
+        updatedAt: now
+      },
+      {
+        id: ids.campaignBudgetRajaMonitoring,
+        campaignId: campaignBySlug.get("restore-raja-ampat-reefs")!,
+        category: "Monitoring dives",
+        description: "Monthly diver surveys, visual evidence capture, and field data entry.",
+        amount: "105000000.00",
+        spentAmount: "52000000.00",
+        sortOrder: 1,
+        updatedAt: now
+      },
+      {
+        id: ids.campaignBudgetRajaCommunity,
+        campaignId: campaignBySlug.get("restore-raja-ampat-reefs")!,
+        category: "Community coordination",
+        description: "Village coordination, boat logistics, and youth reef learning sessions.",
+        amount: "70000000.00",
+        spentAmount: "28000000.00",
+        sortOrder: 2,
+        updatedAt: now
+      }
+    ])
+    .onConflictDoUpdate({
+      target: campaignBudgetLineItems.id,
+      set: {
+        campaignId: sql`excluded.campaign_id`,
+        category: sql`excluded.category`,
+        description: sql`excluded.description`,
+        amount: sql`excluded.amount`,
+        spentAmount: sql`excluded.spent_amount`,
+        sortOrder: sql`excluded.sort_order`,
+        updatedAt: now
+      }
+    });
+
+  await db
+    .insert(campaignTimelinePhases)
+    .values([
+      {
+        id: ids.campaignTimelineRajaPrep,
+        campaignId: campaignBySlug.get("restore-raja-ampat-reefs")!,
+        title: "Site preparation and baseline survey",
+        description: "Local divers mark restoration plots and collect baseline imagery before installation.",
+        status: "completed",
+        startsAt: date("2026-05-20T00:00:00.000Z"),
+        endsAt: date("2026-06-05T00:00:00.000Z"),
+        deliverable: "Baseline site map",
+        evidenceNote: "Before photos and survey notes",
+        sortOrder: 0,
+        updatedAt: now
+      },
+      {
+        id: ids.campaignTimelineRajaInstall,
+        campaignId: campaignBySlug.get("restore-raja-ampat-reefs")!,
+        title: "Coral table installation",
+        description: "Field teams install tables and attach the first cohort of tagged coral fragments.",
+        status: "in_progress",
+        startsAt: date("2026-06-06T00:00:00.000Z"),
+        endsAt: date("2026-07-05T00:00:00.000Z"),
+        deliverable: "10 installation blocks",
+        evidenceNote: "Tagged fragment records",
+        sortOrder: 1,
+        updatedAt: now
+      },
+      {
+        id: ids.campaignTimelineRajaMonitor,
+        campaignId: campaignBySlug.get("restore-raja-ampat-reefs")!,
+        title: "Monthly monitoring cycle",
+        description: "Partner team publishes survival-rate checks and evidence updates for public supporters.",
+        status: "planned",
+        startsAt: date("2026-07-06T00:00:00.000Z"),
+        endsAt: date("2026-10-06T00:00:00.000Z"),
+        deliverable: "Three monitoring updates",
+        evidenceNote: "Survey images and survival metrics",
+        sortOrder: 2,
+        updatedAt: now
+      }
+    ])
+    .onConflictDoUpdate({
+      target: campaignTimelinePhases.id,
+      set: {
+        campaignId: sql`excluded.campaign_id`,
+        title: sql`excluded.title`,
+        description: sql`excluded.description`,
+        status: sql`excluded.status`,
+        startsAt: sql`excluded.starts_at`,
+        endsAt: sql`excluded.ends_at`,
+        deliverable: sql`excluded.deliverable`,
+        evidenceNote: sql`excluded.evidence_note`,
+        sortOrder: sql`excluded.sort_order`,
+        updatedAt: now
+      }
+    });
+
+  await db
+    .insert(organizationTeamMembers)
+    .values([
+      {
+        id: ids.organizationTeamMaya,
+        organizationId: organizationBySlug.get("yayasan-bahari-lestari")!,
+        name: "Maya Siregar",
+        role: "Reef Restoration Lead",
+        bio: "Coordinates coral table installation, diver safety, and public evidence handoff.",
+        imageUrl: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=512&q=80",
+        sortOrder: 0,
+        isPublic: true,
+        updatedAt: now
+      },
+      {
+        id: ids.organizationTeamArif,
+        organizationId: organizationBySlug.get("yayasan-bahari-lestari")!,
+        name: "Arif Prasetyo",
+        role: "Community Monitoring Coordinator",
+        bio: "Works with village youth groups on survey routines and monthly learning sessions.",
+        imageUrl: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=512&q=80",
+        sortOrder: 1,
+        isPublic: true,
+        updatedAt: now
+      }
+    ])
+    .onConflictDoUpdate({
+      target: organizationTeamMembers.id,
+      set: {
+        organizationId: sql`excluded.organization_id`,
+        name: sql`excluded.name`,
+        role: sql`excluded.role`,
+        bio: sql`excluded.bio`,
+        imageUrl: sql`excluded.image_url`,
+        sortOrder: sql`excluded.sort_order`,
+        isPublic: sql`excluded.is_public`,
+        updatedAt: now
+      }
+    });
 
   await db
     .insert(impactSites)
@@ -1473,7 +1681,7 @@ async function seed() {
 
   const oceanQuestionByPosition = new Map(oceanQuestionRows.map((question) => [question.position, question.id]));
 
-  await db
+  const oceanChoiceRows = await db
     .insert(assessmentChoices)
     .values([
       { questionId: oceanQuestionByPosition.get(1)!, choiceText: "Coral cover, fish presence, and visible stress", isCorrect: true, position: 1 },
@@ -1489,7 +1697,29 @@ async function seed() {
         choiceText: sql`excluded.choice_text`,
         isCorrect: sql`excluded.is_correct`
       }
-    });
+    })
+    .returning({ id: assessmentChoices.id, questionId: assessmentChoices.questionId, position: assessmentChoices.position });
+  const oceanChoiceByQuestionPosition = new Map(
+    oceanChoiceRows.map((choice) => [`${choice.questionId}:${choice.position}`, choice.id])
+  );
+  const oceanQuestionOne = oceanQuestionByPosition.get(1)!;
+  const oceanQuestionTwo = oceanQuestionByPosition.get(2)!;
+  const oceanSelectedChoiceIds = {
+    [oceanQuestionOne]: oceanChoiceByQuestionPosition.get(`${oceanQuestionOne}:1`)!,
+    [oceanQuestionTwo]: oceanChoiceByQuestionPosition.get(`${oceanQuestionTwo}:1`)!
+  };
+  const oceanAssessmentSubmittedAt = date("2026-06-16T06:45:00.000Z");
+  const oceanAssessmentHistory = {
+    score: 92,
+    status: "passed",
+    submittedAt: oceanAssessmentSubmittedAt.toISOString(),
+    earnedPoints: 2,
+    maxPoints: 2,
+    totalQuestions: 2,
+    answeredQuestions: 2,
+    selectedChoiceIds: oceanSelectedChoiceIds,
+    correctChoiceIds: oceanSelectedChoiceIds
+  };
 
   await db
     .insert(assessmentAttempts)
@@ -1499,9 +1729,15 @@ async function seed() {
       userId: demoUser.id,
       score: 92,
       status: "passed",
-      submittedAt: date("2026-06-16T06:45:00.000Z"),
+      submittedAt: oceanAssessmentSubmittedAt,
       metadata: {
-        durationMinutes: 11
+        source: "demo_seed",
+        durationMinutes: 11,
+        attemptCount: 1,
+        latest: oceanAssessmentHistory,
+        selectedChoiceIds: oceanSelectedChoiceIds,
+        correctChoiceIds: oceanSelectedChoiceIds,
+        history: [oceanAssessmentHistory]
       }
     })
     .onConflictDoUpdate({
@@ -1509,7 +1745,7 @@ async function seed() {
       set: {
         score: 92,
         status: "passed",
-        submittedAt: date("2026-06-16T06:45:00.000Z"),
+        submittedAt: oceanAssessmentSubmittedAt,
         metadata: sql`excluded.metadata`
       }
     });
@@ -1674,6 +1910,25 @@ async function seed() {
       target: [userSavedCampaigns.userId, userSavedCampaigns.campaignId],
       set: {
         status: "active",
+        updatedAt: now
+      }
+    });
+
+  await db
+    .insert(userSavedCourses)
+    .values({
+      id: ids.savedCourseCoralGuardian,
+      userId: demoUser.id,
+      courseId: courseBySlug.get("coral-guardian")!,
+      status: "active",
+      savedAt: date("2026-06-17T05:00:00.000Z"),
+      updatedAt: now
+    })
+    .onConflictDoUpdate({
+      target: [userSavedCourses.userId, userSavedCourses.courseId],
+      set: {
+        status: "active",
+        savedAt: date("2026-06-17T05:00:00.000Z"),
         updatedAt: now
       }
     });

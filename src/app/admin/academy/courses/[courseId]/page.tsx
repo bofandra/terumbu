@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowUpRight, BookOpenCheck, CheckCircle2, ClipboardCheck, FileQuestion, ListPlus, Save } from "lucide-react";
+import { ArrowUpRight, BarChart3, BookOpenCheck, ClipboardCheck, FileQuestion, Percent, ListPlus, Save, TrendingUp } from "lucide-react";
 import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
 
@@ -91,6 +91,10 @@ function formatDate(value: Date | null) {
   return value ? value.toLocaleDateString("id-ID", { dateStyle: "medium" }) : "Not published";
 }
 
+function formatAttemptDate(value: Date | null) {
+  return value ? value.toLocaleDateString("id-ID", { dateStyle: "medium" }) : "No attempts yet";
+}
+
 export default async function AdminAcademyCoursePage({ params, searchParams }: AdminAcademyCoursePageProps) {
   const { courseId } = await params;
   await requireRole(["admin"], `/admin/academy/courses/${courseId}`);
@@ -105,6 +109,7 @@ export default async function AdminAcademyCoursePage({ params, searchParams }: A
   const errorMessage = query?.error ? errorMessages[query.error] : null;
   const questionCount = course.assessments.reduce((total, assessment) => total + assessment.questions.length, 0);
   const nextLessonPosition = course.lessons.length + 1;
+  const latestAttempt = course.analytics.latestAttempt;
 
   return (
     <div className="space-y-6">
@@ -119,13 +124,14 @@ export default async function AdminAcademyCoursePage({ params, searchParams }: A
       {savedMessage ? <p className="rounded-lg border border-kelp-700/20 bg-kelp-100 px-4 py-3 text-sm font-bold text-kelp-700">{savedMessage}</p> : null}
       {errorMessage ? <p className="rounded-lg border border-coral-700/20 bg-coral-100 px-4 py-3 text-sm font-bold text-coral-700">{errorMessage}</p> : null}
 
-      <section className="grid gap-3 md:grid-cols-5" aria-label="Course summary">
+      <section className="grid gap-3 md:grid-cols-3 xl:grid-cols-6" aria-label="Course summary">
         {[
           { label: "Status", value: labelize(course.status), icon: ClipboardCheck },
           { label: "Lessons", value: course.lessons.length.toLocaleString("id-ID"), icon: BookOpenCheck },
           { label: "Assessments", value: course.assessments.length.toLocaleString("id-ID"), icon: FileQuestion },
           { label: "Questions", value: questionCount.toLocaleString("id-ID"), icon: ListPlus },
-          { label: "Certificates", value: course.certificateCount.toLocaleString("id-ID"), icon: CheckCircle2 }
+          { label: "Attempts", value: course.analytics.totalSubmissions.toLocaleString("id-ID"), icon: BarChart3 },
+          { label: "Pass rate", value: `${course.analytics.passRate}%`, icon: Percent }
         ].map((item) => {
           const Icon = item.icon;
 
@@ -143,6 +149,29 @@ export default async function AdminAcademyCoursePage({ params, searchParams }: A
             </article>
           );
         })}
+      </section>
+
+      <section className={`${adminPanelClassName} p-4`}>
+        <div className="flex flex-col justify-between gap-3 lg:flex-row lg:items-center">
+          <div>
+            <h2 className="flex items-center gap-2 text-xl font-bold tracking-normal text-ocean-900">
+              <TrendingUp className="size-5 text-coral-700" aria-hidden="true" />
+              Assessment analytics
+            </h2>
+            <p className="mt-1 text-sm font-semibold text-ocean-900/58">
+              {course.analytics.latestAttemptCount.toLocaleString("id-ID")} learners attempted, {course.analytics.totalSubmissions.toLocaleString("id-ID")} total submissions, {course.analytics.averageScore}% average score.
+            </p>
+          </div>
+          {latestAttempt ? (
+            <div className="rounded-lg border border-ocean-900/10 bg-sand-50 px-4 py-3 text-sm font-semibold text-ocean-900">
+              Latest: {latestAttempt.learnerName ?? latestAttempt.learnerEmail ?? "Learner"} scored {latestAttempt.score}% ({latestAttempt.status}) on {formatAttemptDate(latestAttempt.submittedAt)}
+            </div>
+          ) : (
+            <div className="rounded-lg border border-dashed border-ocean-900/16 bg-sand-50 px-4 py-3 text-sm font-semibold text-ocean-900/58">
+              No assessment attempts yet.
+            </div>
+          )}
+        </div>
       </section>
 
       <section className={adminPanelClassName}>
@@ -277,36 +306,96 @@ export default async function AdminAcademyCoursePage({ params, searchParams }: A
         </div>
 
         <div className="grid gap-4 p-4">
-          {course.assessments.map((assessment) => (
-            <article key={assessment.id} className="rounded-lg border border-ocean-900/10 bg-sand-50 p-4">
-              <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-start">
-                <div>
-                  <h3 className="font-bold text-ocean-900">{assessment.title}</h3>
-                  <p className="mt-1 text-sm font-semibold text-ocean-900/58">
-                    /{assessment.slug} / {assessment.passingScore}% passing score / {assessment.questions.length.toLocaleString("id-ID")} questions
-                  </p>
-                </div>
-              </div>
+          {course.assessments.map((assessment) => {
+            const assessmentLatestAttempt = assessment.analytics.latestAttempt;
+            const topMissedQuestions = assessment.analytics.questionStats.filter((stat) => stat.answeredCount > 0).slice(0, 3);
 
-              <div className="mt-4 grid gap-3">
-                {assessment.questions.map((question) => (
-                  <div key={question.id} className="rounded-lg border border-ocean-900/10 bg-white p-3">
-                    <div className="flex flex-col justify-between gap-2 sm:flex-row sm:items-start">
-                      <div>
-                        <p className="font-bold text-ocean-900">{question.position}. {question.questionText}</p>
-                        <p className="mt-1 text-xs font-bold uppercase text-ocean-900/48">{question.points} points / {question.status}</p>
-                      </div>
-                      <AdminStatusBadge value={question.status} />
+            return (
+              <article key={assessment.id} className="rounded-lg border border-ocean-900/10 bg-sand-50 p-4">
+                <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-start">
+                  <div>
+                    <h3 className="font-bold text-ocean-900">{assessment.title}</h3>
+                    <p className="mt-1 text-sm font-semibold text-ocean-900/58">
+                      /{assessment.slug} / {assessment.passingScore}% passing score / {assessment.questions.length.toLocaleString("id-ID")} questions
+                    </p>
+                  </div>
+                </div>
+
+                <div className="mt-4 grid gap-3 md:grid-cols-4">
+                  {[
+                    { label: "Attempts", value: assessment.analytics.totalSubmissions.toLocaleString("id-ID") },
+                    { label: "Pass rate", value: `${assessment.analytics.passRate}%` },
+                    { label: "Average", value: `${assessment.analytics.averageScore}%` },
+                    {
+                      label: "Latest",
+                      value: assessmentLatestAttempt ? `${assessmentLatestAttempt.score}% ${labelize(assessmentLatestAttempt.status)}` : "None"
+                    }
+                  ].map((item) => (
+                    <div key={item.label} className="rounded-lg border border-ocean-900/10 bg-white px-3 py-2">
+                      <p className="text-xs font-bold uppercase text-ocean-900/48">{item.label}</p>
+                      <p className="mt-1 text-lg font-bold tracking-normal text-ocean-900">{item.value}</p>
                     </div>
-                    <div className="mt-3 flex flex-wrap gap-2">
-                      {question.choices.map((choice) => (
-                        <span key={choice.id} className={`rounded-full px-3 py-1 text-xs font-bold ${choice.isCorrect ? "bg-kelp-100 text-kelp-700" : "bg-ocean-50 text-ocean-700"}`}>
-                          {choice.position}. {choice.choiceText}
-                        </span>
+                  ))}
+                </div>
+
+                {assessmentLatestAttempt ? (
+                  <p className="mt-3 rounded-lg border border-ocean-900/10 bg-white px-3 py-2 text-sm font-semibold text-ocean-900/62">
+                    Latest attempt by {assessmentLatestAttempt.learnerName ?? assessmentLatestAttempt.learnerEmail ?? "Learner"} on {formatAttemptDate(assessmentLatestAttempt.submittedAt)} after {assessmentLatestAttempt.attemptCount.toLocaleString("id-ID")} attempt(s).
+                  </p>
+                ) : null}
+
+                {topMissedQuestions.length > 0 ? (
+                  <div className="mt-4 rounded-lg border border-ocean-900/10 bg-white p-3">
+                    <div className="flex flex-col justify-between gap-1 sm:flex-row sm:items-center">
+                      <p className="font-bold text-ocean-900">Question focus</p>
+                      <p className="text-xs font-bold uppercase text-ocean-900/48">Highest miss rates</p>
+                    </div>
+                    <div className="mt-3 grid gap-3">
+                      {topMissedQuestions.map((stat) => (
+                        <div key={stat.questionId}>
+                          <div className="flex flex-col justify-between gap-1 text-sm font-semibold text-ocean-900/62 sm:flex-row">
+                            <span className="line-clamp-1">{stat.position}. {stat.questionText}</span>
+                            <span className="shrink-0 text-ocean-900">{stat.missRate}% missed</span>
+                          </div>
+                          <div className="mt-2 h-2 overflow-hidden rounded-full bg-ocean-50">
+                            <div className="h-full rounded-full bg-coral-500" style={{ width: `${stat.missRate}%` }} />
+                          </div>
+                        </div>
                       ))}
                     </div>
                   </div>
-                ))}
+                ) : null}
+
+                <div className="mt-4 grid gap-3">
+                  {assessment.questions.map((question) => {
+                    const questionStat = assessment.analytics.questionStats.find((stat) => stat.questionId === question.id);
+
+                    return (
+                      <div key={question.id} className="rounded-lg border border-ocean-900/10 bg-white p-3">
+                        <div className="flex flex-col justify-between gap-2 sm:flex-row sm:items-start">
+                          <div>
+                            <p className="font-bold text-ocean-900">{question.position}. {question.questionText}</p>
+                            <p className="mt-1 text-xs font-bold uppercase text-ocean-900/48">
+                              {question.points} points / {question.status} / {questionStat?.missRate ?? 0}% miss rate
+                            </p>
+                          </div>
+                          <AdminStatusBadge value={question.status} />
+                        </div>
+                        <div className="mt-3 flex flex-wrap gap-2">
+                          {question.choices.map((choice) => (
+                            <span key={choice.id} className={`rounded-full px-3 py-1 text-xs font-bold ${choice.isCorrect ? "bg-kelp-100 text-kelp-700" : "bg-ocean-50 text-ocean-700"}`}>
+                              {choice.position}. {choice.choiceText}
+                            </span>
+                          ))}
+                          {questionStat && questionStat.answeredCount > 0 ? (
+                            <span className="rounded-full bg-coral-100 px-3 py-1 text-xs font-bold text-coral-700">
+                              {questionStat.missedCount.toLocaleString("id-ID")} missed / {questionStat.answeredCount.toLocaleString("id-ID")} answered
+                            </span>
+                          ) : null}
+                        </div>
+                      </div>
+                    );
+                  })}
 
                 {assessment.questions.length === 0 ? (
                   <AdminEmptyState
@@ -352,7 +441,8 @@ export default async function AdminAcademyCoursePage({ params, searchParams }: A
                 </Button>
               </form>
             </article>
-          ))}
+            );
+          })}
 
           {course.assessments.length === 0 ? (
             <AdminEmptyState

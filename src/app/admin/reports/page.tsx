@@ -1,10 +1,12 @@
 import Link from "next/link";
-import { ArrowUpRight, BarChart3, FileText, Filter, Search } from "lucide-react";
+import { ArrowUpRight, BarChart3, CalendarClock, FileText, Filter, Mail, RefreshCw, Search, UsersRound } from "lucide-react";
 
 import { AdminEmptyState, AdminPageHeader, AdminStatusBadge, adminInputClassName, adminPanelClassName, adminSelectClassName } from "@/components/admin-ui";
 import { Button } from "@/components/ui/button";
 import { requireRole } from "@/lib/auth";
 import { getAdminOperationsData } from "@/lib/queries";
+import { runMonthlyImpactReportCycleAction } from "@/lib/retention-actions";
+import { formatCurrency } from "@/lib/utils";
 
 export const metadata = {
   title: "Admin Reports"
@@ -15,13 +17,20 @@ export const dynamic = "force-dynamic";
 type AdminReportsPageProps = {
   searchParams?: Promise<{
     account?: string;
+    emailed?: string;
+    generated?: string;
     q?: string;
+    saved?: string;
     status?: string;
   }>;
 };
 
 function cleanFilter(value: string | null | undefined) {
   return String(value ?? "").trim();
+}
+
+function formatDate(value: Date | null | undefined) {
+  return value ? value.toLocaleDateString("id-ID", { dateStyle: "medium" }) : "Never";
 }
 
 export default async function AdminReportsPage({ searchParams }: AdminReportsPageProps) {
@@ -51,6 +60,11 @@ export default async function AdminReportsPage({ searchParams }: AdminReportsPag
   });
   const completedReports = data.reports.filter((report) => report.status === "completed").length;
   const visibleCompletedReports = filteredReports.filter((report) => report.status === "completed").length;
+  const latestMonthlyReports = data.monthlyImpactReports.slice(0, 6);
+  const savedMessage =
+    params?.saved === "monthly-run"
+      ? `Monthly impact run complete: ${cleanFilter(params.generated) || "0"} report(s) generated and ${cleanFilter(params.emailed) || "0"} email(s) queued.`
+      : null;
 
   return (
     <div className="space-y-6">
@@ -61,6 +75,8 @@ export default async function AdminReportsPage({ searchParams }: AdminReportsPag
         actionHref="/admin"
         actionLabel="Overview"
       />
+
+      {savedMessage ? <p className="rounded-lg border border-kelp-700/20 bg-kelp-100 px-4 py-3 text-sm font-bold text-kelp-700">{savedMessage}</p> : null}
 
       <section className="grid gap-3 md:grid-cols-4" aria-label="Report summary">
         {[
@@ -85,6 +101,80 @@ export default async function AdminReportsPage({ searchParams }: AdminReportsPag
             </article>
           );
         })}
+      </section>
+
+      <section id="monthly-impact-reports" className={adminPanelClassName}>
+        <div className="grid gap-4 border-b border-ocean-900/10 p-4 lg:grid-cols-[1fr_auto] lg:items-start">
+          <div>
+            <h2 className="text-xl font-bold tracking-normal text-ocean-900">Monthly impact report cycle</h2>
+            <p className="mt-1 text-sm font-semibold text-ocean-900/58">
+              Generate saved monthly reports for opted-in users and optionally queue the email digest.
+            </p>
+          </div>
+          <form action={runMonthlyImpactReportCycleAction} className="grid gap-3 rounded-lg border border-ocean-900/10 bg-sand-50 p-3">
+            <label className="flex items-center gap-2 text-sm font-bold text-ocean-900">
+              <input name="sendEmail" type="checkbox" className="size-4 rounded border-ocean-900/20 text-coral-500" />
+              Queue emails for opted-in users
+            </label>
+            <Button type="submit" className="rounded-lg">
+              <RefreshCw className="size-4" aria-hidden="true" />
+              Run Cycle
+            </Button>
+          </form>
+        </div>
+
+        <div className="grid gap-3 border-b border-ocean-900/10 p-4 md:grid-cols-4">
+          {[
+            { label: "Eligible users", value: data.monthlyImpactSummary.eligibleUsers.toLocaleString("id-ID"), icon: UsersRound },
+            { label: "Email enabled", value: data.monthlyImpactSummary.emailEnabledUsers.toLocaleString("id-ID"), icon: Mail },
+            { label: "Saved reports", value: data.monthlyImpactSummary.readyReports.toLocaleString("id-ID"), icon: FileText },
+            { label: "Latest run", value: formatDate(data.monthlyImpactSummary.latestGeneratedAt), icon: CalendarClock }
+          ].map((item) => {
+            const Icon = item.icon;
+
+            return (
+              <article key={item.label} className="rounded-lg border border-ocean-900/10 bg-white p-3">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-xs font-bold uppercase text-ocean-900/48">{item.label}</p>
+                    <p className="mt-2 text-lg font-bold tracking-normal text-ocean-900">{item.value}</p>
+                  </div>
+                  <Icon className="size-4 text-coral-700" aria-hidden="true" />
+                </div>
+              </article>
+            );
+          })}
+        </div>
+
+        <div className="divide-y divide-ocean-900/10">
+          {latestMonthlyReports.map((report) => (
+            <article key={report.id} className="p-4">
+              <div className="grid gap-4 lg:grid-cols-[1fr_auto] lg:items-center">
+                <div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h3 className="text-lg font-bold tracking-normal text-ocean-900">{report.label}</h3>
+                    <AdminStatusBadge value={report.status} />
+                    {report.emailedAt ? <span className="rounded-full bg-kelp-100 px-3 py-1 text-xs font-bold text-kelp-700">emailed</span> : null}
+                  </div>
+                  <p className="mt-1 text-sm font-semibold text-ocean-900/58">
+                    {report.displayName ?? report.userName ?? report.userEmail} / {formatCurrency(report.contributions)} / {report.campaignUpdates.toLocaleString("id-ID")} updates / {report.newEvidence.toLocaleString("id-ID")} evidence
+                  </p>
+                  <p className="mt-2 text-xs font-bold text-ocean-900/48">Generated {formatDate(report.generatedAt)}</p>
+                </div>
+                <span className="rounded-lg border border-ocean-900/10 bg-sand-50 px-3 py-2 text-sm font-bold text-ocean-900">
+                  {report.reportMonth}
+                </span>
+              </div>
+            </article>
+          ))}
+          {latestMonthlyReports.length === 0 ? (
+            <AdminEmptyState
+              className="m-4"
+              title="No monthly impact reports yet"
+              description="Run the monthly cycle to generate user-facing impact summaries and dashboard notifications."
+            />
+          ) : null}
+        </div>
       </section>
 
       <section className={adminPanelClassName}>

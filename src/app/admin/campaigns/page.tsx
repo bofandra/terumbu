@@ -172,6 +172,9 @@ export default async function AdminCampaignsPage({ searchParams }: AdminCampaign
                           Media attached
                         </span>
                       ) : null}
+                      <span className="inline-flex items-center gap-2 text-sm font-bold text-ocean-900/58">
+                        Content depth {campaign.contentCompleteness.score}%
+                      </span>
                     </div>
                   </div>
 

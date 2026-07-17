@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { FileBadge } from "lucide-react";
+import { Download, ExternalLink, FileBadge } from "lucide-react";
 
 import { requireUser } from "@/lib/auth";
 import { getDashboardData } from "@/lib/queries";
@@ -34,9 +34,23 @@ export default async function DashboardCertificatesPage() {
                 <p className="mt-2 text-sm text-ocean-900/58">
                   Issued {certificate.issuedAt.toLocaleDateString("id-ID", { dateStyle: "medium" })}
                 </p>
-                <Link href={`/certificates/verify/${certificate.publicSlug}`} className="mt-4 inline-flex text-sm font-bold text-coral-700 hover:text-coral-500">
-                  Verify certificate
-                </Link>
+                <div className="mt-4 flex flex-wrap gap-2">
+                  <Link
+                    href={`/certificates/verify/${certificate.publicSlug}`}
+                    className="inline-flex min-h-10 items-center gap-2 rounded-full bg-ocean-900 px-4 text-sm font-bold text-white hover:bg-ocean-700"
+                  >
+                    <ExternalLink size={16} aria-hidden="true" />
+                    Verify
+                  </Link>
+                  <Link
+                    href={`/certificates/verify/${certificate.publicSlug}/download`}
+                    download
+                    className="inline-flex min-h-10 items-center gap-2 rounded-full bg-sand-50 px-4 text-sm font-bold text-ocean-900 hover:bg-sand-100"
+                  >
+                    <Download size={16} aria-hidden="true" />
+                    Download HTML
+                  </Link>
+                </div>
               </div>
             </div>
           </article>

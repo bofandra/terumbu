@@ -213,6 +213,77 @@ export const campaigns = pgTable("campaigns", {
   categoryIdx: index("campaigns_category_idx").on(table.category)
 }));
 
+export const campaignMediaItems = pgTable("campaign_media_items", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  campaignId: uuid("campaign_id").notNull().references(() => campaigns.id, { onDelete: "cascade" }),
+  title: varchar("title", { length: 220 }).notNull(),
+  mediaType: varchar("media_type", { length: 80 }).default("image").notNull(),
+  fileUrl: text("file_url").notNull(),
+  thumbnailUrl: text("thumbnail_url"),
+  altText: text("alt_text"),
+  caption: text("caption"),
+  provenance: varchar("provenance", { length: 220 }),
+  sortOrder: integer("sort_order").default(0).notNull(),
+  isFeatured: boolean("is_featured").default(false).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull()
+}, (table) => ({
+  campaignIdx: index("campaign_media_items_campaign_idx").on(table.campaignId),
+  campaignSortIdx: index("campaign_media_items_campaign_sort_idx").on(table.campaignId, table.sortOrder),
+  featuredIdx: index("campaign_media_items_featured_idx").on(table.campaignId, table.isFeatured)
+}));
+
+export const campaignBudgetLineItems = pgTable("campaign_budget_line_items", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  campaignId: uuid("campaign_id").notNull().references(() => campaigns.id, { onDelete: "cascade" }),
+  category: varchar("category", { length: 160 }).notNull(),
+  description: text("description"),
+  amount: numeric("amount", { precision: 14, scale: 2 }).notNull(),
+  spentAmount: numeric("spent_amount", { precision: 14, scale: 2 }).default("0").notNull(),
+  sortOrder: integer("sort_order").default(0).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull()
+}, (table) => ({
+  campaignIdx: index("campaign_budget_line_items_campaign_idx").on(table.campaignId),
+  campaignSortIdx: index("campaign_budget_line_items_campaign_sort_idx").on(table.campaignId, table.sortOrder)
+}));
+
+export const campaignTimelinePhases = pgTable("campaign_timeline_phases", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  campaignId: uuid("campaign_id").notNull().references(() => campaigns.id, { onDelete: "cascade" }),
+  title: varchar("title", { length: 220 }).notNull(),
+  description: text("description"),
+  status: varchar("status", { length: 80 }).default("planned").notNull(),
+  startsAt: timestamp("starts_at", { withTimezone: true }),
+  endsAt: timestamp("ends_at", { withTimezone: true }),
+  deliverable: text("deliverable"),
+  evidenceNote: text("evidence_note"),
+  sortOrder: integer("sort_order").default(0).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull()
+}, (table) => ({
+  campaignIdx: index("campaign_timeline_phases_campaign_idx").on(table.campaignId),
+  campaignSortIdx: index("campaign_timeline_phases_campaign_sort_idx").on(table.campaignId, table.sortOrder),
+  statusIdx: index("campaign_timeline_phases_status_idx").on(table.status)
+}));
+
+export const organizationTeamMembers = pgTable("organization_team_members", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  organizationId: uuid("organization_id").notNull().references(() => organizations.id, { onDelete: "cascade" }),
+  name: varchar("name", { length: 160 }).notNull(),
+  role: varchar("role", { length: 160 }).notNull(),
+  bio: text("bio"),
+  imageUrl: text("image_url"),
+  profileUrl: text("profile_url"),
+  sortOrder: integer("sort_order").default(0).notNull(),
+  isPublic: boolean("is_public").default(true).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull()
+}, (table) => ({
+  organizationIdx: index("organization_team_members_organization_idx").on(table.organizationId),
+  publicSortIdx: index("organization_team_members_public_sort_idx").on(table.organizationId, table.isPublic, table.sortOrder)
+}));
+
 export const impactSites = pgTable("impact_sites", {
   id: uuid("id").defaultRandom().primaryKey(),
   campaignId: uuid("campaign_id").references(() => campaigns.id, { onDelete: "set null" }),
@@ -701,6 +772,19 @@ export const courseEnrollments = pgTable("course_enrollments", {
   courseIdx: index("course_enrollments_course_idx").on(table.courseId)
 }));
 
+export const userSavedCourses = pgTable("user_saved_courses", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  courseId: uuid("course_id").notNull().references(() => courses.id, { onDelete: "cascade" }),
+  status: varchar("status", { length: 80 }).default("active").notNull(),
+  savedAt: timestamp("saved_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull()
+}, (table) => ({
+  userIdx: index("user_saved_courses_user_idx").on(table.userId),
+  courseIdx: index("user_saved_courses_course_idx").on(table.courseId),
+  userCourseIdx: uniqueIndex("user_saved_courses_unique_idx").on(table.userId, table.courseId)
+}));
+
 export const lessonProgress = pgTable("lesson_progress", {
   id: uuid("id").defaultRandom().primaryKey(),
   enrollmentId: uuid("enrollment_id").notNull().references(() => courseEnrollments.id, { onDelete: "cascade" }),
@@ -901,6 +985,52 @@ export const corporateEmployeeInvites = pgTable("corporate_employee_invites", {
     columns: [table.corporateAccountId],
     foreignColumns: [corporateAccounts.id]
   }).onDelete("cascade")
+}));
+
+export const corporateEmployeeEvents = pgTable("corporate_employee_events", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  corporateAccountId: uuid("corporate_account_id").notNull(),
+  programId: uuid("program_id").notNull().references(() => corporatePrograms.id, { onDelete: "cascade" }),
+  createdByUserId: uuid("created_by_user_id").references(() => users.id, { onDelete: "set null" }),
+  title: varchar("title", { length: 220 }).notNull(),
+  eventType: varchar("event_type", { length: 80 }).default("volunteer").notNull(),
+  status: varchar("status", { length: 80 }).default("draft").notNull(),
+  startsAt: timestamp("starts_at", { withTimezone: true }).notNull(),
+  endsAt: timestamp("ends_at", { withTimezone: true }).notNull(),
+  location: varchar("location", { length: 220 }),
+  capacity: integer("capacity").default(40).notNull(),
+  waitlistEnabled: boolean("waitlist_enabled").default(true).notNull(),
+  description: text("description"),
+  metadata: jsonb("metadata"),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull()
+}, (table) => ({
+  accountIdx: index("corporate_employee_events_account_idx").on(table.corporateAccountId),
+  programIdx: index("corporate_employee_events_program_idx").on(table.programId),
+  startsAtIdx: index("corporate_employee_events_starts_at_idx").on(table.startsAt),
+  statusIdx: index("corporate_employee_events_status_idx").on(table.status),
+  accountFk: foreignKey({
+    name: "corporate_employee_events_account_fk",
+    columns: [table.corporateAccountId],
+    foreignColumns: [corporateAccounts.id]
+  }).onDelete("cascade")
+}));
+
+export const corporateEmployeeEventRegistrations = pgTable("corporate_employee_event_registrations", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  eventId: uuid("event_id").notNull().references(() => corporateEmployeeEvents.id, { onDelete: "cascade" }),
+  employeeId: uuid("employee_id").notNull().references(() => corporateEmployees.id, { onDelete: "cascade" }),
+  registeredByUserId: uuid("registered_by_user_id").references(() => users.id, { onDelete: "set null" }),
+  status: varchar("status", { length: 80 }).default("registered").notNull(),
+  checkedInAt: timestamp("checked_in_at", { withTimezone: true }),
+  attendanceHours: numeric("attendance_hours", { precision: 8, scale: 2 }).default("0").notNull(),
+  notes: text("notes"),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull()
+}, (table) => ({
+  eventEmployeeIdx: uniqueIndex("corporate_event_registrations_event_employee_idx").on(table.eventId, table.employeeId),
+  eventStatusIdx: index("corporate_event_registrations_event_status_idx").on(table.eventId, table.status),
+  employeeIdx: index("corporate_event_registrations_employee_idx").on(table.employeeId)
 }));
 
 export const corporateContributions = pgTable("corporate_contributions", {

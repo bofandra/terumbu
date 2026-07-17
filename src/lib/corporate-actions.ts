@@ -4,7 +4,7 @@ import { randomBytes } from "node:crypto";
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 
-import { and, eq, lte, sql } from "drizzle-orm";
+import { and, eq, inArray, lte, sql } from "drizzle-orm";
 import { redirect } from "next/navigation";
 
 import { db } from "@/db/client";
@@ -14,6 +14,8 @@ import {
   campaigns,
   corporateAccounts,
   corporateContributions,
+  corporateEmployeeEventRegistrations,
+  corporateEmployeeEvents,
   corporateEmployees,
   corporateEmployeeInvites,
   corporateEvidenceCenter,
@@ -41,11 +43,22 @@ import {
 } from "@/lib/corporate-permissions";
 import {
   canAcceptCorporateEmployeeInvite,
+  corporateEventRegistrationAvailability,
   corporateInviteExpiresAt,
+  normalizeCorporateEmployeeEventStatus,
+  normalizeCorporateEmployeeEventType,
   normalizeCorporateProgramStatus
 } from "@/lib/corporate-lifecycle";
 import {
+  buildCorporateReportPdf,
+  buildCorporateReportWorkbookXlsx,
+  corporateReportEvidenceCsv,
+  corporateReportPortfolioCsv,
+  type CorporateReportArtifactInput
+} from "@/lib/corporate-report-artifacts";
+import {
   buildCorporateReportArtifactManifest,
+  corporateReportTypeLabel,
   normalizeCorporateReportFormat,
   normalizeCorporateReportType
 } from "@/lib/corporate-report-lifecycle";
@@ -302,9 +315,39 @@ async function writeReportArtifacts(input: {
       fileUrl: item.fileUrl
     }))
   };
+  const artifactInput: CorporateReportArtifactInput = {
+    exportCode: input.exportCode,
+    reportTypeLabel: corporateReportTypeLabel(input.reportType),
+    accountName: input.accountName,
+    programName: input.programName,
+    generatedAt,
+    executiveMetrics: input.data.executiveMetrics,
+    financials: input.data.financials,
+    impactOutputs: input.data.impactOutputs,
+    portfolio: input.data.portfolio.map((project) => ({
+      campaignTitle: project.campaignTitle,
+      region: project.region,
+      allocationValue: project.allocationValue,
+      utilization: project.utilization,
+      statusLabel: project.statusLabel,
+      organizationName: project.organizationName
+    })),
+    evidence: input.data.evidence.map((item) => ({
+      evidenceCode: item.evidenceCode,
+      title: item.title,
+      evidenceType: item.evidenceType,
+      verificationStatus: item.verificationStatus,
+      campaignTitle: item.campaignTitle,
+      sourceHref: item.sourceHref
+    }))
+  };
   const fileUrl = `/generated/corporate-reports/${baseName}.json`;
   const previewUrl = `/generated/corporate-reports/${baseName}.html`;
   const evidenceBundleUrl = `/generated/corporate-reports/${baseName}-evidence.json`;
+  const pdfUrl = `/generated/corporate-reports/${baseName}.pdf`;
+  const workbookUrl = `/generated/corporate-reports/${baseName}.xlsx`;
+  const portfolioCsvUrl = `/generated/corporate-reports/${baseName}-portfolio.csv`;
+  const evidenceCsvUrl = `/generated/corporate-reports/${baseName}-evidence.csv`;
   const manifest = buildCorporateReportArtifactManifest({
     exportCode: input.exportCode,
     reportType: input.reportType,
@@ -314,7 +357,11 @@ async function writeReportArtifacts(input: {
     files: [
       { label: "Report data", format: "json", url: fileUrl, required: true },
       { label: "HTML preview", format: "html", url: previewUrl, required: input.exportFormat !== "evidence_json" },
-      { label: "Evidence bundle", format: "json", url: evidenceBundleUrl, required: input.exportFormat !== "html_json" }
+      { label: "Evidence bundle", format: "json", url: evidenceBundleUrl, required: input.exportFormat !== "html_json" },
+      { label: "PDF snapshot", format: "pdf", url: pdfUrl, required: input.exportFormat !== "evidence_json" },
+      { label: "Excel workbook", format: "xlsx", url: workbookUrl, required: input.exportFormat === "full_archive" },
+      { label: "Portfolio CSV", format: "csv", url: portfolioCsvUrl, required: input.exportFormat === "full_archive" },
+      { label: "Evidence CSV", format: "csv", url: evidenceCsvUrl, required: input.exportFormat !== "html_json" }
     ]
   });
 
@@ -323,6 +370,10 @@ async function writeReportArtifacts(input: {
     writeFile(path.join(folder, `${baseName}.json`), `${JSON.stringify(reportPayload, null, 2)}\n`, "utf8"),
     writeFile(path.join(folder, `${baseName}.html`), reportHtml({ ...input, generatedAt }), "utf8"),
     writeFile(path.join(folder, `${baseName}-evidence.json`), `${JSON.stringify(evidencePayload, null, 2)}\n`, "utf8"),
+    writeFile(path.join(folder, `${baseName}.pdf`), buildCorporateReportPdf(artifactInput)),
+    writeFile(path.join(folder, `${baseName}.xlsx`), buildCorporateReportWorkbookXlsx(artifactInput)),
+    writeFile(path.join(folder, `${baseName}-portfolio.csv`), corporateReportPortfolioCsv(artifactInput), "utf8"),
+    writeFile(path.join(folder, `${baseName}-evidence.csv`), corporateReportEvidenceCsv(artifactInput), "utf8"),
     writeFile(path.join(folder, `${baseName}-manifest.json`), `${JSON.stringify(manifest, null, 2)}\n`, "utf8")
   ]);
 
@@ -342,7 +393,11 @@ async function writeReportArtifacts(input: {
       committedFunding: input.data.financials.committedFunding,
       generatedBy: "corporate_report_generator",
       exportFormat: input.exportFormat,
-      artifactVersion: input.artifactVersion
+      artifactVersion: input.artifactVersion,
+      pdfUrl,
+      workbookUrl,
+      portfolioCsvUrl,
+      evidenceCsvUrl
     }
   };
 }
@@ -853,6 +908,353 @@ export async function fundCorporateProjectAction(formData: FormData) {
   });
 
   redirect("/corporate/projects?saved=project");
+}
+
+export async function createCorporateEmployeeEventAction(formData: FormData) {
+  const user = await requireUser("/corporate/employees");
+  const context = await corporateContext(user.id);
+
+  if (!context || !corporateCapabilitiesForPermission(context.permission).canManageEmployees) {
+    redirect("/corporate/employees?error=permission");
+  }
+
+  const title = textValue(formData.get("title"), 220);
+  const eventType = normalizeCorporateEmployeeEventType(textValue(formData.get("eventType"), 80));
+  const status = normalizeCorporateEmployeeEventStatus(textValue(formData.get("status"), 80));
+  const startsAt = dateValue(formData.get("startsAt"));
+  const endsAt = dateValue(formData.get("endsAt"));
+  const location = textValue(formData.get("location"), 220) || null;
+  const capacity = Number.parseInt(textValue(formData.get("capacity"), 12), 10);
+  const waitlistEnabled = formData.get("waitlistEnabled") === "on";
+  const description = textValue(formData.get("description"), 1200) || null;
+
+  if (!title || !startsAt || !endsAt || endsAt.getTime() <= startsAt.getTime() || !Number.isFinite(capacity) || capacity <= 0) {
+    redirect("/corporate/employees?error=event");
+  }
+
+  const now = new Date();
+  const [event] = await db
+    .insert(corporateEmployeeEvents)
+    .values({
+      corporateAccountId: context.accountId,
+      programId: context.programId,
+      createdByUserId: user.id,
+      title,
+      eventType,
+      status,
+      startsAt,
+      endsAt,
+      location,
+      capacity,
+      waitlistEnabled,
+      description,
+      metadata: {
+        createdFrom: "corporate_portal"
+      },
+      createdAt: now,
+      updatedAt: now
+    })
+    .returning({ id: corporateEmployeeEvents.id });
+
+  await writeAuditLog({
+    actorUserId: user.id,
+    action: "corporate.employee_event.created",
+    entityType: "corporate_employee_events",
+    entityId: event?.id,
+    metadata: {
+      accountId: context.accountId,
+      programId: context.programId,
+      title,
+      eventType,
+      status,
+      startsAt: startsAt.toISOString(),
+      endsAt: endsAt.toISOString(),
+      capacity,
+      waitlistEnabled
+    }
+  });
+
+  redirect("/corporate/employees?saved=event");
+}
+
+export async function registerCorporateEmployeeEventAction(formData: FormData) {
+  const user = await requireUser("/corporate/employees");
+  const context = await corporateContext(user.id);
+
+  if (!context || !corporateCapabilitiesForPermission(context.permission).canManageEmployees) {
+    redirect("/corporate/employees?error=permission");
+  }
+
+  const eventId = textValue(formData.get("eventId"), 80);
+  const employeeId = textValue(formData.get("employeeId"), 80);
+
+  if (!isUuid(eventId) || !isUuid(employeeId)) {
+    redirect("/corporate/employees?error=registration");
+  }
+
+  const [event] = await db
+    .select({
+      id: corporateEmployeeEvents.id,
+      title: corporateEmployeeEvents.title,
+      status: corporateEmployeeEvents.status,
+      capacity: corporateEmployeeEvents.capacity,
+      waitlistEnabled: corporateEmployeeEvents.waitlistEnabled
+    })
+    .from(corporateEmployeeEvents)
+    .where(
+      and(
+        eq(corporateEmployeeEvents.id, eventId),
+        eq(corporateEmployeeEvents.corporateAccountId, context.accountId),
+        eq(corporateEmployeeEvents.programId, context.programId)
+      )
+    )
+    .limit(1);
+
+  const [employee] = await db
+    .select({
+      id: corporateEmployees.id,
+      name: corporateEmployees.name,
+      email: corporateEmployees.email,
+      status: corporateEmployees.status
+    })
+    .from(corporateEmployees)
+    .where(and(eq(corporateEmployees.id, employeeId), eq(corporateEmployees.corporateAccountId, context.accountId)))
+    .limit(1);
+
+  if (!event || !employee || employee.status === "suspended") {
+    redirect("/corporate/employees?error=registration");
+  }
+
+  const [existingRegistration] = await db
+    .select({
+      id: corporateEmployeeEventRegistrations.id,
+      status: corporateEmployeeEventRegistrations.status
+    })
+    .from(corporateEmployeeEventRegistrations)
+    .where(
+      and(
+        eq(corporateEmployeeEventRegistrations.eventId, eventId),
+        eq(corporateEmployeeEventRegistrations.employeeId, employeeId)
+      )
+    )
+    .limit(1);
+
+  if (existingRegistration && ["registered", "attended", "waitlisted"].includes(existingRegistration.status)) {
+    redirect("/corporate/employees?saved=registration");
+  }
+
+  const [{ count: registeredCount }] = await db
+    .select({ count: sql<number>`count(${corporateEmployeeEventRegistrations.id})` })
+    .from(corporateEmployeeEventRegistrations)
+    .where(
+      and(
+        eq(corporateEmployeeEventRegistrations.eventId, eventId),
+        inArray(corporateEmployeeEventRegistrations.status, ["registered", "attended"])
+      )
+    );
+  const availability = corporateEventRegistrationAvailability({
+    status: event.status,
+    capacity: event.capacity,
+    registeredCount: Number(registeredCount ?? 0),
+    waitlistEnabled: event.waitlistEnabled
+  });
+
+  if (!availability.canRegister) {
+    redirect("/corporate/employees?error=registration");
+  }
+
+  const now = new Date();
+  const registrationStatus = availability.willWaitlist ? "waitlisted" : "registered";
+  const [registration] = await db
+    .insert(corporateEmployeeEventRegistrations)
+    .values({
+      eventId,
+      employeeId,
+      registeredByUserId: user.id,
+      status: registrationStatus,
+      checkedInAt: null,
+      attendanceHours: "0",
+      notes: null,
+      createdAt: now,
+      updatedAt: now
+    })
+    .onConflictDoUpdate({
+      target: [corporateEmployeeEventRegistrations.eventId, corporateEmployeeEventRegistrations.employeeId],
+      set: {
+        registeredByUserId: user.id,
+        status: registrationStatus,
+        checkedInAt: null,
+        attendanceHours: "0",
+        updatedAt: now
+      }
+    })
+    .returning({ id: corporateEmployeeEventRegistrations.id });
+
+  await writeAuditLog({
+    actorUserId: user.id,
+    action: "corporate.employee_event.registered",
+    entityType: "corporate_employee_event_registrations",
+    entityId: registration?.id,
+    metadata: {
+      accountId: context.accountId,
+      programId: context.programId,
+      eventId,
+      eventTitle: event.title,
+      employeeId,
+      employeeEmail: employee.email,
+      status: registrationStatus,
+      availableSeats: availability.availableSeats
+    }
+  });
+
+  redirect(`/corporate/employees?saved=${registrationStatus}`);
+}
+
+export async function checkInCorporateEmployeeEventAction(formData: FormData) {
+  const user = await requireUser("/corporate/employees");
+  const context = await corporateContext(user.id);
+
+  if (!context || !corporateCapabilitiesForPermission(context.permission).canManageEmployees) {
+    redirect("/corporate/employees?error=permission");
+  }
+
+  const registrationId = textValue(formData.get("registrationId"), 80);
+
+  if (!isUuid(registrationId)) {
+    redirect("/corporate/employees?error=attendance");
+  }
+
+  const [registration] = await db
+    .select({
+      id: corporateEmployeeEventRegistrations.id,
+      eventId: corporateEmployeeEventRegistrations.eventId,
+      employeeId: corporateEmployeeEventRegistrations.employeeId,
+      currentStatus: corporateEmployeeEventRegistrations.status,
+      eventTitle: corporateEmployeeEvents.title,
+      startsAt: corporateEmployeeEvents.startsAt,
+      endsAt: corporateEmployeeEvents.endsAt,
+      employeeEmail: corporateEmployees.email
+    })
+    .from(corporateEmployeeEventRegistrations)
+    .innerJoin(corporateEmployeeEvents, eq(corporateEmployeeEventRegistrations.eventId, corporateEmployeeEvents.id))
+    .innerJoin(corporateEmployees, eq(corporateEmployeeEventRegistrations.employeeId, corporateEmployees.id))
+    .where(
+      and(
+        eq(corporateEmployeeEventRegistrations.id, registrationId),
+        eq(corporateEmployeeEvents.corporateAccountId, context.accountId),
+        eq(corporateEmployeeEvents.programId, context.programId)
+      )
+    )
+    .limit(1);
+
+  if (!registration || registration.currentStatus === "cancelled") {
+    redirect("/corporate/employees?error=attendance");
+  }
+
+  const submittedHours = parseNonNegativeAmount(formData.get("attendanceHours"));
+  const defaultHours = Math.max(0, (registration.endsAt.getTime() - registration.startsAt.getTime()) / 3_600_000);
+  const attendanceHours = submittedHours ?? defaultHours;
+  const notes = textValue(formData.get("notes"), 600) || null;
+  const now = new Date();
+
+  await db
+    .update(corporateEmployeeEventRegistrations)
+    .set({
+      status: "attended",
+      checkedInAt: now,
+      attendanceHours: attendanceHours.toFixed(2),
+      notes,
+      updatedAt: now
+    })
+    .where(eq(corporateEmployeeEventRegistrations.id, registrationId));
+
+  await writeAuditLog({
+    actorUserId: user.id,
+    action: "corporate.employee_event.checked_in",
+    entityType: "corporate_employee_event_registrations",
+    entityId: registrationId,
+    metadata: {
+      accountId: context.accountId,
+      programId: context.programId,
+      eventId: registration.eventId,
+      eventTitle: registration.eventTitle,
+      employeeId: registration.employeeId,
+      employeeEmail: registration.employeeEmail,
+      attendanceHours
+    }
+  });
+
+  redirect("/corporate/employees?saved=attendance");
+}
+
+export async function cancelCorporateEmployeeEventRegistrationAction(formData: FormData) {
+  const user = await requireUser("/corporate/employees");
+  const context = await corporateContext(user.id);
+
+  if (!context || !corporateCapabilitiesForPermission(context.permission).canManageEmployees) {
+    redirect("/corporate/employees?error=permission");
+  }
+
+  const registrationId = textValue(formData.get("registrationId"), 80);
+
+  if (!isUuid(registrationId)) {
+    redirect("/corporate/employees?error=attendance");
+  }
+
+  const [registration] = await db
+    .select({
+      id: corporateEmployeeEventRegistrations.id,
+      eventId: corporateEmployeeEventRegistrations.eventId,
+      employeeId: corporateEmployeeEventRegistrations.employeeId,
+      eventTitle: corporateEmployeeEvents.title,
+      employeeEmail: corporateEmployees.email
+    })
+    .from(corporateEmployeeEventRegistrations)
+    .innerJoin(corporateEmployeeEvents, eq(corporateEmployeeEventRegistrations.eventId, corporateEmployeeEvents.id))
+    .innerJoin(corporateEmployees, eq(corporateEmployeeEventRegistrations.employeeId, corporateEmployees.id))
+    .where(
+      and(
+        eq(corporateEmployeeEventRegistrations.id, registrationId),
+        eq(corporateEmployeeEvents.corporateAccountId, context.accountId),
+        eq(corporateEmployeeEvents.programId, context.programId)
+      )
+    )
+    .limit(1);
+
+  if (!registration) {
+    redirect("/corporate/employees?error=attendance");
+  }
+
+  const notes = textValue(formData.get("notes"), 600) || null;
+  const now = new Date();
+
+  await db
+    .update(corporateEmployeeEventRegistrations)
+    .set({
+      status: "cancelled",
+      checkedInAt: null,
+      attendanceHours: "0",
+      notes,
+      updatedAt: now
+    })
+    .where(eq(corporateEmployeeEventRegistrations.id, registrationId));
+
+  await writeAuditLog({
+    actorUserId: user.id,
+    action: "corporate.employee_event.registration_cancelled",
+    entityType: "corporate_employee_event_registrations",
+    entityId: registrationId,
+    metadata: {
+      accountId: context.accountId,
+      programId: context.programId,
+      eventId: registration.eventId,
+      eventTitle: registration.eventTitle,
+      employeeId: registration.employeeId,
+      employeeEmail: registration.employeeEmail
+    }
+  });
+
+  redirect("/corporate/employees?saved=cancelled");
 }
 
 export async function inviteCorporateEmployeeAction(formData: FormData) {

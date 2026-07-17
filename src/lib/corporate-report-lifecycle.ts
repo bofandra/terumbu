@@ -9,7 +9,7 @@ export type CorporateReportStatus = (typeof corporateReportStatuses)[number];
 
 export type CorporateReportArtifactFile = {
   label: string;
-  format: "html" | "json";
+  format: "html" | "json" | "csv" | "pdf" | "xlsx";
   url: string;
   required: boolean;
 };

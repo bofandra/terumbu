@@ -609,6 +609,12 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
             </p>
             <div className="mt-5 flex flex-wrap gap-2">
               <ButtonLink href="/dashboard/impact" tone="secondary">View Report</ButtonLink>
+              {data.monthlyReport.downloadHref ? (
+                <ButtonLink href={data.monthlyReport.downloadHref} tone="light">
+                  <Download size={17} aria-hidden="true" />
+                  Download HTML
+                </ButtonLink>
+              ) : null}
               {data.monthlyReport.preferenceEnabled ? (
                 <form action={generateMonthlyImpactReportAction}>
                   <Button type="submit" tone="light">

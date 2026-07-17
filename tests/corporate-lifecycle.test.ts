@@ -3,8 +3,12 @@ import test from "node:test";
 
 import {
   canAcceptCorporateEmployeeInvite,
+  corporateEventRegistrationAvailability,
   corporateEvidenceVisibilityForStatus,
   corporateInviteExpiresAt,
+  normalizeCorporateEmployeeEventStatus,
+  normalizeCorporateEmployeeEventType,
+  normalizeCorporateEventRegistrationStatus,
   normalizeCorporateProgramStatus,
   shouldLinkEvidenceToCorporateProgram
 } from "../src/lib/corporate-lifecycle";
@@ -23,6 +27,67 @@ test("only verified evidence is automatically reportable for corporate programs"
   assert.equal(corporateEvidenceVisibilityForStatus("verified"), "reportable");
   assert.equal(corporateEvidenceVisibilityForStatus("needs_clarification"), "internal");
   assert.equal(corporateEvidenceVisibilityForStatus("rejected"), "internal");
+});
+
+test("corporate employee event statuses and registration availability are normalized", () => {
+  assert.equal(normalizeCorporateEmployeeEventStatus("registration_open"), "registration_open");
+  assert.equal(normalizeCorporateEmployeeEventStatus("surprise"), "draft");
+  assert.equal(normalizeCorporateEmployeeEventType("challenge"), "challenge");
+  assert.equal(normalizeCorporateEmployeeEventType("unknown"), "volunteer");
+  assert.equal(normalizeCorporateEventRegistrationStatus("attended"), "attended");
+  assert.equal(normalizeCorporateEventRegistrationStatus("maybe"), "registered");
+
+  assert.deepEqual(
+    corporateEventRegistrationAvailability({
+      status: "registration_open",
+      capacity: 20,
+      registeredCount: 12,
+      waitlistEnabled: true
+    }),
+    {
+      code: "available",
+      label: "8 seats available",
+      canRegister: true,
+      willWaitlist: false,
+      availableSeats: 8
+    }
+  );
+
+  assert.deepEqual(
+    corporateEventRegistrationAvailability({
+      status: "registration_open",
+      capacity: 20,
+      registeredCount: 20,
+      waitlistEnabled: true
+    }),
+    {
+      code: "waitlist",
+      label: "Waitlist open",
+      canRegister: true,
+      willWaitlist: true,
+      availableSeats: 0
+    }
+  );
+
+  assert.equal(
+    corporateEventRegistrationAvailability({
+      status: "waitlist",
+      capacity: 20,
+      registeredCount: 12,
+      waitlistEnabled: true
+    }).willWaitlist,
+    true
+  );
+
+  assert.equal(
+    corporateEventRegistrationAvailability({
+      status: "closed",
+      capacity: 20,
+      registeredCount: 10,
+      waitlistEnabled: true
+    }).canRegister,
+    false
+  );
 });
 
 test("corporate employee invite acceptance enforces status, email, and expiry", () => {

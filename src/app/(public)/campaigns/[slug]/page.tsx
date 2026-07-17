@@ -1,9 +1,12 @@
 import {
   BookOpen,
+  CalendarDays,
   CheckCircle2,
   ChevronRight,
   ClipboardCheck,
+  Coins,
   ShieldCheck,
+  UserRound,
   Users,
   Waves
 } from "lucide-react";
@@ -67,6 +70,14 @@ function isImageUrl(value: string | null) {
 
 function formatDateLabel(value: Date | null | undefined) {
   return value?.toLocaleDateString("id-ID", { dateStyle: "medium" }) ?? "Pending";
+}
+
+function formatDateRangeLabel(startsAt: Date | null | undefined, endsAt: Date | null | undefined) {
+  if (startsAt && endsAt) {
+    return `${formatDateLabel(startsAt)} - ${formatDateLabel(endsAt)}`;
+  }
+
+  return startsAt ? formatDateLabel(startsAt) : endsAt ? formatDateLabel(endsAt) : "Schedule pending";
 }
 
 function updateCategory(title: string, body: string) {
@@ -139,7 +150,7 @@ export default async function CampaignDetailPage({ params }: { params: Promise<{
       : campaignState === "ended"
         ? "This campaign has ended. Latest reports and evidence remain available."
         : null;
-  const mediaItems = [
+  const fallbackMediaItems = [
     ...campaign.updates
       .filter((update) => update.imageUrl)
       .map((update) => ({
@@ -155,6 +166,14 @@ export default async function CampaignDetailPage({ params }: { params: Promise<{
         provenance: `${item.evidenceType} · ${item.verificationStatus} · ${formatDateLabel(item.createdAt)}`
       }))
   ];
+  const persistedMediaItems = campaign.mediaGallery
+    .filter((item) => isImageUrl(item.fileUrl))
+    .map((item) => ({
+      src: item.fileUrl,
+      caption: item.caption || item.altText || item.title,
+      provenance: item.provenance || `${item.mediaType} · partner managed`
+    }));
+  const mediaItems = persistedMediaItems.length > 0 ? persistedMediaItems : fallbackMediaItems;
   const updateItems = campaign.updates.map((update) => ({
     id: update.id,
     title: update.title,
@@ -307,6 +326,9 @@ export default async function CampaignDetailPage({ params }: { params: Promise<{
                 goal={campaign.goal}
                 oneTimeAmounts={donationAmounts}
                 disabledReason={disabledReason}
+                isAuthenticated={Boolean(sessionUser)}
+                isSaved={retentionState?.isSaved ?? false}
+                campaignPath={campaignPath}
               />
 
               <div className="rounded-2xl border border-ocean-900/10 bg-white p-5 shadow-soft">
@@ -513,6 +535,32 @@ export default async function CampaignDetailPage({ params }: { params: Promise<{
           <section id="records" className="scroll-mt-40">
             <SectionHeading eyebrow="Records" title="Recorded campaign activity and location" />
             <div className="mt-8 grid gap-5">
+              {campaign.timelinePhases.length > 0 ? (
+                <div className="grid gap-4">
+                  {campaign.timelinePhases.map((phase) => (
+                    <article key={phase.id} className="grid gap-5 rounded-2xl border border-ocean-900/10 bg-white p-5 shadow-soft md:grid-cols-[180px_1fr]">
+                      <div>
+                        <p className="text-sm font-bold uppercase tracking-[0.16em] text-coral-700">{phase.status.replace(/_/g, " ")}</p>
+                        <p className="mt-2 text-sm font-semibold text-ocean-900/58">{formatDateRangeLabel(phase.startsAt, phase.endsAt)}</p>
+                      </div>
+                      <div>
+                        <h2 className="flex items-center gap-2 text-xl font-bold tracking-normal text-ocean-900">
+                          <CalendarDays className="size-5 text-kelp-600" aria-hidden="true" />
+                          {phase.title}
+                        </h2>
+                        {phase.description ? <p className="mt-4 text-sm leading-6 text-ocean-900/66">{phase.description}</p> : null}
+                        {phase.deliverable || phase.evidenceNote ? (
+                          <div className="mt-4 grid gap-3 text-sm font-semibold text-ocean-900/62 sm:grid-cols-2">
+                            {phase.deliverable ? <span className="rounded-xl bg-sand-50 p-3">Deliverable: {phase.deliverable}</span> : null}
+                            {phase.evidenceNote ? <span className="rounded-xl bg-ocean-50 p-3">Evidence: {phase.evidenceNote}</span> : null}
+                          </div>
+                        ) : null}
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              ) : null}
+
               {recordedMilestones.length > 0 ? (
                 recordedMilestones.map((item) => (
                   <article key={item.key} className="grid gap-5 rounded-2xl border border-ocean-900/10 bg-white p-5 shadow-soft md:grid-cols-[180px_1fr]">
@@ -568,6 +616,29 @@ export default async function CampaignDetailPage({ params }: { params: Promise<{
                 <p className="mt-5 text-sm leading-6 text-ocean-900/68">
                   {campaign.partnerDescription ?? "Partner details will appear after the organization profile is completed."}
                 </p>
+                {campaign.organizationTeam.length > 0 ? (
+                  <div className="mt-5 grid gap-3">
+                    {campaign.organizationTeam.slice(0, 4).map((member) => (
+                      <div key={member.id} className="flex items-start gap-3 rounded-xl bg-sand-50 p-3">
+                        <span className="relative grid size-11 shrink-0 place-items-center overflow-hidden rounded-full bg-white text-xs font-black text-ocean-900 ring-1 ring-ocean-900/10">
+                          {member.imageUrl ? (
+                            <Image src={member.imageUrl} alt={`${member.name} portrait`} fill unoptimized className="object-cover" sizes="44px" />
+                          ) : (
+                            initialsForName(member.name)
+                          )}
+                        </span>
+                        <span>
+                          <span className="flex items-center gap-2 text-sm font-bold text-ocean-900">
+                            <UserRound className="size-4 text-kelp-600" aria-hidden="true" />
+                            {member.name}
+                          </span>
+                          <span className="mt-1 block text-xs font-semibold text-ocean-900/58">{member.role}</span>
+                          {member.bio ? <span className="mt-1 block text-xs leading-5 text-ocean-900/58">{member.bio}</span> : null}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                ) : null}
                 <div className="mt-5 flex flex-wrap gap-3">
                   <ButtonLink href={`/partners/${campaign.partnerSlug}`} tone="secondary">View organization profile</ButtonLink>
                   {campaign.partnerWebsiteUrl ? (
@@ -619,6 +690,32 @@ export default async function CampaignDetailPage({ params }: { params: Promise<{
                   </div>
                 ))}
               </div>
+              {campaign.budgetLineItems.length > 0 ? (
+                <div className="mt-8">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <h3 className="flex items-center gap-2 text-lg font-bold tracking-normal text-ocean-900">
+                      <Coins className="size-5 text-kelp-600" aria-hidden="true" />
+                      Budget line items
+                    </h3>
+                    <p className="text-sm font-bold text-ocean-900/58">
+                      {formatCurrency(campaign.budgetUtilization.spent)} spent / {formatCurrency(campaign.budgetUtilization.planned)} planned
+                    </p>
+                  </div>
+                  <div className="mt-4 grid gap-3">
+                    {campaign.budgetLineItems.map((item) => (
+                      <div key={item.id} className="grid gap-3 rounded-xl bg-sand-50 p-4 text-sm sm:grid-cols-[1fr_auto] sm:items-center">
+                        <div>
+                          <p className="font-bold text-ocean-900">{item.category}</p>
+                          {item.description ? <p className="mt-1 leading-6 text-ocean-900/62">{item.description}</p> : null}
+                        </div>
+                        <p className="font-bold text-ocean-900">
+                          {formatCurrency(item.spentAmount)} / {formatCurrency(item.amount)}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
             </article>
           </section>
 

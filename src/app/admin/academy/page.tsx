@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowUpRight, BookOpenCheck, ClipboardCheck, GraduationCap, ListChecks, Plus, UsersRound } from "lucide-react";
+import { ArrowUpRight, BarChart3, BookOpenCheck, ClipboardCheck, GraduationCap, Percent, Plus, UsersRound } from "lucide-react";
 import type { ReactNode } from "react";
 
 import {
@@ -78,9 +78,13 @@ export default async function AdminAcademyPage({ searchParams }: AdminAcademyPag
   const data = await getAdminAcademyData();
   const publishedCount = data.courses.filter((course) => course.status === "published").length;
   const lessonCount = data.courses.reduce((total, course) => total + course.lessons.length, 0);
-  const assessmentCount = data.courses.reduce((total, course) => total + course.assessments.length, 0);
   const enrollmentCount = data.courses.reduce((total, course) => total + course.enrollmentCount, 0);
   const certificateCount = data.courses.reduce((total, course) => total + course.certificateCount, 0);
+  const attemptSubmissionCount = data.courses.reduce((total, course) => total + course.analytics.totalSubmissions, 0);
+  const attemptedCourses = data.courses.filter((course) => course.analytics.latestAttemptCount > 0);
+  const averagePassRate = attemptedCourses.length
+    ? Math.round(attemptedCourses.reduce((total, course) => total + course.analytics.passRate, 0) / attemptedCourses.length)
+    : 0;
   const savedMessage = params?.saved ? savedMessages[params.saved] : null;
   const errorMessage = params?.error ? errorMessages[params.error] : null;
 
@@ -95,13 +99,14 @@ export default async function AdminAcademyPage({ searchParams }: AdminAcademyPag
       {savedMessage ? <p className="rounded-lg border border-kelp-700/20 bg-kelp-100 px-4 py-3 text-sm font-bold text-kelp-700">{savedMessage}</p> : null}
       {errorMessage ? <p className="rounded-lg border border-coral-700/20 bg-coral-100 px-4 py-3 text-sm font-bold text-coral-700">{errorMessage}</p> : null}
 
-      <section className="grid gap-3 md:grid-cols-5" aria-label="Academy summary">
+      <section className="grid gap-3 md:grid-cols-3 xl:grid-cols-6" aria-label="Academy summary">
         {[
           { label: "Courses", value: data.courses.length.toLocaleString("id-ID"), icon: GraduationCap },
           { label: "Published", value: publishedCount.toLocaleString("id-ID"), icon: ClipboardCheck },
           { label: "Lessons", value: lessonCount.toLocaleString("id-ID"), icon: BookOpenCheck },
-          { label: "Assessments", value: assessmentCount.toLocaleString("id-ID"), icon: ListChecks },
-          { label: "Enrollments", value: enrollmentCount.toLocaleString("id-ID"), icon: UsersRound }
+          { label: "Enrollments", value: enrollmentCount.toLocaleString("id-ID"), icon: UsersRound },
+          { label: "Attempts", value: attemptSubmissionCount.toLocaleString("id-ID"), icon: BarChart3 },
+          { label: "Pass rate", value: `${averagePassRate}%`, icon: Percent }
         ].map((item) => {
           const Icon = item.icon;
 
@@ -202,6 +207,12 @@ export default async function AdminAcademyPage({ searchParams }: AdminAcademyPag
                       </span>
                       <span className="rounded-full bg-sand-100 px-3 py-1 text-xs font-bold text-ocean-900">
                         {course.certificateCount.toLocaleString("id-ID")} certificates
+                      </span>
+                      <span className="rounded-full bg-ocean-100 px-3 py-1 text-xs font-bold text-ocean-700">
+                        {course.analytics.totalSubmissions.toLocaleString("id-ID")} attempts
+                      </span>
+                      <span className="rounded-full bg-credential-50 px-3 py-1 text-xs font-bold text-credential-700">
+                        {course.analytics.passRate}% pass / {course.analytics.averageScore}% avg
                       </span>
                     </div>
                   </div>

@@ -2,10 +2,15 @@
 
 import { randomBytes } from "node:crypto";
 
-import { and, asc, eq, sql } from "drizzle-orm";
+import { and, asc, eq } from "drizzle-orm";
 import { redirect } from "next/navigation";
 
 import { db } from "@/db/client";
+import {
+  buildAssessmentAttemptMetadata,
+  manualAssessmentScore,
+  scoreAssessmentChoices
+} from "@/lib/academy-assessment";
 import {
   adminAuditLogs,
   assessmentAttempts,
@@ -18,7 +23,8 @@ import {
   courses,
   impactPassportItems,
   impactPassports,
-  lessonProgress
+  lessonProgress,
+  userSavedCourses
 } from "@/db/schema";
 import { requireRole, requireUser } from "@/lib/auth";
 import { safeRedirectPath } from "@/lib/auth";
@@ -61,6 +67,29 @@ function courseStatusFromForm(formData: FormData) {
   return ["draft", "published", "archived"].includes(status) ? status : "draft";
 }
 
+function returnPath(formData: FormData, fallback: string) {
+  return safeRedirectPath(formData.get("next") ?? fallback, fallback);
+}
+
+function pathWithQuery(path: string, query: string) {
+  const hashIndex = path.indexOf("#");
+  const basePath = hashIndex >= 0 ? path.slice(0, hashIndex) : path;
+  const hash = hashIndex >= 0 ? path.slice(hashIndex) : "";
+  const separator = basePath.includes("?") ? "&" : "?";
+
+  return `${basePath}${separator}${query}${hash}`;
+}
+
+async function courseBySlug(slug: string) {
+  const [course] = await db
+    .select({ id: courses.id, title: courses.title, slug: courses.slug, status: courses.status })
+    .from(courses)
+    .where(eq(courses.slug, slug))
+    .limit(1);
+
+  return course ?? null;
+}
+
 async function ensureCourseLessonsProgress(enrollmentId: string, courseId: string) {
   const lessons = await db.select({ id: courseLessons.id }).from(courseLessons).where(eq(courseLessons.courseId, courseId));
 
@@ -85,12 +114,7 @@ async function ensureCourseLessonsProgress(enrollmentId: string, courseId: strin
 export async function enrollCourseAction(formData: FormData) {
   const slug = String(formData.get("courseSlug") ?? "");
   const user = await requireUser(`/academy/courses/${slug}`);
-
-  const [course] = await db
-    .select({ id: courses.id, slug: courses.slug, status: courses.status })
-    .from(courses)
-    .where(eq(courses.slug, slug))
-    .limit(1);
+  const course = await courseBySlug(slug);
 
   if (!course || course.status !== "published") {
     redirect("/academy?error=course");
@@ -133,14 +157,68 @@ export async function enrollCourseAction(formData: FormData) {
     }
   });
 
-  redirect(`/dashboard/academy/courses/${course.slug}`);
+  redirect(`/academy/courses/${course.slug}?enrolled=course#course-outline`);
+}
+
+export async function saveCourseAction(formData: FormData) {
+  const slug = formText(formData, "courseSlug");
+  const next = returnPath(formData, slug ? `/academy/courses/${slug}` : "/academy");
+  const user = await requireUser(next);
+  const course = await courseBySlug(slug);
+
+  if (!course || course.status !== "published") {
+    redirect(pathWithQuery(next, "error=course"));
+  }
+
+  const now = new Date();
+
+  await db
+    .insert(userSavedCourses)
+    .values({
+      userId: user.id,
+      courseId: course.id,
+      status: "active",
+      savedAt: now,
+      updatedAt: now
+    })
+    .onConflictDoUpdate({
+      target: [userSavedCourses.userId, userSavedCourses.courseId],
+      set: {
+        status: "active",
+        savedAt: now,
+        updatedAt: now
+      }
+    });
+
+  redirect(pathWithQuery(next, "saved=course"));
+}
+
+export async function removeSavedCourseAction(formData: FormData) {
+  const slug = formText(formData, "courseSlug");
+  const next = returnPath(formData, slug ? `/academy/courses/${slug}` : "/dashboard/academy");
+  const user = await requireUser(next);
+  const course = await courseBySlug(slug);
+
+  if (!course) {
+    redirect(pathWithQuery(next, "error=course"));
+  }
+
+  await db
+    .update(userSavedCourses)
+    .set({
+      status: "removed",
+      updatedAt: new Date()
+    })
+    .where(and(eq(userSavedCourses.userId, user.id), eq(userSavedCourses.courseId, course.id)));
+
+  redirect(pathWithQuery(next, "saved=course"));
 }
 
 export async function completeLessonAction(formData: FormData) {
   const courseSlug = String(formData.get("courseSlug") ?? "");
   const lessonId = String(formData.get("lessonId") ?? "");
-  const nextPath = safeRedirectPath(formData.get("next"), `/dashboard/academy/courses/${courseSlug}`);
-  const user = await requireUser(`/dashboard/academy/courses/${courseSlug}`);
+  const nextPath = safeRedirectPath(formData.get("next"), `/academy/courses/${courseSlug}#course-outline`);
+  const user = await requireUser(`/academy/courses/${courseSlug}`);
   const now = new Date();
 
   const [enrollment] = await db
@@ -184,6 +262,7 @@ async function scoreAssessment(assessmentId: string, formData: FormData) {
   const questions = await db
     .select({
       questionId: assessmentQuestions.id,
+      questionPosition: assessmentQuestions.position,
       points: assessmentQuestions.points,
       choiceId: assessmentChoices.id,
       isCorrect: assessmentChoices.isCorrect
@@ -193,38 +272,24 @@ async function scoreAssessment(assessmentId: string, formData: FormData) {
     .where(and(eq(assessmentQuestions.assessmentId, assessmentId), eq(assessmentQuestions.status, "active")))
     .orderBy(asc(assessmentQuestions.position), asc(assessmentChoices.position));
 
-  const pointsByQuestion = new Map<string, number>();
-  const correctChoiceByQuestion = new Map<string, string>();
+  if (questions.length === 0) {
+    return manualAssessmentScore(parseAssessmentScore(formData.get("score")));
+  }
+
+  const selectedByQuestion = new Map<string, string>();
 
   for (const row of questions) {
-    pointsByQuestion.set(row.questionId, row.points);
-
-    if (row.isCorrect) {
-      correctChoiceByQuestion.set(row.questionId, row.choiceId);
+    if (!selectedByQuestion.has(row.questionId)) {
+      selectedByQuestion.set(row.questionId, formText(formData, `question_${row.questionId}`));
     }
   }
 
-  if (pointsByQuestion.size === 0) {
-    return parseAssessmentScore(formData.get("score"));
-  }
-
-  const maxScore = Array.from(pointsByQuestion.values()).reduce((total, points) => total + points, 0);
-  let earned = 0;
-
-  for (const [questionId, points] of pointsByQuestion) {
-    const selectedChoiceId = formText(formData, `question_${questionId}`);
-
-    if (selectedChoiceId && correctChoiceByQuestion.get(questionId) === selectedChoiceId) {
-      earned += points;
-    }
-  }
-
-  return Math.round((earned / Math.max(1, maxScore)) * 100);
+  return scoreAssessmentChoices(questions, selectedByQuestion);
 }
 
 export async function submitAssessmentAction(formData: FormData) {
   const courseSlug = String(formData.get("courseSlug") ?? "");
-  const user = await requireUser(`/dashboard/academy/courses/${courseSlug}`);
+  const user = await requireUser(`/academy/courses/${courseSlug}`);
   const now = new Date();
 
   const [row] = await db
@@ -234,21 +299,30 @@ export async function submitAssessmentAction(formData: FormData) {
       assessmentId: courseAssessments.id,
       passingScore: courseAssessments.passingScore,
       enrollmentId: courseEnrollments.id,
-      passportId: impactPassports.id
+      passportId: impactPassports.id,
+      attemptMetadata: assessmentAttempts.metadata
     })
     .from(courses)
     .innerJoin(courseAssessments, eq(courseAssessments.courseId, courses.id))
     .innerJoin(courseEnrollments, and(eq(courseEnrollments.courseId, courses.id), eq(courseEnrollments.userId, user.id)))
+    .leftJoin(assessmentAttempts, and(eq(assessmentAttempts.assessmentId, courseAssessments.id), eq(assessmentAttempts.userId, user.id)))
     .leftJoin(impactPassports, eq(impactPassports.userId, user.id))
     .where(eq(courses.slug, courseSlug))
     .limit(1);
 
   if (!row) {
-    redirect(`/dashboard/academy/courses/${courseSlug}?error=assessment`);
+    redirect(`/academy/courses/${courseSlug}?error=assessment`);
   }
 
-  const score = await scoreAssessment(row.assessmentId, formData);
+  const result = await scoreAssessment(row.assessmentId, formData);
+  const score = result.score;
   const passed = score >= row.passingScore;
+  const attemptMetadata = buildAssessmentAttemptMetadata({
+    previousMetadata: row.attemptMetadata,
+    result,
+    status: passed ? "passed" : "failed",
+    submittedAt: now
+  });
 
   await db.transaction(async (tx) => {
     await tx
@@ -259,9 +333,7 @@ export async function submitAssessmentAction(formData: FormData) {
         score,
         status: passed ? "passed" : "failed",
         submittedAt: now,
-        metadata: {
-          source: "assessment_form"
-        }
+        metadata: attemptMetadata
       })
       .onConflictDoUpdate({
         target: [assessmentAttempts.assessmentId, assessmentAttempts.userId],
@@ -269,7 +341,7 @@ export async function submitAssessmentAction(formData: FormData) {
           score,
           status: passed ? "passed" : "failed",
           submittedAt: now,
-          metadata: sql`excluded.metadata`
+          metadata: attemptMetadata
         }
       });
 
@@ -295,7 +367,10 @@ export async function submitAssessmentAction(formData: FormData) {
           issuedAt: now,
           metadata: {
             score,
-            credential: row.courseTitle
+            credential: row.courseTitle,
+            attemptCount: attemptMetadata.attemptCount,
+            earnedPoints: result.earnedPoints,
+            maxPoints: result.maxPoints
           }
         })
         .onConflictDoNothing({
@@ -316,7 +391,8 @@ export async function submitAssessmentAction(formData: FormData) {
             occurredAt: now,
             metadata: {
               score,
-              course: courseSlug
+              course: courseSlug,
+              attemptCount: attemptMetadata.attemptCount
             }
           })
           .onConflictDoNothing({
@@ -326,7 +402,7 @@ export async function submitAssessmentAction(formData: FormData) {
     }
   });
 
-  redirect(`/dashboard/academy/courses/${courseSlug}/assessment?assessment=${passed ? "passed" : "failed"}`);
+  redirect(`/academy/courses/${courseSlug}?assessment=${passed ? "passed" : "failed"}#final-assessment`);
 }
 
 export async function createAcademyCourseAction(formData: FormData) {

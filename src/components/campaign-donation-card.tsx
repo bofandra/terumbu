@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import { removeSavedCampaignAction, saveCampaignAction } from "@/lib/retention-actions";
 import { formatCurrency } from "@/lib/utils";
 
 type DonationMode = "one-time" | "monthly" | "coral";
@@ -18,6 +19,9 @@ type CampaignDonationCardProps = {
   goal: number;
   oneTimeAmounts: number[];
   disabledReason?: string | null;
+  isAuthenticated?: boolean;
+  isSaved?: boolean;
+  campaignPath?: string;
 };
 
 function roundedIdr(value: number, step = 50_000) {
@@ -63,13 +67,15 @@ export function CampaignDonationCard({
   impactTarget,
   goal,
   oneTimeAmounts,
-  disabledReason = null
+  disabledReason = null,
+  isAuthenticated = false,
+  isSaved = false,
+  campaignPath = `/campaigns/${campaignSlug}`
 }: CampaignDonationCardProps) {
   const fallbackAmount = roundedIdr(Math.max(1, goal) * 0.0005);
   const [mode, setMode] = useState<DonationMode>("one-time");
   const [selectedAmount, setSelectedAmount] = useState(oneTimeAmounts[1] ?? oneTimeAmounts[0] ?? fallbackAmount);
   const [customAmount, setCustomAmount] = useState("");
-  const [isSaved, setIsSaved] = useState(false);
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const customValue = Number(customAmount.replace(/[^0-9]/g, ""));
   const amount = customValue > 0 ? customValue : selectedAmount;
@@ -216,14 +222,28 @@ export function CampaignDonationCard({
       )}
 
       <div className="mt-4 grid grid-cols-2 gap-2 text-sm">
-        <button
-          type="button"
-          className="inline-flex min-h-10 items-center justify-center gap-2 rounded-full text-ocean-900/68 transition hover:bg-ocean-50 hover:text-ocean-900"
-          onClick={() => setIsSaved((value) => !value)}
-        >
-          <Bookmark size={16} aria-hidden="true" />
-          {isSaved ? "Saved" : "Save Campaign"}
-        </button>
+        {isAuthenticated ? (
+          <form action={isSaved ? removeSavedCampaignAction : saveCampaignAction}>
+            <input type="hidden" name="campaignSlug" value={campaignSlug} />
+            <input type="hidden" name="next" value={campaignPath} />
+            <button
+              type="submit"
+              aria-label={isSaved ? "Remove saved campaign" : "Save campaign"}
+              className="inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-full text-ocean-900/68 transition hover:bg-ocean-50 hover:text-ocean-900"
+            >
+              <Bookmark size={16} aria-hidden="true" fill={isSaved ? "currentColor" : "none"} />
+              {isSaved ? "Saved" : "Save Campaign"}
+            </button>
+          </form>
+        ) : (
+          <Link
+            href={`/login?next=${encodeURIComponent(campaignPath)}`}
+            className="inline-flex min-h-10 items-center justify-center gap-2 rounded-full text-ocean-900/68 transition hover:bg-ocean-50 hover:text-ocean-900"
+          >
+            <Bookmark size={16} aria-hidden="true" />
+            Sign in to Save
+          </Link>
+        )}
         <button
           type="button"
           className="inline-flex min-h-10 items-center justify-center gap-2 rounded-full text-ocean-900/68 transition hover:bg-ocean-50 hover:text-ocean-900"

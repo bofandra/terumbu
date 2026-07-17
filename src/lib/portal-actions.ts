@@ -10,6 +10,9 @@ import {
   accounts,
   adminAuditLogs,
   campaignActivities,
+  campaignBudgetLineItems,
+  campaignMediaItems,
+  campaignTimelinePhases,
   campaignUpdates,
   campaigns,
   corporateEvidenceCenter,
@@ -21,6 +24,7 @@ import {
   expeditions,
   impactPassports,
   impactSites,
+  organizationTeamMembers,
   organizationUsers,
   organizations,
   paymentOperations,
@@ -31,6 +35,7 @@ import {
   userRoles,
   users
 } from "@/db/schema";
+import { normalizeCampaignMediaType, normalizeCampaignTimelinePhaseStatus } from "@/lib/campaign-content";
 import { createPasswordHash, requireRole, safeRedirectPath } from "@/lib/auth";
 import { corporateEvidenceVisibilityForStatus, shouldLinkEvidenceToCorporateProgram } from "@/lib/corporate-lifecycle";
 import { sendTransactionalEmail } from "@/lib/email";
@@ -176,6 +181,24 @@ function parsePositiveDecimal(value: FormDataEntryValue | null) {
   const amount = Number(normalized);
 
   if (!Number.isFinite(amount) || amount <= 0) {
+    return null;
+  }
+
+  return amount.toFixed(2);
+}
+
+function parseNonNegativeDecimal(value: FormDataEntryValue | null, fallback = "0.00") {
+  const normalized = String(value ?? "")
+    .trim()
+    .replace(/,/g, "");
+
+  if (!normalized) {
+    return fallback;
+  }
+
+  const amount = Number(normalized);
+
+  if (!Number.isFinite(amount) || amount < 0) {
     return null;
   }
 
@@ -346,6 +369,24 @@ function redirectAdminCampaignError(code: string, formData?: FormData): never {
 
 function redirectAdminCampaignSaved(code: string, formData?: FormData): never {
   redirectAdminForm(adminReturnPath(formData, "/admin/campaigns", "saved"), "saved", code);
+}
+
+function campaignContentReturnPath(formData: FormData, fallbackPath: string) {
+  const path = safeRedirectPath(formData.get("returnTo"), fallbackPath);
+
+  if (path === "/partner/campaigns" || path.startsWith("/partner/campaigns/") || path.startsWith("/admin/campaigns")) {
+    return path;
+  }
+
+  return fallbackPath;
+}
+
+function redirectCampaignContentError(formData: FormData, fallbackPath: string, code: string): never {
+  redirect(`${campaignContentReturnPath(formData, fallbackPath)}?error=${encodeURIComponent(code)}`);
+}
+
+function redirectCampaignContentSaved(formData: FormData, fallbackPath: string, code: string): never {
+  redirect(`${campaignContentReturnPath(formData, fallbackPath)}?saved=${encodeURIComponent(code)}`);
 }
 
 function redirectAdminExpeditionError(code: string, formData?: FormData): never {
@@ -773,6 +814,16 @@ async function imageFromAdminCampaignForm(formData: FormData) {
   }
 
   return upload.dataUrl ?? normalizeEvidenceUrl(formData.get("imageUrl"));
+}
+
+async function campaignContentImageFromForm(formData: FormData, fallbackPath: string) {
+  const upload = await readUploadedImageAsDataUrl(formData.get("fileUpload"));
+
+  if (upload.error) {
+    redirectCampaignContentError(formData, fallbackPath, `image-${upload.error}`);
+  }
+
+  return upload.dataUrl ?? normalizeEvidenceUrl(formData.get("fileUrl"));
 }
 
 async function getCampaignDeleteBlockers(campaignId: string) {
@@ -1489,6 +1540,422 @@ export async function deletePartnerCampaignAction(formData: FormData) {
   });
 
   redirectPartnerSaved(formData, "/partner/campaigns", "campaign-deleted");
+}
+
+export async function upsertCampaignMediaItemAction(formData: FormData) {
+  const fallbackPath = campaignContentReturnPath(formData, "/partner/campaigns");
+  const user = await requireRole(["partner", "admin"], fallbackPath);
+  const mediaItemId = formText(formData, "mediaItemId");
+  const campaignIdFromForm = formText(formData, "campaignId");
+  const title = formText(formData, "title");
+  const uploadedFileUrl = await campaignContentImageFromForm(formData, fallbackPath);
+  const mediaType = normalizeCampaignMediaType(formData.get("mediaType"));
+  const sortOrder = parseNonNegativeInteger(formData.get("sortOrder")) ?? 0;
+  const isFeatured = formData.get("isFeatured") === "on";
+  const now = new Date();
+
+  const [existingItem] = mediaItemId
+    ? await db
+        .select({
+          id: campaignMediaItems.id,
+          campaignId: campaignMediaItems.campaignId,
+          fileUrl: campaignMediaItems.fileUrl
+        })
+        .from(campaignMediaItems)
+        .where(eq(campaignMediaItems.id, mediaItemId))
+        .limit(1)
+    : [];
+  const campaignId = existingItem?.campaignId ?? campaignIdFromForm;
+
+  if (!campaignId || !title || (!uploadedFileUrl && !existingItem?.fileUrl)) {
+    redirectCampaignContentError(formData, fallbackPath, "campaign-content-invalid");
+  }
+
+  await requireCampaignAccess(user.id, campaignId, formData, fallbackPath, "campaign:update");
+
+  if (mediaItemId && !existingItem) {
+    redirectCampaignContentError(formData, fallbackPath, "campaign-content-missing");
+  }
+
+  if (existingItem) {
+    await db
+      .update(campaignMediaItems)
+      .set({
+        title,
+        mediaType,
+        fileUrl: uploadedFileUrl ?? existingItem.fileUrl,
+        thumbnailUrl: nullableText(formData, "thumbnailUrl"),
+        altText: nullableText(formData, "altText"),
+        caption: nullableText(formData, "caption"),
+        provenance: nullableText(formData, "provenance"),
+        sortOrder,
+        isFeatured,
+        updatedAt: now
+      })
+      .where(eq(campaignMediaItems.id, existingItem.id));
+  } else {
+    await db.insert(campaignMediaItems).values({
+      campaignId,
+      title,
+      mediaType,
+      fileUrl: uploadedFileUrl!,
+      thumbnailUrl: nullableText(formData, "thumbnailUrl"),
+      altText: nullableText(formData, "altText"),
+      caption: nullableText(formData, "caption"),
+      provenance: nullableText(formData, "provenance"),
+      sortOrder,
+      isFeatured,
+      updatedAt: now
+    });
+  }
+
+  await db.insert(adminAuditLogs).values({
+    actorUserId: user.id,
+    action: existingItem ? "campaign_media.updated" : "campaign_media.created",
+    entityType: "campaign",
+    entityId: campaignId,
+    metadata: { mediaType, title, source: fallbackPath.startsWith("/admin/") ? "admin" : "partner_portal" }
+  });
+
+  redirectCampaignContentSaved(formData, fallbackPath, "campaign-content-saved");
+}
+
+export async function deleteCampaignMediaItemAction(formData: FormData) {
+  const fallbackPath = campaignContentReturnPath(formData, "/partner/campaigns");
+  const user = await requireRole(["partner", "admin"], fallbackPath);
+  const mediaItemId = formText(formData, "mediaItemId");
+  const confirmed = formData.get("confirmDelete") === "delete";
+
+  if (!mediaItemId || !confirmed) {
+    redirectCampaignContentError(formData, fallbackPath, "campaign-content-delete");
+  }
+
+  const [item] = await db
+    .select({ id: campaignMediaItems.id, campaignId: campaignMediaItems.campaignId, title: campaignMediaItems.title })
+    .from(campaignMediaItems)
+    .where(eq(campaignMediaItems.id, mediaItemId))
+    .limit(1);
+
+  if (!item) {
+    redirectCampaignContentError(formData, fallbackPath, "campaign-content-missing");
+  }
+
+  await requireCampaignAccess(user.id, item.campaignId, formData, fallbackPath, "campaign:update");
+  await db.delete(campaignMediaItems).where(eq(campaignMediaItems.id, mediaItemId));
+  await db.insert(adminAuditLogs).values({
+    actorUserId: user.id,
+    action: "campaign_media.deleted",
+    entityType: "campaign",
+    entityId: item.campaignId,
+    metadata: { title: item.title, source: fallbackPath.startsWith("/admin/") ? "admin" : "partner_portal" }
+  });
+
+  redirectCampaignContentSaved(formData, fallbackPath, "campaign-content-deleted");
+}
+
+export async function upsertCampaignBudgetLineItemAction(formData: FormData) {
+  const fallbackPath = campaignContentReturnPath(formData, "/partner/campaigns");
+  const user = await requireRole(["partner", "admin"], fallbackPath);
+  const budgetLineItemId = formText(formData, "budgetLineItemId");
+  const campaignIdFromForm = formText(formData, "campaignId");
+  const category = formText(formData, "category");
+  const amount = parsePositiveDecimal(formData.get("amount"));
+  const spentAmount = parseNonNegativeDecimal(formData.get("spentAmount"));
+  const sortOrder = parseNonNegativeInteger(formData.get("sortOrder")) ?? 0;
+  const now = new Date();
+
+  const [existingItem] = budgetLineItemId
+    ? await db
+        .select({ id: campaignBudgetLineItems.id, campaignId: campaignBudgetLineItems.campaignId })
+        .from(campaignBudgetLineItems)
+        .where(eq(campaignBudgetLineItems.id, budgetLineItemId))
+        .limit(1)
+    : [];
+  const campaignId = existingItem?.campaignId ?? campaignIdFromForm;
+
+  if (!campaignId || !category || !amount || spentAmount === null) {
+    redirectCampaignContentError(formData, fallbackPath, "campaign-content-invalid");
+  }
+
+  await requireCampaignAccess(user.id, campaignId, formData, fallbackPath, "campaign:update");
+
+  if (budgetLineItemId && !existingItem) {
+    redirectCampaignContentError(formData, fallbackPath, "campaign-content-missing");
+  }
+
+  if (existingItem) {
+    await db
+      .update(campaignBudgetLineItems)
+      .set({
+        category,
+        description: nullableText(formData, "description"),
+        amount,
+        spentAmount,
+        sortOrder,
+        updatedAt: now
+      })
+      .where(eq(campaignBudgetLineItems.id, existingItem.id));
+  } else {
+    await db.insert(campaignBudgetLineItems).values({
+      campaignId,
+      category,
+      description: nullableText(formData, "description"),
+      amount,
+      spentAmount,
+      sortOrder,
+      updatedAt: now
+    });
+  }
+
+  await db.insert(adminAuditLogs).values({
+    actorUserId: user.id,
+    action: existingItem ? "campaign_budget.updated" : "campaign_budget.created",
+    entityType: "campaign",
+    entityId: campaignId,
+    metadata: { category, amount, source: fallbackPath.startsWith("/admin/") ? "admin" : "partner_portal" }
+  });
+
+  redirectCampaignContentSaved(formData, fallbackPath, "campaign-content-saved");
+}
+
+export async function deleteCampaignBudgetLineItemAction(formData: FormData) {
+  const fallbackPath = campaignContentReturnPath(formData, "/partner/campaigns");
+  const user = await requireRole(["partner", "admin"], fallbackPath);
+  const budgetLineItemId = formText(formData, "budgetLineItemId");
+  const confirmed = formData.get("confirmDelete") === "delete";
+
+  if (!budgetLineItemId || !confirmed) {
+    redirectCampaignContentError(formData, fallbackPath, "campaign-content-delete");
+  }
+
+  const [item] = await db
+    .select({ id: campaignBudgetLineItems.id, campaignId: campaignBudgetLineItems.campaignId, category: campaignBudgetLineItems.category })
+    .from(campaignBudgetLineItems)
+    .where(eq(campaignBudgetLineItems.id, budgetLineItemId))
+    .limit(1);
+
+  if (!item) {
+    redirectCampaignContentError(formData, fallbackPath, "campaign-content-missing");
+  }
+
+  await requireCampaignAccess(user.id, item.campaignId, formData, fallbackPath, "campaign:update");
+  await db.delete(campaignBudgetLineItems).where(eq(campaignBudgetLineItems.id, budgetLineItemId));
+  await db.insert(adminAuditLogs).values({
+    actorUserId: user.id,
+    action: "campaign_budget.deleted",
+    entityType: "campaign",
+    entityId: item.campaignId,
+    metadata: { category: item.category, source: fallbackPath.startsWith("/admin/") ? "admin" : "partner_portal" }
+  });
+
+  redirectCampaignContentSaved(formData, fallbackPath, "campaign-content-deleted");
+}
+
+export async function upsertCampaignTimelinePhaseAction(formData: FormData) {
+  const fallbackPath = campaignContentReturnPath(formData, "/partner/campaigns");
+  const user = await requireRole(["partner", "admin"], fallbackPath);
+  const timelinePhaseId = formText(formData, "timelinePhaseId");
+  const campaignIdFromForm = formText(formData, "campaignId");
+  const title = formText(formData, "title");
+  const status = normalizeCampaignTimelinePhaseStatus(formData.get("status"));
+  const startsAt = parseOptionalDate(formData.get("startsAt"));
+  const endsAt = parseOptionalDate(formData.get("endsAt"));
+  const sortOrder = parseNonNegativeInteger(formData.get("sortOrder")) ?? 0;
+  const now = new Date();
+
+  const [existingItem] = timelinePhaseId
+    ? await db
+        .select({ id: campaignTimelinePhases.id, campaignId: campaignTimelinePhases.campaignId })
+        .from(campaignTimelinePhases)
+        .where(eq(campaignTimelinePhases.id, timelinePhaseId))
+        .limit(1)
+    : [];
+  const campaignId = existingItem?.campaignId ?? campaignIdFromForm;
+
+  if (!campaignId || !title) {
+    redirectCampaignContentError(formData, fallbackPath, "campaign-content-invalid");
+  }
+
+  await requireCampaignAccess(user.id, campaignId, formData, fallbackPath, "campaign:update");
+
+  if (timelinePhaseId && !existingItem) {
+    redirectCampaignContentError(formData, fallbackPath, "campaign-content-missing");
+  }
+
+  if (existingItem) {
+    await db
+      .update(campaignTimelinePhases)
+      .set({
+        title,
+        description: nullableText(formData, "description"),
+        status,
+        startsAt,
+        endsAt,
+        deliverable: nullableText(formData, "deliverable"),
+        evidenceNote: nullableText(formData, "evidenceNote"),
+        sortOrder,
+        updatedAt: now
+      })
+      .where(eq(campaignTimelinePhases.id, existingItem.id));
+  } else {
+    await db.insert(campaignTimelinePhases).values({
+      campaignId,
+      title,
+      description: nullableText(formData, "description"),
+      status,
+      startsAt,
+      endsAt,
+      deliverable: nullableText(formData, "deliverable"),
+      evidenceNote: nullableText(formData, "evidenceNote"),
+      sortOrder,
+      updatedAt: now
+    });
+  }
+
+  await db.insert(adminAuditLogs).values({
+    actorUserId: user.id,
+    action: existingItem ? "campaign_timeline.updated" : "campaign_timeline.created",
+    entityType: "campaign",
+    entityId: campaignId,
+    metadata: { title, status, source: fallbackPath.startsWith("/admin/") ? "admin" : "partner_portal" }
+  });
+
+  redirectCampaignContentSaved(formData, fallbackPath, "campaign-content-saved");
+}
+
+export async function deleteCampaignTimelinePhaseAction(formData: FormData) {
+  const fallbackPath = campaignContentReturnPath(formData, "/partner/campaigns");
+  const user = await requireRole(["partner", "admin"], fallbackPath);
+  const timelinePhaseId = formText(formData, "timelinePhaseId");
+  const confirmed = formData.get("confirmDelete") === "delete";
+
+  if (!timelinePhaseId || !confirmed) {
+    redirectCampaignContentError(formData, fallbackPath, "campaign-content-delete");
+  }
+
+  const [item] = await db
+    .select({ id: campaignTimelinePhases.id, campaignId: campaignTimelinePhases.campaignId, title: campaignTimelinePhases.title })
+    .from(campaignTimelinePhases)
+    .where(eq(campaignTimelinePhases.id, timelinePhaseId))
+    .limit(1);
+
+  if (!item) {
+    redirectCampaignContentError(formData, fallbackPath, "campaign-content-missing");
+  }
+
+  await requireCampaignAccess(user.id, item.campaignId, formData, fallbackPath, "campaign:update");
+  await db.delete(campaignTimelinePhases).where(eq(campaignTimelinePhases.id, timelinePhaseId));
+  await db.insert(adminAuditLogs).values({
+    actorUserId: user.id,
+    action: "campaign_timeline.deleted",
+    entityType: "campaign",
+    entityId: item.campaignId,
+    metadata: { title: item.title, source: fallbackPath.startsWith("/admin/") ? "admin" : "partner_portal" }
+  });
+
+  redirectCampaignContentSaved(formData, fallbackPath, "campaign-content-deleted");
+}
+
+export async function upsertOrganizationTeamMemberAction(formData: FormData) {
+  const fallbackPath = campaignContentReturnPath(formData, "/partner/campaigns");
+  const user = await requireRole(["partner", "admin"], fallbackPath);
+  const teamMemberId = formText(formData, "teamMemberId");
+  const organizationIdFromForm = formText(formData, "organizationId");
+  const name = formText(formData, "name");
+  const role = formText(formData, "role");
+  const sortOrder = parseNonNegativeInteger(formData.get("sortOrder")) ?? 0;
+  const isPublic = formData.get("isPublic") === "on";
+  const now = new Date();
+
+  const [existingItem] = teamMemberId
+    ? await db
+        .select({ id: organizationTeamMembers.id, organizationId: organizationTeamMembers.organizationId })
+        .from(organizationTeamMembers)
+        .where(eq(organizationTeamMembers.id, teamMemberId))
+        .limit(1)
+    : [];
+  const organizationId = existingItem?.organizationId ?? organizationIdFromForm;
+
+  if (!organizationId || !name || !role) {
+    redirectCampaignContentError(formData, fallbackPath, "campaign-content-invalid");
+  }
+
+  await requireOrganizationPermission(user.id, organizationId, "campaign:update", formData, fallbackPath);
+
+  if (teamMemberId && !existingItem) {
+    redirectCampaignContentError(formData, fallbackPath, "campaign-content-missing");
+  }
+
+  if (existingItem) {
+    await db
+      .update(organizationTeamMembers)
+      .set({
+        name,
+        role,
+        bio: nullableText(formData, "bio"),
+        imageUrl: nullableText(formData, "imageUrl"),
+        profileUrl: nullableText(formData, "profileUrl"),
+        sortOrder,
+        isPublic,
+        updatedAt: now
+      })
+      .where(eq(organizationTeamMembers.id, existingItem.id));
+  } else {
+    await db.insert(organizationTeamMembers).values({
+      organizationId,
+      name,
+      role,
+      bio: nullableText(formData, "bio"),
+      imageUrl: nullableText(formData, "imageUrl"),
+      profileUrl: nullableText(formData, "profileUrl"),
+      sortOrder,
+      isPublic,
+      updatedAt: now
+    });
+  }
+
+  await db.insert(adminAuditLogs).values({
+    actorUserId: user.id,
+    action: existingItem ? "organization_team.updated" : "organization_team.created",
+    entityType: "organization",
+    entityId: organizationId,
+    metadata: { name, role, source: fallbackPath.startsWith("/admin/") ? "admin" : "partner_portal" }
+  });
+
+  redirectCampaignContentSaved(formData, fallbackPath, "campaign-content-saved");
+}
+
+export async function deleteOrganizationTeamMemberAction(formData: FormData) {
+  const fallbackPath = campaignContentReturnPath(formData, "/partner/campaigns");
+  const user = await requireRole(["partner", "admin"], fallbackPath);
+  const teamMemberId = formText(formData, "teamMemberId");
+  const confirmed = formData.get("confirmDelete") === "delete";
+
+  if (!teamMemberId || !confirmed) {
+    redirectCampaignContentError(formData, fallbackPath, "campaign-content-delete");
+  }
+
+  const [item] = await db
+    .select({ id: organizationTeamMembers.id, organizationId: organizationTeamMembers.organizationId, name: organizationTeamMembers.name })
+    .from(organizationTeamMembers)
+    .where(eq(organizationTeamMembers.id, teamMemberId))
+    .limit(1);
+
+  if (!item) {
+    redirectCampaignContentError(formData, fallbackPath, "campaign-content-missing");
+  }
+
+  await requireOrganizationPermission(user.id, item.organizationId, "campaign:update", formData, fallbackPath);
+  await db.delete(organizationTeamMembers).where(eq(organizationTeamMembers.id, teamMemberId));
+  await db.insert(adminAuditLogs).values({
+    actorUserId: user.id,
+    action: "organization_team.deleted",
+    entityType: "organization",
+    entityId: item.organizationId,
+    metadata: { name: item.name, source: fallbackPath.startsWith("/admin/") ? "admin" : "partner_portal" }
+  });
+
+  redirectCampaignContentSaved(formData, fallbackPath, "campaign-content-deleted");
 }
 
 export async function createExpeditionAction(formData: FormData) {

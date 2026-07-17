@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import type { ReactNode } from "react";
 
+import { CampaignContentDepthEditor } from "@/components/campaign-content-depth-editor";
 import { Button } from "@/components/ui/button";
 import { ProgressMeter } from "@/components/ui/progress-meter";
 import {
@@ -37,6 +38,10 @@ type CampaignEvidence = PartnerPortalData["evidence"][number];
 type CampaignImpactSite = PartnerPortalData["impactSites"][number];
 type CampaignSponsorship = PartnerPortalData["sponsoredEcosystems"][number];
 type CampaignDonation = PartnerPortalData["donorActivity"][number];
+type CampaignMediaItem = PartnerPortalData["campaignMediaItems"][number];
+type CampaignBudgetLineItem = PartnerPortalData["campaignBudgetLineItems"][number];
+type CampaignTimelinePhase = PartnerPortalData["campaignTimelinePhases"][number];
+type OrganizationTeamMember = PartnerPortalData["organizationTeamMembers"][number];
 
 const partnerCampaignStatuses = ["draft", "review"];
 
@@ -552,6 +557,10 @@ export function CampaignList({
   impactSites,
   sponsoredEcosystems,
   donorActivity,
+  campaignMediaItems,
+  campaignBudgetLineItems,
+  campaignTimelinePhases,
+  organizationTeamMembers,
   canCreateCampaign,
   canDeleteCampaign,
   canUpdateCampaign
@@ -563,6 +572,10 @@ export function CampaignList({
   impactSites: CampaignImpactSite[];
   sponsoredEcosystems: CampaignSponsorship[];
   donorActivity: CampaignDonation[];
+  campaignMediaItems: CampaignMediaItem[];
+  campaignBudgetLineItems: CampaignBudgetLineItem[];
+  campaignTimelinePhases: CampaignTimelinePhase[];
+  organizationTeamMembers: OrganizationTeamMember[];
   canCreateCampaign: boolean;
   canDeleteCampaign: boolean;
   canUpdateCampaign: boolean;
@@ -592,6 +605,10 @@ export function CampaignList({
           const campaignImpactSites = impactSites.filter((site) => site.campaignId === campaign.id);
           const campaignSponsorships = sponsoredEcosystems.filter((item) => item.campaignId === campaign.id);
           const campaignDonations = donorActivity.filter((donation) => donation.campaignId === campaign.id);
+          const campaignMedia = campaignMediaItems.filter((item) => item.campaignId === campaign.id);
+          const campaignBudget = campaignBudgetLineItems.filter((item) => item.campaignId === campaign.id);
+          const campaignTimeline = campaignTimelinePhases.filter((item) => item.campaignId === campaign.id);
+          const campaignTeam = organizationTeamMembers.filter((item) => item.organizationId === campaign.organizationId);
 
           return (
             <article key={campaign.id} className="overflow-hidden rounded-lg border border-ocean-900/10 bg-sand-50">
@@ -653,6 +670,18 @@ export function CampaignList({
                   sponsoredEcosystems={campaignSponsorships}
                   donorActivity={campaignDonations}
                 />
+
+                <div className="mt-4">
+                  <CampaignContentDepthEditor
+                    campaign={campaign}
+                    mediaItems={campaignMedia}
+                    budgetLineItems={campaignBudget}
+                    timelinePhases={campaignTimeline}
+                    teamMembers={campaignTeam}
+                    returnTo="/partner/campaigns"
+                    canManage={canUpdateCampaign}
+                  />
+                </div>
 
                 {canDeleteCampaign ? (
                   <details className="mt-3 rounded-lg border border-coral-700/20 bg-white">

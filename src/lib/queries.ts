@@ -7,11 +7,16 @@ import {
   assessmentQuestions,
   adminAuditLogs,
   campaignActivities,
+  campaignBudgetLineItems,
   campaignUpdates,
   campaigns,
   campaignFollowSubscriptions,
+  campaignMediaItems,
+  campaignTimelinePhases,
   corporateAccounts,
   corporateContributions,
+  corporateEmployeeEventRegistrations,
+  corporateEmployeeEvents,
   corporateEmployees,
   corporateEmployeeInvites,
   corporateEvidenceCenter,
@@ -42,6 +47,7 @@ import {
   lessonProgress,
   monthlyImpactReports,
   notificationPreferences,
+  organizationTeamMembers,
   organizationUsers,
   organizations,
   paymentOperations,
@@ -54,9 +60,17 @@ import {
   userPaymentMethods,
   userNotifications,
   userSavedCampaigns,
+  userSavedCourses,
   userRoles,
   users
 } from "@/db/schema";
+import {
+  assessmentAttemptCount,
+  assessmentAttemptHistory,
+  buildAssessmentAnalytics,
+  selectedChoiceIdsFromAssessmentMetadata
+} from "@/lib/academy-assessment";
+import { campaignBudgetUtilization, campaignContentCompleteness } from "@/lib/campaign-content";
 import {
   getMetadataNumber,
   getMetadataNumberOrString,
@@ -88,6 +102,12 @@ import {
 } from "@/lib/billing-lifecycle";
 import { buildCoralEvidenceStream, buildMonitoringHistory } from "@/lib/coral-monitoring";
 import { buildCorporateSecurityChecklist, splitAllowedEmailDomains } from "@/lib/corporate-governance";
+import {
+  corporateEventRegistrationAvailability,
+  normalizeCorporateEmployeeEventStatus,
+  normalizeCorporateEmployeeEventType,
+  normalizeCorporateEventRegistrationStatus
+} from "@/lib/corporate-lifecycle";
 import { verifyPassword } from "@/lib/password";
 import {
   normalizePassportCategoryVisibility,
@@ -383,6 +403,7 @@ export async function getRetentionCenterData(userId: string) {
         coralsMonitored: monthlyImpactReports.coralsMonitored,
         academyProgress: monthlyImpactReports.academyProgress,
         emailedAt: monthlyImpactReports.emailedAt,
+        metadata: monthlyImpactReports.metadata,
         generatedAt: monthlyImpactReports.generatedAt
       })
       .from(monthlyImpactReports)
@@ -639,7 +660,18 @@ export async function getCampaignDetail(slug: string) {
     return null;
   }
 
-  const [updates, sites, evidence, partnerCampaignRows, donorActivityRows, sponsoredRows] = await Promise.all([
+  const [
+    updates,
+    sites,
+    evidence,
+    partnerCampaignRows,
+    donorActivityRows,
+    sponsoredRows,
+    mediaRows,
+    budgetRows,
+    timelineRows,
+    teamRows
+  ] = await Promise.all([
     db
       .select({
         id: campaignUpdates.id,
@@ -704,8 +736,69 @@ export async function getCampaignDetail(slug: string) {
       .leftJoin(impactSites, eq(sponsoredEcosystems.impactSiteId, impactSites.id))
       .where(eq(sponsoredEcosystems.campaignId, row.id))
       .orderBy(desc(sponsoredEcosystems.lastUpdatedAt))
-      .limit(6)
+      .limit(6),
+    db
+      .select({
+        id: campaignMediaItems.id,
+        title: campaignMediaItems.title,
+        mediaType: campaignMediaItems.mediaType,
+        fileUrl: campaignMediaItems.fileUrl,
+        thumbnailUrl: campaignMediaItems.thumbnailUrl,
+        altText: campaignMediaItems.altText,
+        caption: campaignMediaItems.caption,
+        provenance: campaignMediaItems.provenance,
+        sortOrder: campaignMediaItems.sortOrder,
+        isFeatured: campaignMediaItems.isFeatured
+      })
+      .from(campaignMediaItems)
+      .where(eq(campaignMediaItems.campaignId, row.id))
+      .orderBy(desc(campaignMediaItems.isFeatured), asc(campaignMediaItems.sortOrder), asc(campaignMediaItems.title)),
+    db
+      .select({
+        id: campaignBudgetLineItems.id,
+        category: campaignBudgetLineItems.category,
+        description: campaignBudgetLineItems.description,
+        amount: campaignBudgetLineItems.amount,
+        spentAmount: campaignBudgetLineItems.spentAmount,
+        sortOrder: campaignBudgetLineItems.sortOrder
+      })
+      .from(campaignBudgetLineItems)
+      .where(eq(campaignBudgetLineItems.campaignId, row.id))
+      .orderBy(asc(campaignBudgetLineItems.sortOrder), asc(campaignBudgetLineItems.category)),
+    db
+      .select({
+        id: campaignTimelinePhases.id,
+        title: campaignTimelinePhases.title,
+        description: campaignTimelinePhases.description,
+        status: campaignTimelinePhases.status,
+        startsAt: campaignTimelinePhases.startsAt,
+        endsAt: campaignTimelinePhases.endsAt,
+        deliverable: campaignTimelinePhases.deliverable,
+        evidenceNote: campaignTimelinePhases.evidenceNote,
+        sortOrder: campaignTimelinePhases.sortOrder
+      })
+      .from(campaignTimelinePhases)
+      .where(eq(campaignTimelinePhases.campaignId, row.id))
+      .orderBy(asc(campaignTimelinePhases.sortOrder), asc(campaignTimelinePhases.startsAt)),
+    db
+      .select({
+        id: organizationTeamMembers.id,
+        name: organizationTeamMembers.name,
+        role: organizationTeamMembers.role,
+        bio: organizationTeamMembers.bio,
+        imageUrl: organizationTeamMembers.imageUrl,
+        profileUrl: organizationTeamMembers.profileUrl,
+        sortOrder: organizationTeamMembers.sortOrder
+      })
+      .from(organizationTeamMembers)
+      .where(and(eq(organizationTeamMembers.organizationId, row.organizationId), eq(organizationTeamMembers.isPublic, true)))
+      .orderBy(asc(organizationTeamMembers.sortOrder), asc(organizationTeamMembers.name))
   ]);
+  const budgetLineItems = budgetRows.map((item) => ({
+    ...item,
+    amount: toNumber(item.amount),
+    spentAmount: toNumber(item.spentAmount)
+  }));
 
   return {
     ...toCampaignCard(row),
@@ -737,6 +830,17 @@ export async function getCampaignDetail(slug: string) {
       siteName: ecosystem.siteName,
       region: ecosystem.region
     })),
+    mediaGallery: mediaRows,
+    budgetLineItems,
+    budgetUtilization: campaignBudgetUtilization(budgetLineItems),
+    timelinePhases: timelineRows,
+    organizationTeam: teamRows,
+    contentCompleteness: campaignContentCompleteness({
+      media: mediaRows.length,
+      budget: budgetRows.length,
+      timeline: timelineRows.length,
+      team: teamRows.length
+    }),
     updates,
     sites,
     evidence
@@ -1518,6 +1622,7 @@ export async function getAcademyHomeData(userId?: string) {
     learnerCountRows,
     courseEnrollmentCounts,
     partnerRows,
+    savedCourseRows,
     upcomingBookingRows
   ] = await Promise.all([
     db
@@ -1607,6 +1712,16 @@ export async function getAcademyHomeData(userId?: string) {
     userId
       ? db
           .select({
+            courseId: userSavedCourses.courseId,
+            savedAt: userSavedCourses.savedAt
+          })
+          .from(userSavedCourses)
+          .where(and(eq(userSavedCourses.userId, userId), eq(userSavedCourses.status, "active")))
+          .orderBy(desc(userSavedCourses.savedAt))
+      : Promise.resolve([]),
+    userId
+      ? db
+          .select({
             bookingCode: expeditionBookings.bookingCode,
             paymentStatus: expeditionBookings.paymentStatus,
             participantsCount: expeditionBookings.participantsCount,
@@ -1635,6 +1750,8 @@ export async function getAcademyHomeData(userId?: string) {
   }, new Map<string, typeof lessonRows>());
   const enrollmentByCourseId = new Map(enrollmentRows.map((enrollment) => [enrollment.courseId, enrollment]));
   const enrollmentCountsByCourse = new Map(courseEnrollmentCounts.map((row) => [row.courseId, toNumber(row.total)]));
+  const savedCourseIds = new Set(savedCourseRows.map((row) => row.courseId));
+  const savedCourseOrder = new Map(savedCourseRows.map((row, index) => [row.courseId, index]));
 
   const progressByEnrollment = progressRows.reduce((groups, lesson) => {
     const lessons = groups.get(lesson.enrollmentId) ?? [];
@@ -1671,6 +1788,7 @@ export async function getAcademyHomeData(userId?: string) {
       completedLessons,
       remainingMinutes,
       nextLessonTitle: nextProgressLesson?.lessonTitle ?? nextCourseLesson?.title ?? null,
+      isSaved: savedCourseIds.has(course.id),
       certificateHours: Math.max(1, Math.round(course.durationMinutes / 60))
     };
   });
@@ -1685,6 +1803,9 @@ export async function getAcademyHomeData(userId?: string) {
     enrichedCourses.find((course) => course.enrollment && course.progressPercent < 100) ?? null;
   const recommendedCourses = enrichedCourses.filter((course) => !course.enrollment).slice(0, 3);
   const activeCourses = enrichedCourses.filter((course) => course.enrollment && course.slug !== continueLearning?.slug).slice(0, 2);
+  const savedCourses = enrichedCourses
+    .filter((course) => course.isSaved)
+    .sort((a, b) => (savedCourseOrder.get(a.id) ?? 0) - (savedCourseOrder.get(b.id) ?? 0));
 
   const tracks = academyTrackDefinitions.map((track) => {
     const trackCourses = enrichedCourses.filter((course) => track.courseSlugs.includes(course.slug));
@@ -1744,6 +1865,7 @@ export async function getAcademyHomeData(userId?: string) {
     heroImageUrl: enrichedCourses[1]?.imageUrl ?? enrichedCourses[0]?.imageUrl ?? null,
     courses: enrichedCourses,
     featuredCourse: enrichedCourses[1] ?? enrichedCourses[0] ?? null,
+    savedCourses,
     trustStats: [
       { label: "Courses", value: `${courseRows.length}+` },
       { label: "Verified instructors", value: `${new Set(enrichedCourses.map((course) => course.instructor)).size}` },
@@ -1878,7 +2000,7 @@ export async function getCourseDetail(slug: string, userId?: string) {
   ]);
 
   const enrollment = enrollmentRows[0] ?? null;
-  const [progressRows, certificateRows, attemptRows] = await Promise.all([
+  const [progressRows, certificateRows, attemptRows, savedCourseRows, assessmentQuestionRows] = await Promise.all([
     enrollment
       ? db
           .select({
@@ -1906,11 +2028,38 @@ export async function getCourseDetail(slug: string, userId?: string) {
           .select({
             score: assessmentAttempts.score,
             status: assessmentAttempts.status,
-            submittedAt: assessmentAttempts.submittedAt
+            submittedAt: assessmentAttempts.submittedAt,
+            metadata: assessmentAttempts.metadata
           })
           .from(assessmentAttempts)
           .where(and(eq(assessmentAttempts.assessmentId, assessments[0].id), eq(assessmentAttempts.userId, userId)))
           .limit(1)
+      : Promise.resolve([]),
+    userId
+      ? db
+          .select({
+            status: userSavedCourses.status
+          })
+          .from(userSavedCourses)
+          .where(and(eq(userSavedCourses.courseId, course.id), eq(userSavedCourses.userId, userId)))
+          .limit(1)
+      : Promise.resolve([]),
+    assessments[0]
+      ? db
+          .select({
+            questionId: assessmentQuestions.id,
+            questionText: assessmentQuestions.questionText,
+            questionPosition: assessmentQuestions.position,
+            questionPoints: assessmentQuestions.points,
+            choiceId: assessmentChoices.id,
+            choiceText: assessmentChoices.choiceText,
+            choicePosition: assessmentChoices.position,
+            isCorrect: assessmentChoices.isCorrect
+          })
+          .from(assessmentQuestions)
+          .innerJoin(assessmentChoices, eq(assessmentChoices.questionId, assessmentQuestions.id))
+          .where(and(eq(assessmentQuestions.assessmentId, assessments[0].id), eq(assessmentQuestions.status, "active")))
+          .orderBy(asc(assessmentQuestions.position), asc(assessmentChoices.position))
       : Promise.resolve([])
   ]);
 
@@ -1918,6 +2067,72 @@ export async function getCourseDetail(slug: string, userId?: string) {
   const completedLessons = progressRows.filter((row) => row.status === "completed").length;
   const progressPercent = enrollment?.status === "completed" ? 100 : Math.round((completedLessons / Math.max(1, lessons.length)) * 100);
   const profile = academyProfileFor(course.slug, course.title);
+  const attemptRow = attemptRows[0] ?? null;
+  const selectedChoiceIds = selectedChoiceIdsFromAssessmentMetadata(attemptRow?.metadata);
+  const showAssessmentFeedback = Boolean(attemptRow);
+  const questionMap = new Map<string, {
+    id: string;
+    text: string;
+    position: number;
+    points: number;
+    choices: Array<{
+      id: string;
+      text: string;
+      position: number;
+      isSelected: boolean;
+      isCorrect: boolean;
+    }>;
+  }>();
+
+  for (const row of assessmentQuestionRows) {
+    const question = questionMap.get(row.questionId) ?? {
+      id: row.questionId,
+      text: row.questionText,
+      position: row.questionPosition,
+      points: row.questionPoints,
+      choices: []
+    };
+
+    question.choices.push({
+      id: row.choiceId,
+      text: row.choiceText,
+      position: row.choicePosition,
+      isSelected: selectedChoiceIds[row.questionId] === row.choiceId,
+      isCorrect: showAssessmentFeedback ? row.isCorrect : false
+    });
+    questionMap.set(row.questionId, question);
+  }
+
+  const assessmentQuestionsForUi = Array.from(questionMap.values())
+    .sort((a, b) => a.position - b.position)
+    .map((question) => {
+      const choices = question.choices.sort((a, b) => a.position - b.position);
+      const selectedChoice = choices.find((choice) => choice.isSelected) ?? null;
+      const correctChoice = showAssessmentFeedback ? choices.find((choice) => choice.isCorrect) ?? null : null;
+
+      return {
+        ...question,
+        choices,
+        selectedChoiceId: selectedChoice?.id ?? null,
+        selectedChoiceText: selectedChoice?.text ?? null,
+        correctChoiceId: correctChoice?.id ?? null,
+        correctChoiceText: correctChoice?.text ?? null,
+        wasCorrect: showAssessmentFeedback ? Boolean(selectedChoice?.isCorrect) : null
+      };
+    });
+  const assessment = assessments[0]
+    ? {
+        ...assessments[0],
+        questions: assessmentQuestionsForUi
+      }
+    : null;
+  const attempt = attemptRow
+    ? {
+        ...attemptRow,
+        attemptCount: assessmentAttemptCount(attemptRow.metadata),
+        history: assessmentAttemptHistory(attemptRow.metadata)
+      }
+    : null;
 
   return {
     ...course,
@@ -1936,10 +2151,11 @@ export async function getCourseDetail(slug: string, userId?: string) {
       ...lesson,
       progress: progressByLesson.get(lesson.id) ?? null
     })),
-    assessment: assessments[0] ?? null,
+    assessment,
     enrollment,
     certificate: certificateRows[0] ?? null,
-    attempt: attemptRows[0] ?? null
+    attempt,
+    isSaved: savedCourseRows[0]?.status === "active"
   };
 }
 
@@ -2404,6 +2620,7 @@ export async function getDashboardData(userId: string) {
     courseRows,
     passportPreview,
     savedCampaignRows,
+    savedCourseRows,
     followedUpdateRows,
     notificationPreferenceRows,
     monthlyImpactReportRows
@@ -2675,6 +2892,21 @@ export async function getDashboardData(userId: string) {
       .limit(6),
     db
       .select({
+        slug: courses.slug,
+        title: courses.title,
+        level: courses.level,
+        summary: courses.summary,
+        imageUrl: courses.imageUrl,
+        durationMinutes: courses.durationMinutes,
+        savedAt: userSavedCourses.savedAt
+      })
+      .from(userSavedCourses)
+      .innerJoin(courses, eq(userSavedCourses.courseId, courses.id))
+      .where(and(eq(userSavedCourses.userId, userId), eq(userSavedCourses.status, "active"), eq(courses.status, "published")))
+      .orderBy(desc(userSavedCourses.savedAt))
+      .limit(6),
+    db
+      .select({
         id: campaignUpdates.id,
         title: campaignUpdates.title,
         publishedAt: campaignUpdates.publishedAt,
@@ -2714,6 +2946,7 @@ export async function getDashboardData(userId: string) {
         coralsMonitored: monthlyImpactReports.coralsMonitored,
         academyProgress: monthlyImpactReports.academyProgress,
         emailedAt: monthlyImpactReports.emailedAt,
+        metadata: monthlyImpactReports.metadata,
         generatedAt: monthlyImpactReports.generatedAt
       })
       .from(monthlyImpactReports)
@@ -3363,6 +3596,8 @@ export async function getDashboardData(userId: string) {
     persisted: Boolean(currentStoredReport),
     emailedAt: currentStoredReport?.emailedAt ?? null,
     generatedAt: currentStoredReport?.generatedAt ?? null,
+    metadata: currentStoredReport?.metadata ?? null,
+    downloadHref: currentStoredReport ? `/dashboard/reports/${currentStoredReport.id}/download` : null,
     preferenceEnabled: preferences.monthlyImpactReport,
     emailEnabled: preferences.monthlyImpactEmail
   };
@@ -3390,6 +3625,7 @@ export async function getDashboardData(userId: string) {
     upcomingExpedition,
     academy: {
       enrollments: enrollmentsWithProgress,
+      savedCourses: savedCourseRows,
       continueLearning,
       recommendedCourse,
       completedCourses,
@@ -3707,7 +3943,20 @@ export async function getCorporateDashboardData(userId: string) {
     return null;
   }
 
-  const [budgets, employees, employeeInvites, portfolio, evidence, exports, contributions, integrations, securityRows, auditRows] = await Promise.all([
+  const [
+    budgets,
+    employees,
+    employeeInvites,
+    employeeEvents,
+    employeeEventRegistrations,
+    portfolio,
+    evidence,
+    exports,
+    contributions,
+    integrations,
+    securityRows,
+    auditRows
+  ] = await Promise.all([
     db
       .select({
         category: corporateProgramBudgets.category,
@@ -3743,6 +3992,48 @@ export async function getCorporateDashboardData(userId: string) {
       .from(corporateEmployeeInvites)
       .where(and(eq(corporateEmployeeInvites.corporateAccountId, program.accountId), eq(corporateEmployeeInvites.status, "pending")))
       .orderBy(desc(corporateEmployeeInvites.createdAt)),
+    db
+      .select({
+        id: corporateEmployeeEvents.id,
+        title: corporateEmployeeEvents.title,
+        eventType: corporateEmployeeEvents.eventType,
+        status: corporateEmployeeEvents.status,
+        startsAt: corporateEmployeeEvents.startsAt,
+        endsAt: corporateEmployeeEvents.endsAt,
+        location: corporateEmployeeEvents.location,
+        capacity: corporateEmployeeEvents.capacity,
+        waitlistEnabled: corporateEmployeeEvents.waitlistEnabled,
+        description: corporateEmployeeEvents.description,
+        createdAt: corporateEmployeeEvents.createdAt,
+        updatedAt: corporateEmployeeEvents.updatedAt
+      })
+      .from(corporateEmployeeEvents)
+      .where(and(eq(corporateEmployeeEvents.corporateAccountId, program.accountId), eq(corporateEmployeeEvents.programId, program.programId)))
+      .orderBy(asc(corporateEmployeeEvents.startsAt), asc(corporateEmployeeEvents.title)),
+    db
+      .select({
+        id: corporateEmployeeEventRegistrations.id,
+        eventId: corporateEmployeeEventRegistrations.eventId,
+        employeeId: corporateEmployeeEventRegistrations.employeeId,
+        status: corporateEmployeeEventRegistrations.status,
+        checkedInAt: corporateEmployeeEventRegistrations.checkedInAt,
+        attendanceHours: corporateEmployeeEventRegistrations.attendanceHours,
+        notes: corporateEmployeeEventRegistrations.notes,
+        createdAt: corporateEmployeeEventRegistrations.createdAt,
+        updatedAt: corporateEmployeeEventRegistrations.updatedAt,
+        employeeName: corporateEmployees.name,
+        employeeEmail: corporateEmployees.email,
+        employeeDepartment: corporateEmployees.department,
+        eventTitle: corporateEmployeeEvents.title,
+        eventStartsAt: corporateEmployeeEvents.startsAt,
+        eventEndsAt: corporateEmployeeEvents.endsAt,
+        eventLocation: corporateEmployeeEvents.location
+      })
+      .from(corporateEmployeeEventRegistrations)
+      .innerJoin(corporateEmployeeEvents, eq(corporateEmployeeEventRegistrations.eventId, corporateEmployeeEvents.id))
+      .innerJoin(corporateEmployees, eq(corporateEmployeeEventRegistrations.employeeId, corporateEmployees.id))
+      .where(and(eq(corporateEmployeeEvents.corporateAccountId, program.accountId), eq(corporateEmployeeEvents.programId, program.programId)))
+      .orderBy(desc(corporateEmployeeEvents.startsAt), asc(corporateEmployees.name)),
     db
       .select({
         campaignId: campaigns.id,
@@ -3889,9 +4180,28 @@ export async function getCorporateDashboardData(userId: string) {
   const inviteByEmployee = new Map(employeeInvites.map((invite) => [invite.employeeId, invite]));
   const employeeRows = employees.map((employee) => {
     const invite = inviteByEmployee.get(employee.id);
+    const employeeRegistrations = employeeEventRegistrations
+      .filter((registration) => registration.employeeId === employee.id)
+      .map((registration) => ({
+        status: normalizeCorporateEventRegistrationStatus(registration.status),
+        attendanceHours: toNumber(registration.attendanceHours),
+        checkedInAt: registration.checkedInAt
+      }));
+    const attendedRegistrations = employeeRegistrations.filter((registration) => registration.status === "attended");
 
     return {
       ...employee,
+      attendance: {
+        registeredEvents: employeeRegistrations.filter((registration) => registration.status === "registered").length,
+        waitlistedEvents: employeeRegistrations.filter((registration) => registration.status === "waitlisted").length,
+        attendedEvents: attendedRegistrations.length,
+        volunteerHours: attendedRegistrations.reduce((total, registration) => total + registration.attendanceHours, 0),
+        latestCheckInAt:
+          attendedRegistrations
+            .map((registration) => registration.checkedInAt)
+            .filter(isDefined)
+            .sort((left, right) => right.getTime() - left.getTime())[0] ?? null
+      },
       invite: invite
         ? {
             id: invite.id,
@@ -3904,6 +4214,58 @@ export async function getCorporateDashboardData(userId: string) {
             acceptHref: `/corporate/invite/${invite.token}`
           }
         : null
+    };
+  });
+
+  const employeeEventRegistrationRows = employeeEventRegistrations.map((registration) => {
+    const status = normalizeCorporateEventRegistrationStatus(registration.status);
+
+    return {
+      ...registration,
+      status,
+      statusLabel: status.replaceAll("_", " "),
+      attendanceHoursValue: toNumber(registration.attendanceHours)
+    };
+  });
+  const registrationsByEvent = new Map<string, typeof employeeEventRegistrationRows>();
+
+  for (const registration of employeeEventRegistrationRows) {
+    const rows = registrationsByEvent.get(registration.eventId) ?? [];
+    rows.push(registration);
+    registrationsByEvent.set(registration.eventId, rows);
+  }
+
+  const employeeEventRows = employeeEvents.map((event) => {
+    const status = normalizeCorporateEmployeeEventStatus(event.status);
+    const eventType = normalizeCorporateEmployeeEventType(event.eventType);
+    const registrations = registrationsByEvent.get(event.id) ?? [];
+    const activeRegistrations = registrations.filter((registration) => ["registered", "attended"].includes(registration.status));
+    const waitlistedRegistrations = registrations.filter((registration) => registration.status === "waitlisted");
+    const attendedRegistrations = registrations.filter((registration) => registration.status === "attended");
+    const availability = corporateEventRegistrationAvailability({
+      status,
+      capacity: event.capacity,
+      registeredCount: activeRegistrations.length,
+      waitlistEnabled: event.waitlistEnabled
+    });
+
+    return {
+      ...event,
+      date: event.startsAt,
+      status,
+      statusLabel: status.replaceAll("_", " "),
+      eventType,
+      eventTypeLabel: eventType.replaceAll("_", " "),
+      registered: activeRegistrations.length,
+      waitlisted: waitlistedRegistrations.length,
+      attended: attendedRegistrations.length,
+      attendanceHours: attendedRegistrations.reduce((total, registration) => total + registration.attendanceHoursValue, 0),
+      registrations,
+      availability,
+      availableSeats: availability.availableSeats,
+      canRegister: availability.canRegister,
+      willWaitlist: availability.willWaitlist,
+      availabilityLabel: availability.label
     };
   });
 
@@ -4094,8 +4456,18 @@ export async function getCorporateDashboardData(userId: string) {
   const employeesEngaged = employeeRows.filter((employee) => employee.status === "active").length;
   const eligibleEmployees = Math.max(employeeRows.length, employeesEngaged);
   const participationRate = eligibleEmployees > 0 ? Math.round((employeesEngaged / eligibleEmployees) * 100) : 0;
-  const activityCount = Math.max(1, corporateEvidence.length + portfolioRows.length);
-  const volunteerHours = employeesEngaged * 5;
+  const eventParticipantIds = new Set(
+    employeeEventRegistrationRows
+      .filter((registration) => ["registered", "waitlisted", "attended"].includes(registration.status))
+      .map((registration) => registration.employeeId)
+  );
+  const challengeParticipationRate = eligibleEmployees > 0 ? Math.round((eventParticipantIds.size / eligibleEmployees) * 100) : 0;
+  const activityCount = employeeEventRows.length + corporateEvidence.length + portfolioRows.length;
+  const volunteerHours = Math.round(
+    employeeEventRegistrationRows
+      .filter((registration) => registration.status === "attended")
+      .reduce((total, registration) => total + registration.attendanceHoursValue, 0) * 100
+  ) / 100;
   const provinces = new Set(portfolioRows.map((project) => project.region));
   const partners = new Set(portfolioRows.map((project) => project.organizationName));
   const projectHealth = [
@@ -4112,6 +4484,19 @@ export async function getCorporateDashboardData(userId: string) {
     const manifest = item.artifactManifest && typeof item.artifactManifest === "object" && !Array.isArray(item.artifactManifest) ? (item.artifactManifest as Record<string, unknown>) : {};
     const readiness = typeof manifest.readiness === "string" ? manifest.readiness : item.status === "scheduled" ? "scheduled" : item.fileUrl ? "ready" : "incomplete";
     const manifestUrl = typeof manifest.manifestUrl === "string" ? manifest.manifestUrl : null;
+    const artifactFiles = Array.isArray(manifest.files)
+      ? manifest.files
+          .filter((file): file is Record<string, unknown> => Boolean(file && typeof file === "object" && !Array.isArray(file)))
+          .map((file) => ({
+            label: typeof file.label === "string" ? file.label : "Artifact",
+            format: typeof file.format === "string" ? file.format : "file",
+            url: typeof file.url === "string" ? file.url : null,
+            required: file.required === true
+          }))
+          .filter((file) => file.url)
+      : [];
+    const artifactUrl = (format: string, labelIncludes?: string) =>
+      artifactFiles.find((file) => file.format === format && (!labelIncludes || file.label.toLowerCase().includes(labelIncludes)))?.url ?? null;
 
     return {
       ...item,
@@ -4120,6 +4505,11 @@ export async function getCorporateDashboardData(userId: string) {
       artifactVersionLabel: `v${item.artifactVersion}`,
       artifactReadiness: readiness,
       manifestUrl,
+      artifactFiles,
+      pdfUrl: artifactUrl("pdf"),
+      workbookUrl: artifactUrl("xlsx"),
+      portfolioCsvUrl: artifactUrl("csv", "portfolio"),
+      evidenceCsvUrl: artifactUrl("csv", "evidence"),
       isScheduledDue: item.status === "scheduled" && scheduledReportIsDue(item.scheduledFor, now),
       generatedAt: item.generatedAt ?? (item.status === "scheduled" ? null : item.createdAt),
       verifiedMetrics: Math.max(verifiedOutputs, portfolioRows.length * 3),
@@ -4134,6 +4524,11 @@ export async function getCorporateDashboardData(userId: string) {
     fileUrl: null,
     previewUrl: null,
     evidenceBundleUrl: null,
+    pdfUrl: null,
+    workbookUrl: null,
+    portfolioCsvUrl: null,
+    evidenceCsvUrl: null,
+    artifactFiles: [],
     publicSlug: null,
     publicHref: null,
     createdAt: now,
@@ -4196,17 +4591,18 @@ export async function getCorporateDashboardData(userId: string) {
 
   const departmentMap = employeeRows.reduce((departments, employee) => {
     const key = employee.department ?? "Unassigned";
-    const existing = departments.get(key) ?? { department: key, employees: 0, active: 0, volunteerHours: 0 };
+    const existing = departments.get(key) ?? { department: key, employees: 0, active: 0, participants: 0, volunteerHours: 0 };
     existing.employees += 1;
     existing.active += employee.status === "active" ? 1 : 0;
-    existing.volunteerHours += employee.status === "active" ? 5 : 0;
+    existing.participants += eventParticipantIds.has(employee.id) ? 1 : 0;
+    existing.volunteerHours += employee.attendance.volunteerHours;
     departments.set(key, existing);
 
     return departments;
-  }, new Map<string, { department: string; employees: number; active: number; volunteerHours: number }>());
+  }, new Map<string, { department: string; employees: number; active: number; participants: number; volunteerHours: number }>());
   const departmentEngagement = Array.from(departmentMap.values()).map((department) => ({
     ...department,
-    participationRate: department.employees > 0 ? Math.round((department.active / department.employees) * 100) : 0
+    participationRate: department.employees > 0 ? Math.round((department.participants / department.employees) * 100) : 0
   }));
   const trendMonths = Array.from({ length: 6 }, (_, index) => addMonths(now, index - 5));
   const employeeTrend = trendMonths.map((month, index) => {
@@ -4223,29 +4619,17 @@ export async function getCorporateDashboardData(userId: string) {
     .sort((left, right) => right.participationRate - left.participationRate || right.volunteerHours - left.volunteerHours)
     .slice(0, 5);
   const employeePrograms = {
-    upcomingEvents: [
-      {
-        title: "Coastal restoration field day",
-        date: addMonths(now, 1),
-        location: portfolioRows[0]?.region ?? "Indonesia field site",
-        capacity: Math.max(40, Math.round(eligibleEmployees * 0.08)),
-        registered: Math.max(8, Math.round(employeesEngaged * 0.06)),
-        status: "Registration open"
-      },
-      {
-        title: "ESG evidence review clinic",
-        date: addMonths(now, 2),
-        location: "Online",
-        capacity: Math.max(30, Math.round(eligibleEmployees * 0.06)),
-        registered: Math.max(6, Math.round(employeesEngaged * 0.04)),
-        status: "Invite draft"
-      }
-    ],
+    events: employeeEventRows,
+    registrations: employeeEventRegistrationRows,
+    attendanceRows: employeeEventRegistrationRows.filter((registration) => registration.status === "attended"),
+    upcomingEvents: employeeEventRows
+      .filter((event) => event.startsAt.getTime() >= now.getTime() && !["completed", "cancelled"].includes(event.status))
+      .slice(0, 6),
     challenge: {
       title: "Blue Office Challenge",
-      progress: Math.min(100, Math.max(12, participationRate + 18)),
+      progress: challengeParticipationRate,
       targetDepartments: Math.max(3, departmentEngagement.length),
-      activeDepartments: departmentLeaders.filter((department) => department.active > 0).length,
+      activeDepartments: departmentLeaders.filter((department) => department.participants > 0).length,
       leaderboard: departmentLeaders
     },
     donationMatching: {
@@ -4401,12 +4785,15 @@ export async function getCorporateDashboardData(userId: string) {
       { label: "Approved corporate report", complete: reportExports.some((item) => ["approved", "published"].includes(item.status)) },
       { label: "Verified evidence bundle", complete: verifiedOutputs > 0 && verifiedOutputs >= Math.max(1, Math.round(corporateEvidence.length * 0.6)) },
       { label: "Public metrics reviewed", complete: latestPublishedReport !== undefined },
-      { label: "Download links prepared", complete: Boolean(latestPublishedReport?.fileUrl && latestPublishedReport.evidenceBundleUrl) }
+      { label: "Download links prepared", complete: Boolean(latestPublishedReport?.fileUrl && latestPublishedReport.evidenceBundleUrl && latestPublishedReport.pdfUrl && latestPublishedReport.workbookUrl) }
     ],
     downloads: [
       latestReport.fileUrl ? { label: "Report data", href: latestReport.fileUrl } : null,
       latestReport.evidenceBundleUrl ? { label: "Evidence bundle", href: latestReport.evidenceBundleUrl } : null,
-      latestReport.previewUrl ? { label: "Executive preview", href: latestReport.previewUrl } : null
+      latestReport.previewUrl ? { label: "Executive preview", href: latestReport.previewUrl } : null,
+      latestReport.pdfUrl ? { label: "PDF snapshot", href: latestReport.pdfUrl } : null,
+      latestReport.workbookUrl ? { label: "Excel workbook", href: latestReport.workbookUrl } : null,
+      latestReport.portfolioCsvUrl ? { label: "Portfolio CSV", href: latestReport.portfolioCsvUrl } : null
     ].filter(isDefined)
   };
   const organizationPassport = {
@@ -5050,7 +5437,11 @@ export async function getAdminPortalData() {
     donationRows,
     subscriptionDueRows,
     operationRows,
-    bookingOperationRows
+    bookingOperationRows,
+    campaignMediaRows,
+    campaignBudgetRows,
+    campaignTimelineRows,
+    organizationTeamRows
   ] = await Promise.all([
     db
       .select({
@@ -5205,7 +5596,64 @@ export async function getAdminPortalData() {
       .innerJoin(expeditionBookings, eq(paymentOperations.bookingId, expeditionBookings.id))
       .innerJoin(expeditions, eq(expeditionBookings.expeditionId, expeditions.id))
       .where(and(eq(paymentOperations.status, "pending"), eq(paymentOperations.entityType, "expedition_booking")))
-      .orderBy(desc(paymentOperations.createdAt))
+      .orderBy(desc(paymentOperations.createdAt)),
+    db
+      .select({
+        id: campaignMediaItems.id,
+        campaignId: campaignMediaItems.campaignId,
+        title: campaignMediaItems.title,
+        mediaType: campaignMediaItems.mediaType,
+        fileUrl: campaignMediaItems.fileUrl,
+        thumbnailUrl: campaignMediaItems.thumbnailUrl,
+        altText: campaignMediaItems.altText,
+        caption: campaignMediaItems.caption,
+        provenance: campaignMediaItems.provenance,
+        sortOrder: campaignMediaItems.sortOrder,
+        isFeatured: campaignMediaItems.isFeatured
+      })
+      .from(campaignMediaItems)
+      .orderBy(asc(campaignMediaItems.sortOrder), asc(campaignMediaItems.title)),
+    db
+      .select({
+        id: campaignBudgetLineItems.id,
+        campaignId: campaignBudgetLineItems.campaignId,
+        category: campaignBudgetLineItems.category,
+        description: campaignBudgetLineItems.description,
+        amount: campaignBudgetLineItems.amount,
+        spentAmount: campaignBudgetLineItems.spentAmount,
+        sortOrder: campaignBudgetLineItems.sortOrder
+      })
+      .from(campaignBudgetLineItems)
+      .orderBy(asc(campaignBudgetLineItems.sortOrder), asc(campaignBudgetLineItems.category)),
+    db
+      .select({
+        id: campaignTimelinePhases.id,
+        campaignId: campaignTimelinePhases.campaignId,
+        title: campaignTimelinePhases.title,
+        description: campaignTimelinePhases.description,
+        status: campaignTimelinePhases.status,
+        startsAt: campaignTimelinePhases.startsAt,
+        endsAt: campaignTimelinePhases.endsAt,
+        deliverable: campaignTimelinePhases.deliverable,
+        evidenceNote: campaignTimelinePhases.evidenceNote,
+        sortOrder: campaignTimelinePhases.sortOrder
+      })
+      .from(campaignTimelinePhases)
+      .orderBy(asc(campaignTimelinePhases.sortOrder), asc(campaignTimelinePhases.startsAt)),
+    db
+      .select({
+        id: organizationTeamMembers.id,
+        organizationId: organizationTeamMembers.organizationId,
+        name: organizationTeamMembers.name,
+        role: organizationTeamMembers.role,
+        bio: organizationTeamMembers.bio,
+        imageUrl: organizationTeamMembers.imageUrl,
+        profileUrl: organizationTeamMembers.profileUrl,
+        sortOrder: organizationTeamMembers.sortOrder,
+        isPublic: organizationTeamMembers.isPublic
+      })
+      .from(organizationTeamMembers)
+      .orderBy(asc(organizationTeamMembers.sortOrder), asc(organizationTeamMembers.name))
   ]);
   const evidenceReviewEventsById = await getEvidenceReviewEventsByEvidenceIds(evidenceRows.map((item) => item.id));
   const pendingOperationsByDonationId = new Map(
@@ -5216,11 +5664,33 @@ export async function getAdminPortalData() {
   const donationCounts = new Map(campaignDonationCountRows.map((row) => [row.campaignId, Number(row.total)]));
   const sponsorshipCounts = new Map(campaignSponsorshipCountRows.map((row) => [row.campaignId, Number(row.total)]));
   const portfolioCounts = new Map(campaignPortfolioCountRows.map((row) => [row.campaignId, Number(row.total)]));
+  const mediaCounts = new Map<string, number>();
+  const budgetCounts = new Map<string, number>();
+  const timelineCounts = new Map<string, number>();
+  const teamCounts = new Map<string, number>();
   const expeditionCounts = new Map<string, number>();
 
   for (const row of campaignExpeditionCountRows) {
     if (row.campaignId) {
       expeditionCounts.set(row.campaignId, Number(row.total));
+    }
+  }
+
+  for (const row of campaignMediaRows) {
+    mediaCounts.set(row.campaignId, (mediaCounts.get(row.campaignId) ?? 0) + 1);
+  }
+
+  for (const row of campaignBudgetRows) {
+    budgetCounts.set(row.campaignId, (budgetCounts.get(row.campaignId) ?? 0) + 1);
+  }
+
+  for (const row of campaignTimelineRows) {
+    timelineCounts.set(row.campaignId, (timelineCounts.get(row.campaignId) ?? 0) + 1);
+  }
+
+  for (const row of organizationTeamRows) {
+    if (row.isPublic) {
+      teamCounts.set(row.organizationId, (teamCounts.get(row.organizationId) ?? 0) + 1);
     }
   }
 
@@ -5231,8 +5701,22 @@ export async function getAdminPortalData() {
       donationRecordCount: donationCounts.get(campaign.id) ?? 0,
       sponsorshipRecordCount: sponsorshipCounts.get(campaign.id) ?? 0,
       corporatePortfolioCount: portfolioCounts.get(campaign.id) ?? 0,
-      relatedExpeditionCount: expeditionCounts.get(campaign.id) ?? 0
+      relatedExpeditionCount: expeditionCounts.get(campaign.id) ?? 0,
+      contentCompleteness: campaignContentCompleteness({
+        media: mediaCounts.get(campaign.id) ?? 0,
+        budget: budgetCounts.get(campaign.id) ?? 0,
+        timeline: timelineCounts.get(campaign.id) ?? 0,
+        team: teamCounts.get(campaign.organizationId) ?? 0
+      })
     })),
+    campaignMediaItems: campaignMediaRows,
+    campaignBudgetLineItems: campaignBudgetRows.map((item) => ({
+      ...item,
+      amount: toNumber(item.amount),
+      spentAmount: toNumber(item.spentAmount)
+    })),
+    campaignTimelinePhases: campaignTimelineRows,
+    organizationTeamMembers: organizationTeamRows,
     evidence: evidenceRows.map((item) => {
       const reviewEvents = evidenceReviewEventsById.get(item.id) ?? [];
 
@@ -5267,6 +5751,8 @@ export async function getAdminOperationsData() {
     expeditionReviewRows,
     impactSiteRows,
     reportRows,
+    monthlyImpactReportRows,
+    monthlyReportEligibleRows,
     userRows,
     auditRows
   ] = await Promise.all([
@@ -5445,6 +5931,37 @@ export async function getAdminOperationsData() {
       .orderBy(desc(corporateReportExports.createdAt)),
     db
       .select({
+        id: monthlyImpactReports.id,
+        userId: monthlyImpactReports.userId,
+        reportMonth: monthlyImpactReports.reportMonth,
+        status: monthlyImpactReports.status,
+        label: monthlyImpactReports.label,
+        contributions: monthlyImpactReports.contributions,
+        campaignUpdates: monthlyImpactReports.campaignUpdates,
+        newEvidence: monthlyImpactReports.newEvidence,
+        coralsMonitored: monthlyImpactReports.coralsMonitored,
+        academyProgress: monthlyImpactReports.academyProgress,
+        emailedAt: monthlyImpactReports.emailedAt,
+        generatedAt: monthlyImpactReports.generatedAt,
+        metadata: monthlyImpactReports.metadata,
+        userEmail: users.email,
+        userName: users.name,
+        displayName: profiles.displayName
+      })
+      .from(monthlyImpactReports)
+      .innerJoin(users, eq(monthlyImpactReports.userId, users.id))
+      .leftJoin(profiles, eq(profiles.userId, users.id))
+      .orderBy(desc(monthlyImpactReports.generatedAt))
+      .limit(100),
+    db
+      .select({
+        total: sql<number>`count(${notificationPreferences.userId})`,
+        emailEnabled: sql<number>`sum(case when ${notificationPreferences.monthlyImpactEmail} then 1 else 0 end)`
+      })
+      .from(notificationPreferences)
+      .where(eq(notificationPreferences.monthlyImpactReport, true)),
+    db
+      .select({
         id: users.id,
         email: users.email,
         name: users.name,
@@ -5474,6 +5991,7 @@ export async function getAdminOperationsData() {
   const campaignCounts = new Map(partnerCampaignCountRows.map((row) => [row.organizationId, Number(row.total)]));
   const expeditionBookingCounts = new Map<string, number>();
   const departureBookingCounts = new Map<string, number>();
+  const latestMonthlyImpactReport = monthlyImpactReportRows[0] ?? null;
 
   for (const row of expeditionBookingCountRows) {
     const total = Number(row.total);
@@ -5744,6 +6262,17 @@ export async function getAdminOperationsData() {
       evidenceCount: getMetadataNumber(site.metadata, "evidenceCount")
     })),
     reports: reportRows,
+    monthlyImpactReports: monthlyImpactReportRows.map((report) => ({
+      ...report,
+      contributions: toNumber(report.contributions)
+    })),
+    monthlyImpactSummary: {
+      eligibleUsers: Number(monthlyReportEligibleRows[0]?.total ?? 0),
+      emailEnabledUsers: Number(monthlyReportEligibleRows[0]?.emailEnabled ?? 0),
+      readyReports: monthlyImpactReportRows.filter((report) => report.status === "ready").length,
+      emailedReports: monthlyImpactReportRows.filter((report) => report.emailedAt).length,
+      latestGeneratedAt: latestMonthlyImpactReport?.generatedAt ?? null
+    },
     users: userRows,
     auditLogs: auditRows
   };
@@ -6121,8 +6650,24 @@ export async function getPartnerPortalData(userId?: string) {
   const organizationScope = organizationIds === null ? sql`true` : organizationIds.length > 0 ? inArray(organizations.id, organizationIds) : sql`false`;
   const campaignScope = organizationIds === null ? sql`true` : organizationIds.length > 0 ? inArray(campaigns.organizationId, organizationIds) : sql`false`;
   const expeditionScope = organizationIds === null ? sql`true` : organizationIds.length > 0 ? inArray(campaigns.organizationId, organizationIds) : sql`false`;
+  const teamOrganizationScope = organizationIds === null ? sql`true` : organizationIds.length > 0 ? inArray(organizationTeamMembers.organizationId, organizationIds) : sql`false`;
 
-  const [organizationRows, campaignRows, evidenceRows, updateRows, activityRows, siteRows, sponsoredRows, expeditionRows, expeditionBookingCountRows, donorRows] = await Promise.all([
+  const [
+    organizationRows,
+    campaignRows,
+    evidenceRows,
+    updateRows,
+    activityRows,
+    siteRows,
+    sponsoredRows,
+    expeditionRows,
+    expeditionBookingCountRows,
+    donorRows,
+    campaignMediaRows,
+    campaignBudgetRows,
+    campaignTimelineRows,
+    organizationTeamRows
+  ] = await Promise.all([
     db
       .select({
         id: organizations.id,
@@ -6311,7 +6856,71 @@ export async function getPartnerPortalData(userId?: string) {
       .from(donations)
       .innerJoin(campaigns, eq(donations.campaignId, campaigns.id))
       .where(and(eq(donations.status, "paid"), campaignScope))
-      .orderBy(desc(donations.createdAt))
+      .orderBy(desc(donations.createdAt)),
+    db
+      .select({
+        id: campaignMediaItems.id,
+        campaignId: campaignMediaItems.campaignId,
+        title: campaignMediaItems.title,
+        mediaType: campaignMediaItems.mediaType,
+        fileUrl: campaignMediaItems.fileUrl,
+        thumbnailUrl: campaignMediaItems.thumbnailUrl,
+        altText: campaignMediaItems.altText,
+        caption: campaignMediaItems.caption,
+        provenance: campaignMediaItems.provenance,
+        sortOrder: campaignMediaItems.sortOrder,
+        isFeatured: campaignMediaItems.isFeatured
+      })
+      .from(campaignMediaItems)
+      .innerJoin(campaigns, eq(campaignMediaItems.campaignId, campaigns.id))
+      .where(campaignScope)
+      .orderBy(asc(campaignMediaItems.sortOrder), asc(campaignMediaItems.title)),
+    db
+      .select({
+        id: campaignBudgetLineItems.id,
+        campaignId: campaignBudgetLineItems.campaignId,
+        category: campaignBudgetLineItems.category,
+        description: campaignBudgetLineItems.description,
+        amount: campaignBudgetLineItems.amount,
+        spentAmount: campaignBudgetLineItems.spentAmount,
+        sortOrder: campaignBudgetLineItems.sortOrder
+      })
+      .from(campaignBudgetLineItems)
+      .innerJoin(campaigns, eq(campaignBudgetLineItems.campaignId, campaigns.id))
+      .where(campaignScope)
+      .orderBy(asc(campaignBudgetLineItems.sortOrder), asc(campaignBudgetLineItems.category)),
+    db
+      .select({
+        id: campaignTimelinePhases.id,
+        campaignId: campaignTimelinePhases.campaignId,
+        title: campaignTimelinePhases.title,
+        description: campaignTimelinePhases.description,
+        status: campaignTimelinePhases.status,
+        startsAt: campaignTimelinePhases.startsAt,
+        endsAt: campaignTimelinePhases.endsAt,
+        deliverable: campaignTimelinePhases.deliverable,
+        evidenceNote: campaignTimelinePhases.evidenceNote,
+        sortOrder: campaignTimelinePhases.sortOrder
+      })
+      .from(campaignTimelinePhases)
+      .innerJoin(campaigns, eq(campaignTimelinePhases.campaignId, campaigns.id))
+      .where(campaignScope)
+      .orderBy(asc(campaignTimelinePhases.sortOrder), asc(campaignTimelinePhases.startsAt)),
+    db
+      .select({
+        id: organizationTeamMembers.id,
+        organizationId: organizationTeamMembers.organizationId,
+        name: organizationTeamMembers.name,
+        role: organizationTeamMembers.role,
+        bio: organizationTeamMembers.bio,
+        imageUrl: organizationTeamMembers.imageUrl,
+        profileUrl: organizationTeamMembers.profileUrl,
+        sortOrder: organizationTeamMembers.sortOrder,
+        isPublic: organizationTeamMembers.isPublic
+      })
+      .from(organizationTeamMembers)
+      .where(teamOrganizationScope)
+      .orderBy(asc(organizationTeamMembers.sortOrder), asc(organizationTeamMembers.name))
   ]);
 
   const expeditionBookingCounts = new Map<string, number>();
@@ -6437,17 +7046,53 @@ export async function getPartnerPortalData(userId?: string) {
   }
 
   const evidenceReviewEventsById = await getEvidenceReviewEventsByEvidenceIds(evidenceRows.map((item) => item.id));
+  const mediaCounts = new Map<string, number>();
+  const budgetCounts = new Map<string, number>();
+  const timelineCounts = new Map<string, number>();
+  const teamCounts = new Map<string, number>();
+
+  for (const row of campaignMediaRows) {
+    mediaCounts.set(row.campaignId, (mediaCounts.get(row.campaignId) ?? 0) + 1);
+  }
+
+  for (const row of campaignBudgetRows) {
+    budgetCounts.set(row.campaignId, (budgetCounts.get(row.campaignId) ?? 0) + 1);
+  }
+
+  for (const row of campaignTimelineRows) {
+    timelineCounts.set(row.campaignId, (timelineCounts.get(row.campaignId) ?? 0) + 1);
+  }
+
+  for (const row of organizationTeamRows) {
+    if (row.isPublic) {
+      teamCounts.set(row.organizationId, (teamCounts.get(row.organizationId) ?? 0) + 1);
+    }
+  }
 
   return {
     capabilities,
     organizations: organizationRows.map((organization) => ({
       ...organization,
         verificationLabel: verificationLabel(organization.verification)
-      })),
+    })),
     campaigns: campaignRows.map((campaign) => ({
       ...campaign,
-      verificationLabel: verificationLabel(campaign.verification)
+      verificationLabel: verificationLabel(campaign.verification),
+      contentCompleteness: campaignContentCompleteness({
+        media: mediaCounts.get(campaign.id) ?? 0,
+        budget: budgetCounts.get(campaign.id) ?? 0,
+        timeline: timelineCounts.get(campaign.id) ?? 0,
+        team: teamCounts.get(campaign.organizationId) ?? 0
+      })
     })),
+    campaignMediaItems: campaignMediaRows,
+    campaignBudgetLineItems: campaignBudgetRows.map((item) => ({
+      ...item,
+      amount: toNumber(item.amount),
+      spentAmount: toNumber(item.spentAmount)
+    })),
+    campaignTimelinePhases: campaignTimelineRows,
+    organizationTeamMembers: organizationTeamRows,
     expeditions: Array.from(expeditionsById.values()),
     evidence: evidenceRows.map((item) => {
       const reviewEvents = (evidenceReviewEventsById.get(item.id) ?? []).filter((event) => event.visibility !== "internal");
@@ -6483,7 +7128,7 @@ export async function getPartnerPortalData(userId?: string) {
 }
 
 export async function getAdminAcademyData() {
-  const [courseRows, lessonRows, assessmentRows, questionRows, choiceRows, enrollmentRows, certificateRows] = await Promise.all([
+  const [courseRows, lessonRows, assessmentRows, questionRows, choiceRows, enrollmentRows, certificateRows, attemptRows] = await Promise.all([
     db
       .select({
         id: courses.id,
@@ -6558,7 +7203,23 @@ export async function getAdminAcademyData() {
         total: sql<string>`count(${courseCertificates.id})`
       })
       .from(courseCertificates)
-      .groupBy(courseCertificates.courseId)
+      .groupBy(courseCertificates.courseId),
+    db
+      .select({
+        assessmentId: assessmentAttempts.assessmentId,
+        courseId: courseAssessments.courseId,
+        userId: assessmentAttempts.userId,
+        learnerName: users.name,
+        learnerEmail: users.email,
+        score: assessmentAttempts.score,
+        status: assessmentAttempts.status,
+        submittedAt: assessmentAttempts.submittedAt,
+        metadata: assessmentAttempts.metadata
+      })
+      .from(assessmentAttempts)
+      .innerJoin(courseAssessments, eq(assessmentAttempts.assessmentId, courseAssessments.id))
+      .innerJoin(users, eq(assessmentAttempts.userId, users.id))
+      .orderBy(desc(assessmentAttempts.submittedAt))
   ]);
 
   const lessonsByCourse = lessonRows.reduce((groups, lesson) => {
@@ -6584,6 +7245,30 @@ export async function getAdminAcademyData() {
   }, new Map<string, Array<(typeof questionRows)[number] & { choices: typeof choiceRows }>>());
   const enrollmentByCourse = new Map(enrollmentRows.map((row) => [row.courseId, row]));
   const certificateByCourse = new Map(certificateRows.map((row) => [row.courseId, row]));
+  const attemptsByAssessment = attemptRows.reduce((groups, attempt) => {
+    const items = groups.get(attempt.assessmentId) ?? [];
+    items.push(attempt);
+    groups.set(attempt.assessmentId, items);
+    return groups;
+  }, new Map<string, typeof attemptRows>());
+  const attemptsByCourse = attemptRows.reduce((groups, attempt) => {
+    const items = groups.get(attempt.courseId) ?? [];
+    items.push(attempt);
+    groups.set(attempt.courseId, items);
+    return groups;
+  }, new Map<string, typeof attemptRows>());
+  const questionsByCourse = questionRows.reduce((groups, question) => {
+    const assessment = assessmentRows.find((item) => item.id === question.assessmentId);
+
+    if (!assessment) {
+      return groups;
+    }
+
+    const items = groups.get(assessment.courseId) ?? [];
+    items.push(question);
+    groups.set(assessment.courseId, items);
+    return groups;
+  }, new Map<string, typeof questionRows>());
 
   return {
     courses: courseRows.map((course) => ({
@@ -6592,8 +7277,24 @@ export async function getAdminAcademyData() {
       lessons: lessonsByCourse.get(course.id) ?? [],
       assessments: (assessmentsByCourse.get(course.id) ?? []).map((assessment) => ({
         ...assessment,
-        questions: questionsByAssessment.get(assessment.id) ?? []
+        questions: questionsByAssessment.get(assessment.id) ?? [],
+        analytics: buildAssessmentAnalytics(
+          attemptsByAssessment.get(assessment.id) ?? [],
+          (questionsByAssessment.get(assessment.id) ?? []).map((question) => ({
+            id: question.id,
+            text: question.questionText,
+            position: question.position
+          }))
+        )
       })),
+      analytics: buildAssessmentAnalytics(
+        attemptsByCourse.get(course.id) ?? [],
+        (questionsByCourse.get(course.id) ?? []).map((question) => ({
+          id: question.id,
+          text: question.questionText,
+          position: question.position
+        }))
+      ),
       enrollmentCount: toNumber(enrollmentByCourse.get(course.id)?.total),
       completedCount: toNumber(enrollmentByCourse.get(course.id)?.completed),
       certificateCount: toNumber(certificateByCourse.get(course.id)?.total)
@@ -6626,4 +7327,37 @@ export async function getCertificateVerification(publicSlug: string) {
     .limit(1);
 
   return certificate ?? null;
+}
+
+export async function getMonthlyImpactReportDownload(reportId: string, userId: string) {
+  const [report] = await db
+    .select({
+      id: monthlyImpactReports.id,
+      reportMonth: monthlyImpactReports.reportMonth,
+      status: monthlyImpactReports.status,
+      label: monthlyImpactReports.label,
+      contributions: monthlyImpactReports.contributions,
+      campaignUpdates: monthlyImpactReports.campaignUpdates,
+      newEvidence: monthlyImpactReports.newEvidence,
+      coralsMonitored: monthlyImpactReports.coralsMonitored,
+      academyProgress: monthlyImpactReports.academyProgress,
+      emailedAt: monthlyImpactReports.emailedAt,
+      generatedAt: monthlyImpactReports.generatedAt,
+      metadata: monthlyImpactReports.metadata,
+      userName: users.name,
+      userEmail: users.email,
+      displayName: profiles.displayName
+    })
+    .from(monthlyImpactReports)
+    .innerJoin(users, eq(monthlyImpactReports.userId, users.id))
+    .leftJoin(profiles, eq(profiles.userId, users.id))
+    .where(and(eq(monthlyImpactReports.id, reportId), eq(monthlyImpactReports.userId, userId)))
+    .limit(1);
+
+  return report
+    ? {
+        ...report,
+        contributions: toNumber(report.contributions)
+      }
+    : null;
 }

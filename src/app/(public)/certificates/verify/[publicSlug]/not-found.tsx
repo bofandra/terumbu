@@ -1,0 +1,23 @@
+import Link from "next/link";
+
+export default function CertificateNotFound() {
+  return (
+    <main className="bg-sand-50 px-4 py-16 sm:px-6 lg:px-8">
+      <section className="mx-auto max-w-3xl rounded-2xl border border-ocean-900/10 bg-white p-8 text-center shadow-soft">
+        <p className="text-sm font-bold uppercase tracking-[0.16em] text-coral-700">Certificate Verification</p>
+        <h1 className="mt-3 text-3xl font-bold tracking-normal text-ocean-900">This certificate record is unavailable.</h1>
+        <p className="mx-auto mt-3 max-w-xl text-sm leading-6 text-ocean-900/62">
+          Check the verification link or ask the certificate holder for the latest public credential URL.
+        </p>
+        <div className="mt-6 flex flex-wrap justify-center gap-3">
+          <Link href="/academy" className="inline-flex min-h-11 items-center rounded-full bg-ocean-900 px-5 text-sm font-semibold text-white">
+            Browse Academy
+          </Link>
+          <Link href="/login" className="inline-flex min-h-11 items-center rounded-full bg-coral-500 px-5 text-sm font-semibold text-white">
+            Sign in
+          </Link>
+        </div>
+      </section>
+    </main>
+  );
+}

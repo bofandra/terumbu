@@ -11,6 +11,7 @@ import {
   adminSelectClassName,
   adminTextareaClassName
 } from "@/components/admin-ui";
+import { CampaignContentDepthEditor } from "@/components/campaign-content-depth-editor";
 import { Button } from "@/components/ui/button";
 import { ProgressMeter } from "@/components/ui/progress-meter";
 import { requireRole } from "@/lib/auth";
@@ -28,11 +29,16 @@ const campaignStatuses = ["draft", "review", "published", "funded", "completed",
 
 const statusMessages: Record<string, string> = {
   "campaign-updated": "Campaign updated.",
+  "campaign-content-deleted": "Campaign content deleted.",
+  "campaign-content-saved": "Campaign content saved.",
   status: "Campaign status updated."
 };
 
 const errorMessages: Record<string, string> = {
   campaign: "Choose a campaign and valid status.",
+  "campaign-content-delete": "Confirm content deletion by checking the delete box.",
+  "campaign-content-invalid": "Enter the required content fields before saving.",
+  "campaign-content-missing": "Campaign content record was not found.",
   "campaign-delete": "Confirm campaign deletion by checking the delete box.",
   "campaign-has-history": "Campaigns with donations, sponsorships, corporate portfolio links, or related expeditions cannot be deleted.",
   "campaign-invalid": "Enter campaign title, slug, organization, goal, impact target, summary, category, and region.",
@@ -139,6 +145,10 @@ export default async function AdminCampaignDetailPage({ params, searchParams }: 
     campaign.relatedExpeditionCount > 0;
   const savedMessage = query?.saved ? statusMessages[query.saved] : null;
   const errorMessage = query?.error ? errorMessages[query.error] : null;
+  const campaignMedia = data.campaignMediaItems.filter((item) => item.campaignId === campaign.id);
+  const campaignBudget = data.campaignBudgetLineItems.filter((item) => item.campaignId === campaign.id);
+  const campaignTimeline = data.campaignTimelinePhases.filter((item) => item.campaignId === campaign.id);
+  const campaignTeam = data.organizationTeamMembers.filter((item) => item.organizationId === campaign.organizationId);
 
   return (
     <div className="space-y-6">
@@ -275,6 +285,16 @@ export default async function AdminCampaignDetailPage({ params, searchParams }: 
           </Button>
         </form>
       </section>
+
+      <CampaignContentDepthEditor
+        campaign={campaign}
+        mediaItems={campaignMedia}
+        budgetLineItems={campaignBudget}
+        timelinePhases={campaignTimeline}
+        teamMembers={campaignTeam}
+        returnTo={returnTo}
+        canManage
+      />
 
       <section className="rounded-lg border border-coral-700/20 bg-white p-4 shadow-soft">
         <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-start">

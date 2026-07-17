@@ -1,10 +1,11 @@
 "use server";
 
-import { and, eq, inArray, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import { redirect } from "next/navigation";
 
 import { db } from "@/db/client";
 import {
+  adminAuditLogs,
   campaignFollowSubscriptions,
   campaignUpdates,
   campaigns,
@@ -18,7 +19,7 @@ import {
   userSavedCampaigns,
   users
 } from "@/db/schema";
-import { requireUser, safeRedirectPath } from "@/lib/auth";
+import { requireRole, requireUser, safeRedirectPath } from "@/lib/auth";
 import { getMetadataNumber, toNumber } from "@/lib/domain";
 import { sendTransactionalEmail } from "@/lib/email";
 
@@ -306,39 +307,131 @@ async function buildMonthlyImpactReport(userId: string, now = new Date()) {
       .from(courseEnrollments)
       .where(eq(courseEnrollments.userId, userId))
   ]);
-  const relevantCampaignIds = Array.from(new Set([...donationRows.map((row) => row.campaignId), ...followRows.map((row) => row.campaignId)]));
-  const [updateSummary, evidenceSummary] =
+  const followedCampaignIds = Array.from(new Set(followRows.map((row) => row.campaignId)));
+  const supportedCampaignIds = Array.from(new Set(donationRows.map((row) => row.campaignId)));
+  const relevantCampaignIds = Array.from(new Set([...supportedCampaignIds, ...followedCampaignIds]));
+  const [campaignRows, updateRows, evidenceRows] =
     relevantCampaignIds.length > 0
       ? await Promise.all([
           db
-            .select({ total: sql<number>`count(${campaignUpdates.id})` })
-            .from(campaignUpdates)
-            .where(and(inArray(campaignUpdates.campaignId, relevantCampaignIds), sql`${campaignUpdates.createdAt} >= ${start}`, sql`${campaignUpdates.createdAt} < ${end}`)),
+            .select({
+              id: campaigns.id,
+              title: campaigns.title,
+              slug: campaigns.slug
+            })
+            .from(campaigns)
+            .where(inArray(campaigns.id, relevantCampaignIds)),
           db
-            .select({ total: sql<number>`count(${projectEvidence.id})` })
+            .select({
+              id: campaignUpdates.id,
+              campaignId: campaignUpdates.campaignId,
+              campaignTitle: campaigns.title,
+              campaignSlug: campaigns.slug,
+              title: campaignUpdates.title,
+              publishedAt: campaignUpdates.publishedAt,
+              createdAt: campaignUpdates.createdAt
+            })
+            .from(campaignUpdates)
+            .innerJoin(campaigns, eq(campaignUpdates.campaignId, campaigns.id))
+            .where(
+              and(
+                inArray(campaignUpdates.campaignId, relevantCampaignIds),
+                sql`coalesce(${campaignUpdates.publishedAt}, ${campaignUpdates.createdAt}) >= ${start}`,
+                sql`coalesce(${campaignUpdates.publishedAt}, ${campaignUpdates.createdAt}) < ${end}`
+              )
+            )
+            .orderBy(desc(campaignUpdates.publishedAt), desc(campaignUpdates.createdAt)),
+          db
+            .select({
+              id: projectEvidence.id,
+              campaignId: projectEvidence.campaignId,
+              title: projectEvidence.title,
+              evidenceCode: projectEvidence.evidenceCode,
+              verificationStatus: projectEvidence.verificationStatus,
+              createdAt: projectEvidence.createdAt
+            })
             .from(projectEvidence)
             .where(and(inArray(projectEvidence.campaignId, relevantCampaignIds), sql`${projectEvidence.createdAt} >= ${start}`, sql`${projectEvidence.createdAt} < ${end}`))
         ])
-      : [[{ total: 0 }], [{ total: 0 }]];
+      : [[], [], []];
+  const monthlyDonations = donationRows.filter((donation) => donation.createdAt >= start && donation.createdAt < end);
+  const contributionByCampaign = monthlyDonations.reduce((totals, donation) => {
+    totals.set(donation.campaignId, (totals.get(donation.campaignId) ?? 0) + toNumber(donation.amount));
+    return totals;
+  }, new Map<string, number>());
+  const updateCountByCampaign = updateRows.reduce((totals, update) => {
+    totals.set(update.campaignId, (totals.get(update.campaignId) ?? 0) + 1);
+    return totals;
+  }, new Map<string, number>());
+  const evidenceCountByCampaign = evidenceRows.reduce((totals, evidence) => {
+    totals.set(evidence.campaignId, (totals.get(evidence.campaignId) ?? 0) + 1);
+    return totals;
+  }, new Map<string, number>());
+  const followedCampaignSet = new Set(followedCampaignIds);
+  const campaignDigest = campaignRows
+    .map((campaign) => ({
+      id: campaign.id,
+      title: campaign.title,
+      slug: campaign.slug,
+      followed: followedCampaignSet.has(campaign.id),
+      contribution: contributionByCampaign.get(campaign.id) ?? 0,
+      updateCount: updateCountByCampaign.get(campaign.id) ?? 0,
+      evidenceCount: evidenceCountByCampaign.get(campaign.id) ?? 0
+    }))
+    .filter((campaign) => campaign.followed || campaign.contribution > 0 || campaign.updateCount > 0 || campaign.evidenceCount > 0)
+    .sort((a, b) => b.updateCount + b.evidenceCount + b.contribution - (a.updateCount + a.evidenceCount + a.contribution));
 
   return {
     userEmail: userRow?.email ?? "",
     userName: userRow?.name ?? "Ocean Hero",
     reportMonth,
     label: `${fullMonthLabel(now)} Impact Report`,
-    contributions: donationRows.filter((donation) => donation.createdAt >= start && donation.createdAt < end).reduce((total, donation) => total + toNumber(donation.amount), 0),
-    campaignUpdates: Number(updateSummary[0]?.total ?? 0),
-    newEvidence: Number(evidenceSummary[0]?.total ?? 0),
+    contributions: monthlyDonations.reduce((total, donation) => total + toNumber(donation.amount), 0),
+    campaignUpdates: updateRows.length,
+    newEvidence: evidenceRows.length,
     coralsMonitored: ecosystemRows
       .filter((ecosystem) => ecosystem.lastUpdatedAt && ecosystem.lastUpdatedAt >= start && ecosystem.lastUpdatedAt < end)
       .reduce((total, ecosystem) => total + getMetadataNumber(ecosystem.metadata, "fragments"), 0),
-    academyProgress: enrollmentRows.filter((enrollment) => enrollment.completedAt && enrollment.completedAt >= start && enrollment.completedAt < end).length
+    academyProgress: enrollmentRows.filter((enrollment) => enrollment.completedAt && enrollment.completedAt >= start && enrollment.completedAt < end).length,
+    metadata: {
+      sourceCampaignIds: relevantCampaignIds,
+      supportedCampaignIds,
+      followedCampaignIds,
+      followedCampaignCount: followedCampaignIds.length,
+      campaignCount: campaignDigest.length,
+      campaignDigest,
+      latestUpdates: updateRows.slice(0, 5).map((update) => ({
+        id: update.id,
+        title: update.title,
+        campaignTitle: update.campaignTitle,
+        campaignSlug: update.campaignSlug,
+        publishedAt: (update.publishedAt ?? update.createdAt).toISOString()
+      })),
+      newEvidence: evidenceRows.slice(0, 5).map((evidence) => ({
+        id: evidence.id,
+        title: evidence.title,
+        evidenceCode: evidence.evidenceCode,
+        verificationStatus: evidence.verificationStatus,
+        createdAt: evidence.createdAt.toISOString()
+      }))
+    }
   };
 }
 
-async function upsertMonthlyImpactReport(userId: string) {
-  const now = new Date();
+async function upsertMonthlyImpactReport(
+  userId: string,
+  options: {
+    now?: Date;
+    source?: "dashboard_action" | "email_action" | "admin_run";
+  } = {}
+) {
+  const now = options.now ?? new Date();
   const report = await buildMonthlyImpactReport(userId, now);
+  const metadata = {
+    ...report.metadata,
+    generatedBy: options.source ?? "dashboard_action",
+    generatedAt: now.toISOString()
+  };
   const [savedReport] = await db
     .insert(monthlyImpactReports)
     .values({
@@ -351,9 +444,7 @@ async function upsertMonthlyImpactReport(userId: string) {
       coralsMonitored: report.coralsMonitored,
       academyProgress: report.academyProgress,
       status: "ready",
-      metadata: {
-        generatedBy: "dashboard_action"
-      },
+      metadata,
       generatedAt: now,
       updatedAt: now
     })
@@ -367,6 +458,7 @@ async function upsertMonthlyImpactReport(userId: string) {
         coralsMonitored: report.coralsMonitored,
         academyProgress: report.academyProgress,
         status: "ready",
+        metadata,
         generatedAt: now,
         updatedAt: now
       }
@@ -398,7 +490,7 @@ export async function generateMonthlyImpactReportAction() {
 
 export async function emailMonthlyImpactReportAction() {
   const user = await requireUser("/dashboard");
-  const report = await upsertMonthlyImpactReport(user.id);
+  const report = await upsertMonthlyImpactReport(user.id, { source: "email_action" });
   const now = new Date();
 
   await sendTransactionalEmail({
@@ -426,4 +518,71 @@ export async function emailMonthlyImpactReportAction() {
     .where(and(eq(monthlyImpactReports.id, report.id), eq(monthlyImpactReports.userId, user.id)));
 
   redirect("/dashboard?saved=monthly-email#monthly-report");
+}
+
+export async function runMonthlyImpactReportCycleAction(formData: FormData) {
+  const admin = await requireRole(["admin"], "/admin/reports");
+  const sendEmail = formData.get("sendEmail") === "on";
+  const now = new Date();
+  const eligibleUsers = await db
+    .select({
+      userId: users.id,
+      email: users.email,
+      monthlyImpactEmail: notificationPreferences.monthlyImpactEmail
+    })
+    .from(notificationPreferences)
+    .innerJoin(users, eq(notificationPreferences.userId, users.id))
+    .where(eq(notificationPreferences.monthlyImpactReport, true));
+  let generatedCount = 0;
+  let emailedCount = 0;
+
+  for (const eligibleUser of eligibleUsers) {
+    const report = await upsertMonthlyImpactReport(eligibleUser.userId, {
+      now,
+      source: "admin_run"
+    });
+    generatedCount += 1;
+
+    if (sendEmail && eligibleUser.monthlyImpactEmail) {
+      await sendTransactionalEmail({
+        userId: eligibleUser.userId,
+        recipientEmail: report.userEmail || eligibleUser.email,
+        subject: `${report.label} from Terumbu.eco`,
+        template: "monthly_impact_report",
+        payload: {
+          name: report.userName,
+          reportMonth: report.reportMonth,
+          contributions: report.contributions,
+          campaignUpdates: report.campaignUpdates,
+          newEvidence: report.newEvidence,
+          coralsMonitored: report.coralsMonitored,
+          academyProgress: report.academyProgress,
+          generatedBy: "admin_run"
+        }
+      });
+
+      await db
+        .update(monthlyImpactReports)
+        .set({
+          emailedAt: now,
+          updatedAt: now
+        })
+        .where(and(eq(monthlyImpactReports.id, report.id), eq(monthlyImpactReports.userId, eligibleUser.userId)));
+      emailedCount += 1;
+    }
+  }
+
+  await db.insert(adminAuditLogs).values({
+    actorUserId: admin.id,
+    action: "retention.monthly_report_cycle.run",
+    entityType: "monthly_impact_report",
+    metadata: {
+      generatedCount,
+      emailedCount,
+      sendEmail,
+      eligibleUserCount: eligibleUsers.length
+    }
+  });
+
+  redirect(`/admin/reports?saved=monthly-run&generated=${generatedCount}&emailed=${emailedCount}#monthly-impact-reports`);
 }
