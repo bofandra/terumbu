@@ -58,7 +58,7 @@ export default async function CorporateReportsPage({ searchParams }: CorporateRe
   const scheduledDueCount = data.exports.filter((item) => item.isScheduledDue).length;
 
   return (
-    <main className="mx-auto max-w-[1500px] px-4 py-8 sm:px-6 lg:px-8">
+    <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
       <div className="flex flex-col justify-between gap-4 border-b border-ocean-900/10 pb-6 md:flex-row md:items-end">
         <div>
           <p className="text-sm font-bold uppercase tracking-[0.16em] text-coral-700">Reports</p>
@@ -68,7 +68,7 @@ export default async function CorporateReportsPage({ searchParams }: CorporateRe
           </p>
         </div>
         {data.reportCapabilities.canGenerate ? (
-          <form action={createCorporateReportExportAction} className="grid gap-2 rounded-2xl border border-ocean-900/10 bg-white p-3 shadow-soft md:grid-cols-[150px_150px_210px_auto]">
+          <form action={createCorporateReportExportAction} className="grid gap-2 rounded-lg border border-ocean-900/10 bg-white p-3 shadow-soft md:grid-cols-[150px_150px_210px_auto]">
             <select name="reportType" defaultValue="esg" className="min-h-11 rounded-full border border-ocean-900/12 bg-white px-4 text-sm font-bold text-ocean-900 outline-none">
               <option value="esg">ESG report</option>
               <option value="csr">CSR report</option>
@@ -89,7 +89,7 @@ export default async function CorporateReportsPage({ searchParams }: CorporateRe
       </div>
 
       {params?.saved ? (
-        <p className="mt-6 rounded-xl border border-kelp-500/20 bg-kelp-100 px-4 py-3 text-sm font-bold text-kelp-700">
+        <p className="mt-6 rounded-lg border border-kelp-500/20 bg-kelp-100 px-4 py-3 text-sm font-bold text-kelp-700">
           {params.saved === "scheduled"
             ? "Report generation was scheduled."
             : params.saved === "scheduled-run"
@@ -98,7 +98,7 @@ export default async function CorporateReportsPage({ searchParams }: CorporateRe
         </p>
       ) : null}
       {params?.error ? (
-        <p className="mt-6 rounded-xl border border-coral-500/20 bg-coral-100 px-4 py-3 text-sm font-bold text-coral-700">This report action needs a different corporate permission or approval state.</p>
+        <p className="mt-6 rounded-lg border border-coral-500/20 bg-coral-100 px-4 py-3 text-sm font-bold text-coral-700">This report action needs a different corporate permission or approval state.</p>
       ) : null}
 
       <section className="mt-6 grid gap-4 md:grid-cols-4">
@@ -108,7 +108,7 @@ export default async function CorporateReportsPage({ searchParams }: CorporateRe
           ["Verified metrics", String(data.latestReport.verifiedMetrics)],
           ["Evidence records", data.evidence.length.toLocaleString("id-ID")]
         ].map(([label, value]) => (
-          <article key={label} className="rounded-2xl border border-ocean-900/10 bg-white p-5 shadow-soft">
+          <article key={label} className="rounded-lg border border-ocean-900/10 bg-white p-5 shadow-soft">
             <p className="text-sm font-bold text-ocean-900/58">{label}</p>
             <p className="mt-3 text-2xl font-bold tracking-normal text-ocean-900">{value}</p>
           </article>
@@ -117,7 +117,7 @@ export default async function CorporateReportsPage({ searchParams }: CorporateRe
 
       <section className="mt-6 grid gap-4">
         {data.reportCapabilities.canGenerate && scheduledDueCount > 0 ? (
-          <form action={runDueCorporateReportExportsAction} className="flex flex-col justify-between gap-3 rounded-2xl border border-sand-300 bg-sand-50 p-4 shadow-soft sm:flex-row sm:items-center">
+          <form action={runDueCorporateReportExportsAction} className="flex flex-col justify-between gap-3 rounded-lg border border-sand-300 bg-sand-50 p-4 shadow-soft sm:flex-row sm:items-center">
             <div>
               <p className="font-bold text-ocean-900">Scheduled reports are due</p>
               <p className="mt-1 text-sm font-semibold text-ocean-900/58">{scheduledDueCount.toLocaleString("id-ID")} report export can be generated now.</p>
@@ -129,7 +129,7 @@ export default async function CorporateReportsPage({ searchParams }: CorporateRe
           </form>
         ) : null}
         {data.exports.map((item) => (
-          <article key={item.exportCode} className="rounded-2xl border border-ocean-900/10 bg-white p-5 shadow-soft">
+          <article key={item.exportCode} className="rounded-lg border border-ocean-900/10 bg-white p-5 shadow-soft">
             <div className="grid gap-5 lg:grid-cols-[1fr_auto] lg:items-start">
               <div>
                 <div className="flex flex-wrap items-center gap-2">
@@ -223,7 +223,7 @@ export default async function CorporateReportsPage({ searchParams }: CorporateRe
             </div>
           </article>
         ))}
-        {data.exports.length === 0 ? <p className="rounded-2xl border border-dashed border-ocean-900/14 bg-white p-6 text-sm font-semibold text-ocean-900/62 shadow-soft">Generate the first report file to start the approval workflow.</p> : null}
+        {data.exports.length === 0 ? <p className="rounded-lg border border-dashed border-ocean-900/14 bg-white p-6 text-sm font-semibold text-ocean-900/62 shadow-soft">Generate the first report file to start the approval workflow.</p> : null}
       </section>
     </main>
   );

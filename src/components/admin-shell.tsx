@@ -12,6 +12,7 @@ import {
   LogOut,
   MapPinned,
   Megaphone,
+  ReceiptText,
   ScrollText,
   ShipWheel,
   Users,
@@ -31,7 +32,7 @@ type AdminNavItem = {
 };
 
 const adminNavItems: AdminNavItem[] = [
-  { href: "/admin", label: "Overview", icon: LayoutDashboard },
+  { href: "/admin", label: "Task hub", icon: LayoutDashboard },
   {
     href: "/admin/campaigns",
     label: "Campaigns",
@@ -43,6 +44,7 @@ const adminNavItems: AdminNavItem[] = [
     ]
   },
   { href: "/admin/expeditions", label: "Expeditions", icon: ShipWheel },
+  { href: "/admin/payments", label: "Payments", icon: ReceiptText },
   { href: "/admin/corporate", label: "Corporate", icon: Building2 },
   { href: "/admin/academy", label: "Academy", icon: GraduationCap },
   { href: "/admin/partners", label: "Partners", icon: Handshake },
@@ -60,13 +62,23 @@ function initialsForName(value: string) {
     .join("") || "AD";
 }
 
+function currentTaskForPath(pathname: string) {
+  const items = adminNavItems.flatMap((item) => [item, ...(item.children ?? [])]);
+  const activeItem = items
+    .filter((item) => pathname === item.href || (item.href !== "/admin" && pathname.startsWith(`${item.href}/`)))
+    .sort((a, b) => b.href.length - a.href.length)[0];
+
+  return activeItem?.label ?? "Task hub";
+}
+
 export function AdminShell({ children, displayName, roleLabel }: { children: ReactNode; displayName: string; roleLabel: string }) {
   const pathname = usePathname();
+  const currentTask = currentTaskForPath(pathname);
 
   return (
     <main className="min-h-screen bg-sand-50 text-ocean-900">
-      <div className="mx-auto flex min-h-screen max-w-[1500px] flex-col lg:flex-row">
-        <aside className="border-b border-ocean-900/10 bg-white/72 px-4 py-4 backdrop-blur sm:px-6 lg:sticky lg:top-0 lg:min-h-screen lg:w-72 lg:border-b-0 lg:border-r lg:px-5 lg:py-6">
+      <div className="mx-auto flex min-h-screen max-w-[1440px] flex-col lg:flex-row">
+        <aside className="border-b border-ocean-900/10 bg-white px-4 py-4 sm:px-6 lg:sticky lg:top-0 lg:min-h-screen lg:w-64 lg:border-b-0 lg:border-r lg:px-5 lg:py-6">
           <div className="flex items-center justify-between gap-4 lg:block">
             <Link href="/" className="inline-flex items-center gap-3">
               <span className="grid size-10 place-items-center rounded-lg bg-ocean-900 text-white">
@@ -92,7 +104,7 @@ export function AdminShell({ children, displayName, roleLabel }: { children: Rea
                     className={cn(
                       "inline-flex min-h-11 w-full items-center gap-3 rounded-lg px-3 text-sm font-bold transition",
                       isActive
-                        ? "bg-ocean-900 text-white shadow-soft"
+                        ? "bg-ocean-900 text-white"
                         : "text-ocean-900/70 hover:bg-ocean-50 hover:text-ocean-900"
                     )}
                   >
@@ -133,13 +145,6 @@ export function AdminShell({ children, displayName, roleLabel }: { children: Rea
               );
             })}
           </nav>
-
-          <div className="mt-6 hidden rounded-lg border border-ocean-900/10 bg-sand-50 p-4 lg:block">
-            <p className="text-xs font-bold uppercase tracking-[0.14em] text-coral-700">Operations</p>
-            <p className="mt-2 text-sm font-semibold leading-6 text-ocean-900/68">
-              Campaigns, verification, reconciliation, and audit trails in one workspace.
-            </p>
-          </div>
         </aside>
 
         <div className="flex min-w-0 flex-1 flex-col">
@@ -150,7 +155,7 @@ export function AdminShell({ children, displayName, roleLabel }: { children: Rea
               </Link>
               <div className="min-w-0">
                 <p className="text-xs font-bold uppercase tracking-[0.16em] text-coral-700">Admin portal</p>
-                <p className="truncate text-lg font-bold tracking-normal text-ocean-900 sm:text-xl">Operations workspace</p>
+                <p className="truncate text-lg font-bold tracking-normal text-ocean-900 sm:text-xl">{currentTask}</p>
               </div>
             </div>
 
@@ -165,15 +170,15 @@ export function AdminShell({ children, displayName, roleLabel }: { children: Rea
                     <span className="block text-xs font-semibold text-ocean-900/54">{roleLabel}</span>
                   </span>
                 </summary>
-                <div className="absolute right-0 mt-3 w-64 rounded-2xl border border-ocean-900/10 bg-white p-2 shadow-soft">
-                  <Link href="/admin" className="block rounded-xl px-3 py-2 text-sm font-bold text-ocean-900 hover:bg-ocean-50">
+                <div className="absolute right-0 mt-3 w-64 rounded-lg border border-ocean-900/10 bg-white p-2 shadow-soft">
+                  <Link href="/admin" className="block rounded-lg px-3 py-2 text-sm font-bold text-ocean-900 hover:bg-ocean-50">
                     Admin overview
                   </Link>
-                  <Link href="/admin/audit" className="block rounded-xl px-3 py-2 text-sm font-bold text-ocean-900 hover:bg-ocean-50">
+                  <Link href="/admin/audit" className="block rounded-lg px-3 py-2 text-sm font-bold text-ocean-900 hover:bg-ocean-50">
                     Audit trail
                   </Link>
                   <form action={logoutAction}>
-                    <button type="submit" className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-sm font-bold text-coral-700 hover:bg-coral-100">
+                    <button type="submit" className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm font-bold text-coral-700 hover:bg-coral-100">
                       <LogOut size={16} aria-hidden="true" />
                       Log out
                     </button>
@@ -184,7 +189,7 @@ export function AdminShell({ children, displayName, roleLabel }: { children: Rea
           </header>
 
           <section className="flex-1 px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
-            <div className="mx-auto max-w-6xl">{children}</div>
+            <div className="mx-auto max-w-5xl">{children}</div>
           </section>
         </div>
       </div>

@@ -63,7 +63,7 @@ export default async function PartnerEvidencePage() {
         <div className="divide-y divide-ocean-900/10">
           {data.evidence.map((item) => (
             <article key={item.id} className="grid gap-4 p-4 lg:grid-cols-[180px_1fr]">
-              <div className="overflow-hidden rounded-xl bg-ocean-50">
+              <div className="overflow-hidden rounded-lg bg-ocean-50">
                 {isImage(item.fileUrl) ? (
                   item.fileUrl.startsWith("data:image/") ? (
                     // eslint-disable-next-line @next/next/no-img-element
@@ -83,7 +83,7 @@ export default async function PartnerEvidencePage() {
                 <p className="mt-1 text-sm font-semibold text-ocean-900/58">{item.campaignTitle} · {item.evidenceType}</p>
                 <p className="mt-1 text-xs font-bold text-ocean-900/46">{item.evidenceCode} · submitted {item.createdAt.toLocaleDateString("id-ID", { dateStyle: "medium" })}</p>
                 {item.latestReviewNote ? (
-                  <div className="mt-3 rounded-xl bg-coral-100 p-3 text-sm font-semibold leading-6 text-coral-700">
+                  <div className="mt-3 rounded-lg bg-coral-100 p-3 text-sm font-semibold leading-6 text-coral-700">
                     Review note: {item.latestReviewNote}
                   </div>
                 ) : null}
@@ -91,7 +91,7 @@ export default async function PartnerEvidencePage() {
                   <div className="mt-4 grid gap-2">
                     <p className="text-xs font-bold uppercase tracking-[0.14em] text-ocean-900/46">Review history</p>
                     {item.reviewEvents.slice(-3).map((event) => (
-                      <div key={event.id} className="rounded-xl bg-sand-50 px-3 py-2 text-xs font-semibold leading-5 text-ocean-900/62">
+                      <div key={event.id} className="rounded-lg bg-sand-50 px-3 py-2 text-xs font-semibold leading-5 text-ocean-900/62">
                         <p className="font-bold text-ocean-900">{event.label}</p>
                         <p>{event.actor} · {event.occurredAt.toLocaleDateString("id-ID", { dateStyle: "medium" })}</p>
                         {event.note ? <p className="mt-1">{event.note}</p> : null}
@@ -101,7 +101,7 @@ export default async function PartnerEvidencePage() {
                 ) : null}
 
                 {(item.verificationStatus === "rejected" || item.verificationStatus === "needs_clarification") && data.capabilities.canReviseEvidence ? (
-                  <form action={reviseEvidenceAction} className="mt-4 grid gap-3 rounded-xl bg-sand-50 p-4">
+                  <form action={reviseEvidenceAction} className="mt-4 grid gap-3 rounded-lg bg-sand-50 p-4">
                     <input type="hidden" name="evidenceId" value={item.id} />
                     <label className="grid gap-1.5 text-sm font-bold text-ocean-900">Title<input name="title" className={inputClassName} defaultValue={item.title} required /></label>
                     <label className="grid gap-1.5 text-sm font-bold text-ocean-900">Response note<textarea name="body" className={textareaClassName} placeholder="Explain the clarification or what changed in this revision." /></label>

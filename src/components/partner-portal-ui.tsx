@@ -149,11 +149,11 @@ export function PartnerPageHeader({
   actionLabel?: string;
 }) {
   return (
-    <header className="flex flex-col justify-between gap-4 border-b border-ocean-900/10 pb-6 md:flex-row md:items-end">
+    <header className="flex flex-col justify-between gap-4 border-b border-ocean-900/10 pb-5 md:flex-row md:items-end">
       <div>
-        <p className="text-sm font-bold uppercase tracking-[0.14em] text-coral-700">{eyebrow}</p>
-        <h1 className="mt-3 text-3xl font-bold tracking-normal text-ocean-900 sm:text-4xl">{title}</h1>
-        <p className="mt-3 max-w-2xl text-sm font-semibold leading-6 text-ocean-900/62 sm:text-base">{description}</p>
+        <p className="text-xs font-bold uppercase tracking-[0.14em] text-coral-700">{eyebrow}</p>
+        <h1 className="mt-2 text-2xl font-bold tracking-normal text-ocean-900 sm:text-3xl">{title}</h1>
+        <p className="mt-2 max-w-2xl text-sm font-semibold leading-6 text-ocean-900/62">{description}</p>
       </div>
       {actionHref && actionLabel ? (
         <Link
@@ -184,7 +184,7 @@ export function PartnerMetricCards({ data }: { data: PartnerPortalData }) {
         const Icon = metric.icon;
 
         return (
-          <article key={metric.label} className="rounded-lg border border-ocean-900/10 bg-white p-4 shadow-soft">
+          <article key={metric.label} className="rounded-lg border border-ocean-900/10 bg-white p-4">
             <div className="flex items-start justify-between gap-3">
               <div>
                 <p className="text-sm font-bold text-ocean-900/58">{metric.label}</p>
@@ -214,7 +214,7 @@ export function OperationCard({
   icon: LucideIcon;
 }) {
   return (
-    <Link href={href} className="group rounded-lg border border-ocean-900/10 bg-white p-4 shadow-soft transition hover:-translate-y-0.5 hover:border-coral-500">
+    <Link href={href} className="group rounded-lg border border-ocean-900/10 bg-white p-4 transition hover:border-coral-500">
       <div className="flex items-start justify-between gap-3">
         <span className="grid size-10 place-items-center rounded-lg bg-ocean-50 text-ocean-700 group-hover:bg-coral-100 group-hover:text-coral-700">
           <Icon className="size-5" aria-hidden="true" />

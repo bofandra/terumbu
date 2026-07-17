@@ -43,7 +43,7 @@ export default async function CorporateFundingPage({ searchParams }: CorporateFu
   const canManageFunding = data.capabilities.canManageFunding;
 
   return (
-    <main className="mx-auto max-w-[1500px] px-4 py-8 sm:px-6 lg:px-8">
+    <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
       <div className="flex flex-col justify-between gap-4 border-b border-ocean-900/10 pb-6 lg:flex-row lg:items-end">
         <div>
           <p className="text-sm font-bold uppercase tracking-[0.16em] text-coral-700">Funding utilization</p>
@@ -59,10 +59,10 @@ export default async function CorporateFundingPage({ searchParams }: CorporateFu
       </div>
 
       {params?.saved ? (
-        <p className="mt-6 rounded-xl border border-kelp-500/20 bg-kelp-100 px-4 py-3 text-sm font-bold text-kelp-700">Budget utilization updated.</p>
+        <p className="mt-6 rounded-lg border border-kelp-500/20 bg-kelp-100 px-4 py-3 text-sm font-bold text-kelp-700">Budget utilization updated.</p>
       ) : null}
       {params?.error ? (
-        <p className="mt-6 rounded-xl border border-coral-500/20 bg-coral-100 px-4 py-3 text-sm font-bold text-coral-700">Budget update could not be saved with the current input or permission.</p>
+        <p className="mt-6 rounded-lg border border-coral-500/20 bg-coral-100 px-4 py-3 text-sm font-bold text-coral-700">Budget update could not be saved with the current input or permission.</p>
       ) : null}
 
       <section className="mt-6 grid gap-4 md:grid-cols-4">
@@ -75,7 +75,7 @@ export default async function CorporateFundingPage({ searchParams }: CorporateFu
           const Icon = metric.icon;
 
           return (
-            <article key={metric.label} className="rounded-2xl border border-ocean-900/10 bg-white p-5 shadow-soft">
+            <article key={metric.label} className="rounded-lg border border-ocean-900/10 bg-white p-5 shadow-soft">
               <Icon size={22} aria-hidden="true" className="text-coral-500" />
               <p className="mt-4 text-sm font-bold text-ocean-900/56">{metric.label}</p>
               <p className="mt-2 text-2xl font-bold tracking-normal text-ocean-900">{metric.value}</p>
@@ -84,14 +84,14 @@ export default async function CorporateFundingPage({ searchParams }: CorporateFu
         })}
       </section>
 
-      <section className="mt-6 rounded-2xl border border-ocean-900/10 bg-white p-5 shadow-soft">
+      <section className="mt-6 rounded-lg border border-ocean-900/10 bg-white p-5 shadow-soft">
         <p className="text-sm font-bold uppercase text-coral-700">Budget actions</p>
         <h2 className="mt-2 text-xl font-bold tracking-normal text-ocean-900">Update allocation and verified utilization</h2>
         {canManageFunding ? (
           <form action={updateCorporateBudgetAction} className="mt-5 grid gap-3 md:grid-cols-[minmax(220px,1fr)_180px_180px_auto]">
             <label className="grid gap-2 text-sm font-bold text-ocean-900">
               Category
-              <select name="category" className="min-h-11 rounded-xl border border-ocean-900/12 bg-white px-3 text-sm font-semibold text-ocean-900 outline-none">
+              <select name="category" className="min-h-11 rounded-lg border border-ocean-900/12 bg-white px-3 text-sm font-semibold text-ocean-900 outline-none">
                 {data.budgetVariance.map((budget) => (
                   <option key={budget.category} value={budget.category}>
                     {budget.category}
@@ -107,7 +107,7 @@ export default async function CorporateFundingPage({ searchParams }: CorporateFu
                 min="1"
                 step="1000000"
                 placeholder="IDR"
-                className="min-h-11 rounded-xl border border-ocean-900/12 px-3 text-sm font-semibold text-ocean-900 outline-none"
+                className="min-h-11 rounded-lg border border-ocean-900/12 px-3 text-sm font-semibold text-ocean-900 outline-none"
                 required
               />
             </label>
@@ -119,7 +119,7 @@ export default async function CorporateFundingPage({ searchParams }: CorporateFu
                 min="0"
                 step="1000000"
                 placeholder="IDR"
-                className="min-h-11 rounded-xl border border-ocean-900/12 px-3 text-sm font-semibold text-ocean-900 outline-none"
+                className="min-h-11 rounded-lg border border-ocean-900/12 px-3 text-sm font-semibold text-ocean-900 outline-none"
                 required
               />
             </label>
@@ -128,14 +128,14 @@ export default async function CorporateFundingPage({ searchParams }: CorporateFu
             </Button>
           </form>
         ) : (
-          <p className="mt-5 max-w-xl rounded-xl border border-ocean-900/10 bg-ocean-50 px-4 py-3 text-sm font-semibold leading-6 text-ocean-900/68">
+          <p className="mt-5 max-w-xl rounded-lg border border-ocean-900/10 bg-ocean-50 px-4 py-3 text-sm font-semibold leading-6 text-ocean-900/68">
             Your corporate role can review funding utilization, but cannot change allocation or verified spend.
           </p>
         )}
       </section>
 
       <section className="mt-6 grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
-        <article className="rounded-2xl border border-ocean-900/10 bg-white p-5 shadow-soft">
+        <article className="rounded-lg border border-ocean-900/10 bg-white p-5 shadow-soft">
           <p className="text-sm font-bold uppercase text-coral-700">Funding flow</p>
           <h2 className="mt-2 text-xl font-bold tracking-normal text-ocean-900">Committed to verified</h2>
           <div className="mt-5 grid gap-4">
@@ -151,12 +151,12 @@ export default async function CorporateFundingPage({ searchParams }: CorporateFu
           </div>
         </article>
 
-        <article className="rounded-2xl border border-ocean-900/10 bg-white p-5 shadow-soft">
+        <article className="rounded-lg border border-ocean-900/10 bg-white p-5 shadow-soft">
           <p className="text-sm font-bold uppercase text-coral-700">Approval queue</p>
           <h2 className="mt-2 text-xl font-bold tracking-normal text-ocean-900">Variance and milestone decisions</h2>
           <div className="mt-5 grid gap-3">
             {data.fundingApprovalQueue.map((item) => (
-              <div key={`${item.title}-${item.action}`} className="rounded-xl border border-ocean-900/10 bg-sand-50 p-4">
+              <div key={`${item.title}-${item.action}`} className="rounded-lg border border-ocean-900/10 bg-sand-50 p-4">
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div>
                     <p className="font-bold text-ocean-900">{item.title}</p>
@@ -170,7 +170,7 @@ export default async function CorporateFundingPage({ searchParams }: CorporateFu
               </div>
             ))}
             {data.fundingApprovalQueue.length === 0 ? (
-              <div className="rounded-xl border border-kelp-500/20 bg-kelp-100/55 p-4">
+              <div className="rounded-lg border border-kelp-500/20 bg-kelp-100/55 p-4">
                 <p className="font-bold text-kelp-700">No funding approvals waiting</p>
                 <p className="mt-1 text-sm text-kelp-700/72">Budget variance and project milestones are within current tolerances.</p>
               </div>
@@ -179,7 +179,7 @@ export default async function CorporateFundingPage({ searchParams }: CorporateFu
         </article>
       </section>
 
-      <section className="mt-6 rounded-2xl border border-ocean-900/10 bg-white p-5 shadow-soft">
+      <section className="mt-6 rounded-lg border border-ocean-900/10 bg-white p-5 shadow-soft">
         <p className="text-sm font-bold uppercase text-coral-700">Budget vs actual</p>
         <h2 className="mt-2 text-xl font-bold tracking-normal text-ocean-900">Category variance</h2>
         <div className="mt-5 overflow-x-auto">
@@ -210,12 +210,12 @@ export default async function CorporateFundingPage({ searchParams }: CorporateFu
         </div>
       </section>
 
-      <section className="mt-6 rounded-2xl border border-ocean-900/10 bg-white p-5 shadow-soft">
+      <section className="mt-6 rounded-lg border border-ocean-900/10 bg-white p-5 shadow-soft">
         <p className="text-sm font-bold uppercase text-coral-700">Disbursement schedule</p>
         <h2 className="mt-2 text-xl font-bold tracking-normal text-ocean-900">Milestone payments and evidence requirements</h2>
         <div className="mt-5 grid gap-3 md:grid-cols-2">
           {data.fundingSchedule.map((schedule) => (
-            <article key={schedule.id} className="rounded-xl border border-ocean-900/10 bg-sand-50 p-4">
+            <article key={schedule.id} className="rounded-lg border border-ocean-900/10 bg-sand-50 p-4">
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <h3 className="font-bold text-ocean-900">{schedule.milestone}</h3>
@@ -226,8 +226,8 @@ export default async function CorporateFundingPage({ searchParams }: CorporateFu
                 <span className={cn("rounded-full px-3 py-1 text-xs font-bold", statusClass(schedule.status))}>{schedule.status}</span>
               </div>
               <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                <p className="rounded-xl bg-white px-3 py-2 text-sm font-bold text-ocean-900">Amount {formatCurrency(schedule.amount)}</p>
-                <p className="rounded-xl bg-white px-3 py-2 text-sm font-bold text-ocean-900">Disbursed {formatCurrency(schedule.disbursed)}</p>
+                <p className="rounded-lg bg-white px-3 py-2 text-sm font-bold text-ocean-900">Amount {formatCurrency(schedule.amount)}</p>
+                <p className="rounded-lg bg-white px-3 py-2 text-sm font-bold text-ocean-900">Disbursed {formatCurrency(schedule.disbursed)}</p>
               </div>
               <ProgressMeter value={schedule.utilization} label={`${schedule.milestone} utilization`} className="mt-4 h-2" indicatorClassName={schedule.status === "Needs Approval" ? "bg-coral-500" : "bg-kelp-500"} trackClassName="bg-white" />
               <p className="mt-3 flex items-center gap-2 text-xs font-bold text-ocean-900/58">

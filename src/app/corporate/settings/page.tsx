@@ -14,7 +14,7 @@ export const metadata = {
 export const dynamic = "force-dynamic";
 
 const inputClassName =
-  "rounded-xl border border-ocean-900/10 bg-white px-3 py-2 text-sm font-semibold text-ocean-900 outline-none transition focus:border-coral-500 focus:ring-2 focus:ring-coral-500/20";
+  "rounded-lg border border-ocean-900/10 bg-white px-3 py-2 text-sm font-semibold text-ocean-900 outline-none transition focus:border-coral-500 focus:ring-2 focus:ring-coral-500/20";
 const selectClassName = `${inputClassName} appearance-none`;
 
 const savedMessages: Record<string, string> = {
@@ -69,7 +69,7 @@ export default async function CorporateSettingsPage({ searchParams }: CorporateS
   const allowedEmailDomains = data.governance.securitySettings.allowedEmailDomains.join("\n");
 
   return (
-    <main className="mx-auto max-w-[1500px] px-4 py-8 sm:px-6 lg:px-8">
+    <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
       <div className="border-b border-ocean-900/10 pb-6">
         <p className="text-sm font-bold uppercase tracking-[0.16em] text-coral-700">Settings</p>
         <h1 className="mt-2 text-3xl font-bold tracking-normal text-ocean-900">{data.program.accountName} governance</h1>
@@ -78,8 +78,8 @@ export default async function CorporateSettingsPage({ searchParams }: CorporateS
         </p>
       </div>
 
-      {savedMessage ? <p className="mt-6 rounded-xl border border-kelp-700/20 bg-kelp-100 px-4 py-3 text-sm font-bold text-kelp-700">{savedMessage}</p> : null}
-      {errorMessage ? <p className="mt-6 rounded-xl border border-coral-700/20 bg-coral-100 px-4 py-3 text-sm font-bold text-coral-700">{errorMessage}</p> : null}
+      {savedMessage ? <p className="mt-6 rounded-lg border border-kelp-700/20 bg-kelp-100 px-4 py-3 text-sm font-bold text-kelp-700">{savedMessage}</p> : null}
+      {errorMessage ? <p className="mt-6 rounded-lg border border-coral-700/20 bg-coral-100 px-4 py-3 text-sm font-bold text-coral-700">{errorMessage}</p> : null}
 
       <section className="mt-6 grid gap-4 md:grid-cols-4">
         {[
@@ -91,7 +91,7 @@ export default async function CorporateSettingsPage({ searchParams }: CorporateS
           const Icon = metric.icon;
 
           return (
-            <article key={metric.label} className="rounded-2xl border border-ocean-900/10 bg-white p-5 shadow-soft">
+            <article key={metric.label} className="rounded-lg border border-ocean-900/10 bg-white p-5 shadow-soft">
               <Icon size={22} aria-hidden="true" className="text-coral-500" />
               <p className="mt-4 text-sm font-bold text-ocean-900/56">{metric.label}</p>
               <p className="mt-2 text-xl font-bold tracking-normal text-ocean-900">{metric.value}</p>
@@ -101,12 +101,12 @@ export default async function CorporateSettingsPage({ searchParams }: CorporateS
       </section>
 
       <section className="mt-6 grid gap-6 xl:grid-cols-[1.05fr_0.95fr]">
-        <article className="rounded-2xl border border-ocean-900/10 bg-white p-5 shadow-soft">
+        <article className="rounded-lg border border-ocean-900/10 bg-white p-5 shadow-soft">
           <p className="text-sm font-bold uppercase text-coral-700">Team and access management</p>
           <h2 className="mt-2 text-xl font-bold tracking-normal text-ocean-900">Role-specific capabilities</h2>
           <div className="mt-5 grid gap-3">
             {data.governance.roleCapabilities.map((role) => (
-              <div key={role.permission} className={cn("rounded-xl border p-4", role.active ? "border-coral-500 bg-coral-100/30" : "border-ocean-900/10 bg-sand-50")}>
+              <div key={role.permission} className={cn("rounded-lg border p-4", role.active ? "border-coral-500 bg-coral-100/30" : "border-ocean-900/10 bg-sand-50")}>
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div>
                     <p className="font-bold text-ocean-900">{role.role}</p>
@@ -126,7 +126,7 @@ export default async function CorporateSettingsPage({ searchParams }: CorporateS
           </div>
         </article>
 
-        <article className="rounded-2xl border border-ocean-900/10 bg-white p-5 shadow-soft">
+        <article className="rounded-lg border border-ocean-900/10 bg-white p-5 shadow-soft">
           <p className="text-sm font-bold uppercase text-coral-700">Security controls</p>
           <h2 className="mt-2 text-xl font-bold tracking-normal text-ocean-900">Governance checklist</h2>
           <p className="mt-2 text-sm leading-6 text-ocean-900/58">
@@ -134,7 +134,7 @@ export default async function CorporateSettingsPage({ searchParams }: CorporateS
           </p>
           <div className="mt-5 grid gap-3">
             {data.governance.securityChecklist.map((item) => (
-              <div key={item.key} className="rounded-xl bg-sand-50 px-4 py-3 text-sm">
+              <div key={item.key} className="rounded-lg bg-sand-50 px-4 py-3 text-sm">
                 <div className="flex items-center justify-between gap-3">
                   <span className="flex items-center gap-2 font-bold text-ocean-900">
                     <LockKeyhole size={16} aria-hidden="true" />
@@ -147,7 +147,7 @@ export default async function CorporateSettingsPage({ searchParams }: CorporateS
             ))}
           </div>
 
-          <form action={updateCorporateSecuritySettingsAction} className="mt-5 rounded-xl border border-ocean-900/10 bg-white p-4">
+          <form action={updateCorporateSecuritySettingsAction} className="mt-5 rounded-lg border border-ocean-900/10 bg-white p-4">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
                 <h3 className="font-bold text-ocean-900">Update security settings</h3>
@@ -187,12 +187,12 @@ export default async function CorporateSettingsPage({ searchParams }: CorporateS
       </section>
 
       <section className="mt-6 grid gap-6 xl:grid-cols-[0.95fr_1.05fr]" id="integrations">
-        <article className="rounded-2xl border border-ocean-900/10 bg-white p-5 shadow-soft">
+        <article className="rounded-lg border border-ocean-900/10 bg-white p-5 shadow-soft">
           <p className="text-sm font-bold uppercase text-coral-700">Integrations</p>
           <h2 className="mt-2 text-xl font-bold tracking-normal text-ocean-900">Enterprise connection status</h2>
           <div className="mt-5 grid gap-3">
             {data.governance.integrations.map((integration) => (
-              <div key={integration.id} className="rounded-xl border border-ocean-900/10 bg-sand-50 p-4">
+              <div key={integration.id} className="rounded-lg border border-ocean-900/10 bg-sand-50 p-4">
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div>
                     <p className="font-bold text-ocean-900">{integration.name}</p>
@@ -205,13 +205,13 @@ export default async function CorporateSettingsPage({ searchParams }: CorporateS
               </div>
             ))}
             {data.governance.integrations.length === 0 ? (
-              <div className="rounded-xl border border-dashed border-ocean-900/20 bg-sand-50 p-4 text-sm font-semibold leading-6 text-ocean-900/58">
+              <div className="rounded-lg border border-dashed border-ocean-900/20 bg-sand-50 p-4 text-sm font-semibold leading-6 text-ocean-900/58">
                 No integration rows have been configured yet. Add the first SSO, HR, finance, ESG export, webhook, or storage configuration below.
               </div>
             ) : null}
           </div>
 
-          <form action={updateCorporateIntegrationAction} className="mt-5 rounded-xl border border-ocean-900/10 bg-white p-4">
+          <form action={updateCorporateIntegrationAction} className="mt-5 rounded-lg border border-ocean-900/10 bg-white p-4">
             <h3 className="font-bold text-ocean-900">Add or update integration</h3>
             <p className="mt-1 text-xs font-semibold leading-5 text-ocean-900/54">Rows saved here drive the integration count and status cards.</p>
             <div className="mt-4 grid gap-3 sm:grid-cols-2">
@@ -258,12 +258,12 @@ export default async function CorporateSettingsPage({ searchParams }: CorporateS
           </form>
         </article>
 
-        <article className="rounded-2xl border border-ocean-900/10 bg-white p-5 shadow-soft">
+        <article className="rounded-lg border border-ocean-900/10 bg-white p-5 shadow-soft">
           <p className="text-sm font-bold uppercase text-coral-700">Audit log</p>
           <h2 className="mt-2 text-xl font-bold tracking-normal text-ocean-900">Recent access and workflow events</h2>
           <div className="mt-5 grid gap-3">
             {data.governance.auditLog.map((event) => (
-              <div key={`${event.event}-${event.actor}-${event.occurredAt.toISOString()}`} className="rounded-xl border border-ocean-900/10 bg-sand-50 p-4">
+              <div key={`${event.event}-${event.actor}-${event.occurredAt.toISOString()}`} className="rounded-lg border border-ocean-900/10 bg-sand-50 p-4">
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div>
                     <p className="font-bold capitalize text-ocean-900">{event.event}</p>
@@ -274,7 +274,7 @@ export default async function CorporateSettingsPage({ searchParams }: CorporateS
               </div>
             ))}
             {data.governance.auditLog.length === 0 ? (
-              <div className="rounded-xl border border-dashed border-ocean-900/20 bg-sand-50 p-4 text-sm font-semibold leading-6 text-ocean-900/58">
+              <div className="rounded-lg border border-dashed border-ocean-900/20 bg-sand-50 p-4 text-sm font-semibold leading-6 text-ocean-900/58">
                 No corporate audit events have been recorded for this workspace yet. Updating security, integrations, employees, funding, evidence, or reports will create real audit entries.
               </div>
             ) : null}

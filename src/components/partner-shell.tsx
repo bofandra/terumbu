@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   ClipboardList,
+  FileCheck2,
   LayoutDashboard,
   LogOut,
   Megaphone,
@@ -24,11 +25,12 @@ type PartnerNavItem = {
 };
 
 const partnerNavItems: PartnerNavItem[] = [
-  { href: "/partner", label: "Overview", icon: LayoutDashboard },
-  { href: "/partner/campaigns/new", label: "Create", icon: Plus },
+  { href: "/partner", label: "Task hub", icon: LayoutDashboard },
+  { href: "/partner/campaigns/new", label: "Create campaign", icon: Plus },
   { href: "/partner/campaigns", label: "Campaigns", icon: Megaphone },
   { href: "/partner/expeditions", label: "Expeditions", icon: ShipWheel },
-  { href: "/partner/activity", label: "Activity", icon: ClipboardList }
+  { href: "/partner/activity", label: "Activity", icon: ClipboardList },
+  { href: "/partner/evidence", label: "Evidence", icon: FileCheck2 }
 ];
 
 function initialsForName(value: string) {
@@ -40,13 +42,22 @@ function initialsForName(value: string) {
     .join("") || "PA";
 }
 
+function currentTaskForPath(pathname: string) {
+  const activeItem = partnerNavItems
+    .filter((item) => pathname === item.href || (item.href !== "/partner" && pathname.startsWith(`${item.href}/`)))
+    .sort((a, b) => b.href.length - a.href.length)[0];
+
+  return activeItem?.label ?? "Task hub";
+}
+
 export function PartnerShell({ children, displayName, roleLabel }: { children: ReactNode; displayName: string; roleLabel: string }) {
   const pathname = usePathname();
+  const currentTask = currentTaskForPath(pathname);
 
   return (
     <main className="min-h-screen bg-sand-50 text-ocean-900">
-      <div className="mx-auto flex min-h-screen max-w-[1500px] flex-col lg:flex-row">
-        <aside className="border-b border-ocean-900/10 bg-white/72 px-4 py-4 backdrop-blur sm:px-6 lg:sticky lg:top-0 lg:min-h-screen lg:w-72 lg:border-b-0 lg:border-r lg:px-5 lg:py-6">
+      <div className="mx-auto flex min-h-screen max-w-[1440px] flex-col lg:flex-row">
+        <aside className="border-b border-ocean-900/10 bg-white px-4 py-4 sm:px-6 lg:sticky lg:top-0 lg:min-h-screen lg:w-64 lg:border-b-0 lg:border-r lg:px-5 lg:py-6">
           <div className="flex items-center justify-between gap-4 lg:block">
             <Link href="/" className="inline-flex items-center gap-3">
               <span className="grid size-10 place-items-center rounded-lg bg-ocean-900 text-white">
@@ -71,7 +82,7 @@ export function PartnerShell({ children, displayName, roleLabel }: { children: R
                   aria-current={isActive ? "page" : undefined}
                   className={cn(
                     "inline-flex min-h-11 shrink-0 items-center gap-3 rounded-lg px-3 text-sm font-bold transition lg:w-full",
-                    isActive ? "bg-ocean-900 text-white shadow-soft" : "text-ocean-900/70 hover:bg-ocean-50 hover:text-ocean-900"
+                    isActive ? "bg-ocean-900 text-white" : "text-ocean-900/70 hover:bg-ocean-50 hover:text-ocean-900"
                   )}
                 >
                   <Icon className="size-4" aria-hidden="true" />
@@ -80,13 +91,6 @@ export function PartnerShell({ children, displayName, roleLabel }: { children: R
               );
             })}
           </nav>
-
-          <div className="mt-6 hidden rounded-lg border border-ocean-900/10 bg-sand-50 p-4 lg:block">
-            <p className="text-xs font-bold uppercase tracking-[0.14em] text-coral-700">Partner workspace</p>
-            <p className="mt-2 text-sm font-semibold leading-6 text-ocean-900/68">
-              Campaign setup, expedition details, field activity, images, and verification tracking in one place.
-            </p>
-          </div>
         </aside>
 
         <div className="flex min-w-0 flex-1 flex-col">
@@ -97,7 +101,7 @@ export function PartnerShell({ children, displayName, roleLabel }: { children: R
               </Link>
               <div className="min-w-0">
                 <p className="text-xs font-bold uppercase tracking-[0.16em] text-coral-700">Partner portal</p>
-                <p className="truncate text-lg font-bold tracking-normal text-ocean-900 sm:text-xl">Partner workspace</p>
+                <p className="truncate text-lg font-bold tracking-normal text-ocean-900 sm:text-xl">{currentTask}</p>
               </div>
             </div>
 
@@ -112,15 +116,15 @@ export function PartnerShell({ children, displayName, roleLabel }: { children: R
                     <span className="block text-xs font-semibold text-ocean-900/54">{roleLabel}</span>
                   </span>
                 </summary>
-                <div className="absolute right-0 mt-3 w-64 rounded-2xl border border-ocean-900/10 bg-white p-2 shadow-soft">
-                  <Link href="/partner" className="block rounded-xl px-3 py-2 text-sm font-bold text-ocean-900 hover:bg-ocean-50">
+                <div className="absolute right-0 mt-3 w-64 rounded-lg border border-ocean-900/10 bg-white p-2 shadow-soft">
+                  <Link href="/partner" className="block rounded-lg px-3 py-2 text-sm font-bold text-ocean-900 hover:bg-ocean-50">
                     Partner overview
                   </Link>
-                  <Link href="/partner/activity" className="block rounded-xl px-3 py-2 text-sm font-bold text-ocean-900 hover:bg-ocean-50">
+                  <Link href="/partner/activity" className="block rounded-lg px-3 py-2 text-sm font-bold text-ocean-900 hover:bg-ocean-50">
                     Activity center
                   </Link>
                   <form action={logoutAction}>
-                    <button type="submit" className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-sm font-bold text-coral-700 hover:bg-coral-100">
+                    <button type="submit" className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm font-bold text-coral-700 hover:bg-coral-100">
                       <LogOut size={16} aria-hidden="true" />
                       Log out
                     </button>
@@ -131,7 +135,7 @@ export function PartnerShell({ children, displayName, roleLabel }: { children: R
           </header>
 
           <section className="flex-1 px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
-            <div className="mx-auto max-w-6xl">{children}</div>
+            <div className="mx-auto max-w-5xl">{children}</div>
           </section>
         </div>
       </div>

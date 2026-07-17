@@ -1,23 +1,17 @@
 "use client";
 
 import {
-  BarChart3,
   BriefcaseBusiness,
   Building2,
-  CalendarDays,
-  ChevronDown,
   FileBadge,
   FileText,
-  Globe2,
-  Handshake,
   Home,
-  LifeBuoy,
   LogOut,
-  Puzzle,
-  Search,
   Settings,
   ShieldCheck,
-  Users
+  Users,
+  Waves,
+  type LucideIcon
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -26,25 +20,21 @@ import type { ReactNode } from "react";
 import { logoutAction } from "@/lib/auth-actions";
 import { cn } from "@/lib/utils";
 
-const mainNav = [
-  { label: "Overview", href: "/corporate", icon: Home },
+type CorporateNavItem = {
+  label: string;
+  href: string;
+  icon: LucideIcon;
+};
+
+const corporateNavItems: CorporateNavItem[] = [
+  { label: "Task hub", href: "/corporate", icon: Home },
   { label: "Programs", href: "/corporate/programs", icon: BriefcaseBusiness },
   { label: "Projects", href: "/corporate/projects", icon: ShieldCheck },
-  { label: "Funding & Utilization", href: "/corporate/funding", icon: FileBadge },
-  { label: "Impact Metrics", href: "/corporate#impact-metrics", icon: BarChart3 },
+  { label: "Funding", href: "/corporate/funding", icon: FileBadge },
   { label: "Employees", href: "/corporate/employees", icon: Users },
-  { label: "Events & Volunteering", href: "/corporate#events", icon: CalendarDays },
-  { label: "Evidence Center", href: "/corporate/evidence", icon: FileText },
+  { label: "Evidence", href: "/corporate/evidence", icon: FileText },
   { label: "Reports", href: "/corporate/reports", icon: FileBadge },
-  { label: "Public Impact Page", href: "/corporate#public-impact-page", icon: Globe2 }
-];
-
-const managementNav = [
-  { label: "Partners", href: "/corporate#partners", icon: Handshake },
-  { label: "Team & Access", href: "/corporate/settings", icon: Users },
-  { label: "Integrations", href: "/corporate/settings#integrations", icon: Puzzle },
-  { label: "Settings", href: "/corporate/settings", icon: Settings },
-  { label: "Help & Support", href: "mailto:partnerships@terumbu.eco", icon: LifeBuoy }
+  { label: "Settings", href: "/corporate/settings", icon: Settings }
 ];
 
 function initialsForName(value: string) {
@@ -59,9 +49,15 @@ function initialsForName(value: string) {
 }
 
 function isActive(pathname: string, href: string) {
-  const path = href.split("#")[0] ?? href;
+  return href === "/corporate" ? pathname === href || pathname === "/corporate/dashboard" : pathname === href || pathname.startsWith(`${href}/`);
+}
 
-  return path === "/corporate" ? pathname === path || pathname === "/corporate/dashboard" : pathname === path || pathname.startsWith(`${path}/`);
+function currentTaskForPath(pathname: string) {
+  const activeItem = corporateNavItems
+    .filter((item) => isActive(pathname, item.href))
+    .sort((a, b) => b.href.length - a.href.length)[0];
+
+  return activeItem?.label ?? "Task hub";
 }
 
 export function CorporateShell({
@@ -84,143 +80,75 @@ export function CorporateShell({
   nextReportDue: string;
 }) {
   const pathname = usePathname();
+  const currentTask = currentTaskForPath(pathname);
 
   return (
-    <div className="min-h-screen bg-mist-50 pb-16 xl:pb-0">
-      <aside className="fixed inset-y-0 left-0 hidden w-72 flex-col bg-ocean-900 px-5 py-6 text-white shadow-2xl xl:flex">
-        <Link href="/" className="flex items-center gap-3">
-          <span className="flex size-10 items-center justify-center rounded-xl bg-white/10 text-lg font-bold">T</span>
-          <span className="text-2xl font-bold tracking-normal">Terumbu.eco</span>
-        </Link>
-
-        <div className="mt-8 rounded-2xl border border-white/14 bg-white/8 p-4">
-          <div className="flex items-center gap-3">
-            <span
-              title={accountLogoUrl ? "Company logo configured" : accountName}
-              className="flex size-12 items-center justify-center overflow-hidden rounded-xl bg-white/12 text-lg font-bold"
-            >
-              {initialsForName(accountName)}
+    <div className="min-h-screen bg-sand-50 text-ocean-900">
+      <div className="mx-auto flex min-h-screen max-w-[1440px] flex-col lg:flex-row">
+        <aside className="border-b border-ocean-900/10 bg-white px-4 py-4 sm:px-6 lg:sticky lg:top-0 lg:min-h-screen lg:w-64 lg:border-b-0 lg:border-r lg:px-5 lg:py-6">
+          <Link href="/" className="inline-flex items-center gap-3">
+            <span className="grid size-10 place-items-center rounded-lg bg-ocean-900 text-white">
+              <Waves className="size-5" aria-hidden="true" />
             </span>
-            <div className="min-w-0">
-              <p className="truncate text-sm font-bold uppercase text-white">{accountName}</p>
-              <p className="mt-1 truncate text-xs font-semibold text-white/62">{programName}</p>
+            <span>
+              <span className="block text-base font-bold text-ocean-900">Terumbu.eco</span>
+              <span className="block text-xs font-semibold uppercase tracking-[0.14em] text-ocean-900/54">Corporate</span>
+            </span>
+          </Link>
+
+          <div className="mt-5 rounded-lg border border-ocean-900/10 bg-sand-50 p-3" title={accountLogoUrl ? "Company logo configured" : accountName}>
+            <div className="flex items-center gap-3">
+              <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-white text-sm font-bold text-ocean-900 ring-1 ring-ocean-900/10">
+                {initialsForName(accountName)}
+              </span>
+              <div className="min-w-0">
+                <p className="truncate text-sm font-bold text-ocean-900">{accountName}</p>
+                <p className="mt-0.5 truncate text-xs font-semibold text-ocean-900/56">{programName}</p>
+              </div>
             </div>
           </div>
-          <span className="mt-4 inline-flex rounded-full bg-ocean-500/24 px-3 py-1 text-xs font-bold text-ocean-50">
-            Enterprise ESG Plan
-          </span>
-          <dl className="mt-4 grid gap-2 text-xs text-white/64">
-            <div className="flex justify-between gap-3">
-              <dt>Active projects</dt>
-              <dd className="font-bold text-white">{activeProjects.toLocaleString("id-ID")}</dd>
-            </div>
-            <div className="flex justify-between gap-3">
-              <dt>Next report due</dt>
-              <dd className="font-bold text-white">{nextReportDue}</dd>
-            </div>
-          </dl>
-        </div>
 
-        <nav className="mt-6 grid gap-1.5" aria-label="Corporate navigation">
-          {mainNav.map((item) => {
-            const Icon = item.icon;
-            const active = isActive(pathname, item.href);
-
-            return (
-              <Link
-                key={item.label}
-                href={item.href}
-                aria-current={active ? "page" : undefined}
-                className={cn(
-                  "flex min-h-11 items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-bold transition",
-                  active ? "bg-coral-500 text-white shadow-soft" : "text-white/72 hover:bg-white/10 hover:text-white"
-                )}
-              >
-                <Icon size={18} aria-hidden="true" />
-                {item.label}
-              </Link>
-            );
-          })}
-        </nav>
-
-        <div className="mt-6 border-t border-white/14 pt-5">
-          <p className="px-3 text-xs font-bold uppercase text-white/42">Management</p>
-          <nav className="mt-3 grid gap-1.5" aria-label="Corporate management navigation">
-            {managementNav.map((item) => {
+          <nav className="mt-5 flex gap-2 overflow-x-auto pb-1 lg:grid lg:overflow-visible lg:pb-0" aria-label="Corporate sections">
+            {corporateNavItems.map((item) => {
               const Icon = item.icon;
               const active = isActive(pathname, item.href);
 
               return (
                 <Link
-                  key={item.label}
+                  key={item.href}
                   href={item.href}
+                  aria-current={active ? "page" : undefined}
                   className={cn(
-                    "flex min-h-10 items-center gap-3 rounded-xl px-3 py-2 text-sm font-bold transition",
-                    active ? "bg-white/12 text-white" : "text-white/70 hover:bg-white/10 hover:text-white"
+                    "inline-flex min-h-11 shrink-0 items-center gap-3 rounded-lg px-3 text-sm font-bold transition lg:w-full",
+                    active ? "bg-ocean-900 text-white" : "text-ocean-900/70 hover:bg-ocean-50 hover:text-ocean-900"
                   )}
                 >
-                  <Icon size={17} aria-hidden="true" />
-                  {item.label}
+                  <Icon className="size-4" aria-hidden="true" />
+                  <span>{item.label}</span>
                 </Link>
               );
             })}
           </nav>
-        </div>
+        </aside>
 
-        <div className="mt-auto rounded-2xl border border-white/16 bg-white/8 p-4">
-          <CalendarDays size={22} aria-hidden="true" className="text-coral-200" />
-          <p className="mt-3 text-sm font-bold">Next reporting deadline</p>
-          <p className="mt-2 text-xs leading-5 text-white/64">{nextReportDue}</p>
-          <Link href="/corporate/reports" className="mt-4 inline-flex min-h-10 w-full items-center justify-center rounded-xl bg-white/12 px-4 text-sm font-bold text-white hover:bg-white/18">
-            View Report Center
-          </Link>
-        </div>
+        <div className="flex min-w-0 flex-1 flex-col">
+          <header className="sticky top-0 z-40 flex min-h-20 items-center justify-between gap-4 border-b border-ocean-900/10 bg-white/94 px-4 backdrop-blur sm:px-6 lg:px-8">
+            <div className="flex min-w-0 items-center gap-3">
+              <Link href="/corporate" aria-label="Corporate task hub" className="flex size-11 items-center justify-center rounded-full bg-ocean-50 text-ocean-900 lg:hidden">
+                <Building2 size={20} aria-hidden="true" />
+              </Link>
+              <div className="min-w-0">
+                <p className="text-xs font-bold uppercase tracking-[0.16em] text-coral-700">Corporate portal</p>
+                <p className="truncate text-lg font-bold tracking-normal text-ocean-900 sm:text-xl">{currentTask}</p>
+              </div>
+            </div>
 
-        <div className="mt-4 flex items-center gap-3">
-          <span className="flex size-11 items-center justify-center rounded-full bg-coral-500 text-sm font-bold">
-            {initialsForName(displayName)}
-          </span>
-          <div className="min-w-0">
-            <p className="truncate text-sm font-bold">{displayName}</p>
-            <p className="text-xs text-white/58">{roleLabel}</p>
-          </div>
-        </div>
-      </aside>
+            <div className="hidden items-center gap-4 text-sm font-semibold text-ocean-900/58 md:flex">
+              <span>{activeProjects.toLocaleString("id-ID")} active projects</span>
+              <span className="h-4 w-px bg-ocean-900/14" />
+              <span>Report due {nextReportDue}</span>
+            </div>
 
-      <div className="xl:pl-72">
-        <header className="sticky top-0 z-40 flex min-h-20 items-center justify-between gap-4 border-b border-ocean-900/10 bg-white/94 px-4 backdrop-blur sm:px-6 lg:px-8">
-          <div className="flex min-w-0 items-center gap-3">
-            <Link href="/corporate" aria-label="Corporate overview" className="flex size-11 items-center justify-center rounded-full bg-ocean-50 text-ocean-900 xl:hidden">
-              <Building2 size={20} aria-hidden="true" />
-            </Link>
-            <label className="hidden min-h-11 items-center gap-2 rounded-xl border border-ocean-900/10 bg-white px-4 text-sm font-bold text-ocean-900 shadow-sm md:flex">
-              <span className="sr-only">Program</span>
-              <ShieldCheck size={17} aria-hidden="true" className="text-coral-500" />
-              <select className="bg-transparent outline-none" defaultValue={programName}>
-                <option>{programName}</option>
-                <option>All Programs</option>
-              </select>
-              <ChevronDown size={15} aria-hidden="true" />
-            </label>
-            <label className="hidden min-h-11 items-center gap-2 rounded-xl border border-ocean-900/10 bg-white px-4 text-sm font-bold text-ocean-900 shadow-sm lg:flex">
-              <CalendarDays size={17} aria-hidden="true" className="text-ocean-700" />
-              <span className="sr-only">Reporting period</span>
-              <select className="bg-transparent outline-none" defaultValue="Jan-Jun 2026 (YTD)">
-                <option>Jan-Jun 2026 (YTD)</option>
-                <option>Q2 2026</option>
-                <option>2026 Year to Date</option>
-              </select>
-              <ChevronDown size={15} aria-hidden="true" />
-            </label>
-          </div>
-
-          <label className="hidden min-h-11 w-full max-w-sm items-center gap-3 rounded-full border border-ocean-900/10 bg-white px-4 text-sm font-semibold text-ocean-900/54 shadow-sm lg:flex">
-            <Search size={17} aria-hidden="true" />
-            <span className="sr-only">Search corporate workspace</span>
-            <input className="w-full bg-transparent outline-none placeholder:text-ocean-900/42" placeholder="Search projects, partners, reports..." />
-          </label>
-
-          <div className="flex items-center gap-2">
             <details className="group relative">
               <summary aria-label="Corporate account menu" className="flex cursor-pointer list-none items-center gap-3 rounded-full hover:bg-ocean-50 sm:py-1 sm:pl-1 sm:pr-3">
                 <span className="flex size-11 items-center justify-center rounded-full bg-ocean-900 text-sm font-bold text-white">
@@ -231,27 +159,28 @@ export function CorporateShell({
                   <span className="block text-xs font-semibold text-ocean-900/54">{roleLabel}</span>
                 </span>
               </summary>
-              <div className="absolute right-0 z-50 mt-3 w-64 rounded-2xl border border-ocean-900/10 bg-white p-2 shadow-soft">
-                <Link href="/corporate" className="block rounded-xl px-3 py-2 text-sm font-bold text-ocean-900 hover:bg-ocean-50">
-                  Corporate overview
+              <div className="absolute right-0 z-50 mt-3 w-64 rounded-lg border border-ocean-900/10 bg-white p-2 shadow-soft">
+                <Link href="/corporate" className="block rounded-lg px-3 py-2 text-sm font-bold text-ocean-900 hover:bg-ocean-50">
+                  Corporate task hub
                 </Link>
-                <Link href="/corporate/settings" className="block rounded-xl px-3 py-2 text-sm font-bold text-ocean-900 hover:bg-ocean-50">
-                  Team & access
+                <Link href="/corporate/settings" className="block rounded-lg px-3 py-2 text-sm font-bold text-ocean-900 hover:bg-ocean-50">
+                  Team and access
                 </Link>
-                <Link href="/corporate/reports" className="block rounded-xl px-3 py-2 text-sm font-bold text-ocean-900 hover:bg-ocean-50">
-                  Report center
+                <Link href="/corporate/reports" className="block rounded-lg px-3 py-2 text-sm font-bold text-ocean-900 hover:bg-ocean-50">
+                  Report workflow
                 </Link>
                 <form action={logoutAction}>
-                  <button type="submit" className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-sm font-bold text-coral-700 hover:bg-coral-100">
+                  <button type="submit" className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm font-bold text-coral-700 hover:bg-coral-100">
                     <LogOut size={16} aria-hidden="true" />
                     Log out
                   </button>
                 </form>
               </div>
             </details>
-          </div>
-        </header>
-        {children}
+          </header>
+
+          {children}
+        </div>
       </div>
     </div>
   );

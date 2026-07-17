@@ -65,8 +65,8 @@ export default async function CorporateInvitePage({ params, searchParams }: Corp
 
   return (
     <main className="mx-auto max-w-3xl px-4 py-12 sm:px-6 lg:px-8">
-      <section className="rounded-2xl border border-ocean-900/10 bg-white p-8 shadow-soft">
-        <div className="flex size-12 items-center justify-center rounded-2xl bg-ocean-50 text-ocean-700">
+      <section className="rounded-lg border border-ocean-900/10 bg-white p-8 shadow-soft">
+        <div className="flex size-12 items-center justify-center rounded-lg bg-ocean-50 text-ocean-700">
           <Building2 size={24} aria-hidden="true" />
         </div>
         <p className="mt-5 text-sm font-bold uppercase tracking-[0.16em] text-coral-700">Corporate invite</p>
@@ -78,14 +78,14 @@ export default async function CorporateInvitePage({ params, searchParams }: Corp
         </p>
 
         {inlineError ? (
-          <div className="mt-6 rounded-xl border border-coral-500/20 bg-coral-100 p-4 text-sm font-bold text-coral-700">
+          <div className="mt-6 rounded-lg border border-coral-500/20 bg-coral-100 p-4 text-sm font-bold text-coral-700">
             <MailWarning size={18} aria-hidden="true" className="mb-2" />
             {inlineError}
           </div>
         ) : null}
 
         {invite ? (
-          <dl className="mt-6 grid gap-3 rounded-2xl bg-sand-50 p-5 text-sm">
+          <dl className="mt-6 grid gap-3 rounded-lg bg-sand-50 p-5 text-sm">
             <div className="flex justify-between gap-4">
               <dt className="font-bold text-ocean-900/56">Invited employee</dt>
               <dd className="font-bold text-ocean-900">{invite.employeeName}</dd>

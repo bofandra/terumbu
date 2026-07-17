@@ -34,6 +34,8 @@ const badgeClasses: Record<string, string> = {
   pending: "bg-sand-100 text-ocean-900",
   pending_payment: "bg-sand-100 text-ocean-900",
   published: "bg-ocean-50 text-ocean-700",
+  refund: "bg-coral-100 text-coral-700",
+  refunded: "bg-coral-100 text-coral-700",
   rejected: "bg-coral-100 text-coral-700",
   review: "bg-sand-100 text-ocean-900",
   submitted: "bg-sand-100 text-ocean-900",
@@ -66,11 +68,11 @@ export function AdminPageHeader({
   actionLabel?: string;
 }) {
   return (
-    <header className="flex flex-col justify-between gap-4 border-b border-ocean-900/10 pb-6 md:flex-row md:items-end">
+    <header className="flex flex-col justify-between gap-4 border-b border-ocean-900/10 pb-5 md:flex-row md:items-end">
       <div>
-        <p className="text-sm font-bold uppercase tracking-[0.14em] text-coral-700">{eyebrow}</p>
-        <h1 className="mt-3 text-3xl font-bold tracking-normal text-ocean-900 sm:text-4xl">{title}</h1>
-        {description ? <p className="mt-3 max-w-2xl text-sm font-semibold leading-6 text-ocean-900/62 sm:text-base">{description}</p> : null}
+        <p className="text-xs font-bold uppercase tracking-[0.14em] text-coral-700">{eyebrow}</p>
+        <h1 className="mt-2 text-2xl font-bold tracking-normal text-ocean-900 sm:text-3xl">{title}</h1>
+        {description ? <p className="mt-2 max-w-2xl text-sm font-semibold leading-6 text-ocean-900/62">{description}</p> : null}
       </div>
       {actionHref && actionLabel ? (
         <Link

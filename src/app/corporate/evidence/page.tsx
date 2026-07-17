@@ -55,7 +55,7 @@ export default async function CorporateEvidencePage({ searchParams }: CorporateE
   ];
 
   return (
-    <main className="mx-auto max-w-[1500px] px-4 py-8 sm:px-6 lg:px-8">
+    <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
       <div className="border-b border-ocean-900/10 pb-6">
         <p className="text-sm font-bold uppercase tracking-[0.16em] text-coral-700">Evidence center</p>
         <h1 className="mt-2 text-3xl font-bold tracking-normal text-ocean-900">Verification workflow and audit trail</h1>
@@ -65,10 +65,10 @@ export default async function CorporateEvidencePage({ searchParams }: CorporateE
       </div>
 
       {params?.saved ? (
-        <p className="mt-6 rounded-xl border border-kelp-500/20 bg-kelp-100 px-4 py-3 text-sm font-bold text-kelp-700">Evidence review status updated.</p>
+        <p className="mt-6 rounded-lg border border-kelp-500/20 bg-kelp-100 px-4 py-3 text-sm font-bold text-kelp-700">Evidence review status updated.</p>
       ) : null}
       {params?.error ? (
-        <p className="mt-6 rounded-xl border border-coral-500/20 bg-coral-100 px-4 py-3 text-sm font-bold text-coral-700">Evidence status could not be saved with the current input or permission.</p>
+        <p className="mt-6 rounded-lg border border-coral-500/20 bg-coral-100 px-4 py-3 text-sm font-bold text-coral-700">Evidence status could not be saved with the current input or permission.</p>
       ) : null}
 
       <section className="mt-6 grid gap-4 md:grid-cols-5">
@@ -76,7 +76,7 @@ export default async function CorporateEvidencePage({ searchParams }: CorporateE
           const Icon = stage.icon;
 
           return (
-            <article key={stage.label} className="rounded-2xl border border-ocean-900/10 bg-white p-5 shadow-soft">
+            <article key={stage.label} className="rounded-lg border border-ocean-900/10 bg-white p-5 shadow-soft">
               <Icon size={22} aria-hidden="true" className="text-coral-500" />
               <p className="mt-4 text-sm font-bold text-ocean-900/56">{stage.label}</p>
               <p className="mt-2 text-2xl font-bold tracking-normal text-ocean-900">{stage.count.toLocaleString("id-ID")}</p>
@@ -87,7 +87,7 @@ export default async function CorporateEvidencePage({ searchParams }: CorporateE
 
       <section className="mt-6 grid gap-4">
         {data.evidenceReviewQueue.map((item) => (
-          <article key={item.id} className="rounded-2xl border border-ocean-900/10 bg-white p-5 shadow-soft">
+          <article key={item.id} className="rounded-lg border border-ocean-900/10 bg-white p-5 shadow-soft">
             <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_320px]">
               <div>
                 <div className="flex flex-wrap items-center gap-2">
@@ -101,7 +101,7 @@ export default async function CorporateEvidencePage({ searchParams }: CorporateE
                 </p>
                 {item.observation ? <p className="mt-3 text-sm leading-6 text-ocean-900/62">{item.observation}</p> : null}
                 {item.metricLabel && item.metricValue ? (
-                  <p className="mt-3 inline-flex rounded-xl bg-sand-50 px-3 py-2 text-xs font-bold text-ocean-900">
+                  <p className="mt-3 inline-flex rounded-lg bg-sand-50 px-3 py-2 text-xs font-bold text-ocean-900">
                     {item.metricLabel}: {item.metricValue}
                   </p>
                 ) : null}
@@ -116,7 +116,7 @@ export default async function CorporateEvidencePage({ searchParams }: CorporateE
                 </div>
               </div>
 
-              <aside className="rounded-xl border border-ocean-900/10 bg-sand-50 p-4">
+              <aside className="rounded-lg border border-ocean-900/10 bg-sand-50 p-4">
                 <div className="flex items-start gap-3">
                   <ShieldCheck size={20} aria-hidden="true" className="mt-0.5 text-kelp-700" />
                   <div>
@@ -126,13 +126,13 @@ export default async function CorporateEvidencePage({ searchParams }: CorporateE
                     </p>
                   </div>
                 </div>
-                <p className="mt-4 rounded-xl bg-white p-3 text-xs font-semibold leading-5 text-ocean-900/62">{item.internalNote}</p>
+                <p className="mt-4 rounded-lg bg-white p-3 text-xs font-semibold leading-5 text-ocean-900/62">{item.internalNote}</p>
                 {canUpdateEvidenceStatus ? (
                   <form action={updateCorporateEvidenceStatusAction} className="mt-4 grid gap-2 sm:grid-cols-[1fr_auto]">
                     <input type="hidden" name="evidenceId" value={item.id} />
                     <label className="grid gap-2 text-xs font-bold uppercase tracking-[0.14em] text-ocean-900/46">
                       Review status
-                      <select name="verificationStatus" defaultValue={item.verificationStatus} className="min-h-10 rounded-xl border border-ocean-900/12 bg-white px-3 text-sm font-semibold normal-case tracking-normal text-ocean-900 outline-none">
+                      <select name="verificationStatus" defaultValue={item.verificationStatus} className="min-h-10 rounded-lg border border-ocean-900/12 bg-white px-3 text-sm font-semibold normal-case tracking-normal text-ocean-900 outline-none">
                         <option value="submitted">Submitted</option>
                         <option value="in_review">In review</option>
                         <option value="needs_clarification">Needs clarification</option>
@@ -142,14 +142,14 @@ export default async function CorporateEvidencePage({ searchParams }: CorporateE
                     </label>
                     <label className="grid gap-2 text-xs font-bold uppercase tracking-[0.14em] text-ocean-900/46 sm:col-span-2">
                       Review note
-                      <textarea name="reviewNote" defaultValue={item.latestReviewNote ?? ""} placeholder="Required for clarification or rejection" className="min-h-24 rounded-xl border border-ocean-900/12 bg-white px-3 py-2 text-sm font-semibold leading-6 normal-case tracking-normal text-ocean-900 outline-none" />
+                      <textarea name="reviewNote" defaultValue={item.latestReviewNote ?? ""} placeholder="Required for clarification or rejection" className="min-h-24 rounded-lg border border-ocean-900/12 bg-white px-3 py-2 text-sm font-semibold leading-6 normal-case tracking-normal text-ocean-900 outline-none" />
                     </label>
                     <Button type="submit" tone="light" className="self-end">
                       Save Review
                     </Button>
                   </form>
                 ) : (
-                  <p className="mt-4 rounded-xl border border-ocean-900/10 bg-white p-3 text-xs font-semibold leading-5 text-ocean-900/62">
+                  <p className="mt-4 rounded-lg border border-ocean-900/10 bg-white p-3 text-xs font-semibold leading-5 text-ocean-900/62">
                     Your corporate role can inspect evidence and audit history, but cannot change verification status.
                   </p>
                 )}
@@ -157,7 +157,7 @@ export default async function CorporateEvidencePage({ searchParams }: CorporateE
                   <p className="text-xs font-bold uppercase tracking-[0.14em] text-ocean-900/46">Audit trail</p>
                   <div className="mt-3 grid gap-2">
                     {item.auditTrail.map((event) => (
-                      <div key={`${item.id}-${event.label}-${event.actor}`} className="rounded-xl bg-white px-3 py-2">
+                      <div key={`${item.id}-${event.label}-${event.actor}`} className="rounded-lg bg-white px-3 py-2">
                         <p className="text-sm font-bold text-ocean-900">{event.label}</p>
                         <p className="mt-1 text-xs text-ocean-900/52">{event.actor} · {formatDate(event.occurredAt)}</p>
                         {event.note ? <p className="mt-2 text-xs font-semibold leading-5 text-ocean-900/62">{event.note}</p> : null}
@@ -170,7 +170,7 @@ export default async function CorporateEvidencePage({ searchParams }: CorporateE
           </article>
         ))}
         {data.evidenceReviewQueue.length === 0 ? (
-          <p className="rounded-2xl border border-dashed border-ocean-900/14 bg-white p-6 text-sm font-semibold text-ocean-900/62 shadow-soft">
+          <p className="rounded-lg border border-dashed border-ocean-900/14 bg-white p-6 text-sm font-semibold text-ocean-900/62 shadow-soft">
             Evidence records will appear here once funded projects submit field documentation.
           </p>
         ) : null}
