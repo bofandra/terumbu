@@ -187,9 +187,6 @@ export function DashboardShell({ children, displayName, unreadNotificationCount 
           </label>
 
           <div className="flex items-center gap-2 sm:gap-3">
-            <Link href="/dashboard#notifications" aria-label="Messages" className="hidden size-11 items-center justify-center rounded-full hover:bg-ocean-50 sm:flex">
-              <ShieldQuestion size={19} aria-hidden="true" />
-            </Link>
             <Link href="/dashboard#notifications" aria-label="Notifications" className="relative flex size-11 items-center justify-center rounded-full hover:bg-ocean-50">
               <Bell size={19} aria-hidden="true" />
               {notificationBadge ? <span className="absolute right-1.5 top-1.5 min-w-5 rounded-full bg-coral-500 px-1 text-center text-[10px] font-bold leading-5 text-white">{notificationBadge}</span> : null}

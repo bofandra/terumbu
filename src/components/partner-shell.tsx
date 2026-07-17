@@ -3,13 +3,10 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  Bell,
-  CircleHelp,
   ClipboardList,
   LayoutDashboard,
   LogOut,
   Megaphone,
-  MessageSquare,
   Plus,
   ShipWheel,
   Waves,
@@ -105,16 +102,6 @@ export function PartnerShell({ children, displayName, roleLabel }: { children: R
             </div>
 
             <div className="flex items-center gap-2">
-              <Link href="/partner#notifications" aria-label="Notifications" className="relative flex size-11 items-center justify-center rounded-full hover:bg-ocean-50">
-                <Bell size={19} aria-hidden="true" />
-                <span className="absolute right-1.5 top-1.5 size-3 rounded-full bg-coral-500 ring-2 ring-white" />
-              </Link>
-              <Link href="mailto:partnerships@terumbu.eco" aria-label="Help" className="hidden size-11 items-center justify-center rounded-full hover:bg-ocean-50 sm:flex">
-                <CircleHelp size={19} aria-hidden="true" />
-              </Link>
-              <Link href="/partner/activity" aria-label="Messages" className="hidden size-11 items-center justify-center rounded-full hover:bg-ocean-50 sm:flex">
-                <MessageSquare size={19} aria-hidden="true" />
-              </Link>
               <details className="group relative">
                 <summary aria-label="Partner account menu" className="flex cursor-pointer list-none items-center gap-3 rounded-full hover:bg-ocean-50 sm:py-1 sm:pl-1 sm:pr-3">
                   <span className="flex size-11 items-center justify-center rounded-full bg-ocean-900 text-sm font-bold text-white">
