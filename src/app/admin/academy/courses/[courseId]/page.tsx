@@ -40,6 +40,8 @@ const savedMessages: Record<string, string> = {
 const errorMessages: Record<string, string> = {
   assessment: "Choose a course and enter assessment details.",
   course: "Enter a title and summary for the course.",
+  "image-size": "Uploaded image is too large.",
+  "image-type": "Upload a supported image file.",
   lesson: "Choose a course and enter a lesson title.",
   question: "Enter a question with at least two choices."
 };
@@ -212,8 +214,8 @@ export default async function AdminAcademyCoursePage({ params, searchParams }: A
               <CourseStatusSelect defaultValue={course.status} />
             </Field>
           </div>
-          <Field label="Image URL">
-            <input name="imageUrl" type="url" defaultValue={course.imageUrl ?? ""} className={adminInputClassName} />
+          <Field label="Replace image">
+            <input name="imageFile" type="file" accept="image/png,image/jpeg,image/webp,image/gif" className={adminInputClassName} />
           </Field>
           <Field label="Summary">
             <textarea name="summary" defaultValue={course.summary} className={adminTextareaClassName} required />

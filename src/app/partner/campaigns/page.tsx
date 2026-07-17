@@ -17,8 +17,8 @@ const errorMessages: Record<string, string> = {
   "campaign-content-delete": "Confirm content deletion by checking the delete box.",
   "campaign-content-invalid": "Enter the required content fields before saving.",
   "campaign-content-missing": "Campaign content record was not found.",
-  "image-invalid": "Upload a supported image file.",
-  "image-too-large": "Uploaded image is too large.",
+  "image-size": "Uploaded image is too large.",
+  "image-type": "Upload a supported image file.",
   "partner-permission": "Your partner role cannot update campaign content."
 };
 

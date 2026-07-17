@@ -60,7 +60,7 @@ import {
 import { transitionDonationPayment, transitionExpeditionBookingPayment } from "@/lib/payment-workflows";
 import { demoGatewaySettleRefund } from "@/lib/payment-provider";
 import { processDueDonationSubscriptions } from "@/lib/subscription-billing";
-import { getEvidenceStorageProvider, normalizeEvidenceUrl, readUploadedImageAsDataUrl } from "@/lib/storage";
+import { getEvidenceStorageProvider, readUploadedImageAsDataUrl } from "@/lib/storage";
 import { formatCurrency } from "@/lib/utils";
 
 function evidenceCode() {
@@ -304,14 +304,14 @@ function parseOptionalDate(value: FormDataEntryValue | null) {
   return Number.isNaN(date.getTime()) ? null : date;
 }
 
-async function imageFromForm(formData: FormData, uploadKey: string, urlKey: string, redirectPath: string) {
+async function imageFromForm(formData: FormData, uploadKey: string, redirectPath: string) {
   const upload = await readUploadedImageAsDataUrl(formData.get(uploadKey));
 
   if (upload.error) {
     redirectPartnerError(formData, redirectPath, `image-${upload.error}`);
   }
 
-  return upload.dataUrl ?? normalizeEvidenceUrl(formData.get(urlKey));
+  return upload.dataUrl;
 }
 
 async function uploadedPartnerImage(formData: FormData, key: string, redirectPath = "/partner/expeditions") {
@@ -813,7 +813,7 @@ async function imageFromAdminCampaignForm(formData: FormData) {
     redirectAdminCampaignError(`image-${upload.error}`, formData);
   }
 
-  return upload.dataUrl ?? normalizeEvidenceUrl(formData.get("imageUrl"));
+  return upload.dataUrl;
 }
 
 async function campaignContentImageFromForm(formData: FormData, fallbackPath: string) {
@@ -823,7 +823,37 @@ async function campaignContentImageFromForm(formData: FormData, fallbackPath: st
     redirectCampaignContentError(formData, fallbackPath, `image-${upload.error}`);
   }
 
-  return upload.dataUrl ?? normalizeEvidenceUrl(formData.get("fileUrl"));
+  return upload.dataUrl;
+}
+
+async function campaignContentPortraitFromForm(formData: FormData, fallbackPath: string) {
+  const upload = await readUploadedImageAsDataUrl(formData.get("imageFile"));
+
+  if (upload.error) {
+    redirectCampaignContentError(formData, fallbackPath, `image-${upload.error}`);
+  }
+
+  return upload.dataUrl;
+}
+
+async function imageFromAdminExpeditionForm(formData: FormData) {
+  const upload = await readUploadedImageAsDataUrl(formData.get("imageFile"));
+
+  if (upload.error) {
+    redirectAdminExpeditionError(`image-${upload.error}`, formData);
+  }
+
+  return upload.dataUrl;
+}
+
+async function logoFromAdminPartnerForm(formData: FormData) {
+  const upload = await readUploadedImageAsDataUrl(formData.get("logoFile"));
+
+  if (upload.error) {
+    redirectAdminPartnerError(`image-${upload.error}`, formData);
+  }
+
+  return upload.dataUrl;
 }
 
 async function getCampaignDeleteBlockers(campaignId: string) {
@@ -1034,6 +1064,7 @@ export async function createOrganizationAction(formData: FormData) {
   const slug = slugifyPartner(formText(formData, "slug") || name);
   const type = formText(formData, "type");
   const verification = verificationFromForm(formData.get("verification"));
+  const logoUrl = await logoFromAdminPartnerForm(formData);
 
   if (!name || !slug || !type) {
     redirectAdminPartnerError("partner-invalid", formData);
@@ -1051,7 +1082,7 @@ export async function createOrganizationAction(formData: FormData) {
       name,
       slug,
       type,
-      logoUrl: nullableText(formData, "logoUrl"),
+      logoUrl,
       websiteUrl: nullableText(formData, "websiteUrl"),
       description: nullableText(formData, "description"),
       verification,
@@ -1077,9 +1108,16 @@ export async function updateOrganizationAction(formData: FormData) {
   const slug = slugifyPartner(formText(formData, "slug") || name);
   const type = formText(formData, "type");
   const verification = verificationFromForm(formData.get("verification"));
+  const uploadedLogoUrl = await logoFromAdminPartnerForm(formData);
 
   if (!organizationId || !name || !slug || !type) {
     redirectAdminPartnerError("partner-invalid", formData);
+  }
+
+  const [organization] = await db.select({ id: organizations.id, logoUrl: organizations.logoUrl }).from(organizations).where(eq(organizations.id, organizationId)).limit(1);
+
+  if (!organization) {
+    redirectAdminPartnerError("partner-missing", formData);
   }
 
   const [existing] = await db.select({ id: organizations.id }).from(organizations).where(eq(organizations.slug, slug)).limit(1);
@@ -1094,7 +1132,7 @@ export async function updateOrganizationAction(formData: FormData) {
       name,
       slug,
       type,
-      logoUrl: nullableText(formData, "logoUrl"),
+      logoUrl: uploadedLogoUrl ?? organization.logoUrl,
       websiteUrl: nullableText(formData, "websiteUrl"),
       description: nullableText(formData, "description"),
       verification,
@@ -1370,7 +1408,7 @@ export async function createPartnerCampaignAction(formData: FormData) {
   const impactUnit = formText(formData, "impactUnit");
   const impactTarget = parsePositiveInteger(formData.get("impactTarget"));
   const status = isAdmin ? campaignStatusFromForm(formData.get("status")) : partnerCampaignStatusFromForm(formData.get("status"));
-  const imageUrl = await imageFromForm(formData, "imageFile", "imageUrl", "/partner/campaigns/new");
+  const imageUrl = await imageFromForm(formData, "imageFile", "/partner/campaigns/new");
   const endsAt = parseOptionalDate(formData.get("endsAt"));
 
   if (!organizationId || !title || !summary || !category || !region || !goalAmount || !impactUnit || !impactTarget) {
@@ -1434,7 +1472,7 @@ export async function updatePartnerCampaignAction(formData: FormData) {
   const impactUnit = formText(formData, "impactUnit");
   const impactTarget = parsePositiveInteger(formData.get("impactTarget"));
   const requestedStatus = campaignStatusFromForm(formData.get("status"));
-  const uploadedImageUrl = await imageFromForm(formData, "imageFile", "imageUrl", "/partner/campaigns");
+  const uploadedImageUrl = await imageFromForm(formData, "imageFile", "/partner/campaigns");
   const endsAt = parseOptionalDate(formData.get("endsAt"));
   const removeImage = formData.get("removeImage") === "on";
 
@@ -1863,13 +1901,18 @@ export async function upsertOrganizationTeamMemberAction(formData: FormData) {
   const organizationIdFromForm = formText(formData, "organizationId");
   const name = formText(formData, "name");
   const role = formText(formData, "role");
+  const uploadedImageUrl = await campaignContentPortraitFromForm(formData, fallbackPath);
   const sortOrder = parseNonNegativeInteger(formData.get("sortOrder")) ?? 0;
   const isPublic = formData.get("isPublic") === "on";
   const now = new Date();
 
   const [existingItem] = teamMemberId
     ? await db
-        .select({ id: organizationTeamMembers.id, organizationId: organizationTeamMembers.organizationId })
+        .select({
+          id: organizationTeamMembers.id,
+          organizationId: organizationTeamMembers.organizationId,
+          imageUrl: organizationTeamMembers.imageUrl
+        })
         .from(organizationTeamMembers)
         .where(eq(organizationTeamMembers.id, teamMemberId))
         .limit(1)
@@ -1893,7 +1936,7 @@ export async function upsertOrganizationTeamMemberAction(formData: FormData) {
         name,
         role,
         bio: nullableText(formData, "bio"),
-        imageUrl: nullableText(formData, "imageUrl"),
+        imageUrl: uploadedImageUrl ?? existingItem.imageUrl,
         profileUrl: nullableText(formData, "profileUrl"),
         sortOrder,
         isPublic,
@@ -1906,7 +1949,7 @@ export async function upsertOrganizationTeamMemberAction(formData: FormData) {
       name,
       role,
       bio: nullableText(formData, "bio"),
-      imageUrl: nullableText(formData, "imageUrl"),
+      imageUrl: uploadedImageUrl,
       profileUrl: nullableText(formData, "profileUrl"),
       sortOrder,
       isPublic,
@@ -1968,6 +2011,7 @@ export async function createExpeditionAction(formData: FormData) {
   const summary = formText(formData, "summary");
   const relatedCampaignId = nullableText(formData, "relatedCampaignId");
   const metadata = expeditionMetadataFromForm(formData, redirectAdminExpeditionError);
+  const imageUrl = await imageFromAdminExpeditionForm(formData);
 
   if (!title || !slug || !region || !durationDays || !basePrice || !summary) {
     redirectAdminExpeditionError("expedition-invalid", formData);
@@ -1996,7 +2040,7 @@ export async function createExpeditionAction(formData: FormData) {
       durationDays,
       basePrice,
       summary,
-      imageUrl: nullableText(formData, "imageUrl"),
+      imageUrl,
       relatedCampaignId,
       metadata
     })
@@ -2024,6 +2068,7 @@ export async function updateExpeditionAction(formData: FormData) {
   const summary = formText(formData, "summary");
   const relatedCampaignId = nullableText(formData, "relatedCampaignId");
   const metadata = expeditionMetadataFromForm(formData, redirectAdminExpeditionError);
+  const uploadedImageUrl = await imageFromAdminExpeditionForm(formData);
 
   if (!expeditionId || !title || !slug || !region || !durationDays || !basePrice || !summary) {
     redirectAdminExpeditionError("expedition-invalid", formData);
@@ -2043,6 +2088,12 @@ export async function updateExpeditionAction(formData: FormData) {
     }
   }
 
+  const [currentExpedition] = await db.select({ id: expeditions.id, imageUrl: expeditions.imageUrl }).from(expeditions).where(eq(expeditions.id, expeditionId)).limit(1);
+
+  if (!currentExpedition) {
+    redirectAdminExpeditionError("expedition-missing", formData);
+  }
+
   const [expedition] = await db
     .update(expeditions)
     .set({
@@ -2052,7 +2103,7 @@ export async function updateExpeditionAction(formData: FormData) {
       durationDays,
       basePrice,
       summary,
-      imageUrl: nullableText(formData, "imageUrl"),
+      imageUrl: uploadedImageUrl ?? currentExpedition.imageUrl,
       relatedCampaignId,
       metadata
     })
@@ -2947,7 +2998,7 @@ export async function createCampaignActivityAction(formData: FormData) {
   const body = formText(formData, "body");
   const activityUse = activityUseFromForm(formData.get("activityUse"));
   const evidenceType = evidenceTypeFromForm(formData.get("evidenceType"));
-  const attachmentUrl = await imageFromForm(formData, "imageFile", "attachmentUrl", "/partner/activity");
+  const attachmentUrl = await imageFromForm(formData, "imageFile", "/partner/activity");
   const shouldPublish = activityUse === "public_update" || activityUse === "update_and_evidence";
   const shouldSubmitEvidence = activityUse === "evidence" || activityUse === "update_and_evidence";
 
@@ -3060,28 +3111,12 @@ export async function createCampaignUpdateAction(formData: FormData) {
   formData.set("activityUse", "public_update");
   formData.set("redirectTo", "/partner/activity");
 
-  if (!formText(formData, "attachmentUrl")) {
-    const imageUrl = formText(formData, "imageUrl");
-
-    if (imageUrl) {
-      formData.set("attachmentUrl", imageUrl);
-    }
-  }
-
   return createCampaignActivityAction(formData);
 }
 
 export async function submitEvidenceAction(formData: FormData) {
   formData.set("activityUse", "evidence");
   formData.set("redirectTo", "/partner/activity");
-
-  if (!formText(formData, "attachmentUrl")) {
-    const fileUrl = formText(formData, "fileUrl");
-
-    if (fileUrl) {
-      formData.set("attachmentUrl", fileUrl);
-    }
-  }
 
   if (!formText(formData, "body")) {
     formData.set("body", formText(formData, "title"));
@@ -3095,7 +3130,7 @@ export async function reviseEvidenceAction(formData: FormData) {
   const evidenceId = formText(formData, "evidenceId");
   const title = formText(formData, "title");
   const body = formText(formData, "body");
-  const attachmentUrl = await imageFromForm(formData, "imageFile", "fileUrl", "/partner/evidence");
+  const attachmentUrl = await imageFromForm(formData, "imageFile", "/partner/evidence");
 
   if (!evidenceId || !title || !attachmentUrl) {
     redirectPartnerError(formData, "/partner/evidence", "evidence-revision");

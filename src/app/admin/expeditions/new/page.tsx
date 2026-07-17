@@ -16,7 +16,9 @@ export const dynamic = "force-dynamic";
 const errorMessages: Record<string, string> = {
   "campaign-missing": "Choose an existing related campaign or leave the field empty.",
   "expedition-invalid": "Enter a title, slug, region, duration, price, and summary.",
-  "expedition-slug": "That expedition slug is already in use."
+  "expedition-slug": "That expedition slug is already in use.",
+  "image-size": "Uploaded image is too large.",
+  "image-type": "Upload a supported image file."
 };
 
 type AdminExpeditionNewPageProps = {
@@ -110,8 +112,8 @@ export default async function AdminExpeditionNewPage({ searchParams }: AdminExpe
               <RelatedCampaignSelect campaigns={data.campaignOptions} />
             </Field>
           </div>
-          <Field label="Image URL">
-            <input name="imageUrl" type="url" placeholder="https://..." className={adminInputClassName} />
+          <Field label="Upload image">
+            <input name="imageFile" type="file" accept="image/png,image/jpeg,image/webp,image/gif" className={adminInputClassName} />
           </Field>
           <Field label="Summary">
             <textarea name="summary" placeholder="Trip summary shown on public expedition cards and detail pages." className={adminTextareaClassName} required />

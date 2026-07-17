@@ -42,6 +42,8 @@ const statusMessages: Record<string, string> = {
 };
 
 const errorMessages: Record<string, string> = {
+  "image-size": "Uploaded image is too large.",
+  "image-type": "Upload a supported image file.",
   "partner-delete": "Confirm deletion by checking the delete box.",
   "partner-has-campaigns": "Partners with campaigns cannot be deleted.",
   "partner-invalid": "Enter a partner name, slug, and type.",
@@ -182,8 +184,8 @@ export default async function AdminPartnerDetailPage({ params, searchParams }: A
             <Field label="Website URL">
               <input name="websiteUrl" type="url" defaultValue={partner.websiteUrl ?? ""} className={adminInputClassName} />
             </Field>
-            <Field label="Logo URL">
-              <input name="logoUrl" type="url" defaultValue={partner.logoUrl ?? ""} className={adminInputClassName} />
+            <Field label="Replace logo">
+              <input name="logoFile" type="file" accept="image/png,image/jpeg,image/webp,image/gif" className={adminInputClassName} />
             </Field>
           </div>
           <Field label="Description">

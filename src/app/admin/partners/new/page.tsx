@@ -16,6 +16,8 @@ const verificationLevels = ["basic", "document", "field"];
 const organizationTypes = ["ngo", "community_cooperative", "community_group", "corporate_partner", "government", "research"];
 
 const errorMessages: Record<string, string> = {
+  "image-size": "Uploaded image is too large.",
+  "image-type": "Upload a supported image file.",
   "partner-invalid": "Enter a partner name, slug, and type.",
   "partner-slug": "That partner slug is already in use."
 };
@@ -96,8 +98,8 @@ export default async function AdminPartnerNewPage({ searchParams }: AdminPartner
             <Field label="Website URL">
               <input name="websiteUrl" type="url" placeholder="https://..." className={adminInputClassName} />
             </Field>
-            <Field label="Logo URL">
-              <input name="logoUrl" type="url" placeholder="https://..." className={adminInputClassName} />
+            <Field label="Upload logo">
+              <input name="logoFile" type="file" accept="image/png,image/jpeg,image/webp,image/gif" className={adminInputClassName} />
             </Field>
             <Field label="Verification">
               <select name="verification" defaultValue="basic" className={adminSelectClassName}>

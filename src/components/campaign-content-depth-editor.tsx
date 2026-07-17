@@ -163,14 +163,9 @@ function MediaForm({
           <input name="sortOrder" type="number" min="0" step="1" defaultValue={item?.sortOrder ?? 0} className={inputClassName} />
         </Field>
       </div>
-      <div className="grid gap-3 md:grid-cols-2">
-        <Field label="Upload image">
-          <input name="fileUpload" type="file" accept="image/png,image/jpeg,image/webp,image/gif" className={inputClassName} />
-        </Field>
-        <Field label="File URL">
-          <input name="fileUrl" defaultValue={item?.fileUrl} placeholder="https://..." className={inputClassName} />
-        </Field>
-      </div>
+      <Field label={item ? "Replace image" : "Upload image"}>
+        <input name="fileUpload" type="file" accept="image/png,image/jpeg,image/webp,image/gif" className={inputClassName} required={!item} />
+      </Field>
       <div className="grid gap-3 md:grid-cols-2">
         <Field label="Alt text">
           <input name="altText" defaultValue={item?.altText ?? ""} className={inputClassName} />
@@ -319,8 +314,8 @@ function TeamForm({
         </label>
       </div>
       <div className="grid gap-3 md:grid-cols-2">
-        <Field label="Image URL">
-          <input name="imageUrl" defaultValue={item?.imageUrl ?? ""} placeholder="https://..." className={inputClassName} />
+        <Field label={item ? "Replace portrait" : "Portrait upload"}>
+          <input name="imageFile" type="file" accept="image/png,image/jpeg,image/webp,image/gif" className={inputClassName} />
         </Field>
         <Field label="Profile URL">
           <input name="profileUrl" defaultValue={item?.profileUrl ?? ""} placeholder="https://..." className={inputClassName} />

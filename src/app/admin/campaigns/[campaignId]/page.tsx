@@ -44,8 +44,8 @@ const errorMessages: Record<string, string> = {
   "campaign-invalid": "Enter campaign title, slug, organization, goal, impact target, summary, category, and region.",
   "campaign-missing": "Campaign record was not found.",
   "campaign-slug": "That campaign slug is already in use.",
-  "image-invalid": "Upload a supported image file.",
-  "image-too-large": "Uploaded image is too large.",
+  "image-size": "Uploaded image is too large.",
+  "image-type": "Upload a supported image file.",
   "organization-missing": "Choose an existing partner organization."
 };
 
@@ -258,14 +258,9 @@ export default async function AdminCampaignDetailPage({ params, searchParams }: 
               <input name="impactUnit" defaultValue={campaign.impactUnit} className={adminInputClassName} required />
             </Field>
           </div>
-          <div className="grid gap-3 lg:grid-cols-2">
-            <Field label="Upload image">
-              <input name="imageFile" type="file" accept="image/png,image/jpeg,image/webp,image/gif" className={adminInputClassName} />
-            </Field>
-            <Field label="Image URL">
-              <input name="imageUrl" type="url" placeholder="https://..." className={adminInputClassName} />
-            </Field>
-          </div>
+          <Field label="Replace image">
+            <input name="imageFile" type="file" accept="image/png,image/jpeg,image/webp,image/gif" className={adminInputClassName} />
+          </Field>
           {campaign.imageUrl ? (
             <label className="flex items-center gap-2 text-sm font-bold text-ocean-900">
               <input name="removeImage" type="checkbox" className="size-4 accent-coral-500" />

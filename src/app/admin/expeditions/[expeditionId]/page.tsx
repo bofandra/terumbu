@@ -63,6 +63,8 @@ const errorMessages: Record<string, string> = {
   "expedition-metadata-json": "Trip detail content must be valid JSON object data.",
   "expedition-missing": "Expedition record was not found.",
   "expedition-slug": "That expedition slug is already in use.",
+  "image-size": "Uploaded image is too large.",
+  "image-type": "Upload a supported image file.",
   "interest-request-invalid": "Choose an interest request and final processing status.",
   "interest-request-missing": "Interest request record was not found.",
   "review-invalid": "Choose a review and moderation status.",
@@ -329,8 +331,8 @@ export default async function AdminExpeditionDetailPage({ params, searchParams }
             <Field label="Related campaign">
               <RelatedCampaignSelect campaigns={data.campaignOptions} defaultValue={expedition.relatedCampaignId} />
             </Field>
-            <Field label="Image URL">
-              <input name="imageUrl" type="url" defaultValue={expedition.imageUrl ?? ""} className={adminInputClassName} />
+            <Field label="Replace image">
+              <input name="imageFile" type="file" accept="image/png,image/jpeg,image/webp,image/gif" className={adminInputClassName} />
             </Field>
           </div>
           <Field label="Summary">

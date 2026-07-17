@@ -105,10 +105,10 @@ export default async function PartnerEvidencePage() {
                     <input type="hidden" name="evidenceId" value={item.id} />
                     <label className="grid gap-1.5 text-sm font-bold text-ocean-900">Title<input name="title" className={inputClassName} defaultValue={item.title} required /></label>
                     <label className="grid gap-1.5 text-sm font-bold text-ocean-900">Response note<textarea name="body" className={textareaClassName} placeholder="Explain the clarification or what changed in this revision." /></label>
-                    <div className="grid gap-3 md:grid-cols-2">
-                      <label className="grid gap-1.5 text-sm font-bold text-ocean-900">Evidence URL<input name="fileUrl" className={inputClassName} defaultValue={item.fileUrl} required /></label>
-                      <label className="grid gap-1.5 text-sm font-bold text-ocean-900">Replace file<input name="imageFile" type="file" accept="image/png,image/jpeg,image/webp" className={inputClassName} /></label>
-                    </div>
+                    <label className="grid gap-1.5 text-sm font-bold text-ocean-900">
+                      Replace file
+                      <input name="imageFile" type="file" accept="image/png,image/jpeg,image/webp,image/gif" className={inputClassName} required />
+                    </label>
                     <Button type="submit" className="justify-self-start"><RotateCcw size={17} /> {item.verificationStatus === "needs_clarification" ? "Submit clarification" : "Resubmit evidence"}</Button>
                   </form>
                 ) : null}

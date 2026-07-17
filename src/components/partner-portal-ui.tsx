@@ -294,14 +294,9 @@ export function CampaignFields({ campaign, organizations }: { campaign?: Campaig
         <textarea name="story" defaultValue={campaign?.story ?? ""} placeholder="Campaign story" className={textareaClassName} />
       </Field>
 
-      <div className="grid gap-3 md:grid-cols-2">
-        <Field label="Upload image">
-          <input name="imageFile" type="file" accept="image/png,image/jpeg,image/webp,image/gif" className={inputClassName} />
-        </Field>
-        <Field label="Image URL">
-          <input name="imageUrl" placeholder="https://..." className={inputClassName} />
-        </Field>
-      </div>
+      <Field label={campaign ? "Replace image" : "Upload image"}>
+        <input name="imageFile" type="file" accept="image/png,image/jpeg,image/webp,image/gif" className={inputClassName} />
+      </Field>
     </>
   );
 }
@@ -766,7 +761,7 @@ export function CampaignActivityForm({ campaigns, canCreateActivity }: { campaig
         <Field label="Field note">
           <textarea name="body" placeholder="Progress note or reviewer context" className={textareaClassName} disabled={!canSubmit} required />
         </Field>
-        <div className="grid gap-3 md:grid-cols-3">
+        <div className="grid gap-3 md:grid-cols-2">
           <Field label="Evidence type">
             <select name="evidenceType" defaultValue="field_photo" className={inputClassName} disabled={!canSubmit}>
               <option value="field_photo">Field photo</option>
@@ -776,9 +771,6 @@ export function CampaignActivityForm({ campaigns, canCreateActivity }: { campaig
           </Field>
           <Field label="Upload attachment">
             <input name="imageFile" type="file" accept="image/png,image/jpeg,image/webp,image/gif" className={inputClassName} disabled={!canSubmit} />
-          </Field>
-          <Field label="Attachment URL">
-            <input name="attachmentUrl" placeholder="https://..." className={inputClassName} disabled={!canSubmit} />
           </Field>
         </div>
       </div>

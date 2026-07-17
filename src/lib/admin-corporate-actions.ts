@@ -12,6 +12,7 @@ import {
   users
 } from "@/db/schema";
 import { requireRole } from "@/lib/auth";
+import { readUploadedImageAsDataUrl } from "@/lib/storage";
 
 function textValue(value: FormDataEntryValue | null, maxLength: number) {
   return String(value ?? "")
@@ -58,13 +59,23 @@ async function writeAdminAuditLog(input: {
   });
 }
 
+async function corporateLogoFromForm(formData: FormData) {
+  const upload = await readUploadedImageAsDataUrl(formData.get("logoFile"));
+
+  if (upload.error) {
+    redirect(`/admin/corporate?error=image-${upload.error}`);
+  }
+
+  return upload.dataUrl;
+}
+
 const permissionValues = ["program.manage", "esg_manager", "finance_reviewer", "employee_engagement", "executive_viewer", "auditor"];
 
 export async function createCorporateWorkspaceAction(formData: FormData) {
   const admin = await requireRole(["admin"], "/admin/corporate");
   const accountName = textValue(formData.get("accountName"), 180);
   const accountSlug = toSlug(textValue(formData.get("accountSlug"), 180) || accountName);
-  const logoUrl = textValue(formData.get("logoUrl"), 500) || null;
+  const logoUrl = await corporateLogoFromForm(formData);
   const programName = textValue(formData.get("programName"), 220);
   const programSlug = toSlug(textValue(formData.get("programSlug"), 220) || programName);
   const startsAt = parseDate(formData.get("startsAt"));
@@ -76,21 +87,32 @@ export async function createCorporateWorkspaceAction(formData: FormData) {
     redirect("/admin/corporate?error=workspace-invalid");
   }
 
-  const [account] = await db
-    .insert(corporateAccounts)
-    .values({
-      name: accountName,
-      slug: accountSlug,
-      logoUrl
-    })
-    .onConflictDoUpdate({
-      target: corporateAccounts.slug,
-      set: {
+  const [existingAccount] = await db
+    .select({ id: corporateAccounts.id, logoUrl: corporateAccounts.logoUrl })
+    .from(corporateAccounts)
+    .where(eq(corporateAccounts.slug, accountSlug))
+    .limit(1);
+  let account: { id: string };
+
+  if (existingAccount) {
+    [account] = await db
+      .update(corporateAccounts)
+      .set({
         name: accountName,
+        logoUrl: logoUrl ?? existingAccount.logoUrl
+      })
+      .where(eq(corporateAccounts.id, existingAccount.id))
+      .returning({ id: corporateAccounts.id });
+  } else {
+    [account] = await db
+      .insert(corporateAccounts)
+      .values({
+        name: accountName,
+        slug: accountSlug,
         logoUrl
-      }
-    })
-    .returning({ id: corporateAccounts.id });
+      })
+      .returning({ id: corporateAccounts.id });
+  }
 
   const [program] = await db
     .insert(corporatePrograms)

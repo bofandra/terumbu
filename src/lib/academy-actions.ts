@@ -28,6 +28,7 @@ import {
 } from "@/db/schema";
 import { requireRole, requireUser } from "@/lib/auth";
 import { safeRedirectPath } from "@/lib/auth";
+import { readUploadedImageAsDataUrl } from "@/lib/storage";
 
 function certificateSlug(courseSlug: string) {
   return `${courseSlug}-${randomBytes(4).toString("hex")}`;
@@ -78,6 +79,16 @@ function pathWithQuery(path: string, query: string) {
   const separator = basePath.includes("?") ? "&" : "?";
 
   return `${basePath}${separator}${query}${hash}`;
+}
+
+async function courseImageFromForm(formData: FormData) {
+  const upload = await readUploadedImageAsDataUrl(formData.get("imageFile"));
+
+  if (upload.error) {
+    redirect(`/admin/academy?error=image-${upload.error}`);
+  }
+
+  return upload.dataUrl;
 }
 
 async function courseBySlug(slug: string) {
@@ -411,6 +422,7 @@ export async function createAcademyCourseAction(formData: FormData) {
   const slug = slugify(formText(formData, "slug") || title);
   const summary = formText(formData, "summary");
   const status = courseStatusFromForm(formData);
+  const imageUrl = await courseImageFromForm(formData);
   const now = new Date();
 
   if (!title || !summary) {
@@ -426,7 +438,7 @@ export async function createAcademyCourseAction(formData: FormData) {
       durationMinutes: formInt(formData, "durationMinutes", 60),
       summary,
       description: formText(formData, "description") || null,
-      imageUrl: formText(formData, "imageUrl") || null,
+      imageUrl,
       status,
       publishedAt: status === "published" ? now : null,
       updatedAt: now
@@ -451,9 +463,16 @@ export async function updateAcademyCourseAction(formData: FormData) {
   const slug = slugify(formText(formData, "slug") || title);
   const summary = formText(formData, "summary");
   const status = courseStatusFromForm(formData);
+  const uploadedImageUrl = await courseImageFromForm(formData);
   const now = new Date();
 
   if (!courseId || !title || !summary) {
+    redirect("/admin/academy?error=course");
+  }
+
+  const [course] = await db.select({ imageUrl: courses.imageUrl }).from(courses).where(eq(courses.id, courseId)).limit(1);
+
+  if (!course) {
     redirect("/admin/academy?error=course");
   }
 
@@ -466,7 +485,7 @@ export async function updateAcademyCourseAction(formData: FormData) {
       durationMinutes: formInt(formData, "durationMinutes", 60),
       summary,
       description: formText(formData, "description") || null,
-      imageUrl: formText(formData, "imageUrl") || null,
+      imageUrl: uploadedImageUrl ?? course.imageUrl,
       status,
       publishedAt: status === "published" ? now : null,
       updatedAt: now

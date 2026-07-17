@@ -31,8 +31,8 @@ const errorMessages: Record<string, string> = {
   "campaign-invalid": "Enter campaign title, slug, organization, goal, impact target, summary, category, and region.",
   "campaign-missing": "Campaign record was not found.",
   "campaign-slug": "That campaign slug is already in use.",
-  "image-invalid": "Upload a supported image file.",
-  "image-too-large": "Uploaded image is too large.",
+  "image-size": "Uploaded image is too large.",
+  "image-type": "Upload a supported image file.",
   "organization-missing": "Choose an existing partner organization."
 };
 

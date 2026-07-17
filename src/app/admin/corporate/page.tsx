@@ -26,6 +26,8 @@ const savedMessages: Record<string, string> = {
 };
 
 const errorMessages: Record<string, string> = {
+  "image-size": "Uploaded image is too large.",
+  "image-type": "Upload a supported image file.",
   "workspace-invalid": "Enter a valid company, program, reporting period, and budget.",
   "permission-invalid": "Choose a corporate account and user email.",
   "permission-missing": "Corporate account or user was not found. Create the user first, then assign access."
@@ -105,8 +107,8 @@ export default async function AdminCorporatePage({ searchParams }: AdminCorporat
               <input name="accountSlug" className={adminInputClassName} placeholder="blue-carbon-indonesia" />
             </label>
             <label className="grid gap-2 text-sm font-bold text-ocean-900 md:col-span-2">
-              Logo URL
-              <input name="logoUrl" className={adminInputClassName} placeholder="https://..." />
+              Upload logo
+              <input name="logoFile" type="file" accept="image/png,image/jpeg,image/webp,image/gif" className={adminInputClassName} />
             </label>
             <label className="grid gap-2 text-sm font-bold text-ocean-900">
               Program name

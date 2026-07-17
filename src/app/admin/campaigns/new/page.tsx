@@ -18,8 +18,8 @@ const campaignStatuses = ["draft", "review", "published", "funded", "completed",
 const errorMessages: Record<string, string> = {
   "campaign-invalid": "Enter campaign title, slug, organization, goal, impact target, summary, category, and region.",
   "campaign-slug": "That campaign slug is already in use.",
-  "image-invalid": "Upload a supported image file.",
-  "image-too-large": "Uploaded image is too large.",
+  "image-size": "Uploaded image is too large.",
+  "image-type": "Upload a supported image file.",
   "organization-missing": "Choose an existing partner organization."
 };
 
@@ -145,14 +145,9 @@ export default async function AdminCampaignNewPage({ searchParams }: AdminCampai
               <input name="impactUnit" placeholder="coral fragments" className={adminInputClassName} required />
             </Field>
           </div>
-          <div className="grid gap-3 lg:grid-cols-2">
-            <Field label="Upload image">
-              <input name="imageFile" type="file" accept="image/png,image/jpeg,image/webp,image/gif" className={adminInputClassName} />
-            </Field>
-            <Field label="Image URL">
-              <input name="imageUrl" type="url" placeholder="https://..." className={adminInputClassName} />
-            </Field>
-          </div>
+          <Field label="Upload image">
+            <input name="imageFile" type="file" accept="image/png,image/jpeg,image/webp,image/gif" className={adminInputClassName} />
+          </Field>
           <Field label="Summary">
             <textarea name="summary" placeholder="Public campaign summary" className={adminTextareaClassName} required />
           </Field>
