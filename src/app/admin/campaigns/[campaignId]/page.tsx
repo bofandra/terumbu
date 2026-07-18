@@ -28,6 +28,7 @@ export const dynamic = "force-dynamic";
 const campaignStatuses = ["draft", "review", "published", "funded", "completed", "archived"];
 
 const statusMessages: Record<string, string> = {
+  "campaign-created": "Campaign created with its impact relationship.",
   "campaign-updated": "Campaign updated.",
   "campaign-content-deleted": "Campaign content deleted.",
   "campaign-content-saved": "Campaign content saved.",

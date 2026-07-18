@@ -2,7 +2,7 @@
 
 import { randomBytes } from "node:crypto";
 
-import { and, eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { redirect } from "next/navigation";
 
 import { db } from "@/db/client";
@@ -73,6 +73,7 @@ function activityCode() {
 
 const campaignStatuses = ["draft", "review", "published", "funded", "completed", "archived"] as const;
 const partnerCampaignStatuses = ["draft", "review"] as const;
+const adminCampaignImpactLinkModes = ["new", "existing", "none"] as const;
 const verificationStatuses = ["basic", "document", "field"] as const;
 const organizationUserStatuses = ["active", "inactive"] as const;
 const expeditionDepartureStatuses = ["open", "waitlist", "full", "private_group", "cancelled"] as const;
@@ -275,6 +276,89 @@ function impactSiteFormValues(formData: FormData, campaignRequired: boolean, onE
     latitude,
     longitude,
     metadata
+  };
+}
+
+function adminCampaignImpactLinkModeFromForm(value: FormDataEntryValue | null) {
+  const mode = String(value ?? "new");
+
+  return adminCampaignImpactLinkModes.includes(mode as (typeof adminCampaignImpactLinkModes)[number])
+    ? (mode as (typeof adminCampaignImpactLinkModes)[number])
+    : "new";
+}
+
+function initialAdminCampaignImpactLinkFromForm(formData: FormData):
+  | {
+      mode: "new";
+      values: {
+        name: string;
+        ecosystemType: string;
+        region: string;
+        latitude: string;
+        longitude: string;
+        metadata: {
+          progress: number;
+          evidenceCount: number;
+          latestSurvey: string | null;
+          verification: (typeof verificationStatuses)[number];
+        };
+      };
+    }
+  | {
+      mode: "existing";
+      impactSiteId: string;
+    }
+  | {
+      mode: "none";
+    } {
+  const mode = adminCampaignImpactLinkModeFromForm(formData.get("impactLinkMode"));
+
+  if (mode === "none") {
+    return { mode };
+  }
+
+  if (mode === "existing") {
+    const impactSiteId = formText(formData, "existingImpactSiteId");
+
+    if (!impactSiteId) {
+      redirectAdminCampaignError("impact-site-missing", formData);
+    }
+
+    return {
+      mode,
+      impactSiteId
+    };
+  }
+
+  const name = formText(formData, "impactSiteName");
+  const ecosystemType = formText(formData, "impactSiteEcosystemType");
+  const region = formText(formData, "impactSiteRegion");
+  const latitude = parseCoordinate(formData.get("impactSiteLatitude"), -90, 90);
+  const longitude = parseCoordinate(formData.get("impactSiteLongitude"), -180, 180);
+  const progress = parsePercent(formData.get("impactSiteProgress"));
+  const evidenceCount = parseOptionalCount(formData.get("impactSiteEvidenceCount"));
+  const latestSurvey = nullableText(formData, "impactSiteLatestSurvey");
+  const verification = verificationFromForm(formData.get("impactSiteVerification"));
+
+  if (!name || !ecosystemType || !region || !latitude || !longitude || progress === null || evidenceCount === null) {
+    redirectAdminCampaignError("impact-site-invalid", formData);
+  }
+
+  return {
+    mode,
+    values: {
+      name,
+      ecosystemType,
+      region,
+      latitude,
+      longitude,
+      metadata: {
+        progress,
+        evidenceCount,
+        latestSurvey,
+        verification
+      }
+    }
   };
 }
 
@@ -2931,6 +3015,7 @@ export async function createAdminCampaignAction(formData: FormData) {
   const status = campaignStatusFromForm(formData.get("status"));
   const imageUrl = await imageFromAdminCampaignForm(formData);
   const endsAt = parseOptionalDate(formData.get("endsAt"));
+  const impactLink = initialAdminCampaignImpactLinkFromForm(formData);
 
   if (!organizationId || !title || !slug || !summary || !category || !region || !goalAmount || !impactUnit || !impactTarget) {
     redirectAdminCampaignError("campaign-invalid", formData);
@@ -2948,37 +3033,108 @@ export async function createAdminCampaignAction(formData: FormData) {
     redirectAdminCampaignError("campaign-slug", formData);
   }
 
-  const now = new Date();
-  const [campaign] = await db
-    .insert(campaigns)
-    .values({
-      organizationId,
-      title,
-      slug,
-      summary,
-      story: story || null,
-      category,
-      region,
-      imageUrl,
-      goalAmount,
-      impactUnit,
-      impactTarget,
-      status,
-      publishedAt: status === "published" ? now : null,
-      endsAt,
-      updatedAt: now
-    })
-    .returning({ id: campaigns.id });
+  if (impactLink.mode === "existing") {
+    const [site] = await db
+      .select({
+        id: impactSites.id,
+        campaignId: impactSites.campaignId
+      })
+      .from(impactSites)
+      .where(eq(impactSites.id, impactLink.impactSiteId))
+      .limit(1);
 
-  await db.insert(adminAuditLogs).values({
-    actorUserId: user.id,
-    action: "campaign.created",
-    entityType: "campaign",
-    entityId: campaign.id,
-    metadata: { source: "admin", slug, status }
+    if (!site) {
+      redirectAdminCampaignError("impact-site-missing", formData);
+    }
+
+    if (site.campaignId) {
+      redirectAdminCampaignError("impact-site-assigned", formData);
+    }
+  }
+
+  const now = new Date();
+  let campaignId = "";
+
+  await db.transaction(async (tx) => {
+    const [campaign] = await tx
+      .insert(campaigns)
+      .values({
+        organizationId,
+        title,
+        slug,
+        summary,
+        story: story || null,
+        category,
+        region,
+        imageUrl,
+        goalAmount,
+        impactUnit,
+        impactTarget,
+        status,
+        publishedAt: status === "published" ? now : null,
+        endsAt,
+        updatedAt: now
+      })
+      .returning({ id: campaigns.id });
+
+    campaignId = campaign.id;
+
+    let linkedImpactSiteId: string | null = null;
+
+    if (impactLink.mode === "new") {
+      const [site] = await tx
+        .insert(impactSites)
+        .values({
+          campaignId: campaign.id,
+          ...impactLink.values
+        })
+        .returning({ id: impactSites.id });
+
+      linkedImpactSiteId = site.id;
+
+      await tx.insert(adminAuditLogs).values({
+        actorUserId: user.id,
+        action: "impact_site.created",
+        entityType: "impact_site",
+        entityId: site.id,
+        metadata: { source: "admin_campaign_create", campaignId: campaign.id, name: impactLink.values.name }
+      });
+    }
+
+    if (impactLink.mode === "existing") {
+      const [site] = await tx
+        .update(impactSites)
+        .set({
+          campaignId: campaign.id
+        })
+        .where(and(eq(impactSites.id, impactLink.impactSiteId), sql`${impactSites.campaignId} is null`))
+        .returning({ id: impactSites.id, name: impactSites.name });
+
+      if (!site) {
+        throw new Error("Impact site was assigned before campaign creation finished.");
+      }
+
+      linkedImpactSiteId = site.id;
+
+      await tx.insert(adminAuditLogs).values({
+        actorUserId: user.id,
+        action: "impact_site.linked",
+        entityType: "impact_site",
+        entityId: site.id,
+        metadata: { source: "admin_campaign_create", campaignId: campaign.id, name: site.name }
+      });
+    }
+
+    await tx.insert(adminAuditLogs).values({
+      actorUserId: user.id,
+      action: "campaign.created",
+      entityType: "campaign",
+      entityId: campaign.id,
+      metadata: { source: "admin", slug, status, impactLinkMode: impactLink.mode, impactSiteId: linkedImpactSiteId }
+    });
   });
 
-  redirectAdminCampaignSaved("campaign-created", formData);
+  redirect(`/admin/campaigns/${campaignId}?saved=${encodeURIComponent("campaign-created")}`);
 }
 
 export async function updateAdminCampaignAction(formData: FormData) {

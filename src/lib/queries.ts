@@ -5747,6 +5747,32 @@ export async function getAdminPortalData() {
   };
 }
 
+export async function getAdminUnassignedImpactSiteOptions() {
+  const rows = await db
+    .select({
+      id: impactSites.id,
+      name: impactSites.name,
+      ecosystemType: impactSites.ecosystemType,
+      region: impactSites.region,
+      latitude: impactSites.latitude,
+      longitude: impactSites.longitude,
+      metadata: impactSites.metadata
+    })
+    .from(impactSites)
+    .where(sql`${impactSites.campaignId} is null`)
+    .orderBy(asc(impactSites.name));
+
+  return rows.map((site) => ({
+    ...site,
+    latitude: toNumber(site.latitude),
+    longitude: toNumber(site.longitude),
+    progress: getMetadataNumber(site.metadata, "progress"),
+    evidenceCount: getMetadataNumber(site.metadata, "evidenceCount"),
+    latestSurvey: getMetadataString(site.metadata, "latestSurvey"),
+    verification: getMetadataString(site.metadata, "verification") ?? "basic"
+  }));
+}
+
 export async function getAdminOperationsData() {
   const [
     partners,

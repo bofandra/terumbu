@@ -1,11 +1,11 @@
-import { Plus } from "lucide-react";
+import { Link2, MapPinned, Plus } from "lucide-react";
 import type { ReactNode } from "react";
 
 import { AdminPageHeader, adminInputClassName, adminPanelClassName, adminSelectClassName, adminTextareaClassName } from "@/components/admin-ui";
 import { Button } from "@/components/ui/button";
 import { requireRole } from "@/lib/auth";
 import { createAdminCampaignAction } from "@/lib/portal-actions";
-import { getAdminPortalData } from "@/lib/queries";
+import { getAdminPortalData, getAdminUnassignedImpactSiteOptions } from "@/lib/queries";
 
 export const metadata = {
   title: "New Admin Campaign"
@@ -20,6 +20,9 @@ const errorMessages: Record<string, string> = {
   "campaign-slug": "That campaign slug is already in use.",
   "image-size": "Uploaded image is too large.",
   "image-type": "Upload a supported image file.",
+  "impact-site-assigned": "Choose an unassigned impact site or create a new linked site.",
+  "impact-site-invalid": "Enter impact site name, ecosystem type, region, valid coordinates, progress between 0 and 100, and evidence count.",
+  "impact-site-missing": "Choose an existing unassigned impact site.",
   "organization-missing": "Choose an existing partner organization."
 };
 
@@ -78,10 +81,39 @@ function StatusSelect() {
   );
 }
 
+function InitialImpactSiteSelect({
+  impactSites
+}: {
+  impactSites: Awaited<ReturnType<typeof getAdminUnassignedImpactSiteOptions>>;
+}) {
+  return (
+    <select name="existingImpactSiteId" defaultValue="" className={adminSelectClassName}>
+      <option value="">{impactSites.length > 0 ? "Select unassigned site" : "No unassigned sites available"}</option>
+      {impactSites.map((site) => (
+        <option key={site.id} value={site.id}>
+          {site.name} / {site.ecosystemType} / {site.region}
+        </option>
+      ))}
+    </select>
+  );
+}
+
+function ImpactSiteVerificationSelect() {
+  return (
+    <select name="impactSiteVerification" defaultValue="basic" className={adminSelectClassName}>
+      {["basic", "document", "field"].map((status) => (
+        <option key={status} value={status}>
+          {labelize(status)}
+        </option>
+      ))}
+    </select>
+  );
+}
+
 export default async function AdminCampaignNewPage({ searchParams }: AdminCampaignNewPageProps) {
   await requireRole(["admin"], "/admin/campaigns/new");
   const params = await searchParams;
-  const data = await getAdminPortalData();
+  const [data, unassignedImpactSites] = await Promise.all([getAdminPortalData(), getAdminUnassignedImpactSiteOptions()]);
   const errorMessage = params?.error ? errorMessages[params.error] : null;
 
   return (
@@ -100,7 +132,7 @@ export default async function AdminCampaignNewPage({ searchParams }: AdminCampai
         <div className="flex flex-col justify-between gap-3 border-b border-ocean-900/10 p-4 sm:flex-row sm:items-center">
           <div>
             <h2 className="text-xl font-bold tracking-normal text-ocean-900">Campaign details</h2>
-            <p className="mt-1 text-sm font-semibold text-ocean-900/58">Core content, funding target, impact unit, and publication state.</p>
+            <p className="mt-1 text-sm font-semibold text-ocean-900/58">Core content, funding target, impact unit, field site, and publication state.</p>
           </div>
           <Plus className="size-5 text-coral-700" aria-hidden="true" />
         </div>
@@ -145,6 +177,75 @@ export default async function AdminCampaignNewPage({ searchParams }: AdminCampai
               <input name="impactUnit" placeholder="coral fragments" className={adminInputClassName} required />
             </Field>
           </div>
+
+          <section className="-mx-4 border-y border-ocean-900/10 bg-sand-50 px-4 py-5" aria-labelledby="initial-impact-site-title">
+            <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-start">
+              <div className="flex gap-3">
+                <span className="grid size-10 shrink-0 place-items-center rounded-lg bg-white text-kelp-700 ring-1 ring-ocean-900/10">
+                  <MapPinned className="size-5" aria-hidden="true" />
+                </span>
+                <div>
+                  <h3 id="initial-impact-site-title" className="text-lg font-bold tracking-normal text-ocean-900">
+                    Campaign and impact relationship
+                  </h3>
+                  <p className="mt-1 max-w-2xl text-sm font-semibold leading-6 text-ocean-900/58">
+                    Link this campaign to the field location used for evidence, activity, sponsorship, and public impact records.
+                  </p>
+                </div>
+              </div>
+              <Link2 className="size-5 shrink-0 text-coral-700" aria-hidden="true" />
+            </div>
+
+            <div className="mt-4 grid gap-3 lg:grid-cols-3">
+              <Field label="Relationship">
+                <select name="impactLinkMode" defaultValue="new" className={adminSelectClassName}>
+                  <option value="new">Create linked impact site</option>
+                  <option value="existing">Attach unassigned impact site</option>
+                  <option value="none">Campaign only for now</option>
+                </select>
+              </Field>
+              <Field label="Unassigned impact site" className="lg:col-span-2">
+                <InitialImpactSiteSelect impactSites={unassignedImpactSites} />
+              </Field>
+            </div>
+
+            <div className="mt-4 grid gap-3 lg:grid-cols-3">
+              <Field label="Impact site name">
+                <input name="impactSiteName" placeholder="Raja Ampat Reef Garden" className={adminInputClassName} />
+              </Field>
+              <Field label="Ecosystem type">
+                <input name="impactSiteEcosystemType" placeholder="Coral" className={adminInputClassName} />
+              </Field>
+              <Field label="Site region">
+                <input name="impactSiteRegion" placeholder="Southwest Papua" className={adminInputClassName} />
+              </Field>
+            </div>
+
+            <div className="mt-3 grid gap-3 lg:grid-cols-5">
+              <Field label="Latitude">
+                <input name="impactSiteLatitude" type="number" min="-90" max="90" step="0.000001" placeholder="-0.234900" className={adminInputClassName} />
+              </Field>
+              <Field label="Longitude">
+                <input name="impactSiteLongitude" type="number" min="-180" max="180" step="0.000001" placeholder="130.516600" className={adminInputClassName} />
+              </Field>
+              <Field label="Progress">
+                <input name="impactSiteProgress" type="number" min="0" max="100" step="1" defaultValue={0} className={adminInputClassName} />
+              </Field>
+              <Field label="Evidence records">
+                <input name="impactSiteEvidenceCount" type="number" min="0" step="1" defaultValue={0} className={adminInputClassName} />
+              </Field>
+              <Field label="Verification">
+                <ImpactSiteVerificationSelect />
+              </Field>
+            </div>
+
+            <div className="mt-3 grid gap-3 lg:grid-cols-3">
+              <Field label="Latest survey">
+                <input name="impactSiteLatestSurvey" type="date" className={adminInputClassName} />
+              </Field>
+            </div>
+          </section>
+
           <Field label="Upload image">
             <input name="imageFile" type="file" accept="image/png,image/jpeg,image/webp,image/gif" className={adminInputClassName} />
           </Field>
