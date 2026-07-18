@@ -169,10 +169,6 @@ function isUuid(value: string) {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
 }
 
-function normalizeCorporatePortfolioStatus(value: string | null | undefined) {
-  return ["funded", "monitoring", "review", "completed"].includes(value ?? "") ? String(value) : null;
-}
-
 function auditMetadata(values: Record<string, unknown>) {
   return {
     source: "corporate_portal",
@@ -747,7 +743,7 @@ export async function fundCorporateProjectAction(formData: FormData) {
   const campaignId = textValue(formData.get("campaignId"), 80);
   const allocationAmount = parsePositiveAmount(formData.get("allocationAmount"));
   const requestedPortfolioStatus = textValue(formData.get("status"), 80);
-  const portfolioStatus = normalizeCorporatePortfolioStatus(requestedPortfolioStatus) ?? "funded";
+  const portfolioStatus = ["funded", "monitoring", "review", "completed"].includes(requestedPortfolioStatus) ? requestedPortfolioStatus : "funded";
   const contributionType = normalizeCorporateContributionType(textValue(formData.get("contributionType"), 80));
   const contributionStatus = normalizeCorporateContributionStatus(textValue(formData.get("contributionStatus"), 80));
   const countsTowardCampaignGoal = formData.get("countsTowardCampaignGoal") === "on";
@@ -921,63 +917,6 @@ export async function fundCorporateProjectAction(formData: FormData) {
   });
 
   redirect(`${returnPath}&saved=project`);
-}
-
-export async function updateCorporatePortfolioStatusAction(formData: FormData) {
-  const requestedProgramId = textValue(formData.get("programId"), 80);
-  const fallbackReturnPath = requestedProgramId ? `/corporate/board?programId=${encodeURIComponent(requestedProgramId)}` : "/corporate/board";
-  const returnPath = safeRedirectPath(formData.get("returnTo"), fallbackReturnPath);
-  const user = await requireUser(returnPath);
-  const context = await corporateContext(user.id, requestedProgramId);
-
-  if (!context || !corporateCapabilitiesForPermission(context.permission).canManageProjects) {
-    redirectWithResult(returnPath, "error", "permission");
-  }
-
-  const campaignId = textValue(formData.get("campaignId"), 80);
-  const portfolioStatus = normalizeCorporatePortfolioStatus(textValue(formData.get("status"), 80));
-
-  if (!campaignId || !isUuid(campaignId) || !portfolioStatus) {
-    redirectWithResult(returnPath, "error", "card");
-  }
-
-  const [portfolioRow] = await db
-    .select({
-      id: corporateProjectPortfolio.id,
-      currentStatus: corporateProjectPortfolio.status,
-      campaignTitle: campaigns.title
-    })
-    .from(corporateProjectPortfolio)
-    .innerJoin(campaigns, eq(corporateProjectPortfolio.campaignId, campaigns.id))
-    .where(and(eq(corporateProjectPortfolio.programId, context.programId), eq(corporateProjectPortfolio.campaignId, campaignId)))
-    .limit(1);
-
-  if (!portfolioRow) {
-    redirectWithResult(returnPath, "error", "card");
-  }
-
-  if (portfolioRow.currentStatus !== portfolioStatus) {
-    await db
-      .update(corporateProjectPortfolio)
-      .set({ status: portfolioStatus })
-      .where(eq(corporateProjectPortfolio.id, portfolioRow.id));
-
-    await writeAuditLog({
-      actorUserId: user.id,
-      action: "corporate.project.status_updated",
-      entityType: "corporate_project_portfolio",
-      entityId: portfolioRow.id,
-      metadata: {
-        programId: context.programId,
-        campaignId,
-        campaignTitle: portfolioRow.campaignTitle,
-        fromStatus: portfolioRow.currentStatus,
-        toStatus: portfolioStatus
-      }
-    });
-  }
-
-  redirectWithResult(returnPath, "saved", "card");
 }
 
 export async function createCorporateEmployeeEventAction(formData: FormData) {

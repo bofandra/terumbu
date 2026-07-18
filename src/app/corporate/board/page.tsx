@@ -4,7 +4,7 @@ import Link from "next/link";
 import { Button, ButtonLink } from "@/components/ui/button";
 import { requireUser } from "@/lib/auth";
 import { requireCorporateDashboardData } from "@/lib/corporate-access";
-import { updateCorporateEvidenceStatusAction, updateCorporatePortfolioStatusAction } from "@/lib/corporate-actions";
+import { updateCorporateEvidenceStatusAction } from "@/lib/corporate-actions";
 import { cn, formatCurrency } from "@/lib/utils";
 
 export const metadata = {
@@ -21,14 +21,14 @@ type CorporateBoardPageProps = {
   }>;
 };
 
-const fundingColumns = [
-  { id: "funded", label: "Funded", description: "Campaign support allocated" },
-  { id: "monitoring", label: "Monitoring", description: "Milestones and evidence active" },
-  { id: "review", label: "In review", description: "Needs finance or evidence review" },
-  { id: "completed", label: "Completed", description: "Funding cycle closed" },
-  { id: "other", label: "Other", description: "Needs classification" }
+const evidenceColumns = [
+  { id: "no_evidence", label: "No evidence", description: "Campaign evidence not submitted" },
+  { id: "submitted", label: "Submitted", description: "Ready for review" },
+  { id: "in_review", label: "In review", description: "Review in progress" },
+  { id: "needs_clarification", label: "Needs clarification", description: "Partner action required" },
+  { id: "verified", label: "Verified", description: "Evidence accepted" },
+  { id: "rejected", label: "Rejected", description: "Evidence not accepted" }
 ];
-const movableFundingColumns = fundingColumns.filter((column) => column.id !== "other");
 
 const evidenceStatuses = [
   { value: "submitted", label: "Submitted" },
@@ -38,8 +38,28 @@ const evidenceStatuses = [
   { value: "rejected", label: "Rejected" }
 ];
 
-function fundingColumnId(status: string) {
-  return fundingColumns.some((column) => column.id === status) ? status : "other";
+function evidenceColumnId(evidence: { verificationStatus: string }[]) {
+  if (evidence.length === 0) {
+    return "no_evidence";
+  }
+
+  if (evidence.some((item) => item.verificationStatus === "rejected")) {
+    return "rejected";
+  }
+
+  if (evidence.some((item) => item.verificationStatus === "needs_clarification")) {
+    return "needs_clarification";
+  }
+
+  if (evidence.some((item) => item.verificationStatus === "submitted")) {
+    return "submitted";
+  }
+
+  if (evidence.some((item) => item.verificationStatus === "in_review")) {
+    return "in_review";
+  }
+
+  return "verified";
 }
 
 function evidenceStatusClass(status: string) {
@@ -67,7 +87,6 @@ export default async function CorporateBoardPage({ searchParams }: CorporateBoar
   const user = await requireUser("/corporate/board");
   const data = await requireCorporateDashboardData(user.id, "/corporate/board", params?.programId);
   const currentBoardHref = `/corporate/board?programId=${encodeURIComponent(data.program.programId)}`;
-  const canMoveCards = data.capabilities.canManageProjects;
   const canVerifyEvidence = data.capabilities.canUpdateEvidenceStatus;
 
   const evidenceByCampaign = new Map<string, typeof data.evidenceReviewQueue>();
@@ -86,7 +105,7 @@ export default async function CorporateBoardPage({ searchParams }: CorporateBoar
 
     return {
       ...funding,
-      columnId: fundingColumnId(funding.status),
+      columnId: evidenceColumnId(evidence),
       evidence,
       ledgerContribution,
       verifiedEvidence,
@@ -103,7 +122,7 @@ export default async function CorporateBoardPage({ searchParams }: CorporateBoar
           <p className="text-sm font-bold uppercase tracking-[0.16em] text-coral-700">Kanban board</p>
           <h1 className="mt-2 text-3xl font-bold tracking-normal text-ocean-900">{data.program.programName}</h1>
           <p className="mt-2 max-w-3xl text-sm font-semibold leading-6 text-ocean-900/62">
-            One board represents one corporate program. Each card is one campaign funding allocation, with contribution ledger details and submitted campaign evidence ready for corporate review.
+            One board represents one corporate program. Each card is one campaign funding allocation, grouped by the current evidence review status for that campaign.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -120,7 +139,7 @@ export default async function CorporateBoardPage({ searchParams }: CorporateBoar
 
       {params?.saved ? (
         <p className="mt-6 rounded-lg border border-kelp-500/20 bg-kelp-100 px-4 py-3 text-sm font-bold text-kelp-700">
-          {params.saved === "card" ? "Funding card moved on this board." : "Evidence review saved on this board."}
+          Evidence review saved on this board.
         </p>
       ) : null}
       {params?.error ? (
@@ -172,9 +191,9 @@ export default async function CorporateBoardPage({ searchParams }: CorporateBoar
         })}
       </section>
 
-      <section className="mt-6 overflow-x-auto pb-3" aria-label="Funding kanban columns">
-        <div className="grid min-w-[1320px] grid-cols-5 gap-4">
-          {fundingColumns.map((column) => {
+      <section className="mt-6 overflow-x-auto pb-3" aria-label="Evidence review kanban columns">
+        <div className="grid min-w-[1584px] grid-cols-6 gap-4">
+          {evidenceColumns.map((column) => {
             const cards = fundingCards.filter((card) => card.columnId === column.id);
 
             return (
@@ -228,26 +247,6 @@ export default async function CorporateBoardPage({ searchParams }: CorporateBoar
                           <dd className="font-bold text-ocean-900">{card.verifiedEvidence}/{card.evidence.length} verified</dd>
                         </div>
                       </dl>
-
-                      {canMoveCards ? (
-                        <form action={updateCorporatePortfolioStatusAction} className="mt-4 grid gap-2 rounded-lg border border-ocean-900/10 bg-sand-50 p-3">
-                          <input type="hidden" name="programId" value={data.program.programId} />
-                          <input type="hidden" name="campaignId" value={card.campaignId} />
-                          <input type="hidden" name="returnTo" value={currentBoardHref} />
-                          <label className="grid gap-1 text-xs font-bold uppercase tracking-normal text-ocean-900/50">
-                            Move to
-                            <select name="status" defaultValue={card.columnId === "other" ? "funded" : card.columnId} className="min-h-10 rounded-lg border border-ocean-900/12 bg-white px-3 text-sm font-semibold normal-case text-ocean-900 outline-none">
-                              {movableFundingColumns.map((status) => (
-                                <option key={status.id} value={status.id}>{status.label}</option>
-                              ))}
-                            </select>
-                          </label>
-                          <Button type="submit" tone="secondary" className="min-h-10 px-4 py-2 text-xs">
-                            Move
-                            <ArrowRight size={15} aria-hidden="true" />
-                          </Button>
-                        </form>
-                      ) : null}
 
                       {card.ledgerContribution?.notes ? <p className="mt-3 text-xs font-semibold leading-5 text-ocean-900/58">{card.ledgerContribution.notes}</p> : null}
 
