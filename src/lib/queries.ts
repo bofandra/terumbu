@@ -5916,10 +5916,14 @@ export async function getAdminOperationsData() {
     db
       .select({
         id: impactSites.id,
+        campaignId: impactSites.campaignId,
         name: impactSites.name,
         ecosystemType: impactSites.ecosystemType,
         region: impactSites.region,
+        latitude: impactSites.latitude,
+        longitude: impactSites.longitude,
         campaignTitle: campaigns.title,
+        campaignSlug: campaigns.slug,
         metadata: impactSites.metadata
       })
       .from(impactSites)
@@ -6267,8 +6271,12 @@ export async function getAdminOperationsData() {
     })),
     impactSites: impactSiteRows.map((site) => ({
       ...site,
+      latitude: toNumber(site.latitude),
+      longitude: toNumber(site.longitude),
       progress: getMetadataNumber(site.metadata, "progress"),
-      evidenceCount: getMetadataNumber(site.metadata, "evidenceCount")
+      evidenceCount: getMetadataNumber(site.metadata, "evidenceCount"),
+      latestSurvey: getMetadataString(site.metadata, "latestSurvey"),
+      verification: getMetadataString(site.metadata, "verification") ?? "basic"
     })),
     reports: reportRows,
     monthlyImpactReports: monthlyImpactReportRows.map((report) => ({
@@ -6785,13 +6793,16 @@ export async function getPartnerPortalData(userId?: string) {
       .orderBy(desc(campaignActivities.createdAt)),
     db
       .select({
+        id: impactSites.id,
         campaignId: impactSites.campaignId,
         name: impactSites.name,
         type: impactSites.ecosystemType,
         region: impactSites.region,
         latitude: impactSites.latitude,
         longitude: impactSites.longitude,
-        metadata: impactSites.metadata
+        metadata: impactSites.metadata,
+        campaignTitle: campaigns.title,
+        campaignSlug: campaigns.slug
       })
       .from(impactSites)
       .innerJoin(campaigns, eq(impactSites.campaignId, campaigns.id))
@@ -7122,7 +7133,8 @@ export async function getPartnerPortalData(userId?: string) {
       longitude: toNumber(site.longitude),
       progress: getMetadataNumber(site.metadata, "progress"),
       evidenceCount: getMetadataNumber(site.metadata, "evidenceCount"),
-      latestSurvey: getMetadataString(site.metadata, "latestSurvey")
+      latestSurvey: getMetadataString(site.metadata, "latestSurvey"),
+      verification: getMetadataString(site.metadata, "verification") ?? "basic"
     })),
     sponsoredEcosystems: sponsoredRows.map((ecosystem) => ({
       ...ecosystem,

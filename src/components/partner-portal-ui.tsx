@@ -6,6 +6,7 @@ import {
   ClipboardList,
   FileCheck2,
   Globe2,
+  MapPinned,
   Megaphone,
   Pencil,
   Plus,
@@ -21,8 +22,11 @@ import { Button } from "@/components/ui/button";
 import { ProgressMeter } from "@/components/ui/progress-meter";
 import {
   createCampaignActivityAction,
+  createPartnerImpactSiteAction,
   createPartnerCampaignAction,
+  deletePartnerImpactSiteAction,
   deletePartnerCampaignAction,
+  updatePartnerImpactSiteAction,
   updatePartnerCampaignAction
 } from "@/lib/portal-actions";
 import type { getPartnerPortalData } from "@/lib/queries";
@@ -52,8 +56,11 @@ export const textareaClassName =
 
 const badgeClasses: Record<string, string> = {
   archived: "bg-ocean-900/8 text-ocean-900/62",
+  basic: "bg-ocean-900/8 text-ocean-900/70",
   completed: "bg-kelp-100 text-kelp-700",
+  document: "bg-ocean-50 text-ocean-700",
   draft: "bg-ocean-900/8 text-ocean-900/62",
+  field: "bg-kelp-100 text-kelp-700",
   funded: "bg-kelp-100 text-kelp-700",
   in_review: "bg-sand-100 text-ocean-900",
   needs_clarification: "bg-coral-100 text-coral-700",
@@ -327,6 +334,206 @@ export function CampaignCreateForm({ organizations, canCreateCampaign }: { organ
         Create Campaign
       </Button>
     </form>
+  );
+}
+
+function ImpactSiteCampaignSelect({
+  campaigns,
+  defaultValue,
+  disabled
+}: {
+  campaigns: Campaign[];
+  defaultValue?: string | null;
+  disabled?: boolean;
+}) {
+  return (
+    <select name="campaignId" defaultValue={defaultValue ?? campaigns[0]?.id} className={inputClassName} disabled={disabled || campaigns.length === 0} required>
+      {campaigns.length > 0 ? (
+        campaigns.map((campaign) => (
+          <option key={campaign.id} value={campaign.id}>
+            {campaign.title} / {labelize(campaign.status)}
+          </option>
+        ))
+      ) : (
+        <option>No campaign access</option>
+      )}
+    </select>
+  );
+}
+
+function ImpactSiteVerificationSelect({ defaultValue = "basic", disabled }: { defaultValue?: string | null; disabled?: boolean }) {
+  return (
+    <select name="verification" defaultValue={defaultValue ?? "basic"} className={inputClassName} disabled={disabled}>
+      {["basic", "document", "field"].map((status) => (
+        <option key={status} value={status}>
+          {labelize(status)}
+        </option>
+      ))}
+    </select>
+  );
+}
+
+function ImpactSiteFields({
+  campaigns,
+  site,
+  disabled
+}: {
+  campaigns: Campaign[];
+  site?: CampaignImpactSite;
+  disabled?: boolean;
+}) {
+  return (
+    <>
+      <div className="grid gap-3 md:grid-cols-2">
+        <Field label="Campaign">
+          <ImpactSiteCampaignSelect campaigns={campaigns} defaultValue={site?.campaignId} disabled={disabled} />
+        </Field>
+        <Field label="Verification">
+          <ImpactSiteVerificationSelect defaultValue={site?.verification} disabled={disabled} />
+        </Field>
+      </div>
+      <div className="grid gap-3 md:grid-cols-3">
+        <Field label="Site name">
+          <input name="name" defaultValue={site?.name} placeholder="Raja Ampat Reef Garden" className={inputClassName} disabled={disabled} required />
+        </Field>
+        <Field label="Ecosystem type">
+          <input name="ecosystemType" defaultValue={site?.type} placeholder="Coral" className={inputClassName} disabled={disabled} required />
+        </Field>
+        <Field label="Region">
+          <input name="region" defaultValue={site?.region} placeholder="Southwest Papua" className={inputClassName} disabled={disabled} required />
+        </Field>
+      </div>
+      <div className="grid gap-3 md:grid-cols-5">
+        <Field label="Latitude">
+          <input name="latitude" type="number" min="-90" max="90" step="0.000001" defaultValue={site?.latitude} placeholder="-0.234900" className={inputClassName} disabled={disabled} required />
+        </Field>
+        <Field label="Longitude">
+          <input name="longitude" type="number" min="-180" max="180" step="0.000001" defaultValue={site?.longitude} placeholder="130.516600" className={inputClassName} disabled={disabled} required />
+        </Field>
+        <Field label="Progress">
+          <input name="progress" type="number" min="0" max="100" step="1" defaultValue={site?.progress ?? 0} className={inputClassName} disabled={disabled} />
+        </Field>
+        <Field label="Evidence records">
+          <input name="evidenceCount" type="number" min="0" step="1" defaultValue={site?.evidenceCount ?? 0} className={inputClassName} disabled={disabled} />
+        </Field>
+        <Field label="Latest survey">
+          <input name="latestSurvey" type="date" defaultValue={site?.latestSurvey ?? ""} className={inputClassName} disabled={disabled} />
+        </Field>
+      </div>
+    </>
+  );
+}
+
+export function PartnerImpactSiteManagement({
+  campaigns,
+  impactSites,
+  canManageImpactSites
+}: {
+  campaigns: Campaign[];
+  impactSites: CampaignImpactSite[];
+  canManageImpactSites: boolean;
+}) {
+  const canSubmit = campaigns.length > 0 && canManageImpactSites;
+
+  return (
+    <div className="grid gap-6">
+      <form action={createPartnerImpactSiteAction} className="rounded-lg border border-ocean-900/10 bg-white p-5 shadow-soft">
+        <input type="hidden" name="redirectTo" value="/partner/impact-sites" />
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <h2 className="text-xl font-bold tracking-normal text-ocean-900">Create impact site</h2>
+            <p className="mt-1 text-sm font-semibold text-ocean-900/58">
+              {canManageImpactSites ? "Attach a field location to one of your campaigns." : "Your partner role can view impact sites, but cannot manage them."}
+            </p>
+          </div>
+          <MapPinned className="size-5 text-kelp-700" aria-hidden="true" />
+        </div>
+        <div className="mt-5 grid gap-4">
+          <ImpactSiteFields campaigns={campaigns} disabled={!canSubmit} />
+        </div>
+        <Button type="submit" className="mt-5" disabled={!canSubmit}>
+          <Plus className="size-4" aria-hidden="true" />
+          Create Site
+        </Button>
+      </form>
+
+      <section className="rounded-lg border border-ocean-900/10 bg-white p-5 shadow-soft">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <h2 className="text-xl font-bold tracking-normal text-ocean-900">Impact sites</h2>
+            <p className="mt-1 text-sm font-semibold text-ocean-900/58">{impactSites.length.toLocaleString("id-ID")} campaign-linked locations</p>
+          </div>
+          <MapPinned className="size-5 text-coral-700" aria-hidden="true" />
+        </div>
+
+        <div className="mt-5 grid gap-4 lg:grid-cols-2">
+          {impactSites.map((site) => (
+            <article key={site.id} className="overflow-hidden rounded-lg border border-ocean-900/10 bg-sand-50">
+              <div className="p-4">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <p className="text-xs font-bold uppercase tracking-[0.12em] text-coral-700">{site.type}</p>
+                    <h3 className="mt-2 text-lg font-bold tracking-normal text-ocean-900">{site.name}</h3>
+                    <p className="mt-1 text-sm font-semibold text-ocean-900/58">{site.campaignTitle} / {site.region}</p>
+                  </div>
+                  <StatusBadge value={site.verification} />
+                </div>
+                <div className="mt-4">
+                  <div className="flex items-center justify-between gap-3 text-sm font-bold text-ocean-900">
+                    <span>Progress</span>
+                    <span>{site.progress}%</span>
+                  </div>
+                  <ProgressMeter value={site.progress} label={`${site.name} progress`} className="mt-2 h-2" indicatorClassName="bg-kelp-500" trackClassName="bg-white" />
+                </div>
+                <div className="mt-4 grid gap-2 text-sm font-bold text-ocean-900/58">
+                  <p>{site.evidenceCount.toLocaleString("id-ID")} evidence records</p>
+                  <p>{site.latestSurvey ? `Latest survey ${site.latestSurvey}` : "Survey date pending"}</p>
+                  <p>{site.latitude.toFixed(6)}, {site.longitude.toFixed(6)}</p>
+                </div>
+              </div>
+
+              {canManageImpactSites ? (
+                <details className="border-t border-ocean-900/10 bg-white">
+                  <summary className="flex cursor-pointer list-none items-center gap-2 px-4 py-3 text-sm font-bold text-ocean-900 hover:bg-ocean-50">
+                    <Pencil className="size-4 text-coral-700" aria-hidden="true" />
+                    Edit site
+                  </summary>
+                  <div className="border-t border-ocean-900/10 p-4">
+                    <form action={updatePartnerImpactSiteAction} className="grid gap-4">
+                      <input type="hidden" name="redirectTo" value="/partner/impact-sites" />
+                      <input type="hidden" name="impactSiteId" value={site.id} />
+                      <ImpactSiteFields campaigns={campaigns} site={site} />
+                      <Button type="submit" className="w-fit">
+                        <Save className="size-4" aria-hidden="true" />
+                        Save Site
+                      </Button>
+                    </form>
+                    <form action={deletePartnerImpactSiteAction} className="mt-5 border-t border-ocean-900/10 pt-4">
+                      <input type="hidden" name="redirectTo" value="/partner/impact-sites" />
+                      <input type="hidden" name="impactSiteId" value={site.id} />
+                      <label className="flex items-start gap-2 text-sm font-bold text-ocean-900">
+                        <input name="confirmDelete" type="checkbox" value="delete" className="mt-1 size-4 accent-coral-500" required />
+                        Delete this site and detach linked field records from the site.
+                      </label>
+                      <Button type="submit" className="mt-3 w-fit bg-coral-500 hover:bg-coral-700">
+                        <Trash2 className="size-4" aria-hidden="true" />
+                        Delete Site
+                      </Button>
+                    </form>
+                  </div>
+                </details>
+              ) : null}
+            </article>
+          ))}
+          {impactSites.length === 0 ? (
+            <div className="rounded-lg border border-dashed border-ocean-900/14 p-4 lg:col-span-2">
+              <p className="font-bold text-ocean-900">No impact sites linked yet.</p>
+              <p className="mt-2 text-sm leading-6 text-ocean-900/58">Create an impact site after the campaign location is confirmed.</p>
+            </div>
+          ) : null}
+        </div>
+      </section>
+    </div>
   );
 }
 
@@ -718,7 +925,15 @@ export function CampaignList({
   );
 }
 
-export function CampaignActivityForm({ campaigns, canCreateActivity }: { campaigns: Campaign[]; canCreateActivity: boolean }) {
+export function CampaignActivityForm({
+  campaigns,
+  impactSites,
+  canCreateActivity
+}: {
+  campaigns: Campaign[];
+  impactSites: CampaignImpactSite[];
+  canCreateActivity: boolean;
+}) {
   const hasCampaigns = campaigns.length > 0;
   const canSubmit = hasCampaigns && canCreateActivity;
 
@@ -747,6 +962,18 @@ export function CampaignActivityForm({ campaigns, canCreateActivity }: { campaig
               ))}
             </select>
           </Field>
+          <Field label="Impact site">
+            <select name="impactSiteId" className={inputClassName} disabled={!canSubmit || impactSites.length === 0}>
+              <option value="">No site selected</option>
+              {impactSites.map((site) => (
+                <option key={site.id} value={site.id}>
+                  {site.name} / {site.campaignTitle}
+                </option>
+              ))}
+            </select>
+          </Field>
+        </div>
+        <div className="grid gap-3 md:grid-cols-2">
           <Field label="Activity use">
             <select name="activityUse" defaultValue="public_update" className={inputClassName} disabled={!canSubmit}>
               <option value="public_update">Public update</option>

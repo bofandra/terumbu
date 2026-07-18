@@ -7,6 +7,7 @@ import {
   FileCheck2,
   LayoutDashboard,
   LogOut,
+  MapPinned,
   Megaphone,
   Plus,
   ShipWheel,
@@ -28,6 +29,7 @@ const partnerNavItems: PartnerNavItem[] = [
   { href: "/partner", label: "Task hub", icon: LayoutDashboard },
   { href: "/partner/campaigns/new", label: "Create campaign", icon: Plus },
   { href: "/partner/campaigns", label: "Campaigns", icon: Megaphone },
+  { href: "/partner/impact-sites", label: "Impact sites", icon: MapPinned },
   { href: "/partner/expeditions", label: "Expeditions", icon: ShipWheel },
   { href: "/partner/activity", label: "Activity", icon: ClipboardList },
   { href: "/partner/evidence", label: "Evidence", icon: FileCheck2 }

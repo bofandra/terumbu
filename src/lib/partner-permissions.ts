@@ -7,7 +7,8 @@ export type PartnerOrganizationPermission =
   | "campaign:delete"
   | "campaign:update"
   | "evidence:revise"
-  | "expedition:manage";
+  | "expedition:manage"
+  | "impact-site:manage";
 
 const permissionRoles: Record<PartnerOrganizationPermission, readonly PartnerOrganizationRole[]> = {
   "activity:create": ["owner", "manager", "contributor"],
@@ -15,7 +16,8 @@ const permissionRoles: Record<PartnerOrganizationPermission, readonly PartnerOrg
   "campaign:delete": ["owner"],
   "campaign:update": ["owner", "manager"],
   "evidence:revise": ["owner", "manager", "contributor"],
-  "expedition:manage": ["owner", "manager"]
+  "expedition:manage": ["owner", "manager"],
+  "impact-site:manage": ["owner", "manager"]
 };
 
 export function normalizePartnerOrganizationRole(
@@ -38,6 +40,7 @@ export function partnerCapabilitiesForRoles(roles: Iterable<string | null | unde
     canCreateActivity: allows("activity:create"),
     canCreateCampaign: allows("campaign:create"),
     canDeleteCampaign: allows("campaign:delete"),
+    canManageImpactSites: allows("impact-site:manage"),
     canManageExpeditions: allows("expedition:manage"),
     canReviseEvidence: allows("evidence:revise"),
     canUpdateCampaign: allows("campaign:update")

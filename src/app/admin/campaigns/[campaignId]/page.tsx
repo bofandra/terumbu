@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowUpRight, ImagePlus, Save, ShieldCheck, Trash2 } from "lucide-react";
+import { ArrowUpRight, ImagePlus, MapPinned, Save, ShieldCheck, Trash2 } from "lucide-react";
 import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
 
@@ -16,7 +16,7 @@ import { Button } from "@/components/ui/button";
 import { ProgressMeter } from "@/components/ui/progress-meter";
 import { requireRole } from "@/lib/auth";
 import { deleteAdminCampaignAction, updateAdminCampaignAction, updateCampaignStatusAction } from "@/lib/portal-actions";
-import { getAdminPortalData } from "@/lib/queries";
+import { getAdminOperationsData, getAdminPortalData } from "@/lib/queries";
 import { formatCurrency } from "@/lib/utils";
 
 export const metadata = {
@@ -129,7 +129,7 @@ export default async function AdminCampaignDetailPage({ params, searchParams }: 
   const { campaignId } = await params;
   await requireRole(["admin"], `/admin/campaigns/${campaignId}`);
   const query = await searchParams;
-  const data = await getAdminPortalData();
+  const [data, operations] = await Promise.all([getAdminPortalData(), getAdminOperationsData()]);
   const campaign = data.campaigns.find((item) => item.id === campaignId);
 
   if (!campaign) {
@@ -149,6 +149,7 @@ export default async function AdminCampaignDetailPage({ params, searchParams }: 
   const campaignBudget = data.campaignBudgetLineItems.filter((item) => item.campaignId === campaign.id);
   const campaignTimeline = data.campaignTimelinePhases.filter((item) => item.campaignId === campaign.id);
   const campaignTeam = data.organizationTeamMembers.filter((item) => item.organizationId === campaign.organizationId);
+  const campaignImpactSites = operations.impactSites.filter((site) => site.campaignId === campaign.id);
 
   return (
     <div className="space-y-6">
@@ -279,6 +280,49 @@ export default async function AdminCampaignDetailPage({ params, searchParams }: 
             Save Campaign
           </Button>
         </form>
+      </section>
+
+      <section className={adminPanelClassName}>
+        <div className="flex flex-col justify-between gap-3 border-b border-ocean-900/10 p-4 sm:flex-row sm:items-center">
+          <div>
+            <h2 className="text-xl font-bold tracking-normal text-ocean-900">Impact sites</h2>
+            <p className="mt-1 text-sm font-semibold text-ocean-900/58">Field locations linked through impact_sites.campaign_id.</p>
+          </div>
+          <Link href="/admin/campaigns/impact-sites" className="inline-flex items-center gap-2 text-sm font-bold text-coral-700 hover:text-coral-500">
+            Manage sites
+            <ArrowUpRight className="size-4" aria-hidden="true" />
+          </Link>
+        </div>
+        <div className="grid gap-3 p-4 md:grid-cols-2">
+          {campaignImpactSites.map((site) => (
+            <article key={site.id} className="rounded-lg border border-ocean-900/10 bg-sand-50 p-4">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-[0.14em] text-coral-700">{site.ecosystemType}</p>
+                  <h3 className="mt-2 font-bold text-ocean-900">{site.name}</h3>
+                  <p className="mt-1 text-sm font-semibold text-ocean-900/58">{site.region}</p>
+                </div>
+                <MapPinned className="size-5 text-kelp-700" aria-hidden="true" />
+              </div>
+              <div className="mt-4">
+                <div className="flex items-center justify-between gap-3 text-sm font-bold text-ocean-900">
+                  <span>Progress</span>
+                  <span>{site.progress}%</span>
+                </div>
+                <ProgressMeter value={site.progress} label={`${site.name} progress`} className="mt-2 h-2" indicatorClassName="bg-kelp-500" trackClassName="bg-white" />
+              </div>
+              <p className="mt-3 text-xs font-bold text-ocean-900/52">
+                {site.evidenceCount.toLocaleString("id-ID")} evidence records / {site.latestSurvey ?? "Survey date pending"}
+              </p>
+            </article>
+          ))}
+          {campaignImpactSites.length === 0 ? (
+            <div className="rounded-lg border border-dashed border-ocean-900/14 bg-sand-50 p-4 md:col-span-2">
+              <p className="font-bold text-ocean-900">No impact sites linked.</p>
+              <p className="mt-2 text-sm font-semibold leading-6 text-ocean-900/58">Create or assign a site from impact-site management.</p>
+            </div>
+          ) : null}
+        </div>
       </section>
 
       <CampaignContentDepthEditor

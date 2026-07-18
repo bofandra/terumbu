@@ -121,6 +121,7 @@ const partnerRedirectPaths = new Set([
   "/partner/campaigns",
   "/partner/campaigns/new",
   "/partner/expeditions",
+  "/partner/impact-sites",
   "/partner/updates",
   "/partner/updates/recent",
   "/partner/evidence",
@@ -203,6 +204,78 @@ function parseNonNegativeDecimal(value: FormDataEntryValue | null, fallback = "0
   }
 
   return amount.toFixed(2);
+}
+
+function parseCoordinate(value: FormDataEntryValue | null, min: number, max: number) {
+  const normalized = String(value ?? "")
+    .trim()
+    .replace(/,/g, ".");
+  const coordinate = Number(normalized);
+
+  if (!Number.isFinite(coordinate) || coordinate < min || coordinate > max) {
+    return null;
+  }
+
+  return coordinate.toFixed(6);
+}
+
+function parsePercent(value: FormDataEntryValue | null) {
+  const raw = String(value ?? "").trim();
+  const percent = raw ? parseNonNegativeInteger(value) : 0;
+
+  if (percent === null || percent > 100) {
+    return null;
+  }
+
+  return percent;
+}
+
+function parseOptionalCount(value: FormDataEntryValue | null) {
+  const raw = String(value ?? "").trim();
+
+  return raw ? parseNonNegativeInteger(value) : 0;
+}
+
+function impactSiteMetadataFromForm(formData: FormData) {
+  const progress = parsePercent(formData.get("progress"));
+  const evidenceCount = parseOptionalCount(formData.get("evidenceCount"));
+  const latestSurvey = nullableText(formData, "latestSurvey");
+  const verification = verificationFromForm(formData.get("verification"));
+
+  if (progress === null || evidenceCount === null) {
+    return null;
+  }
+
+  return {
+    progress,
+    evidenceCount,
+    latestSurvey,
+    verification
+  };
+}
+
+function impactSiteFormValues(formData: FormData, campaignRequired: boolean, onError: (code: string) => never) {
+  const campaignId = campaignRequired ? formText(formData, "campaignId") : nullableText(formData, "campaignId");
+  const name = formText(formData, "name");
+  const ecosystemType = formText(formData, "ecosystemType");
+  const region = formText(formData, "region");
+  const latitude = parseCoordinate(formData.get("latitude"), -90, 90);
+  const longitude = parseCoordinate(formData.get("longitude"), -180, 180);
+  const metadata = impactSiteMetadataFromForm(formData);
+
+  if ((campaignRequired && !campaignId) || !name || !ecosystemType || !region || !latitude || !longitude || !metadata) {
+    onError("impact-site-invalid");
+  }
+
+  return {
+    campaignId,
+    name,
+    ecosystemType,
+    region,
+    latitude,
+    longitude,
+    metadata
+  };
 }
 
 function campaignStatusFromForm(value: FormDataEntryValue | null) {
@@ -971,6 +1044,32 @@ async function requireCampaignAccess(
   return campaign;
 }
 
+async function requirePartnerImpactSiteAccess(
+  userId: string,
+  impactSiteId: string,
+  formData: FormData,
+  fallbackPath: string,
+  permission?: PartnerOrganizationPermission
+) {
+  const [site] = await db
+    .select({
+      id: impactSites.id,
+      campaignId: impactSites.campaignId,
+      name: impactSites.name
+    })
+    .from(impactSites)
+    .where(eq(impactSites.id, impactSiteId))
+    .limit(1);
+
+  if (!site?.campaignId) {
+    redirectPartnerError(formData, fallbackPath, "impact-site-missing");
+  }
+
+  await requireCampaignAccess(userId, site.campaignId, formData, fallbackPath, permission);
+
+  return site;
+}
+
 async function requireExpeditionAccess(
   userId: string,
   expeditionId: string,
@@ -1542,6 +1641,86 @@ export async function updatePartnerCampaignAction(formData: FormData) {
   });
 
   redirectPartnerSaved(formData, "/partner/campaigns", "campaign-updated");
+}
+
+export async function createPartnerImpactSiteAction(formData: FormData) {
+  const user = await requireRole(["partner", "admin"], "/partner");
+  const values = impactSiteFormValues(formData, true, (code) => redirectPartnerError(formData, "/partner/impact-sites", code));
+  const campaignId = values.campaignId;
+
+  if (!campaignId) {
+    redirectPartnerError(formData, "/partner/impact-sites", "impact-site-invalid");
+  }
+
+  await requireCampaignAccess(user.id, campaignId, formData, "/partner/impact-sites", "impact-site:manage");
+
+  const [site] = await db
+    .insert(impactSites)
+    .values(values)
+    .returning({ id: impactSites.id });
+
+  await db.insert(adminAuditLogs).values({
+    actorUserId: user.id,
+    action: "impact_site.created",
+    entityType: "impact_site",
+    entityId: site.id,
+    metadata: { source: "partner_portal", campaignId, name: values.name }
+  });
+
+  redirectPartnerSaved(formData, "/partner/impact-sites", "impact-site-created");
+}
+
+export async function updatePartnerImpactSiteAction(formData: FormData) {
+  const user = await requireRole(["partner", "admin"], "/partner");
+  const impactSiteId = formText(formData, "impactSiteId");
+  const values = impactSiteFormValues(formData, true, (code) => redirectPartnerError(formData, "/partner/impact-sites", code));
+  const campaignId = values.campaignId;
+
+  if (!impactSiteId || !campaignId) {
+    redirectPartnerError(formData, "/partner/impact-sites", "impact-site-missing");
+  }
+
+  await requirePartnerImpactSiteAccess(user.id, impactSiteId, formData, "/partner/impact-sites", "impact-site:manage");
+  await requireCampaignAccess(user.id, campaignId, formData, "/partner/impact-sites", "impact-site:manage");
+
+  await db
+    .update(impactSites)
+    .set(values)
+    .where(eq(impactSites.id, impactSiteId));
+
+  await db.insert(adminAuditLogs).values({
+    actorUserId: user.id,
+    action: "impact_site.updated",
+    entityType: "impact_site",
+    entityId: impactSiteId,
+    metadata: { source: "partner_portal", campaignId, name: values.name }
+  });
+
+  redirectPartnerSaved(formData, "/partner/impact-sites", "impact-site-updated");
+}
+
+export async function deletePartnerImpactSiteAction(formData: FormData) {
+  const user = await requireRole(["partner", "admin"], "/partner");
+  const impactSiteId = formText(formData, "impactSiteId");
+  const confirmed = formData.get("confirmDelete") === "delete";
+
+  if (!impactSiteId || !confirmed) {
+    redirectPartnerError(formData, "/partner/impact-sites", "impact-site-delete");
+  }
+
+  const site = await requirePartnerImpactSiteAccess(user.id, impactSiteId, formData, "/partner/impact-sites", "impact-site:manage");
+
+  await db.delete(impactSites).where(eq(impactSites.id, impactSiteId));
+
+  await db.insert(adminAuditLogs).values({
+    actorUserId: user.id,
+    action: "impact_site.deleted",
+    entityType: "impact_site",
+    entityId: impactSiteId,
+    metadata: { source: "partner_portal", campaignId: site.campaignId, name: site.name }
+  });
+
+  redirectPartnerSaved(formData, "/partner/impact-sites", "impact-site-deleted");
 }
 
 export async function deletePartnerCampaignAction(formData: FormData) {
@@ -2883,6 +3062,109 @@ export async function updateAdminCampaignAction(formData: FormData) {
   });
 
   redirectAdminCampaignSaved("campaign-updated", formData);
+}
+
+export async function createAdminImpactSiteAction(formData: FormData) {
+  const user = await requireRole(["admin"], "/admin/campaigns/impact-sites");
+  const values = impactSiteFormValues(formData, false, (code) => redirectAdminCampaignError(code, formData));
+
+  if (values.campaignId) {
+    const [campaign] = await db.select({ id: campaigns.id }).from(campaigns).where(eq(campaigns.id, values.campaignId)).limit(1);
+
+    if (!campaign) {
+      redirectAdminCampaignError("campaign-missing", formData);
+    }
+  }
+
+  const [site] = await db
+    .insert(impactSites)
+    .values(values)
+    .returning({ id: impactSites.id });
+
+  await db.insert(adminAuditLogs).values({
+    actorUserId: user.id,
+    action: "impact_site.created",
+    entityType: "impact_site",
+    entityId: site.id,
+    metadata: { source: "admin", campaignId: values.campaignId, name: values.name }
+  });
+
+  redirectAdminCampaignSaved("impact-site-created", formData);
+}
+
+export async function updateAdminImpactSiteAction(formData: FormData) {
+  const user = await requireRole(["admin"], "/admin/campaigns/impact-sites");
+  const impactSiteId = formText(formData, "impactSiteId");
+  const values = impactSiteFormValues(formData, false, (code) => redirectAdminCampaignError(code, formData));
+
+  if (!impactSiteId) {
+    redirectAdminCampaignError("impact-site-missing", formData);
+  }
+
+  const [site] = await db.select({ id: impactSites.id, name: impactSites.name }).from(impactSites).where(eq(impactSites.id, impactSiteId)).limit(1);
+
+  if (!site) {
+    redirectAdminCampaignError("impact-site-missing", formData);
+  }
+
+  if (values.campaignId) {
+    const [campaign] = await db.select({ id: campaigns.id }).from(campaigns).where(eq(campaigns.id, values.campaignId)).limit(1);
+
+    if (!campaign) {
+      redirectAdminCampaignError("campaign-missing", formData);
+    }
+  }
+
+  await db
+    .update(impactSites)
+    .set(values)
+    .where(eq(impactSites.id, impactSiteId));
+
+  await db.insert(adminAuditLogs).values({
+    actorUserId: user.id,
+    action: "impact_site.updated",
+    entityType: "impact_site",
+    entityId: impactSiteId,
+    metadata: { source: "admin", previousName: site.name, campaignId: values.campaignId, name: values.name }
+  });
+
+  redirectAdminCampaignSaved("impact-site-updated", formData);
+}
+
+export async function deleteAdminImpactSiteAction(formData: FormData) {
+  const user = await requireRole(["admin"], "/admin/campaigns/impact-sites");
+  const impactSiteId = formText(formData, "impactSiteId");
+  const confirmed = formData.get("confirmDelete") === "delete";
+
+  if (!impactSiteId || !confirmed) {
+    redirectAdminCampaignError("impact-site-delete", formData);
+  }
+
+  const [site] = await db
+    .select({
+      id: impactSites.id,
+      campaignId: impactSites.campaignId,
+      name: impactSites.name
+    })
+    .from(impactSites)
+    .where(eq(impactSites.id, impactSiteId))
+    .limit(1);
+
+  if (!site) {
+    redirectAdminCampaignError("impact-site-missing", formData);
+  }
+
+  await db.delete(impactSites).where(eq(impactSites.id, impactSiteId));
+
+  await db.insert(adminAuditLogs).values({
+    actorUserId: user.id,
+    action: "impact_site.deleted",
+    entityType: "impact_site",
+    entityId: impactSiteId,
+    metadata: { source: "admin", campaignId: site.campaignId, name: site.name }
+  });
+
+  redirectAdminCampaignSaved("impact-site-deleted", formData);
 }
 
 export async function deleteAdminCampaignAction(formData: FormData) {

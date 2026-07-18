@@ -18,6 +18,8 @@ test("partner organization permissions separate read-only, contributor, manager,
   assert.equal(partnerRoleAllows("contributor", "campaign:create"), false);
   assert.equal(partnerRoleAllows("manager", "campaign:update"), true);
   assert.equal(partnerRoleAllows("manager", "campaign:delete"), false);
+  assert.equal(partnerRoleAllows("manager", "impact-site:manage"), true);
+  assert.equal(partnerRoleAllows("contributor", "impact-site:manage"), false);
   assert.equal(partnerRoleAllows("owner", "campaign:delete"), true);
   assert.equal(partnerRoleAllows("manager", "expedition:manage"), true);
   assert.equal(partnerRoleAllows("contributor", "expedition:manage"), false);
@@ -28,6 +30,7 @@ test("partner capabilities aggregate across memberships and admin bypass", () =>
     canCreateActivity: false,
     canCreateCampaign: false,
     canDeleteCampaign: false,
+    canManageImpactSites: false,
     canManageExpeditions: false,
     canReviseEvidence: false,
     canUpdateCampaign: false
@@ -35,6 +38,7 @@ test("partner capabilities aggregate across memberships and admin bypass", () =>
 
   assert.equal(partnerCapabilitiesForRoles(["viewer", "contributor"]).canCreateActivity, true);
   assert.equal(partnerCapabilitiesForRoles(["viewer", "contributor"]).canUpdateCampaign, false);
+  assert.equal(partnerCapabilitiesForRoles(["manager"]).canManageImpactSites, true);
   assert.equal(partnerCapabilitiesForRoles(["manager"]).canManageExpeditions, true);
   assert.equal(partnerCapabilitiesForRoles(["manager"]).canDeleteCampaign, false);
   assert.equal(partnerCapabilitiesForRoles([], true).canDeleteCampaign, true);

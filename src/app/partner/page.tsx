@@ -1,4 +1,4 @@
-import { ClipboardList, Megaphone, Plus, ShipWheel } from "lucide-react";
+import { ClipboardList, MapPinned, Megaphone, Plus, ShipWheel } from "lucide-react";
 
 import { OperationCard, PartnerPageHeader } from "@/components/partner-portal-ui";
 import { requireRole } from "@/lib/auth";
@@ -26,6 +26,7 @@ export default async function PartnerPortalPage() {
       <section className="grid gap-3 sm:grid-cols-2" aria-label="Partner tasks">
         <OperationCard href="/partner/campaigns/new" title="Create campaign" description="Start one draft campaign record." icon={Plus} />
         <OperationCard href="/partner/campaigns" title="Edit campaigns" description={`${data.campaigns.length.toLocaleString("id-ID")} campaign records.`} icon={Megaphone} />
+        <OperationCard href="/partner/impact-sites" title="Manage impact sites" description={`${data.impactSites.length.toLocaleString("id-ID")} campaign-linked locations.`} icon={MapPinned} />
         <OperationCard href="/partner/expeditions" title="Update expeditions" description={`${data.expeditions.length.toLocaleString("id-ID")} expedition records.`} icon={ShipWheel} />
         <OperationCard href="/partner/activity" title="Post field activity" description={`${data.activities.length.toLocaleString("id-ID")} activity logs. An activity can create a public update, evidence, or both.`} icon={ClipboardList} />
         <OperationCard href="/partner/evidence" title="Review evidence" description={`${data.evidence.filter((item) => item.verificationStatus !== "verified").length.toLocaleString("id-ID")} proof records need review or revision.`} icon={ClipboardList} />
