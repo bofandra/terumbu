@@ -8,7 +8,7 @@ import { updateCorporateBudgetAction } from "@/lib/corporate-actions";
 import { cn, formatCurrency } from "@/lib/utils";
 
 export const metadata = {
-  title: "Corporate Funding"
+  title: "Corporate Finance"
 };
 
 export const dynamic = "force-dynamic";
@@ -42,28 +42,28 @@ export default async function CorporateFundingPage({ searchParams }: CorporateFu
   const user = await requireUser("/corporate/funding");
   const data = await requireCorporateDashboardData(user.id, "/corporate/funding", params?.programId);
   const canManageFunding = data.capabilities.canManageFunding;
-  const unallocatedBudget = Math.max(0, data.financials.committedFunding - data.financials.fundsDisbursed);
-  const projectFundingRows = data.portfolio.slice(0, 6);
+  const unbudgetedAmount = Math.max(0, data.financials.committedFunding - data.financials.fundsDisbursed);
+  const financeCampaignRows = data.portfolio.slice(0, 6);
   const selectedProgramHref = `?programId=${encodeURIComponent(data.program.programId)}`;
 
   return (
     <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
       <div className="flex flex-col justify-between gap-4 border-b border-ocean-900/10 pb-6 lg:flex-row lg:items-end">
         <div>
-          <p className="text-sm font-bold uppercase tracking-[0.16em] text-coral-700">Funding utilization</p>
-          <h1 className="mt-2 text-3xl font-bold tracking-normal text-ocean-900">Finance review and disbursement schedule</h1>
+          <p className="text-sm font-bold uppercase tracking-[0.16em] text-coral-700">Finance</p>
+          <h1 className="mt-2 text-3xl font-bold tracking-normal text-ocean-900">Budget and disbursement</h1>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-ocean-900/62">
-            Track committed funding, milestone payments, budget variance, invoice evidence, and approvals before the next tranche is released.
+            Track approved budget, category spend, variance, invoice evidence, and finance approvals. Campaign allocations stay in Funded campaigns; evidence review stays on the board.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
           <ButtonLink href={`/corporate/board${selectedProgramHref}`} tone="ghost">
             <Kanban size={18} aria-hidden="true" />
-            Board
+            Evidence board
           </ButtonLink>
           <ButtonLink href="/corporate/reports" tone="secondary">
             <FileBadge size={18} aria-hidden="true" />
-            Export Financial Report
+            Export Finance Report
           </ButtonLink>
         </div>
       </div>
@@ -75,7 +75,7 @@ export default async function CorporateFundingPage({ searchParams }: CorporateFu
         <p className="mt-6 rounded-lg border border-coral-500/20 bg-coral-100 px-4 py-3 text-sm font-bold text-coral-700">Budget update could not be saved with the current input or permission.</p>
       ) : null}
 
-      <section className="mt-6 border-y border-ocean-900/10 bg-white/70 py-4" aria-label="Funding program selector">
+      <section className="mt-6 border-y border-ocean-900/10 bg-white/70 py-4" aria-label="Finance program selector">
         <form action="/corporate/funding" className="grid gap-3 sm:grid-cols-[minmax(240px,1fr)_auto] sm:items-end">
           <label className="grid gap-2 text-sm font-bold text-ocean-900">
             Program
@@ -96,10 +96,10 @@ export default async function CorporateFundingPage({ searchParams }: CorporateFu
 
       <section className="mt-6 grid gap-4 md:grid-cols-4">
         {[
-          { label: "Committed", value: formatCurrency(data.financials.committedFunding), icon: CircleDollarSign },
-          { label: "Disbursed", value: formatCurrency(data.financials.fundsDisbursed), icon: FileBadge },
-          { label: "Verified utilization", value: formatCurrency(data.financials.verifiedUtilization), icon: ShieldCheck },
-          { label: "Pending verification", value: formatCurrency(data.financials.pendingVerification), icon: AlertTriangle }
+          { label: "Approved budget", value: formatCurrency(data.financials.committedFunding), icon: CircleDollarSign },
+          { label: "Category budget", value: formatCurrency(data.financials.fundsDisbursed), icon: FileBadge },
+          { label: "Verified spend", value: formatCurrency(data.financials.verifiedUtilization), icon: ShieldCheck },
+          { label: "Spend pending verification", value: formatCurrency(data.financials.pendingVerification), icon: AlertTriangle }
         ].map((metric) => {
           const Icon = metric.icon;
 
@@ -113,19 +113,19 @@ export default async function CorporateFundingPage({ searchParams }: CorporateFu
         })}
       </section>
 
-      <section className="mt-6 rounded-lg border border-ocean-900/10 bg-white p-5 shadow-soft" aria-labelledby="funding-campaign-links">
+      <section className="mt-6 rounded-lg border border-ocean-900/10 bg-white p-5 shadow-soft" aria-labelledby="finance-campaign-context">
         <div className="flex flex-col justify-between gap-4 lg:flex-row lg:items-start">
           <div>
-            <p className="text-sm font-bold uppercase text-coral-700">Program to campaign funding</p>
-            <h2 id="funding-campaign-links" className="mt-2 text-xl font-bold tracking-normal text-ocean-900">
-              Budget allocations behind this finance view
+            <p className="text-sm font-bold uppercase text-coral-700">Allocation context</p>
+            <h2 id="finance-campaign-context" className="mt-2 text-xl font-bold tracking-normal text-ocean-900">
+              Read-only funded campaign snapshot
             </h2>
             <p className="mt-2 max-w-2xl text-sm font-semibold leading-6 text-ocean-900/58">
-              Program funding starts as the approved budget, becomes campaign allocations, and is then tracked as corporate contribution records with disbursement, verification, and public-goal status.
+              Finance uses this snapshot to compare approved program budget against funded campaigns, ledger records, and verified evidence. Manage campaign allocation changes from Funded campaigns.
             </p>
           </div>
           <ButtonLink href={`/corporate/projects${selectedProgramHref}`} tone="ghost" className="self-start">
-            Open Campaign Funding
+            Manage Funded Campaigns
             <ArrowRight size={17} aria-hidden="true" />
           </ButtonLink>
         </div>
@@ -143,19 +143,19 @@ export default async function CorporateFundingPage({ searchParams }: CorporateFu
                 <span className="font-bold text-ocean-900">{formatCurrency(data.financials.committedFunding)}</span>
               </p>
               <p className="flex justify-between gap-3 rounded-lg bg-white px-3 py-2 font-semibold text-ocean-900/62">
-                <span>Allocated to campaigns</span>
+                <span>Budgeted by category</span>
                 <span className="font-bold text-ocean-900">{formatCurrency(data.financials.fundsDisbursed)}</span>
               </p>
               <p className="flex justify-between gap-3 rounded-lg bg-white px-3 py-2 font-semibold text-ocean-900/62">
-                <span>Not yet allocated</span>
-                <span className="font-bold text-ocean-900">{formatCurrency(unallocatedBudget)}</span>
+                <span>Not yet budgeted</span>
+                <span className="font-bold text-ocean-900">{formatCurrency(unbudgetedAmount)}</span>
               </p>
             </div>
             <div className="mt-4 flex items-center justify-between gap-3 text-sm">
-              <span className="font-bold text-ocean-900/58">Allocation progress</span>
+              <span className="font-bold text-ocean-900/58">Budgeting progress</span>
               <span className="font-bold text-ocean-900">{data.financials.disbursementRate}%</span>
             </div>
-            <ProgressMeter value={data.financials.disbursementRate} label="Program budget allocated to campaigns" className="mt-2 h-2" indicatorClassName="bg-ocean-700" trackClassName="bg-white" />
+            <ProgressMeter value={data.financials.disbursementRate} label="Program budget assigned to finance categories" className="mt-2 h-2" indicatorClassName="bg-ocean-700" trackClassName="bg-white" />
           </div>
 
           <div className="overflow-x-auto rounded-lg border border-ocean-900/10 bg-sand-50">
@@ -170,7 +170,7 @@ export default async function CorporateFundingPage({ searchParams }: CorporateFu
                 </tr>
               </thead>
               <tbody>
-                {projectFundingRows.map((project) => (
+                {financeCampaignRows.map((project) => (
                   <tr key={project.campaignSlug}>
                     <td className="border-b border-ocean-900/8 px-4 py-4">
                       <p className="font-bold text-ocean-900">{project.campaignTitle}</p>
@@ -189,10 +189,10 @@ export default async function CorporateFundingPage({ searchParams }: CorporateFu
                     </td>
                   </tr>
                 ))}
-                {projectFundingRows.length === 0 ? (
+                {financeCampaignRows.length === 0 ? (
                   <tr>
                     <td className="px-4 py-6 text-sm font-semibold text-ocean-900/58" colSpan={5}>
-                      No campaign allocations exist yet. Create the first campaign contribution from Campaign Funding.
+                      No funded campaigns exist yet. Create the first allocation from Funded campaigns.
                     </td>
                   </tr>
                 ) : null}
@@ -203,8 +203,8 @@ export default async function CorporateFundingPage({ searchParams }: CorporateFu
       </section>
 
       <section className="mt-6 rounded-lg border border-ocean-900/10 bg-white p-5 shadow-soft">
-        <p className="text-sm font-bold uppercase text-coral-700">Budget actions</p>
-        <h2 className="mt-2 text-xl font-bold tracking-normal text-ocean-900">Update allocation and verified utilization</h2>
+        <p className="text-sm font-bold uppercase text-coral-700">Finance actions</p>
+        <h2 className="mt-2 text-xl font-bold tracking-normal text-ocean-900">Update category budget and verified spend</h2>
         {canManageFunding ? (
           <form action={updateCorporateBudgetAction} className="mt-5 grid gap-3 md:grid-cols-[minmax(220px,1fr)_180px_180px_auto]">
             <input type="hidden" name="programId" value={data.program.programId} />
@@ -219,7 +219,7 @@ export default async function CorporateFundingPage({ searchParams }: CorporateFu
               </select>
             </label>
             <label className="grid gap-2 text-sm font-bold text-ocean-900">
-              Allocated
+              Category budget
               <input
                 name="allocatedAmount"
                 type="number"
@@ -231,7 +231,7 @@ export default async function CorporateFundingPage({ searchParams }: CorporateFu
               />
             </label>
             <label className="grid gap-2 text-sm font-bold text-ocean-900">
-              Verified spent
+              Verified spend
               <input
                 name="spentAmount"
                 type="number"
@@ -243,20 +243,20 @@ export default async function CorporateFundingPage({ searchParams }: CorporateFu
               />
             </label>
             <Button type="submit" tone="secondary" className="self-end">
-              Save Budget
+              Save Finance Update
             </Button>
           </form>
         ) : (
           <p className="mt-5 max-w-xl rounded-lg border border-ocean-900/10 bg-ocean-50 px-4 py-3 text-sm font-semibold leading-6 text-ocean-900/68">
-            Your corporate role can review funding utilization, but cannot change allocation or verified spend.
+            Your corporate role can review finance utilization, but cannot change category budget or verified spend.
           </p>
         )}
       </section>
 
       <section className="mt-6 grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
         <article className="rounded-lg border border-ocean-900/10 bg-white p-5 shadow-soft">
-          <p className="text-sm font-bold uppercase text-coral-700">Funding flow</p>
-          <h2 className="mt-2 text-xl font-bold tracking-normal text-ocean-900">Committed to verified</h2>
+          <p className="text-sm font-bold uppercase text-coral-700">Finance flow</p>
+          <h2 className="mt-2 text-xl font-bold tracking-normal text-ocean-900">Approved budget to verified spend</h2>
           <div className="mt-5 grid gap-4">
             {data.fundingFlow.map((step) => (
               <div key={step.label}>
@@ -264,7 +264,7 @@ export default async function CorporateFundingPage({ searchParams }: CorporateFu
                   <span className="font-bold text-ocean-900">{step.label}</span>
                   <span className="font-bold text-ocean-900/62">{formatCurrency(step.value)}</span>
                 </div>
-                <ProgressMeter value={step.percent} label={`${step.label} funding flow`} className="mt-2 h-2" indicatorClassName="bg-ocean-700" trackClassName="bg-ocean-50" />
+                <ProgressMeter value={step.percent} label={`${step.label} finance flow`} className="mt-2 h-2" indicatorClassName="bg-ocean-700" trackClassName="bg-ocean-50" />
               </div>
             ))}
           </div>
@@ -290,7 +290,7 @@ export default async function CorporateFundingPage({ searchParams }: CorporateFu
             ))}
             {data.fundingApprovalQueue.length === 0 ? (
               <div className="rounded-lg border border-kelp-500/20 bg-kelp-100/55 p-4">
-                <p className="font-bold text-kelp-700">No funding approvals waiting</p>
+                <p className="font-bold text-kelp-700">No finance approvals waiting</p>
                 <p className="mt-1 text-sm text-kelp-700/72">Budget variance and campaign milestones are within current tolerances.</p>
               </div>
             ) : null}

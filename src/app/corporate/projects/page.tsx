@@ -35,6 +35,7 @@ export default async function CorporateProjectsPage({ searchParams }: CorporateP
   const projectOptions = await getCorporateProjectOptions(user.id, data.program.programId);
   const canManageProjects = data.capabilities.canManageProjects;
   const selectedProgramHref = `?programId=${encodeURIComponent(data.program.programId)}`;
+  const campaignAllocated = data.portfolio.reduce((total, project) => total + project.allocationValue, 0);
 
   const inspectorProjects = data.portfolio.map((project) => ({
     campaignSlug: project.campaignSlug,
@@ -96,7 +97,7 @@ export default async function CorporateProjectsPage({ searchParams }: CorporateP
               Board
             </ButtonLink>
             <ButtonLink href={`/corporate/funding${selectedProgramHref}`} tone="ghost">
-              Funding
+              Finance
               <ArrowRight className="size-4" aria-hidden="true" />
             </ButtonLink>
           </div>
@@ -105,8 +106,8 @@ export default async function CorporateProjectsPage({ searchParams }: CorporateP
         <div className="mt-4 grid gap-3 md:grid-cols-3">
           {[
             { label: "Program", value: data.program.programName, support: `${formatCurrency(data.financials.committedFunding)} approved budget`, icon: BriefcaseBusiness },
-            { label: "Campaigns", value: `${data.portfolio.length.toLocaleString("id-ID")} funded`, support: `${formatCurrency(data.financials.fundsDisbursed)} allocated from this program`, icon: ShieldCheck },
-            { label: "Funding", value: formatCurrency(data.financials.contributionTotal), support: `${data.contributions.length.toLocaleString("id-ID")} ledger records`, icon: CircleDollarSign }
+            { label: "Campaigns", value: `${data.portfolio.length.toLocaleString("id-ID")} funded`, support: `${formatCurrency(campaignAllocated)} allocated from this program`, icon: ShieldCheck },
+            { label: "Contribution ledger", value: formatCurrency(data.financials.contributionTotal), support: `${data.contributions.length.toLocaleString("id-ID")} ledger records`, icon: CircleDollarSign }
           ].map((item) => {
             const Icon = item.icon;
 
@@ -134,7 +135,7 @@ export default async function CorporateProjectsPage({ searchParams }: CorporateP
       <section className="mt-6 grid gap-4 md:grid-cols-4">
         {[
           ["Funded campaigns", data.portfolio.length.toLocaleString("id-ID")],
-          ["Allocated funding", formatCurrency(data.financials.fundsDisbursed)],
+          ["Allocated funding", formatCurrency(campaignAllocated)],
           ["Recorded contributions", formatCurrency(data.financials.contributionTotal)],
           ["Counts to public goal", formatCurrency(data.financials.campaignGoalContribution)],
           ["Needs action", data.portfolio.filter((project) => project.statusLabel !== "On Track").length.toLocaleString("id-ID")]

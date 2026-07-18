@@ -32,7 +32,7 @@ const corporateNavItems: CorporateNavItem[] = [
   { label: "Kanban board", href: "/corporate/board", icon: Kanban },
   { label: "Programs", href: "/corporate/programs", icon: BriefcaseBusiness },
   { label: "Funded campaigns", href: "/corporate/projects", icon: ShieldCheck },
-  { label: "Funding", href: "/corporate/funding", icon: FileBadge },
+  { label: "Finance", href: "/corporate/funding", icon: FileBadge },
   { label: "Employees", href: "/corporate/employees", icon: Users },
   { label: "Evidence", href: "/corporate/evidence", icon: FileText },
   { label: "Reports", href: "/corporate/reports", icon: FileBadge },

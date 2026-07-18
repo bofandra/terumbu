@@ -131,7 +131,7 @@ export default async function CorporateBoardPage({ searchParams }: CorporateBoar
             <ArrowRight size={17} aria-hidden="true" />
           </ButtonLink>
           <ButtonLink href={`/corporate/funding?programId=${encodeURIComponent(data.program.programId)}`} tone="secondary">
-            Funding
+            Finance
             <CircleDollarSign size={17} aria-hidden="true" />
           </ButtonLink>
         </div>
@@ -174,7 +174,7 @@ export default async function CorporateBoardPage({ searchParams }: CorporateBoar
 
       <section className="mt-6 grid gap-4 md:grid-cols-4">
         {[
-          { label: "Funding cards", value: fundingCards.length.toLocaleString("id-ID"), icon: Kanban },
+          { label: "Campaign cards", value: fundingCards.length.toLocaleString("id-ID"), icon: Kanban },
           { label: "Program budget", value: formatCurrency(data.financials.committedFunding), icon: CircleDollarSign },
           { label: "Evidence submitted", value: data.evidenceReviewQueue.length.toLocaleString("id-ID"), icon: FileCheck2 },
           { label: "Needs review", value: pendingEvidenceCount.toLocaleString("id-ID"), icon: AlertTriangle }

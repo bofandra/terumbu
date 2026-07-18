@@ -4427,7 +4427,7 @@ export async function getCorporateDashboardData(userId: string, requestedProgram
       },
       milestones: [
         {
-          label: "Funding allocation",
+          label: "Campaign allocation",
           status: "Complete",
           dueDate: project.createdAt,
           owner: "Corporate finance"
@@ -4675,11 +4675,10 @@ export async function getCorporateDashboardData(userId: string, requestedProgram
     };
   });
   const fundingFlow = [
-    { label: "Committed", value: committedFunding, percent: 100 },
-    { label: "Contracted", value: totalAllocated, percent: committedFunding > 0 ? Math.round((totalAllocated / committedFunding) * 100) : 0 },
-    { label: "Disbursed", value: fundsDisbursed, percent: committedFunding > 0 ? Math.round((fundsDisbursed / committedFunding) * 100) : 0 },
-    { label: "Utilized", value: verifiedUtilization, percent: committedFunding > 0 ? Math.round((verifiedUtilization / committedFunding) * 100) : 0 },
-    { label: "Verified", value: verifiedUtilization, percent: committedFunding > 0 ? Math.round((verifiedUtilization / committedFunding) * 100) : 0 }
+    { label: "Approved budget", value: committedFunding, percent: 100 },
+    { label: "Category budget", value: totalAllocated, percent: committedFunding > 0 ? Math.round((totalAllocated / committedFunding) * 100) : 0 },
+    { label: "Verified spend", value: verifiedUtilization, percent: committedFunding > 0 ? Math.round((verifiedUtilization / committedFunding) * 100) : 0 },
+    { label: "Pending verification", value: pendingVerification, percent: totalAllocated > 0 ? Math.round((pendingVerification / totalAllocated) * 100) : 0 }
   ];
   const fundingSchedule = budgetVariance.map((budget, index) => {
     const utilization = budget.planned > 0 ? Math.round((budget.actual / budget.planned) * 100) : 0;
@@ -4830,7 +4829,7 @@ export async function getCorporateDashboardData(userId: string, requestedProgram
     ],
     verificationItems: [
       { label: "Corporate account", status: "Verified" },
-      { label: "Funding utilization", status: verifiedUtilizationRate >= 70 ? "Verified" : "In review" },
+      { label: "Finance utilization", status: verifiedUtilizationRate >= 70 ? "Verified" : "In review" },
       { label: "Campaign evidence", status: verifiedOutputs > 0 ? "Verified" : "Needs evidence" },
       { label: "Public report", status: latestPublishedReport ? "Published" : "Draft" }
     ]
@@ -4864,7 +4863,7 @@ export async function getCorporateDashboardData(userId: string, requestedProgram
   const quickActions = [
     { label: "Add Campaign", href: "/corporate/projects" },
     { label: "Review Evidence", href: "/corporate/evidence" },
-    { label: "Approve Milestone", href: "/corporate/funding" },
+    { label: "Review Finance", href: "/corporate/funding" },
     { label: "Create Event", href: "/corporate/employees" },
     { label: "Generate Report", href: "/corporate/reports" },
     { label: "Invite Team Member", href: "/corporate/settings" },
@@ -4872,14 +4871,14 @@ export async function getCorporateDashboardData(userId: string, requestedProgram
   ];
   const executiveMetrics = [
     {
-      label: "Total committed funding",
+      label: "Approved program budget",
       value: formatCurrency(committedFunding),
       support: `Across ${portfolioRows.length.toLocaleString("id-ID")} conservation campaigns`
     },
     {
-      label: "Funds disbursed",
+      label: "Category budget",
       value: formatCurrency(fundsDisbursed),
-      support: `${disbursementRate}% of committed budget`
+      support: `${disbursementRate}% of approved budget`
     },
     {
       label: "Verified utilization",

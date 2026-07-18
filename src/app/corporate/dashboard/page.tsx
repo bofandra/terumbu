@@ -60,7 +60,9 @@ export default async function CorporateDashboardPage() {
   const publicImpactHref = data.publicImpactPreview.href ?? "/corporate/reports";
   const publicImpactCta = data.publicImpactPreview.href ? "Open public impact page" : "Prepare public impact page";
   const topRisk = data.riskAlerts[0];
-  const unallocatedBudget = Math.max(0, data.financials.committedFunding - data.financials.fundsDisbursed);
+  const campaignAllocated = data.portfolio.reduce((total, project) => total + project.allocationValue, 0);
+  const campaignAllocationRate = data.financials.committedFunding > 0 ? Math.round((campaignAllocated / data.financials.committedFunding) * 100) : 0;
+  const unallocatedBudget = Math.max(0, data.financials.committedFunding - campaignAllocated);
   const relationshipSteps = [
     {
       label: "Program budget",
@@ -71,7 +73,7 @@ export default async function CorporateDashboardPage() {
     {
       label: "Funded campaigns",
       value: data.portfolio.length.toLocaleString("id-ID"),
-      support: `${formatCurrency(data.financials.fundsDisbursed)} allocated to campaigns`,
+      support: `${formatCurrency(campaignAllocated)} allocated to campaigns`,
       icon: ShieldCheck
     },
     {
@@ -116,7 +118,7 @@ export default async function CorporateDashboardPage() {
   const tasks: CorporateTask[] = [
     {
       title: "Kanban board",
-      description: "Review funding cards by program and verify campaign evidence without leaving the board.",
+      description: "Review funded campaign cards by program and verify campaign evidence without leaving the board.",
       href: `/corporate/board?programId=${encodeURIComponent(data.program.programId)}`,
       icon: Kanban,
       count: `${pendingEvidence.toLocaleString("id-ID")} evidence pending`
@@ -129,8 +131,8 @@ export default async function CorporateDashboardPage() {
       count: data.portfolio.length
     },
     {
-      title: "Funding",
-      description: "Update allocation, utilization, and disbursement status.",
+      title: "Finance",
+      description: "Review budget categories, verified spend, and disbursement decisions.",
       href: "/corporate/funding",
       icon: CircleDollarSign,
       count: formatCurrency(data.financials.pendingVerification)
@@ -193,11 +195,11 @@ export default async function CorporateDashboardPage() {
           </div>
           <div className="grid gap-3 text-sm sm:grid-cols-3 lg:min-w-[420px]">
             <div className="rounded-lg bg-sand-50 p-3">
-              <p className="font-bold text-ocean-900">Committed</p>
+              <p className="font-bold text-ocean-900">Approved budget</p>
               <p className="mt-1 font-semibold text-ocean-900/58">{formatCurrency(data.financials.committedFunding)}</p>
             </div>
             <div className="rounded-lg bg-sand-50 p-3">
-              <p className="font-bold text-ocean-900">Disbursed</p>
+              <p className="font-bold text-ocean-900">Category budget</p>
               <p className="mt-1 font-semibold text-ocean-900/58">{formatCurrency(data.financials.fundsDisbursed)}</p>
             </div>
             <div className="rounded-lg bg-sand-50 p-3">
@@ -224,7 +226,7 @@ export default async function CorporateDashboardPage() {
               Fund campaign
             </Link>
             <Link href="/corporate/funding" className="inline-flex min-h-10 items-center justify-center rounded-full bg-ocean-50 px-4 text-sm font-bold text-ocean-900 hover:bg-sand-50">
-              Review funding
+              Review finance
             </Link>
           </div>
         </div>
@@ -258,9 +260,9 @@ export default async function CorporateDashboardPage() {
             <p className="text-sm font-bold text-ocean-900">Budget allocation</p>
             <div className="mt-3 flex items-center justify-between gap-3 text-sm">
               <span className="font-semibold text-ocean-900/58">Allocated to campaigns</span>
-              <span className="font-bold text-ocean-900">{data.financials.disbursementRate}%</span>
+              <span className="font-bold text-ocean-900">{campaignAllocationRate}%</span>
             </div>
-            <ProgressMeter value={data.financials.disbursementRate} label="Program budget allocated to campaigns" className="mt-2 h-2" indicatorClassName="bg-ocean-700" trackClassName="bg-white" />
+            <ProgressMeter value={campaignAllocationRate} label="Program budget allocated to funded campaigns" className="mt-2 h-2" indicatorClassName="bg-ocean-700" trackClassName="bg-white" />
             <div className="mt-4 grid gap-2 text-sm">
               <p className="flex justify-between gap-3 rounded-lg bg-white px-3 py-2 font-semibold text-ocean-900/62">
                 <span>Program budget</span>
@@ -268,7 +270,7 @@ export default async function CorporateDashboardPage() {
               </p>
               <p className="flex justify-between gap-3 rounded-lg bg-white px-3 py-2 font-semibold text-ocean-900/62">
                 <span>Campaign allocations</span>
-                <span className="font-bold text-ocean-900">{formatCurrency(data.financials.fundsDisbursed)}</span>
+                <span className="font-bold text-ocean-900">{formatCurrency(campaignAllocated)}</span>
               </p>
               <p className="flex justify-between gap-3 rounded-lg bg-white px-3 py-2 font-semibold text-ocean-900/62">
                 <span>Contribution records</span>
