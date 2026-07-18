@@ -42,7 +42,9 @@ import {
   updatePartnerMembershipAction
 } from "@/lib/admin-user-actions";
 import {
+  adminCreateUserAccessOptions,
   corporatePermissionOptions,
+  isSystemGlobalRole,
   partnerMembershipStatuses,
   systemGlobalRoleOptions
 } from "@/lib/admin-user-management";
@@ -390,6 +392,7 @@ export default async function AdminUsersPage({ searchParams }: AdminUsersPagePro
   const data = await getAdminUserManagementData(query);
   const savedMessage = params?.saved ? savedMessages[params.saved] : null;
   const errorMessage = params?.error ? errorMessages[params.error] : null;
+  const customGlobalRoleOptions = data.roleOptions.filter((role) => !isSystemGlobalRole(role.key));
 
   return (
     <div className="space-y-6">
@@ -440,7 +443,7 @@ export default async function AdminUsersPage({ searchParams }: AdminUsersPagePro
             </span>
             <div>
               <h2 className="text-xl font-bold tracking-normal text-ocean-900">Create user</h2>
-              <p className="mt-1 text-sm font-semibold leading-6 text-ocean-900/58">Create a credential account, profile, Impact Passport, and first global role for any Terumbu role path.</p>
+              <p className="mt-1 text-sm font-semibold leading-6 text-ocean-900/58">Create a credential account, profile, Impact Passport, and initial access from the RBAC matrix.</p>
             </div>
           </div>
           <div className="mt-4 grid gap-3 md:grid-cols-2">
@@ -456,18 +459,55 @@ export default async function AdminUsersPage({ searchParams }: AdminUsersPagePro
             <Field label="Temporary password">
               <input name="password" type="password" minLength={8} className={adminInputClassName} required />
             </Field>
-            <Field label="Initial role">
-              <select name="initialRole" defaultValue="user" className={adminSelectClassName}>
-                {data.roleOptions.map((role) => (
-                  <option key={role.key} value={role.key}>
-                    {role.name} ({role.key})
+            <Field label="Initial access" className="md:col-span-2">
+              <select name="initialAccess" defaultValue="global:user" className={adminSelectClassName}>
+                <optgroup label="RBAC matrix roles">
+                  {adminCreateUserAccessOptions.map((role) => (
+                    <option key={role.value} value={role.value}>
+                      {role.label}
+                    </option>
+                  ))}
+                </optgroup>
+                {customGlobalRoleOptions.length > 0 ? (
+                  <optgroup label="Custom global roles">
+                    {customGlobalRoleOptions.map((role) => (
+                      <option key={role.key} value={`global:${role.key}`}>
+                        {role.name} ({role.key})
+                      </option>
+                    ))}
+                  </optgroup>
+                ) : null}
+              </select>
+            </Field>
+            <Field label="Corporate account for corporate access">
+              <select name="initialCorporateAccountId" className={adminSelectClassName} disabled={data.corporateAccounts.length === 0}>
+                {data.corporateAccounts.map((account) => (
+                  <option key={account.id} value={account.id}>
+                    {account.name}
                   </option>
+                ))}
+              </select>
+            </Field>
+            <Field label="Partner organization for partner access">
+              <select name="initialPartnerOrganizationId" className={adminSelectClassName} disabled={data.organizations.length === 0}>
+                {data.organizations.map((organization) => (
+                  <option key={organization.id} value={organization.id}>
+                    {organization.name} · {organization.verificationLabel}
+                  </option>
+                ))}
+              </select>
+            </Field>
+            <Field label="Partner organization role">
+              <select name="initialPartnerRole" defaultValue="manager" className={adminSelectClassName}>
+                {partnerOrganizationRoles.map((role) => (
+                  <option key={role} value={role}>{role}</option>
                 ))}
               </select>
             </Field>
             <Field label="Location">
               <input name="location" defaultValue="Indonesia" className={adminInputClassName} />
             </Field>
+            <input type="hidden" name="initialPartnerStatus" value="active" />
             <label className="flex min-h-10 items-center gap-2 rounded-lg border border-ocean-900/10 bg-white px-3 text-sm font-bold text-ocean-900">
               <input name="emailVerified" type="checkbox" defaultChecked className="size-4 accent-coral-500" />
               Email verified

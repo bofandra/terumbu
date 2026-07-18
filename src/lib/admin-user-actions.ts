@@ -25,6 +25,7 @@ import { createPasswordHash, requireRole } from "@/lib/auth";
 import {
   defaultNameForGlobalRole,
   isSystemGlobalRole,
+  normalizeAdminCreateUserAccess,
   normalizeCorporatePermission,
   normalizeGlobalRoleKey,
   normalizePartnerMembershipStatus,
@@ -185,10 +186,11 @@ export async function createAdminUserAction(formData: FormData) {
   const name = textValue(formData.get("name"), 160);
   const email = emailValue(formData.get("email"));
   const password = String(formData.get("password") ?? "");
-  const roleKey = normalizeGlobalRoleKey(textValue(formData.get("initialRole"), 80) || "user");
+  const legacyRoleKey = normalizeGlobalRoleKey(textValue(formData.get("initialRole"), 80));
+  const initialAccess = normalizeAdminCreateUserAccess(textValue(formData.get("initialAccess"), 120) || (legacyRoleKey ? `global:${legacyRoleKey}` : "global:user"));
   const now = new Date();
 
-  if (!name || !validEmail(email) || password.length < 8 || !roleKey) {
+  if (!name || !validEmail(email) || password.length < 8) {
     redirectAdminUsers(formData, "error", "user-invalid");
   }
 
@@ -196,6 +198,43 @@ export async function createAdminUserAction(formData: FormData) {
 
   if (existingUser) {
     redirectAdminUsers(formData, "error", "user-exists");
+  }
+
+  let initialCorporateAccount: { id: string; name: string } | null = null;
+  let initialPartnerOrganization: { id: string; name: string } | null = null;
+  const initialPartnerRole = normalizePartnerOrganizationRole(textValue(formData.get("initialPartnerRole"), 80), "manager");
+  const initialPartnerStatus = normalizePartnerMembershipStatus(textValue(formData.get("initialPartnerStatus"), 80));
+
+  if (initialAccess.type === "corporate") {
+    const corporateAccountId = textValue(formData.get("initialCorporateAccountId"), 80);
+
+    if (!corporateAccountId) {
+      redirectAdminUsers(formData, "error", "corporate-invalid");
+    }
+
+    const [account] = await db.select({ id: corporateAccounts.id, name: corporateAccounts.name }).from(corporateAccounts).where(eq(corporateAccounts.id, corporateAccountId)).limit(1);
+
+    if (!account) {
+      redirectAdminUsers(formData, "error", "corporate-invalid");
+    }
+
+    initialCorporateAccount = account;
+  }
+
+  if (initialAccess.type === "partner") {
+    const organizationId = textValue(formData.get("initialPartnerOrganizationId"), 80);
+
+    if (!organizationId) {
+      redirectAdminUsers(formData, "error", "partner-invalid");
+    }
+
+    const [organization] = await db.select({ id: organizations.id, name: organizations.name }).from(organizations).where(eq(organizations.id, organizationId)).limit(1);
+
+    if (!organization) {
+      redirectAdminUsers(formData, "error", "partner-invalid");
+    }
+
+    initialPartnerOrganization = organization;
   }
 
   const [createdUser] = await db
@@ -239,20 +278,49 @@ export async function createAdminUserAction(formData: FormData) {
     updatedAt: now
   });
 
-  const roleId = await ensureGlobalRole(roleKey);
-  await db
-    .insert(userRoles)
-    .values({ userId: createdUser.id, roleId })
-    .onConflictDoNothing({
-      target: [userRoles.userId, userRoles.roleId]
+  if (initialAccess.roleKey) {
+    const roleId = await ensureGlobalRole(initialAccess.roleKey);
+    await db
+      .insert(userRoles)
+      .values({ userId: createdUser.id, roleId })
+      .onConflictDoNothing({
+        target: [userRoles.userId, userRoles.roleId]
+      });
+  }
+
+  if (initialAccess.type === "corporate" && initialCorporateAccount) {
+    await db.insert(corporatePermissions).values({
+      corporateAccountId: initialCorporateAccount.id,
+      userId: createdUser.id,
+      permission: initialAccess.corporatePermission
     });
+  }
+
+  if (initialAccess.type === "partner" && initialPartnerOrganization) {
+    await db.insert(organizationUsers).values({
+      organizationId: initialPartnerOrganization.id,
+      userId: createdUser.id,
+      role: initialPartnerRole,
+      status: initialPartnerStatus,
+      updatedAt: now
+    });
+  }
 
   await writeAdminAuditLog({
     actorUserId: actor.id,
     action: "admin.user.created",
     entityType: "users",
     entityId: createdUser.id,
-    metadata: { email, roleKey }
+    metadata: {
+      email,
+      initialAccess,
+      initialCorporateAccountId: initialCorporateAccount?.id,
+      initialCorporateAccountName: initialCorporateAccount?.name,
+      initialPartnerOrganizationId: initialPartnerOrganization?.id,
+      initialPartnerOrganizationName: initialPartnerOrganization?.name,
+      initialPartnerRole: initialAccess.type === "partner" ? initialPartnerRole : undefined,
+      initialPartnerStatus: initialAccess.type === "partner" ? initialPartnerStatus : undefined
+    }
   });
 
   redirectAdminUsers(formData, "saved", "user-created");
