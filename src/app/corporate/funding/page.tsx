@@ -107,19 +107,19 @@ export default async function CorporateFundingPage({ searchParams }: CorporateFu
         })}
       </section>
 
-      <section className="mt-6 rounded-lg border border-ocean-900/10 bg-white p-5 shadow-soft" aria-labelledby="funding-project-links">
+      <section className="mt-6 rounded-lg border border-ocean-900/10 bg-white p-5 shadow-soft" aria-labelledby="funding-campaign-links">
         <div className="flex flex-col justify-between gap-4 lg:flex-row lg:items-start">
           <div>
-            <p className="text-sm font-bold uppercase text-coral-700">Program to project funding</p>
-            <h2 id="funding-project-links" className="mt-2 text-xl font-bold tracking-normal text-ocean-900">
+            <p className="text-sm font-bold uppercase text-coral-700">Program to campaign funding</p>
+            <h2 id="funding-campaign-links" className="mt-2 text-xl font-bold tracking-normal text-ocean-900">
               Budget allocations behind this finance view
             </h2>
             <p className="mt-2 max-w-2xl text-sm font-semibold leading-6 text-ocean-900/58">
-              Program funding starts as the approved budget, becomes project allocations, and is then tracked as corporate contribution records with disbursement, verification, and public-goal status.
+              Program funding starts as the approved budget, becomes campaign allocations, and is then tracked as corporate contribution records with disbursement, verification, and public-goal status.
             </p>
           </div>
           <ButtonLink href={`/corporate/projects${selectedProgramHref}`} tone="ghost" className="self-start">
-            Open Project Funding
+            Open Campaign Funding
             <ArrowRight size={17} aria-hidden="true" />
           </ButtonLink>
         </div>
@@ -137,7 +137,7 @@ export default async function CorporateFundingPage({ searchParams }: CorporateFu
                 <span className="font-bold text-ocean-900">{formatCurrency(data.financials.committedFunding)}</span>
               </p>
               <p className="flex justify-between gap-3 rounded-lg bg-white px-3 py-2 font-semibold text-ocean-900/62">
-                <span>Allocated to projects</span>
+                <span>Allocated to campaigns</span>
                 <span className="font-bold text-ocean-900">{formatCurrency(data.financials.fundsDisbursed)}</span>
               </p>
               <p className="flex justify-between gap-3 rounded-lg bg-white px-3 py-2 font-semibold text-ocean-900/62">
@@ -149,14 +149,14 @@ export default async function CorporateFundingPage({ searchParams }: CorporateFu
               <span className="font-bold text-ocean-900/58">Allocation progress</span>
               <span className="font-bold text-ocean-900">{data.financials.disbursementRate}%</span>
             </div>
-            <ProgressMeter value={data.financials.disbursementRate} label="Program budget allocated to projects" className="mt-2 h-2" indicatorClassName="bg-ocean-700" trackClassName="bg-white" />
+            <ProgressMeter value={data.financials.disbursementRate} label="Program budget allocated to campaigns" className="mt-2 h-2" indicatorClassName="bg-ocean-700" trackClassName="bg-white" />
           </div>
 
           <div className="overflow-x-auto rounded-lg border border-ocean-900/10 bg-sand-50">
             <table className="min-w-[780px] w-full border-separate border-spacing-0 text-left text-sm">
               <thead>
                 <tr className="text-xs uppercase text-ocean-900/46">
-                  <th className="border-b border-ocean-900/10 px-4 py-3">Project</th>
+                  <th className="border-b border-ocean-900/10 px-4 py-3">Campaign</th>
                   <th className="border-b border-ocean-900/10 px-4 py-3">Allocation</th>
                   <th className="border-b border-ocean-900/10 px-4 py-3">Contribution</th>
                   <th className="border-b border-ocean-900/10 px-4 py-3">Evidence</th>
@@ -186,7 +186,7 @@ export default async function CorporateFundingPage({ searchParams }: CorporateFu
                 {projectFundingRows.length === 0 ? (
                   <tr>
                     <td className="px-4 py-6 text-sm font-semibold text-ocean-900/58" colSpan={5}>
-                      No project allocations exist yet. Create the first project contribution from Project Funding.
+                      No campaign allocations exist yet. Create the first campaign contribution from Campaign Funding.
                     </td>
                   </tr>
                 ) : null}
@@ -285,7 +285,7 @@ export default async function CorporateFundingPage({ searchParams }: CorporateFu
             {data.fundingApprovalQueue.length === 0 ? (
               <div className="rounded-lg border border-kelp-500/20 bg-kelp-100/55 p-4">
                 <p className="font-bold text-kelp-700">No funding approvals waiting</p>
-                <p className="mt-1 text-sm text-kelp-700/72">Budget variance and project milestones are within current tolerances.</p>
+                <p className="mt-1 text-sm text-kelp-700/72">Budget variance and campaign milestones are within current tolerances.</p>
               </div>
             ) : null}
           </div>

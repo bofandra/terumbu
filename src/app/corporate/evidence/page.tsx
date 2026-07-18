@@ -171,7 +171,7 @@ export default async function CorporateEvidencePage({ searchParams }: CorporateE
         ))}
         {data.evidenceReviewQueue.length === 0 ? (
           <p className="rounded-lg border border-dashed border-ocean-900/14 bg-white p-6 text-sm font-semibold text-ocean-900/62 shadow-soft">
-            Evidence records will appear here once funded projects submit field documentation.
+            Evidence records will appear here once funded campaigns submit field documentation.
           </p>
         ) : null}
       </section>

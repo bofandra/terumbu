@@ -4799,7 +4799,7 @@ export async function getCorporateDashboardData(userId: string, requestedProgram
     href: latestPublishedReport?.publicHref ?? null,
     metrics: [
       `${formatCurrency(committedFunding)} committed`,
-      `${portfolioRows.length.toLocaleString("id-ID")} projects supported`,
+      `${portfolioRows.length.toLocaleString("id-ID")} campaigns supported`,
       `${employeesEngaged.toLocaleString("id-ID")} employees engaged`
     ],
     publishChecklist: [
@@ -4823,7 +4823,7 @@ export async function getCorporateDashboardData(userId: string, requestedProgram
     lastVerifiedAt: corporateEvidence.find((item) => item.verificationStatus === "verified")?.verifiedAt ?? latestReport.approvedAt ?? null,
     href: publicImpactPreview.href ?? "/corporate/reports",
     highlights: [
-      `${portfolioRows.length.toLocaleString("id-ID")} funded projects`,
+      `${portfolioRows.length.toLocaleString("id-ID")} funded campaigns`,
       `${verifiedOutputs.toLocaleString("id-ID")} verified evidence records`,
       `${employeesEngaged.toLocaleString("id-ID")} employees engaged`,
       `${formatCurrency(verifiedUtilization)} verified utilization`
@@ -4831,7 +4831,7 @@ export async function getCorporateDashboardData(userId: string, requestedProgram
     verificationItems: [
       { label: "Corporate account", status: "Verified" },
       { label: "Funding utilization", status: verifiedUtilizationRate >= 70 ? "Verified" : "In review" },
-      { label: "Project evidence", status: verifiedOutputs > 0 ? "Verified" : "Needs evidence" },
+      { label: "Campaign evidence", status: verifiedOutputs > 0 ? "Verified" : "Needs evidence" },
       { label: "Public report", status: latestPublishedReport ? "Published" : "Draft" }
     ]
   };
@@ -4862,7 +4862,7 @@ export async function getCorporateDashboardData(userId: string, requestedProgram
     }
   ];
   const quickActions = [
-    { label: "Add Project", href: "/corporate/projects" },
+    { label: "Add Campaign", href: "/corporate/projects" },
     { label: "Review Evidence", href: "/corporate/evidence" },
     { label: "Approve Milestone", href: "/corporate/funding" },
     { label: "Create Event", href: "/corporate/employees" },
@@ -4874,7 +4874,7 @@ export async function getCorporateDashboardData(userId: string, requestedProgram
     {
       label: "Total committed funding",
       value: formatCurrency(committedFunding),
-      support: `Across ${portfolioRows.length.toLocaleString("id-ID")} conservation projects`
+      support: `Across ${portfolioRows.length.toLocaleString("id-ID")} conservation campaigns`
     },
     {
       label: "Funds disbursed",
@@ -4914,7 +4914,7 @@ export async function getCorporateDashboardData(userId: string, requestedProgram
     {
       role: "ESG Program Manager",
       permission: "esg_manager",
-      access: "Manage programs, project performance, targets, exports, reports, and publication.",
+      access: "Manage programs, campaign performance, targets, exports, reports, and publication.",
       allowedActions: ["Generate reports", "Submit reports", "Publish public page", "Coordinate partners"]
     },
     {

@@ -76,7 +76,7 @@ export function corporateReportSheets(input: CorporateReportArtifactInput): Shee
     {
       name: "Portfolio",
       rows: [
-        ["Project", "Partner", "Region", "Allocation", "Utilization %", "Status"],
+        ["Campaign", "Partner", "Region", "Allocation", "Utilization %", "Status"],
         ...input.portfolio.map((project) => [
           project.campaignTitle,
           project.organizationName ?? "",
@@ -310,7 +310,7 @@ export function buildCorporateReportPdf(input: CorporateReportArtifactInput) {
     "Executive metrics",
     ...input.executiveMetrics.flatMap((metric) => wrapLine(`${metric.label}: ${metric.value}${metric.support ? ` (${metric.support})` : ""}`)),
     "",
-    "Project portfolio",
+    "Funded campaign portfolio",
     ...input.portfolio.slice(0, 20).flatMap((project) => wrapLine(`${project.campaignTitle} - ${project.region} - ${project.statusLabel} - allocation ${project.allocationValue}`)),
     "",
     "Evidence bundle",

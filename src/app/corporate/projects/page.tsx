@@ -10,7 +10,7 @@ import { getCorporateProjectOptions } from "@/lib/queries";
 import { formatCurrency } from "@/lib/utils";
 
 export const metadata = {
-  title: "Corporate Projects"
+  title: "Corporate Funded Campaigns"
 };
 
 export const dynamic = "force-dynamic";
@@ -66,13 +66,13 @@ export default async function CorporateProjectsPage({ searchParams }: CorporateP
 
   return (
     <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
-      <p className="text-sm font-bold uppercase tracking-[0.16em] text-coral-700">Project portfolio</p>
+      <p className="text-sm font-bold uppercase tracking-[0.16em] text-coral-700">Funded campaigns</p>
       <h1 className="mt-2 text-3xl font-bold tracking-normal text-ocean-900">{data.program.programName}</h1>
       <p className="mt-2 max-w-2xl text-sm font-semibold leading-6 text-ocean-900/62">
-        Projects are funded conservation campaigns inside this program. Use this page to allocate corporate support, track milestones, and inspect project evidence.
+        Funded campaigns are the public conservation campaigns inside this program. Use this page to allocate corporate support, track milestones, and inspect campaign evidence.
       </p>
 
-      <section className="mt-6 border-y border-ocean-900/10 bg-white/70 py-4" aria-label="Program project funding relationship">
+      <section className="mt-6 border-y border-ocean-900/10 bg-white/70 py-4" aria-label="Program campaign funding relationship">
         <div className="grid gap-3 lg:grid-cols-[minmax(260px,1fr)_auto] lg:items-end">
           <form action="/corporate/projects" className="grid gap-3 sm:grid-cols-[minmax(220px,1fr)_auto] sm:items-end">
             <label className="grid gap-2 text-sm font-bold text-ocean-900">
@@ -99,7 +99,7 @@ export default async function CorporateProjectsPage({ searchParams }: CorporateP
         <div className="mt-4 grid gap-3 md:grid-cols-3">
           {[
             { label: "Program", value: data.program.programName, support: `${formatCurrency(data.financials.committedFunding)} approved budget`, icon: BriefcaseBusiness },
-            { label: "Projects", value: `${data.portfolio.length.toLocaleString("id-ID")} funded`, support: `${formatCurrency(data.financials.fundsDisbursed)} allocated from this program`, icon: ShieldCheck },
+            { label: "Campaigns", value: `${data.portfolio.length.toLocaleString("id-ID")} funded`, support: `${formatCurrency(data.financials.fundsDisbursed)} allocated from this program`, icon: ShieldCheck },
             { label: "Funding", value: formatCurrency(data.financials.contributionTotal), support: `${data.contributions.length.toLocaleString("id-ID")} ledger records`, icon: CircleDollarSign }
           ].map((item) => {
             const Icon = item.icon;
@@ -119,15 +119,15 @@ export default async function CorporateProjectsPage({ searchParams }: CorporateP
       </section>
 
       {params?.saved ? (
-        <p className="mt-6 rounded-lg border border-kelp-500/20 bg-kelp-100 px-4 py-3 text-sm font-bold text-kelp-700">Corporate project portfolio updated.</p>
+        <p className="mt-6 rounded-lg border border-kelp-500/20 bg-kelp-100 px-4 py-3 text-sm font-bold text-kelp-700">Funded campaign portfolio updated.</p>
       ) : null}
       {params?.error ? (
-        <p className="mt-6 rounded-lg border border-coral-500/20 bg-coral-100 px-4 py-3 text-sm font-bold text-coral-700">Project funding could not be saved with the current input or permission.</p>
+        <p className="mt-6 rounded-lg border border-coral-500/20 bg-coral-100 px-4 py-3 text-sm font-bold text-coral-700">Campaign funding could not be saved with the current input or permission.</p>
       ) : null}
 
       <section className="mt-6 grid gap-4 md:grid-cols-4">
         {[
-          ["Funded projects", data.portfolio.length.toLocaleString("id-ID")],
+          ["Funded campaigns", data.portfolio.length.toLocaleString("id-ID")],
           ["Allocated funding", formatCurrency(data.financials.fundsDisbursed)],
           ["Recorded contributions", formatCurrency(data.financials.contributionTotal)],
           ["Counts to public goal", formatCurrency(data.financials.campaignGoalContribution)],
@@ -142,23 +142,23 @@ export default async function CorporateProjectsPage({ searchParams }: CorporateP
 
       <div className="mt-6">
         <FormTabs
-          ariaLabel="Corporate project workspace"
+          ariaLabel="Corporate campaign funding workspace"
           tabs={[
-            { id: "fund", label: "Fund Project", description: "Allocate or update support" },
+            { id: "fund", label: "Fund Campaign", description: "Allocate or update support" },
             { id: "ledger", label: "Ledger", description: "Corporate commitments", badge: data.contributions.length.toLocaleString("id-ID") },
             { id: "inspect", label: "Inspector", description: "Milestones and evidence", badge: data.portfolio.length.toLocaleString("id-ID") }
           ]}
         >
           <div className="grid gap-4">
             <div>
-              <p className="text-sm font-bold uppercase text-coral-700">Portfolio actions</p>
-              <h2 className="mt-2 text-xl font-bold tracking-normal text-ocean-900">Fund or update a conservation project</h2>
+              <p className="text-sm font-bold uppercase text-coral-700">Campaign funding actions</p>
+              <h2 className="mt-2 text-xl font-bold tracking-normal text-ocean-900">Fund or update a conservation campaign</h2>
             </div>
             {canManageProjects ? (
               <form action={fundCorporateProjectAction} className="grid gap-2 xl:grid-cols-[minmax(260px,1fr)_160px_150px_150px_auto]">
                 <input type="hidden" name="programId" value={data.program.programId} />
                 <label className="grid gap-2 text-sm font-bold text-ocean-900">
-                  Project
+                  Campaign
                   <select name="campaignId" className="min-h-11 rounded-lg border border-ocean-900/12 bg-white px-3 text-sm font-semibold text-ocean-900 outline-none">
                     {projectOptions.map((option) => (
                       <option key={option.id} value={option.id}>
@@ -226,7 +226,7 @@ export default async function CorporateProjectsPage({ searchParams }: CorporateP
               </form>
             ) : (
               <p className="max-w-lg rounded-lg border border-ocean-900/10 bg-ocean-50 px-4 py-3 text-sm font-semibold leading-6 text-ocean-900/68">
-                Your corporate role can inspect project status and evidence, but cannot change portfolio funding.
+                Your corporate role can inspect campaign status and evidence, but cannot change campaign funding.
               </p>
             )}
           </div>

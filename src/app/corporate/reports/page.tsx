@@ -107,7 +107,7 @@ export default async function CorporateReportsPage({ searchParams }: CorporateRe
       <section className="mt-6 grid gap-3 md:grid-cols-3" aria-label="Report terminology">
         {[
           ["Report export", "The generated ESG/CSR package: preview HTML, source JSON, and optional PDF, XLSX, CSV, and evidence files."],
-          ["Evidence bundle", "The auditable source records attached to funded projects. It can stand alone or sit inside a full report package."],
+          ["Evidence bundle", "The auditable source records attached to funded campaigns. It can stand alone or sit inside a full report package."],
           ["Public impact page", "The published corporate-facing summary after an approved report is intentionally made public."]
         ].map(([title, detail]) => (
           <article key={title} className="rounded-lg border border-ocean-900/10 bg-white p-4 shadow-soft">

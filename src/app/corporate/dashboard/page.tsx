@@ -69,7 +69,7 @@ export default async function CorporateDashboardPage() {
       icon: BriefcaseBusiness
     },
     {
-      label: "Funded projects",
+      label: "Funded campaigns",
       value: data.portfolio.length.toLocaleString("id-ID"),
       support: `${formatCurrency(data.financials.fundsDisbursed)} allocated to campaigns`,
       icon: ShieldCheck
@@ -106,16 +106,16 @@ export default async function CorporateDashboardPage() {
           count: `${pendingEvidence.toLocaleString("id-ID")} pending`
         }
       : {
-          title: "Review project portfolio",
-          description: "Check funded projects, milestones, and next actions.",
+          title: "Review funded campaigns",
+          description: "Check funded campaigns, milestones, and next actions.",
           href: "/corporate/projects",
           icon: ShieldCheck,
-          count: `${data.portfolio.length.toLocaleString("id-ID")} projects`
+          count: `${data.portfolio.length.toLocaleString("id-ID")} campaigns`
         };
 
   const tasks: CorporateTask[] = [
     {
-      title: "Projects",
+      title: "Funded campaigns",
       description: "Inspect the funded conservation campaigns inside your program.",
       href: "/corporate/projects",
       icon: ShieldCheck,
@@ -181,7 +181,7 @@ export default async function CorporateDashboardPage() {
             <p className="text-xs font-bold uppercase tracking-[0.14em] text-ocean-900/46">Program context</p>
             <h2 className="mt-2 text-xl font-bold tracking-normal text-ocean-900">{data.program.programName}</h2>
             <p className="mt-2 max-w-2xl text-sm font-semibold leading-6 text-ocean-900/58">
-              {needsAttention > 0 ? `${needsAttention.toLocaleString("id-ID")} project checks need attention.` : "No high-priority project risks are open."}
+              {needsAttention > 0 ? `${needsAttention.toLocaleString("id-ID")} campaign checks need attention.` : "No high-priority campaign risks are open."}
             </p>
           </div>
           <div className="grid gap-3 text-sm sm:grid-cols-3 lg:min-w-[420px]">
@@ -206,15 +206,15 @@ export default async function CorporateDashboardPage() {
           <div>
             <p className="text-xs font-bold uppercase tracking-[0.14em] text-coral-700">Program funding map</p>
             <h2 id="corporate-relationship-map" className="mt-2 text-xl font-bold tracking-normal text-ocean-900">
-              How programs, projects, and funding connect
+              How programs, campaigns, and funding connect
             </h2>
             <p className="mt-2 max-w-2xl text-sm font-semibold leading-6 text-ocean-900/58">
-              The program owns the budget. Project allocations choose which campaigns receive support. Contribution ledger rows record the funding type, status, and whether it counts toward public campaign progress.
+              The program owns the budget. Campaign allocations choose which public campaigns receive corporate support. Contribution ledger rows record the funding type, status, and whether it counts toward public campaign progress.
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
             <Link href="/corporate/projects" className="inline-flex min-h-10 items-center justify-center rounded-full bg-ocean-900 px-4 text-sm font-bold text-white hover:bg-ocean-700">
-              Fund project
+              Fund campaign
             </Link>
             <Link href="/corporate/funding" className="inline-flex min-h-10 items-center justify-center rounded-full bg-ocean-50 px-4 text-sm font-bold text-ocean-900 hover:bg-sand-50">
               Review funding
@@ -250,17 +250,17 @@ export default async function CorporateDashboardPage() {
           <div className="rounded-lg border border-ocean-900/10 bg-ocean-50 p-4">
             <p className="text-sm font-bold text-ocean-900">Budget allocation</p>
             <div className="mt-3 flex items-center justify-between gap-3 text-sm">
-              <span className="font-semibold text-ocean-900/58">Allocated to projects</span>
+              <span className="font-semibold text-ocean-900/58">Allocated to campaigns</span>
               <span className="font-bold text-ocean-900">{data.financials.disbursementRate}%</span>
             </div>
-            <ProgressMeter value={data.financials.disbursementRate} label="Program budget allocated to projects" className="mt-2 h-2" indicatorClassName="bg-ocean-700" trackClassName="bg-white" />
+            <ProgressMeter value={data.financials.disbursementRate} label="Program budget allocated to campaigns" className="mt-2 h-2" indicatorClassName="bg-ocean-700" trackClassName="bg-white" />
             <div className="mt-4 grid gap-2 text-sm">
               <p className="flex justify-between gap-3 rounded-lg bg-white px-3 py-2 font-semibold text-ocean-900/62">
                 <span>Program budget</span>
                 <span className="font-bold text-ocean-900">{formatCurrency(data.financials.committedFunding)}</span>
               </p>
               <p className="flex justify-between gap-3 rounded-lg bg-white px-3 py-2 font-semibold text-ocean-900/62">
-                <span>Project allocations</span>
+                <span>Campaign allocations</span>
                 <span className="font-bold text-ocean-900">{formatCurrency(data.financials.fundsDisbursed)}</span>
               </p>
               <p className="flex justify-between gap-3 rounded-lg bg-white px-3 py-2 font-semibold text-ocean-900/62">
@@ -272,9 +272,9 @@ export default async function CorporateDashboardPage() {
 
           <div className="rounded-lg border border-ocean-900/10 bg-sand-50 p-4">
             <div className="flex flex-wrap items-center justify-between gap-3">
-              <p className="text-sm font-bold text-ocean-900">Project funding links</p>
+              <p className="text-sm font-bold text-ocean-900">Campaign funding links</p>
               <Link href="/corporate/projects" className="text-xs font-bold text-coral-700 hover:text-coral-500">
-                Open full portfolio
+                Open all funded campaigns
               </Link>
             </div>
             <div className="mt-3 divide-y divide-ocean-900/10">
@@ -295,7 +295,7 @@ export default async function CorporateDashboardPage() {
                 </div>
               ))}
               {relationshipProjects.length === 0 ? (
-                <p className="py-4 text-sm font-semibold text-ocean-900/58">No projects have been funded in this program yet. Use Fund project to create the first allocation and contribution record.</p>
+                <p className="py-4 text-sm font-semibold text-ocean-900/58">No campaigns have been funded in this program yet. Use Fund campaign to create the first allocation and contribution record.</p>
               ) : null}
             </div>
           </div>
@@ -310,9 +310,9 @@ export default async function CorporateDashboardPage() {
           </p>
         </article>
         <article className="rounded-lg border border-ocean-900/10 bg-white p-4">
-          <h2 className="text-sm font-bold text-ocean-900">Project</h2>
+          <h2 className="text-sm font-bold text-ocean-900">Campaign</h2>
           <p className="mt-2 text-sm font-semibold leading-6 text-ocean-900/58">
-            A funded conservation campaign inside a program, with partner delivery, milestones, evidence, and allocation tracking.
+            The public conservation campaign funded inside a program, with partner delivery, milestones, evidence, and allocation tracking.
           </p>
         </article>
       </section>

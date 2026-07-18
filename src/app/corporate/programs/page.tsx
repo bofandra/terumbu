@@ -51,7 +51,7 @@ export default async function CorporateProgramsPage({ searchParams }: CorporateP
           <p className="text-sm font-bold uppercase tracking-[0.16em] text-coral-700">{data.program.accountName}</p>
           <h1 className="mt-2 text-3xl font-bold tracking-normal text-ocean-900">Corporate programs</h1>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-ocean-900/62">
-            Manage the ESG/CSR containers that hold reporting periods, budgets, governance scope, and the projects funded inside them.
+            Manage the ESG/CSR containers that hold reporting periods, budgets, governance scope, and the campaigns funded inside them.
           </p>
         </div>
         <span className="inline-flex items-center gap-2 rounded-full bg-ocean-50 px-4 py-2 text-sm font-bold text-ocean-800">
@@ -170,7 +170,7 @@ export default async function CorporateProgramsPage({ searchParams }: CorporateP
                     <div className="mt-3 flex flex-wrap gap-2">
                       <ButtonLink href={`/corporate/projects?programId=${encodeURIComponent(program.id)}`} tone="ghost">
                         <ShieldCheck size={17} aria-hidden="true" />
-                        Projects
+                        Funded Campaigns
                       </ButtonLink>
                       <ButtonLink href={`/corporate/funding?programId=${encodeURIComponent(program.id)}`} tone="ghost">
                         <CircleDollarSign size={17} aria-hidden="true" />
@@ -189,7 +189,7 @@ export default async function CorporateProgramsPage({ searchParams }: CorporateP
                       <div className="text-sm font-bold text-ocean-900">{formatCurrency(program.budgetAmountValue)}</div>
                       <ButtonLink href={`/corporate/projects?programId=${encodeURIComponent(program.id)}`} tone="ghost">
                         <ShieldCheck size={17} aria-hidden="true" />
-                        Projects
+                        Funded Campaigns
                       </ButtonLink>
                       <ButtonLink href={`/corporate/funding?programId=${encodeURIComponent(program.id)}`} tone="ghost">
                         <CircleDollarSign size={17} aria-hidden="true" />

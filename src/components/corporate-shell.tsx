@@ -29,7 +29,7 @@ type CorporateNavItem = {
 const corporateNavItems: CorporateNavItem[] = [
   { label: "Task hub", href: "/corporate", icon: Home },
   { label: "Programs", href: "/corporate/programs", icon: BriefcaseBusiness },
-  { label: "Projects", href: "/corporate/projects", icon: ShieldCheck },
+  { label: "Funded campaigns", href: "/corporate/projects", icon: ShieldCheck },
   { label: "Funding", href: "/corporate/funding", icon: FileBadge },
   { label: "Employees", href: "/corporate/employees", icon: Users },
   { label: "Evidence", href: "/corporate/evidence", icon: FileText },
@@ -144,7 +144,7 @@ export function CorporateShell({
             </div>
 
             <div className="hidden items-center gap-4 text-sm font-semibold text-ocean-900/58 md:flex">
-              <span>{activeProjects.toLocaleString("id-ID")} active projects</span>
+              <span>{activeProjects.toLocaleString("id-ID")} funded campaigns</span>
               <span className="h-4 w-px bg-ocean-900/14" />
               <span>Report due {nextReportDue}</span>
             </div>

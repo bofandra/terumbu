@@ -12,7 +12,7 @@ export default function CorporateError({ reset }: { error: Error & { digest?: st
         <p className="text-sm font-bold uppercase text-coral-700">Corporate data unavailable</p>
         <h1 className="mt-3 text-3xl font-bold tracking-normal text-ocean-900">We could not load the corporate workspace.</h1>
         <p className="mx-auto mt-3 max-w-xl text-sm leading-6 text-ocean-900/62">
-          Verified records remain safe. Try again, or go directly to reports while we refresh project and finance data.
+          Verified records remain safe. Try again, or go directly to reports while we refresh campaign and finance data.
         </p>
         <div className="mt-6 flex flex-wrap justify-center gap-3">
           <Button type="button" onClick={reset}>

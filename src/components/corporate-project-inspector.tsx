@@ -80,7 +80,7 @@ export function CorporateProjectInspector({
   if (!selectedProject) {
     return (
       <section className="rounded-lg border border-dashed border-ocean-900/14 bg-white p-6 text-sm font-semibold text-ocean-900/62 shadow-soft">
-        No corporate projects have been funded yet.
+        No campaigns have been funded yet.
       </section>
     );
   }
@@ -122,7 +122,7 @@ export function CorporateProjectInspector({
                     Inspect
                   </button>
                   <Link href={project.campaignHref} className="inline-flex min-h-10 items-center justify-center gap-2 rounded-full bg-ocean-50 px-4 text-sm font-bold text-ocean-900 hover:bg-sand-50">
-                    Campaign
+                    Public campaign
                     <ArrowRight size={16} aria-hidden="true" />
                   </Link>
                 </div>
@@ -135,7 +135,7 @@ export function CorporateProjectInspector({
       <aside className="rounded-lg border border-ocean-900/10 bg-white p-5 shadow-soft lg:sticky lg:top-24 lg:self-start">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <p className="text-sm font-bold uppercase tracking-[0.14em] text-coral-700">Project drawer</p>
+            <p className="text-sm font-bold uppercase tracking-[0.14em] text-coral-700">Campaign drawer</p>
             <h2 className="mt-2 text-2xl font-bold tracking-normal text-ocean-900">{selectedProject.campaignTitle}</h2>
           </div>
           <span className={cn("rounded-full px-3 py-1 text-xs font-bold", statusClass(selectedProject.statusLabel))}>{selectedProject.statusLabel}</span>
