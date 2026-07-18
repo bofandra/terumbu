@@ -21,12 +21,12 @@ type CorporateBoardPageProps = {
   }>;
 };
 
-const contributionColumns = [
-  { id: "pledged", label: "Pledged", description: "Funding intent logged" },
-  { id: "committed", label: "Committed", description: "Approved support" },
-  { id: "disbursed", label: "Disbursed", description: "Funds released" },
-  { id: "verified", label: "Verified", description: "Funding verified" },
-  { id: "cancelled", label: "Cancelled", description: "No longer active" }
+const fundingColumns = [
+  { id: "funded", label: "Funded", description: "Campaign support allocated" },
+  { id: "monitoring", label: "Monitoring", description: "Milestones and evidence active" },
+  { id: "review", label: "In review", description: "Needs finance or evidence review" },
+  { id: "completed", label: "Completed", description: "Funding cycle closed" },
+  { id: "other", label: "Other", description: "Needs classification" }
 ];
 
 const evidenceStatuses = [
@@ -37,12 +37,8 @@ const evidenceStatuses = [
   { value: "rejected", label: "Rejected" }
 ];
 
-function formatDate(value: Date | null | undefined) {
-  return value ? value.toLocaleDateString("id-ID", { dateStyle: "medium" }) : "Pending";
-}
-
-function contributionColumnId(status: string) {
-  return contributionColumns.some((column) => column.id === status) ? status : "committed";
+function fundingColumnId(status: string) {
+  return fundingColumns.some((column) => column.id === status) ? status : "other";
 }
 
 function evidenceStatusClass(status: string) {
@@ -80,15 +76,17 @@ export default async function CorporateBoardPage({ searchParams }: CorporateBoar
     evidenceByCampaign.set(evidence.campaignId, rows);
   }
 
-  const fundingCards = data.contributions.map((contribution) => {
-    const evidence = evidenceByCampaign.get(contribution.campaignId) ?? [];
+  const fundingCards = data.portfolio.map((funding) => {
+    const evidence = evidenceByCampaign.get(funding.campaignId) ?? [];
+    const ledgerContribution = funding.contributions[0] ?? null;
     const verifiedEvidence = evidence.filter((item) => item.verificationStatus === "verified").length;
     const pendingEvidence = evidence.length - verifiedEvidence;
 
     return {
-      ...contribution,
-      columnId: contributionColumnId(contribution.status),
+      ...funding,
+      columnId: fundingColumnId(funding.status),
       evidence,
+      ledgerContribution,
       verifiedEvidence,
       pendingEvidence
     };
@@ -103,7 +101,7 @@ export default async function CorporateBoardPage({ searchParams }: CorporateBoar
           <p className="text-sm font-bold uppercase tracking-[0.16em] text-coral-700">Kanban board</p>
           <h1 className="mt-2 text-3xl font-bold tracking-normal text-ocean-900">{data.program.programName}</h1>
           <p className="mt-2 max-w-3xl text-sm font-semibold leading-6 text-ocean-900/62">
-            One board represents one corporate program. Each card is one funding contribution, tagged to its campaign, with submitted campaign evidence ready for corporate review.
+            One board represents one corporate program. Each card is one campaign funding allocation, with contribution ledger details and submitted campaign evidence ready for corporate review.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -172,7 +170,7 @@ export default async function CorporateBoardPage({ searchParams }: CorporateBoar
 
       <section className="mt-6 overflow-x-auto pb-3" aria-label="Funding kanban columns">
         <div className="grid min-w-[1320px] grid-cols-5 gap-4">
-          {contributionColumns.map((column) => {
+          {fundingColumns.map((column) => {
             const cards = fundingCards.filter((card) => card.columnId === column.id);
 
             return (
@@ -189,14 +187,16 @@ export default async function CorporateBoardPage({ searchParams }: CorporateBoar
 
                 <div className="mt-3 grid gap-3">
                   {cards.map((card) => (
-                    <article key={card.id} className="rounded-lg border border-ocean-900/10 bg-white p-4 shadow-soft">
+                    <article key={card.campaignId} className="rounded-lg border border-ocean-900/10 bg-white p-4 shadow-soft">
                       <div className="flex flex-wrap items-start justify-between gap-3">
                         <div>
-                          <p className="text-xs font-bold uppercase tracking-normal text-ocean-900/46">{card.referenceCode}</p>
+                          <p className="text-xs font-bold uppercase tracking-normal text-ocean-900/46">
+                            {card.ledgerContribution?.referenceCode ?? card.campaignSlug}
+                          </p>
                           <h3 className="mt-2 text-base font-bold leading-6 text-ocean-900">{card.campaignTitle}</h3>
                         </div>
                         <span className="rounded-full bg-ocean-50 px-3 py-1 text-xs font-bold capitalize text-ocean-700">
-                          {contributionTypeLabel(card.contributionType)}
+                          {card.ledgerContribution ? contributionTypeLabel(card.ledgerContribution.contributionType) : "allocation"}
                         </span>
                       </div>
 
@@ -206,18 +206,18 @@ export default async function CorporateBoardPage({ searchParams }: CorporateBoar
                           <ExternalLink size={13} aria-hidden="true" />
                         </Link>
                         <span className="inline-flex min-h-8 items-center rounded-full bg-sand-100 px-3 text-xs font-bold text-ocean-900">
-                          {card.publicGoalLabel}
+                          {card.ledgerContribution?.publicGoalLabel ?? "Corporate reporting"}
                         </span>
                       </div>
 
                       <dl className="mt-4 grid gap-2 text-sm">
                         <div className="flex justify-between gap-3">
-                          <dt className="font-semibold text-ocean-900/58">Amount</dt>
-                          <dd className="font-bold text-ocean-900">{formatCurrency(card.amountValue)}</dd>
+                          <dt className="font-semibold text-ocean-900/58">Allocation</dt>
+                          <dd className="font-bold text-ocean-900">{formatCurrency(card.allocationValue)}</dd>
                         </div>
                         <div className="flex justify-between gap-3">
-                          <dt className="font-semibold text-ocean-900/58">Contribution date</dt>
-                          <dd className="font-bold text-ocean-900">{formatDate(card.contributionDate)}</dd>
+                          <dt className="font-semibold text-ocean-900/58">Ledger</dt>
+                          <dd className="font-bold text-ocean-900">{formatCurrency(card.contributionTotal)}</dd>
                         </div>
                         <div className="flex justify-between gap-3">
                           <dt className="font-semibold text-ocean-900/58">Evidence</dt>
@@ -225,7 +225,7 @@ export default async function CorporateBoardPage({ searchParams }: CorporateBoar
                         </div>
                       </dl>
 
-                      {card.notes ? <p className="mt-3 text-xs font-semibold leading-5 text-ocean-900/58">{card.notes}</p> : null}
+                      {card.ledgerContribution?.notes ? <p className="mt-3 text-xs font-semibold leading-5 text-ocean-900/58">{card.ledgerContribution.notes}</p> : null}
 
                       <div className="mt-4 border-t border-ocean-900/10 pt-4">
                         <div className="flex items-center justify-between gap-3">
@@ -242,7 +242,7 @@ export default async function CorporateBoardPage({ searchParams }: CorporateBoar
 
                         <div className="mt-3 divide-y divide-ocean-900/10">
                           {card.evidence.map((evidence) => (
-                            <div key={`${card.id}-${evidence.id}`} className="py-3 first:pt-0 last:pb-0">
+                            <div key={`${card.campaignId}-${evidence.id}`} className="py-3 first:pt-0 last:pb-0">
                               <div className="flex flex-wrap items-start justify-between gap-2">
                                 <div>
                                   <p className="font-bold leading-5 text-ocean-900">{evidence.title}</p>
@@ -330,7 +330,7 @@ export default async function CorporateBoardPage({ searchParams }: CorporateBoar
           <div className="flex items-start gap-3">
             <MessageSquare size={20} aria-hidden="true" className="mt-0.5 text-coral-500" />
             <p>
-              This program has no funding cards yet. Create a campaign contribution from Funded Campaigns, then the card will appear on this board automatically.
+              This program has no campaign funding allocations yet. Create a funded campaign allocation, then the card will appear on this board automatically.
             </p>
           </div>
         </section>
