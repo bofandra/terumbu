@@ -6,7 +6,7 @@ import { eq } from "drizzle-orm";
 import { redirect } from "next/navigation";
 
 import { db } from "@/db/client";
-import { accounts, impactPassports, notificationPreferences, profiles, roles, userRoles, users } from "@/db/schema";
+import { impactPassports, profiles, users } from "@/db/schema";
 import {
   createPasswordHash,
   createSession,
@@ -28,18 +28,14 @@ function loginErrorPath(nextPath: string) {
   return `/login?error=invalid&next=${encodeURIComponent(nextPath)}`;
 }
 
-function signupErrorPath(error: string, nextPath: string) {
-  return `/signup?error=${error}&next=${encodeURIComponent(nextPath)}`;
-}
+function registrationClosedLoginPath(nextPath: string) {
+  const params = new URLSearchParams({ registration: "closed" });
 
-function toSlug(value: string) {
-  const slug = value
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .slice(0, 72);
+  if (nextPath) {
+    params.set("next", nextPath);
+  }
 
-  return slug || "ocean-hero";
+  return `/login?${params.toString()}`;
 }
 
 function newPassportShareToken() {
@@ -101,90 +97,9 @@ export async function loginAction(formData: FormData) {
 }
 
 export async function signupAction(formData: FormData) {
-  const name = String(formData.get("name") ?? "").trim();
-  const email = String(formData.get("email") ?? "")
-    .trim()
-    .toLowerCase();
-  const password = String(formData.get("password") ?? "");
-  const nextPath = safeRedirectPath(formData.get("next"));
+  const nextPath = safeRedirectPath(formData.get("next"), "");
 
-  if (!name || !email || password.length < 8) {
-    redirect(signupErrorPath("invalid", nextPath));
-  }
-
-  const [existingUser] = await db.select({ id: users.id }).from(users).where(eq(users.email, email)).limit(1);
-
-  if (existingUser) {
-    redirect(signupErrorPath("exists", nextPath));
-  }
-
-  const now = new Date();
-  const [user] = await db
-    .insert(users)
-    .values({
-      email,
-      name,
-      passwordHash: createPasswordHash(password),
-      updatedAt: now
-    })
-    .returning({ id: users.id });
-
-  await db.insert(accounts).values({
-    userId: user.id,
-    provider: "credentials",
-    providerAccountId: email
-  });
-
-  const [userRole] = await db
-    .insert(roles)
-    .values({
-      key: "user",
-      name: "User"
-    })
-    .onConflictDoUpdate({
-      target: roles.key,
-      set: {
-        name: "User"
-      }
-    })
-    .returning({ id: roles.id });
-
-  await db
-    .insert(userRoles)
-    .values({
-      userId: user.id,
-      roleId: userRole.id
-    })
-    .onConflictDoNothing({
-      target: [userRoles.userId, userRoles.roleId]
-    });
-
-  await db.insert(profiles).values({
-    userId: user.id,
-    displayName: name,
-    location: "Indonesia",
-    bio: "New Terumbu Ocean Hero.",
-    heroLevel: 1,
-    xp: 0,
-    isPublic: false,
-    updatedAt: now
-  });
-
-  await db.insert(impactPassports).values({
-    userId: user.id,
-    publicSlug: `${toSlug(name)}-${randomBytes(3).toString("hex")}`,
-    visibility: "private",
-    story: "A new Impact Passport ready to collect donations, lessons, expeditions, and verified evidence.",
-    updatedAt: now
-  });
-
-  await db.insert(notificationPreferences).values({
-    userId: user.id,
-    updatedAt: now
-  });
-
-  await createSession(user.id);
-  redirect(nextPath);
+  redirect(registrationClosedLoginPath(nextPath));
 }
 
 export async function logoutAction() {

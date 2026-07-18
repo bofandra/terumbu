@@ -25,7 +25,7 @@ const communityActions = [
     title: "Volunteer in the field",
     description: "Join coastal planting days, cleanup teams, reef surveys, and community learning activities.",
     icon: Users,
-    href: "/signup?next=/dashboard"
+    href: "/expeditions"
   },
   {
     title: "Prepare with Academy",
@@ -67,10 +67,10 @@ export function HomeCommunitySection() {
             <Mail className="text-coral-300" size={24} aria-hidden="true" />
             <h3 className="mt-5 text-2xl font-bold tracking-normal">Stay updated</h3>
             <p className="mt-3 text-sm leading-6 text-white/72">
-              Join Terumbu to receive impact stories, expedition openings, course milestones, and evidence updates.
+              Terumbu accounts are created by platform admins for verified supporters, partners, corporate teams, and staff.
             </p>
-            <ButtonLink href="/signup" tone="light" className="mt-6">
-              Sign Up / Join
+            <ButtonLink href="/login" tone="light" className="mt-6">
+              Login
             </ButtonLink>
           </div>
 

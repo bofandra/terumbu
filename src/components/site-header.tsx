@@ -5,7 +5,6 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 
-import { ButtonLink } from "@/components/ui/button";
 import { navItems } from "@/lib/data";
 import { cn } from "@/lib/utils";
 
@@ -57,9 +56,6 @@ export function SiteHeader() {
             <UserCircle size={19} aria-hidden="true" />
             Login
           </Link>
-          <ButtonLink href="/signup" tone="light">
-            Sign Up / Join
-          </ButtonLink>
         </div>
 
         <button
@@ -91,9 +87,6 @@ export function SiteHeader() {
             >
               Login
             </Link>
-            <ButtonLink href="/signup" tone="light" className="mt-2 w-full">
-              Sign Up / Join
-            </ButtonLink>
           </nav>
         </div>
       ) : null}

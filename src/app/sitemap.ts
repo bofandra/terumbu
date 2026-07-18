@@ -12,7 +12,6 @@ export default function sitemap(): MetadataRoute.Sitemap {
     "/platform",
     "/about",
     "/login",
-    "/signup",
     "/terms",
     "/privacy",
     "/donation-policy",

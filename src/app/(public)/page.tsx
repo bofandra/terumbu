@@ -55,8 +55,8 @@ const fallbackPassport: PassportPreviewData = {
   levelLabel: "Start at Level 1",
   xp: 0,
   xpTarget: 1000,
-  href: "/signup?next=/dashboard/passport",
-  ctaLabel: "Start your passport",
+  href: "/login?next=/dashboard/passport",
+  ctaLabel: "Open your passport",
   stats: [
     { label: "Donations", value: "0" },
     { label: "Corals", value: "0" },

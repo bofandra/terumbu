@@ -253,8 +253,8 @@ export default async function PublicPassportPage({ params, searchParams }: Publi
             <p className="mt-6 max-w-3xl text-lg leading-8 text-white/76">{publicImpactStory(passport)}</p>
             <div className="mt-7 flex flex-wrap gap-2">
               <PassportCopyButton value={publicUrl} label="Share Impact Passport" className="border-white/18 bg-white text-ocean-900 hover:bg-sand-50" />
-              <ButtonLink href="/signup" tone="primary">
-                Join Terumbu.eco
+              <ButtonLink href="/login" tone="primary">
+                Login to Terumbu.eco
               </ButtonLink>
             </div>
           </div>

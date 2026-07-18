@@ -396,7 +396,7 @@ export default async function AdminUsersPage({ searchParams }: AdminUsersPagePro
       <AdminPageHeader
         eyebrow="Users"
         title="User and role management"
-        description="Create accounts, edit profiles, reset credentials, manage global roles, and assign partner or corporate scoped access."
+        description="Public registration is closed. Create accounts here, edit profiles, reset credentials, manage global roles, and assign partner or corporate scoped access."
         actionHref="/admin/audit"
         actionLabel="Audit Log"
       />
@@ -440,7 +440,7 @@ export default async function AdminUsersPage({ searchParams }: AdminUsersPagePro
             </span>
             <div>
               <h2 className="text-xl font-bold tracking-normal text-ocean-900">Create user</h2>
-              <p className="mt-1 text-sm font-semibold leading-6 text-ocean-900/58">Create a credential account, profile, Impact Passport, and first global role.</p>
+              <p className="mt-1 text-sm font-semibold leading-6 text-ocean-900/58">Create a credential account, profile, Impact Passport, and first global role for any Terumbu role path.</p>
             </div>
           </div>
           <div className="mt-4 grid gap-3 md:grid-cols-2">

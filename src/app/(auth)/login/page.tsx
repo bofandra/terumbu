@@ -14,6 +14,7 @@ type LoginPageProps = {
     error?: string;
     loggedOut?: string;
     next?: string;
+    registration?: string;
   }>;
 };
 
@@ -46,6 +47,12 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
           </p>
         ) : null}
 
+        {params?.registration === "closed" ? (
+          <p className="mt-4 rounded-xl border border-ocean-900/10 bg-ocean-50 px-4 py-3 text-sm font-semibold text-ocean-900/68">
+            Public registration is closed. Terumbu admins create accounts and assign the right access before users sign in.
+          </p>
+        ) : null}
+
         <form action={loginAction} className="mt-6 grid gap-4">
           <input type="hidden" name="next" value={nextPath} />
           <label className="grid gap-2 text-sm font-semibold text-ocean-900">
@@ -72,12 +79,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
             Login
           </Button>
         </form>
-        <p className="mt-5 text-sm text-ocean-900/62">
-          New to Terumbu?{" "}
-          <Link href="/signup" className="font-bold text-coral-700">
-            Create an account
-          </Link>
-        </p>
+        <p className="mt-5 text-sm text-ocean-900/62">Need access? Ask a Terumbu admin to create or update your account.</p>
       </div>
     </section>
   );
