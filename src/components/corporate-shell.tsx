@@ -6,6 +6,7 @@ import {
   FileBadge,
   FileText,
   Home,
+  Kanban,
   LogOut,
   Settings,
   ShieldCheck,
@@ -28,6 +29,7 @@ type CorporateNavItem = {
 
 const corporateNavItems: CorporateNavItem[] = [
   { label: "Task hub", href: "/corporate", icon: Home },
+  { label: "Kanban board", href: "/corporate/board", icon: Kanban },
   { label: "Programs", href: "/corporate/programs", icon: BriefcaseBusiness },
   { label: "Funded campaigns", href: "/corporate/projects", icon: ShieldCheck },
   { label: "Funding", href: "/corporate/funding", icon: FileBadge },

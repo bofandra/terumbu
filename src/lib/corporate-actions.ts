@@ -30,7 +30,7 @@ import {
   projectEvidence,
   users
 } from "@/db/schema";
-import { requireUser } from "@/lib/auth";
+import { requireUser, safeRedirectPath } from "@/lib/auth";
 import {
   normalizeCorporateIntegrationStatus,
   normalizeCorporateIntegrationType
@@ -101,6 +101,12 @@ function escapeHtml(value: string | number | null | undefined) {
     .replaceAll(">", "&gt;")
     .replaceAll("\"", "&quot;")
     .replaceAll("'", "&#039;");
+}
+
+function redirectWithResult(path: string, key: "error" | "saved", value: string): never {
+  const separator = path.includes("?") ? "&" : "?";
+
+  redirect(`${path}${separator}${key}=${encodeURIComponent(value)}`);
 }
 
 async function corporateContext(userId: string, requestedProgramId?: string | null) {
@@ -1518,11 +1524,14 @@ export async function updateCorporateBudgetAction(formData: FormData) {
 }
 
 export async function updateCorporateEvidenceStatusAction(formData: FormData) {
-  const user = await requireUser("/corporate/evidence");
-  const context = await corporateContext(user.id);
+  const requestedProgramId = textValue(formData.get("programId"), 80);
+  const fallbackReturnPath = requestedProgramId ? `/corporate/evidence?programId=${encodeURIComponent(requestedProgramId)}` : "/corporate/evidence";
+  const returnPath = safeRedirectPath(formData.get("returnTo"), fallbackReturnPath);
+  const user = await requireUser(returnPath);
+  const context = await corporateContext(user.id, requestedProgramId);
 
   if (!context || !corporateCapabilitiesForPermission(context.permission).canUpdateEvidenceStatus) {
-    redirect("/corporate/evidence?error=permission");
+    redirectWithResult(returnPath, "error", "permission");
   }
 
   const evidenceId = textValue(formData.get("evidenceId"), 80);
@@ -1531,11 +1540,11 @@ export async function updateCorporateEvidenceStatusAction(formData: FormData) {
   const reviewNote = textValue(formData.get("reviewNote"), 1000);
 
   if (!evidenceId || !isUuid(evidenceId)) {
-    redirect("/corporate/evidence?error=evidence");
+    redirectWithResult(returnPath, "error", "evidence");
   }
 
   if (evidenceReviewNoteRequired(verificationStatus) && !reviewNote) {
-    redirect("/corporate/evidence?error=evidence");
+    redirectWithResult(returnPath, "error", "evidence");
   }
 
   const [evidenceAccess] = await db
@@ -1551,7 +1560,7 @@ export async function updateCorporateEvidenceStatusAction(formData: FormData) {
     .limit(1);
 
   if (!evidenceAccess) {
-    redirect("/corporate/evidence?error=evidence");
+    redirectWithResult(returnPath, "error", "evidence");
   }
 
   const now = new Date();
@@ -1631,7 +1640,7 @@ export async function updateCorporateEvidenceStatusAction(formData: FormData) {
     }
   });
 
-  redirect("/corporate/evidence?saved=evidence");
+  redirectWithResult(returnPath, "saved", "evidence");
 }
 
 

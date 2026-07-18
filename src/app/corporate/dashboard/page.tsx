@@ -1,4 +1,4 @@
-import { AlertTriangle, ArrowRight, ArrowUpRight, BriefcaseBusiness, CircleDollarSign, FileBadge, FileText, Globe2, ShieldCheck, Users } from "lucide-react";
+import { AlertTriangle, ArrowRight, ArrowUpRight, BriefcaseBusiness, CircleDollarSign, FileBadge, FileText, Globe2, Kanban, ShieldCheck, Users } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import Link from "next/link";
 import { Fragment } from "react";
@@ -114,6 +114,13 @@ export default async function CorporateDashboardPage() {
         };
 
   const tasks: CorporateTask[] = [
+    {
+      title: "Kanban board",
+      description: "Review funding cards by program and verify campaign evidence without leaving the board.",
+      href: `/corporate/board?programId=${encodeURIComponent(data.program.programId)}`,
+      icon: Kanban,
+      count: `${pendingEvidence.toLocaleString("id-ID")} evidence pending`
+    },
     {
       title: "Funded campaigns",
       description: "Inspect the funded conservation campaigns inside your program.",

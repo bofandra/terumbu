@@ -1,4 +1,4 @@
-import { AlertTriangle, ArrowRight, BriefcaseBusiness, CheckCircle2, CircleDollarSign, FileBadge, ShieldCheck } from "lucide-react";
+import { AlertTriangle, ArrowRight, BriefcaseBusiness, CheckCircle2, CircleDollarSign, FileBadge, Kanban, ShieldCheck } from "lucide-react";
 
 import { Button, ButtonLink } from "@/components/ui/button";
 import { ProgressMeter } from "@/components/ui/progress-meter";
@@ -56,10 +56,16 @@ export default async function CorporateFundingPage({ searchParams }: CorporateFu
             Track committed funding, milestone payments, budget variance, invoice evidence, and approvals before the next tranche is released.
           </p>
         </div>
-        <ButtonLink href="/corporate/reports" tone="secondary">
-          <FileBadge size={18} aria-hidden="true" />
-          Export Financial Report
-        </ButtonLink>
+        <div className="flex flex-wrap gap-2">
+          <ButtonLink href={`/corporate/board${selectedProgramHref}`} tone="ghost">
+            <Kanban size={18} aria-hidden="true" />
+            Board
+          </ButtonLink>
+          <ButtonLink href="/corporate/reports" tone="secondary">
+            <FileBadge size={18} aria-hidden="true" />
+            Export Financial Report
+          </ButtonLink>
+        </div>
       </div>
 
       {params?.saved ? (

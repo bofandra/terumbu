@@ -1,4 +1,4 @@
-import { ArrowRight, BriefcaseBusiness, CircleDollarSign, ShieldCheck } from "lucide-react";
+import { ArrowRight, BriefcaseBusiness, CircleDollarSign, Kanban, ShieldCheck } from "lucide-react";
 
 import { CorporateProjectInspector } from "@/components/corporate-project-inspector";
 import { Button, ButtonLink } from "@/components/ui/button";
@@ -90,10 +90,16 @@ export default async function CorporateProjectsPage({ searchParams }: CorporateP
               <ArrowRight className="size-4" aria-hidden="true" />
             </Button>
           </form>
-          <ButtonLink href={`/corporate/funding${selectedProgramHref}`} tone="ghost" className="justify-self-start lg:justify-self-end">
-            Funding
-            <ArrowRight className="size-4" aria-hidden="true" />
-          </ButtonLink>
+          <div className="flex flex-wrap gap-2 justify-self-start lg:justify-self-end">
+            <ButtonLink href={`/corporate/board${selectedProgramHref}`} tone="secondary">
+              <Kanban className="size-4" aria-hidden="true" />
+              Board
+            </ButtonLink>
+            <ButtonLink href={`/corporate/funding${selectedProgramHref}`} tone="ghost">
+              Funding
+              <ArrowRight className="size-4" aria-hidden="true" />
+            </ButtonLink>
+          </div>
         </div>
 
         <div className="mt-4 grid gap-3 md:grid-cols-3">

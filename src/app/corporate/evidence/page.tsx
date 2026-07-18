@@ -16,6 +16,7 @@ export const dynamic = "force-dynamic";
 type CorporateEvidencePageProps = {
   searchParams?: Promise<{
     error?: string;
+    programId?: string;
     saved?: string;
   }>;
 };
@@ -43,8 +44,9 @@ function statusClass(status: string) {
 export default async function CorporateEvidencePage({ searchParams }: CorporateEvidencePageProps) {
   const params = await searchParams;
   const user = await requireUser("/corporate/evidence");
-  const data = await requireCorporateDashboardData(user.id, "/corporate/evidence");
+  const data = await requireCorporateDashboardData(user.id, "/corporate/evidence", params?.programId);
   const canUpdateEvidenceStatus = data.capabilities.canUpdateEvidenceStatus;
+  const evidenceReturnPath = `/corporate/evidence?programId=${encodeURIComponent(data.program.programId)}`;
 
   const reviewStages = [
     { label: "Submitted", count: data.evidenceReviewQueue.filter((item) => item.reviewStage === "Submitted").length, icon: ClipboardList },
@@ -129,7 +131,9 @@ export default async function CorporateEvidencePage({ searchParams }: CorporateE
                 <p className="mt-4 rounded-lg bg-white p-3 text-xs font-semibold leading-5 text-ocean-900/62">{item.internalNote}</p>
                 {canUpdateEvidenceStatus ? (
                   <form action={updateCorporateEvidenceStatusAction} className="mt-4 grid gap-2 sm:grid-cols-[1fr_auto]">
+                    <input type="hidden" name="programId" value={data.program.programId} />
                     <input type="hidden" name="evidenceId" value={item.id} />
+                    <input type="hidden" name="returnTo" value={evidenceReturnPath} />
                     <label className="grid gap-2 text-xs font-bold uppercase tracking-[0.14em] text-ocean-900/46">
                       Review status
                       <select name="verificationStatus" defaultValue={item.verificationStatus} className="min-h-10 rounded-lg border border-ocean-900/12 bg-white px-3 text-sm font-semibold normal-case tracking-normal text-ocean-900 outline-none">

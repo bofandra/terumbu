@@ -1,4 +1,4 @@
-import { ArrowRight, BriefcaseBusiness, CircleDollarSign, PlusCircle, Save, ShieldCheck } from "lucide-react";
+import { ArrowRight, BriefcaseBusiness, CircleDollarSign, Kanban, PlusCircle, Save, ShieldCheck } from "lucide-react";
 
 import { Button, ButtonLink } from "@/components/ui/button";
 import { FormTabs } from "@/components/ui/form-tabs";
@@ -168,6 +168,10 @@ export default async function CorporateProgramsPage({ searchParams }: CorporateP
                       </Button>
                     </form>
                     <div className="mt-3 flex flex-wrap gap-2">
+                      <ButtonLink href={`/corporate/board?programId=${encodeURIComponent(program.id)}`} tone="secondary">
+                        <Kanban size={17} aria-hidden="true" />
+                        Board
+                      </ButtonLink>
                       <ButtonLink href={`/corporate/projects?programId=${encodeURIComponent(program.id)}`} tone="ghost">
                         <ShieldCheck size={17} aria-hidden="true" />
                         Funded Campaigns
@@ -187,6 +191,10 @@ export default async function CorporateProgramsPage({ searchParams }: CorporateP
                     </div>
                     <div className="flex flex-wrap items-center gap-2">
                       <div className="text-sm font-bold text-ocean-900">{formatCurrency(program.budgetAmountValue)}</div>
+                      <ButtonLink href={`/corporate/board?programId=${encodeURIComponent(program.id)}`} tone="secondary">
+                        <Kanban size={17} aria-hidden="true" />
+                        Board
+                      </ButtonLink>
                       <ButtonLink href={`/corporate/projects?programId=${encodeURIComponent(program.id)}`} tone="ghost">
                         <ShieldCheck size={17} aria-hidden="true" />
                         Funded Campaigns
