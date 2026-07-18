@@ -1,4 +1,4 @@
-import { AlertTriangle, CheckCircle2, CircleDollarSign, FileBadge, ShieldCheck } from "lucide-react";
+import { AlertTriangle, ArrowRight, BriefcaseBusiness, CheckCircle2, CircleDollarSign, FileBadge, ShieldCheck } from "lucide-react";
 
 import { Button, ButtonLink } from "@/components/ui/button";
 import { ProgressMeter } from "@/components/ui/progress-meter";
@@ -41,6 +41,8 @@ export default async function CorporateFundingPage({ searchParams }: CorporateFu
   const user = await requireUser("/corporate/funding");
   const data = await requireCorporateDashboardData(user.id, "/corporate/funding");
   const canManageFunding = data.capabilities.canManageFunding;
+  const unallocatedBudget = Math.max(0, data.financials.committedFunding - data.financials.fundsDisbursed);
+  const projectFundingRows = data.portfolio.slice(0, 6);
 
   return (
     <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
@@ -82,6 +84,95 @@ export default async function CorporateFundingPage({ searchParams }: CorporateFu
             </article>
           );
         })}
+      </section>
+
+      <section className="mt-6 rounded-lg border border-ocean-900/10 bg-white p-5 shadow-soft" aria-labelledby="funding-project-links">
+        <div className="flex flex-col justify-between gap-4 lg:flex-row lg:items-start">
+          <div>
+            <p className="text-sm font-bold uppercase text-coral-700">Program to project funding</p>
+            <h2 id="funding-project-links" className="mt-2 text-xl font-bold tracking-normal text-ocean-900">
+              Budget allocations behind this finance view
+            </h2>
+            <p className="mt-2 max-w-2xl text-sm font-semibold leading-6 text-ocean-900/58">
+              Program funding starts as the approved budget, becomes project allocations, and is then tracked as corporate contribution records with disbursement, verification, and public-goal status.
+            </p>
+          </div>
+          <ButtonLink href="/corporate/projects" tone="ghost" className="self-start">
+            Open Project Funding
+            <ArrowRight size={17} aria-hidden="true" />
+          </ButtonLink>
+        </div>
+
+        <div className="mt-5 grid gap-3 lg:grid-cols-[0.8fr_1.2fr]">
+          <div className="rounded-lg border border-ocean-900/10 bg-ocean-50 p-4">
+            <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.14em] text-ocean-900/46">
+              <BriefcaseBusiness size={15} aria-hidden="true" />
+              Current program
+            </div>
+            <p className="mt-3 font-bold text-ocean-900">{data.program.programName}</p>
+            <div className="mt-4 grid gap-2 text-sm">
+              <p className="flex justify-between gap-3 rounded-lg bg-white px-3 py-2 font-semibold text-ocean-900/62">
+                <span>Approved budget</span>
+                <span className="font-bold text-ocean-900">{formatCurrency(data.financials.committedFunding)}</span>
+              </p>
+              <p className="flex justify-between gap-3 rounded-lg bg-white px-3 py-2 font-semibold text-ocean-900/62">
+                <span>Allocated to projects</span>
+                <span className="font-bold text-ocean-900">{formatCurrency(data.financials.fundsDisbursed)}</span>
+              </p>
+              <p className="flex justify-between gap-3 rounded-lg bg-white px-3 py-2 font-semibold text-ocean-900/62">
+                <span>Not yet allocated</span>
+                <span className="font-bold text-ocean-900">{formatCurrency(unallocatedBudget)}</span>
+              </p>
+            </div>
+            <div className="mt-4 flex items-center justify-between gap-3 text-sm">
+              <span className="font-bold text-ocean-900/58">Allocation progress</span>
+              <span className="font-bold text-ocean-900">{data.financials.disbursementRate}%</span>
+            </div>
+            <ProgressMeter value={data.financials.disbursementRate} label="Program budget allocated to projects" className="mt-2 h-2" indicatorClassName="bg-ocean-700" trackClassName="bg-white" />
+          </div>
+
+          <div className="overflow-x-auto rounded-lg border border-ocean-900/10 bg-sand-50">
+            <table className="min-w-[780px] w-full border-separate border-spacing-0 text-left text-sm">
+              <thead>
+                <tr className="text-xs uppercase text-ocean-900/46">
+                  <th className="border-b border-ocean-900/10 px-4 py-3">Project</th>
+                  <th className="border-b border-ocean-900/10 px-4 py-3">Allocation</th>
+                  <th className="border-b border-ocean-900/10 px-4 py-3">Contribution</th>
+                  <th className="border-b border-ocean-900/10 px-4 py-3">Evidence</th>
+                  <th className="border-b border-ocean-900/10 px-4 py-3">Next finance step</th>
+                </tr>
+              </thead>
+              <tbody>
+                {projectFundingRows.map((project) => (
+                  <tr key={project.campaignSlug}>
+                    <td className="border-b border-ocean-900/8 px-4 py-4">
+                      <p className="font-bold text-ocean-900">{project.campaignTitle}</p>
+                      <p className="mt-1 text-xs font-semibold text-ocean-900/54">{project.organizationName} · {project.region}</p>
+                    </td>
+                    <td className="border-b border-ocean-900/8 px-4 py-4 font-bold text-ocean-900">{formatCurrency(project.allocationValue)}</td>
+                    <td className="border-b border-ocean-900/8 px-4 py-4 text-ocean-900/68">
+                      <p className="font-bold text-ocean-900">{formatCurrency(project.contributionTotal)}</p>
+                      <p className="mt-1 text-xs font-semibold capitalize text-ocean-900/54">{project.latestContributionStatus.replace(/_/g, " ")}</p>
+                    </td>
+                    <td className="border-b border-ocean-900/8 px-4 py-4 text-ocean-900/68">
+                      {project.evidenceSummary.verified}/{project.evidenceSummary.total} verified
+                    </td>
+                    <td className="border-b border-ocean-900/8 px-4 py-4">
+                      <span className={cn("rounded-full px-3 py-1 text-xs font-bold", statusClass(project.disbursementStatus))}>{project.disbursementStatus}</span>
+                    </td>
+                  </tr>
+                ))}
+                {projectFundingRows.length === 0 ? (
+                  <tr>
+                    <td className="px-4 py-6 text-sm font-semibold text-ocean-900/58" colSpan={5}>
+                      No project allocations exist yet. Create the first project contribution from Project Funding.
+                    </td>
+                  </tr>
+                ) : null}
+              </tbody>
+            </table>
+          </div>
+        </div>
       </section>
 
       <section className="mt-6 rounded-lg border border-ocean-900/10 bg-white p-5 shadow-soft">
