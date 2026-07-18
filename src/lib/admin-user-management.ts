@@ -18,19 +18,17 @@ export const corporatePermissionOptions = [
 ] as const;
 
 export type CorporatePermissionValue = (typeof corporatePermissionOptions)[number]["value"];
+export const adminAssignableCorporatePermissionOptions = [
+  { value: "program.manage", label: "Corporate Admin" }
+] as const;
 export type AdminCreateUserAccess =
   | { type: "global"; roleKey: string; corporatePermission?: never }
   | { type: "partner"; roleKey: "partner"; corporatePermission?: never }
-  | { type: "corporate"; roleKey: "corporate_admin" | null; corporatePermission: CorporatePermissionValue };
+  | { type: "corporate"; roleKey: "corporate_admin"; corporatePermission: "program.manage" };
 
 export const adminCreateUserAccessOptions = [
   { value: "global:user", label: "User" },
-  { value: "corporate:program.manage", label: "Corporate Admin / Program Admin" },
-  { value: "corporate:esg_manager", label: "Corporate Admin / ESG Manager" },
-  { value: "corporate:finance_reviewer", label: "Finance Reviewer" },
-  { value: "corporate:executive_viewer", label: "Executive Viewer" },
-  { value: "corporate:employee_engagement", label: "Employee Engagement" },
-  { value: "corporate:auditor", label: "Auditor" },
+  { value: "corporate:program.manage", label: "Corporate Admin" },
   { value: "partner", label: "Partner" },
   { value: "global:admin", label: "Admin" }
 ] as const;
@@ -62,6 +60,12 @@ export function normalizeCorporatePermission(value: string | null | undefined): 
   return corporatePermissionOptions.some((option) => option.value === value) ? (value as CorporatePermissionValue) : "executive_viewer";
 }
 
+export function normalizeAdminCorporatePermission(value: string | null | undefined): "program.manage" {
+  void value;
+
+  return "program.manage";
+}
+
 export function normalizeAdminCreateUserAccess(value: string | null | undefined, fallbackRoleKey = "user"): AdminCreateUserAccess {
   const rawValue = String(value ?? "").trim();
 
@@ -70,12 +74,10 @@ export function normalizeAdminCreateUserAccess(value: string | null | undefined,
   }
 
   if (rawValue.startsWith("corporate:")) {
-    const corporatePermission = normalizeCorporatePermission(rawValue.slice("corporate:".length));
-
     return {
       type: "corporate",
-      roleKey: ["program.manage", "esg_manager"].includes(corporatePermission) ? "corporate_admin" : null,
-      corporatePermission
+      roleKey: "corporate_admin",
+      corporatePermission: normalizeAdminCorporatePermission(rawValue.slice("corporate:".length))
     };
   }
 

@@ -2,10 +2,12 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  adminAssignableCorporatePermissionOptions,
   adminCreateUserAccessOptions,
   defaultNameForGlobalRole,
   isSystemGlobalRole,
   normalizeAdminCreateUserAccess,
+  normalizeAdminCorporatePermission,
   normalizeCorporatePermission,
   normalizeGlobalRoleKey,
   normalizePartnerMembershipStatus,
@@ -30,22 +32,19 @@ test("admin scoped role values normalize defensively", () => {
   assert.equal(normalizePartnerMembershipStatus("unknown"), "active");
   assert.equal(normalizeCorporatePermission("auditor"), "auditor");
   assert.equal(normalizeCorporatePermission("unknown"), "executive_viewer");
+  assert.equal(normalizeAdminCorporatePermission("finance_reviewer"), "program.manage");
 });
 
-test("admin create user access options include RBAC matrix corporate sub-roles", () => {
+test("admin create user access options keep fine-grained corporate roles out of Terumbu admin creation", () => {
   const values = adminCreateUserAccessOptions.map((option) => option.value);
 
   assert.deepEqual(values, [
     "global:user",
     "corporate:program.manage",
-    "corporate:esg_manager",
-    "corporate:finance_reviewer",
-    "corporate:executive_viewer",
-    "corporate:employee_engagement",
-    "corporate:auditor",
     "partner",
     "global:admin"
   ]);
+  assert.deepEqual(adminAssignableCorporatePermissionOptions.map((option) => option.value), ["program.manage"]);
 });
 
 test("admin create user access normalizes global, partner, and scoped corporate roles", () => {
@@ -58,8 +57,8 @@ test("admin create user access normalizes global, partner, and scoped corporate 
   });
   assert.deepEqual(normalizeAdminCreateUserAccess("corporate:finance_reviewer"), {
     type: "corporate",
-    roleKey: null,
-    corporatePermission: "finance_reviewer"
+    roleKey: "corporate_admin",
+    corporatePermission: "program.manage"
   });
 });
 

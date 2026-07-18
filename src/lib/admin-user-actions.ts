@@ -26,7 +26,7 @@ import {
   defaultNameForGlobalRole,
   isSystemGlobalRole,
   normalizeAdminCreateUserAccess,
-  normalizeCorporatePermission,
+  normalizeAdminCorporatePermission,
   normalizeGlobalRoleKey,
   normalizePartnerMembershipStatus,
   safeAdminUsersReturnPath
@@ -817,7 +817,7 @@ export async function setCorporatePermissionAction(formData: FormData) {
   const actor = await requireRole(["admin"], "/admin/users");
   const userId = textValue(formData.get("userId"), 80);
   const corporateAccountId = textValue(formData.get("corporateAccountId"), 80);
-  const permission = normalizeCorporatePermission(textValue(formData.get("permission"), 120));
+  const permission = normalizeAdminCorporatePermission(textValue(formData.get("permission"), 120));
   const targetUser = userId ? await userExists(userId) : null;
 
   if (!targetUser || !corporateAccountId) {
