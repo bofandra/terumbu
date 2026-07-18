@@ -169,6 +169,10 @@ function isUuid(value: string) {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
 }
 
+function metadataObject(value: unknown) {
+  return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : {};
+}
+
 function auditMetadata(values: Record<string, unknown>) {
   return {
     source: "corporate_portal",
@@ -1478,9 +1482,8 @@ export async function updateCorporateBudgetAction(formData: FormData) {
 
   const category = textValue(formData.get("category"), 120);
   const allocatedAmount = parsePositiveAmount(formData.get("allocatedAmount"));
-  const spentAmount = parseNonNegativeAmount(formData.get("spentAmount"));
 
-  if (!category || !allocatedAmount || spentAmount === null) {
+  if (!category || !allocatedAmount) {
     redirect(`${returnPath}&error=budget`);
   }
 
@@ -1490,7 +1493,7 @@ export async function updateCorporateBudgetAction(formData: FormData) {
       programId: context.programId,
       category,
       allocatedAmount: allocatedAmount.toFixed(2),
-      spentAmount: spentAmount.toFixed(2),
+      spentAmount: "0.00",
       metadata: {
         updatedFrom: "corporate_portal"
       }
@@ -1499,7 +1502,6 @@ export async function updateCorporateBudgetAction(formData: FormData) {
       target: [corporateProgramBudgets.programId, corporateProgramBudgets.category],
       set: {
         allocatedAmount: allocatedAmount.toFixed(2),
-        spentAmount: spentAmount.toFixed(2),
         metadata: {
           updatedFrom: "corporate_portal"
         }
@@ -1512,15 +1514,95 @@ export async function updateCorporateBudgetAction(formData: FormData) {
     action: "corporate.budget.updated",
     entityType: "corporate_program_budgets",
     entityId: budget?.id,
+      metadata: {
+        programId: context.programId,
+        category,
+        allocatedAmount
+      }
+    });
+
+  redirect(`${returnPath}&saved=budget`);
+}
+
+export async function updateCorporateEvidenceSpendAction(formData: FormData) {
+  const requestedProgramId = textValue(formData.get("programId"), 80);
+  const fallbackReturnPath = requestedProgramId ? `/corporate/funding?programId=${encodeURIComponent(requestedProgramId)}` : "/corporate/funding";
+  const returnPath = safeRedirectPath(formData.get("returnTo"), fallbackReturnPath);
+  const user = await requireUser(returnPath);
+  const context = await corporateContext(user.id, requestedProgramId);
+
+  if (!context || !corporateCapabilitiesForPermission(context.permission).canManageFunding) {
+    redirectWithResult(returnPath, "error", "permission");
+  }
+
+  const evidenceId = textValue(formData.get("evidenceId"), 80);
+  const category = textValue(formData.get("category"), 120);
+  const spendAmount = parsePositiveAmount(formData.get("spendAmount"));
+
+  if (!evidenceId || !isUuid(evidenceId) || !category || !spendAmount) {
+    redirectWithResult(returnPath, "error", "spend");
+  }
+
+  const [budget] = await db
+    .select({ id: corporateProgramBudgets.id })
+    .from(corporateProgramBudgets)
+    .where(and(eq(corporateProgramBudgets.programId, context.programId), eq(corporateProgramBudgets.category, category)))
+    .limit(1);
+
+  if (!budget) {
+    redirectWithResult(returnPath, "error", "spend");
+  }
+
+  const [evidence] = await db
+    .select({
+      id: projectEvidence.id,
+      evidenceCode: projectEvidence.evidenceCode,
+      title: projectEvidence.title,
+      verificationStatus: projectEvidence.verificationStatus,
+      metadata: projectEvidence.metadata
+    })
+    .from(corporateEvidenceCenter)
+    .innerJoin(projectEvidence, eq(corporateEvidenceCenter.evidenceId, projectEvidence.id))
+    .where(and(eq(corporateEvidenceCenter.programId, context.programId), eq(corporateEvidenceCenter.evidenceId, evidenceId)))
+    .limit(1);
+
+  if (!evidence || evidence.verificationStatus !== "verified") {
+    redirectWithResult(returnPath, "error", "spend");
+  }
+
+  const now = new Date();
+  const metadata = {
+    ...metadataObject(evidence.metadata),
+    financeCategory: category,
+    financeSpendAmount: spendAmount,
+    financeSpendCurrency: "IDR",
+    financeSpendRecordedAt: now.toISOString(),
+    financeSpendRecordedByUserId: user.id
+  };
+
+  await db
+    .update(projectEvidence)
+    .set({
+      metadata,
+      updatedAt: now
+    })
+    .where(eq(projectEvidence.id, evidence.id));
+
+  await writeAuditLog({
+    actorUserId: user.id,
+    action: "corporate.evidence.spend_recorded",
+    entityType: "project_evidence",
+    entityId: evidence.id,
     metadata: {
       programId: context.programId,
+      evidenceCode: evidence.evidenceCode,
+      evidenceTitle: evidence.title,
       category,
-      allocatedAmount,
-      spentAmount
+      spendAmount
     }
   });
 
-  redirect(`${returnPath}&saved=budget`);
+  redirectWithResult(returnPath, "saved", "spend");
 }
 
 export async function updateCorporateEvidenceStatusAction(formData: FormData) {

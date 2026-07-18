@@ -196,6 +196,26 @@ async function getEvidenceReviewEventsByEvidenceIds(evidenceIds: string[]) {
   return grouped;
 }
 
+function evidenceFinanceCategory(metadata: unknown) {
+  return getMetadataString(metadata, "financeCategory") ?? getMetadataString(metadata, "budgetCategory");
+}
+
+function evidenceFinanceSpendAmount(metadata: unknown) {
+  const value = getMetadataNumberOrString(metadata, "financeSpendAmount") ?? getMetadataNumberOrString(metadata, "spendAmount");
+
+  if (typeof value === "number") {
+    return Number.isFinite(value) && value > 0 ? value : 0;
+  }
+
+  if (typeof value === "string") {
+    const parsed = Number(value.replace(/[^\d.]/g, ""));
+
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
+  }
+
+  return 0;
+}
+
 function latestEvidenceReviewNote(events: EvidenceReviewEventSummary[], fallback?: string | null) {
   const event = [...events].reverse().find((item) => item.note && item.visibility !== "internal");
 
@@ -4297,7 +4317,6 @@ export async function getCorporateDashboardData(userId: string, requestedProgram
   }
 
   const totalAllocated = budgets.reduce((total, budget) => total + toNumber(budget.allocatedAmount), 0);
-  const totalSpent = budgets.reduce((total, budget) => total + toNumber(budget.spentAmount), 0);
   const contributionTotal = contributionRows
     .filter((contribution) => contribution.status !== "cancelled")
     .reduce((total, contribution) => total + contribution.amountValue, 0);
@@ -4313,14 +4332,10 @@ export async function getCorporateDashboardData(userId: string, requestedProgram
   const campaignGoalContribution = contributionRows
     .filter((contribution) => contribution.countsTowardCampaignGoal && ["committed", "disbursed", "verified"].includes(contribution.status))
     .reduce((total, contribution) => total + contribution.amountValue, 0);
-  const budgetUsed = totalAllocated > 0 ? Math.round((totalSpent / totalAllocated) * 100) : 0;
   const committedFunding = toNumber(program.budgetAmount);
   const fundsDisbursed = totalAllocated;
-  const verifiedUtilization = totalSpent;
-  const pendingVerification = Math.max(0, fundsDisbursed - verifiedUtilization);
   const remainingCommitment = Math.max(0, committedFunding - fundsDisbursed);
   const disbursementRate = committedFunding > 0 ? Math.round((fundsDisbursed / committedFunding) * 100) : 0;
-  const verifiedUtilizationRate = fundsDisbursed > 0 ? Math.round((verifiedUtilization / fundsDisbursed) * 100) : 0;
   const periodTotal = Math.max(1, program.endsAt.getTime() - program.startsAt.getTime());
   const periodProgress = Math.min(100, Math.max(0, Math.round(((now.getTime() - program.startsAt.getTime()) / periodTotal) * 100)));
   const nextReportingDeadline = new Date(now.getFullYear(), now.getMonth() + 1, 15);
@@ -4337,6 +4352,8 @@ export async function getCorporateDashboardData(userId: string, requestedProgram
     const derivedMetricValue = survivalRate ? `${survivalRate}%` : sortedWaste ? `${sortedWaste} kg` : seedlingsReady;
     const metricValue = explicitMetricValue ?? derivedMetricValue;
     const reviewEvents = evidenceReviewEventsById.get(item.id) ?? [];
+    const financeCategory = evidenceFinanceCategory(item.metadata);
+    const financeSpendAmount = evidenceFinanceSpendAmount(item.metadata);
 
     return {
       ...item,
@@ -4348,9 +4365,29 @@ export async function getCorporateDashboardData(userId: string, requestedProgram
       observation: getMetadataString(item.metadata, "observation") ?? getMetadataString(item.metadata, "summary"),
       metricLabel,
       metricValue,
+      financeCategory,
+      financeSpendAmount,
+      financeSpendCurrency: getMetadataString(item.metadata, "financeSpendCurrency") ?? "IDR",
       sourceHref: evidenceSourceHref(item.campaignSlug, item.evidenceCode) ?? item.fileUrl
     };
   });
+
+  const verifiedEvidenceSpendByCategory = new Map<string, number>();
+  const verifiedEvidenceSpendCountByCategory = new Map<string, number>();
+
+  for (const item of corporateEvidence) {
+    if (item.verificationStatus !== "verified" || !item.financeCategory || item.financeSpendAmount <= 0) {
+      continue;
+    }
+
+    verifiedEvidenceSpendByCategory.set(item.financeCategory, (verifiedEvidenceSpendByCategory.get(item.financeCategory) ?? 0) + item.financeSpendAmount);
+    verifiedEvidenceSpendCountByCategory.set(item.financeCategory, (verifiedEvidenceSpendCountByCategory.get(item.financeCategory) ?? 0) + 1);
+  }
+
+  const verifiedUtilization = budgets.reduce((total, budget) => total + (verifiedEvidenceSpendByCategory.get(budget.category) ?? 0), 0);
+  const pendingVerification = Math.max(0, fundsDisbursed - verifiedUtilization);
+  const verifiedUtilizationRate = fundsDisbursed > 0 ? Math.round((verifiedUtilization / fundsDisbursed) * 100) : 0;
+  const budgetUsed = totalAllocated > 0 ? Math.round((verifiedUtilization / totalAllocated) * 100) : 0;
 
   function normalizeProjectStatus(rawStatus: string, utilization: number) {
     const value = rawStatus.toLowerCase();
@@ -4663,7 +4700,7 @@ export async function getCorporateDashboardData(userId: string, requestedProgram
   };
   const budgetVariance = budgets.map((budget) => {
     const planned = toNumber(budget.allocatedAmount);
-    const actual = toNumber(budget.spentAmount);
+    const actual = verifiedEvidenceSpendByCategory.get(budget.category) ?? 0;
     const variance = planned > 0 ? Math.round(((actual - planned) / planned) * 100) : 0;
 
     return {
@@ -4671,6 +4708,7 @@ export async function getCorporateDashboardData(userId: string, requestedProgram
       planned,
       actual,
       variance,
+      evidenceCount: verifiedEvidenceSpendCountByCategory.get(budget.category) ?? 0,
       status: Math.abs(variance) <= 10 ? "Within tolerance" : variance > 10 ? "Requires explanation" : "Below budget"
     };
   });

@@ -4,7 +4,7 @@ import { Button, ButtonLink } from "@/components/ui/button";
 import { ProgressMeter } from "@/components/ui/progress-meter";
 import { requireUser } from "@/lib/auth";
 import { requireCorporateDashboardData } from "@/lib/corporate-access";
-import { updateCorporateBudgetAction } from "@/lib/corporate-actions";
+import { updateCorporateBudgetAction, updateCorporateEvidenceSpendAction } from "@/lib/corporate-actions";
 import { cn, formatCurrency } from "@/lib/utils";
 
 export const metadata = {
@@ -45,6 +45,7 @@ export default async function CorporateFundingPage({ searchParams }: CorporateFu
   const unbudgetedAmount = Math.max(0, data.financials.committedFunding - data.financials.fundsDisbursed);
   const financeCampaignRows = data.portfolio.slice(0, 6);
   const selectedProgramHref = `?programId=${encodeURIComponent(data.program.programId)}`;
+  const verifiedEvidenceOptions = data.evidence.filter((evidence) => evidence.verificationStatus === "verified");
 
   return (
     <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
@@ -69,7 +70,9 @@ export default async function CorporateFundingPage({ searchParams }: CorporateFu
       </div>
 
       {params?.saved ? (
-        <p className="mt-6 rounded-lg border border-kelp-500/20 bg-kelp-100 px-4 py-3 text-sm font-bold text-kelp-700">Budget utilization updated.</p>
+        <p className="mt-6 rounded-lg border border-kelp-500/20 bg-kelp-100 px-4 py-3 text-sm font-bold text-kelp-700">
+          {params.saved === "spend" ? "Evidence spend linked to finance category." : "Category budget updated."}
+        </p>
       ) : null}
       {params?.error ? (
         <p className="mt-6 rounded-lg border border-coral-500/20 bg-coral-100 px-4 py-3 text-sm font-bold text-coral-700">Budget update could not be saved with the current input or permission.</p>
@@ -204,51 +207,84 @@ export default async function CorporateFundingPage({ searchParams }: CorporateFu
 
       <section className="mt-6 rounded-lg border border-ocean-900/10 bg-white p-5 shadow-soft">
         <p className="text-sm font-bold uppercase text-coral-700">Finance actions</p>
-        <h2 className="mt-2 text-xl font-bold tracking-normal text-ocean-900">Update category budget and verified spend</h2>
+        <h2 className="mt-2 text-xl font-bold tracking-normal text-ocean-900">Update category budget and evidence-backed spend</h2>
         {canManageFunding ? (
-          <form action={updateCorporateBudgetAction} className="mt-5 grid gap-3 md:grid-cols-[minmax(220px,1fr)_180px_180px_auto]">
-            <input type="hidden" name="programId" value={data.program.programId} />
-            <label className="grid gap-2 text-sm font-bold text-ocean-900">
-              Category
-              <select name="category" className="min-h-11 rounded-lg border border-ocean-900/12 bg-white px-3 text-sm font-semibold text-ocean-900 outline-none">
-                {data.budgetVariance.map((budget) => (
-                  <option key={budget.category} value={budget.category}>
-                    {budget.category}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="grid gap-2 text-sm font-bold text-ocean-900">
-              Category budget
-              <input
-                name="allocatedAmount"
-                type="number"
-                min="1"
-                step="1000000"
-                placeholder="IDR"
-                className="min-h-11 rounded-lg border border-ocean-900/12 px-3 text-sm font-semibold text-ocean-900 outline-none"
-                required
-              />
-            </label>
-            <label className="grid gap-2 text-sm font-bold text-ocean-900">
-              Verified spend
-              <input
-                name="spentAmount"
-                type="number"
-                min="0"
-                step="1000000"
-                placeholder="IDR"
-                className="min-h-11 rounded-lg border border-ocean-900/12 px-3 text-sm font-semibold text-ocean-900 outline-none"
-                required
-              />
-            </label>
-            <Button type="submit" tone="secondary" className="self-end">
-              Save Finance Update
-            </Button>
-          </form>
+          <div className="mt-5 grid gap-5">
+            <form action={updateCorporateBudgetAction} className="grid gap-3 md:grid-cols-[minmax(220px,1fr)_180px_auto]">
+              <input type="hidden" name="programId" value={data.program.programId} />
+              <label className="grid gap-2 text-sm font-bold text-ocean-900">
+                Category
+                <select name="category" className="min-h-11 rounded-lg border border-ocean-900/12 bg-white px-3 text-sm font-semibold text-ocean-900 outline-none">
+                  {data.budgetVariance.map((budget) => (
+                    <option key={budget.category} value={budget.category}>
+                      {budget.category}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="grid gap-2 text-sm font-bold text-ocean-900">
+                Category budget
+                <input
+                  name="allocatedAmount"
+                  type="number"
+                  min="1"
+                  step="1000000"
+                  placeholder="IDR"
+                  className="min-h-11 rounded-lg border border-ocean-900/12 px-3 text-sm font-semibold text-ocean-900 outline-none"
+                  required
+                />
+              </label>
+              <Button type="submit" tone="secondary" className="self-end">
+                Save Category Budget
+              </Button>
+            </form>
+
+            <form action={updateCorporateEvidenceSpendAction} className="grid gap-3 border-t border-ocean-900/10 pt-5 xl:grid-cols-[minmax(260px,1fr)_220px_180px_auto]">
+              <input type="hidden" name="programId" value={data.program.programId} />
+              <input type="hidden" name="returnTo" value={`/corporate/funding${selectedProgramHref}`} />
+              <label className="grid gap-2 text-sm font-bold text-ocean-900">
+                Verified evidence
+                <select name="evidenceId" className="min-h-11 rounded-lg border border-ocean-900/12 bg-white px-3 text-sm font-semibold text-ocean-900 outline-none" disabled={verifiedEvidenceOptions.length === 0}>
+                  {verifiedEvidenceOptions.map((evidence) => (
+                    <option key={evidence.id} value={evidence.id}>
+                      {evidence.title} · {evidence.campaignTitle}
+                      {evidence.financeCategory ? ` · ${evidence.financeCategory}` : ""}
+                      {evidence.financeSpendAmount > 0 ? ` · ${formatCurrency(evidence.financeSpendAmount)}` : ""}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="grid gap-2 text-sm font-bold text-ocean-900">
+                Finance category
+                <select name="category" className="min-h-11 rounded-lg border border-ocean-900/12 bg-white px-3 text-sm font-semibold text-ocean-900 outline-none" disabled={verifiedEvidenceOptions.length === 0}>
+                  {data.budgetVariance.map((budget) => (
+                    <option key={budget.category} value={budget.category}>
+                      {budget.category}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="grid gap-2 text-sm font-bold text-ocean-900">
+                Evidence spend
+                <input
+                  name="spendAmount"
+                  type="number"
+                  min="1"
+                  step="1000000"
+                  placeholder="IDR"
+                  className="min-h-11 rounded-lg border border-ocean-900/12 px-3 text-sm font-semibold text-ocean-900 outline-none"
+                  disabled={verifiedEvidenceOptions.length === 0}
+                  required
+                />
+              </label>
+              <Button type="submit" tone="secondary" className="self-end" disabled={verifiedEvidenceOptions.length === 0}>
+                Link Evidence Spend
+              </Button>
+            </form>
+          </div>
         ) : (
           <p className="mt-5 max-w-xl rounded-lg border border-ocean-900/10 bg-ocean-50 px-4 py-3 text-sm font-semibold leading-6 text-ocean-900/68">
-            Your corporate role can review finance utilization, but cannot change category budget or verified spend.
+            Your corporate role can review finance utilization, but cannot change category budgets or link verified evidence spend.
           </p>
         )}
       </section>
@@ -308,6 +344,7 @@ export default async function CorporateFundingPage({ searchParams }: CorporateFu
                 <th className="border-b border-ocean-900/10 pb-3 pr-4">Category</th>
                 <th className="border-b border-ocean-900/10 pb-3 pr-4">Planned</th>
                 <th className="border-b border-ocean-900/10 pb-3 pr-4">Actual</th>
+                <th className="border-b border-ocean-900/10 pb-3 pr-4">Evidence</th>
                 <th className="border-b border-ocean-900/10 pb-3 pr-4">Variance</th>
                 <th className="border-b border-ocean-900/10 pb-3">Status</th>
               </tr>
@@ -318,6 +355,7 @@ export default async function CorporateFundingPage({ searchParams }: CorporateFu
                   <td className="border-b border-ocean-900/8 py-4 pr-4 font-bold text-ocean-900">{budget.category}</td>
                   <td className="border-b border-ocean-900/8 py-4 pr-4 text-ocean-900/68">{formatCurrency(budget.planned)}</td>
                   <td className="border-b border-ocean-900/8 py-4 pr-4 text-ocean-900/68">{formatCurrency(budget.actual)}</td>
+                  <td className="border-b border-ocean-900/8 py-4 pr-4 text-ocean-900/68">{budget.evidenceCount.toLocaleString("id-ID")} linked</td>
                   <td className="border-b border-ocean-900/8 py-4 pr-4 font-bold text-ocean-900">{budget.variance}%</td>
                   <td className="border-b border-ocean-900/8 py-4">
                     <span className={cn("rounded-full px-3 py-1 text-xs font-bold", statusClass(budget.status))}>{budget.status}</span>
@@ -346,7 +384,7 @@ export default async function CorporateFundingPage({ searchParams }: CorporateFu
               </div>
               <div className="mt-4 grid gap-3 sm:grid-cols-2">
                 <p className="rounded-lg bg-white px-3 py-2 text-sm font-bold text-ocean-900">Amount {formatCurrency(schedule.amount)}</p>
-                <p className="rounded-lg bg-white px-3 py-2 text-sm font-bold text-ocean-900">Disbursed {formatCurrency(schedule.disbursed)}</p>
+                <p className="rounded-lg bg-white px-3 py-2 text-sm font-bold text-ocean-900">Verified {formatCurrency(schedule.disbursed)}</p>
               </div>
               <ProgressMeter value={schedule.utilization} label={`${schedule.milestone} utilization`} className="mt-4 h-2" indicatorClassName={schedule.status === "Needs Approval" ? "bg-coral-500" : "bg-kelp-500"} trackClassName="bg-white" />
               <p className="mt-3 flex items-center gap-2 text-xs font-bold text-ocean-900/58">

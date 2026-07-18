@@ -768,7 +768,10 @@ async function seed() {
           observation: "Baseline record before the first restoration table batch was installed.",
           metricLabel: "Tagged fragments",
           metricValue: 0,
-          reviewer: "field_partner"
+          reviewer: "field_partner",
+          financeCategory: "Employee learning",
+          financeSpendAmount: 54000000,
+          financeSpendCurrency: "IDR"
         }
       },
       {
@@ -791,7 +794,10 @@ async function seed() {
           metricLabel: "Tagged fragments",
           metricValue: 2350,
           survivalRate: 94,
-          reviewer: "field_partner"
+          reviewer: "field_partner",
+          financeCategory: "Restoration portfolio",
+          financeSpendAmount: 238000000,
+          financeSpendCurrency: "IDR"
         }
       },
       {
@@ -834,7 +840,10 @@ async function seed() {
           metricLabel: "Seedlings ready",
           metricValue: 18400,
           seedlingsReady: 18400,
-          survivalRate: 89
+          survivalRate: 89,
+          financeCategory: "Verification and reports",
+          financeSpendAmount: 48000000,
+          financeSpendCurrency: "IDR"
         }
       },
       {
