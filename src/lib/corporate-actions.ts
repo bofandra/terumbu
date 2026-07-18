@@ -4,7 +4,7 @@ import { randomBytes } from "node:crypto";
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 
-import { and, eq, inArray, lte, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, lte, sql } from "drizzle-orm";
 import { redirect } from "next/navigation";
 
 import { db } from "@/db/client";
@@ -103,8 +103,8 @@ function escapeHtml(value: string | number | null | undefined) {
     .replaceAll("'", "&#039;");
 }
 
-async function corporateContext(userId: string) {
-  const [context] = await db
+async function corporateContext(userId: string, requestedProgramId?: string | null) {
+  const contextRows = await db
     .select({
       accountId: corporateAccounts.id,
       accountName: corporateAccounts.name,
@@ -117,7 +117,8 @@ async function corporateContext(userId: string) {
     .innerJoin(corporateAccounts, eq(corporatePermissions.corporateAccountId, corporateAccounts.id))
     .innerJoin(corporatePrograms, eq(corporatePrograms.corporateAccountId, corporateAccounts.id))
     .where(eq(corporatePermissions.userId, userId))
-    .limit(1);
+    .orderBy(desc(corporatePrograms.startsAt), desc(corporatePrograms.createdAt));
+  const context = requestedProgramId ? contextRows.find((item) => item.programId === requestedProgramId) : contextRows[0];
 
   return context ?? null;
 }
@@ -725,7 +726,9 @@ export async function runDueCorporateReportExportsAction(_formData: FormData) {
 
 export async function fundCorporateProjectAction(formData: FormData) {
   const user = await requireUser("/corporate/projects");
-  const context = await corporateContext(user.id);
+  const requestedProgramId = textValue(formData.get("programId"), 80);
+  const context = await corporateContext(user.id, requestedProgramId);
+  const returnPath = context ? `/corporate/projects?programId=${encodeURIComponent(context.programId)}` : "/corporate/projects";
 
   if (!context || !corporateCapabilitiesForPermission(context.permission).canManageProjects) {
     redirect("/corporate/projects?error=permission");
@@ -741,7 +744,7 @@ export async function fundCorporateProjectAction(formData: FormData) {
   const notes = textValue(formData.get("notes"), 500) || null;
 
   if (!campaignId || !isUuid(campaignId) || !allocationAmount) {
-    redirect("/corporate/projects?error=project");
+    redirect(`${returnPath}&error=project`);
   }
 
   const [campaign] = await db
@@ -755,7 +758,7 @@ export async function fundCorporateProjectAction(formData: FormData) {
     .limit(1);
 
   if (!campaign) {
-    redirect("/corporate/projects?error=project");
+    redirect(`${returnPath}&error=project`);
   }
 
   const [previousContribution] = await db
@@ -907,7 +910,7 @@ export async function fundCorporateProjectAction(formData: FormData) {
     }
   });
 
-  redirect("/corporate/projects?saved=project");
+  redirect(`${returnPath}&saved=project`);
 }
 
 export async function createCorporateEmployeeEventAction(formData: FormData) {
@@ -1459,7 +1462,9 @@ export async function acceptCorporateEmployeeInviteAction(formData: FormData) {
 
 export async function updateCorporateBudgetAction(formData: FormData) {
   const user = await requireUser("/corporate/funding");
-  const context = await corporateContext(user.id);
+  const requestedProgramId = textValue(formData.get("programId"), 80);
+  const context = await corporateContext(user.id, requestedProgramId);
+  const returnPath = context ? `/corporate/funding?programId=${encodeURIComponent(context.programId)}` : "/corporate/funding";
 
   if (!context || !corporateCapabilitiesForPermission(context.permission).canManageFunding) {
     redirect("/corporate/funding?error=permission");
@@ -1470,7 +1475,7 @@ export async function updateCorporateBudgetAction(formData: FormData) {
   const spentAmount = parseNonNegativeAmount(formData.get("spentAmount"));
 
   if (!category || !allocatedAmount || spentAmount === null) {
-    redirect("/corporate/funding?error=budget");
+    redirect(`${returnPath}&error=budget`);
   }
 
   const [budget] = await db
@@ -1509,7 +1514,7 @@ export async function updateCorporateBudgetAction(formData: FormData) {
     }
   });
 
-  redirect("/corporate/funding?saved=budget");
+  redirect(`${returnPath}&saved=budget`);
 }
 
 export async function updateCorporateEvidenceStatusAction(formData: FormData) {

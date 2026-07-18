@@ -16,6 +16,7 @@ export const dynamic = "force-dynamic";
 type CorporateFundingPageProps = {
   searchParams?: Promise<{
     error?: string;
+    programId?: string;
     saved?: string;
   }>;
 };
@@ -39,10 +40,11 @@ function statusClass(status: string) {
 export default async function CorporateFundingPage({ searchParams }: CorporateFundingPageProps) {
   const params = await searchParams;
   const user = await requireUser("/corporate/funding");
-  const data = await requireCorporateDashboardData(user.id, "/corporate/funding");
+  const data = await requireCorporateDashboardData(user.id, "/corporate/funding", params?.programId);
   const canManageFunding = data.capabilities.canManageFunding;
   const unallocatedBudget = Math.max(0, data.financials.committedFunding - data.financials.fundsDisbursed);
   const projectFundingRows = data.portfolio.slice(0, 6);
+  const selectedProgramHref = `?programId=${encodeURIComponent(data.program.programId)}`;
 
   return (
     <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
@@ -66,6 +68,25 @@ export default async function CorporateFundingPage({ searchParams }: CorporateFu
       {params?.error ? (
         <p className="mt-6 rounded-lg border border-coral-500/20 bg-coral-100 px-4 py-3 text-sm font-bold text-coral-700">Budget update could not be saved with the current input or permission.</p>
       ) : null}
+
+      <section className="mt-6 border-y border-ocean-900/10 bg-white/70 py-4" aria-label="Funding program selector">
+        <form action="/corporate/funding" className="grid gap-3 sm:grid-cols-[minmax(240px,1fr)_auto] sm:items-end">
+          <label className="grid gap-2 text-sm font-bold text-ocean-900">
+            Program
+            <select name="programId" defaultValue={data.program.programId} className="min-h-11 rounded-lg border border-ocean-900/12 bg-white px-3 text-sm font-semibold text-ocean-900 outline-none">
+              {data.programOptions.map((program) => (
+                <option key={program.programId} value={program.programId}>
+                  {program.programName} · {formatCurrency(program.budgetAmountValue)} · {program.status}
+                </option>
+              ))}
+            </select>
+          </label>
+          <Button type="submit" tone="secondary">
+            View Program
+            <ArrowRight size={17} aria-hidden="true" />
+          </Button>
+        </form>
+      </section>
 
       <section className="mt-6 grid gap-4 md:grid-cols-4">
         {[
@@ -97,7 +118,7 @@ export default async function CorporateFundingPage({ searchParams }: CorporateFu
               Program funding starts as the approved budget, becomes project allocations, and is then tracked as corporate contribution records with disbursement, verification, and public-goal status.
             </p>
           </div>
-          <ButtonLink href="/corporate/projects" tone="ghost" className="self-start">
+          <ButtonLink href={`/corporate/projects${selectedProgramHref}`} tone="ghost" className="self-start">
             Open Project Funding
             <ArrowRight size={17} aria-hidden="true" />
           </ButtonLink>
@@ -180,6 +201,7 @@ export default async function CorporateFundingPage({ searchParams }: CorporateFu
         <h2 className="mt-2 text-xl font-bold tracking-normal text-ocean-900">Update allocation and verified utilization</h2>
         {canManageFunding ? (
           <form action={updateCorporateBudgetAction} className="mt-5 grid gap-3 md:grid-cols-[minmax(220px,1fr)_180px_180px_auto]">
+            <input type="hidden" name="programId" value={data.program.programId} />
             <label className="grid gap-2 text-sm font-bold text-ocean-900">
               Category
               <select name="category" className="min-h-11 rounded-lg border border-ocean-900/12 bg-white px-3 text-sm font-semibold text-ocean-900 outline-none">

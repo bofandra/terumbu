@@ -5,8 +5,8 @@ import { getCorporateDashboardData } from "@/lib/queries";
 
 export type CorporateDashboardData = NonNullable<Awaited<ReturnType<typeof getCorporateDashboardData>>>;
 
-export async function requireCorporateDashboardData(userId: string, nextPath = "/corporate"): Promise<CorporateDashboardData> {
-  const data = await getCorporateDashboardData(userId);
+export async function requireCorporateDashboardData(userId: string, nextPath = "/corporate", programId?: string | null): Promise<CorporateDashboardData> {
+  const data = await getCorporateDashboardData(userId, programId);
 
   if (!data) {
     redirect(forbiddenRedirectPath(nextPath));

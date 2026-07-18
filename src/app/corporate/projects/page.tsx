@@ -1,5 +1,7 @@
+import { ArrowRight, BriefcaseBusiness, CircleDollarSign, ShieldCheck } from "lucide-react";
+
 import { CorporateProjectInspector } from "@/components/corporate-project-inspector";
-import { Button } from "@/components/ui/button";
+import { Button, ButtonLink } from "@/components/ui/button";
 import { FormTabs } from "@/components/ui/form-tabs";
 import { requireUser } from "@/lib/auth";
 import { requireCorporateDashboardData } from "@/lib/corporate-access";
@@ -16,6 +18,7 @@ export const dynamic = "force-dynamic";
 type CorporateProjectsPageProps = {
   searchParams?: Promise<{
     error?: string;
+    programId?: string;
     project?: string;
     saved?: string;
   }>;
@@ -28,9 +31,10 @@ function dateString(value: Date | null | undefined) {
 export default async function CorporateProjectsPage({ searchParams }: CorporateProjectsPageProps) {
   const params = await searchParams;
   const user = await requireUser("/corporate/projects");
-  const data = await requireCorporateDashboardData(user.id, "/corporate/projects");
-  const projectOptions = await getCorporateProjectOptions(user.id);
+  const data = await requireCorporateDashboardData(user.id, "/corporate/projects", params?.programId);
+  const projectOptions = await getCorporateProjectOptions(user.id, data.program.programId);
   const canManageProjects = data.capabilities.canManageProjects;
+  const selectedProgramHref = `?programId=${encodeURIComponent(data.program.programId)}`;
 
   const inspectorProjects = data.portfolio.map((project) => ({
     campaignSlug: project.campaignSlug,
@@ -67,6 +71,52 @@ export default async function CorporateProjectsPage({ searchParams }: CorporateP
       <p className="mt-2 max-w-2xl text-sm font-semibold leading-6 text-ocean-900/62">
         Projects are funded conservation campaigns inside this program. Use this page to allocate corporate support, track milestones, and inspect project evidence.
       </p>
+
+      <section className="mt-6 border-y border-ocean-900/10 bg-white/70 py-4" aria-label="Program project funding relationship">
+        <div className="grid gap-3 lg:grid-cols-[minmax(260px,1fr)_auto] lg:items-end">
+          <form action="/corporate/projects" className="grid gap-3 sm:grid-cols-[minmax(220px,1fr)_auto] sm:items-end">
+            <label className="grid gap-2 text-sm font-bold text-ocean-900">
+              Program
+              <select name="programId" defaultValue={data.program.programId} className="min-h-11 rounded-lg border border-ocean-900/12 bg-white px-3 text-sm font-semibold text-ocean-900 outline-none">
+                {data.programOptions.map((program) => (
+                  <option key={program.programId} value={program.programId}>
+                    {program.programName} · {formatCurrency(program.budgetAmountValue)} · {program.status}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <Button type="submit" tone="secondary">
+              View Program
+              <ArrowRight className="size-4" aria-hidden="true" />
+            </Button>
+          </form>
+          <ButtonLink href={`/corporate/funding${selectedProgramHref}`} tone="ghost" className="justify-self-start lg:justify-self-end">
+            Funding
+            <ArrowRight className="size-4" aria-hidden="true" />
+          </ButtonLink>
+        </div>
+
+        <div className="mt-4 grid gap-3 md:grid-cols-3">
+          {[
+            { label: "Program", value: data.program.programName, support: `${formatCurrency(data.financials.committedFunding)} approved budget`, icon: BriefcaseBusiness },
+            { label: "Projects", value: `${data.portfolio.length.toLocaleString("id-ID")} funded`, support: `${formatCurrency(data.financials.fundsDisbursed)} allocated from this program`, icon: ShieldCheck },
+            { label: "Funding", value: formatCurrency(data.financials.contributionTotal), support: `${data.contributions.length.toLocaleString("id-ID")} ledger records`, icon: CircleDollarSign }
+          ].map((item) => {
+            const Icon = item.icon;
+
+            return (
+              <div key={item.label} className="rounded-lg border border-ocean-900/10 bg-sand-50 p-3">
+                <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-normal text-ocean-900/46">
+                  <Icon className="size-4" aria-hidden="true" />
+                  {item.label}
+                </div>
+                <p className="mt-2 font-bold text-ocean-900">{item.value}</p>
+                <p className="mt-1 text-sm font-semibold leading-6 text-ocean-900/58">{item.support}</p>
+              </div>
+            );
+          })}
+        </div>
+      </section>
 
       {params?.saved ? (
         <p className="mt-6 rounded-lg border border-kelp-500/20 bg-kelp-100 px-4 py-3 text-sm font-bold text-kelp-700">Corporate project portfolio updated.</p>
@@ -106,6 +156,7 @@ export default async function CorporateProjectsPage({ searchParams }: CorporateP
             </div>
             {canManageProjects ? (
               <form action={fundCorporateProjectAction} className="grid gap-2 xl:grid-cols-[minmax(260px,1fr)_160px_150px_150px_auto]">
+                <input type="hidden" name="programId" value={data.program.programId} />
                 <label className="grid gap-2 text-sm font-bold text-ocean-900">
                   Project
                   <select name="campaignId" className="min-h-11 rounded-lg border border-ocean-900/12 bg-white px-3 text-sm font-semibold text-ocean-900 outline-none">

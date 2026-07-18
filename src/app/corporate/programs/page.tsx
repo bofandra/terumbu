@@ -1,6 +1,6 @@
-import { BriefcaseBusiness, PlusCircle, Save } from "lucide-react";
+import { ArrowRight, BriefcaseBusiness, CircleDollarSign, PlusCircle, Save, ShieldCheck } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
+import { Button, ButtonLink } from "@/components/ui/button";
 import { FormTabs } from "@/components/ui/form-tabs";
 import { requireUser } from "@/lib/auth";
 import { requireCorporateDashboardData } from "@/lib/corporate-access";
@@ -133,46 +133,70 @@ export default async function CorporateProgramsPage({ searchParams }: CorporateP
             {registry.programs.map((program) => (
               <article key={program.id} className="rounded-lg border border-ocean-900/10 bg-sand-50 p-4">
                 {registry.canManagePrograms ? (
-                  <form action={updateCorporateProgramAction} className="grid gap-3 lg:grid-cols-[1.2fr_150px_150px_170px_110px_140px_auto]">
-                    <input type="hidden" name="programId" value={program.id} />
-                    <label className="grid gap-2 text-sm font-bold text-ocean-900">
-                      Name
-                      <input name="name" defaultValue={program.name} className="min-h-11 rounded-lg border border-ocean-900/12 bg-white px-3 text-sm font-semibold text-ocean-900 outline-none" required />
-                    </label>
-                    <label className="grid gap-2 text-sm font-bold text-ocean-900">
-                      Starts
-                      <input name="startsAt" type="date" defaultValue={dateInputValue(program.startsAt)} className="min-h-11 rounded-lg border border-ocean-900/12 bg-white px-3 text-sm font-semibold text-ocean-900 outline-none" required />
-                    </label>
-                    <label className="grid gap-2 text-sm font-bold text-ocean-900">
-                      Ends
-                      <input name="endsAt" type="date" defaultValue={dateInputValue(program.endsAt)} className="min-h-11 rounded-lg border border-ocean-900/12 bg-white px-3 text-sm font-semibold text-ocean-900 outline-none" required />
-                    </label>
-                    <label className="grid gap-2 text-sm font-bold text-ocean-900">
-                      Budget
-                      <input name="budgetAmount" inputMode="decimal" defaultValue={program.budgetAmountValue} className="min-h-11 rounded-lg border border-ocean-900/12 bg-white px-3 text-sm font-semibold text-ocean-900 outline-none" required />
-                    </label>
-                    <label className="grid gap-2 text-sm font-bold text-ocean-900">
-                      Currency
-                      <input name="currency" defaultValue={program.currency} className="min-h-11 rounded-lg border border-ocean-900/12 bg-white px-3 text-sm font-semibold text-ocean-900 outline-none" required />
-                    </label>
-                    <label className="grid gap-2 text-sm font-bold text-ocean-900">
-                      Status
-                      <select name="status" defaultValue={program.status} className="min-h-11 rounded-lg border border-ocean-900/12 bg-white px-3 text-sm font-semibold text-ocean-900 outline-none">
-                        {programStatuses.map((status) => <option key={status} value={status}>{status}</option>)}
-                      </select>
-                    </label>
-                    <Button type="submit" tone="secondary" className="self-end">
-                      <Save size={17} aria-hidden="true" />
-                      Save
-                    </Button>
-                  </form>
+                  <>
+                    <form action={updateCorporateProgramAction} className="grid gap-3 lg:grid-cols-[1.2fr_150px_150px_170px_110px_140px_auto]">
+                      <input type="hidden" name="programId" value={program.id} />
+                      <label className="grid gap-2 text-sm font-bold text-ocean-900">
+                        Name
+                        <input name="name" defaultValue={program.name} className="min-h-11 rounded-lg border border-ocean-900/12 bg-white px-3 text-sm font-semibold text-ocean-900 outline-none" required />
+                      </label>
+                      <label className="grid gap-2 text-sm font-bold text-ocean-900">
+                        Starts
+                        <input name="startsAt" type="date" defaultValue={dateInputValue(program.startsAt)} className="min-h-11 rounded-lg border border-ocean-900/12 bg-white px-3 text-sm font-semibold text-ocean-900 outline-none" required />
+                      </label>
+                      <label className="grid gap-2 text-sm font-bold text-ocean-900">
+                        Ends
+                        <input name="endsAt" type="date" defaultValue={dateInputValue(program.endsAt)} className="min-h-11 rounded-lg border border-ocean-900/12 bg-white px-3 text-sm font-semibold text-ocean-900 outline-none" required />
+                      </label>
+                      <label className="grid gap-2 text-sm font-bold text-ocean-900">
+                        Budget
+                        <input name="budgetAmount" inputMode="decimal" defaultValue={program.budgetAmountValue} className="min-h-11 rounded-lg border border-ocean-900/12 bg-white px-3 text-sm font-semibold text-ocean-900 outline-none" required />
+                      </label>
+                      <label className="grid gap-2 text-sm font-bold text-ocean-900">
+                        Currency
+                        <input name="currency" defaultValue={program.currency} className="min-h-11 rounded-lg border border-ocean-900/12 bg-white px-3 text-sm font-semibold text-ocean-900 outline-none" required />
+                      </label>
+                      <label className="grid gap-2 text-sm font-bold text-ocean-900">
+                        Status
+                        <select name="status" defaultValue={program.status} className="min-h-11 rounded-lg border border-ocean-900/12 bg-white px-3 text-sm font-semibold text-ocean-900 outline-none">
+                          {programStatuses.map((status) => <option key={status} value={status}>{status}</option>)}
+                        </select>
+                      </label>
+                      <Button type="submit" tone="secondary" className="self-end">
+                        <Save size={17} aria-hidden="true" />
+                        Save
+                      </Button>
+                    </form>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      <ButtonLink href={`/corporate/projects?programId=${encodeURIComponent(program.id)}`} tone="ghost">
+                        <ShieldCheck size={17} aria-hidden="true" />
+                        Projects
+                      </ButtonLink>
+                      <ButtonLink href={`/corporate/funding?programId=${encodeURIComponent(program.id)}`} tone="ghost">
+                        <CircleDollarSign size={17} aria-hidden="true" />
+                        Funding
+                        <ArrowRight size={17} aria-hidden="true" />
+                      </ButtonLink>
+                    </div>
+                  </>
                 ) : (
                   <div className="flex flex-col justify-between gap-4 lg:flex-row lg:items-center">
                     <div>
                       <h3 className="font-bold text-ocean-900">{program.name}</h3>
                       <p className="mt-1 text-sm text-ocean-900/58">{program.startsAt.toLocaleDateString("id-ID", { dateStyle: "medium" })} – {program.endsAt.toLocaleDateString("id-ID", { dateStyle: "medium" })}</p>
                     </div>
-                    <div className="text-sm font-bold text-ocean-900">{formatCurrency(program.budgetAmountValue)}</div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <div className="text-sm font-bold text-ocean-900">{formatCurrency(program.budgetAmountValue)}</div>
+                      <ButtonLink href={`/corporate/projects?programId=${encodeURIComponent(program.id)}`} tone="ghost">
+                        <ShieldCheck size={17} aria-hidden="true" />
+                        Projects
+                      </ButtonLink>
+                      <ButtonLink href={`/corporate/funding?programId=${encodeURIComponent(program.id)}`} tone="ghost">
+                        <CircleDollarSign size={17} aria-hidden="true" />
+                        Funding
+                        <ArrowRight size={17} aria-hidden="true" />
+                      </ButtonLink>
+                    </div>
                   </div>
                 )}
               </article>

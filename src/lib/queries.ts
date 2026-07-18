@@ -3917,9 +3917,9 @@ export async function getExpeditionCheckoutOptions() {
     .filter((row) => row.canBook);
 }
 
-export async function getCorporateDashboardData(userId: string) {
+export async function getCorporateDashboardData(userId: string, requestedProgramId?: string | null) {
   const now = new Date();
-  const [program] = await db
+  const programRows = await db
     .select({
       accountName: corporateAccounts.name,
       accountLogoUrl: corporateAccounts.logoUrl,
@@ -3938,7 +3938,19 @@ export async function getCorporateDashboardData(userId: string) {
     .innerJoin(corporateAccounts, eq(corporatePermissions.corporateAccountId, corporateAccounts.id))
     .innerJoin(corporatePrograms, eq(corporatePrograms.corporateAccountId, corporateAccounts.id))
     .where(eq(corporatePermissions.userId, userId))
-    .limit(1);
+    .orderBy(desc(corporatePrograms.startsAt), desc(corporatePrograms.createdAt));
+  const programOptions = Array.from(
+    programRows
+      .reduce((options, item) => {
+        if (!options.has(item.programId)) {
+          options.set(item.programId, item);
+        }
+
+        return options;
+      }, new Map<string, (typeof programRows)[number]>())
+      .values()
+  );
+  const program = requestedProgramId ? programOptions.find((item) => item.programId === requestedProgramId) : programOptions[0];
 
   if (!program) {
     return null;
@@ -5003,6 +5015,17 @@ export async function getCorporateDashboardData(userId: string) {
   return {
     capabilities,
     program,
+    programOptions: programOptions.map((item) => ({
+      programId: item.programId,
+      programName: item.programName,
+      programSlug: item.programSlug,
+      status: item.status,
+      startsAt: item.startsAt,
+      endsAt: item.endsAt,
+      budgetAmountValue: toNumber(item.budgetAmount),
+      currency: item.currency,
+      isCurrent: item.programId === program.programId
+    })),
     budgets,
     employees: employeeRows,
     contributions: contributionRows,
@@ -5117,8 +5140,8 @@ export async function getCorporateProgramsForUser(userId: string) {
   };
 }
 
-export async function getCorporateProjectOptions(userId: string) {
-  const [context] = await db
+export async function getCorporateProjectOptions(userId: string, requestedProgramId?: string | null) {
+  const contextRows = await db
     .select({
       programId: corporatePrograms.id
     })
@@ -5126,7 +5149,8 @@ export async function getCorporateProjectOptions(userId: string) {
     .innerJoin(corporateAccounts, eq(corporatePermissions.corporateAccountId, corporateAccounts.id))
     .innerJoin(corporatePrograms, eq(corporatePrograms.corporateAccountId, corporateAccounts.id))
     .where(eq(corporatePermissions.userId, userId))
-    .limit(1);
+    .orderBy(desc(corporatePrograms.startsAt), desc(corporatePrograms.createdAt));
+  const context = requestedProgramId ? contextRows.find((item) => item.programId === requestedProgramId) : contextRows[0];
 
   if (!context) {
     return [];
