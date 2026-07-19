@@ -84,16 +84,26 @@ export function buildCertificateDownloadHtml(certificate: CertificateVerificatio
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>${escapeHtml(certificate.certificateNumber)} - Terumbu.eco Certificate</title>
   <style>
-    body { margin: 0; font-family: Arial, sans-serif; color: #07343f; background: #f6f0e6; }
-    main { max-width: 920px; margin: 40px auto; padding: 40px; background: white; border: 1px solid #d8e4dc; }
+    * { box-sizing: border-box; }
+    @page { size: A4 landscape; margin: 10mm; }
+    body { margin: 0; min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 32px; font-family: Arial, sans-serif; color: #07343f; background: #f6f0e6; }
+    main { width: min(100%, 1040px); min-height: 640px; display: flex; flex-direction: column; justify-content: center; padding: 56px; background: white; border: 1px solid #d8e4dc; border-radius: 24px; box-shadow: 0 18px 60px rgba(7, 52, 63, 0.12); }
     .eyebrow { color: #cc5f45; font-weight: 700; text-transform: uppercase; letter-spacing: 0.12em; }
-    h1 { font-size: 42px; margin: 16px 0 8px; }
+    h1 { font-size: 48px; line-height: 1.05; margin: 18px 0 10px; overflow-wrap: anywhere; }
     h2 { font-size: 28px; margin: 0 0 28px; color: #126f6f; }
     dl { display: grid; grid-template-columns: 180px 1fr; gap: 12px 20px; margin-top: 32px; }
     dt { color: #60737a; font-weight: 700; }
-    dd { margin: 0; font-weight: 700; }
+    dd { margin: 0; font-weight: 700; overflow-wrap: anywhere; }
     .seal { margin-top: 32px; padding: 16px; background: #e4f3e9; border-radius: 14px; font-weight: 700; }
-    a { color: #126f6f; }
+    a { color: #126f6f; overflow-wrap: anywhere; }
+    @media print {
+      body { min-height: auto; display: block; padding: 0; background: #ffffff; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      main { width: 100%; min-height: 178mm; margin: 0; padding: 18mm; border-radius: 0; box-shadow: none; break-inside: avoid; page-break-inside: avoid; }
+      h1 { max-width: 175mm; font-size: 34pt; }
+      h2 { font-size: 16pt; }
+      dl { grid-template-columns: 45mm 1fr; gap: 4mm 7mm; font-size: 10pt; }
+      .seal { margin-top: 10mm; padding: 5mm; }
+    }
   </style>
 </head>
 <body>
