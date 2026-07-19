@@ -316,77 +316,90 @@ export function CommunityCommentForm({
   );
 }
 
-export function CommunityComposer({ chapters }: { chapters: CommunityChapterCard[] }) {
+export type CommunityComposerMode = "post" | "event" | "challenge";
+
+const composerMeta: Record<CommunityComposerMode, { eyebrow: string; title: string; icon: typeof MessageCircle }> = {
+  post: { eyebrow: "Post", title: "Publish a Community Post", icon: MessageCircle },
+  event: { eyebrow: "Event", title: "Publish a Community Event", icon: CalendarDays },
+  challenge: { eyebrow: "Challenge", title: "Publish a Community Challenge", icon: HeartHandshake }
+};
+
+export function CommunityComposer({ chapters, mode }: { chapters: CommunityChapterCard[]; mode: CommunityComposerMode }) {
+  const meta = composerMeta[mode];
+  const Icon = meta.icon;
+  const formClassName = "grid max-w-3xl gap-4 rounded-lg border border-ocean-900/10 bg-white p-5 shadow-soft";
+  const header = (
+    <div className="flex flex-wrap items-center justify-between gap-3">
+      <div>
+        <p className="text-sm font-bold uppercase tracking-[0.16em] text-coral-700">{meta.eyebrow}</p>
+        <h2 className="mt-1 text-2xl font-bold tracking-normal text-ocean-900">{meta.title}</h2>
+      </div>
+      <Icon className="text-ocean-900/58" size={22} aria-hidden="true" />
+    </div>
+  );
+
+  if (mode === "event") {
+    return (
+      <form action={createCommunityEventAction} encType="multipart/form-data" className={formClassName}>
+        {header}
+        <input name="title" placeholder="Mangrove planting day" className={communityInputClassName} required />
+        <input name="summary" placeholder="One-line event summary" className={communityInputClassName} required />
+        <ChapterSelect chapters={chapters} />
+        <input name="location" placeholder="Location" className={communityInputClassName} required />
+        <div className="grid gap-3 sm:grid-cols-2">
+          <input name="startsAt" type="datetime-local" className={communityInputClassName} required />
+          <input name="endsAt" type="datetime-local" className={communityInputClassName} required />
+        </div>
+        <input name="capacity" type="number" min={1} defaultValue={40} className={communityInputClassName} required />
+        <label className="flex items-center gap-2 text-sm font-bold text-ocean-900">
+          <input name="waitlistEnabled" type="checkbox" defaultChecked className="size-4 accent-coral-500" />
+          Waitlist
+        </label>
+        <textarea name="description" placeholder="What participants should expect." className={communityTextareaClassName} required />
+        <input name="imageFile" type="file" accept="image/png,image/jpeg,image/webp,image/gif" className={communityInputClassName} />
+        <Button type="submit" className="justify-self-start">Publish Event</Button>
+      </form>
+    );
+  }
+
+  if (mode === "challenge") {
+    return (
+      <form action={createCommunityChallengeAction} encType="multipart/form-data" className={formClassName}>
+        {header}
+        <input name="title" placeholder="Plastic-Free Week" className={communityInputClassName} required />
+        <input name="summary" placeholder="One-line challenge summary" className={communityInputClassName} required />
+        <ChapterSelect chapters={chapters} />
+        <div className="grid gap-3 sm:grid-cols-2">
+          <input name="goalTarget" type="number" min={1} defaultValue={7} className={communityInputClassName} required />
+          <input name="unit" placeholder="actions" defaultValue="actions" className={communityInputClassName} required />
+        </div>
+        <input name="goalMetric" placeholder="Goal metric" defaultValue="completed actions" className={communityInputClassName} />
+        <div className="grid gap-3 sm:grid-cols-2">
+          <input name="startsAt" type="date" className={communityInputClassName} />
+          <input name="endsAt" type="date" className={communityInputClassName} />
+        </div>
+        <textarea name="description" placeholder="Rules, tracking guidance, and evidence expectations." className={communityTextareaClassName} required />
+        <input name="imageFile" type="file" accept="image/png,image/jpeg,image/webp,image/gif" className={communityInputClassName} />
+        <Button type="submit" className="justify-self-start">Publish Challenge</Button>
+      </form>
+    );
+  }
+
   return (
-    <section className="rounded-lg border border-ocean-900/10 bg-white p-4 shadow-soft">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <p className="text-sm font-bold uppercase tracking-[0.16em] text-coral-700">Create</p>
-          <h2 className="mt-1 text-2xl font-bold tracking-normal text-ocean-900">Publish to Community</h2>
-        </div>
-        <div className="flex gap-2 text-ocean-900/58">
-          <MessageCircle size={20} aria-hidden="true" />
-          <CalendarDays size={20} aria-hidden="true" />
-          <HeartHandshake size={20} aria-hidden="true" />
-        </div>
-      </div>
-
-      <div className="mt-5 grid gap-4 lg:grid-cols-3">
-        <form action={createCommunityPostAction} encType="multipart/form-data" className="grid gap-3 rounded-lg border border-ocean-900/10 bg-sand-50 p-4">
-          <h3 className="font-bold text-ocean-900">Post</h3>
-          <input name="title" placeholder="Story or field note title" className={communityInputClassName} required />
-          <select name="postType" defaultValue="story" className={communityInputClassName}>
-            <option value="story">Story</option>
-            <option value="field_note">Field note</option>
-            <option value="question">Question</option>
-            <option value="resource">Resource</option>
-          </select>
-          <ChapterSelect chapters={chapters} />
-          <textarea name="body" placeholder="Share what happened, what you learned, or what help is needed." className={communityTextareaClassName} required />
-          <input name="imageFile" type="file" accept="image/png,image/jpeg,image/webp,image/gif" className={communityInputClassName} />
-          <Button type="submit">Publish Post</Button>
-        </form>
-
-        <form action={createCommunityEventAction} encType="multipart/form-data" className="grid gap-3 rounded-lg border border-ocean-900/10 bg-sand-50 p-4">
-          <h3 className="font-bold text-ocean-900">Event</h3>
-          <input name="title" placeholder="Mangrove planting day" className={communityInputClassName} required />
-          <input name="summary" placeholder="One-line event summary" className={communityInputClassName} required />
-          <ChapterSelect chapters={chapters} />
-          <input name="location" placeholder="Location" className={communityInputClassName} required />
-          <div className="grid gap-2 sm:grid-cols-2">
-            <input name="startsAt" type="datetime-local" className={communityInputClassName} required />
-            <input name="endsAt" type="datetime-local" className={communityInputClassName} required />
-          </div>
-          <input name="capacity" type="number" min={1} defaultValue={40} className={communityInputClassName} required />
-          <label className="flex items-center gap-2 text-sm font-bold text-ocean-900">
-            <input name="waitlistEnabled" type="checkbox" defaultChecked className="size-4 accent-coral-500" />
-            Waitlist
-          </label>
-          <textarea name="description" placeholder="What participants should expect." className={communityTextareaClassName} required />
-          <input name="imageFile" type="file" accept="image/png,image/jpeg,image/webp,image/gif" className={communityInputClassName} />
-          <Button type="submit">Publish Event</Button>
-        </form>
-
-        <form action={createCommunityChallengeAction} encType="multipart/form-data" className="grid gap-3 rounded-lg border border-ocean-900/10 bg-sand-50 p-4">
-          <h3 className="font-bold text-ocean-900">Challenge</h3>
-          <input name="title" placeholder="Plastic-Free Week" className={communityInputClassName} required />
-          <input name="summary" placeholder="One-line challenge summary" className={communityInputClassName} required />
-          <ChapterSelect chapters={chapters} />
-          <div className="grid gap-2 sm:grid-cols-2">
-            <input name="goalTarget" type="number" min={1} defaultValue={7} className={communityInputClassName} required />
-            <input name="unit" placeholder="actions" defaultValue="actions" className={communityInputClassName} required />
-          </div>
-          <input name="goalMetric" placeholder="Goal metric" defaultValue="completed actions" className={communityInputClassName} />
-          <div className="grid gap-2 sm:grid-cols-2">
-            <input name="startsAt" type="date" className={communityInputClassName} />
-            <input name="endsAt" type="date" className={communityInputClassName} />
-          </div>
-          <textarea name="description" placeholder="Rules, tracking guidance, and evidence expectations." className={communityTextareaClassName} required />
-          <input name="imageFile" type="file" accept="image/png,image/jpeg,image/webp,image/gif" className={communityInputClassName} />
-          <Button type="submit">Publish Challenge</Button>
-        </form>
-      </div>
-    </section>
+    <form action={createCommunityPostAction} encType="multipart/form-data" className={formClassName}>
+      {header}
+      <input name="title" placeholder="Story or field note title" className={communityInputClassName} required />
+      <select name="postType" defaultValue="story" className={communityInputClassName}>
+        <option value="story">Story</option>
+        <option value="field_note">Field note</option>
+        <option value="question">Question</option>
+        <option value="resource">Resource</option>
+      </select>
+      <ChapterSelect chapters={chapters} />
+      <textarea name="body" placeholder="Share what happened, what you learned, or what help is needed." className={communityTextareaClassName} required />
+      <input name="imageFile" type="file" accept="image/png,image/jpeg,image/webp,image/gif" className={communityInputClassName} />
+      <Button type="submit" className="justify-self-start">Publish Post</Button>
+    </form>
   );
 }
 

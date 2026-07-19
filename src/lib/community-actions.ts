@@ -310,15 +310,16 @@ async function canManageCommunityTarget(userId: string, ownerUserId: string | nu
 }
 
 export async function createCommunityPostAction(formData: FormData) {
-  const user = await requireUser("/community");
+  const createPath = "/dashboard/community/new?type=post";
+  const user = await requireUser(createPath);
   const title = textValue(formData.get("title"), 220);
   const body = textValue(formData.get("body"), 5000);
   const postType = textValue(formData.get("postType"), 80) || "story";
   const chapterId = nullableText(formData, "chapterId", 80);
-  const mediaUrl = await uploadedCommunityImage(formData, "/community");
+  const mediaUrl = await uploadedCommunityImage(formData, createPath);
 
   if (!title || !body) {
-    redirect(withStatus("/community", "error", "post-invalid"));
+    redirect(withStatus(createPath, "error", "post-invalid"));
   }
 
   const slug = await uniqueSlugFor("post", title);
@@ -351,11 +352,12 @@ export async function createCommunityPostAction(formData: FormData) {
     sourceId: post.id
   });
 
-  redirect(`/community/posts/${post.slug}?saved=post`);
+  redirect("/dashboard/community?saved=post");
 }
 
 export async function createCommunityEventAction(formData: FormData) {
-  const user = await requireUser("/community");
+  const createPath = "/dashboard/community/new?type=event";
+  const user = await requireUser(createPath);
   const title = textValue(formData.get("title"), 220);
   const summary = textValue(formData.get("summary"), 800);
   const description = textValue(formData.get("description"), 5000);
@@ -366,10 +368,10 @@ export async function createCommunityEventAction(formData: FormData) {
   const location = textValue(formData.get("location"), 220);
   const capacity = positiveInteger(formData.get("capacity"), 40, 10_000);
   const waitlistEnabled = checked(formData.get("waitlistEnabled"));
-  const imageUrl = await uploadedCommunityImage(formData, "/community");
+  const imageUrl = await uploadedCommunityImage(formData, createPath);
 
   if (!title || !summary || !description || !startsAt || !endsAt || endsAt <= startsAt || !location) {
-    redirect(withStatus("/community", "error", "event-invalid"));
+    redirect(withStatus(createPath, "error", "event-invalid"));
   }
 
   const slug = await uniqueSlugFor("event", title);
@@ -397,11 +399,12 @@ export async function createCommunityEventAction(formData: FormData) {
     .returning({ id: communityEvents.id, slug: communityEvents.slug });
 
   await recordCommunityScore(user.id, "community_event", event.id, "post_created");
-  redirect(`/community/events/${event.slug}?saved=event`);
+  redirect("/dashboard/community?saved=event");
 }
 
 export async function createCommunityChallengeAction(formData: FormData) {
-  const user = await requireUser("/community");
+  const createPath = "/dashboard/community/new?type=challenge";
+  const user = await requireUser(createPath);
   const title = textValue(formData.get("title"), 220);
   const summary = textValue(formData.get("summary"), 800);
   const description = textValue(formData.get("description"), 5000);
@@ -412,10 +415,10 @@ export async function createCommunityChallengeAction(formData: FormData) {
   const goalMetric = textValue(formData.get("goalMetric"), 120) || "actions";
   const goalTarget = positiveInteger(formData.get("goalTarget"), 1, 1_000_000);
   const unit = textValue(formData.get("unit"), 80) || "actions";
-  const imageUrl = await uploadedCommunityImage(formData, "/community");
+  const imageUrl = await uploadedCommunityImage(formData, createPath);
 
   if (!title || !summary || !description || (startsAt && endsAt && endsAt <= startsAt)) {
-    redirect(withStatus("/community", "error", "challenge-invalid"));
+    redirect(withStatus(createPath, "error", "challenge-invalid"));
   }
 
   const slug = await uniqueSlugFor("challenge", title);
@@ -443,7 +446,7 @@ export async function createCommunityChallengeAction(formData: FormData) {
     .returning({ id: communityChallenges.id, slug: communityChallenges.slug });
 
   await recordCommunityScore(user.id, "community_challenge", challenge.id, "post_created");
-  redirect(`/community/challenges/${challenge.slug}?saved=challenge`);
+  redirect("/dashboard/community?saved=challenge");
 }
 
 export async function deleteCommunityPostAction(formData: FormData) {

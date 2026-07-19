@@ -1,8 +1,8 @@
-import { CalendarDays, Flag, MessageCircle, Target, Trophy } from "lucide-react";
+import { CalendarDays, Flag, MessageCircle, Plus, Target, Trophy } from "lucide-react";
 import Link from "next/link";
 
 import { CommunityStatusBadge } from "@/components/community-ui";
-import { Button } from "@/components/ui/button";
+import { Button, ButtonLink } from "@/components/ui/button";
 import { ProgressMeter } from "@/components/ui/progress-meter";
 import { requireUser } from "@/lib/auth";
 import { deleteCommunityChallengeAction, deleteCommunityEventAction, deleteCommunityPostAction } from "@/lib/community-actions";
@@ -14,13 +14,38 @@ export const metadata = {
 
 export const dynamic = "force-dynamic";
 
+type DashboardCommunityPageProps = {
+  searchParams?: Promise<{
+    saved?: string;
+    error?: string;
+  }>;
+};
+
+const savedMessages: Record<string, string> = {
+  post: "Community post published.",
+  event: "Community event published.",
+  challenge: "Community challenge published.",
+  deleted: "Community item deleted."
+};
+
+const errorMessages: Record<string, string> = {
+  "post-invalid": "Enter a post title and body.",
+  "event-invalid": "Enter event title, timing, location, summary, and description.",
+  "challenge-invalid": "Enter challenge title, summary, description, and valid dates.",
+  "image-type": "Upload a PNG, JPEG, WebP, or GIF image.",
+  "image-size": "Upload an image under the current size limit.",
+  permission: "You do not have permission for that action."
+};
+
 function formatDate(value: Date | null | undefined) {
   return value ? value.toLocaleDateString("id-ID", { dateStyle: "medium" }) : "Open";
 }
 
-export default async function DashboardCommunityPage() {
-  const user = await requireUser("/dashboard/community");
+export default async function DashboardCommunityPage({ searchParams }: DashboardCommunityPageProps) {
+  const [params, user] = await Promise.all([searchParams, requireUser("/dashboard/community")]);
   const data = await getDashboardCommunityData(user.id);
+  const savedMessage = params?.saved ? savedMessages[params.saved] : null;
+  const errorMessage = params?.error ? errorMessages[params.error] : null;
 
   return (
     <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
@@ -32,10 +57,19 @@ export default async function DashboardCommunityPage() {
             Manage your community publishing, track event RSVPs, continue challenge progress, and review reports you submitted.
           </p>
         </div>
-        <Link href="/community" className="inline-flex min-h-11 items-center justify-center rounded-lg bg-ocean-900 px-5 text-sm font-bold text-white">
-          Open Community
-        </Link>
+        <div className="flex flex-wrap gap-2">
+          <ButtonLink href="/dashboard/community/new">
+            <Plus size={17} aria-hidden="true" />
+            Create
+          </ButtonLink>
+          <ButtonLink href="/community" tone="secondary">
+            Open Community
+          </ButtonLink>
+        </div>
       </header>
+
+      {savedMessage ? <p className="mt-6 rounded-lg border border-kelp-700/20 bg-kelp-100 px-4 py-3 text-sm font-bold text-kelp-700">{savedMessage}</p> : null}
+      {errorMessage ? <p className="mt-6 rounded-lg border border-coral-700/20 bg-coral-100 px-4 py-3 text-sm font-bold text-coral-700">{errorMessage}</p> : null}
 
       <section className="mt-6 grid gap-4 md:grid-cols-4">
         {[

@@ -4,7 +4,6 @@ import Link from "next/link";
 import {
   CommunityChallengeCardView,
   CommunityChapterCardView,
-  CommunityComposer,
   CommunityEmptyState,
   CommunityEventCardView,
   CommunityPostCardView
@@ -80,17 +79,17 @@ export default async function CommunityPage({ searchParams }: CommunityPageProps
             </div>
           </div>
           <aside className="rounded-lg bg-ocean-900 p-5 text-white">
-            <p className="text-sm font-bold uppercase tracking-[0.16em] text-coral-200">Open publishing</p>
+            <p className="text-sm font-bold uppercase tracking-[0.16em] text-coral-200">Dashboard publishing</p>
             <p className="mt-3 text-sm leading-6 text-white/72">
-              Anyone signed in can publish posts, events, and challenges. Admin moderation and public reports keep the social layer accountable.
+              Create posts, events, and challenges from your dashboard. This page stays focused on browsing, joining, and discussion.
             </p>
             {user ? (
-              <ButtonLink href="/dashboard/community" tone="light" className="mt-5">
-                My Community
+              <ButtonLink href="/dashboard/community/new" tone="light" className="mt-5">
+                Create in Dashboard
                 <ArrowRight size={17} aria-hidden="true" />
               </ButtonLink>
             ) : (
-              <ButtonLink href="/login?next=/community" tone="light" className="mt-5">
+              <ButtonLink href="/login?next=/dashboard/community/new" tone="light" className="mt-5">
                 Login to participate
                 <ArrowRight size={17} aria-hidden="true" />
               </ButtonLink>
@@ -105,8 +104,6 @@ export default async function CommunityPage({ searchParams }: CommunityPageProps
 
         <div className="mt-6 grid gap-6 lg:grid-cols-[1fr_0.34fr]">
           <div className="space-y-8">
-            {user ? <CommunityComposer chapters={data.chapters} /> : null}
-
             <section id="feed">
               <div className="flex items-end justify-between gap-4">
                 <div>
