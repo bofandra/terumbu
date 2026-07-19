@@ -58,6 +58,7 @@ import {
 } from "@/lib/corporate-report-artifacts";
 import {
   buildCorporateReportArtifactManifest,
+  corporateReportFormatLabel,
   corporateReportTypeLabel,
   normalizeCorporateReportFormat,
   normalizeCorporateReportType
@@ -196,37 +197,172 @@ async function writeAuditLog(input: {
   });
 }
 
+function formatReportDate(value: Date | null | undefined) {
+  return value ? value.toLocaleDateString("id-ID", { dateStyle: "medium" }) : "Pending";
+}
+
+function formatReportNumber(value: number | null | undefined) {
+  return new Intl.NumberFormat("id-ID").format(Number.isFinite(Number(value)) ? Number(value) : 0);
+}
+
+function clampPercent(value: number | null | undefined) {
+  return Math.min(100, Math.max(0, Math.round(Number.isFinite(Number(value)) ? Number(value) : 0)));
+}
+
+function corporateReportStatusTone(value: string | null | undefined) {
+  const label = String(value ?? "").toLowerCase();
+
+  if (label.includes("risk") || label.includes("rejected")) {
+    return "danger";
+  }
+
+  if (label.includes("attention") || label.includes("review") || label.includes("clarification") || label.includes("awaiting")) {
+    return "warn";
+  }
+
+  if (label.includes("verified") || label.includes("track") || label.includes("complete")) {
+    return "good";
+  }
+
+  return "neutral";
+}
+
+function corporateReportPresentation(reportType: string) {
+  const normalizedType = normalizeCorporateReportType(reportType);
+
+  if (normalizedType === "csr") {
+    return {
+      label: "CSR Impact Report",
+      eyebrow: "Corporate social responsibility",
+      headline: "Community and coastal restoration outcomes",
+      summary:
+        "A board-ready summary of conservation funding, employee engagement, partner delivery, and verified community-facing impact."
+    };
+  }
+
+  if (normalizedType === "evidence") {
+    return {
+      label: "Evidence Assurance Bundle",
+      eyebrow: "Evidence and verification",
+      headline: "Reportable field records and source traceability",
+      summary:
+        "A source-led package for reviewers, auditors, and finance teams that need to trace claims back to verified campaign evidence."
+    };
+  }
+
+  return {
+    label: "ESG Impact Report",
+    eyebrow: "Environmental, social, and governance",
+    headline: "Verified blue-carbon and coastal conservation performance",
+    summary:
+      "A professional ESG package covering committed funding, utilization, field evidence, risk posture, and reportable restoration outputs."
+  };
+}
+
 function reportHtml(input: {
   exportCode: string;
   reportType: string;
+  exportFormat: string;
+  artifactVersion: number;
   generatedAt: Date;
   accountName: string;
   programName: string;
   data: NonNullable<Awaited<ReturnType<typeof getCorporateDashboardData>>>;
 }) {
   const { data } = input;
-  const rows = data.portfolio
+  const presentation = corporateReportPresentation(input.reportType);
+  const verifiedEvidenceCount = data.evidence.filter((item) => item.verificationStatus === "verified").length;
+  const evidenceRate = data.evidence.length > 0 ? Math.round((verifiedEvidenceCount / data.evidence.length) * 100) : 0;
+  const atRiskCount = data.portfolio.filter((project) => ["At Risk", "Needs Attention"].includes(project.statusLabel)).length;
+  const primaryMetrics = [
+    {
+      label: "Committed funding",
+      value: formatCurrency(data.financials.committedFunding),
+      support: "Approved corporate program budget"
+    },
+    {
+      label: "Verified utilization",
+      value: formatCurrency(data.financials.verifiedUtilization),
+      support: `${clampPercent(data.financials.verifiedUtilizationRate)}% matched to verified evidence`
+    },
+    {
+      label: "Restoration units",
+      value: formatReportNumber(data.impactOutputs.restorationUnits),
+      support: "Coral, mangrove, and ecosystem units supported"
+    },
+    {
+      label: "Evidence readiness",
+      value: `${evidenceRate}%`,
+      support: `${formatReportNumber(verifiedEvidenceCount)} of ${formatReportNumber(data.evidence.length)} records verified`
+    }
+  ];
+  const portfolioRows = data.portfolio
+    .slice(0, 14)
     .map(
       (project) => `
         <tr>
-          <td>${escapeHtml(project.campaignTitle)}</td>
-          <td>${escapeHtml(project.region)}</td>
+          <td>
+            <strong>${escapeHtml(project.campaignTitle)}</strong>
+            <span>${escapeHtml(project.organizationName)} / ${escapeHtml(project.region)}</span>
+          </td>
           <td>${escapeHtml(formatCurrency(project.allocationValue))}</td>
-          <td>${escapeHtml(project.utilization)}%</td>
-          <td>${escapeHtml(project.statusLabel)}</td>
+          <td>
+            <div class="progress" aria-label="${escapeHtml(project.utilization)}% utilization">
+              <span style="width: ${clampPercent(project.utilization)}%"></span>
+            </div>
+            <small>${escapeHtml(project.utilization)}% utilized</small>
+          </td>
+          <td>${escapeHtml(formatReportNumber(project.impactTarget))} ${escapeHtml(project.impactUnit)}</td>
+          <td><span class="status ${corporateReportStatusTone(project.statusLabel)}">${escapeHtml(project.statusLabel)}</span></td>
         </tr>`
     )
     .join("");
   const evidenceRows = data.evidence
-    .slice(0, 12)
+    .slice(0, 16)
     .map(
       (item) => `
         <tr>
-          <td>${escapeHtml(item.evidenceCode)}</td>
+          <td><strong>${escapeHtml(item.evidenceCode)}</strong><span>${escapeHtml(item.evidenceType)}</span></td>
           <td>${escapeHtml(item.title)}</td>
-          <td>${escapeHtml(item.verificationStatus)}</td>
           <td>${escapeHtml(item.campaignTitle)}</td>
+          <td>${escapeHtml(item.metricLabel ?? "Source record")}${item.metricValue ? `<span>${escapeHtml(item.metricValue)}</span>` : ""}</td>
+          <td><span class="status ${corporateReportStatusTone(item.verificationStatus)}">${escapeHtml(item.statusLabel)}</span></td>
         </tr>`
+    )
+    .join("");
+  const financialRows = [
+    ["Committed funding", formatCurrency(data.financials.committedFunding), "Approved program ceiling"],
+    ["Funds disbursed", formatCurrency(data.financials.fundsDisbursed), `${clampPercent(data.financials.disbursementRate)}% of commitment`],
+    ["Verified utilization", formatCurrency(data.financials.verifiedUtilization), `${clampPercent(data.financials.verifiedUtilizationRate)}% of disbursed funds`],
+    ["Pending verification", formatCurrency(data.financials.pendingVerification), "Awaiting evidence or reviewer closure"],
+    ["Remaining commitment", formatCurrency(data.financials.remainingCommitment), "Available for future project allocation"]
+  ];
+  const impactRows = [
+    ["Restoration units", formatReportNumber(data.impactOutputs.restorationUnits), "Total reportable ecosystem units"],
+    ["Coral units", formatReportNumber(data.impactOutputs.coralUnits), "Coral-focused restoration activity"],
+    ["Mangrove units", formatReportNumber(data.impactOutputs.mangroveUnits), "Mangrove-focused restoration activity"],
+    ["Volunteer hours", formatReportNumber(data.impactOutputs.volunteerHours), "Recorded employee or community participation"],
+    ["Activity records", formatReportNumber(data.impactOutputs.activityCount), "Combined portfolio, evidence, and engagement records"]
+  ];
+  const sdgRows = data.sdgAlignment
+    .map(
+      (goal) => `
+        <div class="sdg">
+          <strong>${escapeHtml(goal.code)}</strong>
+          <span>${escapeHtml(goal.label)}</span>
+          <div class="progress"><span style="width: ${clampPercent(goal.progress)}%"></span></div>
+        </div>`
+    )
+    .join("");
+  const benchmarkRows = data.benchmarks
+    .slice(0, 3)
+    .map(
+      (benchmark) => `
+        <li>
+          <strong>${escapeHtml(benchmark.label)}</strong>
+          <span>${escapeHtml(benchmark.current)}${escapeHtml(benchmark.unit)} current / ${escapeHtml(benchmark.benchmark)}${escapeHtml(benchmark.unit)} benchmark</span>
+          <em>${escapeHtml(benchmark.insight)}</em>
+        </li>`
     )
     .join("");
 
@@ -235,48 +371,176 @@ function reportHtml(input: {
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>${escapeHtml(input.accountName)} ${escapeHtml(input.reportType.toUpperCase())} Report</title>
+  <title>${escapeHtml(input.accountName)} ${escapeHtml(presentation.label)}</title>
   <style>
-    body { font-family: Inter, Arial, sans-serif; margin: 0; color: #07343f; background: #f5f8fb; }
-    main { max-width: 1040px; margin: 0 auto; padding: 40px 24px; }
-    header, section { background: white; border: 1px solid rgba(7,52,63,.12); border-radius: 16px; padding: 24px; margin-bottom: 18px; }
-    h1, h2 { margin: 0; letter-spacing: 0; }
-    .eyebrow { color: #db6f4d; font-weight: 800; text-transform: uppercase; font-size: 12px; letter-spacing: .14em; }
-    .grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
-    .metric { background: #f7fbf9; border-radius: 12px; padding: 16px; }
-    .metric strong { display: block; font-size: 22px; margin-bottom: 4px; }
-    table { width: 100%; border-collapse: collapse; font-size: 14px; }
-    th, td { text-align: left; border-bottom: 1px solid rgba(7,52,63,.12); padding: 10px 8px; }
-    th { color: rgba(7,52,63,.62); font-size: 12px; text-transform: uppercase; }
+    :root { color-scheme: light; --ink: #0b2f37; --muted: #5f7378; --line: #dbe6e0; --paper: #ffffff; --wash: #f5f7f3; --deep: #063746; --accent: #c85d43; --green: #18775f; --amber: #93651d; --red: #a33f32; }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--wash); color: var(--ink); font-family: Inter, Arial, sans-serif; line-height: 1.45; }
+    main { max-width: 1120px; margin: 0 auto; padding: 32px 24px 48px; }
+    h1, h2, h3, p { margin: 0; }
+    h1 { max-width: 760px; font-size: clamp(34px, 5vw, 58px); line-height: .96; letter-spacing: 0; }
+    h2 { font-size: 22px; letter-spacing: 0; }
+    h3 { font-size: 15px; }
+    .cover { overflow: hidden; border-radius: 22px; background: var(--deep); color: #fff; box-shadow: 0 24px 60px rgba(6, 55, 70, .18); }
+    .cover-grid { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 28px; padding: 36px; }
+    .eyebrow { color: #f3b49f; font-size: 12px; font-weight: 800; letter-spacing: .16em; text-transform: uppercase; }
+    .cover .summary { max-width: 720px; margin-top: 20px; color: rgba(255,255,255,.76); font-size: 17px; }
+    .meta-panel { align-self: stretch; border: 1px solid rgba(255,255,255,.18); border-radius: 16px; background: rgba(255,255,255,.08); padding: 18px; }
+    .meta-panel dl { display: grid; gap: 14px; margin: 0; }
+    .meta-panel dt { color: rgba(255,255,255,.56); font-size: 11px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
+    .meta-panel dd { margin: 4px 0 0; font-weight: 800; }
+    .section { margin-top: 20px; border: 1px solid var(--line); border-radius: 18px; background: var(--paper); padding: 24px; box-shadow: 0 12px 34px rgba(7, 52, 63, .07); }
+    .section-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; margin-bottom: 18px; }
+    .section-head p { max-width: 640px; color: var(--muted); font-weight: 700; }
+    .badge { display: inline-flex; align-items: center; min-height: 32px; border-radius: 999px; background: #eef6f1; color: var(--green); padding: 0 12px; font-size: 12px; font-weight: 800; white-space: nowrap; }
+    .metric-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-top: 28px; }
+    .metric { min-height: 150px; border: 1px solid var(--line); border-radius: 16px; background: linear-gradient(180deg, #fff, #f8fbf8); padding: 16px; }
+    .metric span { display: block; color: var(--muted); font-size: 12px; font-weight: 800; text-transform: uppercase; }
+    .metric strong { display: block; margin-top: 12px; font-size: 27px; line-height: 1.05; }
+    .metric p { margin-top: 10px; color: var(--muted); font-size: 13px; font-weight: 700; }
+    .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th { border-bottom: 1px solid var(--line); color: var(--muted); font-size: 11px; letter-spacing: .08em; padding: 0 10px 10px; text-align: left; text-transform: uppercase; }
+    td { border-bottom: 1px solid #edf2ee; padding: 14px 10px; vertical-align: top; }
+    td strong, td span, td small { display: block; }
+    td span, td small { margin-top: 3px; color: var(--muted); font-size: 12px; font-weight: 700; }
+    .status { display: inline-flex; border-radius: 999px; padding: 5px 10px; font-size: 11px; font-weight: 900; text-transform: uppercase; }
+    .status.good { background: #e7f4ed; color: var(--green); }
+    .status.warn { background: #fff3d9; color: var(--amber); }
+    .status.danger { background: #ffe7e0; color: var(--red); }
+    .status.neutral { background: #edf4f2; color: var(--deep); }
+    .progress { height: 8px; width: 100%; overflow: hidden; border-radius: 999px; background: #e4ece8; }
+    .progress span { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, var(--green), #58a790); }
+    .summary-table td:first-child { width: 38%; font-weight: 800; }
+    .summary-table td:nth-child(2) { width: 28%; font-weight: 900; }
+    .sdg-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+    .sdg { border: 1px solid var(--line); border-radius: 14px; padding: 14px; }
+    .sdg strong, .sdg span { display: block; }
+    .sdg span { min-height: 40px; margin: 4px 0 12px; color: var(--muted); font-size: 13px; font-weight: 700; }
+    .note-list { display: grid; gap: 10px; margin: 0; padding: 0; list-style: none; }
+    .note-list li { border-left: 4px solid var(--accent); background: #fff8f5; padding: 12px 14px; }
+    .note-list strong, .note-list span, .note-list em { display: block; }
+    .note-list span { margin-top: 4px; color: var(--muted); font-size: 13px; font-weight: 700; }
+    .note-list em { margin-top: 3px; color: var(--deep); font-size: 12px; font-style: normal; font-weight: 800; }
+    .empty { color: var(--muted); font-weight: 700; text-align: center; }
+    footer { margin-top: 20px; color: var(--muted); font-size: 12px; font-weight: 700; text-align: center; }
+    @media (max-width: 860px) {
+      main { padding: 20px 14px 32px; }
+      .cover-grid, .two-col, .metric-grid, .sdg-grid { grid-template-columns: 1fr; }
+      .cover-grid { padding: 24px; }
+      .section { padding: 18px; overflow-x: auto; }
+      .section-head { display: block; }
+      .badge { margin-top: 12px; }
+    }
+    @media print {
+      body { background: #fff; }
+      main { max-width: none; padding: 0; }
+      .cover, .section { box-shadow: none; break-inside: avoid; }
+      .cover { border-radius: 0; }
+    }
   </style>
 </head>
 <body>
   <main>
-    <header>
-      <p class="eyebrow">Terumbu.eco corporate report</p>
-      <h1>${escapeHtml(input.accountName)} / ${escapeHtml(input.programName)}</h1>
-      <p>${escapeHtml(input.reportType.toUpperCase())} report ${escapeHtml(input.exportCode)} generated ${escapeHtml(input.generatedAt.toLocaleDateString("id-ID", { dateStyle: "medium" }))}.</p>
+    <header class="cover">
+      <div class="cover-grid">
+        <div>
+          <p class="eyebrow">${escapeHtml(presentation.eyebrow)}</p>
+          <h1>${escapeHtml(input.accountName)} ${escapeHtml(presentation.label)}</h1>
+          <p class="summary">${escapeHtml(presentation.summary)}</p>
+        </div>
+        <aside class="meta-panel" aria-label="Report metadata">
+          <dl>
+            <div><dt>Program</dt><dd>${escapeHtml(input.programName)}</dd></div>
+            <div><dt>Export code</dt><dd>${escapeHtml(input.exportCode)}</dd></div>
+            <div><dt>Generated</dt><dd>${escapeHtml(formatReportDate(input.generatedAt))}</dd></div>
+            <div><dt>Period</dt><dd>${escapeHtml(formatReportDate(data.program.startsAt))} - ${escapeHtml(formatReportDate(data.program.endsAt))}</dd></div>
+            <div><dt>Package</dt><dd>${escapeHtml(corporateReportFormatLabel(input.exportFormat))} / v${escapeHtml(input.artifactVersion)}</dd></div>
+          </dl>
+        </aside>
+      </div>
     </header>
-    <section>
-      <h2>Executive metrics</h2>
-      <div class="grid">
-        ${data.executiveMetrics.map((metric) => `<div class="metric"><strong>${escapeHtml(metric.value)}</strong><span>${escapeHtml(metric.label)}</span><p>${escapeHtml(metric.support)}</p></div>`).join("")}
+
+    <section class="section">
+      <div class="section-head">
+        <div>
+          <h2>${escapeHtml(presentation.headline)}</h2>
+          <p>Generated from Terumbu.eco corporate program data, funding ledgers, partner project status, and verified evidence records.</p>
+        </div>
+        <span class="badge">ready artifact</span>
+      </div>
+      <div class="metric-grid">
+        ${primaryMetrics.map((metric) => `<article class="metric"><span>${escapeHtml(metric.label)}</span><strong>${escapeHtml(metric.value)}</strong><p>${escapeHtml(metric.support)}</p></article>`).join("")}
       </div>
     </section>
-    <section>
-      <h2>Project portfolio</h2>
+
+    <section class="section">
+      <div class="section-head">
+        <div>
+          <h2>Executive summary</h2>
+          <p>Core report metrics for finance, sustainability, and program governance review.</p>
+        </div>
+        <span class="badge">${formatReportNumber(data.portfolio.length)} projects / ${formatReportNumber(data.evidence.length)} evidence records</span>
+      </div>
+      <div class="two-col">
+        <table class="summary-table">
+          <thead><tr><th>Financial metric</th><th>Value</th><th>Interpretation</th></tr></thead>
+          <tbody>${financialRows.map(([label, value, note]) => `<tr><td>${escapeHtml(label)}</td><td>${escapeHtml(value)}</td><td>${escapeHtml(note)}</td></tr>`).join("")}</tbody>
+        </table>
+        <table class="summary-table">
+          <thead><tr><th>Impact metric</th><th>Value</th><th>Interpretation</th></tr></thead>
+          <tbody>${impactRows.map(([label, value, note]) => `<tr><td>${escapeHtml(label)}</td><td>${escapeHtml(value)}</td><td>${escapeHtml(note)}</td></tr>`).join("")}</tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-head">
+        <div>
+          <h2>Project portfolio</h2>
+          <p>Funded conservation campaigns, utilization progress, and delivery status for the reporting period.</p>
+        </div>
+        <span class="badge">${formatReportNumber(atRiskCount)} items need attention</span>
+      </div>
       <table>
-        <thead><tr><th>Project</th><th>Region</th><th>Allocation</th><th>Utilization</th><th>Status</th></tr></thead>
-        <tbody>${rows}</tbody>
+        <thead><tr><th>Project</th><th>Allocation</th><th>Utilization</th><th>Impact target</th><th>Status</th></tr></thead>
+        <tbody>${portfolioRows || `<tr><td class="empty" colspan="5">No funded project rows are available for this report period.</td></tr>`}</tbody>
       </table>
     </section>
-    <section>
+
+    <section class="section">
+      <div class="section-head">
+        <div>
+          <h2>Evidence register</h2>
+          <p>Source records used to support reportable claims, finance utilization, and campaign progress.</p>
+        </div>
+        <span class="badge">${formatReportNumber(verifiedEvidenceCount)} verified</span>
+      </div>
+      <table>
+        <thead><tr><th>Code</th><th>Evidence</th><th>Campaign</th><th>Metric</th><th>Status</th></tr></thead>
+        <tbody>${evidenceRows || `<tr><td class="empty" colspan="5">No evidence records are linked to this report period yet.</td></tr>`}</tbody>
+      </table>
+    </section>
+
+    <section class="section">
+      <div class="section-head">
+        <div>
+          <h2>SDG alignment and benchmarks</h2>
+          <p>Directional reporting indicators for sustainability narratives and governance follow-up.</p>
+        </div>
+        <span class="badge">Next report ${escapeHtml(formatReportDate(data.reporting.nextReportingDeadline))}</span>
+      </div>
+      <div class="two-col">
+        <div class="sdg-grid">${sdgRows}</div>
+        <ul class="note-list">${benchmarkRows}</ul>
+      </div>
+    </section>
+
+    <section class="section">
       <h2>Evidence bundle</h2>
-      <table>
-        <thead><tr><th>Code</th><th>Evidence</th><th>Status</th><th>Campaign</th></tr></thead>
-        <tbody>${evidenceRows}</tbody>
-      </table>
+      <p>This package is designed for audit review. The JSON data file contains the full report payload, the evidence bundle contains source evidence records, and CSV/XLSX artifacts provide analysis-ready extracts for finance and sustainability teams.</p>
     </section>
+    <footer>Terumbu.eco generated report / ${escapeHtml(input.exportCode)} / ${escapeHtml(formatReportDate(input.generatedAt))}</footer>
   </main>
 </body>
 </html>`;

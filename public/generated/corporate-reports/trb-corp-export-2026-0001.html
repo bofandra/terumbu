@@ -3,50 +3,175 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Nusantara Bank ESG Report</title>
+  <title>Nusantara Bank ESG Impact Report</title>
   <style>
-    body { margin: 0; background: #f5f8fb; color: #07343f; font-family: Inter, Arial, sans-serif; }
-    main { max-width: 960px; margin: 0 auto; padding: 40px 24px; }
-    header, section { background: #fff; border: 1px solid rgba(7, 52, 63, .12); border-radius: 16px; margin-bottom: 16px; padding: 24px; }
-    h1, h2 { margin: 0; letter-spacing: 0; }
-    .eyebrow { color: #db6f4d; font-size: 12px; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; }
-    .grid { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); }
-    .metric { background: #f7fbf9; border-radius: 12px; padding: 16px; }
-    .metric strong { display: block; font-size: 24px; margin-bottom: 4px; }
-    table { border-collapse: collapse; width: 100%; }
-    th, td { border-bottom: 1px solid rgba(7, 52, 63, .12); padding: 10px 8px; text-align: left; }
-    th { color: rgba(7, 52, 63, .62); font-size: 12px; text-transform: uppercase; }
+    :root { color-scheme: light; --ink: #0b2f37; --muted: #5f7378; --line: #dbe6e0; --paper: #ffffff; --wash: #f5f7f3; --deep: #063746; --accent: #c85d43; --green: #18775f; --amber: #93651d; }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--wash); color: var(--ink); font-family: Inter, Arial, sans-serif; line-height: 1.45; }
+    main { max-width: 1120px; margin: 0 auto; padding: 32px 24px 48px; }
+    h1, h2, h3, p { margin: 0; }
+    h1 { max-width: 760px; font-size: clamp(34px, 5vw, 58px); line-height: .96; letter-spacing: 0; }
+    h2 { font-size: 22px; letter-spacing: 0; }
+    .cover { overflow: hidden; border-radius: 22px; background: var(--deep); color: #fff; box-shadow: 0 24px 60px rgba(6, 55, 70, .18); }
+    .cover-grid { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 28px; padding: 36px; }
+    .eyebrow { color: #f3b49f; font-size: 12px; font-weight: 800; letter-spacing: .16em; text-transform: uppercase; }
+    .summary { max-width: 720px; margin-top: 20px; color: rgba(255,255,255,.76); font-size: 17px; }
+    .meta-panel { align-self: stretch; border: 1px solid rgba(255,255,255,.18); border-radius: 16px; background: rgba(255,255,255,.08); padding: 18px; }
+    .meta-panel dl { display: grid; gap: 14px; margin: 0; }
+    .meta-panel dt { color: rgba(255,255,255,.56); font-size: 11px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
+    .meta-panel dd { margin: 4px 0 0; font-weight: 800; }
+    .section { margin-top: 20px; border: 1px solid var(--line); border-radius: 18px; background: var(--paper); padding: 24px; box-shadow: 0 12px 34px rgba(7, 52, 63, .07); }
+    .section-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; margin-bottom: 18px; }
+    .section-head p { max-width: 640px; color: var(--muted); font-weight: 700; }
+    .badge { display: inline-flex; align-items: center; min-height: 32px; border-radius: 999px; background: #eef6f1; color: var(--green); padding: 0 12px; font-size: 12px; font-weight: 800; white-space: nowrap; }
+    .metric-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-top: 28px; }
+    .metric { min-height: 150px; border: 1px solid var(--line); border-radius: 16px; background: linear-gradient(180deg, #fff, #f8fbf8); padding: 16px; }
+    .metric span { display: block; color: var(--muted); font-size: 12px; font-weight: 800; text-transform: uppercase; }
+    .metric strong { display: block; margin-top: 12px; font-size: 27px; line-height: 1.05; }
+    .metric p { margin-top: 10px; color: var(--muted); font-size: 13px; font-weight: 700; }
+    .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th { border-bottom: 1px solid var(--line); color: var(--muted); font-size: 11px; letter-spacing: .08em; padding: 0 10px 10px; text-align: left; text-transform: uppercase; }
+    td { border-bottom: 1px solid #edf2ee; padding: 14px 10px; vertical-align: top; }
+    td strong, td span, td small { display: block; }
+    td span, td small { margin-top: 3px; color: var(--muted); font-size: 12px; font-weight: 700; }
+    .status { display: inline-flex; border-radius: 999px; padding: 5px 10px; font-size: 11px; font-weight: 900; text-transform: uppercase; }
+    .status.good { background: #e7f4ed; color: var(--green); }
+    .status.warn { background: #fff3d9; color: var(--amber); }
+    .progress { height: 8px; width: 100%; overflow: hidden; border-radius: 999px; background: #e4ece8; }
+    .progress span { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, var(--green), #58a790); }
+    .summary-table td:first-child { width: 38%; font-weight: 800; }
+    .summary-table td:nth-child(2) { width: 28%; font-weight: 900; }
+    .note { border-left: 4px solid var(--accent); background: #fff8f5; padding: 16px; }
+    footer { margin-top: 20px; color: var(--muted); font-size: 12px; font-weight: 700; text-align: center; }
+    @media (max-width: 860px) {
+      main { padding: 20px 14px 32px; }
+      .cover-grid, .two-col, .metric-grid { grid-template-columns: 1fr; }
+      .cover-grid { padding: 24px; }
+      .section { padding: 18px; overflow-x: auto; }
+      .section-head { display: block; }
+      .badge { margin-top: 12px; }
+    }
+    @media print {
+      body { background: #fff; }
+      main { max-width: none; padding: 0; }
+      .cover, .section { box-shadow: none; break-inside: avoid; }
+      .cover { border-radius: 0; }
+    }
   </style>
 </head>
 <body>
   <main>
-    <header>
-      <p class="eyebrow">Terumbu.eco corporate report</p>
-      <h1>Nusantara Bank / Ocean Impact Program 2026</h1>
-      <p>ESG report TRB-CORP-EXPORT-2026-0001 generated 18 Jun 2026.</p>
+    <header class="cover">
+      <div class="cover-grid">
+        <div>
+          <p class="eyebrow">Environmental, social, and governance</p>
+          <h1>Nusantara Bank ESG Impact Report</h1>
+          <p class="summary">A professional ESG package covering committed funding, utilization, field evidence, risk posture, and reportable coastal restoration outputs.</p>
+        </div>
+        <aside class="meta-panel" aria-label="Report metadata">
+          <dl>
+            <div><dt>Program</dt><dd>Ocean Impact Program 2026</dd></div>
+            <div><dt>Export code</dt><dd>TRB-CORP-EXPORT-2026-0001</dd></div>
+            <div><dt>Generated</dt><dd>18 Jun 2026</dd></div>
+            <div><dt>Package</dt><dd>HTML + JSON / v1</dd></div>
+          </dl>
+        </aside>
+      </div>
     </header>
-    <section>
-      <h2>Executive metrics</h2>
-      <div class="grid">
-        <div class="metric"><strong>Rp500.000.000</strong><span>Total committed funding</span></div>
-        <div class="metric"><strong>Rp338.000.000</strong><span>Funds allocated to projects</span></div>
-        <div class="metric"><strong>2</strong><span>Verified evidence records</span></div>
+
+    <section class="section">
+      <div class="section-head">
+        <div>
+          <h2>Verified blue-carbon and coastal conservation performance</h2>
+          <p>Generated from Terumbu.eco corporate program data, funding ledgers, partner project status, and verified evidence records.</p>
+        </div>
+        <span class="badge">Published artifact</span>
+      </div>
+      <div class="metric-grid">
+        <article class="metric"><span>Committed funding</span><strong>Rp500.000.000</strong><p>Approved corporate program budget.</p></article>
+        <article class="metric"><span>Funds allocated</span><strong>Rp338.000.000</strong><p>68% of committed funding assigned to projects.</p></article>
+        <article class="metric"><span>Verified evidence</span><strong>2</strong><p>Reportable records in the evidence center.</p></article>
+        <article class="metric"><span>Portfolio coverage</span><strong>2 projects</strong><p>Active conservation campaigns in the report.</p></article>
       </div>
     </section>
-    <section>
-      <h2>Project portfolio</h2>
+
+    <section class="section">
+      <div class="section-head">
+        <div>
+          <h2>Executive summary</h2>
+          <p>Core report metrics for finance, sustainability, and program governance review.</p>
+        </div>
+      </div>
+      <div class="two-col">
+        <table class="summary-table">
+          <thead><tr><th>Financial metric</th><th>Value</th><th>Interpretation</th></tr></thead>
+          <tbody>
+            <tr><td>Committed funding</td><td>Rp500.000.000</td><td>Approved program ceiling</td></tr>
+            <tr><td>Allocated funding</td><td>Rp338.000.000</td><td>Contracted portfolio value</td></tr>
+            <tr><td>Remaining commitment</td><td>Rp162.000.000</td><td>Available for future project allocation</td></tr>
+          </tbody>
+        </table>
+        <table class="summary-table">
+          <thead><tr><th>Impact metric</th><th>Value</th><th>Interpretation</th></tr></thead>
+          <tbody>
+            <tr><td>Conservation projects</td><td>2</td><td>Funded campaign portfolio</td></tr>
+            <tr><td>Verified records</td><td>2</td><td>Evidence-linked claims</td></tr>
+            <tr><td>Public report page</td><td>Published</td><td>Approved for external sharing</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-head">
+        <div>
+          <h2>Project portfolio</h2>
+          <p>Funded conservation campaigns, utilization progress, and delivery status for the reporting period.</p>
+        </div>
+        <span class="badge">1 item awaiting verification</span>
+      </div>
       <table>
-        <thead><tr><th>Project</th><th>Region</th><th>Allocation</th><th>Status</th></tr></thead>
+        <thead><tr><th>Project</th><th>Allocation</th><th>Utilization</th><th>Status</th></tr></thead>
         <tbody>
-          <tr><td>Restore Raja Ampat Reefs</td><td>Raja Ampat, Papua Barat</td><td>Rp220.000.000</td><td>On Track</td></tr>
-          <tr><td>Mangrove Shield Bali</td><td>Bali</td><td>Rp118.000.000</td><td>Awaiting Verification</td></tr>
+          <tr>
+            <td><strong>Restore Raja Ampat Reefs</strong><span>Raja Ampat, Papua Barat</span></td>
+            <td>Rp220.000.000</td>
+            <td><div class="progress"><span style="width: 82%"></span></div><small>82% utilized</small></td>
+            <td><span class="status good">On Track</span></td>
+          </tr>
+          <tr>
+            <td><strong>Mangrove Shield Bali</strong><span>Bali</span></td>
+            <td>Rp118.000.000</td>
+            <td><div class="progress"><span style="width: 64%"></span></div><small>64% utilized</small></td>
+            <td><span class="status warn">Awaiting Verification</span></td>
+          </tr>
         </tbody>
       </table>
     </section>
-    <section>
-      <h2>Evidence bundle</h2>
-      <p>Two reportable evidence records are linked from the published public impact page.</p>
+
+    <section class="section">
+      <div class="section-head">
+        <div>
+          <h2>Evidence register</h2>
+          <p>Source records used to support reportable claims, finance utilization, and campaign progress.</p>
+        </div>
+        <span class="badge">2 verified</span>
+      </div>
+      <table>
+        <thead><tr><th>Code</th><th>Evidence</th><th>Campaign</th><th>Status</th></tr></thead>
+        <tbody>
+          <tr><td><strong>TRB-EVD-RAJA-001</strong><span>monitoring</span></td><td>Raja Ampat coral nursery monitoring</td><td>Restore Raja Ampat Reefs</td><td><span class="status good">verified</span></td></tr>
+          <tr><td><strong>TRB-EVD-BALI-001</strong><span>field_report</span></td><td>Bali mangrove seedling audit</td><td>Mangrove Shield Bali</td><td><span class="status good">verified</span></td></tr>
+        </tbody>
+      </table>
     </section>
+
+    <section class="section">
+      <h2>Evidence bundle</h2>
+      <p class="note">This package is designed for audit review. The JSON data file contains the full report payload, and the evidence bundle contains source evidence records for campaign-level traceability.</p>
+    </section>
+    <footer>Terumbu.eco generated report / TRB-CORP-EXPORT-2026-0001 / 18 Jun 2026</footer>
   </main>
 </body>
 </html>
