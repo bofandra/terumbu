@@ -574,10 +574,17 @@ export async function createAcademyQuestionAction(formData: FormData) {
   const courseId = formText(formData, "courseId");
   const assessmentId = formText(formData, "assessmentId");
   const questionText = formText(formData, "questionText");
-  const choices = formData.getAll("choiceText").map((choice) => String(choice).trim()).filter(Boolean);
+  const choices = formData
+    .getAll("choiceText")
+    .map((choice, index) => ({
+      choiceText: String(choice).trim(),
+      originalIndex: index
+    }))
+    .filter((choice) => choice.choiceText);
   const correctIndex = formInt(formData, "correctChoiceIndex", 0);
+  const correctChoice = choices.find((choice) => choice.originalIndex === correctIndex);
 
-  if (!courseId || !assessmentId || !questionText || choices.length < 2) {
+  if (!courseId || !assessmentId || !questionText || choices.length < 2 || !correctChoice) {
     redirect(`/admin/academy/courses/${courseId}?error=question`);
   }
 
@@ -593,10 +600,10 @@ export async function createAcademyQuestionAction(formData: FormData) {
       .returning({ id: assessmentQuestions.id });
 
     await tx.insert(assessmentChoices).values(
-      choices.map((choiceText, index) => ({
+      choices.map((choice, index) => ({
         questionId: question.id,
-        choiceText,
-        isCorrect: index === correctIndex,
+        choiceText: choice.choiceText,
+        isCorrect: choice.originalIndex === correctIndex,
         position: index + 1
       }))
     );

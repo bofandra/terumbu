@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowUpRight, BarChart3, BookOpenCheck, ClipboardCheck, FileQuestion, Percent, ListPlus, Save, TrendingUp } from "lucide-react";
+import { ArrowUpRight, BarChart3, BookOpenCheck, CheckCircle2, Circle, ClipboardCheck, FileQuestion, Percent, ListPlus, Save, TrendingUp } from "lucide-react";
 import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
 
@@ -29,6 +29,7 @@ export const metadata = {
 export const dynamic = "force-dynamic";
 
 const courseStatuses = ["draft", "published", "archived"];
+const choiceLabels = ["A", "B", "C", "D"];
 
 const savedMessages: Record<string, string> = {
   assessment: "Assessment saved.",
@@ -43,7 +44,7 @@ const errorMessages: Record<string, string> = {
   "image-size": "Uploaded image is too large.",
   "image-type": "Upload a supported image file.",
   lesson: "Choose a course and enter a lesson title.",
-  question: "Enter a question with at least two choices."
+  question: "Enter a question, at least two choices, and a non-empty correct answer."
 };
 
 type AdminAcademyCoursePageProps = {
@@ -95,6 +96,92 @@ function formatDate(value: Date | null) {
 
 function formatAttemptDate(value: Date | null) {
   return value ? value.toLocaleDateString("id-ID", { dateStyle: "medium" }) : "No attempts yet";
+}
+
+function choiceLabelFor(position: number) {
+  return choiceLabels[position - 1] ?? position.toLocaleString("id-ID");
+}
+
+function AssessmentMetric({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="border-l border-ocean-900/10 pl-3">
+      <p className="text-xs font-bold uppercase text-ocean-900/48">{label}</p>
+      <p className="mt-1 text-lg font-bold tracking-normal text-ocean-900">{value}</p>
+    </div>
+  );
+}
+
+function QuestionBuilder({
+  courseId,
+  assessmentId,
+  nextPosition
+}: {
+  courseId: string;
+  assessmentId: string;
+  nextPosition: number;
+}) {
+  return (
+    <form action={createAcademyQuestionAction} className="border-t border-ocean-900/10 bg-white p-4">
+      <input type="hidden" name="courseId" value={courseId} />
+      <input type="hidden" name="assessmentId" value={assessmentId} />
+      <div className="flex flex-col justify-between gap-2 sm:flex-row sm:items-center">
+        <h4 className="text-lg font-bold tracking-normal text-ocean-900">Question builder</h4>
+        <span className="inline-flex min-h-8 w-fit items-center rounded-lg bg-ocean-50 px-3 text-xs font-bold uppercase text-ocean-900/58">
+          Position {nextPosition.toLocaleString("id-ID")}
+        </span>
+      </div>
+
+      <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,1fr)_140px_120px]">
+        <Field label="Question prompt" className="lg:row-span-2">
+          <textarea
+            name="questionText"
+            className={`${adminTextareaClassName} min-h-36`}
+            placeholder="What should learners know after this course?"
+            required
+          />
+        </Field>
+        <Field label="Position">
+          <input name="position" type="number" min={1} defaultValue={nextPosition} className={adminInputClassName} required />
+        </Field>
+        <Field label="Points">
+          <input name="points" type="number" min={1} defaultValue={1} className={adminInputClassName} required />
+        </Field>
+      </div>
+
+      <fieldset className="mt-4">
+        <legend className="text-sm font-bold text-ocean-900">Answer choices</legend>
+        <div className="mt-3 grid gap-3">
+          {choiceLabels.map((label, index) => (
+            <div key={label} className="grid gap-2 rounded-lg border border-ocean-900/10 bg-sand-50 p-3 md:grid-cols-[128px_minmax(0,1fr)] md:items-center">
+              <label className="inline-flex min-h-10 items-center gap-2 rounded-lg bg-white px-3 text-sm font-bold text-ocean-900 ring-1 ring-ocean-900/10">
+                <input
+                  name="correctChoiceIndex"
+                  type="radio"
+                  value={index}
+                  defaultChecked={index === 0}
+                  className="size-4 accent-coral-500"
+                  aria-label={`Mark answer ${label} as correct`}
+                />
+                <span className="grid size-7 place-items-center rounded-md bg-ocean-50 text-xs">{label}</span>
+                Correct
+              </label>
+              <input
+                name="choiceText"
+                className={adminInputClassName}
+                placeholder={index < 2 ? `Answer ${label}` : `Optional answer ${label}`}
+                required={index < 2}
+              />
+            </div>
+          ))}
+        </div>
+      </fieldset>
+
+      <Button type="submit" className="mt-4 rounded-lg">
+        <ListPlus className="size-4" aria-hidden="true" />
+        Add Question
+      </Button>
+    </form>
+  );
 }
 
 export default async function AdminAcademyCoursePage({ params, searchParams }: AdminAcademyCoursePageProps) {
@@ -313,136 +400,133 @@ export default async function AdminAcademyCoursePage({ params, searchParams }: A
             const topMissedQuestions = assessment.analytics.questionStats.filter((stat) => stat.answeredCount > 0).slice(0, 3);
 
             return (
-              <article key={assessment.id} className="rounded-lg border border-ocean-900/10 bg-sand-50 p-4">
-                <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-start">
-                  <div>
-                    <h3 className="font-bold text-ocean-900">{assessment.title}</h3>
-                    <p className="mt-1 text-sm font-semibold text-ocean-900/58">
-                      /{assessment.slug} / {assessment.passingScore}% passing score / {assessment.questions.length.toLocaleString("id-ID")} questions
-                    </p>
+              <article key={assessment.id} className="overflow-hidden rounded-lg border border-ocean-900/10 bg-white">
+                <div className="border-b border-ocean-900/10 bg-sand-50 p-4">
+                  <div className="flex flex-col justify-between gap-3 lg:flex-row lg:items-start">
+                    <div>
+                      <h3 className="text-lg font-bold tracking-normal text-ocean-900">{assessment.title}</h3>
+                      <p className="mt-1 text-sm font-semibold text-ocean-900/58">
+                        /{assessment.slug} / {assessment.passingScore}% passing score / {assessment.questions.length.toLocaleString("id-ID")} questions
+                      </p>
+                    </div>
+                    <div className="grid gap-3 sm:grid-cols-2 lg:min-w-[420px] lg:grid-cols-4">
+                      <AssessmentMetric label="Attempts" value={assessment.analytics.totalSubmissions.toLocaleString("id-ID")} />
+                      <AssessmentMetric label="Pass rate" value={`${assessment.analytics.passRate}%`} />
+                      <AssessmentMetric label="Average" value={`${assessment.analytics.averageScore}%`} />
+                      <AssessmentMetric
+                        label="Latest"
+                        value={assessmentLatestAttempt ? `${assessmentLatestAttempt.score}% ${labelize(assessmentLatestAttempt.status)}` : "None"}
+                      />
+                    </div>
                   </div>
                 </div>
 
-                <div className="mt-4 grid gap-3 md:grid-cols-4">
-                  {[
-                    { label: "Attempts", value: assessment.analytics.totalSubmissions.toLocaleString("id-ID") },
-                    { label: "Pass rate", value: `${assessment.analytics.passRate}%` },
-                    { label: "Average", value: `${assessment.analytics.averageScore}%` },
-                    {
-                      label: "Latest",
-                      value: assessmentLatestAttempt ? `${assessmentLatestAttempt.score}% ${labelize(assessmentLatestAttempt.status)}` : "None"
-                    }
-                  ].map((item) => (
-                    <div key={item.label} className="rounded-lg border border-ocean-900/10 bg-white px-3 py-2">
-                      <p className="text-xs font-bold uppercase text-ocean-900/48">{item.label}</p>
-                      <p className="mt-1 text-lg font-bold tracking-normal text-ocean-900">{item.value}</p>
+                <div className="grid lg:grid-cols-[minmax(0,1fr)_320px]">
+                  <div className="p-4">
+                    <div className="flex flex-col justify-between gap-2 sm:flex-row sm:items-center">
+                      <h4 className="font-bold text-ocean-900">Question bank</h4>
+                      <span className="inline-flex min-h-8 w-fit items-center rounded-lg bg-ocean-50 px-3 text-xs font-bold uppercase text-ocean-900/58">
+                        {assessment.questions.length.toLocaleString("id-ID")} total
+                      </span>
                     </div>
-                  ))}
-                </div>
 
-                {assessmentLatestAttempt ? (
-                  <p className="mt-3 rounded-lg border border-ocean-900/10 bg-white px-3 py-2 text-sm font-semibold text-ocean-900/62">
-                    Latest attempt by {assessmentLatestAttempt.learnerName ?? assessmentLatestAttempt.learnerEmail ?? "Learner"} on {formatAttemptDate(assessmentLatestAttempt.submittedAt)} after {assessmentLatestAttempt.attemptCount.toLocaleString("id-ID")} attempt(s).
-                  </p>
-                ) : null}
+                    <div className="mt-4 grid gap-3">
+                      {assessment.questions.map((question) => {
+                        const questionStat = assessment.analytics.questionStats.find((stat) => stat.questionId === question.id);
 
-                {topMissedQuestions.length > 0 ? (
-                  <div className="mt-4 rounded-lg border border-ocean-900/10 bg-white p-3">
-                    <div className="flex flex-col justify-between gap-1 sm:flex-row sm:items-center">
-                      <p className="font-bold text-ocean-900">Question focus</p>
-                      <p className="text-xs font-bold uppercase text-ocean-900/48">Highest miss rates</p>
-                    </div>
-                    <div className="mt-3 grid gap-3">
-                      {topMissedQuestions.map((stat) => (
-                        <div key={stat.questionId}>
-                          <div className="flex flex-col justify-between gap-1 text-sm font-semibold text-ocean-900/62 sm:flex-row">
-                            <span className="line-clamp-1">{stat.position}. {stat.questionText}</span>
-                            <span className="shrink-0 text-ocean-900">{stat.missRate}% missed</span>
-                          </div>
-                          <div className="mt-2 h-2 overflow-hidden rounded-full bg-ocean-50">
-                            <div className="h-full rounded-full bg-coral-500" style={{ width: `${stat.missRate}%` }} />
-                          </div>
-                        </div>
-                      ))}
+                        return (
+                          <article key={question.id} className="overflow-hidden rounded-lg border border-ocean-900/10 bg-white">
+                            <div className="flex flex-col justify-between gap-3 border-b border-ocean-900/10 bg-ocean-50/70 p-3 sm:flex-row sm:items-start">
+                              <div className="flex gap-3">
+                                <span className="grid size-10 shrink-0 place-items-center rounded-lg bg-white text-sm font-bold text-ocean-900 ring-1 ring-ocean-900/10">
+                                  Q{question.position}
+                                </span>
+                                <div>
+                                  <p className="font-bold leading-6 text-ocean-900">{question.questionText}</p>
+                                  <p className="mt-1 text-xs font-bold uppercase text-ocean-900/48">
+                                    {question.points} points / {questionStat?.missRate ?? 0}% miss rate
+                                  </p>
+                                </div>
+                              </div>
+                              <AdminStatusBadge value={question.status} />
+                            </div>
+                            <ol className="grid gap-2 p-3">
+                              {question.choices.map((choice) => (
+                                <li
+                                  key={choice.id}
+                                  className={`flex items-start gap-3 rounded-lg border px-3 py-2 text-sm font-semibold ${
+                                    choice.isCorrect
+                                      ? "border-kelp-700/20 bg-kelp-100/60 text-kelp-700"
+                                      : "border-ocean-900/10 bg-white text-ocean-900/68"
+                                  }`}
+                                >
+                                  {choice.isCorrect ? (
+                                    <CheckCircle2 className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+                                  ) : (
+                                    <Circle className="mt-0.5 size-4 shrink-0 text-ocean-900/36" aria-hidden="true" />
+                                  )}
+                                  <span className="grid size-6 shrink-0 place-items-center rounded-md bg-white text-xs font-bold text-ocean-900 ring-1 ring-ocean-900/10">
+                                    {choiceLabelFor(choice.position)}
+                                  </span>
+                                  <span className="min-w-0 flex-1 leading-6">{choice.choiceText}</span>
+                                  {choice.isCorrect ? <span className="shrink-0 text-xs font-bold uppercase">Correct</span> : null}
+                                </li>
+                              ))}
+                            </ol>
+                            {questionStat && questionStat.answeredCount > 0 ? (
+                              <div className="border-t border-ocean-900/10 px-3 py-2 text-xs font-bold uppercase text-coral-700">
+                                {questionStat.missedCount.toLocaleString("id-ID")} missed / {questionStat.answeredCount.toLocaleString("id-ID")} answered
+                              </div>
+                            ) : null}
+                          </article>
+                        );
+                      })}
+
+                      {assessment.questions.length === 0 ? (
+                        <AdminEmptyState
+                          title="No questions yet"
+                          description="Create the first scored question for this assessment."
+                          className="bg-white"
+                        />
+                      ) : null}
                     </div>
                   </div>
-                ) : null}
 
-                <div className="mt-4 grid gap-3">
-                  {assessment.questions.map((question) => {
-                    const questionStat = assessment.analytics.questionStats.find((stat) => stat.questionId === question.id);
+                  <aside className="border-t border-ocean-900/10 bg-sand-50/70 p-4 lg:border-l lg:border-t-0">
+                    <h4 className="font-bold text-ocean-900">Assessment pulse</h4>
+                    {assessmentLatestAttempt ? (
+                      <div className="mt-3 rounded-lg border border-ocean-900/10 bg-white p-3 text-sm font-semibold leading-6 text-ocean-900/64">
+                        Latest attempt by {assessmentLatestAttempt.learnerName ?? assessmentLatestAttempt.learnerEmail ?? "Learner"} on {formatAttemptDate(assessmentLatestAttempt.submittedAt)} after {assessmentLatestAttempt.attemptCount.toLocaleString("id-ID")} attempt(s).
+                      </div>
+                    ) : (
+                      <div className="mt-3 rounded-lg border border-dashed border-ocean-900/16 bg-white p-3 text-sm font-semibold text-ocean-900/58">
+                        No attempts yet.
+                      </div>
+                    )}
 
-                    return (
-                      <div key={question.id} className="rounded-lg border border-ocean-900/10 bg-white p-3">
-                        <div className="flex flex-col justify-between gap-2 sm:flex-row sm:items-start">
-                          <div>
-                            <p className="font-bold text-ocean-900">{question.position}. {question.questionText}</p>
-                            <p className="mt-1 text-xs font-bold uppercase text-ocean-900/48">
-                              {question.points} points / {question.status} / {questionStat?.missRate ?? 0}% miss rate
-                            </p>
-                          </div>
-                          <AdminStatusBadge value={question.status} />
-                        </div>
-                        <div className="mt-3 flex flex-wrap gap-2">
-                          {question.choices.map((choice) => (
-                            <span key={choice.id} className={`rounded-full px-3 py-1 text-xs font-bold ${choice.isCorrect ? "bg-kelp-100 text-kelp-700" : "bg-ocean-50 text-ocean-700"}`}>
-                              {choice.position}. {choice.choiceText}
-                            </span>
+                    {topMissedQuestions.length > 0 ? (
+                      <div className="mt-4">
+                        <p className="text-xs font-bold uppercase text-ocean-900/48">Question focus</p>
+                        <div className="mt-3 grid gap-3">
+                          {topMissedQuestions.map((stat) => (
+                            <div key={stat.questionId}>
+                              <div className="flex flex-col justify-between gap-1 text-sm font-semibold text-ocean-900/62 sm:flex-row lg:flex-col">
+                                <span className="line-clamp-2">{stat.position}. {stat.questionText}</span>
+                                <span className="shrink-0 font-bold text-ocean-900">{stat.missRate}% missed</span>
+                              </div>
+                              <div className="mt-2 h-2 overflow-hidden rounded-full bg-white">
+                                <div className="h-full rounded-full bg-coral-500" style={{ width: `${stat.missRate}%` }} />
+                              </div>
+                            </div>
                           ))}
-                          {questionStat && questionStat.answeredCount > 0 ? (
-                            <span className="rounded-full bg-coral-100 px-3 py-1 text-xs font-bold text-coral-700">
-                              {questionStat.missedCount.toLocaleString("id-ID")} missed / {questionStat.answeredCount.toLocaleString("id-ID")} answered
-                            </span>
-                          ) : null}
                         </div>
                       </div>
-                    );
-                  })}
-
-                {assessment.questions.length === 0 ? (
-                  <AdminEmptyState
-                    title="No questions yet"
-                    description="Add assessment questions with answer choices before relying on this assessment for certification."
-                  />
-                ) : null}
-              </div>
-
-              <form action={createAcademyQuestionAction} className="mt-4 rounded-lg border border-ocean-900/10 bg-white p-4">
-                <input type="hidden" name="courseId" value={course.id} />
-                <input type="hidden" name="assessmentId" value={assessment.id} />
-                <h4 className="font-bold text-ocean-900">Add question</h4>
-                <div className="mt-3 grid gap-3 lg:grid-cols-[1fr_120px_120px]">
-                  <Field label="Question" className="lg:row-span-2">
-                    <textarea name="questionText" className={adminTextareaClassName} required />
-                  </Field>
-                  <Field label="Position">
-                    <input name="position" type="number" min={1} defaultValue={assessment.questions.length + 1} className={adminInputClassName} required />
-                  </Field>
-                  <Field label="Points">
-                    <input name="points" type="number" min={1} defaultValue={1} className={adminInputClassName} required />
-                  </Field>
-                  <Field label="Correct choice" className="lg:col-span-2">
-                    <select name="correctChoiceIndex" defaultValue="0" className={adminSelectClassName}>
-                      <option value="0">Choice 1</option>
-                      <option value="1">Choice 2</option>
-                      <option value="2">Choice 3</option>
-                      <option value="3">Choice 4</option>
-                    </select>
-                  </Field>
+                    ) : null}
+                  </aside>
                 </div>
-                <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                  {[1, 2, 3, 4].map((choice) => (
-                    <Field key={choice} label={`Choice ${choice}`}>
-                      <input name="choiceText" className={adminInputClassName} required />
-                    </Field>
-                  ))}
-                </div>
-                <Button type="submit" className="mt-4 rounded-lg">
-                  <ListPlus className="size-4" aria-hidden="true" />
-                  Add Question
-                </Button>
-              </form>
-            </article>
+
+                <QuestionBuilder courseId={course.id} assessmentId={assessment.id} nextPosition={assessment.questions.length + 1} />
+              </article>
             );
           })}
 

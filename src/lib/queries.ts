@@ -357,7 +357,7 @@ export async function getUnreadNotificationCount(userId: string) {
 }
 
 export async function getRetentionCenterData(userId: string) {
-  const [savedRows, followedRows, notificationRows, reportRows, preferences] = await Promise.all([
+  const [savedRows, savedCourseRows, followedRows, notificationRows, reportRows, preferences] = await Promise.all([
     db
       .select({
         slug: campaigns.slug,
@@ -381,6 +381,20 @@ export async function getRetentionCenterData(userId: string) {
       .innerJoin(organizations, eq(campaigns.organizationId, organizations.id))
       .where(and(eq(userSavedCampaigns.userId, userId), eq(userSavedCampaigns.status, "active")))
       .orderBy(desc(userSavedCampaigns.savedAt)),
+    db
+      .select({
+        slug: courses.slug,
+        title: courses.title,
+        level: courses.level,
+        summary: courses.summary,
+        imageUrl: courses.imageUrl,
+        durationMinutes: courses.durationMinutes,
+        savedAt: userSavedCourses.savedAt
+      })
+      .from(userSavedCourses)
+      .innerJoin(courses, eq(userSavedCourses.courseId, courses.id))
+      .where(and(eq(userSavedCourses.userId, userId), eq(userSavedCourses.status, "active"), eq(courses.status, "published")))
+      .orderBy(desc(userSavedCourses.savedAt)),
     db
       .select({
         slug: campaigns.slug,
@@ -446,6 +460,7 @@ export async function getRetentionCenterData(userId: string) {
       ...toCampaignCard(row),
       savedAt: row.savedAt
     })),
+    savedCourses: savedCourseRows,
     followedCampaigns: Array.from(followedBySlug.values()),
     notifications: notificationRows.map((notification) => ({
       ...notification,

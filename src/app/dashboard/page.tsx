@@ -513,6 +513,28 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
               <Link href={`/academy/courses/${data.academy.recommendedCourse.slug}`} className="mt-4 inline-flex text-sm font-bold text-coral-700">Start course</Link>
             </div>
           ) : null}
+          {data.academy.savedCourses.length > 0 ? (
+            <div className="mt-5 rounded-2xl border border-ocean-900/10 bg-sand-50 p-4">
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-sm font-bold text-ocean-900">Saved courses</p>
+                <Link href="/dashboard/academy#saved-courses" className="text-xs font-bold text-coral-700 hover:text-coral-500">
+                  View all
+                </Link>
+              </div>
+              <div className="mt-3 grid gap-2">
+                {data.academy.savedCourses.slice(0, 2).map((course) => (
+                  <Link
+                    key={course.slug}
+                    href={`/academy/courses/${course.slug}`}
+                    className="flex items-center justify-between gap-3 rounded-xl bg-white px-3 py-2 text-sm font-semibold text-ocean-900 transition hover:text-coral-700"
+                  >
+                    <span className="min-w-0 truncate">{course.title}</span>
+                    <span className="shrink-0 text-xs text-ocean-900/48">{course.level}</span>
+                  </Link>
+                ))}
+              </div>
+            </div>
+          ) : null}
           <div className="mt-5 grid grid-cols-3 gap-3 text-center">
             <div>
               <p className="text-2xl font-bold text-ocean-900">{data.academy.completedCourses}</p>
