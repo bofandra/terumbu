@@ -21,7 +21,7 @@ import {
   Waves
 } from "lucide-react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import type { ReactNode } from "react";
 
 import { logoutAction } from "@/lib/auth-actions";
@@ -56,6 +56,10 @@ const mobileNav = [
 ];
 
 function getCurrentLabel(pathname: string) {
+  if (pathname === "/dashboard/search") {
+    return "Search Results";
+  }
+
   return [...dashboardNav, ...accountNav].find((item) => pathname === item.href || (item.href !== "/dashboard" && pathname.startsWith(item.href)))?.label ?? "Overview";
 }
 
@@ -76,9 +80,11 @@ function initialsForDisplayName(displayName: string) {
 
 export function DashboardShell({ children, displayName, unreadNotificationCount = 0 }: { children: ReactNode; displayName: string; unreadNotificationCount?: number }) {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const currentLabel = getCurrentLabel(pathname);
   const initials = initialsForDisplayName(displayName);
   const notificationBadge = unreadNotificationCount > 0 ? String(Math.min(unreadNotificationCount, 99)) : null;
+  const currentSearch = pathname === "/dashboard/search" ? searchParams.get("q") ?? "" : "";
 
   return (
     <div className="min-h-screen bg-mist-50 pb-20 lg:pb-0">
@@ -180,11 +186,11 @@ export function DashboardShell({ children, displayName, unreadNotificationCount 
             </div>
           </div>
 
-          <label className="hidden min-h-11 w-full max-w-sm items-center gap-3 rounded-full border border-ocean-900/12 bg-white px-4 text-sm font-semibold text-ocean-900/54 shadow-soft xl:flex">
+          <form action="/dashboard/search" method="get" className="hidden min-h-11 w-full max-w-sm items-center gap-3 rounded-full border border-ocean-900/12 bg-white px-4 text-sm font-semibold text-ocean-900/54 shadow-soft xl:flex">
             <Search size={18} aria-hidden="true" />
-            <span className="sr-only">Search dashboard</span>
-            <input className="w-full bg-transparent outline-none placeholder:text-ocean-900/42" placeholder="Search anything..." />
-          </label>
+            <label htmlFor="dashboard-search" className="sr-only">Search dashboard</label>
+            <input id="dashboard-search" name="q" type="search" defaultValue={currentSearch} className="w-full bg-transparent outline-none placeholder:text-ocean-900/42" placeholder="Search anything..." />
+          </form>
 
           <div className="flex items-center gap-2 sm:gap-3">
             <Link href="/dashboard#notifications" aria-label="Notifications" className="relative flex size-11 items-center justify-center rounded-full hover:bg-ocean-50">

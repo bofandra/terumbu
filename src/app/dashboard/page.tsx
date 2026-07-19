@@ -21,10 +21,12 @@ import Link from "next/link";
 
 import { DashboardImpactTrend } from "@/components/dashboard-impact-trend";
 import { DashboardPersonalImpactMap } from "@/components/dashboard-personal-impact-map";
+import { PassportCopyButton } from "@/components/passport-copy-button";
 import { PassportPreview } from "@/components/passport-preview";
 import { Button, ButtonLink } from "@/components/ui/button";
 import { ProgressMeter } from "@/components/ui/progress-meter";
 import { requireUser } from "@/lib/auth";
+import { publicPassportShareUrl } from "@/lib/passport-sharing";
 import { getDashboardData } from "@/lib/queries";
 import {
   emailMonthlyImpactReportAction,
@@ -96,7 +98,16 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
   const xpTarget = levelTarget(heroLevel);
   const xpProgress = Math.min(100, Math.round((xp / xpTarget) * 100));
   const xpRemaining = Math.max(0, xpTarget - xp);
-  const passportHref = data.profile?.publicSlug ? `/passport/${data.profile.publicSlug}` : "/dashboard/passport";
+  const passportHref = "/dashboard/passport";
+  const passportVisibility = data.profile?.passportVisibility ?? "private";
+  const passportShareToken = data.profile?.passportShareToken ?? null;
+  const canSharePassport = Boolean(data.profile?.publicSlug && passportVisibility !== "private" && (passportVisibility !== "link" || passportShareToken));
+  const passportShareUrl = publicPassportShareUrl({
+    origin: process.env.NEXT_PUBLIC_APP_URL ?? "https://terumbu.eco",
+    publicSlug: data.profile?.publicSlug,
+    visibility: passportVisibility,
+    shareToken: passportShareToken
+  });
   const isNewUser =
     data.summary.totalDonated === 0 &&
     data.summary.coralFragments === 0 &&
@@ -155,10 +166,14 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
             <FileBadge size={17} aria-hidden="true" />
             View Passport
           </ButtonLink>
-          <ButtonLink href="/dashboard/settings" tone="light">
-            <Share2 size={17} aria-hidden="true" />
-            Share Progress
-          </ButtonLink>
+          {canSharePassport ? (
+            <PassportCopyButton value={passportShareUrl} label="Share Progress" className="bg-white" />
+          ) : (
+            <ButtonLink href="/dashboard/passport#share-settings" tone="light">
+              <Share2 size={17} aria-hidden="true" />
+              Enable Sharing
+            </ButtonLink>
+          )}
         </div>
       </header>
 
@@ -457,7 +472,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
                     </td>
                     <td className="py-4 text-ocean-900/64">{item.latestUpdate ? `${formatShortDate(item.latestUpdate.publishedAt ?? item.latestUpdate.createdAt)} · New update` : "No new update"}</td>
                     <td className="py-4 text-right">
-                      <Link href="/dashboard/donations" className="inline-flex items-center justify-end gap-1 text-xs font-bold text-coral-700">
+                      <Link href={item.receiptNumber ? `/dashboard/donations/${item.receiptDonationId}/receipt` : "/dashboard/donations"} download={Boolean(item.receiptNumber)} className="inline-flex items-center justify-end gap-1 text-xs font-bold text-coral-700">
                         <Download size={14} aria-hidden="true" />
                         {item.receiptNumber ?? "Pending"}
                       </Link>
@@ -608,13 +623,14 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
                   : "Generate a saved report record before sending summaries."}
             </p>
             <div className="mt-5 flex flex-wrap gap-2">
-              <ButtonLink href="/dashboard/impact" tone="secondary">View Report</ButtonLink>
               {data.monthlyReport.downloadHref ? (
-                <ButtonLink href={data.monthlyReport.downloadHref} tone="light">
+                <ButtonLink href={data.monthlyReport.downloadHref} tone="secondary">
                   <Download size={17} aria-hidden="true" />
                   Download HTML
                 </ButtonLink>
-              ) : null}
+              ) : (
+                <ButtonLink href="/dashboard/impact" tone="secondary">Review Impact</ButtonLink>
+              )}
               {data.monthlyReport.preferenceEnabled ? (
                 <form action={generateMonthlyImpactReportAction}>
                   <Button type="submit" tone="light">

@@ -2203,7 +2203,8 @@ export async function getPassportPreviewForUser(userId: string): Promise<Passpor
     displayName: passport.displayName,
     heroLevel: passport.heroLevel,
     xp: passport.xp,
-    href: `/passport/${passport.publicSlug}`
+    href: "/dashboard/passport",
+    ctaLabel: "Manage Impact Passport"
   });
 }
 
@@ -2582,6 +2583,7 @@ async function buildPassportPreview(
     heroLevel: number;
     xp: number;
     href: string;
+    ctaLabel?: string;
   }
 ): Promise<PassportPreviewData> {
   const items = await db
@@ -2609,6 +2611,7 @@ async function buildPassportPreview(
     xp: profile.xp,
     xpTarget,
     href: profile.href,
+    ctaLabel: profile.ctaLabel,
     stats: [
       { label: "Donations", value: String(donationsCount) },
       { label: "Corals", value: String(coralCount) },
@@ -3030,6 +3033,7 @@ export async function getDashboardData(userId: string) {
           donationCount: 1,
           latestDonationAt: donation.createdAt,
           receiptNumber: donation.receiptNumber,
+          receiptDonationId: donation.id,
           progress,
           statusLabel: `${progress}% funded`,
           latestUpdate: latestUpdateByCampaign.get(donation.campaignSlug) ?? null
@@ -3043,6 +3047,7 @@ export async function getDashboardData(userId: string) {
       if (donation.createdAt > existing.latestDonationAt) {
         existing.latestDonationAt = donation.createdAt;
         existing.receiptNumber = donation.receiptNumber;
+        existing.receiptDonationId = donation.id;
       }
 
       return contributions;
@@ -3058,6 +3063,7 @@ export async function getDashboardData(userId: string) {
       donationCount: number;
       latestDonationAt: Date;
       receiptNumber: string | null;
+      receiptDonationId: string;
       progress: number;
       statusLabel: string;
       latestUpdate: (typeof updateRows)[number] | null;
@@ -3569,7 +3575,7 @@ export async function getDashboardData(userId: string) {
           type: "Share",
           title: "Publish your Impact Passport",
           reason: "Your public profile is private until you choose to share it.",
-          href: "/dashboard/settings",
+          href: "/dashboard/passport#share-settings",
           action: "Manage visibility"
         }
       : null,

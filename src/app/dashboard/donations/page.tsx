@@ -1,4 +1,4 @@
-import { CreditCard, Heart, RefreshCw, RotateCcw, XCircle } from "lucide-react";
+import { CreditCard, Download, Heart, RefreshCw, RotateCcw, XCircle } from "lucide-react";
 import Link from "next/link";
 
 import {
@@ -234,7 +234,14 @@ export default async function DashboardDonationsPage({ searchParams }: Dashboard
                   <p className="mt-1 text-sm text-ocean-900/58">
                     {donation.createdAt.toLocaleDateString("id-ID", { dateStyle: "medium" })}
                   </p>
-                  <p className="mt-3 text-sm text-ocean-900/62">{donation.receiptNumber ?? "Receipt pending"}</p>
+                  {donation.receiptNumber ? (
+                    <Link href={`/dashboard/donations/${donation.id}/receipt`} download className="mt-3 inline-flex items-center gap-1 text-sm font-bold text-coral-700 hover:text-coral-500">
+                      <Download size={14} aria-hidden="true" />
+                      {donation.receiptNumber}
+                    </Link>
+                  ) : (
+                    <p className="mt-3 text-sm text-ocean-900/62">Receipt pending</p>
+                  )}
                 </div>
               </div>
               <div className="md:text-right">

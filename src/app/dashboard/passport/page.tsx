@@ -414,7 +414,7 @@ export default async function DashboardPassportPage({ searchParams }: DashboardP
             </div>
           </article>
 
-          <article className="rounded-2xl border border-ocean-900/10 bg-white p-5 shadow-soft">
+          <article id="share-settings" className="scroll-mt-24 rounded-2xl border border-ocean-900/10 bg-white p-5 shadow-soft">
             <div className="flex items-start gap-3">
               <span className={cn("flex size-11 items-center justify-center rounded-full", visibility.tone)}>
                 <VisibilityIcon size={20} aria-hidden="true" />
