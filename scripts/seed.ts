@@ -20,6 +20,18 @@ const {
   campaignFollowSubscriptions,
   campaignMediaItems,
   campaignTimelinePhases,
+  communityChallengeParticipations,
+  communityChallengeProgress,
+  communityChallenges,
+  communityChapterMemberships,
+  communityChapters,
+  communityComments,
+  communityEventRegistrations,
+  communityEvents,
+  communityPosts,
+  communityReactions,
+  communityReports,
+  communityScoreEvents,
   corporateAccounts,
   corporateContributions,
   corporateEmployees,
@@ -153,6 +165,39 @@ const ids = {
   passportItemCoral: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa2",
   passportItemExpedition: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa3",
   passportItemCourse: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa4",
+  passportItemCommunityEvent: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa5",
+  passportItemCommunityChallenge: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaa6",
+  communityChapterJakarta: "abababab-abab-4aba-8aba-000000000001",
+  communityChapterBandung: "abababab-abab-4aba-8aba-000000000002",
+  communityChapterSurabaya: "abababab-abab-4aba-8aba-000000000003",
+  communityChapterBali: "abababab-abab-4aba-8aba-000000000004",
+  communityMembershipJakarta: "abababab-abab-4aba-8aba-000000000011",
+  communityMembershipBali: "abababab-abab-4aba-8aba-000000000012",
+  communityPostJakarta: "abababab-abab-4aba-8aba-000000000021",
+  communityPostBali: "abababab-abab-4aba-8aba-000000000022",
+  communityPostKomodo: "abababab-abab-4aba-8aba-000000000023",
+  communityEventMangrove: "abababab-abab-4aba-8aba-000000000031",
+  communityEventReef: "abababab-abab-4aba-8aba-000000000032",
+  communityRegistrationMangrove: "abababab-abab-4aba-8aba-000000000041",
+  communityRegistrationReef: "abababab-abab-4aba-8aba-000000000042",
+  communityChallengePlastic: "abababab-abab-4aba-8aba-000000000051",
+  communityChallengeMangrove: "abababab-abab-4aba-8aba-000000000052",
+  communityParticipationPlastic: "abababab-abab-4aba-8aba-000000000061",
+  communityParticipationMangrove: "abababab-abab-4aba-8aba-000000000062",
+  communityProgressPlastic1: "abababab-abab-4aba-8aba-000000000071",
+  communityProgressPlastic2: "abababab-abab-4aba-8aba-000000000072",
+  communityCommentPost: "abababab-abab-4aba-8aba-000000000081",
+  communityCommentReply: "abababab-abab-4aba-8aba-000000000082",
+  communityCommentEvent: "abababab-abab-4aba-8aba-000000000083",
+  communityReactionPost: "abababab-abab-4aba-8aba-000000000091",
+  communityReactionEvent: "abababab-abab-4aba-8aba-000000000092",
+  communityReportPost: "abababab-abab-4aba-8aba-0000000000a1",
+  communityScorePost: "abababab-abab-4aba-8aba-0000000000b1",
+  communityScoreComment: "abababab-abab-4aba-8aba-0000000000b2",
+  communityScoreEventRegistration: "abababab-abab-4aba-8aba-0000000000b3",
+  communityScoreEventAttendance: "abababab-abab-4aba-8aba-0000000000b4",
+  communityScoreChallengeJoin: "abababab-abab-4aba-8aba-0000000000b5",
+  communityScoreChallengeComplete: "abababab-abab-4aba-8aba-0000000000b6",
   corporateAccount: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
   corporateProgram: "bbbbbbbb-bbbb-4bbb-8bbb-000000000001",
   corporateBudgetRestoration: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbd1",
@@ -1880,6 +1925,559 @@ async function seed() {
       }
     });
 
+  const communityChapterRows = await db
+    .insert(communityChapters)
+    .values([
+      {
+        id: ids.communityChapterJakarta,
+        createdByUserId: demoUser.id,
+        name: "Jakarta Ocean Heroes",
+        slug: "jakarta-ocean-heroes",
+        region: "Jakarta",
+        description: "Urban supporters coordinating cleanup teams, school talks, and campaign volunteering from Jakarta.",
+        status: "published",
+        imageUrl: "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=1200&q=80",
+        updatedAt: now
+      },
+      {
+        id: ids.communityChapterBandung,
+        createdByUserId: demoUser.id,
+        name: "Bandung Reef Learners",
+        slug: "bandung-reef-learners",
+        region: "Bandung",
+        description: "Students and professionals preparing for reef monitoring, Academy sessions, and responsible field trips.",
+        status: "published",
+        imageUrl: "https://images.unsplash.com/photo-1498622205843-3b0ac17f8ba2?auto=format&fit=crop&w=1200&q=80",
+        updatedAt: now
+      },
+      {
+        id: ids.communityChapterSurabaya,
+        createdByUserId: demoUser.id,
+        name: "Surabaya Coastal Action",
+        slug: "surabaya-coastal-action",
+        region: "Surabaya",
+        description: "Volunteer network for port-city cleanup, waste sorting, and company-backed coastal education.",
+        status: "published",
+        imageUrl: "https://images.unsplash.com/photo-1546026423-cc4642628d2b?auto=format&fit=crop&w=1200&q=80",
+        updatedAt: now
+      },
+      {
+        id: ids.communityChapterBali,
+        createdByUserId: demoUser.id,
+        name: "Bali Mangrove Circle",
+        slug: "bali-mangrove-circle",
+        region: "Bali",
+        description: "Local and visiting volunteers supporting nursery days, coastal planting, and monitoring updates.",
+        status: "published",
+        imageUrl: "https://images.unsplash.com/photo-1518837695005-2083093ee35b?auto=format&fit=crop&w=1200&q=80",
+        updatedAt: now
+      }
+    ])
+    .onConflictDoUpdate({
+      target: communityChapters.slug,
+      set: {
+        name: sql`excluded.name`,
+        region: sql`excluded.region`,
+        description: sql`excluded.description`,
+        status: sql`excluded.status`,
+        imageUrl: sql`excluded.image_url`,
+        updatedAt: now
+      }
+    })
+    .returning({ id: communityChapters.id, slug: communityChapters.slug });
+
+  const communityChapterBySlug = new Map(communityChapterRows.map((chapter) => [chapter.slug, chapter.id]));
+
+  await db
+    .insert(communityChapterMemberships)
+    .values([
+      {
+        id: ids.communityMembershipJakarta,
+        chapterId: communityChapterBySlug.get("jakarta-ocean-heroes")!,
+        userId: demoUser.id,
+        role: "lead",
+        status: "active",
+        joinedAt: date("2026-06-03T02:00:00.000Z"),
+        updatedAt: now
+      },
+      {
+        id: ids.communityMembershipBali,
+        chapterId: communityChapterBySlug.get("bali-mangrove-circle")!,
+        userId: demoUser.id,
+        role: "member",
+        status: "active",
+        joinedAt: date("2026-06-09T02:00:00.000Z"),
+        updatedAt: now
+      }
+    ])
+    .onConflictDoUpdate({
+      target: [communityChapterMemberships.chapterId, communityChapterMemberships.userId],
+      set: {
+        role: sql`excluded.role`,
+        status: sql`excluded.status`,
+        updatedAt: now
+      }
+    });
+
+  await db
+    .insert(communityPosts)
+    .values([
+      {
+        id: ids.communityPostJakarta,
+        authorUserId: demoUser.id,
+        chapterId: communityChapterBySlug.get("jakarta-ocean-heroes")!,
+        campaignId: campaignBySlug.get("restore-raja-ampat-reefs")!,
+        title: "Jakarta team preparing reef-monitor volunteers",
+        slug: "jakarta-team-preparing-reef-monitor-volunteers",
+        body: "We finished a prep circle for new volunteers joining reef monitoring trips. The group reviewed photo evidence basics, safety expectations, and how field notes become public records.",
+        postType: "story",
+        status: "published",
+        mediaUrl: "https://images.unsplash.com/photo-1544551763-46a013bb70d5?auto=format&fit=crop&w=1200&q=80",
+        publishedAt: date("2026-06-17T03:00:00.000Z"),
+        createdAt: date("2026-06-17T03:00:00.000Z"),
+        updatedAt: now
+      },
+      {
+        id: ids.communityPostBali,
+        authorUserId: demoUser.id,
+        chapterId: communityChapterBySlug.get("bali-mangrove-circle")!,
+        campaignId: campaignBySlug.get("mangrove-shield-bali")!,
+        title: "Bali nursery team needs sorting volunteers",
+        slug: "bali-nursery-team-needs-sorting-volunteers",
+        body: "The next mangrove nursery day needs volunteers for seedling sorting, tray labeling, and photo logs. Bring sun protection and reusable water bottles.",
+        postType: "field_note",
+        status: "published",
+        mediaUrl: "https://images.unsplash.com/photo-1518837695005-2083093ee35b?auto=format&fit=crop&w=1200&q=80",
+        publishedAt: date("2026-06-18T03:00:00.000Z"),
+        createdAt: date("2026-06-18T03:00:00.000Z"),
+        updatedAt: now
+      },
+      {
+        id: ids.communityPostKomodo,
+        authorUserId: demoUser.id,
+        chapterId: communityChapterBySlug.get("surabaya-coastal-action")!,
+        campaignId: campaignBySlug.get("cleanup-komodo-coast")!,
+        title: "Question: best way to document sorted plastic?",
+        slug: "question-best-way-to-document-sorted-plastic",
+        body: "For school cleanup teams, should each group upload one summary photo or a photo per material category? We want the records to be useful without slowing the students down.",
+        postType: "question",
+        status: "published",
+        mediaUrl: null,
+        publishedAt: date("2026-06-19T03:00:00.000Z"),
+        createdAt: date("2026-06-19T03:00:00.000Z"),
+        updatedAt: now
+      }
+    ])
+    .onConflictDoUpdate({
+      target: communityPosts.slug,
+      set: {
+        authorUserId: demoUser.id,
+        chapterId: sql`excluded.chapter_id`,
+        campaignId: sql`excluded.campaign_id`,
+        title: sql`excluded.title`,
+        body: sql`excluded.body`,
+        postType: sql`excluded.post_type`,
+        status: sql`excluded.status`,
+        mediaUrl: sql`excluded.media_url`,
+        publishedAt: sql`excluded.published_at`,
+        updatedAt: now
+      }
+    });
+
+  await db
+    .insert(communityEvents)
+    .values([
+      {
+        id: ids.communityEventMangrove,
+        authorUserId: demoUser.id,
+        chapterId: communityChapterBySlug.get("bali-mangrove-circle")!,
+        campaignId: campaignBySlug.get("mangrove-shield-bali")!,
+        impactSiteId: ids.impactSiteBali,
+        title: "North Bali mangrove planting day",
+        slug: "north-bali-mangrove-planting-day",
+        summary: "Join a community planting block and help document survival monitoring records.",
+        description: "Participants help transfer seedlings, label rows, collect photo evidence, and learn how public monitoring records are produced after the field day.",
+        eventType: "volunteer",
+        status: "published",
+        startsAt: date("2026-08-08T01:00:00.000Z"),
+        endsAt: date("2026-08-08T06:00:00.000Z"),
+        location: "Buleleng, Bali",
+        capacity: 30,
+        waitlistEnabled: true,
+        imageUrl: "https://images.unsplash.com/photo-1518837695005-2083093ee35b?auto=format&fit=crop&w=1200&q=80",
+        publishedAt: date("2026-06-18T05:00:00.000Z"),
+        updatedAt: now
+      },
+      {
+        id: ids.communityEventReef,
+        authorUserId: demoUser.id,
+        chapterId: communityChapterBySlug.get("jakarta-ocean-heroes")!,
+        campaignId: campaignBySlug.get("restore-raja-ampat-reefs")!,
+        impactSiteId: ids.impactSiteRajaAmpat,
+        title: "Reef evidence reading session",
+        slug: "reef-evidence-reading-session",
+        summary: "Practice reading before/after reef photos before joining a field expedition.",
+        description: "A classroom session for supporters who want to understand coral restoration evidence, survey notes, and the difference between field photos and verified monitoring records.",
+        eventType: "learning",
+        status: "published",
+        startsAt: date("2026-07-28T11:00:00.000Z"),
+        endsAt: date("2026-07-28T13:00:00.000Z"),
+        location: "Jakarta",
+        capacity: 20,
+        waitlistEnabled: true,
+        imageUrl: "https://images.unsplash.com/photo-1559827260-dc66d52bef19?auto=format&fit=crop&w=1200&q=80",
+        publishedAt: date("2026-06-17T05:00:00.000Z"),
+        updatedAt: now
+      }
+    ])
+    .onConflictDoUpdate({
+      target: communityEvents.slug,
+      set: {
+        authorUserId: demoUser.id,
+        chapterId: sql`excluded.chapter_id`,
+        campaignId: sql`excluded.campaign_id`,
+        impactSiteId: sql`excluded.impact_site_id`,
+        title: sql`excluded.title`,
+        summary: sql`excluded.summary`,
+        description: sql`excluded.description`,
+        eventType: sql`excluded.event_type`,
+        status: sql`excluded.status`,
+        startsAt: sql`excluded.starts_at`,
+        endsAt: sql`excluded.ends_at`,
+        location: sql`excluded.location`,
+        capacity: sql`excluded.capacity`,
+        waitlistEnabled: sql`excluded.waitlist_enabled`,
+        imageUrl: sql`excluded.image_url`,
+        publishedAt: sql`excluded.published_at`,
+        updatedAt: now
+      }
+    });
+
+  await db
+    .insert(communityEventRegistrations)
+    .values([
+      {
+        id: ids.communityRegistrationMangrove,
+        eventId: ids.communityEventMangrove,
+        userId: demoUser.id,
+        status: "attended",
+        registeredAt: date("2026-06-18T07:00:00.000Z"),
+        checkedInAt: date("2026-08-08T01:10:00.000Z"),
+        attendanceHours: "5.00",
+        notes: "Seeded attendance record for community passport demo.",
+        updatedAt: now
+      },
+      {
+        id: ids.communityRegistrationReef,
+        eventId: ids.communityEventReef,
+        userId: demoUser.id,
+        status: "registered",
+        registeredAt: date("2026-06-17T07:00:00.000Z"),
+        updatedAt: now
+      }
+    ])
+    .onConflictDoUpdate({
+      target: [communityEventRegistrations.eventId, communityEventRegistrations.userId],
+      set: {
+        status: sql`excluded.status`,
+        checkedInAt: sql`excluded.checked_in_at`,
+        attendanceHours: sql`excluded.attendance_hours`,
+        notes: sql`excluded.notes`,
+        updatedAt: now
+      }
+    });
+
+  await db
+    .insert(communityChallenges)
+    .values([
+      {
+        id: ids.communityChallengePlastic,
+        authorUserId: demoUser.id,
+        chapterId: communityChapterBySlug.get("surabaya-coastal-action")!,
+        campaignId: campaignBySlug.get("cleanup-komodo-coast")!,
+        title: "Plastic-Free Week",
+        slug: "plastic-free-week",
+        summary: "Log seven plastic-free actions and share what changed in your routine.",
+        description: "Track reusable-container choices, refill habits, cleanup sorting, or school education moments. Each progress log should describe one concrete action.",
+        challengeType: "waste_reduction",
+        status: "open",
+        startsAt: date("2026-07-20T00:00:00.000Z"),
+        endsAt: date("2026-07-27T16:59:59.000Z"),
+        goalMetric: "plastic-free actions",
+        goalTarget: 7,
+        unit: "actions",
+        imageUrl: "https://images.unsplash.com/photo-1546026423-cc4642628d2b?auto=format&fit=crop&w=1200&q=80",
+        publishedAt: date("2026-06-19T06:00:00.000Z"),
+        updatedAt: now
+      },
+      {
+        id: ids.communityChallengeMangrove,
+        authorUserId: demoUser.id,
+        chapterId: communityChapterBySlug.get("bali-mangrove-circle")!,
+        campaignId: campaignBySlug.get("mangrove-shield-bali")!,
+        title: "Mangrove Month",
+        slug: "mangrove-month",
+        summary: "Help record 30 nursery or planting support actions across the month.",
+        description: "Actions can include nursery sorting, field logistics, evidence labeling, school outreach, or donor update preparation.",
+        challengeType: "volunteer",
+        status: "open",
+        startsAt: date("2026-08-01T00:00:00.000Z"),
+        endsAt: date("2026-08-31T16:59:59.000Z"),
+        goalMetric: "support actions",
+        goalTarget: 30,
+        unit: "actions",
+        imageUrl: "https://images.unsplash.com/photo-1518837695005-2083093ee35b?auto=format&fit=crop&w=1200&q=80",
+        publishedAt: date("2026-06-18T06:00:00.000Z"),
+        updatedAt: now
+      }
+    ])
+    .onConflictDoUpdate({
+      target: communityChallenges.slug,
+      set: {
+        authorUserId: demoUser.id,
+        chapterId: sql`excluded.chapter_id`,
+        campaignId: sql`excluded.campaign_id`,
+        title: sql`excluded.title`,
+        summary: sql`excluded.summary`,
+        description: sql`excluded.description`,
+        challengeType: sql`excluded.challenge_type`,
+        status: sql`excluded.status`,
+        startsAt: sql`excluded.starts_at`,
+        endsAt: sql`excluded.ends_at`,
+        goalMetric: sql`excluded.goal_metric`,
+        goalTarget: sql`excluded.goal_target`,
+        unit: sql`excluded.unit`,
+        imageUrl: sql`excluded.image_url`,
+        publishedAt: sql`excluded.published_at`,
+        updatedAt: now
+      }
+    });
+
+  await db
+    .insert(communityChallengeParticipations)
+    .values([
+      {
+        id: ids.communityParticipationPlastic,
+        challengeId: ids.communityChallengePlastic,
+        userId: demoUser.id,
+        status: "completed",
+        progressTotal: 7,
+        joinedAt: date("2026-07-20T01:00:00.000Z"),
+        completedAt: date("2026-07-24T09:00:00.000Z"),
+        updatedAt: now
+      },
+      {
+        id: ids.communityParticipationMangrove,
+        challengeId: ids.communityChallengeMangrove,
+        userId: demoUser.id,
+        status: "active",
+        progressTotal: 8,
+        joinedAt: date("2026-07-01T01:00:00.000Z"),
+        updatedAt: now
+      }
+    ])
+    .onConflictDoUpdate({
+      target: [communityChallengeParticipations.challengeId, communityChallengeParticipations.userId],
+      set: {
+        status: sql`excluded.status`,
+        progressTotal: sql`excluded.progress_total`,
+        completedAt: sql`excluded.completed_at`,
+        updatedAt: now
+      }
+    });
+
+  await db
+    .insert(communityChallengeProgress)
+    .values([
+      {
+        id: ids.communityProgressPlastic1,
+        participationId: ids.communityParticipationPlastic,
+        challengeId: ids.communityChallengePlastic,
+        userId: demoUser.id,
+        amount: 4,
+        note: "Switched the office lunch group to refillable containers for four days.",
+        loggedAt: date("2026-07-22T09:00:00.000Z")
+      },
+      {
+        id: ids.communityProgressPlastic2,
+        participationId: ids.communityParticipationPlastic,
+        challengeId: ids.communityChallengePlastic,
+        userId: demoUser.id,
+        amount: 3,
+        note: "Finished the final three actions and shared the sorting checklist with classmates.",
+        loggedAt: date("2026-07-24T09:00:00.000Z")
+      }
+    ])
+    .onConflictDoUpdate({
+      target: communityChallengeProgress.id,
+      set: {
+        amount: sql`excluded.amount`,
+        note: sql`excluded.note`,
+        loggedAt: sql`excluded.logged_at`
+      }
+    });
+
+  await db
+    .insert(communityComments)
+    .values([
+      {
+        id: ids.communityCommentPost,
+        targetType: "post",
+        targetId: ids.communityPostJakarta,
+        authorUserId: demoUser.id,
+        body: "Great prep session. The before/after evidence examples made the field workflow much clearer.",
+        status: "published",
+        createdAt: date("2026-06-17T05:00:00.000Z"),
+        updatedAt: now
+      },
+      {
+        id: ids.communityCommentReply,
+        targetType: "post",
+        targetId: ids.communityPostJakarta,
+        parentCommentId: ids.communityCommentPost,
+        authorUserId: demoUser.id,
+        body: "Next session should include a short practice upload so first-time volunteers can try the evidence flow.",
+        status: "published",
+        createdAt: date("2026-06-17T06:00:00.000Z"),
+        updatedAt: now
+      },
+      {
+        id: ids.communityCommentEvent,
+        targetType: "event",
+        targetId: ids.communityEventMangrove,
+        authorUserId: demoUser.id,
+        body: "I can help with row labels and photo logs during the morning block.",
+        status: "published",
+        createdAt: date("2026-06-18T08:00:00.000Z"),
+        updatedAt: now
+      }
+    ])
+    .onConflictDoUpdate({
+      target: communityComments.id,
+      set: {
+        body: sql`excluded.body`,
+        status: sql`excluded.status`,
+        updatedAt: now
+      }
+    });
+
+  await db
+    .insert(communityReactions)
+    .values([
+      {
+        id: ids.communityReactionPost,
+        targetType: "post",
+        targetId: ids.communityPostJakarta,
+        userId: demoUser.id,
+        reactionType: "celebrate",
+        createdAt: date("2026-06-17T05:30:00.000Z")
+      },
+      {
+        id: ids.communityReactionEvent,
+        targetType: "event",
+        targetId: ids.communityEventMangrove,
+        userId: demoUser.id,
+        reactionType: "support",
+        createdAt: date("2026-06-18T08:30:00.000Z")
+      }
+    ])
+    .onConflictDoUpdate({
+      target: [communityReactions.userId, communityReactions.targetType, communityReactions.targetId],
+      set: {
+        reactionType: sql`excluded.reaction_type`
+      }
+    });
+
+  await db
+    .insert(communityReports)
+    .values({
+      id: ids.communityReportPost,
+      targetType: "post",
+      targetId: ids.communityPostKomodo,
+      reporterUserId: demoUser.id,
+      reason: "misleading",
+      detail: "Seeded report to demonstrate the admin moderation queue.",
+      status: "open",
+      createdAt: date("2026-06-19T08:00:00.000Z"),
+      updatedAt: now
+    })
+    .onConflictDoUpdate({
+      target: [communityReports.reporterUserId, communityReports.targetType, communityReports.targetId],
+      set: {
+        reason: sql`excluded.reason`,
+        detail: sql`excluded.detail`,
+        status: sql`excluded.status`,
+        updatedAt: now
+      }
+    });
+
+  await db
+    .insert(communityScoreEvents)
+    .values([
+      { id: ids.communityScorePost, userId: demoUser.id, sourceType: "community_post", sourceId: ids.communityPostJakarta, score: 10, reason: "post_created", createdAt: date("2026-06-17T03:00:00.000Z") },
+      { id: ids.communityScoreComment, userId: demoUser.id, sourceType: "community_comment", sourceId: ids.communityCommentPost, score: 2, reason: "comment_created", createdAt: date("2026-06-17T05:00:00.000Z") },
+      { id: ids.communityScoreEventRegistration, userId: demoUser.id, sourceType: "community_event_registration", sourceId: ids.communityRegistrationReef, score: 5, reason: "event_registered", createdAt: date("2026-06-17T07:00:00.000Z") },
+      { id: ids.communityScoreEventAttendance, userId: demoUser.id, sourceType: "community_event_attendance", sourceId: ids.communityRegistrationMangrove, score: 30, reason: "event_attended", createdAt: date("2026-08-08T06:00:00.000Z") },
+      { id: ids.communityScoreChallengeJoin, userId: demoUser.id, sourceType: "community_challenge_join", sourceId: ids.communityParticipationPlastic, score: 5, reason: "challenge_joined", createdAt: date("2026-07-20T01:00:00.000Z") },
+      { id: ids.communityScoreChallengeComplete, userId: demoUser.id, sourceType: "community_challenge_completion", sourceId: ids.communityParticipationPlastic, score: 50, reason: "challenge_completed", createdAt: date("2026-07-24T09:00:00.000Z") }
+    ])
+    .onConflictDoUpdate({
+      target: [communityScoreEvents.userId, communityScoreEvents.sourceType, communityScoreEvents.sourceId],
+      set: {
+        score: sql`excluded.score`,
+        reason: sql`excluded.reason`
+      }
+    });
+
+  await db
+    .insert(impactPassportItems)
+    .values([
+      {
+        id: ids.passportItemCommunityEvent,
+        passportId: passport.id,
+        sourceType: "community_event",
+        sourceId: ids.communityEventMangrove,
+        itemType: "volunteer",
+        title: "North Bali mangrove planting day",
+        description: "Attended a Terumbu community event for 5 hours.",
+        evidenceUrl: "/community/events/north-bali-mangrove-planting-day",
+        occurredAt: date("2026-08-08T06:00:00.000Z"),
+        metadata: {
+          communityEvent: "north-bali-mangrove-planting-day",
+          attendanceHours: 5
+        }
+      },
+      {
+        id: ids.passportItemCommunityChallenge,
+        passportId: passport.id,
+        sourceType: "community_challenge",
+        sourceId: ids.communityChallengePlastic,
+        itemType: "volunteer",
+        title: "Plastic-Free Week completed",
+        description: "Completed seven plastic-free actions in the community challenge.",
+        evidenceUrl: "/community/challenges/plastic-free-week",
+        occurredAt: date("2026-07-24T09:00:00.000Z"),
+        metadata: {
+          communityChallenge: "plastic-free-week",
+          progressTotal: 7
+        }
+      }
+    ])
+    .onConflictDoUpdate({
+      target: impactPassportItems.id,
+      set: {
+        passportId: passport.id,
+        sourceType: sql`excluded.source_type`,
+        sourceId: sql`excluded.source_id`,
+        itemType: sql`excluded.item_type`,
+        title: sql`excluded.title`,
+        description: sql`excluded.description`,
+        evidenceUrl: sql`excluded.evidence_url`,
+        occurredAt: sql`excluded.occurred_at`,
+        metadata: sql`excluded.metadata`
+      }
+    });
+
   await db
     .insert(notificationPreferences)
     .values({
@@ -2361,7 +2959,11 @@ async function seed() {
         demoEmail: DEMO_EMAIL,
         campaigns: 3,
         donations: 3,
-        impactPassportItems: 4
+        impactPassportItems: 6,
+        communityChapters: 4,
+        communityPosts: 3,
+        communityEvents: 2,
+        communityChallenges: 2
       },
       createdAt: now
     })
@@ -2380,7 +2982,7 @@ async function seed() {
   console.log("Seed complete.");
   console.log(`Demo account: ${DEMO_EMAIL}`);
   console.log(`Demo password: ${DEMO_PASSWORD}`);
-  console.log("Seeded: roles, profile, organizations, campaigns, updates, impact sites, donations, transactions, ecosystems, expeditions, courses, passport, corporate account.");
+  console.log("Seeded: roles, profile, organizations, campaigns, updates, impact sites, donations, transactions, ecosystems, expeditions, courses, passport, community, corporate account.");
 }
 
 seed()

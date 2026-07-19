@@ -900,6 +900,246 @@ export const impactPassportItems = pgTable("impact_passport_items", {
   sourceIdx: uniqueIndex("impact_passport_items_source_idx").on(table.passportId, table.sourceType, table.sourceId)
 }));
 
+export const communityChapters = pgTable("community_chapters", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  createdByUserId: uuid("created_by_user_id").references(() => users.id, { onDelete: "set null" }),
+  name: varchar("name", { length: 180 }).notNull(),
+  slug: varchar("slug", { length: 180 }).notNull(),
+  region: varchar("region", { length: 160 }).notNull(),
+  description: text("description").notNull(),
+  status: varchar("status", { length: 80 }).default("published").notNull(),
+  imageUrl: text("image_url"),
+  metadata: jsonb("metadata"),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull()
+}, (table) => ({
+  slugIdx: uniqueIndex("community_chapters_slug_idx").on(table.slug),
+  statusIdx: index("community_chapters_status_idx").on(table.status)
+}));
+
+export const communityChapterMemberships = pgTable("community_chapter_memberships", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  chapterId: uuid("chapter_id").notNull().references(() => communityChapters.id, { onDelete: "cascade" }),
+  userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  role: varchar("role", { length: 80 }).default("member").notNull(),
+  status: varchar("status", { length: 80 }).default("active").notNull(),
+  joinedAt: timestamp("joined_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull()
+}, (table) => ({
+  chapterUserIdx: uniqueIndex("community_chapter_members_unique_idx").on(table.chapterId, table.userId),
+  userIdx: index("community_chapter_members_user_idx").on(table.userId),
+  statusIdx: index("community_chapter_members_status_idx").on(table.status)
+}));
+
+export const communityPosts = pgTable("community_posts", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  authorUserId: uuid("author_user_id").references(() => users.id, { onDelete: "set null" }),
+  chapterId: uuid("chapter_id").references(() => communityChapters.id, { onDelete: "set null" }),
+  campaignId: uuid("campaign_id").references(() => campaigns.id, { onDelete: "set null" }),
+  eventId: uuid("event_id"),
+  challengeId: uuid("challenge_id"),
+  title: varchar("title", { length: 220 }).notNull(),
+  slug: varchar("slug", { length: 220 }).notNull(),
+  body: text("body").notNull(),
+  postType: varchar("post_type", { length: 80 }).default("story").notNull(),
+  status: varchar("status", { length: 80 }).default("published").notNull(),
+  mediaUrl: text("media_url"),
+  publishedAt: timestamp("published_at", { withTimezone: true }),
+  hiddenAt: timestamp("hidden_at", { withTimezone: true }),
+  hiddenByUserId: uuid("hidden_by_user_id").references(() => users.id, { onDelete: "set null" }),
+  moderationReason: text("moderation_reason"),
+  deletedAt: timestamp("deleted_at", { withTimezone: true }),
+  metadata: jsonb("metadata"),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull()
+}, (table) => ({
+  slugIdx: uniqueIndex("community_posts_slug_idx").on(table.slug),
+  authorIdx: index("community_posts_author_idx").on(table.authorUserId),
+  chapterIdx: index("community_posts_chapter_idx").on(table.chapterId),
+  statusIdx: index("community_posts_status_idx").on(table.status, table.hiddenAt, table.deletedAt)
+}));
+
+export const communityEvents = pgTable("community_events", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  authorUserId: uuid("author_user_id").references(() => users.id, { onDelete: "set null" }),
+  chapterId: uuid("chapter_id").references(() => communityChapters.id, { onDelete: "set null" }),
+  campaignId: uuid("campaign_id").references(() => campaigns.id, { onDelete: "set null" }),
+  expeditionId: uuid("expedition_id").references(() => expeditions.id, { onDelete: "set null" }),
+  impactSiteId: uuid("impact_site_id").references(() => impactSites.id, { onDelete: "set null" }),
+  title: varchar("title", { length: 220 }).notNull(),
+  slug: varchar("slug", { length: 220 }).notNull(),
+  summary: text("summary").notNull(),
+  description: text("description").notNull(),
+  eventType: varchar("event_type", { length: 80 }).default("volunteer").notNull(),
+  status: varchar("status", { length: 80 }).default("published").notNull(),
+  startsAt: timestamp("starts_at", { withTimezone: true }).notNull(),
+  endsAt: timestamp("ends_at", { withTimezone: true }).notNull(),
+  location: varchar("location", { length: 220 }).notNull(),
+  capacity: integer("capacity").default(40).notNull(),
+  waitlistEnabled: boolean("waitlist_enabled").default(true).notNull(),
+  imageUrl: text("image_url"),
+  publishedAt: timestamp("published_at", { withTimezone: true }),
+  hiddenAt: timestamp("hidden_at", { withTimezone: true }),
+  hiddenByUserId: uuid("hidden_by_user_id").references(() => users.id, { onDelete: "set null" }),
+  moderationReason: text("moderation_reason"),
+  deletedAt: timestamp("deleted_at", { withTimezone: true }),
+  metadata: jsonb("metadata"),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull()
+}, (table) => ({
+  slugIdx: uniqueIndex("community_events_slug_idx").on(table.slug),
+  authorIdx: index("community_events_author_idx").on(table.authorUserId),
+  chapterIdx: index("community_events_chapter_idx").on(table.chapterId),
+  startsAtIdx: index("community_events_starts_at_idx").on(table.startsAt),
+  statusIdx: index("community_events_status_idx").on(table.status, table.hiddenAt, table.deletedAt)
+}));
+
+export const communityEventRegistrations = pgTable("community_event_registrations", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  eventId: uuid("event_id").notNull().references(() => communityEvents.id, { onDelete: "cascade" }),
+  userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  status: varchar("status", { length: 80 }).default("registered").notNull(),
+  registeredAt: timestamp("registered_at", { withTimezone: true }).defaultNow().notNull(),
+  checkedInAt: timestamp("checked_in_at", { withTimezone: true }),
+  attendanceHours: numeric("attendance_hours", { precision: 8, scale: 2 }).default("0").notNull(),
+  notes: text("notes"),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull()
+}, (table) => ({
+  eventUserIdx: uniqueIndex("community_event_registrations_unique_idx").on(table.eventId, table.userId),
+  eventStatusIdx: index("community_event_registrations_status_idx").on(table.eventId, table.status),
+  userIdx: index("community_event_registrations_user_idx").on(table.userId)
+}));
+
+export const communityChallenges = pgTable("community_challenges", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  authorUserId: uuid("author_user_id").references(() => users.id, { onDelete: "set null" }),
+  chapterId: uuid("chapter_id").references(() => communityChapters.id, { onDelete: "set null" }),
+  campaignId: uuid("campaign_id").references(() => campaigns.id, { onDelete: "set null" }),
+  courseId: uuid("course_id").references(() => courses.id, { onDelete: "set null" }),
+  title: varchar("title", { length: 220 }).notNull(),
+  slug: varchar("slug", { length: 220 }).notNull(),
+  summary: text("summary").notNull(),
+  description: text("description").notNull(),
+  challengeType: varchar("challenge_type", { length: 80 }).default("volunteer").notNull(),
+  status: varchar("status", { length: 80 }).default("open").notNull(),
+  startsAt: timestamp("starts_at", { withTimezone: true }),
+  endsAt: timestamp("ends_at", { withTimezone: true }),
+  goalMetric: varchar("goal_metric", { length: 120 }).default("actions").notNull(),
+  goalTarget: integer("goal_target").default(1).notNull(),
+  unit: varchar("unit", { length: 80 }).default("actions").notNull(),
+  imageUrl: text("image_url"),
+  publishedAt: timestamp("published_at", { withTimezone: true }),
+  hiddenAt: timestamp("hidden_at", { withTimezone: true }),
+  hiddenByUserId: uuid("hidden_by_user_id").references(() => users.id, { onDelete: "set null" }),
+  moderationReason: text("moderation_reason"),
+  deletedAt: timestamp("deleted_at", { withTimezone: true }),
+  metadata: jsonb("metadata"),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull()
+}, (table) => ({
+  slugIdx: uniqueIndex("community_challenges_slug_idx").on(table.slug),
+  authorIdx: index("community_challenges_author_idx").on(table.authorUserId),
+  chapterIdx: index("community_challenges_chapter_idx").on(table.chapterId),
+  statusIdx: index("community_challenges_status_idx").on(table.status, table.hiddenAt, table.deletedAt)
+}));
+
+export const communityChallengeParticipations = pgTable("community_challenge_participations", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  challengeId: uuid("challenge_id").notNull().references(() => communityChallenges.id, { onDelete: "cascade" }),
+  userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  status: varchar("status", { length: 80 }).default("active").notNull(),
+  progressTotal: integer("progress_total").default(0).notNull(),
+  joinedAt: timestamp("joined_at", { withTimezone: true }).defaultNow().notNull(),
+  completedAt: timestamp("completed_at", { withTimezone: true }),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull()
+}, (table) => ({
+  challengeUserIdx: uniqueIndex("community_challenge_participations_unique_idx").on(table.challengeId, table.userId),
+  challengeStatusIdx: index("community_challenge_participations_status_idx").on(table.challengeId, table.status),
+  userIdx: index("community_challenge_participations_user_idx").on(table.userId)
+}));
+
+export const communityChallengeProgress = pgTable("community_challenge_progress", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  participationId: uuid("participation_id").notNull().references(() => communityChallengeParticipations.id, { onDelete: "cascade" }),
+  challengeId: uuid("challenge_id").notNull().references(() => communityChallenges.id, { onDelete: "cascade" }),
+  userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  amount: integer("amount").default(1).notNull(),
+  note: text("note"),
+  evidenceUrl: text("evidence_url"),
+  metadata: jsonb("metadata"),
+  loggedAt: timestamp("logged_at", { withTimezone: true }).defaultNow().notNull()
+}, (table) => ({
+  participationIdx: index("community_challenge_progress_participation_idx").on(table.participationId),
+  challengeIdx: index("community_challenge_progress_challenge_idx").on(table.challengeId),
+  userIdx: index("community_challenge_progress_user_idx").on(table.userId)
+}));
+
+export const communityComments = pgTable("community_comments", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  targetType: varchar("target_type", { length: 40 }).notNull(),
+  targetId: uuid("target_id").notNull(),
+  parentCommentId: uuid("parent_comment_id"),
+  authorUserId: uuid("author_user_id").references(() => users.id, { onDelete: "set null" }),
+  body: text("body").notNull(),
+  status: varchar("status", { length: 80 }).default("published").notNull(),
+  hiddenAt: timestamp("hidden_at", { withTimezone: true }),
+  hiddenByUserId: uuid("hidden_by_user_id").references(() => users.id, { onDelete: "set null" }),
+  moderationReason: text("moderation_reason"),
+  deletedAt: timestamp("deleted_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull()
+}, (table) => ({
+  targetIdx: index("community_comments_target_idx").on(table.targetType, table.targetId),
+  parentIdx: index("community_comments_parent_idx").on(table.parentCommentId),
+  authorIdx: index("community_comments_author_idx").on(table.authorUserId),
+  statusIdx: index("community_comments_status_idx").on(table.status, table.hiddenAt, table.deletedAt)
+}));
+
+export const communityReactions = pgTable("community_reactions", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  targetType: varchar("target_type", { length: 40 }).notNull(),
+  targetId: uuid("target_id").notNull(),
+  userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  reactionType: varchar("reaction_type", { length: 40 }).default("celebrate").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull()
+}, (table) => ({
+  userTargetIdx: uniqueIndex("community_reactions_unique_idx").on(table.userId, table.targetType, table.targetId),
+  targetIdx: index("community_reactions_target_idx").on(table.targetType, table.targetId)
+}));
+
+export const communityReports = pgTable("community_reports", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  targetType: varchar("target_type", { length: 40 }).notNull(),
+  targetId: uuid("target_id").notNull(),
+  reporterUserId: uuid("reporter_user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  reason: varchar("reason", { length: 120 }).notNull(),
+  detail: text("detail"),
+  status: varchar("status", { length: 80 }).default("open").notNull(),
+  reviewedByUserId: uuid("reviewed_by_user_id").references(() => users.id, { onDelete: "set null" }),
+  reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
+  actionTaken: varchar("action_taken", { length: 120 }),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull()
+}, (table) => ({
+  reporterTargetIdx: uniqueIndex("community_reports_unique_idx").on(table.reporterUserId, table.targetType, table.targetId),
+  targetIdx: index("community_reports_target_idx").on(table.targetType, table.targetId),
+  statusIdx: index("community_reports_status_idx").on(table.status)
+}));
+
+export const communityScoreEvents = pgTable("community_score_events", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  sourceType: varchar("source_type", { length: 80 }).notNull(),
+  sourceId: uuid("source_id").notNull(),
+  score: integer("score").notNull(),
+  reason: varchar("reason", { length: 160 }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull()
+}, (table) => ({
+  userSourceIdx: uniqueIndex("community_score_events_unique_idx").on(table.userId, table.sourceType, table.sourceId),
+  userIdx: index("community_score_events_user_idx").on(table.userId),
+  sourceIdx: index("community_score_events_source_idx").on(table.sourceType, table.sourceId)
+}));
+
 export const corporateAccounts = pgTable("corporate_accounts", {
   id: uuid("id").defaultRandom().primaryKey(),
   name: varchar("name", { length: 180 }).notNull(),

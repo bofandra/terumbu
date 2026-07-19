@@ -8,6 +8,7 @@ import {
   Eye,
   FileBadge,
   Heart,
+  MessageSquare,
   HelpCircle,
   Home,
   LogOut,
@@ -34,6 +35,7 @@ const dashboardNav = [
   { label: "Donations", href: "/dashboard/donations", icon: Heart },
   { label: "Expeditions", href: "/dashboard/expeditions", icon: ShieldQuestion },
   { label: "Academy", href: "/dashboard/academy", icon: BookOpen },
+  { label: "Community", href: "/dashboard/community", icon: MessageSquare },
   { label: "Impact Passport", href: "/dashboard/passport", icon: Award },
   { label: "Certificates", href: "/dashboard/certificates", icon: FileBadge },
   { label: "Saved Projects", href: "/dashboard/saved", icon: Star }

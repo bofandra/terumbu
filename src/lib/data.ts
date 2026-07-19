@@ -4,6 +4,6 @@ export const navItems = [
   { label: "Academy", href: "/academy" },
   { label: "Impact Map", href: "/impact-map" },
   { label: "Platform", href: "/platform" },
-  { label: "Community", href: "/#community" },
+  { label: "Community", href: "/community" },
   { label: "About Us", href: "/about" }
 ];

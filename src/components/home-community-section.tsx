@@ -65,12 +65,12 @@ export function HomeCommunitySection() {
         <div className="grid content-start gap-5">
           <div className="rounded-2xl bg-ocean-900 p-6 text-white shadow-soft">
             <Mail className="text-coral-300" size={24} aria-hidden="true" />
-            <h3 className="mt-5 text-2xl font-bold tracking-normal">Stay updated</h3>
+            <h3 className="mt-5 text-2xl font-bold tracking-normal">Join the community</h3>
             <p className="mt-3 text-sm leading-6 text-white/72">
-              Terumbu accounts are created by platform admins for verified supporters, partners, corporate teams, and staff.
+              Follow stories, publish local events, join regional chapters, and complete conservation challenges with other Ocean Heroes.
             </p>
-            <ButtonLink href="/login" tone="light" className="mt-6">
-              Login
+            <ButtonLink href="/community" tone="light" className="mt-6">
+              Open Community
             </ButtonLink>
           </div>
 

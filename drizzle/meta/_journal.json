@@ -148,6 +148,13 @@
       "when": 1784389637763,
       "tag": "0020_evidence_backed_finance_spend",
       "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1784476040000,
+      "tag": "0021_community_feature",
+      "breakpoints": true
     }
   ]
 }
