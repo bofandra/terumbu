@@ -155,6 +155,13 @@
       "when": 1784476040000,
       "tag": "0021_community_feature",
       "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1784480400000,
+      "tag": "0022_academy_assessment_status",
+      "breakpoints": true
     }
   ]
 }

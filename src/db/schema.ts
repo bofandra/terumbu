@@ -804,10 +804,12 @@ export const courseAssessments = pgTable("course_assessments", {
   title: varchar("title", { length: 220 }).notNull(),
   slug: varchar("slug", { length: 220 }).notNull(),
   passingScore: integer("passing_score").default(80).notNull(),
+  status: varchar("status", { length: 80 }).default("active").notNull(),
   metadata: jsonb("metadata"),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull()
 }, (table) => ({
-  slugIdx: uniqueIndex("course_assessments_course_slug_idx").on(table.courseId, table.slug)
+  slugIdx: uniqueIndex("course_assessments_course_slug_idx").on(table.courseId, table.slug),
+  statusIdx: index("course_assessments_status_idx").on(table.courseId, table.status)
 }));
 
 export const assessmentQuestions = pgTable("assessment_questions", {

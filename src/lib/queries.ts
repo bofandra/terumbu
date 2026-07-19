@@ -68,6 +68,7 @@ import {
   assessmentAttemptCount,
   assessmentAttemptHistory,
   buildAssessmentAnalytics,
+  correctChoiceIdsFromAssessmentMetadata,
   selectedChoiceIdsFromAssessmentMetadata
 } from "@/lib/academy-assessment";
 import { campaignBudgetUtilization, campaignContentCompleteness } from "@/lib/campaign-content";
@@ -2018,10 +2019,14 @@ export async function getCourseDetail(slug: string, userId?: string) {
       .select({
         id: courseAssessments.id,
         title: courseAssessments.title,
-        passingScore: courseAssessments.passingScore
+        slug: courseAssessments.slug,
+        passingScore: courseAssessments.passingScore,
+        status: courseAssessments.status,
+        createdAt: courseAssessments.createdAt
       })
       .from(courseAssessments)
-      .where(eq(courseAssessments.courseId, course.id)),
+      .where(and(eq(courseAssessments.courseId, course.id), eq(courseAssessments.status, "active")))
+      .orderBy(asc(courseAssessments.createdAt)),
     userId
       ? db
           .select({
@@ -2059,17 +2064,17 @@ export async function getCourseDetail(slug: string, userId?: string) {
           .where(and(eq(courseCertificates.courseId, course.id), eq(courseCertificates.userId, userId)))
           .limit(1)
       : Promise.resolve([]),
-    userId && assessments[0]
+    userId && assessments.length > 0
       ? db
           .select({
+            assessmentId: assessmentAttempts.assessmentId,
             score: assessmentAttempts.score,
             status: assessmentAttempts.status,
             submittedAt: assessmentAttempts.submittedAt,
             metadata: assessmentAttempts.metadata
           })
           .from(assessmentAttempts)
-          .where(and(eq(assessmentAttempts.assessmentId, assessments[0].id), eq(assessmentAttempts.userId, userId)))
-          .limit(1)
+          .where(and(inArray(assessmentAttempts.assessmentId, assessments.map((assessment) => assessment.id)), eq(assessmentAttempts.userId, userId)))
       : Promise.resolve([]),
     userId
       ? db
@@ -2080,9 +2085,10 @@ export async function getCourseDetail(slug: string, userId?: string) {
           .where(and(eq(userSavedCourses.courseId, course.id), eq(userSavedCourses.userId, userId)))
           .limit(1)
       : Promise.resolve([]),
-    assessments[0]
+    assessments.length > 0
       ? db
           .select({
+            assessmentId: assessmentQuestions.assessmentId,
             questionId: assessmentQuestions.id,
             questionText: assessmentQuestions.questionText,
             questionPosition: assessmentQuestions.position,
@@ -2094,7 +2100,7 @@ export async function getCourseDetail(slug: string, userId?: string) {
           })
           .from(assessmentQuestions)
           .innerJoin(assessmentChoices, eq(assessmentChoices.questionId, assessmentQuestions.id))
-          .where(and(eq(assessmentQuestions.assessmentId, assessments[0].id), eq(assessmentQuestions.status, "active")))
+          .where(and(inArray(assessmentQuestions.assessmentId, assessments.map((assessment) => assessment.id)), eq(assessmentQuestions.status, "active")))
           .orderBy(asc(assessmentQuestions.position), asc(assessmentChoices.position))
       : Promise.resolve([])
   ]);
@@ -2103,72 +2109,87 @@ export async function getCourseDetail(slug: string, userId?: string) {
   const completedLessons = progressRows.filter((row) => row.status === "completed").length;
   const progressPercent = enrollment?.status === "completed" ? 100 : Math.round((completedLessons / Math.max(1, lessons.length)) * 100);
   const profile = academyProfileFor(course.slug, course.title);
-  const attemptRow = attemptRows[0] ?? null;
-  const selectedChoiceIds = selectedChoiceIdsFromAssessmentMetadata(attemptRow?.metadata);
-  const showAssessmentFeedback = Boolean(attemptRow);
-  const questionMap = new Map<string, {
-    id: string;
-    text: string;
-    position: number;
-    points: number;
-    choices: Array<{
+  const attemptsByAssessment = new Map(attemptRows.map((attempt) => [attempt.assessmentId, attempt]));
+  const questionRowsByAssessment = assessmentQuestionRows.reduce((groups, question) => {
+    const questions = groups.get(question.assessmentId) ?? [];
+    questions.push(question);
+    groups.set(question.assessmentId, questions);
+    return groups;
+  }, new Map<string, typeof assessmentQuestionRows>());
+
+  function buildAssessmentQuestionsForUi(assessmentId: string, attemptRow: (typeof attemptRows)[number] | null) {
+    const selectedChoiceIds = selectedChoiceIdsFromAssessmentMetadata(attemptRow?.metadata);
+    const correctChoiceIds = correctChoiceIdsFromAssessmentMetadata(attemptRow?.metadata);
+    const showAssessmentFeedback = Boolean(attemptRow);
+    const questionMap = new Map<string, {
       id: string;
       text: string;
       position: number;
-      isSelected: boolean;
-      isCorrect: boolean;
-    }>;
-  }>();
+      points: number;
+      choices: Array<{
+        id: string;
+        text: string;
+        position: number;
+        isSelected: boolean;
+        isCorrect: boolean;
+      }>;
+    }>();
 
-  for (const row of assessmentQuestionRows) {
-    const question = questionMap.get(row.questionId) ?? {
-      id: row.questionId,
-      text: row.questionText,
-      position: row.questionPosition,
-      points: row.questionPoints,
-      choices: []
-    };
+    for (const row of questionRowsByAssessment.get(assessmentId) ?? []) {
+      const question = questionMap.get(row.questionId) ?? {
+        id: row.questionId,
+        text: row.questionText,
+        position: row.questionPosition,
+        points: row.questionPoints,
+        choices: []
+      };
+      const recordedCorrectChoiceId = correctChoiceIds[row.questionId];
 
-    question.choices.push({
-      id: row.choiceId,
-      text: row.choiceText,
-      position: row.choicePosition,
-      isSelected: selectedChoiceIds[row.questionId] === row.choiceId,
-      isCorrect: showAssessmentFeedback ? row.isCorrect : false
-    });
-    questionMap.set(row.questionId, question);
+      question.choices.push({
+        id: row.choiceId,
+        text: row.choiceText,
+        position: row.choicePosition,
+        isSelected: selectedChoiceIds[row.questionId] === row.choiceId,
+        isCorrect: showAssessmentFeedback ? (recordedCorrectChoiceId ? recordedCorrectChoiceId === row.choiceId : row.isCorrect) : false
+      });
+      questionMap.set(row.questionId, question);
+    }
+
+    return Array.from(questionMap.values())
+      .sort((a, b) => a.position - b.position)
+      .map((question) => {
+        const choices = question.choices.sort((a, b) => a.position - b.position);
+        const selectedChoice = choices.find((choice) => choice.isSelected) ?? null;
+        const correctChoice = showAssessmentFeedback ? choices.find((choice) => choice.isCorrect) ?? null : null;
+
+        return {
+          ...question,
+          choices,
+          selectedChoiceId: selectedChoice?.id ?? null,
+          selectedChoiceText: selectedChoice?.text ?? null,
+          correctChoiceId: correctChoice?.id ?? null,
+          correctChoiceText: correctChoice?.text ?? null,
+          wasCorrect: showAssessmentFeedback ? Boolean(selectedChoice && correctChoice && selectedChoice.id === correctChoice.id) : null
+        };
+      });
   }
 
-  const assessmentQuestionsForUi = Array.from(questionMap.values())
-    .sort((a, b) => a.position - b.position)
-    .map((question) => {
-      const choices = question.choices.sort((a, b) => a.position - b.position);
-      const selectedChoice = choices.find((choice) => choice.isSelected) ?? null;
-      const correctChoice = showAssessmentFeedback ? choices.find((choice) => choice.isCorrect) ?? null : null;
+  const assessmentsForUi = assessments.map((assessment) => {
+    const attemptRow = attemptsByAssessment.get(assessment.id) ?? null;
+    const attempt = attemptRow
+      ? {
+          ...attemptRow,
+          attemptCount: assessmentAttemptCount(attemptRow.metadata),
+          history: assessmentAttemptHistory(attemptRow.metadata)
+        }
+      : null;
 
-      return {
-        ...question,
-        choices,
-        selectedChoiceId: selectedChoice?.id ?? null,
-        selectedChoiceText: selectedChoice?.text ?? null,
-        correctChoiceId: correctChoice?.id ?? null,
-        correctChoiceText: correctChoice?.text ?? null,
-        wasCorrect: showAssessmentFeedback ? Boolean(selectedChoice?.isCorrect) : null
-      };
-    });
-  const assessment = assessments[0]
-    ? {
-        ...assessments[0],
-        questions: assessmentQuestionsForUi
-      }
-    : null;
-  const attempt = attemptRow
-    ? {
-        ...attemptRow,
-        attemptCount: assessmentAttemptCount(attemptRow.metadata),
-        history: assessmentAttemptHistory(attemptRow.metadata)
-      }
-    : null;
+    return {
+      ...assessment,
+      questions: buildAssessmentQuestionsForUi(assessment.id, attemptRow),
+      attempt
+    };
+  });
 
   return {
     ...course,
@@ -2187,10 +2208,11 @@ export async function getCourseDetail(slug: string, userId?: string) {
       ...lesson,
       progress: progressByLesson.get(lesson.id) ?? null
     })),
-    assessment,
+    assessments: assessmentsForUi,
+    assessment: assessmentsForUi[0] ?? null,
     enrollment,
     certificate: certificateRows[0] ?? null,
-    attempt,
+    attempt: assessmentsForUi[0]?.attempt ?? null,
     isSaved: savedCourseRows[0]?.status === "active"
   };
 }
@@ -7341,9 +7363,12 @@ export async function getAdminAcademyData() {
         courseId: courseAssessments.courseId,
         title: courseAssessments.title,
         slug: courseAssessments.slug,
-        passingScore: courseAssessments.passingScore
+        passingScore: courseAssessments.passingScore,
+        status: courseAssessments.status,
+        createdAt: courseAssessments.createdAt
       })
-      .from(courseAssessments),
+      .from(courseAssessments)
+      .orderBy(asc(courseAssessments.createdAt)),
     db
       .select({
         id: assessmentQuestions.id,

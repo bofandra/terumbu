@@ -6,8 +6,10 @@ import {
   assessmentAttemptHistory,
   buildAssessmentAnalytics,
   buildAssessmentAttemptMetadata,
+  nextAvailableAssessmentSlug,
   scoreAssessmentChoices,
   selectedChoiceIdsFromAssessmentMetadata,
+  summarizeAssessmentCompletion,
   type AssessmentChoiceScoreRow
 } from "../src/lib/academy-assessment";
 
@@ -104,4 +106,48 @@ test("academy assessment analytics summarize attempts and question misses", () =
   assert.equal(analytics.latestAttempt?.learnerName, "Sari");
   assert.equal(analytics.questionStats[0].questionId, "q2");
   assert.equal(analytics.questionStats[0].missRate, 50);
+});
+
+test("academy assessment completion requires every active assessment to pass", () => {
+  const required = [{ assessmentId: "assessment-1" }, { assessmentId: "assessment-2" }];
+
+  const partial = summarizeAssessmentCompletion(required, [
+    { assessmentId: "assessment-1", score: 90, status: "passed" },
+    { assessmentId: "assessment-2", score: 40, status: "failed" }
+  ]);
+
+  assert.equal(partial.passedAll, false);
+  assert.equal(partial.passedAssessmentCount, 1);
+  assert.equal(partial.averageScore, null);
+
+  const complete = summarizeAssessmentCompletion(required, [
+    { assessmentId: "assessment-1", score: 90, status: "passed" },
+    { assessmentId: "assessment-2", score: 80, status: "passed" }
+  ]);
+
+  assert.equal(complete.passedAll, true);
+  assert.equal(complete.requiredAssessmentCount, 2);
+  assert.equal(complete.averageScore, 85);
+});
+
+test("academy assessment completion ignores archived assessments when omitted from requirements", () => {
+  const completion = summarizeAssessmentCompletion(
+    [{ assessmentId: "active-assessment" }],
+    [
+      { assessmentId: "active-assessment", score: 88, status: "passed" },
+      { assessmentId: "archived-assessment", score: 10, status: "failed" }
+    ]
+  );
+
+  assert.equal(completion.passedAll, true);
+  assert.equal(completion.requiredAssessmentCount, 1);
+  assert.equal(completion.averageScore, 88);
+});
+
+test("academy assessment slugs are made unique for repeated admin defaults", () => {
+  assert.equal(nextAvailableAssessmentSlug("final-assessment", []), "final-assessment");
+  assert.equal(
+    nextAvailableAssessmentSlug("final-assessment", ["final-assessment", "final-assessment-2"]),
+    "final-assessment-3"
+  );
 });

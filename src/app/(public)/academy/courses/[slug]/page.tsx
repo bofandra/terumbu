@@ -54,6 +54,177 @@ function formatAttemptDate(value: Date | string) {
   return date.toLocaleDateString("id-ID", { dateStyle: "medium" });
 }
 
+type CourseDetail = NonNullable<Awaited<ReturnType<typeof getCourseDetail>>>;
+type CourseAssessment = CourseDetail["assessments"][number];
+
+function CourseAssessmentCard({
+  assessment,
+  canAttempt,
+  courseSlug,
+  index,
+  isEnrolled,
+  total
+}: {
+  assessment: CourseAssessment;
+  canAttempt: boolean;
+  courseSlug: string;
+  index: number;
+  isEnrolled: boolean;
+  total: number;
+}) {
+  const questions = assessment.questions;
+  const hasQuestions = questions.length > 0;
+  const attemptFailed = assessment.attempt?.status === "failed";
+  const attemptPassed = assessment.attempt?.status === "passed";
+  const canSubmit = canAttempt && !attemptPassed;
+
+  return (
+    <article className="scroll-mt-24 rounded-2xl border border-ocean-900/10 bg-white p-6 shadow-soft">
+      <div className="flex flex-col justify-between gap-4 md:flex-row md:items-start">
+        <div>
+          <p className="text-sm font-bold uppercase text-coral-700">Assessment {index + 1} of {total}</p>
+          <h2 className="mt-2 text-2xl font-bold text-ocean-900">{assessment.title}</h2>
+          <p className="mt-2 text-sm leading-6 text-ocean-900/62">
+            Passing score: {assessment.passingScore}. Current attempt: {assessment.attempt?.status ?? "not submitted"}.
+          </p>
+        </div>
+        {attemptPassed ? (
+          <span className="inline-flex min-h-11 items-center gap-2 rounded-full bg-kelp-100 px-5 text-sm font-bold text-kelp-700">
+            <CheckCircle2 size={17} aria-hidden="true" />
+            Passed
+          </span>
+        ) : attemptFailed ? (
+          <span className="inline-flex min-h-11 items-center gap-2 rounded-full bg-coral-100 px-5 text-sm font-bold text-coral-700">
+            <RotateCcw size={17} aria-hidden="true" />
+            Retake available
+          </span>
+        ) : isEnrolled ? (
+          <span className="rounded-full bg-ocean-50 px-5 py-3 text-sm font-bold text-ocean-900/58">
+            {canAttempt ? "Ready to submit" : "Complete all lessons to unlock"}
+          </span>
+        ) : (
+          <ButtonLink href={`/login?next=/academy/courses/${courseSlug}`} tone="secondary">Enroll to Start</ButtonLink>
+        )}
+      </div>
+
+      {assessment.attempt ? (
+        <div className={cn("mt-5 rounded-xl border p-4", attemptPassed ? "border-kelp-200 bg-kelp-100/40" : "border-coral-200 bg-coral-100/40")}>
+          <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
+            <div>
+              <p className={cn("text-sm font-bold", attemptPassed ? "text-kelp-700" : "text-coral-700")}>
+                Latest score: {assessment.attempt.score}%
+              </p>
+              <p className="mt-1 text-sm text-ocean-900/62">
+                Attempt {assessment.attempt.attemptCount || 1} submitted {formatAttemptDate(assessment.attempt.submittedAt)}.
+              </p>
+            </div>
+            {attemptPassed ? (
+              <span className="inline-flex items-center gap-2 text-sm font-bold text-kelp-700">
+                <CheckCircle2 size={18} aria-hidden="true" />
+                Passed
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-2 text-sm font-bold text-coral-700">
+                <XCircle size={18} aria-hidden="true" />
+                Try again
+              </span>
+            )}
+          </div>
+        </div>
+      ) : null}
+
+      {canSubmit ? (
+        hasQuestions ? (
+          <form action={submitAssessmentAction} className="mt-6 grid gap-4">
+            <input type="hidden" name="courseSlug" value={courseSlug} />
+            <input type="hidden" name="assessmentId" value={assessment.id} />
+            {questions.map((question) => (
+              <fieldset key={question.id} className="rounded-xl border border-ocean-900/10 bg-sand-50 p-4">
+                <legend className="px-1 text-sm font-bold text-ocean-900">
+                  Question {question.position} · {question.points} point{question.points === 1 ? "" : "s"}
+                </legend>
+                <p className="mt-2 text-base font-bold text-ocean-900">{question.text}</p>
+                <div className="mt-4 grid gap-2">
+                  {question.choices.map((choice) => (
+                    <label
+                      key={choice.id}
+                      className={cn(
+                        "flex cursor-pointer items-start gap-3 rounded-xl border bg-white p-3 text-sm font-semibold text-ocean-900 transition hover:border-coral-300",
+                        choice.isSelected && choice.isCorrect && "border-kelp-300 bg-kelp-100/50",
+                        choice.isSelected && !choice.isCorrect && assessment.attempt && "border-coral-300 bg-coral-100/40",
+                        !choice.isSelected && choice.isCorrect && assessment.attempt && "border-kelp-300 bg-kelp-100/35",
+                        !choice.isSelected && !choice.isCorrect && "border-ocean-900/10"
+                      )}
+                    >
+                      <input
+                        type="radio"
+                        name={`question_${question.id}`}
+                        value={choice.id}
+                        required
+                        defaultChecked={choice.isSelected}
+                        className="mt-1 size-4 accent-coral-500"
+                      />
+                      <span className="leading-6">{choice.text}</span>
+                    </label>
+                  ))}
+                </div>
+                {assessment.attempt ? (
+                  <div className="mt-3 text-sm font-semibold">
+                    {question.wasCorrect ? (
+                      <p className="inline-flex items-center gap-2 text-kelp-700">
+                        <CheckCircle2 size={16} aria-hidden="true" />
+                        Previous answer was correct.
+                      </p>
+                    ) : (
+                      <p className="text-coral-700">
+                        Previous answer: {question.selectedChoiceText ?? "not answered"}. Correct answer: {question.correctChoiceText ?? "not recorded"}.
+                      </p>
+                    )}
+                  </div>
+                ) : null}
+              </fieldset>
+            ))}
+            <div className="flex flex-col justify-between gap-3 rounded-xl bg-ocean-50 p-4 sm:flex-row sm:items-center">
+              <p className="text-sm font-semibold text-ocean-900/62">
+                {attemptFailed ? "Retake this assessment when you are ready. Your latest attempt will update this feedback." : "Submit once all questions are answered."}
+              </p>
+              <Button type="submit">
+                {attemptFailed ? <RotateCcw size={18} aria-hidden="true" /> : <ClipboardCheck size={18} aria-hidden="true" />}
+                {attemptFailed ? "Retake Assessment" : "Submit Assessment"}
+              </Button>
+            </div>
+          </form>
+        ) : (
+          <form action={submitAssessmentAction} className="mt-5">
+            <input type="hidden" name="courseSlug" value={courseSlug} />
+            <input type="hidden" name="assessmentId" value={assessment.id} />
+            <input type="hidden" name="score" value={assessment.passingScore} />
+            <Button type="submit">
+              <ClipboardCheck size={18} aria-hidden="true" />
+              Submit Assessment
+            </Button>
+          </form>
+        )
+      ) : assessment.attempt && hasQuestions ? (
+        <div className="mt-5 grid gap-3">
+          {questions.map((question) => (
+            <div key={question.id} className="rounded-xl border border-ocean-900/10 bg-sand-50 p-4">
+              <p className="text-sm font-bold text-ocean-900">
+                Question {question.position}: {question.text}
+              </p>
+              <p className={cn("mt-2 text-sm font-semibold", question.wasCorrect ? "text-kelp-700" : "text-coral-700")}>
+                {question.wasCorrect
+                  ? `Correct: ${question.selectedChoiceText}`
+                  : `Your answer: ${question.selectedChoiceText ?? "not answered"}. Correct answer: ${question.correctChoiceText ?? "not recorded"}.`}
+              </p>
+            </div>
+          ))}
+        </div>
+      ) : null}
+    </article>
+  );
+}
+
 export default async function CourseDetailPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   const user = await getSessionUser();
@@ -63,14 +234,11 @@ export default async function CourseDetailPage({ params }: { params: Promise<{ s
     notFound();
   }
 
-  const canSubmitAssessment = Boolean(course.enrollment && course.progressPercent >= 100 && !course.certificate);
+  const canAttemptAssessments = Boolean(course.enrollment && course.progressPercent >= 100 && !course.certificate);
   const isEnrolled = Boolean(course.enrollment);
   const certificateIssued = course.certificate?.issuedAt ? formatDate(course.certificate.issuedAt) : null;
   const SaveIcon = course.isSaved ? BookmarkCheck : Bookmark;
-  const assessmentQuestions = course.assessment?.questions ?? [];
-  const hasAssessmentQuestions = assessmentQuestions.length > 0;
-  const attemptFailed = course.attempt?.status === "failed";
-  const attemptPassed = course.attempt?.status === "passed";
+  const assessmentCount = course.assessments.length;
 
   return (
     <>
@@ -145,7 +313,7 @@ export default async function CourseDetailPage({ params }: { params: Promise<{ s
             <p className="mt-3 text-sm leading-6 text-ocean-900/62">
               {course.certificate
                 ? `Certificate ${course.certificate.certificateNumber} issued on ${certificateIssued}.`
-                : "Complete every lesson and pass the final check to add this course to your learning record."}
+                : "Complete every lesson and pass every active assessment to add this course to your learning record."}
             </p>
             <div className="mt-5">
               <ProgressBar value={course.progressPercent} label={`${course.title} progress`} />
@@ -230,145 +398,33 @@ export default async function CourseDetailPage({ params }: { params: Promise<{ s
             </div>
           </section>
 
-          <section id="final-assessment" className="scroll-mt-24 rounded-2xl border border-ocean-900/10 bg-white p-6 shadow-soft">
-            <div className="flex flex-col justify-between gap-4 md:flex-row md:items-start">
+          <section id="final-assessment" className="grid gap-4 scroll-mt-24">
+            <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
               <div>
-                <p className="text-sm font-bold uppercase text-coral-700">Final assessment</p>
-                <h2 className="mt-2 text-2xl font-bold text-ocean-900">{course.assessment?.title ?? "Final course check"}</h2>
-                <p className="mt-2 text-sm leading-6 text-ocean-900/62">
-                  Passing score: {course.assessment?.passingScore ?? 80}. Current attempt: {course.attempt?.status ?? "not submitted"}.
-                </p>
+                <p className="text-sm font-bold uppercase text-coral-700">Assessments</p>
+                <h2 className="mt-2 text-3xl font-bold text-ocean-900">Course checks</h2>
               </div>
-              {course.certificate ? (
-                <span className="inline-flex min-h-11 items-center gap-2 rounded-full bg-kelp-100 px-5 text-sm font-bold text-kelp-700">
-                  <FileBadge size={17} aria-hidden="true" />
-                  Certified
-                </span>
-              ) : attemptFailed ? (
-                <span className="inline-flex min-h-11 items-center gap-2 rounded-full bg-coral-100 px-5 text-sm font-bold text-coral-700">
-                  <RotateCcw size={17} aria-hidden="true" />
-                  Retake available
-                </span>
-              ) : isEnrolled ? (
-                <span className="rounded-full bg-ocean-50 px-5 py-3 text-sm font-bold text-ocean-900/58">
-                  {canSubmitAssessment ? "Ready to submit" : "Complete all lessons to unlock"}
-                </span>
-              ) : (
-                <ButtonLink href={`/login?next=/academy/courses/${course.slug}`} tone="secondary">Enroll to Start</ButtonLink>
-              )}
+              <p className="text-sm font-semibold text-ocean-900/58">
+                {assessmentCount > 0 ? `${assessmentCount} required assessment${assessmentCount === 1 ? "" : "s"}` : "No active assessments"}
+              </p>
             </div>
 
-            {course.attempt ? (
-              <div className={cn("mt-5 rounded-xl border p-4", attemptPassed ? "border-kelp-200 bg-kelp-100/40" : "border-coral-200 bg-coral-100/40")}>
-                <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
-                  <div>
-                    <p className={cn("text-sm font-bold", attemptPassed ? "text-kelp-700" : "text-coral-700")}>
-                      Latest score: {course.attempt.score}%
-                    </p>
-                    <p className="mt-1 text-sm text-ocean-900/62">
-                      Attempt {course.attempt.attemptCount || 1} submitted {formatAttemptDate(course.attempt.submittedAt)}.
-                    </p>
-                  </div>
-                  {attemptPassed ? (
-                    <span className="inline-flex items-center gap-2 text-sm font-bold text-kelp-700">
-                      <CheckCircle2 size={18} aria-hidden="true" />
-                      Passed
-                    </span>
-                  ) : (
-                    <span className="inline-flex items-center gap-2 text-sm font-bold text-coral-700">
-                      <XCircle size={18} aria-hidden="true" />
-                      Try again
-                    </span>
-                  )}
-                </div>
-              </div>
-            ) : null}
+            {course.assessments.map((assessment, index) => (
+              <CourseAssessmentCard
+                key={assessment.id}
+                assessment={assessment}
+                canAttempt={canAttemptAssessments}
+                courseSlug={course.slug}
+                index={index}
+                isEnrolled={isEnrolled}
+                total={assessmentCount}
+              />
+            ))}
 
-            {canSubmitAssessment ? (
-              hasAssessmentQuestions ? (
-                <form action={submitAssessmentAction} className="mt-6 grid gap-4">
-                  <input type="hidden" name="courseSlug" value={course.slug} />
-                  {assessmentQuestions.map((question) => (
-                    <fieldset key={question.id} className="rounded-xl border border-ocean-900/10 bg-sand-50 p-4">
-                      <legend className="px-1 text-sm font-bold text-ocean-900">
-                        Question {question.position} · {question.points} point{question.points === 1 ? "" : "s"}
-                      </legend>
-                      <p className="mt-2 text-base font-bold text-ocean-900">{question.text}</p>
-                      <div className="mt-4 grid gap-2">
-                        {question.choices.map((choice) => (
-                          <label
-                            key={choice.id}
-                            className={cn(
-                              "flex cursor-pointer items-start gap-3 rounded-xl border bg-white p-3 text-sm font-semibold text-ocean-900 transition hover:border-coral-300",
-                              choice.isSelected && choice.isCorrect && "border-kelp-300 bg-kelp-100/50",
-                              choice.isSelected && !choice.isCorrect && course.attempt && "border-coral-300 bg-coral-100/40",
-                              !choice.isSelected && choice.isCorrect && course.attempt && "border-kelp-300 bg-kelp-100/35",
-                              !choice.isSelected && !choice.isCorrect && "border-ocean-900/10"
-                            )}
-                          >
-                            <input
-                              type="radio"
-                              name={`question_${question.id}`}
-                              value={choice.id}
-                              required
-                              defaultChecked={choice.isSelected}
-                              className="mt-1 size-4 accent-coral-500"
-                            />
-                            <span className="leading-6">{choice.text}</span>
-                          </label>
-                        ))}
-                      </div>
-                      {course.attempt ? (
-                        <div className="mt-3 text-sm font-semibold">
-                          {question.wasCorrect ? (
-                            <p className="inline-flex items-center gap-2 text-kelp-700">
-                              <CheckCircle2 size={16} aria-hidden="true" />
-                              Previous answer was correct.
-                            </p>
-                          ) : (
-                            <p className="text-coral-700">
-                              Previous answer: {question.selectedChoiceText ?? "not answered"}. Correct answer: {question.correctChoiceText ?? "not recorded"}.
-                            </p>
-                          )}
-                        </div>
-                      ) : null}
-                    </fieldset>
-                  ))}
-                  <div className="flex flex-col justify-between gap-3 rounded-xl bg-ocean-50 p-4 sm:flex-row sm:items-center">
-                    <p className="text-sm font-semibold text-ocean-900/62">
-                      {attemptFailed ? "Retake the check when you are ready. Your latest attempt will update this feedback." : "Submit once all questions are answered."}
-                    </p>
-                    <Button type="submit">
-                      {attemptFailed ? <RotateCcw size={18} aria-hidden="true" /> : <ClipboardCheck size={18} aria-hidden="true" />}
-                      {attemptFailed ? "Retake Final Check" : "Submit Final Check"}
-                    </Button>
-                  </div>
-                </form>
-              ) : (
-                <form action={submitAssessmentAction} className="mt-5">
-                  <input type="hidden" name="courseSlug" value={course.slug} />
-                  <input type="hidden" name="score" value={course.assessment?.passingScore ?? 80} />
-                  <Button type="submit">
-                    <ClipboardCheck size={18} aria-hidden="true" />
-                    Submit Final Check
-                  </Button>
-                </form>
-              )
-            ) : course.attempt && hasAssessmentQuestions ? (
-              <div className="mt-5 grid gap-3">
-                {assessmentQuestions.map((question) => (
-                  <div key={question.id} className="rounded-xl border border-ocean-900/10 bg-sand-50 p-4">
-                    <p className="text-sm font-bold text-ocean-900">
-                      Question {question.position}: {question.text}
-                    </p>
-                    <p className={cn("mt-2 text-sm font-semibold", question.wasCorrect ? "text-kelp-700" : "text-coral-700")}>
-                      {question.wasCorrect
-                        ? `Correct: ${question.selectedChoiceText}`
-                        : `Your answer: ${question.selectedChoiceText ?? "not answered"}. Correct answer: ${question.correctChoiceText ?? "not recorded"}.`}
-                    </p>
-                  </div>
-                ))}
-              </div>
+            {assessmentCount === 0 ? (
+              <article className="rounded-2xl border border-dashed border-ocean-900/16 bg-white p-6 text-sm font-semibold text-ocean-900/62">
+                No active assessment is attached to this course yet.
+              </article>
             ) : null}
           </section>
         </div>
@@ -402,7 +458,7 @@ export default async function CourseDetailPage({ params }: { params: Promise<{ s
           <article className="rounded-2xl border border-ocean-900/10 bg-white p-5 shadow-soft">
             <p className="text-sm font-bold uppercase text-coral-700">Completion requirements</p>
             <ul className="mt-4 grid gap-3 text-sm font-semibold text-ocean-900/68">
-              {["Complete all required lessons", "Pass the final course check", "Keep certificate details verifiable", "Apply learning responsibly in field contexts"].map((item) => (
+              {["Complete all required lessons", "Pass every active assessment", "Keep certificate details verifiable", "Apply learning responsibly in field contexts"].map((item) => (
                 <li key={item} className="flex items-start gap-2">
                   <CheckCircle2 size={17} aria-hidden="true" className="mt-0.5 text-kelp-500" />
                   {item}

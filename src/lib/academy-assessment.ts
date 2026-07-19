@@ -83,6 +83,16 @@ export type AssessmentAnalytics = {
   questionStats: AssessmentQuestionAnalytics[];
 };
 
+export type AssessmentCompletionRequirement = {
+  assessmentId: string;
+};
+
+export type AssessmentCompletionAttempt = {
+  assessmentId: string;
+  score: number;
+  status: string;
+};
+
 type SelectionInput = ReadonlyMap<string, string | null | undefined> | Record<string, string | null | undefined>;
 
 function clampScore(value: number) {
@@ -131,6 +141,43 @@ export function manualAssessmentScore(score: number): AssessmentScoreResult {
     selectedChoiceIds: {},
     correctChoiceIds: {},
     selections: []
+  };
+}
+
+export function nextAvailableAssessmentSlug(baseSlug: string, takenSlugs: Iterable<string>) {
+  const normalizedBase = baseSlug.trim() || "assessment";
+  const taken = new Set(Array.from(takenSlugs).map((slug) => slug.trim()).filter(Boolean));
+
+  if (!taken.has(normalizedBase)) {
+    return normalizedBase;
+  }
+
+  let suffix = 2;
+  while (taken.has(`${normalizedBase}-${suffix}`)) {
+    suffix += 1;
+  }
+
+  return `${normalizedBase}-${suffix}`;
+}
+
+export function summarizeAssessmentCompletion(
+  requiredAssessments: AssessmentCompletionRequirement[],
+  attempts: AssessmentCompletionAttempt[]
+) {
+  const attemptByAssessment = new Map(attempts.map((attempt) => [attempt.assessmentId, attempt]));
+  const passedAttempts = requiredAssessments
+    .map((assessment) => attemptByAssessment.get(assessment.assessmentId) ?? null)
+    .filter((attempt): attempt is AssessmentCompletionAttempt => attempt?.status === "passed");
+  const passedAll = requiredAssessments.length > 0 && passedAttempts.length === requiredAssessments.length;
+  const averageScore = passedAll
+    ? clampScore(passedAttempts.reduce((total, attempt) => total + clampScore(Number(attempt.score)), 0) / passedAttempts.length)
+    : null;
+
+  return {
+    requiredAssessmentCount: requiredAssessments.length,
+    passedAssessmentCount: passedAttempts.length,
+    passedAll,
+    averageScore
   };
 }
 

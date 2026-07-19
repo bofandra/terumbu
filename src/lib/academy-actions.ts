@@ -2,14 +2,18 @@
 
 import { randomBytes } from "node:crypto";
 
-import { and, asc, eq } from "drizzle-orm";
+import { and, asc, eq, inArray } from "drizzle-orm";
 import { redirect } from "next/navigation";
 
 import { db } from "@/db/client";
 import {
   buildAssessmentAttemptMetadata,
+  correctChoiceIdsFromAssessmentMetadata,
   manualAssessmentScore,
-  scoreAssessmentChoices
+  nextAvailableAssessmentSlug,
+  scoreAssessmentChoices,
+  selectedChoiceIdsFromAssessmentMetadata,
+  summarizeAssessmentCompletion
 } from "@/lib/academy-assessment";
 import {
   adminAuditLogs,
@@ -68,6 +72,18 @@ function courseStatusFromForm(formData: FormData) {
   return ["draft", "published", "archived"].includes(status) ? status : "draft";
 }
 
+function assessmentStatusFromForm(formData: FormData) {
+  const status = formText(formData, "status");
+
+  return ["active", "archived"].includes(status) ? status : "active";
+}
+
+function questionStatusFromForm(formData: FormData) {
+  const status = formText(formData, "status");
+
+  return ["active", "archived"].includes(status) ? status : "active";
+}
+
 function returnPath(formData: FormData, fallback: string) {
   return safeRedirectPath(formData.get("next") ?? fallback, fallback);
 }
@@ -99,6 +115,16 @@ async function courseBySlug(slug: string) {
     .limit(1);
 
   return course ?? null;
+}
+
+async function uniqueAssessmentSlug(courseId: string, requestedSlug: string, fallbackTitle: string) {
+  const baseSlug = slugify(requestedSlug || fallbackTitle);
+  const existingSlugs = await db
+    .select({ slug: courseAssessments.slug })
+    .from(courseAssessments)
+    .where(eq(courseAssessments.courseId, courseId));
+
+  return nextAvailableAssessmentSlug(baseSlug, existingSlugs.map((row) => row.slug));
 }
 
 async function ensureCourseLessonsProgress(enrollmentId: string, courseId: string) {
@@ -300,6 +326,7 @@ async function scoreAssessment(assessmentId: string, formData: FormData) {
 
 export async function submitAssessmentAction(formData: FormData) {
   const courseSlug = String(formData.get("courseSlug") ?? "");
+  const assessmentId = formText(formData, "assessmentId");
   const user = await requireUser(`/academy/courses/${courseSlug}`);
   const now = new Date();
 
@@ -308,6 +335,7 @@ export async function submitAssessmentAction(formData: FormData) {
       courseId: courses.id,
       courseTitle: courses.title,
       assessmentId: courseAssessments.id,
+      assessmentTitle: courseAssessments.title,
       passingScore: courseAssessments.passingScore,
       enrollmentId: courseEnrollments.id,
       passportId: impactPassports.id,
@@ -318,7 +346,7 @@ export async function submitAssessmentAction(formData: FormData) {
     .innerJoin(courseEnrollments, and(eq(courseEnrollments.courseId, courses.id), eq(courseEnrollments.userId, user.id)))
     .leftJoin(assessmentAttempts, and(eq(assessmentAttempts.assessmentId, courseAssessments.id), eq(assessmentAttempts.userId, user.id)))
     .leftJoin(impactPassports, eq(impactPassports.userId, user.id))
-    .where(eq(courses.slug, courseSlug))
+    .where(and(eq(courses.slug, courseSlug), eq(courses.status, "published"), eq(courseAssessments.id, assessmentId), eq(courseAssessments.status, "active")))
     .limit(1);
 
   if (!row) {
@@ -357,6 +385,28 @@ export async function submitAssessmentAction(formData: FormData) {
       });
 
     if (passed) {
+      const activeAssessments = await tx
+        .select({
+          assessmentId: courseAssessments.id
+        })
+        .from(courseAssessments)
+        .where(and(eq(courseAssessments.courseId, row.courseId), eq(courseAssessments.status, "active")));
+      const latestAttempts = activeAssessments.length > 0
+        ? await tx
+            .select({
+              assessmentId: assessmentAttempts.assessmentId,
+              score: assessmentAttempts.score,
+              status: assessmentAttempts.status
+            })
+            .from(assessmentAttempts)
+            .where(and(inArray(assessmentAttempts.assessmentId, activeAssessments.map((assessment) => assessment.assessmentId)), eq(assessmentAttempts.userId, user.id)))
+        : [];
+      const completion = summarizeAssessmentCompletion(activeAssessments, latestAttempts);
+
+      if (!completion.passedAll || completion.averageScore === null) {
+        return;
+      }
+
       const certificateNumber = `TRB-CERT-${now.getUTCFullYear()}-${randomBytes(3).toString("hex").toUpperCase()}`;
 
       await tx
@@ -377,11 +427,13 @@ export async function submitAssessmentAction(formData: FormData) {
           publicSlug: certificateSlug(courseSlug),
           issuedAt: now,
           metadata: {
-            score,
+            score: completion.averageScore,
             credential: row.courseTitle,
             attemptCount: attemptMetadata.attemptCount,
+            assessmentCount: completion.requiredAssessmentCount,
             earnedPoints: result.earnedPoints,
-            maxPoints: result.maxPoints
+            maxPoints: result.maxPoints,
+            latestAssessment: row.assessmentTitle
           }
         })
         .onConflictDoNothing({
@@ -398,11 +450,12 @@ export async function submitAssessmentAction(formData: FormData) {
             sourceId: certificate.id,
             itemType: "certificate",
             title: `${row.courseTitle} certificate`,
-            description: `Completed ${row.courseTitle} with a score of ${score}.`,
+            description: `Completed ${row.courseTitle} with an average assessment score of ${completion.averageScore}.`,
             occurredAt: now,
             metadata: {
-              score,
+              score: completion.averageScore,
               course: courseSlug,
+              assessmentCount: completion.requiredAssessmentCount,
               attemptCount: attemptMetadata.attemptCount
             }
           })
@@ -547,13 +600,16 @@ export async function createAcademyAssessmentAction(formData: FormData) {
     redirect("/admin/academy?error=assessment");
   }
 
+  const slug = await uniqueAssessmentSlug(courseId, formText(formData, "slug"), title);
+
   const [assessment] = await db
     .insert(courseAssessments)
     .values({
       courseId,
       title,
-      slug: slugify(formText(formData, "slug") || title),
+      slug,
       passingScore: formInt(formData, "passingScore", 70),
+      status: "active",
       metadata: { createdFrom: "admin_academy" }
     })
     .returning({ id: courseAssessments.id });
@@ -569,11 +625,111 @@ export async function createAcademyAssessmentAction(formData: FormData) {
   redirect(`/admin/academy/courses/${courseId}?saved=assessment`);
 }
 
+export async function updateAcademyAssessmentAction(formData: FormData) {
+  const user = await requireRole(["admin"], "/admin/academy");
+  const courseId = formText(formData, "courseId");
+  const assessmentId = formText(formData, "assessmentId");
+  const title = formText(formData, "title");
+  const slug = slugify(formText(formData, "slug") || title);
+
+  if (!courseId || !assessmentId || !title || !slug) {
+    redirect(`/admin/academy/courses/${courseId}?error=assessment`);
+  }
+
+  const [assessment] = await db
+    .select({ id: courseAssessments.id })
+    .from(courseAssessments)
+    .where(and(eq(courseAssessments.id, assessmentId), eq(courseAssessments.courseId, courseId)))
+    .limit(1);
+
+  if (!assessment) {
+    redirect(`/admin/academy/courses/${courseId}?error=assessment`);
+  }
+
+  const existingSlugs = await db
+    .select({
+      id: courseAssessments.id,
+      slug: courseAssessments.slug
+    })
+    .from(courseAssessments)
+    .where(eq(courseAssessments.courseId, courseId));
+
+  if (existingSlugs.some((row) => row.id !== assessmentId && row.slug === slug)) {
+    redirect(`/admin/academy/courses/${courseId}?error=assessment-duplicate`);
+  }
+
+  await db
+    .update(courseAssessments)
+    .set({
+      title,
+      slug,
+      passingScore: formInt(formData, "passingScore", 70),
+      status: assessmentStatusFromForm(formData)
+    })
+    .where(and(eq(courseAssessments.id, assessmentId), eq(courseAssessments.courseId, courseId)));
+
+  await db.insert(adminAuditLogs).values({
+    actorUserId: user.id,
+    action: "academy.assessment.updated",
+    entityType: "course_assessment",
+    entityId: assessmentId,
+    metadata: { title, courseId }
+  });
+
+  redirect(`/admin/academy/courses/${courseId}?saved=assessment`);
+}
+
+export async function deleteAcademyAssessmentAction(formData: FormData) {
+  const user = await requireRole(["admin"], "/admin/academy");
+  const courseId = formText(formData, "courseId");
+  const assessmentId = formText(formData, "assessmentId");
+
+  if (!courseId || !assessmentId) {
+    redirect(`/admin/academy/courses/${courseId}?error=assessment`);
+  }
+
+  const [assessment] = await db
+    .select({ id: courseAssessments.id, title: courseAssessments.title })
+    .from(courseAssessments)
+    .where(and(eq(courseAssessments.id, assessmentId), eq(courseAssessments.courseId, courseId)))
+    .limit(1);
+
+  if (!assessment) {
+    redirect(`/admin/academy/courses/${courseId}?error=assessment`);
+  }
+
+  const [attempt] = await db
+    .select({ id: assessmentAttempts.id })
+    .from(assessmentAttempts)
+    .where(eq(assessmentAttempts.assessmentId, assessmentId))
+    .limit(1);
+
+  if (attempt) {
+    await db
+      .update(courseAssessments)
+      .set({ status: "archived" })
+      .where(and(eq(courseAssessments.id, assessmentId), eq(courseAssessments.courseId, courseId)));
+  } else {
+    await db.delete(courseAssessments).where(and(eq(courseAssessments.id, assessmentId), eq(courseAssessments.courseId, courseId)));
+  }
+
+  await db.insert(adminAuditLogs).values({
+    actorUserId: user.id,
+    action: attempt ? "academy.assessment.archived" : "academy.assessment.deleted",
+    entityType: "course_assessment",
+    entityId: assessmentId,
+    metadata: { title: assessment.title, courseId }
+  });
+
+  redirect(`/admin/academy/courses/${courseId}?saved=assessment-deleted`);
+}
+
 export async function createAcademyQuestionAction(formData: FormData) {
   const user = await requireRole(["admin"], "/admin/academy");
   const courseId = formText(formData, "courseId");
   const assessmentId = formText(formData, "assessmentId");
   const questionText = formText(formData, "questionText");
+  const position = formInt(formData, "position", 1);
   const choices = formData
     .getAll("choiceText")
     .map((choice, index) => ({
@@ -588,13 +744,33 @@ export async function createAcademyQuestionAction(formData: FormData) {
     redirect(`/admin/academy/courses/${courseId}?error=question`);
   }
 
+  const [assessment] = await db
+    .select({ id: courseAssessments.id })
+    .from(courseAssessments)
+    .where(and(eq(courseAssessments.id, assessmentId), eq(courseAssessments.courseId, courseId)))
+    .limit(1);
+
+  if (!assessment) {
+    redirect(`/admin/academy/courses/${courseId}?error=question`);
+  }
+
+  const [existingPosition] = await db
+    .select({ id: assessmentQuestions.id })
+    .from(assessmentQuestions)
+    .where(and(eq(assessmentQuestions.assessmentId, assessmentId), eq(assessmentQuestions.position, position)))
+    .limit(1);
+
+  if (existingPosition) {
+    redirect(`/admin/academy/courses/${courseId}?error=question-position`);
+  }
+
   await db.transaction(async (tx) => {
     const [question] = await tx
       .insert(assessmentQuestions)
       .values({
         assessmentId,
         questionText,
-        position: formInt(formData, "position", 1),
+        position,
         points: formInt(formData, "points", 1)
       })
       .returning({ id: assessmentQuestions.id });
@@ -618,4 +794,157 @@ export async function createAcademyQuestionAction(formData: FormData) {
   });
 
   redirect(`/admin/academy/courses/${courseId}?saved=question`);
+}
+
+function questionWasUsedInAttempts(questionId: string, attempts: Array<{ metadata: unknown }>) {
+  return attempts.some((attempt) => {
+    const selectedChoiceIds = selectedChoiceIdsFromAssessmentMetadata(attempt.metadata);
+    const correctChoiceIds = correctChoiceIdsFromAssessmentMetadata(attempt.metadata);
+
+    return Boolean(selectedChoiceIds[questionId] || correctChoiceIds[questionId]);
+  });
+}
+
+export async function updateAcademyQuestionAction(formData: FormData) {
+  const user = await requireRole(["admin"], "/admin/academy");
+  const courseId = formText(formData, "courseId");
+  const assessmentId = formText(formData, "assessmentId");
+  const questionId = formText(formData, "questionId");
+  const questionText = formText(formData, "questionText");
+  const position = formInt(formData, "position", 1);
+  const choiceIds = formData.getAll("choiceId").map((choice) => String(choice).trim());
+  const choiceTexts = formData.getAll("choiceText").map((choice) => String(choice).trim());
+  const correctChoiceId = formText(formData, "correctChoiceId");
+  const choices = choiceIds
+    .map((choiceId, index) => ({
+      id: choiceId,
+      choiceText: choiceTexts[index] ?? "",
+      position: index + 1
+    }))
+    .filter((choice) => choice.id);
+
+  if (!courseId || !assessmentId || !questionId || !questionText || choices.length < 2 || choices.some((choice) => !choice.choiceText) || !choices.some((choice) => choice.id === correctChoiceId)) {
+    redirect(`/admin/academy/courses/${courseId}?error=question`);
+  }
+
+  const [question] = await db
+    .select({
+      id: assessmentQuestions.id
+    })
+    .from(assessmentQuestions)
+    .innerJoin(courseAssessments, eq(assessmentQuestions.assessmentId, courseAssessments.id))
+    .where(and(eq(assessmentQuestions.id, questionId), eq(assessmentQuestions.assessmentId, assessmentId), eq(courseAssessments.courseId, courseId)))
+    .limit(1);
+
+  if (!question) {
+    redirect(`/admin/academy/courses/${courseId}?error=question`);
+  }
+
+  const existingChoices = await db
+    .select({ id: assessmentChoices.id })
+    .from(assessmentChoices)
+    .where(eq(assessmentChoices.questionId, questionId));
+  const existingChoiceIds = new Set(existingChoices.map((choice) => choice.id));
+
+  if (choices.length !== existingChoices.length || choices.some((choice) => !existingChoiceIds.has(choice.id))) {
+    redirect(`/admin/academy/courses/${courseId}?error=question`);
+  }
+
+  const [existingPosition] = await db
+    .select({ id: assessmentQuestions.id })
+    .from(assessmentQuestions)
+    .where(and(eq(assessmentQuestions.assessmentId, assessmentId), eq(assessmentQuestions.position, position)))
+    .limit(1);
+
+  if (existingPosition && existingPosition.id !== questionId) {
+    redirect(`/admin/academy/courses/${courseId}?error=question-position`);
+  }
+
+  await db.transaction(async (tx) => {
+    await tx
+      .update(assessmentQuestions)
+      .set({
+        questionText,
+        position,
+        points: formInt(formData, "points", 1),
+        status: questionStatusFromForm(formData),
+        updatedAt: new Date()
+      })
+      .where(eq(assessmentQuestions.id, questionId));
+
+    for (const choice of choices) {
+      await tx
+        .update(assessmentChoices)
+        .set({
+          choiceText: choice.choiceText,
+          isCorrect: choice.id === correctChoiceId,
+          position: choice.position,
+          updatedAt: new Date()
+        })
+        .where(eq(assessmentChoices.id, choice.id));
+    }
+
+    await tx.insert(adminAuditLogs).values({
+      actorUserId: user.id,
+      action: "academy.question.updated",
+      entityType: "assessment_question",
+      entityId: questionId,
+      metadata: { assessmentId, courseId }
+    });
+  });
+
+  redirect(`/admin/academy/courses/${courseId}?saved=question`);
+}
+
+export async function deleteAcademyQuestionAction(formData: FormData) {
+  const user = await requireRole(["admin"], "/admin/academy");
+  const courseId = formText(formData, "courseId");
+  const assessmentId = formText(formData, "assessmentId");
+  const questionId = formText(formData, "questionId");
+
+  if (!courseId || !assessmentId || !questionId) {
+    redirect(`/admin/academy/courses/${courseId}?error=question`);
+  }
+
+  const [question] = await db
+    .select({
+      id: assessmentQuestions.id,
+      questionText: assessmentQuestions.questionText
+    })
+    .from(assessmentQuestions)
+    .innerJoin(courseAssessments, eq(assessmentQuestions.assessmentId, courseAssessments.id))
+    .where(and(eq(assessmentQuestions.id, questionId), eq(assessmentQuestions.assessmentId, assessmentId), eq(courseAssessments.courseId, courseId)))
+    .limit(1);
+
+  if (!question) {
+    redirect(`/admin/academy/courses/${courseId}?error=question`);
+  }
+
+  const attempts = await db
+    .select({ metadata: assessmentAttempts.metadata })
+    .from(assessmentAttempts)
+    .where(eq(assessmentAttempts.assessmentId, assessmentId));
+  const shouldArchive = questionWasUsedInAttempts(questionId, attempts);
+
+  if (shouldArchive) {
+    await db
+      .update(assessmentQuestions)
+      .set({
+        status: "archived",
+        updatedAt: new Date()
+      })
+      .where(eq(assessmentQuestions.id, questionId));
+  } else {
+    await db.delete(assessmentQuestions).where(eq(assessmentQuestions.id, questionId));
+  }
+
+  await db.insert(adminAuditLogs).values({
+    actorUserId: user.id,
+    action: shouldArchive ? "academy.question.archived" : "academy.question.deleted",
+    entityType: "assessment_question",
+    entityId: questionId,
+    metadata: { questionText: question.questionText, assessmentId, courseId }
+  });
+
+  redirect(`/admin/academy/courses/${courseId}?saved=question-deleted`);
 }

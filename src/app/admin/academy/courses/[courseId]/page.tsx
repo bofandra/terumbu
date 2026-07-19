@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowUpRight, BarChart3, BookOpenCheck, CheckCircle2, Circle, ClipboardCheck, FileQuestion, Percent, ListPlus, Save, TrendingUp } from "lucide-react";
+import { ArrowUpRight, BarChart3, BookOpenCheck, CheckCircle2, Circle, ClipboardCheck, FileQuestion, Percent, ListPlus, Save, Trash2, TrendingUp } from "lucide-react";
 import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
 
@@ -17,7 +17,11 @@ import {
   createAcademyAssessmentAction,
   createAcademyLessonAction,
   createAcademyQuestionAction,
-  updateAcademyCourseAction
+  deleteAcademyAssessmentAction,
+  deleteAcademyQuestionAction,
+  updateAcademyAssessmentAction,
+  updateAcademyCourseAction,
+  updateAcademyQuestionAction
 } from "@/lib/academy-actions";
 import { requireRole } from "@/lib/auth";
 import { getAdminAcademyCourse } from "@/lib/queries";
@@ -29,22 +33,27 @@ export const metadata = {
 export const dynamic = "force-dynamic";
 
 const courseStatuses = ["draft", "published", "archived"];
+const academyContentStatuses = ["active", "archived"];
 const choiceLabels = ["A", "B", "C", "D"];
 
 const savedMessages: Record<string, string> = {
   assessment: "Assessment saved.",
+  "assessment-deleted": "Assessment removed from active learning.",
   course: "Course saved.",
   lesson: "Lesson saved.",
-  question: "Question saved."
+  question: "Question saved.",
+  "question-deleted": "Question removed from active learning."
 };
 
 const errorMessages: Record<string, string> = {
   assessment: "Choose a course and enter assessment details.",
+  "assessment-duplicate": "Use a unique assessment slug for this course.",
   course: "Enter a title and summary for the course.",
   "image-size": "Uploaded image is too large.",
   "image-type": "Upload a supported image file.",
   lesson: "Choose a course and enter a lesson title.",
-  question: "Enter a question, at least two choices, and a non-empty correct answer."
+  question: "Enter a question, at least two choices, and a non-empty correct answer.",
+  "question-position": "Use a unique question position for this assessment."
 };
 
 type AdminAcademyCoursePageProps = {
@@ -90,6 +99,18 @@ function CourseStatusSelect({ defaultValue = "draft" }: { defaultValue?: string 
   );
 }
 
+function AcademyContentStatusSelect({ defaultValue = "active" }: { defaultValue?: string }) {
+  return (
+    <select name="status" defaultValue={defaultValue} className={adminSelectClassName}>
+      {academyContentStatuses.map((status) => (
+        <option key={status} value={status}>
+          {labelize(status)}
+        </option>
+      ))}
+    </select>
+  );
+}
+
 function formatDate(value: Date | null) {
   return value ? value.toLocaleDateString("id-ID", { dateStyle: "medium" }) : "Not published";
 }
@@ -101,6 +122,10 @@ function formatAttemptDate(value: Date | null) {
 function choiceLabelFor(position: number) {
   return choiceLabels[position - 1] ?? position.toLocaleString("id-ID");
 }
+
+type AdminCourse = NonNullable<Awaited<ReturnType<typeof getAdminAcademyCourse>>>;
+type AdminAssessment = AdminCourse["assessments"][number];
+type AdminQuestion = AdminAssessment["questions"][number];
 
 function AssessmentMetric({ label, value }: { label: string; value: string }) {
   return (
@@ -179,6 +204,108 @@ function QuestionBuilder({
       <Button type="submit" className="mt-4 rounded-lg">
         <ListPlus className="size-4" aria-hidden="true" />
         Add Question
+      </Button>
+    </form>
+  );
+}
+
+function AssessmentEditor({ assessment, courseId }: { assessment: AdminAssessment; courseId: string }) {
+  return (
+    <div className="mt-4 grid gap-3 rounded-lg border border-ocean-900/10 bg-white p-3">
+      <form action={updateAcademyAssessmentAction} className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_140px_150px_auto] lg:items-end">
+        <input type="hidden" name="courseId" value={courseId} />
+        <input type="hidden" name="assessmentId" value={assessment.id} />
+        <Field label="Title">
+          <input name="title" defaultValue={assessment.title} className={adminInputClassName} required />
+        </Field>
+        <Field label="Slug">
+          <input name="slug" defaultValue={assessment.slug} className={adminInputClassName} required />
+        </Field>
+        <Field label="Passing score">
+          <input name="passingScore" type="number" min={1} max={100} defaultValue={assessment.passingScore} className={adminInputClassName} required />
+        </Field>
+        <Field label="Status">
+          <AcademyContentStatusSelect defaultValue={assessment.status} />
+        </Field>
+        <Button type="submit" tone="secondary" className="rounded-lg">
+          <Save className="size-4" aria-hidden="true" />
+          Save
+        </Button>
+      </form>
+      <form action={deleteAcademyAssessmentAction}>
+        <input type="hidden" name="courseId" value={courseId} />
+        <input type="hidden" name="assessmentId" value={assessment.id} />
+        <Button type="submit" tone="ghost" className="min-h-10 rounded-lg px-3 text-coral-700 hover:bg-coral-100">
+          <Trash2 className="size-4" aria-hidden="true" />
+          Delete or Archive Assessment
+        </Button>
+      </form>
+    </div>
+  );
+}
+
+function QuestionEditor({ assessmentId, courseId, question }: { assessmentId: string; courseId: string; question: AdminQuestion }) {
+  return (
+    <form action={updateAcademyQuestionAction} className="grid gap-3 border-t border-ocean-900/10 bg-white p-3">
+      <input type="hidden" name="courseId" value={courseId} />
+      <input type="hidden" name="assessmentId" value={assessmentId} />
+      <input type="hidden" name="questionId" value={question.id} />
+      <Field label="Question prompt">
+        <textarea name="questionText" defaultValue={question.questionText} className={`${adminTextareaClassName} min-h-28`} required />
+      </Field>
+      <div className="grid gap-3 sm:grid-cols-3">
+        <Field label="Position">
+          <input name="position" type="number" min={1} defaultValue={question.position} className={adminInputClassName} required />
+        </Field>
+        <Field label="Points">
+          <input name="points" type="number" min={1} defaultValue={question.points} className={adminInputClassName} required />
+        </Field>
+        <Field label="Status">
+          <AcademyContentStatusSelect defaultValue={question.status} />
+        </Field>
+      </div>
+      <fieldset>
+        <legend className="text-sm font-bold text-ocean-900">Answer choices</legend>
+        <div className="mt-3 grid gap-2">
+          {question.choices.map((choice) => (
+            <div key={choice.id} className="grid gap-2 rounded-lg border border-ocean-900/10 bg-sand-50 p-3 md:grid-cols-[128px_minmax(0,1fr)] md:items-center">
+              <input type="hidden" name="choiceId" value={choice.id} />
+              <label className="inline-flex min-h-10 items-center gap-2 rounded-lg bg-white px-3 text-sm font-bold text-ocean-900 ring-1 ring-ocean-900/10">
+                <input
+                  name="correctChoiceId"
+                  type="radio"
+                  value={choice.id}
+                  defaultChecked={choice.isCorrect}
+                  className="size-4 accent-coral-500"
+                  aria-label={`Mark answer ${choiceLabelFor(choice.position)} as correct`}
+                />
+                <span className="grid size-7 place-items-center rounded-md bg-ocean-50 text-xs">{choiceLabelFor(choice.position)}</span>
+                Correct
+              </label>
+              <input name="choiceText" defaultValue={choice.choiceText} className={adminInputClassName} required />
+            </div>
+          ))}
+        </div>
+      </fieldset>
+      <div className="flex flex-col gap-2 sm:flex-row">
+        <Button type="submit" tone="secondary" className="rounded-lg">
+          <Save className="size-4" aria-hidden="true" />
+          Save Question
+        </Button>
+      </div>
+    </form>
+  );
+}
+
+function DeleteQuestionForm({ assessmentId, courseId, questionId }: { assessmentId: string; courseId: string; questionId: string }) {
+  return (
+    <form action={deleteAcademyQuestionAction} className="border-t border-ocean-900/10 bg-white px-3 py-2">
+      <input type="hidden" name="courseId" value={courseId} />
+      <input type="hidden" name="assessmentId" value={assessmentId} />
+      <input type="hidden" name="questionId" value={questionId} />
+      <Button type="submit" tone="ghost" className="min-h-10 rounded-lg px-3 text-coral-700 hover:bg-coral-100">
+        <Trash2 className="size-4" aria-hidden="true" />
+        Delete or Archive Question
       </Button>
     </form>
   );
@@ -404,7 +531,10 @@ export default async function AdminAcademyCoursePage({ params, searchParams }: A
                 <div className="border-b border-ocean-900/10 bg-sand-50 p-4">
                   <div className="flex flex-col justify-between gap-3 lg:flex-row lg:items-start">
                     <div>
-                      <h3 className="text-lg font-bold tracking-normal text-ocean-900">{assessment.title}</h3>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <h3 className="text-lg font-bold tracking-normal text-ocean-900">{assessment.title}</h3>
+                        <AdminStatusBadge value={assessment.status} />
+                      </div>
                       <p className="mt-1 text-sm font-semibold text-ocean-900/58">
                         /{assessment.slug} / {assessment.passingScore}% passing score / {assessment.questions.length.toLocaleString("id-ID")} questions
                       </p>
@@ -419,6 +549,7 @@ export default async function AdminAcademyCoursePage({ params, searchParams }: A
                       />
                     </div>
                   </div>
+                  <AssessmentEditor assessment={assessment} courseId={course.id} />
                 </div>
 
                 <div className="grid lg:grid-cols-[minmax(0,1fr)_320px]">
@@ -478,6 +609,8 @@ export default async function AdminAcademyCoursePage({ params, searchParams }: A
                                 {questionStat.missedCount.toLocaleString("id-ID")} missed / {questionStat.answeredCount.toLocaleString("id-ID")} answered
                               </div>
                             ) : null}
+                            <QuestionEditor assessmentId={assessment.id} courseId={course.id} question={question} />
+                            <DeleteQuestionForm assessmentId={assessment.id} courseId={course.id} questionId={question.id} />
                           </article>
                         );
                       })}
@@ -525,7 +658,11 @@ export default async function AdminAcademyCoursePage({ params, searchParams }: A
                   </aside>
                 </div>
 
-                <QuestionBuilder courseId={course.id} assessmentId={assessment.id} nextPosition={assessment.questions.length + 1} />
+                <QuestionBuilder
+                  courseId={course.id}
+                  assessmentId={assessment.id}
+                  nextPosition={Math.max(0, ...assessment.questions.map((question) => question.position)) + 1}
+                />
               </article>
             );
           })}
@@ -542,10 +679,10 @@ export default async function AdminAcademyCoursePage({ params, searchParams }: A
             <h3 className="text-lg font-bold tracking-normal text-ocean-900">Add assessment</h3>
             <div className="mt-3 grid gap-3 lg:grid-cols-[1fr_1fr_160px]">
               <Field label="Title">
-                <input name="title" defaultValue="Final assessment" className={adminInputClassName} required />
+                <input name="title" defaultValue={`Assessment ${course.assessments.length + 1}`} className={adminInputClassName} required />
               </Field>
               <Field label="Slug">
-                <input name="slug" defaultValue="final-assessment" className={adminInputClassName} />
+                <input name="slug" defaultValue={`assessment-${course.assessments.length + 1}`} className={adminInputClassName} />
               </Field>
               <Field label="Passing score">
                 <input name="passingScore" type="number" min={1} max={100} defaultValue={70} className={adminInputClassName} required />
