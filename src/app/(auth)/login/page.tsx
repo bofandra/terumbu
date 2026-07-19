@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
 import { getDefaultAuthenticatedPath, getSessionUser, safeRedirectPath } from "@/lib/auth";
-import { loginAction } from "@/lib/auth-actions";
+import { loginAction, requestVerificationEmailAction } from "@/lib/auth-actions";
 
 export const metadata = {
   title: "Login"
@@ -15,6 +15,9 @@ type LoginPageProps = {
     loggedOut?: string;
     next?: string;
     registration?: string;
+    reset?: string;
+    verification?: string;
+    verified?: string;
   }>;
 };
 
@@ -41,6 +44,32 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
           </p>
         ) : null}
 
+        {params?.error === "unverified" ? (
+          <div className="mt-4 rounded-xl border border-coral-500/20 bg-coral-100 px-4 py-3">
+            <p className="text-sm font-semibold text-coral-700">Verify your email before logging in. A verification email has been sent.</p>
+            <form action={requestVerificationEmailAction} className="mt-3 grid gap-2 sm:grid-cols-[1fr_auto]">
+              <input type="hidden" name="next" value={nextPath} />
+              <input
+                className="min-h-10 rounded-lg border border-coral-700/20 px-3 text-sm font-semibold outline-none focus:border-coral-500"
+                type="email"
+                name="email"
+                placeholder="email@example.com"
+                autoComplete="email"
+                required
+              />
+              <Button type="submit" tone="light" className="min-h-10 rounded-lg px-3">
+                Resend
+              </Button>
+            </form>
+          </div>
+        ) : null}
+
+        {params?.error === "verification" ? (
+          <p className="mt-4 rounded-xl border border-coral-500/20 bg-coral-100 px-4 py-3 text-sm font-semibold text-coral-700">
+            That verification link is invalid or expired.
+          </p>
+        ) : null}
+
         {params?.loggedOut ? (
           <p className="mt-4 rounded-xl border border-kelp-500/20 bg-kelp-100 px-4 py-3 text-sm font-semibold text-kelp-700">
             You have been logged out.
@@ -50,6 +79,24 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
         {params?.registration === "closed" ? (
           <p className="mt-4 rounded-xl border border-ocean-900/10 bg-ocean-50 px-4 py-3 text-sm font-semibold text-ocean-900/68">
             Public registration is closed. Terumbu admins create accounts and assign the right access before users sign in.
+          </p>
+        ) : null}
+
+        {params?.reset ? (
+          <p className="mt-4 rounded-xl border border-kelp-500/20 bg-kelp-100 px-4 py-3 text-sm font-semibold text-kelp-700">
+            Password saved. You can log in now.
+          </p>
+        ) : null}
+
+        {params?.verified ? (
+          <p className="mt-4 rounded-xl border border-kelp-500/20 bg-kelp-100 px-4 py-3 text-sm font-semibold text-kelp-700">
+            Email verified. You can log in now.
+          </p>
+        ) : null}
+
+        {params?.verification === "sent" ? (
+          <p className="mt-4 rounded-xl border border-kelp-500/20 bg-kelp-100 px-4 py-3 text-sm font-semibold text-kelp-700">
+            If that account needs verification, a fresh email has been sent.
           </p>
         ) : null}
 
@@ -75,6 +122,9 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
               required
             />
           </label>
+          <Link href="/forgot-password" className="w-fit text-sm font-bold text-coral-700 hover:text-coral-500">
+            Forgot password?
+          </Link>
           <Button type="submit" className="mt-2">
             Login
           </Button>

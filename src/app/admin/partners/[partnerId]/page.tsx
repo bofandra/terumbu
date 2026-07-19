@@ -36,7 +36,7 @@ const partnerUserStatuses = ["active", "inactive"];
 const statusMessages: Record<string, string> = {
   "partner-updated": "Partner updated.",
   "partner-user-assigned": "User assigned to partner.",
-  "partner-user-created": "Partner user created.",
+  "partner-user-created": "Partner user created and setup email queued.",
   "partner-user-updated": "Partner user updated.",
   "partner-user-removed": "Partner user removed."
 };
@@ -49,7 +49,7 @@ const errorMessages: Record<string, string> = {
   "partner-invalid": "Enter a partner name, slug, and type.",
   "partner-slug": "That partner slug is already in use.",
   "partner-user-exists": "That email already belongs to a user. Use assign existing user instead.",
-  "partner-user-invalid": "Enter valid user details. New passwords must be at least 8 characters.",
+  "partner-user-invalid": "Enter valid user details.",
   "partner-user-missing": "No user exists for that email.",
   "partner-missing": "Partner record was not found."
 };
@@ -296,8 +296,7 @@ export default async function AdminPartnerDetailPage({ params, searchParams }: A
                 <input name="name" placeholder="Name" className={adminInputClassName} required />
                 <input name="email" type="email" placeholder="user@example.com" className={adminInputClassName} required />
               </div>
-              <div className="grid gap-2 sm:grid-cols-[1fr_1fr_1fr_auto]">
-                <input name="password" type="password" minLength={8} placeholder="Temporary password" className={adminInputClassName} required />
+              <div className="grid gap-2 sm:grid-cols-[1fr_1fr_auto]">
                 <select name="role" defaultValue="manager" className={adminSelectClassName}>
                   {partnerUserRoles.map((role) => (
                     <option key={role} value={role}>

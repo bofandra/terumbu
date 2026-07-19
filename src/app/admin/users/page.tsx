@@ -34,6 +34,7 @@ import {
   disableAdminUserPasswordAction,
   removeCorporatePermissionAction,
   removePartnerMembershipAction,
+  resendAdminUserSetupVerificationAction,
   resetAdminUserPasswordAction,
   revokeGlobalRoleAction,
   setCorporatePermissionAction,
@@ -78,13 +79,14 @@ const savedMessages: Record<string, string> = {
   "partner-removed": "Partner membership removed.",
   "partner-saved": "Partner membership saved.",
   "password-disabled": "Password login disabled and sessions cleared.",
-  "password-reset": "Temporary password saved.",
+  "password-reset": "Password reset email queued.",
   "role-deleted": "Role deleted.",
   "role-saved": "Role catalog saved.",
   "sessions-cleared": "User sessions cleared.",
-  "user-created": "User account created.",
+  "user-created": "User account created and setup email queued.",
   "user-deleted": "User account deleted.",
-  "user-updated": "User profile saved."
+  "user-updated": "User profile saved.",
+  "verification-sent": "Setup or verification email queued."
 };
 
 const errorMessages: Record<string, string> = {
@@ -99,8 +101,9 @@ const errorMessages: Record<string, string> = {
   "role-system": "System roles cannot be deleted.",
   "session-self": "You cannot clear your own active admin session here.",
   "user-exists": "Another user already uses that email address.",
-  "user-invalid": "Enter a valid name, email, and password where required.",
-  "user-missing": "User account was not found."
+  "user-invalid": "Enter a valid name and email.",
+  "user-missing": "User account was not found.",
+  "user-verified": "That user's email is already verified."
 };
 
 function formatDate(value: Date | null | undefined) {
@@ -166,7 +169,12 @@ function UserManagementCard({
           <div className="flex flex-wrap items-center gap-2">
             <h3 className="truncate text-lg font-bold tracking-normal text-ocean-900">{displayName}</h3>
             {user.emailVerifiedAt ? <BadgeCheck className="size-4 text-kelp-700" aria-hidden="true" /> : null}
-            {!user.hasPassword ? <span className="rounded-full bg-coral-100 px-2 py-1 text-xs font-bold text-coral-700">Password disabled</span> : null}
+            {!user.emailVerifiedAt ? <span className="rounded-full bg-sand-100 px-2 py-1 text-xs font-bold text-ocean-900/62">Email pending</span> : null}
+            {!user.hasPassword ? (
+              <span className="rounded-full bg-coral-100 px-2 py-1 text-xs font-bold text-coral-700">
+                {user.emailVerifiedAt ? "Password disabled" : "Setup pending"}
+              </span>
+            ) : null}
           </div>
           <p className="mt-1 text-sm font-semibold text-ocean-900/58">{user.email}</p>
           <p className="mt-1 text-xs font-semibold text-ocean-900/42">
@@ -194,10 +202,6 @@ function UserManagementCard({
             <Field label="Location">
               <input name="location" defaultValue={user.location ?? ""} className={adminInputClassName} />
             </Field>
-            <label className="flex min-h-10 items-center gap-2 rounded-lg border border-ocean-900/10 bg-white px-3 text-sm font-bold text-ocean-900">
-              <input name="emailVerified" type="checkbox" defaultChecked={Boolean(user.emailVerifiedAt)} className="size-4 accent-coral-500" />
-              Email verified
-            </label>
             <label className="flex min-h-10 items-center gap-2 rounded-lg border border-ocean-900/10 bg-white px-3 text-sm font-bold text-ocean-900">
               <input name="isPublic" type="checkbox" defaultChecked={Boolean(user.isPublic)} className="size-4 accent-coral-500" />
               Public profile
@@ -342,16 +346,26 @@ function UserManagementCard({
         <section className="grid gap-4 rounded-lg border border-coral-700/20 bg-white p-4 xl:grid-cols-[1fr_1fr_1fr_auto]">
           <div>
             <h4 className="font-bold text-ocean-900">Password and sessions</h4>
-            <p className="mt-1 text-sm font-semibold text-ocean-900/58">Reset credentials, force sign-out, or disable password login.</p>
+            <p className="mt-1 text-sm font-semibold text-ocean-900/58">Send setup or reset links, force sign-out, or disable password login.</p>
           </div>
-          <form action={resetAdminUserPasswordAction} className="grid gap-2">
-            <HiddenReturn value={returnTo} />
-            <input type="hidden" name="userId" value={user.id} />
-            <input name="password" type="password" minLength={8} placeholder="Temporary password" className={adminInputClassName} required />
-            <Button type="submit" tone="secondary" className="min-h-10 rounded-lg px-3">
-              Reset Password
-            </Button>
-          </form>
+          <div className="grid gap-2">
+            <form action={resetAdminUserPasswordAction}>
+              <HiddenReturn value={returnTo} />
+              <input type="hidden" name="userId" value={user.id} />
+              <Button type="submit" tone="secondary" className="min-h-10 w-full rounded-lg px-3">
+                Send Reset Link
+              </Button>
+            </form>
+            {!user.emailVerifiedAt ? (
+              <form action={resendAdminUserSetupVerificationAction}>
+                <HiddenReturn value={returnTo} />
+                <input type="hidden" name="userId" value={user.id} />
+                <Button type="submit" tone="light" className="min-h-10 w-full rounded-lg px-3">
+                  {user.hasPassword ? "Resend Verification" : "Resend Setup"}
+                </Button>
+              </form>
+            ) : null}
+          </div>
           <div className="grid gap-2">
             <form action={clearAdminUserSessionsAction}>
               <HiddenReturn value={returnTo} />
@@ -444,7 +458,7 @@ export default async function AdminUsersPage({ searchParams }: AdminUsersPagePro
             </span>
             <div>
               <h2 className="text-xl font-bold tracking-normal text-ocean-900">Create user</h2>
-              <p className="mt-1 text-sm font-semibold leading-6 text-ocean-900/58">Create a credential account, profile, Impact Passport, and initial access from the RBAC matrix.</p>
+              <p className="mt-1 text-sm font-semibold leading-6 text-ocean-900/58">Create an account, profile, Impact Passport, and initial access, then email a setup link.</p>
             </div>
           </div>
           <div className="mt-4 grid gap-3 md:grid-cols-2">
@@ -457,9 +471,6 @@ export default async function AdminUsersPage({ searchParams }: AdminUsersPagePro
             <Field label="Email">
               <input name="email" type="email" className={adminInputClassName} required />
             </Field>
-            <Field label="Temporary password">
-              <input name="password" type="password" minLength={8} className={adminInputClassName} required />
-            </Field>
             <AdminCreateUserAccessFields
               accessOptions={adminCreateUserAccessOptions}
               corporateAccounts={data.corporateAccounts}
@@ -470,10 +481,6 @@ export default async function AdminUsersPage({ searchParams }: AdminUsersPagePro
               partnerOrganizations={data.organizations}
               partnerRoleOptions={partnerOrganizationRoles}
             />
-            <label className="flex min-h-10 items-center gap-2 rounded-lg border border-ocean-900/10 bg-white px-3 text-sm font-bold text-ocean-900">
-              <input name="emailVerified" type="checkbox" defaultChecked className="size-4 accent-coral-500" />
-              Email verified
-            </label>
             <label className="flex min-h-10 items-center gap-2 rounded-lg border border-ocean-900/10 bg-white px-3 text-sm font-bold text-ocean-900">
               <input name="isPublic" type="checkbox" className="size-4 accent-coral-500" />
               Public profile

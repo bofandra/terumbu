@@ -21,7 +21,8 @@ import {
   userRoles,
   users
 } from "@/db/schema";
-import { createPasswordHash, requireRole } from "@/lib/auth";
+import { requireRole } from "@/lib/auth";
+import { sendAccountSetupEmail, sendEmailVerificationEmail, sendPasswordResetEmail } from "@/lib/auth-tokens";
 import {
   defaultNameForGlobalRole,
   isSystemGlobalRole,
@@ -176,7 +177,17 @@ async function assertCanRemoveAdminAccess(actorUserId: string, targetUserId: str
 }
 
 async function userExists(userId: string) {
-  const [user] = await db.select({ id: users.id, email: users.email }).from(users).where(eq(users.id, userId)).limit(1);
+  const [user] = await db
+    .select({
+      id: users.id,
+      email: users.email,
+      name: users.name,
+      passwordHash: users.passwordHash,
+      emailVerifiedAt: users.emailVerifiedAt
+    })
+    .from(users)
+    .where(eq(users.id, userId))
+    .limit(1);
 
   return user ?? null;
 }
@@ -185,12 +196,11 @@ export async function createAdminUserAction(formData: FormData) {
   const actor = await requireRole(["admin"], "/admin/users");
   const name = textValue(formData.get("name"), 160);
   const email = emailValue(formData.get("email"));
-  const password = String(formData.get("password") ?? "");
   const legacyRoleKey = normalizeGlobalRoleKey(textValue(formData.get("initialRole"), 80));
   const initialAccess = normalizeAdminCreateUserAccess(textValue(formData.get("initialAccess"), 120) || (legacyRoleKey ? `global:${legacyRoleKey}` : "global:user"));
   const now = new Date();
 
-  if (!name || !validEmail(email) || password.length < 8) {
+  if (!name || !validEmail(email)) {
     redirectAdminUsers(formData, "error", "user-invalid");
   }
 
@@ -242,8 +252,8 @@ export async function createAdminUserAction(formData: FormData) {
     .values({
       email,
       name,
-      passwordHash: createPasswordHash(password),
-      emailVerifiedAt: checked(formData.get("emailVerified")) ? now : null,
+      passwordHash: null,
+      emailVerifiedAt: null,
       updatedAt: now
     })
     .returning({ id: users.id });
@@ -323,6 +333,12 @@ export async function createAdminUserAction(formData: FormData) {
     }
   });
 
+  await sendAccountSetupEmail({
+    userId: createdUser.id,
+    email,
+    name
+  });
+
   redirectAdminUsers(formData, "saved", "user-created");
 }
 
@@ -352,12 +368,14 @@ export async function updateAdminUserProfileAction(formData: FormData) {
     redirectAdminUsers(formData, "error", "user-exists");
   }
 
+  const emailChanged = targetUser.email !== email;
+
   await db
     .update(users)
     .set({
       name,
       email,
-      emailVerifiedAt: checked(formData.get("emailVerified")) ? now : null,
+      emailVerifiedAt: emailChanged ? null : targetUser.emailVerifiedAt,
       updatedAt: now
     })
     .where(eq(users.id, userId));
@@ -366,6 +384,10 @@ export async function updateAdminUserProfileAction(formData: FormData) {
     .update(accounts)
     .set({ providerAccountId: email })
     .where(and(eq(accounts.userId, userId), eq(accounts.provider, "credentials")));
+
+  if (emailChanged) {
+    await db.delete(sessions).where(eq(sessions.userId, userId));
+  }
 
   await db
     .insert(profiles)
@@ -393,8 +415,24 @@ export async function updateAdminUserProfileAction(formData: FormData) {
     action: "admin.user.updated",
     entityType: "users",
     entityId: userId,
-    metadata: { previousEmail: targetUser.email, email }
+    metadata: { previousEmail: targetUser.email, email, emailChanged, sessionsCleared: emailChanged }
   });
+
+  if (emailChanged) {
+    if (targetUser.passwordHash || targetUser.emailVerifiedAt) {
+      await sendEmailVerificationEmail({
+        userId,
+        email,
+        name
+      });
+    } else {
+      await sendAccountSetupEmail({
+        userId,
+        email,
+        name
+      });
+    }
+  }
 
   redirectAdminUsers(formData, "saved", "user-updated");
 }
@@ -402,45 +440,65 @@ export async function updateAdminUserProfileAction(formData: FormData) {
 export async function resetAdminUserPasswordAction(formData: FormData) {
   const actor = await requireRole(["admin"], "/admin/users");
   const userId = textValue(formData.get("userId"), 80);
-  const password = String(formData.get("password") ?? "");
   const targetUser = userId ? await userExists(userId) : null;
 
-  if (!targetUser || password.length < 8) {
-    redirectAdminUsers(formData, "error", "user-invalid");
+  if (!targetUser) {
+    redirectAdminUsers(formData, "error", "user-missing");
   }
 
-  await db
-    .update(users)
-    .set({
-      passwordHash: createPasswordHash(password),
-      updatedAt: new Date()
-    })
-    .where(eq(users.id, userId));
+  await sendPasswordResetEmail({
+    userId,
+    email: targetUser.email,
+    name: targetUser.name
+  });
 
-  await db
-    .insert(accounts)
-    .values({
+  await writeAdminAuditLog({
+    actorUserId: actor.id,
+    action: "admin.user.password_reset_requested",
+    entityType: "users",
+    entityId: userId,
+    metadata: { email: targetUser.email }
+  });
+
+  redirectAdminUsers(formData, "saved", "password-reset");
+}
+
+export async function resendAdminUserSetupVerificationAction(formData: FormData) {
+  const actor = await requireRole(["admin"], "/admin/users");
+  const userId = textValue(formData.get("userId"), 80);
+  const targetUser = userId ? await userExists(userId) : null;
+
+  if (!targetUser) {
+    redirectAdminUsers(formData, "error", "user-missing");
+  }
+
+  if (targetUser.emailVerifiedAt) {
+    redirectAdminUsers(formData, "error", "user-verified");
+  }
+
+  if (targetUser.passwordHash) {
+    await sendEmailVerificationEmail({
       userId,
-      provider: "credentials",
-      providerAccountId: targetUser.email
-    })
-    .onConflictDoNothing({
-      target: [accounts.provider, accounts.providerAccountId]
+      email: targetUser.email,
+      name: targetUser.name
     });
-
-  if (actor.id !== userId) {
-    await db.delete(sessions).where(eq(sessions.userId, userId));
+  } else {
+    await sendAccountSetupEmail({
+      userId,
+      email: targetUser.email,
+      name: targetUser.name
+    });
   }
 
   await writeAdminAuditLog({
     actorUserId: actor.id,
-    action: "admin.user.password_reset",
+    action: targetUser.passwordHash ? "admin.user.verification_sent" : "admin.user.setup_sent",
     entityType: "users",
     entityId: userId,
-    metadata: { email: targetUser.email, sessionsCleared: actor.id !== userId }
+    metadata: { email: targetUser.email }
   });
 
-  redirectAdminUsers(formData, "saved", "password-reset");
+  redirectAdminUsers(formData, "saved", "verification-sent");
 }
 
 export async function clearAdminUserSessionsAction(formData: FormData) {

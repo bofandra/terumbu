@@ -36,7 +36,8 @@ import {
   users
 } from "@/db/schema";
 import { normalizeCampaignMediaType, normalizeCampaignTimelinePhaseStatus } from "@/lib/campaign-content";
-import { createPasswordHash, requireRole, safeRedirectPath } from "@/lib/auth";
+import { requireRole, safeRedirectPath } from "@/lib/auth";
+import { sendAccountSetupEmail } from "@/lib/auth-tokens";
 import { corporateEvidenceVisibilityForStatus, shouldLinkEvidenceToCorporateProgram } from "@/lib/corporate-lifecycle";
 import { sendTransactionalEmail } from "@/lib/email";
 import {
@@ -1430,11 +1431,10 @@ export async function createOrganizationUserAction(formData: FormData) {
   const organizationId = formText(formData, "organizationId");
   const name = formText(formData, "name");
   const email = formEmail(formData, "email");
-  const password = String(formData.get("password") ?? "");
   const role = organizationUserRoleFromForm(formData.get("role"));
   const status = organizationUserStatusFromForm(formData.get("status"));
 
-  if (!organizationId || !name || !email || password.length < 8) {
+  if (!organizationId || !name || !email) {
     redirectAdminPartnerError("partner-user-invalid", formData);
   }
 
@@ -1456,8 +1456,8 @@ export async function createOrganizationUserAction(formData: FormData) {
     .values({
       email,
       name,
-      passwordHash: createPasswordHash(password),
-      emailVerifiedAt: now,
+      passwordHash: null,
+      emailVerifiedAt: null,
       updatedAt: now
     })
     .returning({ id: users.id });
@@ -1503,6 +1503,12 @@ export async function createOrganizationUserAction(formData: FormData) {
     entityType: "organization",
     entityId: organizationId,
     metadata: { userId: createdUser.id, email, role, status }
+  });
+
+  await sendAccountSetupEmail({
+    userId: createdUser.id,
+    email,
+    name
   });
 
   redirectAdminPartnerSaved("partner-user-created", formData);

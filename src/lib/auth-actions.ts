@@ -2,11 +2,11 @@
 
 import { randomBytes } from "node:crypto";
 
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { redirect } from "next/navigation";
 
 import { db } from "@/db/client";
-import { impactPassports, profiles, users } from "@/db/schema";
+import { accounts, impactPassports, profiles, sessions, users } from "@/db/schema";
 import {
   createPasswordHash,
   createSession,
@@ -16,6 +16,7 @@ import {
   safeRedirectPath,
   verifyPassword
 } from "@/lib/auth";
+import { consumeAuthToken, deleteAuthTokensForUser, sendAccountSetupEmail, sendEmailVerificationEmail, sendPasswordResetEmail } from "@/lib/auth-tokens";
 import {
   normalizePassportEvidenceConsent,
   normalizePassportVisibility,
@@ -26,6 +27,20 @@ import {
 
 function loginErrorPath(nextPath: string) {
   return `/login?error=invalid&next=${encodeURIComponent(nextPath)}`;
+}
+
+function loginUnverifiedPath(nextPath: string) {
+  return `/login?error=unverified&next=${encodeURIComponent(nextPath)}`;
+}
+
+function loginVerificationSentPath(nextPath: string) {
+  const params = new URLSearchParams({ verification: "sent" });
+
+  if (nextPath) {
+    params.set("next", nextPath);
+  }
+
+  return `/login?${params.toString()}`;
 }
 
 function registrationClosedLoginPath(nextPath: string) {
@@ -40,6 +55,20 @@ function registrationClosedLoginPath(nextPath: string) {
 
 function newPassportShareToken() {
   return randomBytes(32).toString("hex");
+}
+
+function validEmail(value: string) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+}
+
+function resetPasswordPath(error: string, token?: string) {
+  const params = new URLSearchParams({ error });
+
+  if (token) {
+    params.set("token", token);
+  }
+
+  return `/reset-password?${params.toString()}`;
 }
 
 function passportCategoryVisibilityFromForm(formData: FormData): PassportCategoryVisibility {
@@ -82,7 +111,10 @@ export async function loginAction(formData: FormData) {
   const [user] = await db
     .select({
       id: users.id,
-      passwordHash: users.passwordHash
+      email: users.email,
+      name: users.name,
+      passwordHash: users.passwordHash,
+      emailVerifiedAt: users.emailVerifiedAt
     })
     .from(users)
     .where(eq(users.email, email))
@@ -90,6 +122,16 @@ export async function loginAction(formData: FormData) {
 
   if (!user || !verifyPassword(password, user.passwordHash)) {
     redirect(loginErrorPath(nextPath));
+  }
+
+  if (!user.emailVerifiedAt) {
+    await sendEmailVerificationEmail({
+      userId: user.id,
+      email: user.email,
+      name: user.name
+    });
+
+    redirect(loginUnverifiedPath(nextPath));
   }
 
   await createSession(user.id);
@@ -105,6 +147,135 @@ export async function signupAction(formData: FormData) {
 export async function logoutAction() {
   await destroyCurrentSession();
   redirect("/login?loggedOut=1");
+}
+
+export async function requestPasswordResetAction(formData: FormData) {
+  const email = String(formData.get("email") ?? "")
+    .trim()
+    .toLowerCase();
+
+  if (validEmail(email)) {
+    const [user] = await db
+      .select({
+        id: users.id,
+        email: users.email,
+        name: users.name,
+        passwordHash: users.passwordHash,
+        emailVerifiedAt: users.emailVerifiedAt
+      })
+      .from(users)
+      .where(eq(users.email, email))
+      .limit(1);
+
+    if (user) {
+      if (user.passwordHash) {
+        await sendPasswordResetEmail({
+          userId: user.id,
+          email: user.email,
+          name: user.name
+        });
+      } else if (!user.emailVerifiedAt) {
+        await sendAccountSetupEmail({
+          userId: user.id,
+          email: user.email,
+          name: user.name
+        });
+      }
+    }
+  }
+
+  redirect("/forgot-password?sent=1");
+}
+
+export async function requestVerificationEmailAction(formData: FormData) {
+  const email = String(formData.get("email") ?? "")
+    .trim()
+    .toLowerCase();
+  const nextPath = safeRedirectPath(formData.get("next"), "");
+
+  if (validEmail(email)) {
+    const [user] = await db
+      .select({
+        id: users.id,
+        email: users.email,
+        name: users.name,
+        passwordHash: users.passwordHash,
+        emailVerifiedAt: users.emailVerifiedAt
+      })
+      .from(users)
+      .where(eq(users.email, email))
+      .limit(1);
+
+    if (user && !user.emailVerifiedAt) {
+      if (user.passwordHash) {
+        await sendEmailVerificationEmail({
+          userId: user.id,
+          email: user.email,
+          name: user.name
+        });
+      } else {
+        await sendAccountSetupEmail({
+          userId: user.id,
+          email: user.email,
+          name: user.name
+        });
+      }
+    }
+  }
+
+  redirect(loginVerificationSentPath(nextPath));
+}
+
+export async function completePasswordResetAction(formData: FormData) {
+  const token = String(formData.get("token") ?? "").trim();
+  const password = String(formData.get("password") ?? "");
+  const confirmPassword = String(formData.get("confirmPassword") ?? "");
+
+  if (password.length < 8) {
+    redirect(resetPasswordPath("password_length", token));
+  }
+
+  if (password !== confirmPassword) {
+    redirect(resetPasswordPath("password_match", token));
+  }
+
+  const record = await consumeAuthToken(token, ["account_setup", "password_reset"]);
+
+  if (!record) {
+    redirect(resetPasswordPath("invalid"));
+  }
+
+  const now = new Date();
+
+  await db
+    .update(users)
+    .set({
+      passwordHash: createPasswordHash(password),
+      emailVerifiedAt: now,
+      updatedAt: now
+    })
+    .where(eq(users.id, record.userId));
+
+  await db
+    .update(accounts)
+    .set({ providerAccountId: record.email })
+    .where(and(eq(accounts.userId, record.userId), eq(accounts.provider, "credentials")));
+
+  await db
+    .insert(accounts)
+    .values({
+      userId: record.userId,
+      provider: "credentials",
+      providerAccountId: record.email
+    })
+    .onConflictDoNothing({
+      target: [accounts.provider, accounts.providerAccountId]
+    });
+
+  await db.delete(sessions).where(eq(sessions.userId, record.userId));
+  await deleteAuthTokensForUser(record.userId);
+
+  redirect("/login?reset=1");
 }
 
 export async function updateAccountAction(formData: FormData) {
