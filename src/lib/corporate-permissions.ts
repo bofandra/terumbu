@@ -57,7 +57,7 @@ export function corporateCapabilitiesForPermission(permission: string | null | u
     canPreviewReport: isManager || isFinance || isExecutive || isEmployeeEngagement || isAuditor,
     canPublishReport: isManager,
     canSubmitReport: isManager,
-    canUpdateEvidenceStatus: isManager || isFinance,
+    canUpdateEvidenceStatus: false,
     canViewEvidenceReview: isManager || isFinance || isAuditor
   };
 }

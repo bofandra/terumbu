@@ -5600,22 +5600,31 @@ export async function getAdminPortalData() {
     db
       .select({
         id: projectEvidence.id,
+        campaignId: projectEvidence.campaignId,
         title: projectEvidence.title,
         evidenceCode: projectEvidence.evidenceCode,
         verificationStatus: projectEvidence.verificationStatus,
         fileUrl: projectEvidence.fileUrl,
         evidenceType: projectEvidence.evidenceType,
+        metadata: projectEvidence.metadata,
         rejectionReason: projectEvidence.rejectionReason,
         assignedReviewerUserId: projectEvidence.assignedReviewerUserId,
         clarificationNote: projectEvidence.clarificationNote,
         clarificationRequestedAt: projectEvidence.clarificationRequestedAt,
         clarificationResolvedAt: projectEvidence.clarificationResolvedAt,
         reviewedAt: projectEvidence.reviewedAt,
+        verifiedAt: projectEvidence.verifiedAt,
+        campaignSlug: campaigns.slug,
         campaignTitle: campaigns.title,
+        organizationName: organizations.name,
+        siteName: impactSites.name,
+        siteRegion: impactSites.region,
         createdAt: projectEvidence.createdAt
       })
       .from(projectEvidence)
       .innerJoin(campaigns, eq(projectEvidence.campaignId, campaigns.id))
+      .innerJoin(organizations, eq(campaigns.organizationId, organizations.id))
+      .leftJoin(impactSites, eq(projectEvidence.impactSiteId, impactSites.id))
       .orderBy(desc(projectEvidence.createdAt)),
     db
       .select({
@@ -5810,13 +5819,28 @@ export async function getAdminPortalData() {
     organizationTeamMembers: organizationTeamRows,
     evidence: evidenceRows.map((item) => {
       const reviewEvents = evidenceReviewEventsById.get(item.id) ?? [];
+      const stage = evidenceStage(item.metadata, item.evidenceType);
+      const survivalRate = getMetadataNumberOrString(item.metadata, "survivalRate");
+      const sortedWaste = getMetadataNumberOrString(item.metadata, "sortedWasteKg");
+      const seedlingsReady = getMetadataNumberOrString(item.metadata, "seedlingsReady");
+      const explicitMetricValue = getMetadataNumberOrString(item.metadata, "metricValue");
+      const metricLabel =
+        getMetadataString(item.metadata, "metricLabel") ??
+        (survivalRate ? "Survival rate" : sortedWaste ? "Waste sorted" : seedlingsReady ? "Seedlings ready" : null);
+      const derivedMetricValue = survivalRate ? `${survivalRate}%` : sortedWaste ? `${sortedWaste} kg` : seedlingsReady;
+      const metricValue = explicitMetricValue ?? derivedMetricValue;
 
       return {
         ...item,
+        stageLabel: evidenceStageLabel(stage),
         reviewStage: evidenceReviewStage(item.verificationStatus),
         statusLabel: evidenceStatusLabel(item.verificationStatus),
         latestReviewNote: latestEvidenceReviewNote(reviewEvents, item.clarificationNote ?? item.rejectionReason),
-        reviewEvents
+        reviewEvents,
+        observation: getMetadataString(item.metadata, "observation") ?? getMetadataString(item.metadata, "summary"),
+        metricLabel,
+        metricValue,
+        sourceHref: evidenceSourceHref(item.campaignSlug, item.evidenceCode) ?? item.fileUrl
       };
     }),
     donations: donationRows.map((donation) => ({
@@ -6841,7 +6865,12 @@ export async function getPartnerPortalData(userId?: string) {
         evidenceCode: projectEvidence.evidenceCode,
         evidenceType: projectEvidence.evidenceType,
         verificationStatus: projectEvidence.verificationStatus,
+        metadata: projectEvidence.metadata,
+        campaignSlug: campaigns.slug,
         campaignTitle: campaigns.title,
+        organizationName: organizations.name,
+        siteName: impactSites.name,
+        siteRegion: impactSites.region,
         fileUrl: projectEvidence.fileUrl,
         rejectionReason: projectEvidence.rejectionReason,
         assignedReviewerUserId: projectEvidence.assignedReviewerUserId,
@@ -6849,10 +6878,13 @@ export async function getPartnerPortalData(userId?: string) {
         clarificationRequestedAt: projectEvidence.clarificationRequestedAt,
         clarificationResolvedAt: projectEvidence.clarificationResolvedAt,
         reviewedAt: projectEvidence.reviewedAt,
+        verifiedAt: projectEvidence.verifiedAt,
         createdAt: projectEvidence.createdAt
       })
       .from(projectEvidence)
       .innerJoin(campaigns, eq(projectEvidence.campaignId, campaigns.id))
+      .innerJoin(organizations, eq(campaigns.organizationId, organizations.id))
+      .leftJoin(impactSites, eq(projectEvidence.impactSiteId, impactSites.id))
       .where(campaignScope)
       .orderBy(desc(projectEvidence.createdAt)),
     db
@@ -7224,13 +7256,28 @@ export async function getPartnerPortalData(userId?: string) {
     expeditions: Array.from(expeditionsById.values()),
     evidence: evidenceRows.map((item) => {
       const reviewEvents = (evidenceReviewEventsById.get(item.id) ?? []).filter((event) => event.visibility !== "internal");
+      const stage = evidenceStage(item.metadata, item.evidenceType);
+      const survivalRate = getMetadataNumberOrString(item.metadata, "survivalRate");
+      const sortedWaste = getMetadataNumberOrString(item.metadata, "sortedWasteKg");
+      const seedlingsReady = getMetadataNumberOrString(item.metadata, "seedlingsReady");
+      const explicitMetricValue = getMetadataNumberOrString(item.metadata, "metricValue");
+      const metricLabel =
+        getMetadataString(item.metadata, "metricLabel") ??
+        (survivalRate ? "Survival rate" : sortedWaste ? "Waste sorted" : seedlingsReady ? "Seedlings ready" : null);
+      const derivedMetricValue = survivalRate ? `${survivalRate}%` : sortedWaste ? `${sortedWaste} kg` : seedlingsReady;
+      const metricValue = explicitMetricValue ?? derivedMetricValue;
 
       return {
         ...item,
+        stageLabel: evidenceStageLabel(stage),
         reviewStage: evidenceReviewStage(item.verificationStatus),
         statusLabel: evidenceStatusLabel(item.verificationStatus),
         latestReviewNote: latestEvidenceReviewNote(reviewEvents, item.clarificationNote ?? item.rejectionReason),
-        reviewEvents
+        reviewEvents,
+        observation: getMetadataString(item.metadata, "observation") ?? getMetadataString(item.metadata, "summary"),
+        metricLabel,
+        metricValue,
+        sourceHref: evidenceSourceHref(item.campaignSlug, item.evidenceCode) ?? item.fileUrl
       };
     }),
     updates: updateRows,

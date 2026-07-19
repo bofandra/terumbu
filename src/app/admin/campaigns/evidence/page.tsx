@@ -1,10 +1,11 @@
-import { FileCheck2, ShieldCheck } from "lucide-react";
+import { AlertTriangle, FileCheck2, Kanban, MessageSquare, ShieldCheck } from "lucide-react";
 
-import { AdminEmptyState, AdminPageHeader, AdminStatusBadge, adminPanelClassName, adminSelectClassName, adminTextareaClassName } from "@/components/admin-ui";
-import { Button } from "@/components/ui/button";
+import { AdminPageHeader } from "@/components/admin-ui";
+import { EvidenceKanbanBoard, type EvidenceKanbanCard } from "@/components/evidence-kanban-board";
 import { requireRole } from "@/lib/auth";
 import { verifyEvidenceAction } from "@/lib/portal-actions";
 import { getAdminPortalData } from "@/lib/queries";
+import { formatCurrency } from "@/lib/utils";
 
 export const metadata = {
   title: "Admin Campaign Evidence"
@@ -12,122 +13,107 @@ export const metadata = {
 
 export const dynamic = "force-dynamic";
 
-export default async function AdminCampaignEvidencePage() {
+type AdminCampaignEvidencePageProps = {
+  searchParams?: Promise<{
+    error?: string;
+    saved?: string;
+  }>;
+};
+
+const statusMessages: Record<string, string> = {
+  evidence: "Evidence review status updated.",
+  "review-note": "Add a review note for clarification or rejection.",
+  "evidence-missing": "Evidence record was not found."
+};
+
+function labelize(value: string) {
+  return value.replaceAll("_", " ");
+}
+
+export default async function AdminCampaignEvidencePage({ searchParams }: AdminCampaignEvidencePageProps) {
+  const params = await searchParams;
+
   await requireRole(["admin"], "/admin/campaigns/evidence");
   const data = await getAdminPortalData();
 
   const pendingCount = data.evidence.filter((item) => item.verificationStatus !== "verified").length;
   const clarificationCount = data.evidence.filter((item) => item.verificationStatus === "needs_clarification").length;
+  const submittedCount = data.evidence.filter((item) => item.verificationStatus === "submitted").length;
   const verifiedCount = data.evidence.filter((item) => item.verificationStatus === "verified").length;
+  const evidenceByCampaign = new Map<string, typeof data.evidence>();
+
+  for (const evidence of data.evidence) {
+    const rows = evidenceByCampaign.get(evidence.campaignId) ?? [];
+    rows.push(evidence);
+    evidenceByCampaign.set(evidence.campaignId, rows);
+  }
+
+  const campaignCards: EvidenceKanbanCard[] = data.campaigns.map((campaign) => {
+    const evidence = evidenceByCampaign.get(campaign.id) ?? [];
+    const verifiedEvidence = evidence.filter((item) => item.verificationStatus === "verified").length;
+
+    return {
+      id: campaign.id,
+      title: campaign.title,
+      subtitle: `${campaign.partner} / ${campaign.region}`,
+      code: campaign.slug,
+      href: `/campaigns/${campaign.slug}`,
+      tag: labelize(campaign.status),
+      chips: [campaign.category, `${campaign.contentCompleteness}% content`],
+      details: [
+        { label: "Raised", value: formatCurrency(Number(campaign.raisedAmount)) },
+        { label: "Goal", value: formatCurrency(Number(campaign.goalAmount)) },
+        { label: "Evidence", value: `${verifiedEvidence}/${evidence.length} verified` }
+      ],
+      evidence
+    };
+  });
+  const savedMessage = params?.saved ? statusMessages[params.saved] ?? "Evidence review saved." : null;
+  const errorMessage = params?.error ? statusMessages[params.error] ?? "Evidence status could not be saved with the current input or permission." : null;
 
   return (
     <div className="space-y-6">
       <AdminPageHeader
         eyebrow="Campaigns / Evidence"
-        title="Evidence review"
-        description="Verify or reject partner-submitted field records that support public campaign claims."
+        title="Evidence kanban"
+        description="Review partner-submitted field records by campaign. Admin platform is the single place for evidence status decisions."
         actionHref="/admin/campaigns"
         actionLabel="Campaigns"
       />
 
-      <section className="grid gap-3 md:grid-cols-4" aria-label="Evidence summary">
+      {savedMessage ? (
+        <p className="rounded-lg border border-kelp-500/20 bg-kelp-100 px-4 py-3 text-sm font-bold text-kelp-700">{savedMessage}</p>
+      ) : null}
+      {errorMessage ? (
+        <p className="rounded-lg border border-coral-500/20 bg-coral-100 px-4 py-3 text-sm font-bold text-coral-700">{errorMessage}</p>
+      ) : null}
+
+      <section className="grid gap-3 md:grid-cols-5" aria-label="Evidence summary">
         {[
-          { label: "Evidence records", value: data.evidence.length.toLocaleString("id-ID") },
-          { label: "Needs decision", value: pendingCount.toLocaleString("id-ID") },
-          { label: "Clarification", value: clarificationCount.toLocaleString("id-ID") },
-          { label: "Verified", value: verifiedCount.toLocaleString("id-ID") }
-        ].map((item) => (
-          <article key={item.label} className="rounded-lg border border-ocean-900/10 bg-white p-4 shadow-soft">
-            <p className="text-sm font-bold text-ocean-900/58">{item.label}</p>
-            <p className="mt-3 text-2xl font-bold tracking-normal text-ocean-900">{item.value}</p>
-          </article>
-        ))}
+          { label: "Campaign cards", value: campaignCards.length.toLocaleString("id-ID"), icon: Kanban },
+          { label: "Submitted", value: submittedCount.toLocaleString("id-ID"), icon: FileCheck2 },
+          { label: "Needs decision", value: pendingCount.toLocaleString("id-ID"), icon: AlertTriangle },
+          { label: "Clarification", value: clarificationCount.toLocaleString("id-ID"), icon: MessageSquare },
+          { label: "Verified", value: verifiedCount.toLocaleString("id-ID"), icon: ShieldCheck }
+        ].map((item) => {
+          const Icon = item.icon;
+
+          return (
+            <article key={item.label} className="rounded-lg border border-ocean-900/10 bg-white p-4 shadow-soft">
+              <Icon className="size-5 text-coral-500" aria-hidden="true" />
+              <p className="mt-3 text-sm font-bold text-ocean-900/58">{item.label}</p>
+              <p className="mt-3 text-2xl font-bold tracking-normal text-ocean-900">{item.value}</p>
+            </article>
+          );
+        })}
       </section>
 
-      <section className={adminPanelClassName}>
-        <div className="flex flex-col justify-between gap-3 border-b border-ocean-900/10 p-4 sm:flex-row sm:items-center">
-          <div>
-            <h2 className="text-xl font-bold tracking-normal text-ocean-900">Review queue</h2>
-            <p className="mt-1 text-sm font-semibold text-ocean-900/58">Newest records and unresolved decisions</p>
-          </div>
-          <FileCheck2 className="size-5 text-kelp-700" aria-hidden="true" />
-        </div>
-
-        <div className="divide-y divide-ocean-900/10">
-          {data.evidence.map((item) => (
-            <form key={item.id} action={verifyEvidenceAction} className="p-4">
-              <input type="hidden" name="evidenceId" value={item.id} />
-              <input type="hidden" name="redirectTo" value="/admin/campaigns/evidence" />
-              <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_360px]">
-                <div>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <h2 className="text-lg font-bold tracking-normal text-ocean-900">{item.title}</h2>
-                    <AdminStatusBadge value={item.verificationStatus} />
-                    <span className="rounded-full bg-ocean-50 px-2 py-1 text-xs font-bold text-ocean-700">{item.reviewStage}</span>
-                  </div>
-                  <p className="mt-1 text-sm font-semibold text-ocean-900/58">{item.campaignTitle}</p>
-                  <p className="mt-2 text-xs font-bold text-ocean-900/48">
-                    {item.evidenceCode} / {item.evidenceType} / {item.createdAt.toLocaleDateString("id-ID", { dateStyle: "medium" })}
-                  </p>
-                  <a href={item.fileUrl} target="_blank" rel="noreferrer" className="mt-2 inline-flex text-xs font-bold text-coral-700 hover:text-coral-500">Open evidence file</a>
-                  {item.latestReviewNote ? (
-                    <p className="mt-2 rounded-lg bg-coral-100 px-3 py-2 text-sm font-semibold leading-6 text-coral-700">Latest note: {item.latestReviewNote}</p>
-                  ) : null}
-                  {item.reviewEvents.length > 0 ? (
-                    <div className="mt-4 grid gap-2">
-                      <p className="text-xs font-bold uppercase tracking-[0.14em] text-ocean-900/46">Audit trail</p>
-                      {item.reviewEvents.slice(-4).map((event) => (
-                        <div key={event.id} className="rounded-lg bg-sand-50 px-3 py-2 text-xs font-semibold leading-5 text-ocean-900/62">
-                          <p className="font-bold text-ocean-900">{event.label}</p>
-                          <p>{event.actor} / {event.occurredAt.toLocaleDateString("id-ID", { dateStyle: "medium" })}</p>
-                          {event.note ? <p className="mt-1">{event.note}</p> : null}
-                        </div>
-                      ))}
-                    </div>
-                  ) : null}
-                </div>
-                <div className="grid gap-3 rounded-lg bg-sand-50 p-3">
-                  <label className="grid gap-1.5 text-xs font-bold uppercase tracking-[0.14em] text-ocean-900/46">
-                    Review status
-                    <select name="status" defaultValue={item.verificationStatus} className={adminSelectClassName}>
-                      <option value="submitted">Submitted</option>
-                      <option value="in_review">In review</option>
-                      <option value="needs_clarification">Needs clarification</option>
-                      <option value="verified">Verified</option>
-                      <option value="rejected">Rejected</option>
-                    </select>
-                  </label>
-                  <label className="grid gap-1.5 text-xs font-bold uppercase tracking-[0.14em] text-ocean-900/46">
-                    Reviewer
-                    <select name="reviewerAssignment" defaultValue={item.assignedReviewerUserId ? "keep" : "assign_me"} className={adminSelectClassName}>
-                      <option value="assign_me">Assign to me</option>
-                      <option value="keep">Keep current</option>
-                      <option value="clear">Clear assignment</option>
-                    </select>
-                  </label>
-                  <label className="grid gap-1.5 text-xs font-bold uppercase tracking-[0.14em] text-ocean-900/46">
-                    Review note
-                    <textarea name="reviewNote" defaultValue={item.latestReviewNote ?? ""} placeholder="Required for clarification or rejection" className={adminTextareaClassName} />
-                  </label>
-                  <Button type="submit" tone="secondary" className="min-h-10 px-4">
-                    <ShieldCheck className="size-4" aria-hidden="true" />
-                    Save review
-                  </Button>
-                </div>
-              </div>
-            </form>
-          ))}
-          {data.evidence.length === 0 ? (
-            <AdminEmptyState
-              className="m-4"
-              title="No evidence awaiting review"
-              description="Partner submissions will appear here when field teams upload photos, survey notes, or verification records."
-              actionHref="/partner/activity"
-              actionLabel="Add activity"
-            />
-          ) : null}
-        </div>
-      </section>
+      <EvidenceKanbanBoard
+        cards={campaignCards}
+        reviewAction={verifyEvidenceAction}
+        returnTo="/admin/campaigns/evidence"
+        emptyMessage="No campaign evidence cards are available yet. Partner submissions will appear here when field teams upload photos, survey notes, or verification records."
+      />
     </div>
   );
 }

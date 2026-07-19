@@ -19,7 +19,8 @@ test("corporate program managers can manage the full workspace workflow", () => 
   assert.equal(capabilities.canSubmitReport, true);
   assert.equal(capabilities.canApproveReport, true);
   assert.equal(capabilities.canPublishReport, true);
-  assert.equal(capabilities.canUpdateEvidenceStatus, true);
+  assert.equal(capabilities.canViewEvidenceReview, true);
+  assert.equal(capabilities.canUpdateEvidenceStatus, false);
 });
 
 test("finance reviewers can review funding and approve reports without workspace admin powers", () => {
@@ -27,7 +28,8 @@ test("finance reviewers can review funding and approve reports without workspace
 
   assert.equal(capabilities.canManageFunding, true);
   assert.equal(capabilities.canApproveReport, true);
-  assert.equal(capabilities.canUpdateEvidenceStatus, true);
+  assert.equal(capabilities.canViewEvidenceReview, true);
+  assert.equal(capabilities.canUpdateEvidenceStatus, false);
   assert.equal(capabilities.canManageProjects, false);
   assert.equal(capabilities.canManageSettings, false);
   assert.equal(capabilities.canGenerateReport, false);

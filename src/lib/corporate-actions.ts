@@ -10,7 +10,6 @@ import { redirect } from "next/navigation";
 import { db } from "@/db/client";
 import {
   adminAuditLogs,
-  campaignActivities,
   campaigns,
   corporateAccounts,
   corporateContributions,
@@ -26,7 +25,6 @@ import {
   corporateProjectPortfolio,
   corporateReportExports,
   corporateSecuritySettings,
-  evidenceReviewEvents,
   projectEvidence,
   users
 } from "@/db/schema";
@@ -63,11 +61,6 @@ import {
   normalizeCorporateReportFormat,
   normalizeCorporateReportType
 } from "@/lib/corporate-report-lifecycle";
-import {
-  evidenceReviewActionForTransition,
-  evidenceReviewNoteRequired,
-  normalizeEvidenceVerificationStatus
-} from "@/lib/evidence-review-workflow";
 import {
   buildCorporateContributionReference,
   campaignRaisedDelta,
@@ -1873,120 +1866,10 @@ export async function updateCorporateEvidenceStatusAction(formData: FormData) {
   const requestedProgramId = textValue(formData.get("programId"), 80);
   const fallbackReturnPath = requestedProgramId ? `/corporate/evidence?programId=${encodeURIComponent(requestedProgramId)}` : "/corporate/evidence";
   const returnPath = safeRedirectPath(formData.get("returnTo"), fallbackReturnPath);
-  const user = await requireUser(returnPath);
-  const context = await corporateContext(user.id, requestedProgramId);
 
-  if (!context || !corporateCapabilitiesForPermission(context.permission).canUpdateEvidenceStatus) {
-    redirectWithResult(returnPath, "error", "permission");
-  }
+  await requireUser(returnPath);
 
-  const evidenceId = textValue(formData.get("evidenceId"), 80);
-  const requestedStatus = textValue(formData.get("verificationStatus"), 80);
-  const verificationStatus = normalizeEvidenceVerificationStatus(requestedStatus, "submitted");
-  const reviewNote = textValue(formData.get("reviewNote"), 1000);
-
-  if (!evidenceId || !isUuid(evidenceId)) {
-    redirectWithResult(returnPath, "error", "evidence");
-  }
-
-  if (evidenceReviewNoteRequired(verificationStatus) && !reviewNote) {
-    redirectWithResult(returnPath, "error", "evidence");
-  }
-
-  const [evidenceAccess] = await db
-    .select({
-      id: corporateEvidenceCenter.id,
-      currentStatus: projectEvidence.verificationStatus,
-      assignedReviewerUserId: projectEvidence.assignedReviewerUserId,
-      evidenceCode: projectEvidence.evidenceCode
-    })
-    .from(corporateEvidenceCenter)
-    .innerJoin(projectEvidence, eq(corporateEvidenceCenter.evidenceId, projectEvidence.id))
-    .where(and(eq(corporateEvidenceCenter.programId, context.programId), eq(corporateEvidenceCenter.evidenceId, evidenceId)))
-    .limit(1);
-
-  if (!evidenceAccess) {
-    redirectWithResult(returnPath, "error", "evidence");
-  }
-
-  const now = new Date();
-  const assignedReviewerUserId = evidenceAccess.assignedReviewerUserId ?? user.id;
-  const reviewAction = evidenceReviewActionForTransition({
-    fromStatus: evidenceAccess.currentStatus,
-    toStatus: verificationStatus,
-    assignedReviewerChanged: assignedReviewerUserId !== evidenceAccess.assignedReviewerUserId
-  });
-
-  await db.transaction(async (tx) => {
-    await tx
-      .update(projectEvidence)
-      .set({
-        verificationStatus,
-        verifiedAt: verificationStatus === "verified" ? now : null,
-        assignedReviewerUserId,
-        reviewedByUserId: user.id,
-        reviewedAt: now,
-        clarificationNote: verificationStatus === "needs_clarification" ? reviewNote : verificationStatus === "verified" ? null : undefined,
-        clarificationRequestedAt: verificationStatus === "needs_clarification" ? now : undefined,
-        clarificationResolvedAt: evidenceAccess.currentStatus === "needs_clarification" && verificationStatus !== "needs_clarification" ? now : undefined,
-        rejectionReason: verificationStatus === "rejected" ? reviewNote : null,
-        updatedAt: now
-      })
-      .where(eq(projectEvidence.id, evidenceId));
-
-    await tx
-      .update(campaignActivities)
-      .set({
-        verificationStatus,
-        verifiedAt: verificationStatus === "verified" ? now : null,
-        metadata: {
-          reviewedByUserId: user.id,
-          reviewedAt: now.toISOString(),
-          reviewAction,
-          reviewNote: reviewNote || null,
-          source: "corporate_portal"
-        }
-      })
-      .where(eq(campaignActivities.sourceEvidenceId, evidenceId));
-
-    await tx
-      .update(corporateEvidenceCenter)
-      .set({
-        visibility: verificationStatus === "verified" ? "reportable" : "internal"
-      })
-      .where(and(eq(corporateEvidenceCenter.programId, context.programId), eq(corporateEvidenceCenter.evidenceId, evidenceId)));
-
-    await tx.insert(evidenceReviewEvents).values({
-      evidenceId,
-      actorUserId: user.id,
-      assignedToUserId: assignedReviewerUserId,
-      action: reviewAction,
-      fromStatus: evidenceAccess.currentStatus,
-      toStatus: verificationStatus,
-      note: reviewNote || null,
-      visibility: verificationStatus === "in_review" ? "internal" : "partner_visible",
-      metadata: {
-        evidenceCode: evidenceAccess.evidenceCode,
-        programId: context.programId,
-        source: "corporate_portal"
-      }
-    });
-  });
-
-  await writeAuditLog({
-    actorUserId: user.id,
-    action: "corporate.evidence.status_updated",
-    entityType: "project_evidence",
-    entityId: evidenceId,
-    metadata: {
-      programId: context.programId,
-      verificationStatus,
-      reviewAction,
-      reviewNote: reviewNote || null
-    }
-  });
-
-  redirectWithResult(returnPath, "saved", "evidence");
+  redirectWithResult(returnPath, "error", "admin-only");
 }
 
 
