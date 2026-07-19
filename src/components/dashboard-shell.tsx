@@ -22,7 +22,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
-import type { ReactNode } from "react";
+import { useEffect, useState, type MouseEvent, type ReactNode } from "react";
 
 import { logoutAction } from "@/lib/auth-actions";
 import { cn } from "@/lib/utils";
@@ -40,11 +40,11 @@ const dashboardNav = [
 ];
 
 const accountNav = [
-  { label: "Notifications", href: "/dashboard#notifications", icon: Bell },
-  { label: "Payment Methods", href: "/dashboard/donations", icon: CreditCard },
+  { label: "Notifications", href: "/dashboard/notifications", icon: Bell },
+  { label: "Payment Methods", href: "/dashboard/donations#payment-methods", icon: CreditCard },
   { label: "Account Settings", href: "/dashboard/settings", icon: Settings },
   { label: "Privacy & Visibility", href: "/dashboard/settings#privacy", icon: Eye },
-  { label: "Help & Support", href: "/dashboard#support", icon: HelpCircle }
+  { label: "Help & Support", href: "/dashboard/support", icon: HelpCircle }
 ];
 
 const mobileNav = [
@@ -55,16 +55,70 @@ const mobileNav = [
   { label: "Profile", href: "/dashboard/passport", icon: UserCircle }
 ];
 
-function getCurrentLabel(pathname: string) {
+function splitHref(href: string) {
+  const [path, hash] = href.split("#");
+
+  return {
+    path: path || "/dashboard",
+    hash: hash ? `#${hash}` : ""
+  };
+}
+
+function idFromHash(hash: string) {
+  try {
+    return decodeURIComponent(hash.slice(1));
+  } catch {
+    return hash.slice(1);
+  }
+}
+
+function getCurrentLabel(pathname: string, currentHash: string) {
   if (pathname === "/dashboard/search") {
     return "Search Results";
   }
 
-  return [...dashboardNav, ...accountNav].find((item) => pathname === item.href || (item.href !== "/dashboard" && pathname.startsWith(item.href)))?.label ?? "Overview";
+  if (currentHash) {
+    const hashItem = [...dashboardNav, ...accountNav].find((item) => {
+      const { path, hash } = splitHref(item.href);
+
+      return path === pathname && hash === currentHash;
+    });
+
+    if (hashItem) {
+      return hashItem.label;
+    }
+  }
+
+  return [...dashboardNav, ...accountNav].find((item) => {
+    const { path, hash } = splitHref(item.href);
+
+    return !hash && (pathname === path || (path !== "/dashboard" && pathname.startsWith(`${path}/`)));
+  })?.label ?? "Overview";
 }
 
-function isActivePath(pathname: string, href: string) {
-  return href === "/dashboard" ? pathname === href : pathname === href || pathname.startsWith(`${href}/`);
+function hasActiveHashItem(pathname: string, currentHash: string) {
+  return Boolean(
+    currentHash &&
+      [...dashboardNav, ...accountNav].some((item) => {
+        const { path, hash } = splitHref(item.href);
+
+        return path === pathname && hash === currentHash;
+      })
+  );
+}
+
+function isActiveHref(pathname: string, currentHash: string, href: string) {
+  const { path, hash } = splitHref(href);
+
+  if (hash) {
+    return pathname === path && currentHash === hash;
+  }
+
+  if (hasActiveHashItem(pathname, currentHash) && pathname === path) {
+    return false;
+  }
+
+  return path === "/dashboard" ? pathname === path : pathname === path || pathname.startsWith(`${path}/`);
 }
 
 function initialsForDisplayName(displayName: string) {
@@ -81,10 +135,68 @@ function initialsForDisplayName(displayName: string) {
 export function DashboardShell({ children, displayName, unreadNotificationCount = 0 }: { children: ReactNode; displayName: string; unreadNotificationCount?: number }) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const currentLabel = getCurrentLabel(pathname);
+  const [currentHash, setCurrentHash] = useState("");
+  const currentLabel = getCurrentLabel(pathname, currentHash);
   const initials = initialsForDisplayName(displayName);
   const notificationBadge = unreadNotificationCount > 0 ? String(Math.min(unreadNotificationCount, 99)) : null;
   const currentSearch = pathname === "/dashboard/search" ? searchParams.get("q") ?? "" : "";
+
+  useEffect(() => {
+    const syncHash = () => {
+      setCurrentHash(window.location.hash);
+    };
+
+    syncHash();
+    window.addEventListener("hashchange", syncHash);
+    window.addEventListener("popstate", syncHash);
+
+    return () => {
+      window.removeEventListener("hashchange", syncHash);
+      window.removeEventListener("popstate", syncHash);
+    };
+  }, [pathname]);
+
+  useEffect(() => {
+    if (!currentHash) {
+      return;
+    }
+
+    const timeout = window.setTimeout(() => {
+      document.getElementById(idFromHash(currentHash))?.scrollIntoView({ block: "start" });
+    }, 40);
+
+    return () => window.clearTimeout(timeout);
+  }, [currentHash, pathname]);
+
+  const handleDashboardLinkClick = (href: string) => (event: MouseEvent<HTMLAnchorElement>) => {
+    const { path, hash } = splitHref(href);
+
+    if (path !== pathname) {
+      return;
+    }
+
+    if (!hash) {
+      if (currentHash) {
+        event.preventDefault();
+        window.history.pushState(null, "", path);
+        setCurrentHash("");
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      }
+
+      return;
+    }
+
+    const target = document.getElementById(idFromHash(hash));
+
+    if (!target) {
+      return;
+    }
+
+    event.preventDefault();
+    window.history.pushState(null, "", `${path}${hash}`);
+    setCurrentHash(hash);
+    target.scrollIntoView({ block: "start", behavior: "smooth" });
+  };
 
   return (
     <div className="min-h-screen bg-mist-50 pb-20 lg:pb-0">
@@ -100,12 +212,13 @@ export function DashboardShell({ children, displayName, unreadNotificationCount 
         <nav className="mt-8 grid gap-2">
           {dashboardNav.map((item) => {
             const Icon = item.icon;
-            const isActive = isActivePath(pathname, item.href);
+            const isActive = isActiveHref(pathname, currentHash, item.href);
 
             return (
               <Link
                 key={item.href}
                 href={item.href}
+                onClick={handleDashboardLinkClick(item.href)}
                 aria-current={isActive ? "page" : undefined}
                 className={cn(
                   "relative flex min-h-11 items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-bold transition",
@@ -124,12 +237,14 @@ export function DashboardShell({ children, displayName, unreadNotificationCount 
           <nav className="grid gap-1.5">
             {accountNav.map((item) => {
               const Icon = item.icon;
-              const isActive = isActivePath(pathname, item.href);
+              const isActive = isActiveHref(pathname, currentHash, item.href);
 
               return (
                 <Link
                   key={item.href}
                   href={item.href}
+                  onClick={handleDashboardLinkClick(item.href)}
+                  aria-current={isActive ? "page" : undefined}
                   className={cn(
                     "flex min-h-11 items-center justify-between rounded-xl px-3 py-2.5 text-sm font-bold transition",
                     isActive ? "bg-white/12 text-white" : "text-white/72 hover:bg-white/10 hover:text-white"
@@ -146,7 +261,7 @@ export function DashboardShell({ children, displayName, unreadNotificationCount 
           </nav>
         </div>
 
-        <div id="support" className="mt-auto rounded-2xl border border-white/16 bg-white/8 p-5">
+        <div className="mt-auto rounded-2xl border border-white/16 bg-white/8 p-5">
           <HelpCircle size={28} aria-hidden="true" />
           <p className="mt-3 font-bold">Need Help?</p>
           <p className="mt-2 text-sm leading-6 text-white/64">We are here to help you make bigger impact.</p>
@@ -169,7 +284,7 @@ export function DashboardShell({ children, displayName, unreadNotificationCount 
                   const badge = item.label === "Notifications" ? notificationBadge : null;
 
                   return (
-                    <Link key={`${item.label}:${item.href}`} href={item.href} className="flex items-center justify-between rounded-xl px-3 py-2 text-sm font-bold text-ocean-900 hover:bg-ocean-50">
+                    <Link key={`${item.label}:${item.href}`} href={item.href} onClick={handleDashboardLinkClick(item.href)} className="flex items-center justify-between rounded-xl px-3 py-2 text-sm font-bold text-ocean-900 hover:bg-ocean-50">
                       <span className="flex items-center gap-3">
                         <Icon size={17} aria-hidden="true" />
                         {item.label}
@@ -193,7 +308,7 @@ export function DashboardShell({ children, displayName, unreadNotificationCount 
           </form>
 
           <div className="flex items-center gap-2 sm:gap-3">
-            <Link href="/dashboard#notifications" aria-label="Notifications" className="relative flex size-11 items-center justify-center rounded-full hover:bg-ocean-50">
+            <Link href="/dashboard/notifications" aria-label="Notifications" className="relative flex size-11 items-center justify-center rounded-full hover:bg-ocean-50">
               <Bell size={19} aria-hidden="true" />
               {notificationBadge ? <span className="absolute right-1.5 top-1.5 min-w-5 rounded-full bg-coral-500 px-1 text-center text-[10px] font-bold leading-5 text-white">{notificationBadge}</span> : null}
             </Link>
@@ -212,7 +327,7 @@ export function DashboardShell({ children, displayName, unreadNotificationCount 
                 <Link href="/dashboard/settings" className="block rounded-xl px-3 py-2 text-sm font-bold text-ocean-900 hover:bg-ocean-50">
                   Account settings
                 </Link>
-                <Link href="/dashboard/donations" className="block rounded-xl px-3 py-2 text-sm font-bold text-ocean-900 hover:bg-ocean-50">
+                <Link href="/dashboard/donations#payment-methods" onClick={handleDashboardLinkClick("/dashboard/donations#payment-methods")} className="block rounded-xl px-3 py-2 text-sm font-bold text-ocean-900 hover:bg-ocean-50">
                   Payment methods
                 </Link>
                 <form action={logoutAction}>
@@ -232,12 +347,13 @@ export function DashboardShell({ children, displayName, unreadNotificationCount 
         <div className="mx-auto grid max-w-md grid-cols-5 gap-1">
           {mobileNav.map((item) => {
             const Icon = item.icon;
-            const isActive = isActivePath(pathname, item.href);
+            const isActive = isActiveHref(pathname, currentHash, item.href);
 
             return (
               <Link
                 key={item.href}
                 href={item.href}
+                onClick={handleDashboardLinkClick(item.href)}
                 aria-current={isActive ? "page" : undefined}
                 className={cn(
                   "flex min-h-14 flex-col items-center justify-center gap-1 rounded-xl text-[11px] font-bold transition",

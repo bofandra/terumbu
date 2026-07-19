@@ -3670,8 +3670,8 @@ export async function getDashboardData(userId: string) {
     notificationPreferences: preferences,
     profileCompleteness,
     privacyControls: [
-      { label: "Passport visibility", value: profileRow?.passportVisibility ?? "private", href: "/dashboard/settings" },
-      { label: "Donation value", value: "Private dashboard only", href: "/dashboard/settings" },
+      { label: "Passport visibility", value: profileRow?.passportVisibility ?? "private", href: "/dashboard/settings#privacy" },
+      { label: "Donation value", value: "Private dashboard only", href: "/dashboard/settings#privacy" },
       { label: "Approximate impact locations", value: "Enabled", href: "/dashboard/impact" }
     ],
     donations: donationRows,

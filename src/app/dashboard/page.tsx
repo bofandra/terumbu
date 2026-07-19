@@ -301,7 +301,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
       <section className="mt-6 grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
         <DashboardImpactTrend trend={data.trend} />
 
-        <article id="notifications" className="rounded-2xl border border-ocean-900/10 bg-white p-5 shadow-soft">
+        <article id="notifications" className="scroll-mt-24 rounded-2xl border border-ocean-900/10 bg-white p-5 shadow-soft">
           <div className="flex items-start justify-between gap-3">
             <div>
               <p className="text-sm font-bold uppercase tracking-[0.16em] text-coral-700">Notifications</p>

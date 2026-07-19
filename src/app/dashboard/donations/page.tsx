@@ -70,7 +70,7 @@ export default async function DashboardDonationsPage({ searchParams }: Dashboard
       ) : null}
 
       <section className="mt-6 grid gap-5 lg:grid-cols-[1fr_0.9fr]">
-        <article className="rounded-2xl border border-ocean-900/10 bg-white p-5 shadow-soft">
+        <article id="payment-methods" className="scroll-mt-24 rounded-2xl border border-ocean-900/10 bg-white p-5 shadow-soft">
           <div className="flex items-start justify-between gap-3">
             <div>
               <p className="text-sm font-bold uppercase tracking-[0.16em] text-coral-700">Payment methods</p>
