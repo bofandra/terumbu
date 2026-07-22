@@ -3,6 +3,7 @@ import { randomBytes } from "node:crypto";
 import { Button, ButtonLink } from "@/components/ui/button";
 import { getSessionUser } from "@/lib/auth";
 import { createDonationAction } from "@/lib/checkout-actions";
+import { normalizeDonationContributionIntent } from "@/lib/checkout";
 import { suggestedDonationAmounts } from "@/lib/domain";
 import { getDonationCheckoutOptions } from "@/lib/queries";
 import { formatCurrency } from "@/lib/utils";
@@ -30,8 +31,14 @@ export default async function DonationCheckoutPage({ searchParams }: DonationChe
   const donationAmounts = selectedCampaignData ? suggestedDonationAmounts(selectedCampaignData.goal) : [];
   const requestedAmount = Number(params?.amount ?? "");
   const selectedAmount = donationAmounts.includes(requestedAmount) ? requestedAmount : donationAmounts[0];
-  const contributionIntent = params?.intent === "monthly" || params?.intent === "coral" ? params.intent : "one-time";
+  const contributionIntent = normalizeDonationContributionIntent(params?.intent);
   const idempotencyKey = `donation-${randomBytes(12).toString("hex")}`;
+  const errorMessage =
+    params?.error === "payment_proof"
+      ? "Upload bukti pembayaran berupa JPG, PNG, WebP, atau GIF dengan ukuran maksimal 1.5 MB."
+      : params?.error === "campaign"
+        ? "Choose an active campaign before continuing."
+        : "Check the campaign, amount, name, email, and payment proof before continuing.";
 
   if (campaigns.length === 0) {
     return (
@@ -57,11 +64,11 @@ export default async function DonationCheckoutPage({ searchParams }: DonationChe
         <p className="text-sm font-bold uppercase tracking-[0.16em] text-coral-700">Checkout</p>
         <h1 className="mt-3 text-3xl font-bold tracking-normal text-ocean-900">Complete your donation</h1>
         <p className="mt-3 text-ocean-900/68">
-          Your contribution creates a receipt and, when paid, adds a verified activity record to your dashboard.
+          Lakukan pembayaran melalui kanal resmi Terumbu.eco di luar website, lalu unggah bukti pembayaran untuk diverifikasi admin.
         </p>
         {params?.error ? (
           <p className="mt-4 rounded-xl border border-coral-500/20 bg-coral-100 px-4 py-3 text-sm font-semibold text-coral-700">
-            Check the campaign, amount, name, and email before continuing.
+            {errorMessage}
           </p>
         ) : null}
         <form action={createDonationAction} className="mt-6 grid gap-4">
@@ -69,9 +76,7 @@ export default async function DonationCheckoutPage({ searchParams }: DonationChe
           <input type="hidden" name="idempotencyKey" value={idempotencyKey} />
           {contributionIntent !== "one-time" ? (
             <p className="rounded-xl border border-kelp-500/20 bg-kelp-100 px-4 py-3 text-sm font-semibold text-kelp-700">
-              {contributionIntent === "monthly"
-                ? "Monthly giving can be managed or cancelled from your dashboard."
-                : "Coral sponsorship creates a sponsored ecosystem record after paid checkout."}
+              Coral sponsorship creates a sponsored ecosystem record after admin verifies your payment proof.
             </p>
           ) : null}
           <label className="grid gap-2 text-sm font-semibold text-ocean-900">
@@ -116,49 +121,30 @@ export default async function DonationCheckoutPage({ searchParams }: DonationChe
             <textarea name="message" className="min-h-24 rounded-xl border border-ocean-900/14 px-4 py-3 outline-none focus:border-coral-500" />
           </label>
           <div className="grid gap-3 rounded-xl border border-ocean-900/10 bg-sand-50 p-4">
-            <label className="flex items-start gap-3 text-sm font-semibold text-ocean-900">
-              <input
-                type="checkbox"
-                name="savePaymentMethod"
-                defaultChecked={contributionIntent === "monthly"}
-                className="mt-1 size-4 rounded border-ocean-900/20"
-              />
-              <span>
-                Save payment method
-                <span className="mt-1 block text-xs font-medium leading-5 text-ocean-900/58">
-                  Required for monthly giving. Only a payment label and last four digits are shown in this workspace.
-                </span>
-              </span>
-            </label>
-            <div className="grid gap-3 sm:grid-cols-2">
-              <label className="grid gap-2 text-sm font-semibold text-ocean-900">
-                Card label
-                <input
-                  name="cardLabel"
-                  defaultValue="Ocean Hero card"
-                  className="rounded-xl border border-ocean-900/14 bg-white px-4 py-3 outline-none focus:border-coral-500"
-                />
-              </label>
-              <label className="grid gap-2 text-sm font-semibold text-ocean-900">
-                Demo last 4
-                <input
-                  name="cardLast4"
-                  inputMode="numeric"
-                  maxLength={4}
-                  defaultValue="4242"
-                  className="rounded-xl border border-ocean-900/14 bg-white px-4 py-3 outline-none focus:border-coral-500"
-                />
-              </label>
-            </div>
+            <p className="font-bold text-ocean-900">Payment outside the website</p>
+            <p className="text-sm leading-6 text-ocean-900/62">
+              Selesaikan pembayaran melalui kanal resmi Terumbu.eco yang sudah kamu gunakan di luar website. Setelah bukti diunggah, admin akan memeriksa pembayaran secara manual sebelum receipt dan impact record diterbitkan.
+            </p>
           </div>
           <label className="grid gap-2 text-sm font-semibold text-ocean-900">
-            Payment result
-            <select name="paymentState" defaultValue="paid" className="rounded-xl border border-ocean-900/14 px-4 py-3 outline-none focus:border-coral-500">
-              <option value="paid">Paid</option>
-              <option value="failed">Failed</option>
-            </select>
+            Payment reference
+            <input
+              name="paymentReference"
+              placeholder="Optional transfer reference, account name, or note"
+              className="rounded-xl border border-ocean-900/14 px-4 py-3 outline-none focus:border-coral-500"
+            />
           </label>
-          <Button type="submit">Continue to Payment</Button>
+          <label className="grid gap-2 text-sm font-semibold text-ocean-900">
+            Payment proof
+            <input
+              name="paymentProofFile"
+              type="file"
+              accept="image/jpeg,image/png,image/webp,image/gif"
+              className="rounded-xl border border-ocean-900/14 bg-white px-4 py-3 text-sm outline-none file:mr-4 file:rounded-full file:border-0 file:bg-ocean-900 file:px-4 file:py-2 file:text-sm file:font-bold file:text-white focus:border-coral-500"
+              required
+            />
+          </label>
+          <Button type="submit">Submit Payment Proof</Button>
         </form>
       </section>
     </main>

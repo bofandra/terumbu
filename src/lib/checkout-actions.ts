@@ -19,7 +19,9 @@ import {
 import {
   buildBookingCode,
   calculateBookingTotal,
+  normalizeDonationContributionIntent,
   parseDonationAmount,
+  paymentProofUploadError,
   parseParticipantCount,
   splitParticipantNames
 } from "@/lib/checkout";
@@ -27,10 +29,10 @@ import { getSessionUser, safeRedirectPath } from "@/lib/auth";
 import { trackEvent } from "@/lib/analytics";
 import { sendTransactionalEmail } from "@/lib/email";
 import { expeditionDepartureAvailability } from "@/lib/expedition-booking-lifecycle";
+import { readUploadedImageAsDataUrl } from "@/lib/storage";
 import {
-  ensureUserPaymentMethod,
   paymentStatusFromValue,
-  transitionDonationPayment,
+  recordPaymentOperation,
   transitionExpeditionBookingPayment
 } from "@/lib/payment-workflows";
 
@@ -47,13 +49,9 @@ export async function createDonationAction(formData: FormData) {
     .trim()
     .toLowerCase();
   const message = String(formData.get("message") ?? "").trim();
-  const paymentState = paymentStatusFromValue(formData.get("paymentState"), "paid");
-  const rawIntent = String(formData.get("intent") ?? "one-time");
-  const contributionIntent = rawIntent === "monthly" || rawIntent === "coral" ? rawIntent : "one-time";
+  const contributionIntent = normalizeDonationContributionIntent(formData.get("intent"));
   const idempotencyKey = String(formData.get("idempotencyKey") ?? "").trim() || null;
-  const savePaymentMethod = formData.get("savePaymentMethod") === "on" || contributionIntent === "monthly";
-  const cardLast4 = String(formData.get("cardLast4") ?? "4242");
-  const cardLabel = String(formData.get("cardLabel") ?? "").trim();
+  const paymentReference = String(formData.get("paymentReference") ?? "").trim();
   const sessionUser = await getSessionUser();
 
   if (!campaignSlug || amount < 10_000 || !donorName || !donorEmail) {
@@ -88,24 +86,29 @@ export async function createDonationAction(formData: FormData) {
     }
   }
 
-  const providerReference = randomReference("DEMO-DONATION");
+  const proofUpload = await readUploadedImageAsDataUrl(formData.get("paymentProofFile"));
+  const proofError = paymentProofUploadError(proofUpload);
+
+  if (proofError) {
+    redirect("/checkout/donation?error=payment_proof");
+  }
+
+  const providerReference = randomReference("MANUAL-DONATION");
   const now = new Date();
   const sponsoredFragments = contributionIntent === "coral" ? Math.max(1, Math.round(amount / 50_000)) : 0;
+  const submittedAt = now.toISOString();
+  const manualPaymentMetadata = {
+    method: "manual_external",
+    contributionIntent,
+    paymentProofUrl: proofUpload.dataUrl,
+    paymentReference: paymentReference || null,
+    submittedAt,
+    verificationStatus: "submitted",
+    sponsoredFragments: sponsoredFragments || null
+  };
   let donationId = "";
-  let receiptEmailNumber: string | null = null;
-  let receiptEmailUserId: string | null = null;
 
   await db.transaction(async (tx) => {
-    const paymentMethodId = savePaymentMethod
-      ? await ensureUserPaymentMethod(tx as unknown as typeof db, {
-          userId: sessionUser?.id,
-          label: cardLabel || null,
-          brand: "Demo Card",
-          last4: cardLast4,
-          makeDefault: contributionIntent === "monthly",
-          now
-        })
-      : null;
     const [donation] = await tx
       .insert(donations)
       .values({
@@ -116,7 +119,7 @@ export async function createDonationAction(formData: FormData) {
         donorEmail,
         amount: amount.toFixed(2),
         currency: "IDR",
-        status: "created",
+        status: "pending",
         message,
         createdAt: now
       })
@@ -126,79 +129,43 @@ export async function createDonationAction(formData: FormData) {
 
     await tx.insert(paymentTransactions).values({
       donationId: donation.id,
-      paymentMethodId,
-      provider: "demo_gateway",
+      paymentMethodId: null,
+      provider: "manual_external",
       providerReference,
-      status: "created",
-      payload: {
-        method: "demo_checkout",
-        contributionIntent,
-        interval: contributionIntent === "monthly" ? "month" : null,
-        sponsoredFragments: sponsoredFragments || null,
-        cancelFromDashboard: contributionIntent === "monthly",
-        completedAt: paymentState === "paid" ? now.toISOString() : null,
-        failedAt: paymentState === "failed" ? now.toISOString() : null
-      },
+      status: "pending",
+      payload: manualPaymentMetadata,
       updatedAt: now
     });
 
-    const result = await transitionDonationPayment(tx as unknown as typeof db, {
+    await recordPaymentOperation(tx as unknown as typeof db, {
+      operationType: "payment_proof_submitted",
+      entityType: "donation",
       donationId: donation.id,
-      nextStatus: paymentState,
+      requestedByUserId: sessionUser?.id ?? null,
+      status: "pending",
+      amount: amount.toFixed(2),
+      currency: "IDR",
+      provider: "manual_external",
       providerReference,
-      paymentMethodId,
-      providerPayload: {
-        method: "demo_checkout",
-        contributionIntent,
-        interval: contributionIntent === "monthly" ? "month" : null,
-        sponsoredFragments: sponsoredFragments || null,
-        cancelFromDashboard: contributionIntent === "monthly",
-        completedAt: paymentState === "paid" ? now.toISOString() : null,
-        failedAt: paymentState === "failed" ? now.toISOString() : null
-      },
-      operationType: "checkout",
+      reason: paymentReference || "Payment proof submitted for manual verification.",
+      metadata: manualPaymentMetadata,
       now
     });
-
-    if (result?.receiptCreated) {
-      receiptEmailNumber = result.receiptNumber;
-      receiptEmailUserId = sessionUser?.id ?? null;
-    }
   });
-
-  if (receiptEmailNumber) {
-    await sendTransactionalEmail({
-      userId: receiptEmailUserId,
-      recipientEmail: donorEmail,
-      subject: "Your Terumbu donation receipt",
-      template: "donation_receipt",
-      payload: {
-        receiptNumber: receiptEmailNumber,
-        donationId,
-        campaign: campaign.title,
-        amount,
-        currency: "IDR"
-      }
-    });
-  }
 
   await trackEvent({
     distinctId: sessionUser?.id ?? donorEmail,
-    event: "donation_checkout_completed",
+    event: "donation_payment_proof_submitted",
     properties: {
       campaignSlug,
       amount,
       contributionIntent,
       sponsoredFragments: sponsoredFragments || undefined,
-      status: paymentState
+      status: "pending"
     }
   });
 
-  if (paymentState === "failed") {
-    redirect(`/checkout/success?status=failed&type=donation&id=${donationId}`);
-  }
-
-  redirect(`/checkout/success?status=paid&type=donation&id=${donationId}`);
+  redirect(`/checkout/success?status=pending&type=donation&id=${donationId}`);
 }
 
 export async function bookExpeditionAction(formData: FormData) {

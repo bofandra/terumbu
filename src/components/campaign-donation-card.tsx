@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { removeSavedCampaignAction, saveCampaignAction } from "@/lib/retention-actions";
 import { formatCurrency } from "@/lib/utils";
 
-type DonationMode = "one-time" | "monthly" | "coral";
+type DonationMode = "one-time" | "coral";
 
 type CampaignDonationCardProps = {
   campaignSlug: string;
@@ -30,10 +30,6 @@ function roundedIdr(value: number, step = 50_000) {
 
 function impactText(mode: DonationMode, amount: number, goal: number, impactTarget: number, impactUnit: string) {
   const costPerUnit = goal > 0 && impactTarget > 0 ? goal / impactTarget : amount;
-
-  if (mode === "monthly") {
-    return `${formatCurrency(amount)}/month supports ongoing monitoring, reports, and contributor impact points.`;
-  }
 
   if (mode === "coral") {
     const fragments = Math.max(1, Math.round(amount / costPerUnit));
@@ -81,10 +77,6 @@ export function CampaignDonationCard({
   const amount = customValue > 0 ? customValue : selectedAmount;
   const href = checkoutHref(campaignSlug, mode, amount);
   const costPerUnit = goal > 0 && impactTarget > 0 ? goal / impactTarget : selectedAmount;
-  const monthlyAmounts = useMemo(
-    () => Array.from(new Set(oneTimeAmounts.map((oneTimeAmount) => roundedIdr(oneTimeAmount / 4, 25_000)))),
-    [oneTimeAmounts]
-  );
   const impactPackages = useMemo(
     () =>
       [1, 5, 10].map((units) => ({
@@ -95,13 +87,6 @@ export function CampaignDonationCard({
   );
 
   const options = useMemo(() => {
-    if (mode === "monthly") {
-      return monthlyAmounts.map((monthlyAmount) => ({
-        label: `${formatCurrency(monthlyAmount)}/month`,
-        amount: monthlyAmount
-      }));
-    }
-
     if (mode === "coral") {
       return impactPackages;
     }
@@ -110,16 +95,11 @@ export function CampaignDonationCard({
       label: formatCurrency(oneTimeAmount),
       amount: oneTimeAmount
     }));
-  }, [impactPackages, mode, monthlyAmounts, oneTimeAmounts]);
+  }, [impactPackages, mode, oneTimeAmounts]);
 
   function setDonationMode(nextMode: DonationMode) {
     setMode(nextMode);
     setCustomAmount("");
-
-    if (nextMode === "monthly") {
-      setSelectedAmount(monthlyAmounts[1] ?? monthlyAmounts[0] ?? selectedAmount);
-      return;
-    }
 
     if (nextMode === "coral") {
       setSelectedAmount(impactPackages[1]?.amount ?? impactPackages[0]?.amount ?? selectedAmount);
@@ -154,10 +134,9 @@ export function CampaignDonationCard({
   const card = (
     <div className="rounded-2xl border border-ocean-900/10 bg-white p-6 shadow-soft">
       <p className="text-2xl font-bold tracking-normal text-ocean-900">Support This Campaign</p>
-      <div className="mt-5 grid grid-cols-3 rounded-xl border border-ocean-900/10 bg-sand-50 p-1 text-xs font-bold sm:text-sm">
+      <div className="mt-5 grid grid-cols-2 rounded-xl border border-ocean-900/10 bg-sand-50 p-1 text-xs font-bold sm:text-sm">
         {[
           ["one-time", "One-time"],
-          ["monthly", "Monthly"],
           ["coral", "Sponsor impact"]
         ].map(([value, label]) => (
           <button
@@ -208,7 +187,6 @@ export function CampaignDonationCard({
           <HeartHandshake className="mt-0.5 shrink-0 text-coral-500" size={22} aria-hidden="true" />
           <p className="text-sm leading-6 text-ocean-900/76">{impactText(mode, amount, goal, impactTarget, impactUnit)}</p>
         </div>
-        {mode === "monthly" ? <p className="mt-3 text-xs font-semibold text-ocean-900/56">Cancel anytime from your dashboard.</p> : null}
       </div>
 
       {disabledReason ? (
@@ -256,10 +234,10 @@ export function CampaignDonationCard({
 
       <div className="mt-5 grid gap-3 border-t border-ocean-900/10 pt-5 text-sm text-ocean-900/68">
         {[
-          [LockKeyhole, "Secure and encrypted payment"],
+          [LockKeyhole, "Payment happens outside the website"],
           [ShieldCheck, "Verified implementing partner"],
           [CheckCircle2, "Transparent project budget"],
-          [CheckCircle2, "Regular impact updates"]
+          [CheckCircle2, "Manual proof verification"]
         ].map(([Icon, label]) => (
           <span key={label as string} className="inline-flex items-center gap-2">
             <Icon className="text-kelp-500" size={16} aria-hidden="true" />

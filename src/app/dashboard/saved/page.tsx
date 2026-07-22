@@ -137,7 +137,7 @@ export default async function SavedProjectsPage() {
         <aside className="grid gap-6">
           <article className="rounded-2xl border border-ocean-900/10 bg-white p-5 shadow-soft">
             <p className="text-sm font-bold uppercase tracking-[0.16em] text-coral-700">Followed updates</p>
-            <h2 className="mt-2 text-xl font-bold tracking-normal text-ocean-900">Campaign subscriptions</h2>
+            <h2 className="mt-2 text-xl font-bold tracking-normal text-ocean-900">Followed campaigns</h2>
             <div className="mt-5 grid gap-3">
               {data.followedCampaigns.map((campaign) => (
                 <div key={campaign.slug} className="rounded-xl border border-ocean-900/10 bg-sand-50 p-4">

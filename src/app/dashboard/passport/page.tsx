@@ -269,7 +269,17 @@ export default async function DashboardPassportPage({ searchParams }: DashboardP
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          {canSharePassport ? <PassportCopyButton value={publicUrl} label="Share Passport" className="border-transparent bg-ocean-900 text-white hover:bg-ocean-700" /> : null}
+          {canSharePassport ? (
+            <PassportCopyButton
+              value={publicUrl}
+              label="Share Passport"
+              copiedLabel="Link copied"
+              mode="share"
+              shareTitle={`${displayName}'s Terumbu.eco Impact Passport`}
+              shareText="View my verified conservation profile on Terumbu.eco."
+              tone="dark"
+            />
+          ) : null}
           <ButtonLink href="/dashboard/settings" tone="light">
             <Pencil size={17} aria-hidden="true" />
             Edit Passport

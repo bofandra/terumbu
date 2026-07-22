@@ -1,4 +1,4 @@
-import { BookOpen, CreditCard, HelpCircle, Mail, MapPinned, Settings } from "lucide-react";
+import { BookOpen, HelpCircle, Mail, MapPinned, ReceiptText, Settings } from "lucide-react";
 import Link from "next/link";
 
 import { ButtonLink } from "@/components/ui/button";
@@ -24,9 +24,9 @@ export default async function DashboardSupportPage() {
     },
     {
       label: "Payments",
-      description: "Saved payment methods, monthly giving, retries, refunds, and billing operations.",
-      href: "/dashboard/donations#payment-methods",
-      icon: CreditCard
+      description: "Manual payment proof review, donation receipts, refunds, and payment operations.",
+      href: "/dashboard/donations",
+      icon: ReceiptText
     },
     {
       label: "Expeditions",

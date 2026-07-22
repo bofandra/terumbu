@@ -5652,10 +5652,13 @@ export async function getAdminPortalData() {
       .select({
         id: donations.id,
         donorName: donations.donorName,
+        donorEmail: donations.donorEmail,
         amount: donations.amount,
         status: donations.status,
+        createdAt: donations.createdAt,
         campaignTitle: campaigns.title,
-        providerReference: paymentTransactions.providerReference
+        providerReference: paymentTransactions.providerReference,
+        transactionPayload: paymentTransactions.payload
       })
       .from(donations)
       .innerJoin(campaigns, eq(donations.campaignId, campaigns.id))
@@ -5693,6 +5696,8 @@ export async function getAdminPortalData() {
         reason: paymentOperations.reason,
         amount: paymentOperations.amount,
         currency: paymentOperations.currency,
+        providerReference: paymentOperations.providerReference,
+        metadata: paymentOperations.metadata,
         createdAt: paymentOperations.createdAt
       })
       .from(paymentOperations)

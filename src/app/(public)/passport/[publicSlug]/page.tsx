@@ -21,6 +21,7 @@ import { notFound } from "next/navigation";
 
 import { PassportCopyButton } from "@/components/passport-copy-button";
 import { Button, ButtonLink } from "@/components/ui/button";
+import { getDefaultAuthenticatedPath, getSessionUser } from "@/lib/auth";
 import { evidenceSourceHref } from "@/lib/domain";
 import { unlockPassportShareAction } from "@/lib/passport-share-actions";
 import { passportShareAccessCookieName, publicPassportShareUrl } from "@/lib/passport-sharing";
@@ -196,8 +197,7 @@ function itemLocations(items: PassportItem[]) {
 }
 
 export default async function PublicPassportPage({ params, searchParams }: PublicPassportPageProps) {
-  const { publicSlug } = await params;
-  const query = await searchParams;
+  const [{ publicSlug }, query, sessionUser] = await Promise.all([params, searchParams, getSessionUser()]);
   const token = typeof query?.token === "string" ? query.token : null;
   const cookieStore = await cookies();
   const accessProof = cookieStore.get(passportShareAccessCookieName(publicSlug))?.value ?? null;
@@ -217,6 +217,18 @@ export default async function PublicPassportPage({ params, searchParams }: Publi
   }
 
   const publicUrl = publicPassportUrl(passport.publicSlug, passport.visibility, token);
+  const publicPath = `/passport/${passport.publicSlug}`;
+  const loginNextPath = passport.visibility === "link" && token ? `${publicPath}?token=${encodeURIComponent(token)}` : publicPath;
+  const authenticatedCtaHref = sessionUser ? (sessionUser.id === passport.userId ? "/dashboard/passport" : await getDefaultAuthenticatedPath(sessionUser.id)) : null;
+  const secondaryCta = authenticatedCtaHref
+    ? {
+        href: authenticatedCtaHref,
+        label: sessionUser?.id === passport.userId ? "Manage Impact Passport" : "Go to Dashboard"
+      }
+    : {
+        href: `/login?next=${encodeURIComponent(loginNextPath)}`,
+        label: "Login to Terumbu.eco"
+      };
   const qrSrc = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(publicUrl)}`;
   const locations = itemLocations(passport.items);
   const ecosystems = passport.items.filter((item) => item.itemType === "ecosystem" || metadataNumber(item.metadata, "fragments") > 0).slice(0, 3);
@@ -252,9 +264,9 @@ export default async function PublicPassportPage({ params, searchParams }: Publi
             </div>
             <p className="mt-6 max-w-3xl text-lg leading-8 text-white/76">{publicImpactStory(passport)}</p>
             <div className="mt-7 flex flex-wrap gap-2">
-              <PassportCopyButton value={publicUrl} label="Share Impact Passport" className="border-white/18 bg-white text-ocean-900 hover:bg-sand-50" />
-              <ButtonLink href="/login" tone="primary">
-                Login to Terumbu.eco
+              <PassportCopyButton value={publicUrl} label="Share Impact Passport" tone="onDark" />
+              <ButtonLink href={secondaryCta.href} tone="primary">
+                {secondaryCta.label}
               </ButtonLink>
             </div>
           </div>

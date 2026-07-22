@@ -770,9 +770,7 @@ export default async function CampaignDetailPage({ params }: { params: Promise<{
                       ? activity.sponsoredFragments > 0
                         ? `${donor} sponsored ${activity.sponsoredFragments.toLocaleString("id-ID")} coral fragments`
                         : `${donor} sponsored this campaign`
-                      : activity.contributionIntent === "monthly"
-                        ? `${donor} started monthly support`
-                        : `${donor} supported this campaign`;
+                      : `${donor} supported this campaign`;
 
                   return (
                     <span key={`${activity.createdAt.toISOString()}-${activity.amount}`} className="rounded-xl bg-sand-50 p-3">

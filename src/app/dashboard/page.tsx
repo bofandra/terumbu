@@ -167,7 +167,14 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
             View Passport
           </ButtonLink>
           {canSharePassport ? (
-            <PassportCopyButton value={passportShareUrl} label="Share Progress" className="bg-white" />
+            <PassportCopyButton
+              value={passportShareUrl}
+              label="Share Progress"
+              copiedLabel="Link copied"
+              mode="share"
+              shareTitle={`${displayName}'s Terumbu.eco progress`}
+              shareText="See my verified conservation progress on Terumbu.eco."
+            />
           ) : (
             <ButtonLink href="/dashboard/passport#share-settings" tone="light">
               <Share2 size={17} aria-hidden="true" />

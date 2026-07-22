@@ -78,6 +78,7 @@ export async function recordPaymentOperation(
     status?: string;
     amount?: number | string | null;
     currency?: string;
+    provider?: string;
     providerReference?: string | null;
     reason?: string | null;
     metadata?: Record<string, unknown>;
@@ -99,6 +100,7 @@ export async function recordPaymentOperation(
     status: input.status ?? "pending",
     amount: input.amount == null ? null : String(input.amount),
     currency: input.currency ?? "IDR",
+    provider: input.provider ?? "demo_gateway",
     providerReference: input.providerReference ?? null,
     reason: input.reason ?? null,
     metadata: input.metadata ?? null,

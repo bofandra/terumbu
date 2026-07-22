@@ -4,7 +4,6 @@ import {
   Award,
   Bell,
   BookOpen,
-  CreditCard,
   Eye,
   FileBadge,
   Heart,
@@ -43,7 +42,6 @@ const dashboardNav = [
 
 const accountNav = [
   { label: "Notifications", href: "/dashboard/notifications", icon: Bell },
-  { label: "Payment Methods", href: "/dashboard/donations#payment-methods", icon: CreditCard },
   { label: "Account Settings", href: "/dashboard/settings", icon: Settings },
   { label: "Privacy & Visibility", href: "/dashboard/settings#privacy", icon: Eye },
   { label: "Help & Support", href: "/dashboard/support", icon: HelpCircle }
@@ -328,9 +326,6 @@ export function DashboardShell({ children, displayName, unreadNotificationCount 
                 </Link>
                 <Link href="/dashboard/settings" className="block rounded-xl px-3 py-2 text-sm font-bold text-ocean-900 hover:bg-ocean-50">
                   Account settings
-                </Link>
-                <Link href="/dashboard/donations#payment-methods" onClick={handleDashboardLinkClick("/dashboard/donations#payment-methods")} className="block rounded-xl px-3 py-2 text-sm font-bold text-ocean-900 hover:bg-ocean-50">
-                  Payment methods
                 </Link>
                 <form action={logoutAction}>
                   <button type="submit" className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-sm font-bold text-coral-700 hover:bg-coral-100">

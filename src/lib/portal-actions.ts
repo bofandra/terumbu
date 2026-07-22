@@ -101,6 +101,10 @@ function nullableText(formData: FormData, key: string) {
   return value || null;
 }
 
+function metadataObject(value: unknown) {
+  return value && typeof value === "object" && !Array.isArray(value) ? (value as Record<string, unknown>) : {};
+}
+
 function verificationFromForm(value: FormDataEntryValue | null) {
   const verification = String(value ?? "basic");
 
@@ -3855,7 +3859,7 @@ export async function reconcileDonationAction(formData: FormData) {
   const user = await requireRole(["admin"], "/admin");
   const donationId = String(formData.get("donationId") ?? "");
   const requestedStatus = String(formData.get("status") ?? "paid");
-  const status = requestedStatus === "failed" || requestedStatus === "refunded" ? requestedStatus : "paid";
+  const status = requestedStatus === "failed" ? "failed" : "paid";
   const operationId = String(formData.get("operationId") ?? "");
   const now = new Date();
   let receiptEmailNumber: string | null = null;
@@ -3879,10 +3883,43 @@ export async function reconcileDonationAction(formData: FormData) {
     redirect("/admin?error=donation");
   }
 
+  let operationMetadata: Record<string, unknown> = {};
+
+  if (operationId) {
+    const [operation] = await db
+      .select({
+        id: paymentOperations.id,
+        donationId: paymentOperations.donationId,
+        status: paymentOperations.status,
+        metadata: paymentOperations.metadata
+      })
+      .from(paymentOperations)
+      .where(eq(paymentOperations.id, operationId))
+      .limit(1);
+
+    if (!operation || operation.status !== "pending" || operation.donationId !== donation.id) {
+      redirect("/admin?error=operation");
+    }
+
+    operationMetadata = metadataObject(operation.metadata);
+  }
+
+  const verificationMetadata = {
+    ...operationMetadata,
+    reconciledStatus: status,
+    verificationStatus: status === "paid" ? "verified" : "rejected",
+    reviewedAt: now.toISOString(),
+    reviewedByUserId: user.id
+  };
+
   const result = await db.transaction(async (tx) => {
     const transition = await transitionDonationPayment(tx as unknown as typeof db, {
       donationId: donation.id,
       nextStatus: status,
+      providerPayload: {
+        method: "manual_external",
+        ...verificationMetadata
+      },
       processedByUserId: user.id,
       operationType: "reconcile",
       now
@@ -3896,9 +3933,7 @@ export async function reconcileDonationAction(formData: FormData) {
           status: "completed",
           processedAt: now,
           updatedAt: now,
-          metadata: {
-            reconciledStatus: status
-          }
+          metadata: verificationMetadata
         })
         .where(eq(paymentOperations.id, operationId));
     }

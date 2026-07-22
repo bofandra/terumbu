@@ -35,10 +35,6 @@ function savedMessage(params: Awaited<NonNullable<AdminPortalPageProps["searchPa
     return null;
   }
 
-  if (params.saved === "billing-run") {
-    return `Monthly billing run complete: ${Number(params.charged ?? 0).toLocaleString("id-ID")} charged, ${Number(params.failed ?? 0).toLocaleString("id-ID")} failed, ${Number(params.skipped ?? 0).toLocaleString("id-ID")} skipped.`;
-  }
-
   if (params.saved === "refund-processed") {
     return "Refund was approved and processed through the payment workflow.";
   }
@@ -85,7 +81,7 @@ export default async function AdminPortalPage({ searchParams }: AdminPortalPageP
   const reviewCampaigns = data.campaigns.filter((campaign) => campaign.status === "review").length;
   const pendingEvidence = data.evidence.filter((item) => item.verificationStatus !== "verified").length;
   const paymentChecks =
-    data.donations.filter((donation) => donation.status !== "paid" || donation.pendingOperation).length + data.bookingPaymentOperations.length + data.dueSubscriptions.length;
+    data.donations.filter((donation) => donation.status !== "paid" || donation.pendingOperation).length + data.bookingPaymentOperations.length;
   const recentUsers = operations.users.length;
 
   const priorityTasks: AdminTask[] = [
@@ -99,7 +95,7 @@ export default async function AdminPortalPage({ searchParams }: AdminPortalPageP
     },
     {
       title: "Reconcile payments",
-      description: "Run due billing, approve refunds, and settle donation or booking payment records.",
+      description: "Verify manual payment proofs, approve refunds, and settle donation or booking payment records.",
       href: "/admin/payments",
       icon: ReceiptText,
       count: paymentChecks,

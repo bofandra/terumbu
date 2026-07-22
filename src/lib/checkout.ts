@@ -8,6 +8,25 @@ export function parseDonationAmount(value: FormDataEntryValue | string | number 
   return Math.max(0, Math.round(raw));
 }
 
+export type DonationContributionIntent = "one-time" | "coral";
+
+export type PaymentProofUploadError = "missing" | "type" | "size";
+
+export function normalizeDonationContributionIntent(value: FormDataEntryValue | string | null | undefined): DonationContributionIntent {
+  return String(value ?? "") === "coral" ? "coral" : "one-time";
+}
+
+export function paymentProofUploadError(input: {
+  dataUrl?: string | null;
+  error?: string | null;
+}): PaymentProofUploadError | null {
+  if (input.error === "type" || input.error === "size") {
+    return input.error;
+  }
+
+  return input.dataUrl ? null : "missing";
+}
+
 export function parseParticipantCount(value: FormDataEntryValue | string | number | null | undefined) {
   const parsed = typeof value === "number" ? value : Number(String(value ?? "").replace(/[^0-9]/g, ""));
 

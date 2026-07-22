@@ -58,11 +58,11 @@ const dashboardDestinations: SearchResult[] = [
   },
   {
     id: "destination-donations",
-    section: "Billing",
+    section: "Payments",
     title: "Donations",
-    description: "Contribution history, monthly giving, payment methods, retries, and refunds.",
+    description: "Contribution history, uploaded payment proof review, receipts, and refunds.",
     href: "/dashboard/donations",
-    meta: "Donations & billing",
+    meta: "Donations",
     icon: Heart
   },
   {
