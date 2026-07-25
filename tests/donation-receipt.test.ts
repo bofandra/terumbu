@@ -54,5 +54,7 @@ test("donation receipt download html escapes unsafe fields", () => {
   assert.match(html, /Org &lt;Two&gt;/);
   assert.match(html, /TRB&lt;script&gt;/);
   assert.doesNotMatch(html, /<script>/);
+  assert.match(html, /IDR\s*250\.000/);
+  assert.doesNotMatch(html, /Rp/);
   assert.match(html, /https:\/\/example.test\/campaigns\/reef-recovery/);
 });

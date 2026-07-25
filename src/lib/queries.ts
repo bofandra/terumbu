@@ -135,7 +135,7 @@ import {
 } from "@/lib/expedition-booking-lifecycle";
 import { normalizeExpeditionReviewStatus } from "@/lib/expedition-reviews";
 import { partnerCapabilitiesForRoles } from "@/lib/partner-permissions";
-import { formatCompact, formatCurrency } from "@/lib/utils";
+import { formatCompact, formatCurrency, formatCurrencyText } from "@/lib/utils";
 
 type EvidenceReviewEventSummary = {
   id: string;
@@ -2328,7 +2328,14 @@ export async function getPublicPassport(publicSlug: string, options: PublicPassp
   const evidenceConsent = normalizePassportEvidenceConsent(passport.evidenceConsent);
   const items = itemRows
     .filter((item) => passportItemIsVisible(item.itemType, categoryVisibility))
-    .map((item) => (evidenceConsent === "hide_evidence" ? { ...item, evidenceUrl: null } : item));
+    .map((item) => {
+      const normalizedItem = {
+        ...item,
+        description: item.description ? formatCurrencyText(item.description) : item.description
+      };
+
+      return evidenceConsent === "hide_evidence" ? { ...normalizedItem, evidenceUrl: null } : normalizedItem;
+    });
   const donationCount = items.filter((item) => item.itemType === "donation").length;
   const fieldCount = items.filter((item) => item.itemType === "expedition").length;
   const certificateCount = items.filter((item) => item.itemType === "certificate").length;
@@ -2658,7 +2665,7 @@ async function buildPassportPreview(
     latestActivity: items[0]
       ? {
           title: items[0].title,
-          description: items[0].description ?? "Verified activity added to this Impact Passport."
+          description: formatCurrencyText(items[0].description ?? "Verified activity added to this Impact Passport.")
         }
       : null
   };
@@ -3443,7 +3450,7 @@ export async function getDashboardData(userId: string) {
       id: `passport-${item.id}`,
       category: "Achievements",
       title: item.title,
-      description: item.description ?? "Verified activity added to your Impact Passport.",
+      description: formatCurrencyText(item.description ?? "Verified activity added to your Impact Passport."),
       occurredAt: item.occurredAt,
       href: item.evidenceUrl ?? `/passport/${profileRow?.publicSlug ?? ""}`
     }))

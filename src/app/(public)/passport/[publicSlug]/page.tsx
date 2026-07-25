@@ -116,6 +116,7 @@ function passportId(publicSlug: string, issuedAt: Date | null | undefined) {
 
 function publicPassportUrl(publicSlug: string, visibility: string, shareToken: string | null) {
   return publicPassportShareUrl({
+    origin: process.env.NEXT_PUBLIC_APP_URL ?? "https://terumbu.eco",
     publicSlug,
     visibility,
     shareToken

@@ -178,6 +178,8 @@ cp .env.example .env
 ```text
 DATABASE_URL="postgresql://postgres:postgres@localhost:5432/terumbu"
 NEXT_PUBLIC_APP_URL="http://localhost:3000"
+RESEND_API_KEY=""
+RESEND_FROM_EMAIL=""
 ```
 
 4. Run database migrations:

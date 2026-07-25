@@ -40,6 +40,7 @@ function formatCurrency(value: string | number, currency: string) {
   return new Intl.NumberFormat("id-ID", {
     style: "currency",
     currency: currency || "IDR",
+    currencyDisplay: "code",
     maximumFractionDigits: 0
   }).format(Number.isFinite(parsed) ? parsed : 0);
 }

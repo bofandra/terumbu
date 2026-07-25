@@ -171,7 +171,6 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
               value={passportShareUrl}
               label="Share Progress"
               copiedLabel="Link copied"
-              mode="share"
               shareTitle={`${displayName}'s Terumbu.eco progress`}
               shareText="See my verified conservation progress on Terumbu.eco."
             />

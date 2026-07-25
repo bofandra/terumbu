@@ -81,5 +81,7 @@ test("monthly impact report download html escapes unsafe report fields", () => {
   assert.match(html, /Raka &amp; Team/);
   assert.match(html, /Campaign &lt;One&gt;/);
   assert.doesNotMatch(html, /<Impact>/);
+  assert.match(html, /IDR\s*250\.000/);
+  assert.doesNotMatch(html, /Rp/);
   assert.match(html, /https:\/\/example.test\/campaigns\/campaign-one/);
 });

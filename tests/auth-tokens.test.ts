@@ -9,6 +9,7 @@ import {
   hashAuthEmail,
   hashAuthToken,
   normalizeAuthEmail,
+  passwordRecoveryEmailPurposeForUser,
   parseAuthTokenIdentifier
 } from "../src/lib/auth-tokens";
 
@@ -46,6 +47,12 @@ test("auth token expiry defaults match setup, verification, and reset windows", 
   assert.equal(authTokenExpiresAt("account_setup", now).toISOString(), "2026-07-20T00:00:00.000Z");
   assert.equal(authTokenExpiresAt("email_verification", now).toISOString(), "2026-07-20T00:00:00.000Z");
   assert.equal(authTokenExpiresAt("password_reset", now).toISOString(), "2026-07-19T01:00:00.000Z");
+});
+
+test("password recovery chooses reset for password users and setup for passwordless users", () => {
+  assert.equal(passwordRecoveryEmailPurposeForUser({ passwordHash: "scrypt:hash" }), "password_reset");
+  assert.equal(passwordRecoveryEmailPurposeForUser({ passwordHash: null }), "account_setup");
+  assert.equal(passwordRecoveryEmailPurposeForUser({ passwordHash: undefined }), "account_setup");
 });
 
 test("auth URLs use a safe application base URL", () => {

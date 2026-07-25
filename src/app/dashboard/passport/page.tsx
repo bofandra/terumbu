@@ -219,6 +219,7 @@ export default async function DashboardPassportPage({ searchParams }: DashboardP
       ? `/passport/${publicSlug}${currentVisibility === "link" && passportShareToken ? `?token=${encodeURIComponent(passportShareToken)}` : ""}`
       : "/dashboard/settings";
   const publicUrl = publicPassportShareUrl({
+    origin: process.env.NEXT_PUBLIC_APP_URL ?? "https://terumbu.eco",
     publicSlug,
     visibility: currentVisibility,
     shareToken: passportShareToken
@@ -274,12 +275,16 @@ export default async function DashboardPassportPage({ searchParams }: DashboardP
               value={publicUrl}
               label="Share Passport"
               copiedLabel="Link copied"
-              mode="share"
               shareTitle={`${displayName}'s Terumbu.eco Impact Passport`}
               shareText="View my verified conservation profile on Terumbu.eco."
               tone="dark"
             />
-          ) : null}
+          ) : (
+            <ButtonLink href="#share-settings" tone="secondary">
+              <Share2 size={17} aria-hidden="true" />
+              Enable Sharing
+            </ButtonLink>
+          )}
           <ButtonLink href="/dashboard/settings" tone="light">
             <Pencil size={17} aria-hidden="true" />
             Edit Passport

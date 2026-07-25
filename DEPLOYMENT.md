@@ -73,6 +73,7 @@ Optional secrets:
 - `MIDTRANS_CLIENT_KEY`
 - `XENDIT_SECRET_KEY`
 - `RESEND_API_KEY`
+- `RESEND_FROM_EMAIL`
 - `POSTHOG_KEY`
 
 Optional repository variables:

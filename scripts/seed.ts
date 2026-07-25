@@ -1859,7 +1859,7 @@ async function seed() {
         passportId: passport.id,
         itemType: "donation",
         title: "Funded Raja Ampat reef restoration",
-        description: "Rp1.5M donation connected to coral restoration progress.",
+        description: "IDR 1.5M donation connected to coral restoration progress.",
         evidenceUrl: "https://example.com/evidence/raja-ampat-donation",
         occurredAt: date("2026-06-01T04:30:00.000Z"),
         metadata: {

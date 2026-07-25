@@ -76,6 +76,7 @@ jobs:
           MIDTRANS_CLIENT_KEY: ${{ secrets.MIDTRANS_CLIENT_KEY }}
           XENDIT_SECRET_KEY: ${{ secrets.XENDIT_SECRET_KEY }}
           RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          RESEND_FROM_EMAIL: ${{ secrets.RESEND_FROM_EMAIL }}
           POSTHOG_KEY: ${{ secrets.POSTHOG_KEY }}
           POSTHOG_HOST: ${{ vars.POSTHOG_HOST }}
           VPS_HOST: ${{ secrets.VPS_HOST }}
@@ -126,6 +127,7 @@ jobs:
           write_env_value MIDTRANS_CLIENT_KEY "${MIDTRANS_CLIENT_KEY}"
           write_env_value XENDIT_SECRET_KEY "${XENDIT_SECRET_KEY}"
           write_env_value RESEND_API_KEY "${RESEND_API_KEY}"
+          write_env_value RESEND_FROM_EMAIL "${RESEND_FROM_EMAIL}"
           write_env_value POSTHOG_KEY "${POSTHOG_KEY}"
           write_env_value POSTHOG_HOST "${POSTHOG_HOST_VALUE}"
 

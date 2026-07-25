@@ -16,7 +16,14 @@ import {
   safeRedirectPath,
   verifyPassword
 } from "@/lib/auth";
-import { consumeAuthToken, deleteAuthTokensForUser, sendAccountSetupEmail, sendEmailVerificationEmail, sendPasswordResetEmail } from "@/lib/auth-tokens";
+import {
+  consumeAuthToken,
+  deleteAuthTokensForUser,
+  passwordRecoveryEmailPurposeForUser,
+  sendAccountSetupEmail,
+  sendEmailVerificationEmail,
+  sendPasswordResetEmail
+} from "@/lib/auth-tokens";
 import {
   normalizePassportEvidenceConsent,
   normalizePassportVisibility,
@@ -168,13 +175,15 @@ export async function requestPasswordResetAction(formData: FormData) {
       .limit(1);
 
     if (user) {
-      if (user.passwordHash) {
+      const recoveryPurpose = passwordRecoveryEmailPurposeForUser(user);
+
+      if (recoveryPurpose === "password_reset") {
         await sendPasswordResetEmail({
           userId: user.id,
           email: user.email,
           name: user.name
         });
-      } else if (!user.emailVerifiedAt) {
+      } else {
         await sendAccountSetupEmail({
           userId: user.id,
           email: user.email,
@@ -386,9 +395,14 @@ export async function changePasswordAction(formData: FormData) {
   const sessionUser = await requireUser("/dashboard/settings");
   const currentPassword = String(formData.get("currentPassword") ?? "");
   const nextPassword = String(formData.get("nextPassword") ?? "");
+  const confirmPassword = String(formData.get("confirmPassword") ?? "");
 
   if (nextPassword.length < 8) {
     redirect("/dashboard/settings?error=password_length");
+  }
+
+  if (nextPassword !== confirmPassword) {
+    redirect("/dashboard/settings?error=password_match");
   }
 
   const [user] = await db

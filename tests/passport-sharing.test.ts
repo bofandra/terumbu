@@ -120,6 +120,7 @@ test("public passports ignore share token gates while private passports remain h
 
 test("passport share URLs and unlock proofs are stable", () => {
   assert.equal(publicPassportShareUrl({ publicSlug: "raka", visibility: "public" }), "https://terumbu.eco/passport/raka");
+  assert.equal(publicPassportShareUrl({ origin: "http://localhost:3000", publicSlug: "raka", visibility: "public" }), "http://localhost:3000/passport/raka");
   assert.equal(publicPassportShareUrl({ publicSlug: "raka", visibility: "link", shareToken: "abc 123" }), "https://terumbu.eco/passport/raka?token=abc%20123");
   assert.equal(passportShareAccessProof("raka", "token", "hash"), passportShareAccessProof("raka", "token", "hash"));
   assert.notEqual(passportShareAccessProof("raka", "token", "hash"), passportShareAccessProof("raka", "other", "hash"));

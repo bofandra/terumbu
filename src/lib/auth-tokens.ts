@@ -44,6 +44,10 @@ export function authTokenExpiresAt(purpose: AuthTokenPurpose, now = new Date()) 
   return new Date(now.getTime() + tokenTtlMs[purpose]);
 }
 
+export function passwordRecoveryEmailPurposeForUser(input: { passwordHash: string | null | undefined }) {
+  return input.passwordHash ? "password_reset" : "account_setup";
+}
+
 export function authTokenIdentifier(purpose: AuthTokenPurpose, userId: string, email: string) {
   return `auth:${purpose}:${userId}:${hashAuthEmail(email)}`;
 }

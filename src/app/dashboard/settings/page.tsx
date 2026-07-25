@@ -19,6 +19,14 @@ type SettingsPageProps = {
   }>;
 };
 
+function RequiredMark() {
+  return (
+    <span className="font-bold text-coral-700" aria-hidden="true">
+      *
+    </span>
+  );
+}
+
 export default async function SettingsPage({ searchParams }: SettingsPageProps) {
   const params = await searchParams;
   const sessionUser = await requireUser("/dashboard/settings");
@@ -67,11 +75,15 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
           <h2 className="text-xl font-bold tracking-normal text-ocean-900">Profile</h2>
           <div className="mt-5 grid gap-4">
             <label className="grid gap-2 text-sm font-semibold text-ocean-900">
-              Name
+              <span>
+                Name <RequiredMark />
+              </span>
               <input name="name" defaultValue={account?.name ?? ""} className="rounded-xl border border-ocean-900/14 px-4 py-3 outline-none focus:border-coral-500" required />
             </label>
             <label className="grid gap-2 text-sm font-semibold text-ocean-900">
-              Display name
+              <span>
+                Display name <RequiredMark />
+              </span>
               <input name="displayName" defaultValue={account?.displayName ?? ""} className="rounded-xl border border-ocean-900/14 px-4 py-3 outline-none focus:border-coral-500" required />
             </label>
             <label className="grid gap-2 text-sm font-semibold text-ocean-900">
@@ -104,12 +116,22 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
           <h2 className="text-xl font-bold tracking-normal text-ocean-900">Password</h2>
           <div className="mt-5 grid gap-4">
             <label className="grid gap-2 text-sm font-semibold text-ocean-900">
-              Current password
+              <span>
+                Current password <RequiredMark />
+              </span>
               <input name="currentPassword" type="password" className="rounded-xl border border-ocean-900/14 px-4 py-3 outline-none focus:border-coral-500" required />
             </label>
             <label className="grid gap-2 text-sm font-semibold text-ocean-900">
-              New password
+              <span>
+                New password <RequiredMark />
+              </span>
               <input name="nextPassword" type="password" minLength={8} className="rounded-xl border border-ocean-900/14 px-4 py-3 outline-none focus:border-coral-500" required />
+            </label>
+            <label className="grid gap-2 text-sm font-semibold text-ocean-900">
+              <span>
+                Confirm new password <RequiredMark />
+              </span>
+              <input name="confirmPassword" type="password" minLength={8} className="rounded-xl border border-ocean-900/14 px-4 py-3 outline-none focus:border-coral-500" required />
             </label>
           </div>
           <Button type="submit" tone="secondary" className="mt-6">
