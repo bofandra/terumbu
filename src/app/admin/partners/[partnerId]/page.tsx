@@ -149,7 +149,7 @@ export default async function AdminPartnerDetailPage({ params, searchParams }: A
             <AdminStatusBadge value={partner.type} />
           </div>
         </div>
-        <form action={updateOrganizationAction} className="grid gap-4 p-4">
+        <form action={updateOrganizationAction} encType="multipart/form-data" className="grid gap-4 p-4">
           <input type="hidden" name="returnTo" value={returnTo} />
           <input type="hidden" name="organizationId" value={partner.id} />
           <div className="grid gap-3 lg:grid-cols-2">

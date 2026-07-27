@@ -136,7 +136,7 @@ export default async function AdminCampaignNewPage({ searchParams }: AdminCampai
           </div>
           <Plus className="size-5 text-coral-700" aria-hidden="true" />
         </div>
-        <form action={createAdminCampaignAction} className="grid gap-4 p-4">
+        <form action={createAdminCampaignAction} encType="multipart/form-data" className="grid gap-4 p-4">
           <input type="hidden" name="errorReturnTo" value="/admin/campaigns/new" />
           <input type="hidden" name="savedReturnTo" value="/admin/campaigns" />
           <div className="grid gap-3 lg:grid-cols-4">

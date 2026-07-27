@@ -407,7 +407,7 @@ export default async function AdminAcademyCoursePage({ params, searchParams }: A
           ) : null}
         </div>
 
-        <form action={updateAcademyCourseAction} className="grid gap-4 p-4">
+        <form action={updateAcademyCourseAction} encType="multipart/form-data" className="grid gap-4 p-4">
           <input type="hidden" name="courseId" value={course.id} />
           <div className="grid gap-3 lg:grid-cols-3">
             <Field label="Title" className="lg:col-span-2">

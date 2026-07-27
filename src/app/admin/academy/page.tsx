@@ -129,7 +129,7 @@ export default async function AdminAcademyPage({ searchParams }: AdminAcademyPag
       </section>
 
       <section className="grid gap-4 xl:grid-cols-[0.8fr_1.2fr]">
-        <form action={createAcademyCourseAction} className={`${adminPanelClassName} p-4`}>
+        <form action={createAcademyCourseAction} encType="multipart/form-data" className={`${adminPanelClassName} p-4`}>
           <div className="flex items-start justify-between gap-3">
             <div>
               <h2 className="text-xl font-bold tracking-normal text-ocean-900">Create course</h2>

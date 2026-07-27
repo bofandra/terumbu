@@ -1,6 +1,6 @@
 import { Buffer } from "node:buffer";
 
-const MAX_DATABASE_IMAGE_BYTES = 1_500_000;
+export const MAX_DATABASE_IMAGE_BYTES = 1_500_000;
 const databaseImageTypes = new Set(["image/jpeg", "image/png", "image/webp", "image/gif"]);
 
 export function getEvidenceStorageProvider() {

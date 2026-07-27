@@ -99,7 +99,7 @@ export default async function AdminCorporatePage({ searchParams }: AdminCorporat
           { id: "access", label: "Access", description: "Assign existing users", badge: data.accounts.length.toLocaleString("id-ID") }
         ]}
       >
-        <form action={createCorporateWorkspaceAction} className="grid gap-4">
+        <form action={createCorporateWorkspaceAction} encType="multipart/form-data" className="grid gap-4">
           <h2 className="text-xl font-bold tracking-normal text-ocean-900">Create or update workspace</h2>
           <p className="mt-1 text-sm font-semibold leading-6 text-ocean-900/58">
             This creates the corporate account and first reporting program. No real payment gateway is used in this phase.

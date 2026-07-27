@@ -74,7 +74,7 @@ export default async function AdminPartnerNewPage({ searchParams }: AdminPartner
           </div>
           <Plus className="size-5 text-coral-700" aria-hidden="true" />
         </div>
-        <form action={createOrganizationAction} className="grid gap-4 p-4">
+        <form action={createOrganizationAction} encType="multipart/form-data" className="grid gap-4 p-4">
           <input type="hidden" name="errorReturnTo" value="/admin/partners/new" />
           <input type="hidden" name="savedReturnTo" value="/admin/partners" />
           <div className="grid gap-3 lg:grid-cols-4">

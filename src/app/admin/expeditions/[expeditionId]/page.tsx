@@ -305,7 +305,7 @@ export default async function AdminExpeditionDetailPage({ params, searchParams }
             <ArrowUpRight className="size-4" aria-hidden="true" />
           </Link>
         </div>
-        <form action={updateExpeditionAction} className="grid gap-4 p-4">
+        <form action={updateExpeditionAction} encType="multipart/form-data" className="grid gap-4 p-4">
           <input type="hidden" name="returnTo" value={returnTo} />
           <input type="hidden" name="expeditionId" value={expedition.id} />
           <div className="grid gap-3 lg:grid-cols-2">

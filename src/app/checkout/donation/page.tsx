@@ -71,7 +71,7 @@ export default async function DonationCheckoutPage({ searchParams }: DonationChe
             {errorMessage}
           </p>
         ) : null}
-        <form action={createDonationAction} className="mt-6 grid gap-4">
+        <form action={createDonationAction} encType="multipart/form-data" className="mt-6 grid gap-4">
           <input type="hidden" name="intent" value={contributionIntent} />
           <input type="hidden" name="idempotencyKey" value={idempotencyKey} />
           {contributionIntent !== "one-time" ? (

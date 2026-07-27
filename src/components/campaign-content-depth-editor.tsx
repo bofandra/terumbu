@@ -143,7 +143,7 @@ function MediaForm({
   returnTo: string;
 }) {
   return (
-    <form action={upsertCampaignMediaItemAction} className="grid gap-3 rounded-lg border border-ocean-900/10 bg-sand-50 p-4">
+    <form action={upsertCampaignMediaItemAction} encType="multipart/form-data" className="grid gap-3 rounded-lg border border-ocean-900/10 bg-sand-50 p-4">
       <input type="hidden" name="returnTo" value={returnTo} />
       <input type="hidden" name="campaignId" value={campaign.id} />
       {item ? <input type="hidden" name="mediaItemId" value={item.id} /> : null}
@@ -295,7 +295,7 @@ function TeamForm({
   returnTo: string;
 }) {
   return (
-    <form action={upsertOrganizationTeamMemberAction} className="grid gap-3 rounded-lg border border-ocean-900/10 bg-sand-50 p-4">
+    <form action={upsertOrganizationTeamMemberAction} encType="multipart/form-data" className="grid gap-3 rounded-lg border border-ocean-900/10 bg-sand-50 p-4">
       <input type="hidden" name="returnTo" value={returnTo} />
       <input type="hidden" name="organizationId" value={campaign.organizationId} />
       {item ? <input type="hidden" name="teamMemberId" value={item.id} /> : null}

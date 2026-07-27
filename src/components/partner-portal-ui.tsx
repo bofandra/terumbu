@@ -313,7 +313,7 @@ export function CampaignCreateForm({ organizations, canCreateCampaign }: { organ
   const canSubmit = hasOrganizations && canCreateCampaign;
 
   return (
-    <form action={createPartnerCampaignAction} data-testid="partner-create-campaign-form" className="rounded-lg border border-ocean-900/10 bg-white p-5 shadow-soft">
+    <form action={createPartnerCampaignAction} encType="multipart/form-data" data-testid="partner-create-campaign-form" className="rounded-lg border border-ocean-900/10 bg-white p-5 shadow-soft">
       <input type="hidden" name="redirectTo" value="/partner/campaigns/new" />
       <div className="flex items-center justify-between gap-3">
         <div>
@@ -848,7 +848,7 @@ export function CampaignList({
                       <Pencil className="size-4" aria-hidden="true" />
                       Edit campaign
                     </summary>
-                    <form action={updatePartnerCampaignAction} className="grid gap-4 border-t border-ocean-900/10 p-4">
+                    <form action={updatePartnerCampaignAction} encType="multipart/form-data" className="grid gap-4 border-t border-ocean-900/10 p-4">
                       <input type="hidden" name="campaignId" value={campaign.id} />
                       <input type="hidden" name="redirectTo" value="/partner/campaigns" />
                       <CampaignFields campaign={campaign} organizations={organizations} />
@@ -938,7 +938,7 @@ export function CampaignActivityForm({
   const canSubmit = hasCampaigns && canCreateActivity;
 
   return (
-    <form action={createCampaignActivityAction} data-testid="partner-activity-form" className="rounded-lg border border-ocean-900/10 bg-white p-5 shadow-soft">
+    <form action={createCampaignActivityAction} encType="multipart/form-data" data-testid="partner-activity-form" className="rounded-lg border border-ocean-900/10 bg-white p-5 shadow-soft">
       <input type="hidden" name="redirectTo" value="/partner/activity" />
       <div className="flex items-center justify-between gap-3">
         <div>

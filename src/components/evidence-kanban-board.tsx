@@ -275,7 +275,7 @@ export function EvidenceKanbanBoard({
                               ) : null}
 
                               {!reviewAction && revisionAction && evidenceCanBeRevised(evidence.verificationStatus) ? (
-                                <form action={revisionAction} className="mt-3 grid gap-2 rounded-lg bg-sand-50 p-3">
+                                <form action={revisionAction} encType="multipart/form-data" className="mt-3 grid gap-2 rounded-lg bg-sand-50 p-3">
                                   <input type="hidden" name="evidenceId" value={evidence.id} />
                                   <input type="hidden" name="redirectTo" value={returnTo} />
                                   <label className="grid gap-1 text-xs font-bold uppercase tracking-normal text-ocean-900/50">

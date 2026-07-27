@@ -87,7 +87,7 @@ export default async function AdminExpeditionNewPage({ searchParams }: AdminExpe
           </div>
           <Plus className="size-5 text-coral-700" aria-hidden="true" />
         </div>
-        <form action={createExpeditionAction} className="grid gap-4 p-4">
+        <form action={createExpeditionAction} encType="multipart/form-data" className="grid gap-4 p-4">
           <input type="hidden" name="errorReturnTo" value="/admin/expeditions/new" />
           <input type="hidden" name="savedReturnTo" value="/admin/expeditions" />
           <div className="grid gap-3 lg:grid-cols-4">

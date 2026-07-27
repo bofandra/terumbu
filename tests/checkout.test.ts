@@ -17,7 +17,19 @@ import {
   parseParticipantCount,
   splitParticipantNames
 } from "../src/lib/checkout";
-import { readUploadedImageAsDataUrl } from "../src/lib/storage";
+import nextConfig from "../next.config";
+import { MAX_DATABASE_IMAGE_BYTES, readUploadedImageAsDataUrl } from "../src/lib/storage";
+
+function sizeLimitBytes(value: unknown) {
+  if (typeof value === "number") {
+    return value;
+  }
+
+  const [, amount = "0", unit = "b"] = String(value ?? "").match(/^(\d+(?:\.\d+)?)\s*(b|kb|mb|gb)$/i) ?? [];
+  const multiplier = unit.toLowerCase() === "gb" ? 1_000_000_000 : unit.toLowerCase() === "mb" ? 1_000_000 : unit.toLowerCase() === "kb" ? 1_000 : 1;
+
+  return Number(amount) * multiplier;
+}
 
 test("donation amount parsing keeps numeric currency input", () => {
   assert.equal(parseDonationAmount("Rp100.000"), 100000);
@@ -66,10 +78,17 @@ test("manual donation checkout requires an uploaded payment proof", async () => 
 
 test("manual donation checkout rejects unsupported proof uploads", async () => {
   const wrongType = await readUploadedImageAsDataUrl(new File(["not an image"], "proof.txt", { type: "text/plain" }));
-  const tooLarge = await readUploadedImageAsDataUrl(new File([new Uint8Array(1_500_001)], "proof.png", { type: "image/png" }));
+  const tooLarge = await readUploadedImageAsDataUrl(new File([new Uint8Array(MAX_DATABASE_IMAGE_BYTES + 1)], "proof.png", { type: "image/png" }));
 
   assert.equal(paymentProofUploadError(wrongType), "type");
   assert.equal(paymentProofUploadError(tooLarge), "size");
+});
+
+test("manual donation checkout accepts proof upload at the storage limit", async () => {
+  const upload = await readUploadedImageAsDataUrl(new File([new Uint8Array(MAX_DATABASE_IMAGE_BYTES)], "proof.png", { type: "image/png" }));
+
+  assert.equal(paymentProofUploadError(upload), null);
+  assert.ok(upload.dataUrl?.startsWith("data:image/png;base64,"));
 });
 
 test("manual donation checkout accepts supported image proof uploads", async () => {
@@ -77,4 +96,10 @@ test("manual donation checkout accepts supported image proof uploads", async () 
 
   assert.equal(paymentProofUploadError(upload), null);
   assert.ok(upload.dataUrl?.startsWith("data:image/png;base64,"));
+});
+
+test("server action body limit is larger than image upload storage limit", () => {
+  const configuredLimit = sizeLimitBytes(nextConfig.experimental?.serverActions?.bodySizeLimit);
+
+  assert.ok(configuredLimit > MAX_DATABASE_IMAGE_BYTES);
 });

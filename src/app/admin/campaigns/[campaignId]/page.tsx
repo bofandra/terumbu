@@ -219,7 +219,7 @@ export default async function AdminCampaignDetailPage({ params, searchParams }: 
             <ArrowUpRight className="size-4" aria-hidden="true" />
           </Link>
         </div>
-        <form action={updateAdminCampaignAction} className="grid gap-4 p-4">
+        <form action={updateAdminCampaignAction} encType="multipart/form-data" className="grid gap-4 p-4">
           <input type="hidden" name="returnTo" value={returnTo} />
           <input type="hidden" name="campaignId" value={campaign.id} />
           <div className="grid gap-3 lg:grid-cols-4">
