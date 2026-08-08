@@ -1,12 +1,13 @@
-import { Bell, BookOpen, BookmarkX, CalendarDays, FileText, Star } from "lucide-react";
+import { Bell, BookOpen, BookmarkX, CalendarDays, Compass, FileText, Star } from "lucide-react";
 import Link from "next/link";
 
 import { CampaignCard } from "@/components/campaign-card";
+import { ExpeditionCard } from "@/components/expedition-card";
 import { Button } from "@/components/ui/button";
 import { requireUser } from "@/lib/auth";
 import { removeSavedCourseAction } from "@/lib/academy-actions";
 import { getRetentionCenterData } from "@/lib/queries";
-import { markNotificationReadAction, removeSavedCampaignAction, unfollowCampaignAction } from "@/lib/retention-actions";
+import { markNotificationReadAction, removeSavedCampaignAction, removeSavedExpeditionAction, unfollowCampaignAction } from "@/lib/retention-actions";
 import { formatCurrency } from "@/lib/utils";
 
 export const metadata = {
@@ -15,11 +16,19 @@ export const metadata = {
 
 export const dynamic = "force-dynamic";
 
+type SavedProjectsPageProps = {
+  searchParams?: Promise<{
+    saved?: string;
+    error?: string;
+  }>;
+};
+
 function formatDate(value: Date | null | undefined) {
   return value ? value.toLocaleDateString("id-ID", { dateStyle: "medium" }) : "Pending";
 }
 
-export default async function SavedProjectsPage() {
+export default async function SavedProjectsPage({ searchParams }: SavedProjectsPageProps) {
+  const params = await searchParams;
   const user = await requireUser("/dashboard/saved");
   const data = await getRetentionCenterData(user.id);
 
@@ -30,7 +39,7 @@ export default async function SavedProjectsPage() {
           <p className="text-sm font-bold uppercase tracking-[0.16em] text-coral-700">Saved Projects</p>
           <h1 className="mt-2 text-3xl font-bold tracking-normal text-ocean-900">Your return list</h1>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-ocean-900/62">
-            Projects you saved, campaigns you follow, notifications you can revisit, and monthly reports you generated.
+            Projects, expeditions, courses, campaign updates, notifications, and monthly reports you can revisit.
           </p>
         </div>
         <Link href="/campaigns" className="inline-flex min-h-11 items-center rounded-full bg-ocean-900 px-5 text-sm font-bold text-white">
@@ -38,10 +47,18 @@ export default async function SavedProjectsPage() {
         </Link>
       </header>
 
-      <section className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+      {params?.saved ? (
+        <p className="mt-5 rounded-2xl border border-kelp-500/20 bg-kelp-100 px-4 py-3 text-sm font-bold text-kelp-700">Saved items updated.</p>
+      ) : null}
+      {params?.error ? (
+        <p className="mt-5 rounded-2xl border border-coral-500/20 bg-coral-100 px-4 py-3 text-sm font-bold text-coral-700">Could not update that saved item.</p>
+      ) : null}
+
+      <section className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-6">
         {[
-          ["Saved", data.savedCampaigns.length.toLocaleString("id-ID"), Star],
+          ["Projects", data.savedCampaigns.length.toLocaleString("id-ID"), Star],
           ["Courses", data.savedCourses.length.toLocaleString("id-ID"), BookOpen],
+          ["Trips", data.savedExpeditions.length.toLocaleString("id-ID"), Compass],
           ["Following", data.followedCampaigns.length.toLocaleString("id-ID"), Bell],
           ["Unread", data.notifications.filter((notification) => notification.unread).length.toLocaleString("id-ID"), Bell],
           ["Reports", data.reports.length.toLocaleString("id-ID"), FileText]
@@ -103,6 +120,44 @@ export default async function SavedProjectsPage() {
         {data.savedCourses.length === 0 ? (
           <p className="mt-4 rounded-xl border border-dashed border-ocean-900/14 bg-sand-50 p-4 text-sm font-semibold text-ocean-900/62">
             Save courses from the Academy catalog and they will appear here.
+          </p>
+        ) : null}
+      </section>
+
+      <section className="mt-6 rounded-2xl border border-ocean-900/10 bg-white p-5 shadow-soft">
+        <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
+          <div>
+            <h2 className="flex items-center gap-2 text-2xl font-bold tracking-normal text-ocean-900">
+              <Compass size={22} aria-hidden="true" className="text-coral-500" />
+              Saved expeditions
+            </h2>
+            <p className="mt-1 text-sm font-semibold text-ocean-900/58">
+              {data.savedExpeditions.length.toLocaleString("id-ID")} trip{data.savedExpeditions.length === 1 ? "" : "s"} ready to revisit.
+            </p>
+          </div>
+          <Link href="/dashboard/expeditions" className="text-sm font-bold text-coral-700 hover:text-coral-500">
+            Expedition dashboard
+          </Link>
+        </div>
+
+        <div className="mt-5 grid gap-5 xl:grid-cols-2">
+          {data.savedExpeditions.map((expedition) => (
+            <div key={expedition.slug} className="grid gap-3">
+              <ExpeditionCard expedition={expedition} />
+              <form action={removeSavedExpeditionAction}>
+                <input type="hidden" name="expeditionSlug" value={expedition.slug} />
+                <input type="hidden" name="next" value="/dashboard/saved" />
+                <Button type="submit" tone="light" className="w-full">
+                  Remove Saved Trip
+                </Button>
+              </form>
+            </div>
+          ))}
+        </div>
+
+        {data.savedExpeditions.length === 0 ? (
+          <p className="mt-4 rounded-xl border border-dashed border-ocean-900/14 bg-sand-50 p-4 text-sm font-semibold text-ocean-900/62">
+            Save expeditions from a trip detail page and they will appear here.
           </p>
         ) : null}
       </section>

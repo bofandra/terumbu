@@ -61,6 +61,7 @@ import {
   userNotifications,
   userSavedCampaigns,
   userSavedCourses,
+  userSavedExpeditions,
   userRoles,
   users
 } from "@/db/schema";
@@ -118,6 +119,7 @@ import {
   passportShareAccessProof,
   passportShareAccessStatus
 } from "@/lib/passport-sharing";
+import { normalizeSavedExpeditionStatus } from "@/lib/saved-expeditions";
 import { corporateCapabilitiesForPermission } from "@/lib/corporate-permissions";
 import { corporateReportFormatLabel, corporateReportTypeLabel, scheduledReportIsDue } from "@/lib/corporate-report-lifecycle";
 import { evidenceReviewActionLabel, evidenceReviewStage, evidenceStatusLabel } from "@/lib/evidence-review-workflow";
@@ -331,6 +333,26 @@ export async function getCampaignRetentionState(userId: string, campaignSlug: st
   };
 }
 
+export async function getExpeditionSaveState(userId: string, expeditionSlug: string) {
+  const [expedition] = await db.select({ id: expeditions.id }).from(expeditions).where(eq(expeditions.slug, expeditionSlug)).limit(1);
+
+  if (!expedition) {
+    return {
+      isSaved: false
+    };
+  }
+
+  const [saved] = await db
+    .select({ status: userSavedExpeditions.status })
+    .from(userSavedExpeditions)
+    .where(and(eq(userSavedExpeditions.userId, userId), eq(userSavedExpeditions.expeditionId, expedition.id)))
+    .limit(1);
+
+  return {
+    isSaved: normalizeSavedExpeditionStatus(saved?.status) === "active"
+  };
+}
+
 export async function getNotificationPreferences(userId: string) {
   const [preferences] = await db
     .select({
@@ -358,7 +380,7 @@ export async function getUnreadNotificationCount(userId: string) {
 }
 
 export async function getRetentionCenterData(userId: string) {
-  const [savedRows, savedCourseRows, followedRows, notificationRows, reportRows, preferences] = await Promise.all([
+  const [savedRows, savedCourseRows, savedExpeditionRows, followedRows, notificationRows, reportRows, preferences] = await Promise.all([
     db
       .select({
         slug: campaigns.slug,
@@ -396,6 +418,21 @@ export async function getRetentionCenterData(userId: string) {
       .innerJoin(courses, eq(userSavedCourses.courseId, courses.id))
       .where(and(eq(userSavedCourses.userId, userId), eq(userSavedCourses.status, "active"), eq(courses.status, "published")))
       .orderBy(desc(userSavedCourses.savedAt)),
+    db
+      .select({
+        slug: expeditions.slug,
+        title: expeditions.title,
+        region: expeditions.region,
+        durationDays: expeditions.durationDays,
+        basePrice: expeditions.basePrice,
+        imageUrl: expeditions.imageUrl,
+        summary: expeditions.summary,
+        savedAt: userSavedExpeditions.savedAt
+      })
+      .from(userSavedExpeditions)
+      .innerJoin(expeditions, eq(userSavedExpeditions.expeditionId, expeditions.id))
+      .where(and(eq(userSavedExpeditions.userId, userId), eq(userSavedExpeditions.status, "active")))
+      .orderBy(desc(userSavedExpeditions.savedAt)),
     db
       .select({
         slug: campaigns.slug,
@@ -462,6 +499,10 @@ export async function getRetentionCenterData(userId: string) {
       savedAt: row.savedAt
     })),
     savedCourses: savedCourseRows,
+    savedExpeditions: savedExpeditionRows.map((row) => ({
+      ...toExpeditionCard(row, "Saved trip"),
+      savedAt: row.savedAt
+    })),
     followedCampaigns: Array.from(followedBySlug.values()),
     notifications: notificationRows.map((notification) => ({
       ...notification,
@@ -2689,6 +2730,7 @@ export async function getDashboardData(userId: string) {
     passportPreview,
     savedCampaignRows,
     savedCourseRows,
+    savedExpeditionRows,
     followedUpdateRows,
     notificationPreferenceRows,
     monthlyImpactReportRows
@@ -2972,6 +3014,22 @@ export async function getDashboardData(userId: string) {
       .innerJoin(courses, eq(userSavedCourses.courseId, courses.id))
       .where(and(eq(userSavedCourses.userId, userId), eq(userSavedCourses.status, "active"), eq(courses.status, "published")))
       .orderBy(desc(userSavedCourses.savedAt))
+      .limit(6),
+    db
+      .select({
+        slug: expeditions.slug,
+        title: expeditions.title,
+        region: expeditions.region,
+        durationDays: expeditions.durationDays,
+        basePrice: expeditions.basePrice,
+        imageUrl: expeditions.imageUrl,
+        summary: expeditions.summary,
+        savedAt: userSavedExpeditions.savedAt
+      })
+      .from(userSavedExpeditions)
+      .innerJoin(expeditions, eq(userSavedExpeditions.expeditionId, expeditions.id))
+      .where(and(eq(userSavedExpeditions.userId, userId), eq(userSavedExpeditions.status, "active")))
+      .orderBy(desc(userSavedExpeditions.savedAt))
       .limit(6),
     db
       .select({
@@ -3710,6 +3768,10 @@ export async function getDashboardData(userId: string) {
     unreadNotificationCount: notifications.filter((notification) => notification.unread).length,
     monthlyReport,
     savedCampaigns: savedCampaignRows,
+    savedExpeditions: savedExpeditionRows.map((row) => ({
+      ...toExpeditionCard(row, "Saved trip"),
+      savedAt: row.savedAt
+    })),
     followedUpdates: followedUpdateRows,
     notificationPreferences: preferences,
     profileCompleteness,

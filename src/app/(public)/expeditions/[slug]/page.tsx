@@ -28,7 +28,8 @@ import { ExpeditionCard } from "@/components/expedition-card";
 import { Button, ButtonLink } from "@/components/ui/button";
 import { submitExpeditionInterestRequestAction } from "@/lib/expedition-interest-actions";
 import { ProgressMeter } from "@/components/ui/progress-meter";
-import { getExpeditionDetail } from "@/lib/queries";
+import { getSessionUser } from "@/lib/auth";
+import { getExpeditionDetail, getExpeditionSaveState } from "@/lib/queries";
 import { cn, formatCurrency } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
@@ -59,13 +60,14 @@ export default async function ExpeditionDetailPage({
   searchParams?: Promise<{ saved?: string; error?: string }>;
 }) {
   const { slug } = await params;
-  const query = await searchParams;
-  const expedition = await getExpeditionDetail(slug);
+  const [query, expedition, sessionUser] = await Promise.all([searchParams, getExpeditionDetail(slug), getSessionUser()]);
 
   if (!expedition) {
     notFound();
   }
 
+  const expeditionPath = `/expeditions/${expedition.slug}`;
+  const saveState = sessionUser ? await getExpeditionSaveState(sessionUser.id, expedition.slug) : null;
   const bookingProps = {
     slug: expedition.slug,
     price: expedition.price,
@@ -74,18 +76,25 @@ export default async function ExpeditionDetailPage({
     departures: expedition.departures,
     conservationContribution: expedition.impact.conservationContribution,
     trustIndicators: expedition.bookingTrustIndicators,
-    questionHref: "#ask-question"
+    questionHref: "#ask-question",
+    isAuthenticated: Boolean(sessionUser),
+    isSaved: saveState?.isSaved ?? false,
+    expeditionPath
   };
   const primaryDeparture = expedition.primaryDeparture;
   const routeSite = expedition.route.sites[0];
-  const requestNextPath = `/expeditions/${expedition.slug}#dates`;
-  const questionNextPath = `/expeditions/${expedition.slug}#ask-question`;
-  const savedBannerMessage = query?.saved === "interest-question"
+  const requestNextPath = `${expeditionPath}#dates`;
+  const questionNextPath = `${expeditionPath}#ask-question`;
+  const savedBannerMessage = query?.saved === "expedition"
+    ? "Your saved expeditions were updated."
+    : query?.saved === "interest-question"
     ? "Thanks, your question was sent to the expedition team."
     : query?.saved?.startsWith("interest")
       ? "Thanks, your expedition request was captured. Our team will follow up by email."
       : null;
-  const errorBannerMessage = query?.error === "interest-question-invalid"
+  const errorBannerMessage = query?.error === "expedition"
+    ? "We could not update that saved expedition."
+    : query?.error === "interest-question-invalid"
     ? "Add your question so the expedition team knows what to answer."
     : query?.error?.startsWith("interest")
       ? "We could not save that expedition request. Add your name, email, and try again."

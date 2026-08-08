@@ -4,6 +4,7 @@ import { Heart, HelpCircle, Minus, Plus, ShieldCheck, X } from "lucide-react";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 
+import { removeSavedExpeditionAction, saveExpeditionAction } from "@/lib/retention-actions";
 import { cn, formatCurrency } from "@/lib/utils";
 
 type Departure = {
@@ -29,6 +30,9 @@ type ExpeditionBookingCardProps = {
   anchorId?: string;
   questionHref?: string;
   onQuestionClick?: () => void;
+  isAuthenticated?: boolean;
+  isSaved?: boolean;
+  expeditionPath?: string;
 };
 
 function participantTotal(adults: number, students: number, children: number) {
@@ -90,6 +94,7 @@ function Stepper({
 }
 
 export function ExpeditionBookingCard({
+  slug,
   price,
   equipmentRental,
   platformFee,
@@ -99,7 +104,10 @@ export function ExpeditionBookingCard({
   compact = false,
   anchorId,
   questionHref,
-  onQuestionClick
+  onQuestionClick,
+  isAuthenticated = false,
+  isSaved = false,
+  expeditionPath
 }: ExpeditionBookingCardProps) {
   const firstBookableDeparture = departures.find((departure) => departure.status === "open" && departure.availableSeats > 0) ?? departures[0] ?? null;
   const [selectedDepartureId, setSelectedDepartureId] = useState(firstBookableDeparture?.id ?? null);
@@ -224,10 +232,28 @@ export function ExpeditionBookingCard({
           <HelpCircle size={16} aria-hidden="true" />
           Ask a Question
         </Link>
-        <button type="button" className="flex min-h-10 items-center justify-center gap-2 rounded-full text-sm font-bold text-coral-700 hover:bg-coral-100">
-          <Heart size={16} aria-hidden="true" />
-          Save
-        </button>
+        {isAuthenticated ? (
+          <form action={isSaved ? removeSavedExpeditionAction : saveExpeditionAction}>
+            <input type="hidden" name="expeditionSlug" value={slug} />
+            <input type="hidden" name="next" value={expeditionPath ?? `/expeditions/${slug}`} />
+            <button
+              type="submit"
+              aria-label={isSaved ? "Remove saved expedition" : "Save expedition"}
+              className="flex min-h-10 w-full items-center justify-center gap-2 rounded-full text-sm font-bold text-coral-700 hover:bg-coral-100"
+            >
+              <Heart size={16} aria-hidden="true" fill={isSaved ? "currentColor" : "none"} />
+              {isSaved ? "Saved" : "Save"}
+            </button>
+          </form>
+        ) : (
+          <Link
+            href={`/login?next=${encodeURIComponent(expeditionPath ?? `/expeditions/${slug}`)}`}
+            className="flex min-h-10 items-center justify-center gap-2 rounded-full text-sm font-bold text-coral-700 hover:bg-coral-100"
+          >
+            <Heart size={16} aria-hidden="true" />
+            Sign in to Save
+          </Link>
+        )}
       </div>
 
       <div className="mt-4 grid grid-cols-2 gap-2 border-t border-ocean-900/10 pt-4 text-xs font-bold text-ocean-900/64">

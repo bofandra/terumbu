@@ -579,6 +579,19 @@ export const expeditions = pgTable("expeditions", {
   slugIdx: uniqueIndex("expeditions_slug_idx").on(table.slug)
 }));
 
+export const userSavedExpeditions = pgTable("user_saved_expeditions", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  expeditionId: uuid("expedition_id").notNull().references(() => expeditions.id, { onDelete: "cascade" }),
+  status: varchar("status", { length: 80 }).default("active").notNull(),
+  savedAt: timestamp("saved_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull()
+}, (table) => ({
+  userIdx: index("user_saved_expeditions_user_idx").on(table.userId),
+  expeditionIdx: index("user_saved_expeditions_expedition_idx").on(table.expeditionId),
+  userExpeditionIdx: uniqueIndex("user_saved_expeditions_unique_idx").on(table.userId, table.expeditionId)
+}));
+
 export const expeditionDepartures = pgTable("expedition_departures", {
   id: uuid("id").defaultRandom().primaryKey(),
   expeditionId: uuid("expedition_id").notNull().references(() => expeditions.id, { onDelete: "cascade" }),

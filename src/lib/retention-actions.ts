@@ -11,12 +11,14 @@ import {
   campaigns,
   courseEnrollments,
   donations,
+  expeditions,
   monthlyImpactReports,
   notificationPreferences,
   projectEvidence,
   sponsoredEcosystems,
   userNotifications,
   userSavedCampaigns,
+  userSavedExpeditions,
   users
 } from "@/db/schema";
 import { requireRole, requireUser, safeRedirectPath } from "@/lib/auth";
@@ -25,6 +27,15 @@ import { sendTransactionalEmail } from "@/lib/email";
 
 function returnPath(formData: FormData, fallback: string) {
   return safeRedirectPath(formData.get("next") ?? fallback);
+}
+
+function pathWithQuery(path: string, query: string) {
+  const hashIndex = path.indexOf("#");
+  const basePath = hashIndex >= 0 ? path.slice(0, hashIndex) : path;
+  const hash = hashIndex >= 0 ? path.slice(hashIndex) : "";
+  const separator = basePath.includes("?") ? "&" : "?";
+
+  return `${basePath}${separator}${query}${hash}`;
 }
 
 function monthKey(value: Date) {
@@ -46,6 +57,12 @@ async function campaignBySlug(slug: string) {
   const [campaign] = await db.select({ id: campaigns.id, title: campaigns.title, slug: campaigns.slug }).from(campaigns).where(eq(campaigns.slug, slug)).limit(1);
 
   return campaign ?? null;
+}
+
+async function expeditionBySlug(slug: string) {
+  const [expedition] = await db.select({ id: expeditions.id, title: expeditions.title, slug: expeditions.slug }).from(expeditions).where(eq(expeditions.slug, slug)).limit(1);
+
+  return expedition ?? null;
 }
 
 async function createNotification(input: {
@@ -152,6 +169,60 @@ export async function removeSavedCampaignAction(formData: FormData) {
     .where(and(eq(userSavedCampaigns.userId, user.id), eq(userSavedCampaigns.campaignId, campaign.id)));
 
   redirect(`${next}?saved=project`);
+}
+
+export async function saveExpeditionAction(formData: FormData) {
+  const slug = String(formData.get("expeditionSlug") ?? "");
+  const next = returnPath(formData, slug ? `/expeditions/${slug}` : "/expeditions");
+  const user = await requireUser(next);
+  const expedition = await expeditionBySlug(slug);
+
+  if (!expedition) {
+    redirect(pathWithQuery(next, "error=expedition"));
+  }
+
+  const now = new Date();
+
+  await db
+    .insert(userSavedExpeditions)
+    .values({
+      userId: user.id,
+      expeditionId: expedition.id,
+      status: "active",
+      savedAt: now,
+      updatedAt: now
+    })
+    .onConflictDoUpdate({
+      target: [userSavedExpeditions.userId, userSavedExpeditions.expeditionId],
+      set: {
+        status: "active",
+        savedAt: now,
+        updatedAt: now
+      }
+    });
+
+  redirect(pathWithQuery(next, "saved=expedition"));
+}
+
+export async function removeSavedExpeditionAction(formData: FormData) {
+  const slug = String(formData.get("expeditionSlug") ?? "");
+  const next = returnPath(formData, slug ? `/expeditions/${slug}` : "/dashboard/saved");
+  const user = await requireUser(next);
+  const expedition = await expeditionBySlug(slug);
+
+  if (!expedition) {
+    redirect(pathWithQuery(next, "error=expedition"));
+  }
+
+  await db
+    .update(userSavedExpeditions)
+    .set({
+      status: "removed",
+      updatedAt: new Date()
+    })
+    .where(and(eq(userSavedExpeditions.userId, user.id), eq(userSavedExpeditions.expeditionId, expedition.id)));
+
+  redirect(pathWithQuery(next, "saved=expedition"));
 }
 
 export async function followCampaignAction(formData: FormData) {

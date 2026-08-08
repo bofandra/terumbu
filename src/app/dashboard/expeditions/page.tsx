@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { CalendarDays, RefreshCw, RotateCcw, Star } from "lucide-react";
+import { BookmarkX, CalendarDays, Heart, RefreshCw, RotateCcw, Star } from "lucide-react";
 
 import { requestExpeditionRefundAction, retryExpeditionPaymentAction } from "@/lib/billing-actions";
 import { submitExpeditionReviewAction } from "@/lib/expedition-review-actions";
@@ -7,6 +7,7 @@ import { expeditionReviewStatusLabel, normalizeExpeditionReviewStatus, type Expe
 import { Button, ButtonLink } from "@/components/ui/button";
 import { requireUser } from "@/lib/auth";
 import { getBillingData, getDashboardData } from "@/lib/queries";
+import { removeSavedExpeditionAction } from "@/lib/retention-actions";
 import { formatCurrency } from "@/lib/utils";
 
 export const metadata = {
@@ -79,7 +80,11 @@ export default async function DashboardExpeditionsPage({ searchParams }: Dashboa
 
       {params?.saved ? (
         <p className="mt-5 rounded-2xl border border-kelp-500/20 bg-kelp-100 px-4 py-3 text-sm font-bold text-kelp-700">
-          {params.saved === "review" ? "Thanks, your expedition review was submitted for moderation." : "Booking billing changes saved."}
+          {params.saved === "review"
+            ? "Thanks, your expedition review was submitted for moderation."
+            : params.saved === "expedition"
+              ? "Saved expeditions updated."
+              : "Booking billing changes saved."}
         </p>
       ) : null}
       {params?.error ? (
@@ -88,9 +93,66 @@ export default async function DashboardExpeditionsPage({ searchParams }: Dashboa
             ? "Reviews are available after expedition completion. Add a rating and at least 10 characters."
             : params.error === "availability"
               ? "That departure no longer has enough available seats for retry payment."
-              : "Could not complete that booking billing action."}
+              : params.error === "expedition"
+                ? "Could not update that saved expedition."
+                : "Could not complete that booking billing action."}
         </p>
       ) : null}
+
+      <section className="mt-6 rounded-2xl border border-ocean-900/10 bg-white p-5 shadow-soft">
+        <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
+          <div>
+            <h2 className="flex items-center gap-2 text-2xl font-bold tracking-normal text-ocean-900">
+              <Heart size={22} aria-hidden="true" className="text-coral-500" />
+              Saved trips
+            </h2>
+            <p className="mt-1 text-sm font-semibold text-ocean-900/58">
+              {data.savedExpeditions.length.toLocaleString("id-ID")} saved expedition{data.savedExpeditions.length === 1 ? "" : "s"}.
+            </p>
+          </div>
+          <Link href="/dashboard/saved" className="text-sm font-bold text-coral-700 hover:text-coral-500">
+            View all saved
+          </Link>
+        </div>
+
+        <div className="mt-4 grid gap-3 md:grid-cols-2">
+          {data.savedExpeditions.map((expedition) => (
+            <article key={expedition.slug} className="rounded-xl border border-ocean-900/10 bg-sand-50 p-4">
+              <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-start">
+                <div>
+                  <Link href={`/expeditions/${expedition.slug}`} className="font-bold text-ocean-900 hover:text-coral-700">
+                    {expedition.title}
+                  </Link>
+                  <p className="mt-1 text-sm text-ocean-900/58">
+                    {expedition.region} · {expedition.duration} · from {formatCurrency(expedition.price)}
+                  </p>
+                  <p className="mt-2 text-xs font-semibold text-ocean-900/50">
+                    Saved {expedition.savedAt.toLocaleDateString("id-ID", { dateStyle: "medium" })}
+                  </p>
+                </div>
+                <form action={removeSavedExpeditionAction}>
+                  <input type="hidden" name="expeditionSlug" value={expedition.slug} />
+                  <input type="hidden" name="next" value="/dashboard/expeditions" />
+                  <button
+                    type="submit"
+                    aria-label="Remove saved expedition"
+                    className="inline-flex min-h-9 items-center gap-2 rounded-full border border-ocean-900/10 px-3 text-xs font-bold text-coral-700 hover:border-coral-500"
+                  >
+                    <BookmarkX size={14} aria-hidden="true" />
+                    Remove
+                  </button>
+                </form>
+              </div>
+            </article>
+          ))}
+        </div>
+
+        {data.savedExpeditions.length === 0 ? (
+          <p className="mt-4 rounded-xl border border-dashed border-ocean-900/14 bg-sand-50 p-4 text-sm font-semibold text-ocean-900/62">
+            Save expeditions from a trip page to compare them here before booking.
+          </p>
+        ) : null}
+      </section>
 
       <section className="mt-6 grid gap-4">
         {data.bookings.map((booking) => {
