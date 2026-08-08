@@ -58,14 +58,14 @@ function Stepper({
 }) {
   return (
     <div className="flex items-center justify-between gap-3">
-      <div>
+      <div className="min-w-0">
         <p className="font-bold text-ocean-900">{label}</p>
         <p className="text-xs font-semibold text-ocean-900/48">{hint}</p>
       </div>
-      <div className="flex items-center gap-3">
+      <div className="flex shrink-0 items-center gap-2">
         <button
           type="button"
-          className="flex size-9 items-center justify-center rounded-full border border-ocean-900/14 text-ocean-900 disabled:opacity-35"
+          className="flex size-8 items-center justify-center rounded-full border border-ocean-900/14 text-ocean-900 transition hover:border-coral-500 disabled:opacity-35"
           disabled={disabled || value <= 0}
           aria-label={`Decrease ${label}`}
           onClick={() => onChange(Math.max(0, value - 1))}
@@ -75,7 +75,7 @@ function Stepper({
         <span className="w-6 text-center font-bold text-ocean-900">{value}</span>
         <button
           type="button"
-          className="flex size-9 items-center justify-center rounded-full border border-ocean-900/14 text-ocean-900 disabled:opacity-35"
+          className="flex size-8 items-center justify-center rounded-full border border-ocean-900/14 text-ocean-900 transition hover:border-coral-500 disabled:opacity-35"
           disabled={disabled}
           aria-label={`Increase ${label}`}
           onClick={() => onChange(value + 1)}
@@ -101,40 +101,52 @@ export function ExpeditionBookingCard({ slug, price, equipmentRental, platformFe
   const href = checkoutHref(selectedDeparture?.id ?? null, participants);
 
   return (
-    <aside id={anchorId} className={cn("rounded-2xl border border-ocean-900/10 bg-white p-5 shadow-soft", compact ? "" : "lg:sticky lg:top-32")}>
-      <p className="text-sm text-ocean-900/62">From</p>
-      <p className="mt-1 text-3xl font-bold tracking-normal text-ocean-900">{formatCurrency(price)} <span className="text-base font-semibold text-ocean-900/58">/ person</span></p>
-      <p className="mt-2 text-sm font-semibold text-ocean-900/58">Taxes and conservation contribution included.</p>
+    <aside id={anchorId} className={cn("rounded-2xl border border-ocean-900/10 bg-white p-4 shadow-soft sm:p-5", compact ? "" : "lg:sticky lg:top-28")}>
+      <div className="border-b border-ocean-900/10 pb-4">
+        <p className="text-sm font-semibold text-ocean-900/58">From</p>
+        <p className="mt-1 text-3xl font-bold tracking-normal text-ocean-900">
+          {formatCurrency(price)}
+          <span className="block text-base font-semibold text-ocean-900/58">per person</span>
+        </p>
+        <p className="mt-2 text-sm font-semibold text-ocean-900/58">Taxes and conservation contribution included.</p>
+      </div>
 
-      <div className="mt-6">
-        <p className="font-bold text-ocean-900">1. Select Departure Date</p>
+      <div className="mt-5">
+        <div className="flex items-center justify-between gap-3">
+          <p className="font-bold text-ocean-900">1. Departure</p>
+          {selectedDeparture ? (
+            <span className={cn("rounded-full px-2.5 py-1 text-xs font-bold", selectedDeparture.availableSeats <= 4 ? "bg-coral-100 text-coral-700" : "bg-kelp-100 text-kelp-700")}>
+              {selectedDeparture.availableSeats} seats left
+            </span>
+          ) : null}
+        </div>
         <div className="mt-3 grid gap-2">
           {departures.length > 0 ? (
             departures.map((departure) => (
               <label
                 key={departure.id}
                 className={cn(
-                  "flex cursor-pointer items-center justify-between gap-3 rounded-xl border p-3 text-sm transition",
-                  selectedDepartureId === departure.id ? "border-coral-500 bg-coral-100/30" : "border-ocean-900/12 hover:border-coral-500"
+                  "grid cursor-pointer grid-cols-[auto_minmax(0,1fr)] gap-3 rounded-xl border p-3 text-sm transition",
+                  selectedDepartureId === departure.id ? "border-coral-500 bg-coral-100/35 ring-2 ring-coral-200/70" : "border-ocean-900/12 hover:border-coral-500"
                 )}
               >
-                <span className="flex items-center gap-3">
-                  <input
-                    type="radio"
-                    name="departure"
-                    value={departure.id}
-                    checked={selectedDepartureId === departure.id}
-                    onChange={() => setSelectedDepartureId(departure.id)}
-                    className="size-4 accent-coral-500"
-                  />
-                  <span>
+                <input
+                  type="radio"
+                  name="departure"
+                  value={departure.id}
+                  checked={selectedDepartureId === departure.id}
+                  onChange={() => setSelectedDepartureId(departure.id)}
+                  className="mt-1 size-4 accent-coral-500"
+                />
+                <span className="grid min-w-0 gap-2 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start">
+                  <span className="min-w-0">
                     <span className="block font-bold text-ocean-900">{departure.dateRangeLabel}</span>
                     <span className={cn("mt-1 block text-xs font-bold", departure.availableSeats <= 4 ? "text-coral-700" : "text-kelp-700")}>
                       {departure.availableSeats > 0 ? `${departure.availableSeats} places left · ${departure.statusLabel}` : "Full"}
                     </span>
                   </span>
+                  <span className="font-bold text-ocean-900 sm:text-right">{formatCurrency(price)}</span>
                 </span>
-                <span className="font-bold text-ocean-900">{formatCurrency(price)}</span>
               </label>
             ))
           ) : (
@@ -146,7 +158,7 @@ export function ExpeditionBookingCard({ slug, price, equipmentRental, platformFe
         </div>
       </div>
 
-      <div className="mt-6">
+      <div className="mt-5">
         <p className="font-bold text-ocean-900">2. Participants</p>
         <div className="mt-3 grid gap-3">
           <Stepper label="Adults" hint="16+ years" value={adults} onChange={setAdults} disabled={bookingDisabled && !selectedDeparture} />
@@ -160,7 +172,7 @@ export function ExpeditionBookingCard({ slug, price, equipmentRental, platformFe
         ) : null}
       </div>
 
-      <div className="mt-6 border-t border-ocean-900/10 pt-5">
+      <div className="mt-5 border-t border-ocean-900/10 pt-4">
         <div className="grid gap-2 text-sm">
           <div className="flex justify-between gap-3">
             <span className="text-ocean-900/62">{participants} participants x {formatCurrency(price)}</span>
@@ -182,32 +194,34 @@ export function ExpeditionBookingCard({ slug, price, equipmentRental, platformFe
       </div>
 
       {bookingDisabled ? (
-        <button type="button" disabled className="mt-6 flex min-h-12 w-full items-center justify-center rounded-full bg-ocean-900/20 px-5 text-sm font-bold text-white">
+        <button type="button" disabled className="mt-5 flex min-h-12 w-full items-center justify-center rounded-full bg-ocean-900/20 px-5 text-sm font-bold text-white">
           Select Available Date
         </button>
       ) : (
-        <Link href={href} className="mt-6 flex min-h-12 w-full items-center justify-center rounded-full bg-coral-500 px-5 text-sm font-bold text-white hover:bg-coral-700">
+        <Link href={href} className="mt-5 flex min-h-12 w-full items-center justify-center rounded-full bg-coral-500 px-5 text-sm font-bold text-white shadow-soft hover:bg-coral-700">
           Reserve Your Place
         </Link>
       )}
-      <Link href={`mailto:support@terumbu.eco?subject=Question about ${encodeURIComponent(slug)}`} className="mt-3 flex min-h-11 w-full items-center justify-center gap-2 rounded-full border border-ocean-900/14 px-5 text-sm font-bold text-ocean-900 hover:border-coral-500">
-        <HelpCircle size={17} aria-hidden="true" />
-        Ask a Question
-      </Link>
-      <button type="button" className="mt-3 flex min-h-11 w-full items-center justify-center gap-2 rounded-full text-sm font-bold text-coral-700 hover:bg-coral-100">
-        <Heart size={17} aria-hidden="true" />
-        Save Expedition
-      </button>
+      <div className="mt-3 grid grid-cols-2 gap-2">
+        <Link href={`mailto:support@terumbu.eco?subject=Question about ${encodeURIComponent(slug)}`} className="flex min-h-10 items-center justify-center gap-2 rounded-full border border-ocean-900/14 px-3 text-sm font-bold text-ocean-900 hover:border-coral-500">
+          <HelpCircle size={16} aria-hidden="true" />
+          Ask
+        </Link>
+        <button type="button" className="flex min-h-10 items-center justify-center gap-2 rounded-full text-sm font-bold text-coral-700 hover:bg-coral-100">
+          <Heart size={16} aria-hidden="true" />
+          Save
+        </button>
+      </div>
 
-      <div className="mt-5 grid grid-cols-2 gap-3 border-t border-ocean-900/10 pt-5 text-xs font-bold text-ocean-900/64">
+      <div className="mt-4 grid grid-cols-2 gap-2 border-t border-ocean-900/10 pt-4 text-xs font-bold text-ocean-900/64">
         {trustIndicators.map((item) => (
-          <span key={item} className="flex items-center gap-2">
-            <ShieldCheck size={15} aria-hidden="true" className="text-kelp-500" />
+          <span key={item} className="flex min-h-8 items-center gap-2 rounded-full bg-kelp-100/55 px-2.5 py-1">
+            <ShieldCheck size={14} aria-hidden="true" className="shrink-0 text-kelp-500" />
             {item}
           </span>
         ))}
       </div>
-      <p className="mt-5 rounded-xl bg-sand-50 px-4 py-3 text-xs font-semibold text-ocean-900/62">
+      <p className="mt-4 border-t border-ocean-900/10 pt-4 text-xs font-semibold leading-5 text-ocean-900/62">
         {formatCurrency(conservationContribution)} per participant supports the associated conservation program. Seats are held during checkout only.
       </p>
     </aside>

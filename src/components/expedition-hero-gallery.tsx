@@ -23,17 +23,17 @@ export function ExpeditionHeroGallery({ images, region }: ExpeditionHeroGalleryP
 
   return (
     <>
-      <div className="grid gap-3 lg:grid-cols-[1.4fr_1fr]">
-        <button type="button" className="group relative min-h-[420px] overflow-hidden rounded-2xl bg-ocean-900 text-left shadow-soft" onClick={() => setOpen(true)}>
-          {main ? <Image src={main.src} alt={main.caption} fill className="object-cover transition duration-500 group-hover:scale-105" sizes="(min-width: 1024px) 42vw, 100vw" priority /> : null}
+      <div className="grid gap-3 lg:grid-cols-[1.55fr_1fr]">
+        <button type="button" className="group relative h-[320px] overflow-hidden rounded-2xl bg-ocean-900 text-left shadow-soft sm:h-[380px] lg:h-[360px]" onClick={() => setOpen(true)}>
+          {main ? <Image src={main.src} alt={main.caption} fill className="object-cover transition duration-500 group-hover:scale-105" sizes="(min-width: 1280px) 52vw, (min-width: 1024px) 48vw, 100vw" priority /> : null}
           <div className="absolute inset-0 bg-gradient-to-t from-ocean-900/58 via-transparent to-transparent" />
           <span className="absolute bottom-5 left-5 rounded-full bg-ocean-900/84 px-4 py-2 text-sm font-bold text-white">{region}</span>
         </button>
 
-        <div className="grid min-h-[420px] grid-cols-2 gap-3">
+        <div className="grid h-[280px] grid-cols-2 grid-rows-2 gap-3 sm:h-[320px] lg:h-[360px]">
           {gallery.slice(1, 5).map((item, index) => (
             <button key={`${item.src}-${item.label}`} type="button" className="group relative overflow-hidden rounded-2xl bg-ocean-900 text-left shadow-soft" onClick={() => setOpen(true)}>
-              <Image src={item.src} alt={item.caption} fill className="object-cover transition duration-500 group-hover:scale-105" sizes="(min-width: 1024px) 18vw, 50vw" />
+              <Image src={item.src} alt={item.caption} fill className="object-cover transition duration-500 group-hover:scale-105" sizes="(min-width: 1280px) 18vw, (min-width: 1024px) 16vw, 50vw" />
               <div className="absolute inset-0 bg-gradient-to-t from-ocean-900/60 via-transparent to-transparent" />
               <span className="absolute left-3 top-3 rounded-full bg-white/90 px-3 py-1 text-xs font-bold text-ocean-900">{item.label}</span>
               {index === 0 ? (

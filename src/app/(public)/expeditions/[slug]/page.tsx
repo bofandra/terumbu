@@ -94,88 +94,93 @@ export default async function ExpeditionDetailPage({
             </nav>
           </div>
 
-          <div className="mx-auto grid max-w-7xl gap-8 px-4 pb-10 sm:px-6 lg:grid-cols-[1.1fr_0.9fr] lg:px-8">
-            <ExpeditionHeroGallery images={expedition.galleryImages} region={expedition.region} />
-
-            <div className="grid gap-6 lg:grid-cols-[1fr_0.82fr]">
-              <section className="flex flex-col justify-center">
+          <div className="mx-auto grid max-w-7xl gap-8 px-4 pb-8 sm:px-6 lg:grid-cols-[minmax(0,1fr)_380px] lg:items-start lg:px-8 xl:grid-cols-[minmax(0,1fr)_400px]">
+            <div className="min-w-0">
+              <section>
                 <p className="inline-flex items-center gap-2 text-sm font-bold uppercase tracking-[0.16em] text-coral-700">
                   <Waves size={18} aria-hidden="true" />
                   {expedition.categoryLabel}
                 </p>
-                <h1 className="mt-4 text-4xl font-bold tracking-normal text-ocean-900 sm:text-5xl">{expedition.title}</h1>
-                <p className="mt-4 text-lg leading-8 text-ocean-900/68">{expedition.summary}</p>
+                <h1 className="mt-4 max-w-3xl text-4xl font-bold tracking-normal text-ocean-900 sm:text-5xl">{expedition.title}</h1>
+                <p className="mt-4 max-w-2xl text-lg leading-8 text-ocean-900/68">{expedition.summary}</p>
 
-                <div className="mt-6 grid gap-3 text-sm font-semibold text-ocean-900/72">
-                  <span className="flex items-center gap-2">
+                <div className="mt-6 grid gap-3 text-sm font-semibold text-ocean-900/72 sm:grid-cols-2 xl:grid-cols-3">
+                  <span className="flex min-h-11 items-center gap-2 rounded-full bg-coral-100/70 px-4 text-coral-700">
                     <Star size={17} aria-hidden="true" className="fill-coral-500 text-coral-500" />
                     {expedition.reviewCount > 0
                       ? `${expedition.rating.toFixed(1)} · ${expedition.reviewCount} verified reviews · ${expedition.participantCount} participants`
                       : `${expedition.participantCount} completed participants · reviews open after completion`}
                   </span>
-                  <span className="flex items-center gap-2">
+                  <span className="flex min-h-11 items-center gap-2 rounded-full bg-ocean-50 px-4">
                     <MapPin size={17} aria-hidden="true" />
                     {expedition.region}
                   </span>
-                  <span className="flex items-center gap-2">
+                  <span className="flex min-h-11 items-center gap-2 rounded-full bg-ocean-50 px-4">
                     <CalendarDays size={17} aria-hidden="true" />
                     {expedition.duration}
                   </span>
-                  <span className="flex items-center gap-2">
+                  <span className="flex min-h-11 items-center gap-2 rounded-full bg-ocean-50 px-4">
                     <Activity size={17} aria-hidden="true" />
                     {expedition.difficulty}
                     <span className="text-ocean-900/44">{expedition.activitySummary}</span>
                   </span>
-                  <span className="flex items-center gap-2">
+                  <span className="flex min-h-11 items-center gap-2 rounded-full bg-ocean-50 px-4">
                     <Users size={17} aria-hidden="true" />
                     {expedition.groupSizeLabel}
                   </span>
-                  <span className="flex items-center gap-2">
+                  <span className="flex min-h-11 items-center gap-2 rounded-full bg-ocean-50 px-4">
                     <Languages size={17} aria-hidden="true" />
                     {expedition.languages.join(", ")}
                   </span>
                 </div>
-
-                <div className="mt-6 rounded-2xl border border-ocean-900/10 bg-sand-50 p-4">
-                  <div className="flex items-start gap-3">
-                    <div className="flex size-12 items-center justify-center rounded-full bg-ocean-900 text-white">
-                      <Home size={22} aria-hidden="true" />
-                    </div>
-                    <div>
-                      <p className="font-bold text-ocean-900">
-                        {expedition.hostedBy.title}
-                      </p>
-                      <p className="mt-1 flex items-center gap-2 text-sm font-semibold text-kelp-700">
-                        <BadgeCheck size={16} aria-hidden="true" />
-                        {expedition.hostedBy.verificationLabel}
-                      </p>
-                      {expedition.hostedBy.profileHref ? (
-                        <Link href={expedition.hostedBy.profileHref} className="mt-2 inline-flex text-sm font-bold text-coral-700 hover:text-coral-500">
-                          {expedition.hostedBy.profileLabel} <ArrowRight size={15} aria-hidden="true" />
-                        </Link>
-                      ) : null}
-                    </div>
-                  </div>
-                </div>
               </section>
 
+              <div className="mt-7">
+                <ExpeditionHeroGallery images={expedition.galleryImages} region={expedition.region} />
+              </div>
+
+              <div className="mt-5 flex flex-col gap-4 rounded-xl border border-ocean-900/10 bg-sand-50 px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex items-start gap-3">
+                  <div className="flex size-11 shrink-0 items-center justify-center rounded-full bg-ocean-900 text-white">
+                    <Home size={20} aria-hidden="true" />
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold uppercase tracking-[0.14em] text-ocean-900/48">Verified host</p>
+                    <p className="mt-1 font-bold text-ocean-900">{expedition.hostedBy.title}</p>
+                    <p className="mt-1 flex items-center gap-2 text-sm font-semibold text-kelp-700">
+                      <BadgeCheck size={16} aria-hidden="true" />
+                      {expedition.hostedBy.verificationLabel}
+                    </p>
+                  </div>
+                </div>
+                {expedition.hostedBy.profileHref ? (
+                  <Link href={expedition.hostedBy.profileHref} className="inline-flex items-center gap-1 text-sm font-bold text-coral-700 hover:text-coral-500">
+                    {expedition.hostedBy.profileLabel} <ArrowRight size={15} aria-hidden="true" />
+                  </Link>
+                ) : null}
+              </div>
+            </div>
+
+            <div className="hidden lg:block">
               <ExpeditionBookingCard {...bookingProps} anchorId="booking" />
             </div>
           </div>
 
-          <div className="mx-auto max-w-7xl px-4 pb-8 sm:px-6 lg:px-8">
-            <div className="grid gap-3 rounded-2xl border border-ocean-900/10 bg-white p-4 shadow-soft md:grid-cols-3 xl:grid-cols-6">
-              {expedition.quickFacts.map((fact) => (
-                <div key={fact.label} className="flex items-center gap-3 border-ocean-900/10 md:border-r md:last:border-r-0 xl:border-r">
-                  <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-ocean-50 text-coral-700">
-                    <CheckCircle2 size={18} aria-hidden="true" />
+          <div className="border-t border-ocean-900/10 bg-ocean-50/60">
+            <div className="mx-auto max-w-7xl px-4 py-5 sm:px-6 lg:px-8">
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+                {expedition.quickFacts.map((fact) => (
+                  <div key={fact.label} className="flex min-h-14 items-center gap-3 border-ocean-900/10 xl:border-r xl:last:border-r-0">
+                    <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-white text-coral-700">
+                      <CheckCircle2 size={17} aria-hidden="true" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-bold text-ocean-900">{fact.value}</p>
+                      <p className="text-xs font-semibold text-ocean-900/52">{fact.label}</p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-sm font-bold text-ocean-900">{fact.value}</p>
-                    <p className="text-xs font-semibold text-ocean-900/52">{fact.label}</p>
-                  </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
           </div>
         </section>
