@@ -44,7 +44,7 @@ const statusMessages: Record<string, string> = {
   "booking-cancelled": "Booking cancelled and payment operation recorded.",
   "departure-cancelled": "Departure cancelled and affected bookings were updated.",
   "expedition-updated": "Expedition updated.",
-  "interest-request": "Expedition interest request updated.",
+  "interest-request": "Expedition request updated.",
   "review-moderated": "Review moderation status updated."
 };
 
@@ -184,7 +184,7 @@ export default async function AdminExpeditionDetailPage({ params, searchParams }
           { label: "Open", value: openDepartures.toLocaleString("id-ID") },
           { label: "Available seats", value: availableSeats.toLocaleString("id-ID") },
           { label: "Bookings", value: expedition.bookingCount.toLocaleString("id-ID") },
-          { label: "Interest requests", value: pendingInterestRequests.toLocaleString("id-ID") },
+          { label: "Pending requests", value: pendingInterestRequests.toLocaleString("id-ID") },
           { label: "Pending reviews", value: pendingReviews.toLocaleString("id-ID") }
         ].map((item) => (
           <article key={item.label} className="rounded-lg border border-ocean-900/10 bg-white p-4 shadow-soft">
@@ -197,7 +197,7 @@ export default async function AdminExpeditionDetailPage({ params, searchParams }
       <FormTabs
         ariaLabel="Expedition management workflows"
         tabs={[
-          { id: "requests", label: "Requests", description: "Waitlist demand", badge: expedition.interestRequests.length.toLocaleString("id-ID") },
+          { id: "requests", label: "Requests", description: "Questions and demand", badge: expedition.interestRequests.length.toLocaleString("id-ID") },
           { id: "bookings", label: "Bookings", description: "Cancel bookings", badge: expedition.bookings.length.toLocaleString("id-ID") },
           { id: "details", label: "Details", description: "Catalog record" },
           { id: "reviews", label: "Reviews", description: "Moderation", badge: expedition.reviews.length.toLocaleString("id-ID") },
@@ -208,8 +208,8 @@ export default async function AdminExpeditionDetailPage({ params, searchParams }
       <section className={adminPanelClassName}>
         <div className="flex flex-col justify-between gap-3 border-b border-ocean-900/10 p-4 sm:flex-row sm:items-center">
           <div>
-            <h2 className="text-xl font-bold tracking-normal text-ocean-900">Interest requests</h2>
-            <p className="mt-1 text-sm font-semibold text-ocean-900/58">Waitlist and private departure demand captured from the public expedition page.</p>
+            <h2 className="text-xl font-bold tracking-normal text-ocean-900">Expedition requests</h2>
+            <p className="mt-1 text-sm font-semibold text-ocean-900/58">Questions, waitlist demand, and private departure requests captured from the public expedition page.</p>
           </div>
           <MessageSquareText className="size-5 text-kelp-700" aria-hidden="true" />
         </div>
@@ -242,8 +242,8 @@ export default async function AdminExpeditionDetailPage({ params, searchParams }
               <form action={processExpeditionInterestRequestAction} className="mt-4 grid gap-2 lg:grid-cols-[180px_1fr_auto]">
                 <input type="hidden" name="returnTo" value={returnTo} />
                 <input type="hidden" name="requestId" value={request.id} />
-                <select name="status" defaultValue={request.status === "pending" ? "contacted" : request.status} className={adminSelectClassName} aria-label="Interest request status">
-                  {["contacted", "converted", "declined", "cancelled"].map((status) => (
+                <select name="status" defaultValue={request.status === "pending" ? "contacted" : request.status} className={adminSelectClassName} aria-label="Expedition request status">
+                  {["contacted", "resolved", "converted", "declined", "cancelled"].map((status) => (
                     <option key={status} value={status}>
                       {labelize(status)}
                     </option>
@@ -258,7 +258,7 @@ export default async function AdminExpeditionDetailPage({ params, searchParams }
             </article>
           ))}
           {expedition.interestRequests.length === 0 ? (
-            <p className="p-4 text-sm font-semibold text-ocean-900/58">No waitlist or private departure requests yet.</p>
+            <p className="p-4 text-sm font-semibold text-ocean-900/58">No questions, waitlist, or private departure requests yet.</p>
           ) : null}
         </div>
       </section>

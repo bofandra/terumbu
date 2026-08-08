@@ -1,10 +1,11 @@
 import Link from "next/link";
 import Image from "next/image";
-import { ArrowUpRight, CalendarPlus, Edit3, Plus, Save } from "lucide-react";
+import { ArrowUpRight, CalendarPlus, Edit3, MessageSquareText, Plus, Save } from "lucide-react";
 
 import { Field, StatusBadge, inputClassName, labelize, textareaClassName, type PartnerPortalData } from "@/components/partner-portal-ui";
 import { RepeatableFields } from "@/components/partner-expedition-repeatable-fields";
 import { Button } from "@/components/ui/button";
+import { processPartnerExpeditionInterestRequestAction } from "@/lib/expedition-interest-actions";
 import {
   createPartnerExpeditionAction,
   createPartnerExpeditionDepartureAction,
@@ -25,11 +26,16 @@ const highlightStatusOptions = ["Included", "Guaranteed", "Weather-dependent", "
 const physicalLevelOptions = ["Light", "Moderate", "Active", "Challenging"];
 const accommodationTypeOptions = ["Shared twin room included", "Private room upgrade", "Homestay", "Eco-lodge", "Liveaboard", "Hotel partner stay"];
 const quickFactLabels = ["Duration", "Small group", "Difficulty", "Min. age", "Swimming ability", "Per person"];
+const requestStatuses = ["contacted", "resolved", "converted", "declined", "cancelled"];
 const fileInputClassName =
   "min-h-11 w-full min-w-0 rounded-lg border border-ocean-900/14 bg-white px-3 py-2 text-sm font-semibold text-ocean-900 outline-none transition file:mr-3 file:rounded-full file:border-0 file:bg-ocean-50 file:px-3 file:py-1.5 file:text-sm file:font-bold file:text-ocean-700 focus:border-coral-500";
 
 function formatDateTimeInput(date: Date) {
   return date.toISOString().slice(0, 16);
+}
+
+function formatRequestDate(date: Date) {
+  return date.toLocaleString("id-ID", { dateStyle: "medium", timeStyle: "short" });
 }
 
 function listValue(items: string[]) {
@@ -669,7 +675,7 @@ export function PartnerExpeditionWorkspace({
                 {expedition.partner ?? "Partner"} / {expedition.region} / {expedition.durationDays} days / {formatCurrency(expedition.basePrice)}
               </p>
               <p className="mt-2 text-xs font-bold uppercase tracking-[0.12em] text-ocean-900/44">
-                {expedition.departures.length.toLocaleString("id-ID")} departures / {expedition.bookingCount.toLocaleString("id-ID")} bookings
+                {expedition.departures.length.toLocaleString("id-ID")} departures / {expedition.bookingCount.toLocaleString("id-ID")} bookings / {expedition.interestRequests.length.toLocaleString("id-ID")} requests
               </p>
             </div>
             <Link href={`/expeditions/${expedition.slug}`} className="inline-flex items-center gap-2 text-sm font-bold text-coral-700 hover:text-coral-500">
@@ -694,6 +700,64 @@ export function PartnerExpeditionWorkspace({
                   Manage departures
                 </summary>
                 <DepartureForms expedition={expedition} />
+              </details>
+
+              <details>
+                <summary className="flex cursor-pointer items-center gap-2 border-t border-ocean-900/10 px-5 py-4 text-sm font-bold text-ocean-900">
+                  <MessageSquareText className="size-4" aria-hidden="true" />
+                  Manage requests
+                  {expedition.interestRequests.length > 0 ? (
+                    <span className="rounded-full bg-ocean-50 px-2.5 py-1 text-xs font-bold text-ocean-700">{expedition.interestRequests.length.toLocaleString("id-ID")}</span>
+                  ) : null}
+                </summary>
+                <div className="divide-y divide-ocean-900/10 border-t border-ocean-900/10 bg-sand-50">
+                  {expedition.interestRequests.map((request) => (
+                    <article key={request.id} className="p-5">
+                      <div className="flex flex-col justify-between gap-3 lg:flex-row lg:items-start">
+                        <div>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <h3 className="font-bold text-ocean-900">{request.contactName}</h3>
+                            <StatusBadge value={request.requestType} />
+                            <StatusBadge value={request.status} />
+                          </div>
+                          <p className="mt-1 text-sm font-semibold text-ocean-900/58">
+                            {request.contactEmail} / {request.requestType === "question" ? "Question" : `${request.participantsCount} participants`} / {request.requestCode}
+                          </p>
+                          <p className="mt-1 text-xs font-bold uppercase tracking-[0.12em] text-ocean-900/44">
+                            Created {formatRequestDate(request.createdAt)}
+                            {request.preferredStartAt ? ` / Preferred ${request.preferredStartAt.toLocaleDateString("id-ID", { dateStyle: "medium" })}` : ""}
+                          </p>
+                          {request.message ? <p className="mt-3 rounded-lg bg-white p-3 text-sm font-semibold leading-6 text-ocean-900/68">{request.message}</p> : null}
+                        </div>
+                        {request.processedAt ? (
+                          <p className="text-xs font-bold uppercase tracking-[0.12em] text-ocean-900/44">
+                            Processed {request.processedAt.toLocaleDateString("id-ID", { dateStyle: "medium" })}
+                            {request.processedByEmail ? ` by ${request.processedByEmail}` : ""}
+                          </p>
+                        ) : null}
+                      </div>
+                      <form action={processPartnerExpeditionInterestRequestAction} className="mt-4 grid gap-2 lg:grid-cols-[180px_1fr_auto]">
+                        <input type="hidden" name="returnTo" value="/partner/expeditions" />
+                        <input type="hidden" name="requestId" value={request.id} />
+                        <select name="status" defaultValue={request.status === "pending" ? "contacted" : request.status} className={inputClassName} aria-label="Expedition request status">
+                          {requestStatuses.map((status) => (
+                            <option key={status} value={status}>
+                              {labelize(status)}
+                            </option>
+                          ))}
+                        </select>
+                        <input name="note" placeholder="Partner note" className={inputClassName} />
+                        <Button type="submit" tone="secondary" className="min-h-10 rounded-lg px-3">
+                          <Save className="size-4" aria-hidden="true" />
+                          Update request
+                        </Button>
+                      </form>
+                    </article>
+                  ))}
+                  {expedition.interestRequests.length === 0 ? (
+                    <p className="p-5 text-sm font-semibold text-ocean-900/58">No questions, waitlist, or private departure requests yet.</p>
+                  ) : null}
+                </div>
               </details>
             </>
           ) : null}

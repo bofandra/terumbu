@@ -46,7 +46,9 @@ test("departure status follows seat changes without overriding operator statuses
 
 test("interest request types and statuses normalize defensively", () => {
   assert.equal(normalizeExpeditionInterestRequestType("PRIVATE_DEPARTURE"), "private_departure");
+  assert.equal(normalizeExpeditionInterestRequestType("QUESTION"), "question");
   assert.equal(normalizeExpeditionInterestRequestType("unknown"), "waitlist");
+  assert.equal(normalizeExpeditionInterestRequestStatus("resolved"), "resolved");
   assert.equal(normalizeExpeditionInterestRequestStatus("converted"), "converted");
   assert.equal(normalizeExpeditionInterestRequestStatus("unknown"), "pending");
   assert.equal(preferredInterestTypeForDepartureStatus("private_group"), "private_departure");

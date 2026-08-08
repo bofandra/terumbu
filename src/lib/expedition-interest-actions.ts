@@ -8,9 +8,13 @@ import { redirect } from "next/navigation";
 import { db } from "@/db/client";
 import {
   adminAuditLogs,
+  campaigns,
   expeditionDepartures,
   expeditionInterestRequests,
-  expeditions
+  expeditions,
+  organizationUsers,
+  roles,
+  userRoles
 } from "@/db/schema";
 import { getSessionUser, requireRole, safeRedirectPath } from "@/lib/auth";
 import { buildExpeditionInterestRequestCode, parseParticipantCount } from "@/lib/checkout";
@@ -18,6 +22,7 @@ import {
   normalizeExpeditionInterestRequestStatus,
   normalizeExpeditionInterestRequestType
 } from "@/lib/expedition-booking-lifecycle";
+import { partnerRoleAllows } from "@/lib/partner-permissions";
 
 function randomRequestCode(now = new Date()) {
   return buildExpeditionInterestRequestCode(randomBytes(5).toString("hex").toUpperCase(), now);
@@ -56,6 +61,29 @@ function adminReturnPath(formData: FormData, fallbackPath: string) {
   return returnTo.startsWith("/admin/") && !returnTo.startsWith("//") ? returnTo : fallbackPath;
 }
 
+function partnerReturnPath(formData: FormData, fallbackPath: string) {
+  const returnTo = formText(formData, "returnTo");
+
+  return returnTo.startsWith("/partner/") && !returnTo.startsWith("//") ? returnTo : fallbackPath;
+}
+
+function successCodeForRequestType(requestType: ReturnType<typeof normalizeExpeditionInterestRequestType>, updated = false) {
+  if (requestType === "question") {
+    return "interest-question";
+  }
+
+  return updated ? "interest-updated" : "interest-request";
+}
+
+function requestMetadata(input: { requestType: ReturnType<typeof normalizeExpeditionInterestRequestType>; expeditionSlug: string; refreshedAt?: string }) {
+  return {
+    source: "public_expedition_detail",
+    expeditionSlug: input.expeditionSlug,
+    channel: input.requestType === "question" ? "question" : input.requestType,
+    ...(input.refreshedAt ? { refreshedAt: input.refreshedAt } : {})
+  };
+}
+
 export async function submitExpeditionInterestRequestAction(formData: FormData) {
   const expeditionId = formText(formData, "expeditionId");
   const departureId = formText(formData, "departureId") || null;
@@ -70,6 +98,10 @@ export async function submitExpeditionInterestRequestAction(formData: FormData) 
 
   if (!expeditionId || !contactName || !contactEmail) {
     redirect(appendResult(nextPath, "error", "interest-invalid"));
+  }
+
+  if (requestType === "question" && !message) {
+    redirect(appendResult(nextPath, "error", "interest-question-invalid"));
   }
 
   const [expedition] = await db
@@ -123,14 +155,15 @@ export async function submitExpeditionInterestRequestAction(formData: FormData) 
         preferredStartAt,
         message,
         updatedAt: now,
-        metadata: {
-          source: "public_expedition_detail",
+        metadata: requestMetadata({
+          requestType,
+          expeditionSlug: expedition.slug,
           refreshedAt: now.toISOString()
-        }
+        })
       })
       .where(eq(expeditionInterestRequests.id, existingRequest.id));
 
-    redirect(appendResult(nextPath, "saved", "interest-updated"));
+    redirect(appendResult(nextPath, "saved", successCodeForRequestType(requestType, true)));
   }
 
   const [request] = await db
@@ -147,10 +180,7 @@ export async function submitExpeditionInterestRequestAction(formData: FormData) 
       participantsCount,
       preferredStartAt,
       message,
-      metadata: {
-        source: "public_expedition_detail",
-        expeditionSlug: expedition.slug
-      },
+      metadata: requestMetadata({ requestType, expeditionSlug: expedition.slug }),
       updatedAt: now
     })
     .returning({ id: expeditionInterestRequests.id, requestCode: expeditionInterestRequests.requestCode });
@@ -169,7 +199,7 @@ export async function submitExpeditionInterestRequestAction(formData: FormData) 
     }
   });
 
-  redirect(appendResult(nextPath, "saved", "interest-request"));
+  redirect(appendResult(nextPath, "saved", successCodeForRequestType(requestType)));
 }
 
 export async function processExpeditionInterestRequestAction(formData: FormData) {
@@ -212,6 +242,93 @@ export async function processExpeditionInterestRequestAction(formData: FormData)
   await db.insert(adminAuditLogs).values({
     actorUserId: actor.id,
     action: "expedition_interest_request.processed",
+    entityType: "expedition_interest_request",
+    entityId: request.id,
+    metadata: {
+      expeditionId: request.expeditionId,
+      departureId: request.departureId,
+      requestCode: request.requestCode,
+      requestType: request.requestType,
+      status,
+      note
+    }
+  });
+
+  redirect(appendResult(returnTo, "saved", "interest-request"));
+}
+
+export async function processPartnerExpeditionInterestRequestAction(formData: FormData) {
+  const actor = await requireRole(["partner", "admin"], "/partner/expeditions");
+  const requestId = formText(formData, "requestId");
+  const status = normalizeExpeditionInterestRequestStatus(formData.get("status"));
+  const note = formText(formData, "note") || null;
+  const returnTo = partnerReturnPath(formData, "/partner/expeditions");
+  const now = new Date();
+
+  if (!requestId || status === "pending") {
+    redirect(appendResult(returnTo, "error", "interest-request-invalid"));
+  }
+
+  const [request] = await db
+    .select({
+      id: expeditionInterestRequests.id,
+      expeditionId: expeditionInterestRequests.expeditionId,
+      departureId: expeditionInterestRequests.departureId,
+      requestCode: expeditionInterestRequests.requestCode,
+      requestType: expeditionInterestRequests.requestType,
+      organizationId: campaigns.organizationId
+    })
+    .from(expeditionInterestRequests)
+    .innerJoin(expeditions, eq(expeditionInterestRequests.expeditionId, expeditions.id))
+    .leftJoin(campaigns, eq(expeditions.relatedCampaignId, campaigns.id))
+    .where(eq(expeditionInterestRequests.id, requestId))
+    .limit(1);
+
+  if (!request) {
+    redirect(appendResult(returnTo, "error", "interest-request-missing"));
+  }
+
+  const roleRows = await db
+    .select({ key: roles.key })
+    .from(userRoles)
+    .innerJoin(roles, eq(userRoles.roleId, roles.id))
+    .where(eq(userRoles.userId, actor.id));
+  const isAdmin = roleRows.some((role) => role.key === "admin");
+
+  if (!isAdmin) {
+    if (!request.organizationId) {
+      redirect(appendResult(returnTo, "error", "expedition-campaign-required"));
+    }
+
+    const [membership] = await db
+      .select({ role: organizationUsers.role })
+      .from(organizationUsers)
+      .where(and(eq(organizationUsers.userId, actor.id), eq(organizationUsers.organizationId, request.organizationId), eq(organizationUsers.status, "active")))
+      .limit(1);
+
+    if (!partnerRoleAllows(membership?.role, "expedition:manage")) {
+      redirect(appendResult(returnTo, "error", "partner-permission"));
+    }
+  }
+
+  await db
+    .update(expeditionInterestRequests)
+    .set({
+      status,
+      processedByUserId: actor.id,
+      processedAt: now,
+      updatedAt: now,
+      metadata: {
+        partnerNote: note,
+        processedAt: now.toISOString(),
+        source: "partner_portal"
+      }
+    })
+    .where(eq(expeditionInterestRequests.id, request.id));
+
+  await db.insert(adminAuditLogs).values({
+    actorUserId: actor.id,
+    action: "partner_expedition_interest_request.processed",
     entityType: "expedition_interest_request",
     entityId: request.id,
     metadata: {

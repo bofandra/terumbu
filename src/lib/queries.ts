@@ -6845,6 +6845,7 @@ export async function getPartnerPortalData(userId?: string) {
     sponsoredRows,
     expeditionRows,
     expeditionBookingCountRows,
+    expeditionInterestRequestRows,
     donorRows,
     campaignMediaRows,
     campaignBudgetRows,
@@ -7041,6 +7042,30 @@ export async function getPartnerPortalData(userId?: string) {
       .groupBy(expeditionBookings.expeditionId, expeditionBookings.departureId),
     db
       .select({
+        id: expeditionInterestRequests.id,
+        expeditionId: expeditionInterestRequests.expeditionId,
+        departureId: expeditionInterestRequests.departureId,
+        requestCode: expeditionInterestRequests.requestCode,
+        requestType: expeditionInterestRequests.requestType,
+        status: expeditionInterestRequests.status,
+        contactName: expeditionInterestRequests.contactName,
+        contactEmail: expeditionInterestRequests.contactEmail,
+        participantsCount: expeditionInterestRequests.participantsCount,
+        preferredStartAt: expeditionInterestRequests.preferredStartAt,
+        message: expeditionInterestRequests.message,
+        createdAt: expeditionInterestRequests.createdAt,
+        processedAt: expeditionInterestRequests.processedAt,
+        processedByEmail: users.email
+      })
+      .from(expeditionInterestRequests)
+      .innerJoin(expeditions, eq(expeditionInterestRequests.expeditionId, expeditions.id))
+      .leftJoin(campaigns, eq(expeditions.relatedCampaignId, campaigns.id))
+      .leftJoin(users, eq(expeditionInterestRequests.processedByUserId, users.id))
+      .where(expeditionScope)
+      .orderBy(desc(expeditionInterestRequests.createdAt))
+      .limit(500),
+    db
+      .select({
         campaignId: donations.campaignId,
         donorName: donations.donorName,
         amount: donations.amount,
@@ -7160,6 +7185,21 @@ export async function getPartnerPortalData(userId?: string) {
         minParticipants: number;
         weatherAdvisory: string | null;
       }[];
+      interestRequests: {
+        id: string;
+        departureId: string | null;
+        requestCode: string;
+        requestType: ReturnType<typeof normalizeExpeditionInterestRequestType>;
+        status: ReturnType<typeof normalizeExpeditionInterestRequestStatus>;
+        contactName: string;
+        contactEmail: string;
+        participantsCount: number;
+        preferredStartAt: Date | null;
+        message: string | null;
+        createdAt: Date;
+        processedAt: Date | null;
+        processedByEmail: string | null;
+      }[];
     }
   >();
 
@@ -7184,7 +7224,8 @@ export async function getPartnerPortalData(userId?: string) {
         organizationId: row.organizationId,
         partner: row.partner,
         bookingCount: expeditionBookingCounts.get(row.id) ?? 0,
-        departures: []
+        departures: [],
+        interestRequests: []
       };
       expeditionsById.set(row.id, expedition);
     }
@@ -7205,6 +7246,30 @@ export async function getPartnerPortalData(userId?: string) {
         weatherAdvisory: getMetadataString(row.departureMetadata, "weatherAdvisory")
       });
     }
+  }
+
+  for (const row of expeditionInterestRequestRows) {
+    const expedition = expeditionsById.get(row.expeditionId);
+
+    if (!expedition) {
+      continue;
+    }
+
+    expedition.interestRequests.push({
+      id: row.id,
+      departureId: row.departureId,
+      requestCode: row.requestCode,
+      requestType: normalizeExpeditionInterestRequestType(row.requestType),
+      status: normalizeExpeditionInterestRequestStatus(row.status),
+      contactName: row.contactName,
+      contactEmail: row.contactEmail,
+      participantsCount: row.participantsCount,
+      preferredStartAt: row.preferredStartAt,
+      message: row.message,
+      createdAt: row.createdAt,
+      processedAt: row.processedAt,
+      processedByEmail: row.processedByEmail
+    });
   }
 
   for (const expedition of expeditionsById.values()) {

@@ -10,6 +10,7 @@ import {
   Languages,
   LifeBuoy,
   MapPin,
+  MessageSquareText,
   ShieldCheck,
   Star,
   Users,
@@ -72,11 +73,25 @@ export default async function ExpeditionDetailPage({
     platformFee: expedition.priceBreakdown.platformFee,
     departures: expedition.departures,
     conservationContribution: expedition.impact.conservationContribution,
-    trustIndicators: expedition.bookingTrustIndicators
+    trustIndicators: expedition.bookingTrustIndicators,
+    questionHref: "#ask-question"
   };
   const primaryDeparture = expedition.primaryDeparture;
   const routeSite = expedition.route.sites[0];
   const requestNextPath = `/expeditions/${expedition.slug}#dates`;
+  const questionNextPath = `/expeditions/${expedition.slug}#ask-question`;
+  const savedBannerMessage = query?.saved === "interest-question"
+    ? "Thanks, your question was sent to the expedition team."
+    : query?.saved?.startsWith("interest")
+      ? "Thanks, your expedition request was captured. Our team will follow up by email."
+      : null;
+  const errorBannerMessage = query?.error === "interest-question-invalid"
+    ? "Add your question so the expedition team knows what to answer."
+    : query?.error?.startsWith("interest")
+      ? "We could not save that expedition request. Add your name, email, and try again."
+      : null;
+  const questionSavedMessage = query?.saved === "interest-question" ? "Your question is in the website inbox for Terumbu admins and the expedition partner." : null;
+  const questionErrorMessage = query?.error === "interest-question-invalid" ? "Write your question before sending." : null;
 
   return (
     <>
@@ -189,14 +204,14 @@ export default async function ExpeditionDetailPage({
 
         <div className="mx-auto grid max-w-7xl gap-8 px-4 py-10 sm:px-6 lg:grid-cols-[minmax(0,1fr)_360px] lg:px-8">
           <div className="grid gap-8">
-            {query?.saved?.startsWith("interest") ? (
+            {savedBannerMessage ? (
               <p className="rounded-2xl border border-kelp-500/20 bg-kelp-100 px-4 py-3 text-sm font-bold text-kelp-700">
-                Thanks, your expedition request was captured. Our team will follow up by email.
+                {savedBannerMessage}
               </p>
             ) : null}
-            {query?.error?.startsWith("interest") ? (
+            {errorBannerMessage ? (
               <p className="rounded-2xl border border-coral-500/20 bg-coral-100 px-4 py-3 text-sm font-bold text-coral-700">
-                We could not save that expedition request. Add your name, email, and try again.
+                {errorBannerMessage}
               </p>
             ) : null}
             <section id="overview" className="scroll-mt-32 grid gap-6 lg:grid-cols-[0.85fr_1fr]">
@@ -427,6 +442,71 @@ export default async function ExpeditionDetailPage({
                 </div>
                 <Button type="submit" tone="secondary" className="w-fit">
                   Request private departure
+                </Button>
+              </form>
+            </section>
+
+            <section id="ask-question" className="scroll-mt-32 rounded-2xl border border-ocean-900/10 bg-white p-6 shadow-soft">
+              <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
+                <div>
+                  <p className="inline-flex items-center gap-2 text-sm font-bold uppercase tracking-[0.16em] text-coral-700">
+                    <MessageSquareText size={18} aria-hidden="true" />
+                    Ask a question
+                  </p>
+                  <h2 className="mt-3 text-3xl font-bold tracking-normal text-ocean-900">Message the expedition team</h2>
+                  <p className="mt-3 max-w-2xl text-sm leading-7 text-ocean-900/62">
+                    Send a question through Terumbu.eco. Admins and the verified expedition partner can review it from their website inbox and follow up by email.
+                  </p>
+                </div>
+                <span className="w-fit rounded-full bg-kelp-100 px-3 py-1 text-xs font-bold text-kelp-700">Website request inbox</span>
+              </div>
+
+              {questionSavedMessage ? (
+                <p className="mt-5 rounded-xl border border-kelp-500/20 bg-kelp-100 px-4 py-3 text-sm font-bold text-kelp-700">{questionSavedMessage}</p>
+              ) : null}
+              {questionErrorMessage ? (
+                <p className="mt-5 rounded-xl border border-coral-500/20 bg-coral-100 px-4 py-3 text-sm font-bold text-coral-700">{questionErrorMessage}</p>
+              ) : null}
+
+              <form action={submitExpeditionInterestRequestAction} className="mt-6 grid min-w-0 gap-4 rounded-2xl bg-sand-50 p-4">
+                <input type="hidden" name="next" value={questionNextPath} />
+                <input type="hidden" name="expeditionId" value={expedition.id} />
+                <input type="hidden" name="requestType" value="question" />
+                <input type="hidden" name="participantsCount" value="1" />
+                <div className="grid min-w-0 gap-3 sm:grid-cols-2">
+                  <label className="grid gap-1.5 text-sm font-bold text-ocean-900">
+                    Name
+                    <input name="contactName" placeholder="Your name" className="min-h-11 w-full min-w-0 rounded-lg border border-ocean-900/14 bg-white px-3 text-sm font-semibold outline-none focus:border-coral-500" required />
+                  </label>
+                  <label className="grid gap-1.5 text-sm font-bold text-ocean-900">
+                    Email
+                    <input name="contactEmail" type="email" placeholder="you@example.com" className="min-h-11 w-full min-w-0 rounded-lg border border-ocean-900/14 bg-white px-3 text-sm font-semibold outline-none focus:border-coral-500" required />
+                  </label>
+                </div>
+                <label className="grid gap-1.5 text-sm font-bold text-ocean-900">
+                  Departure context
+                  <select name="departureId" className="min-h-11 w-full min-w-0 rounded-lg border border-ocean-900/14 bg-white px-3 text-sm font-semibold outline-none focus:border-coral-500">
+                    <option value="">General expedition question</option>
+                    {expedition.departures.map((departure) => (
+                      <option key={departure.id} value={departure.id}>
+                        {departure.dateRangeLabel} / {departure.statusLabel}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="grid gap-1.5 text-sm font-bold text-ocean-900">
+                  Question
+                  <textarea
+                    name="message"
+                    rows={5}
+                    placeholder="Ask about itinerary, equipment, access needs, conservation activities, or booking requirements."
+                    className="w-full min-w-0 rounded-lg border border-ocean-900/14 bg-white px-3 py-3 text-sm font-semibold leading-6 outline-none focus:border-coral-500"
+                    required
+                  />
+                </label>
+                <Button type="submit" tone="secondary" className="w-fit">
+                  <MessageSquareText size={17} aria-hidden="true" />
+                  Send question
                 </Button>
               </form>
             </section>
@@ -679,7 +759,7 @@ export default async function ExpeditionDetailPage({
               </p>
               <div className="mt-6 flex flex-wrap gap-3">
                 <ButtonLink href={primaryDeparture ? `/checkout/expedition?departure=${primaryDeparture.id}` : `/checkout/expedition?expedition=${expedition.slug}`}>{expedition.finalCta.primaryLabel}</ButtonLink>
-                <ButtonLink href={`mailto:support@terumbu.eco?subject=Question about ${encodeURIComponent(expedition.title)}`} tone="light">{expedition.finalCta.secondaryLabel}</ButtonLink>
+                <ButtonLink href="#ask-question" tone="light">{expedition.finalCta.secondaryLabel}</ButtonLink>
               </div>
             </section>
           </div>

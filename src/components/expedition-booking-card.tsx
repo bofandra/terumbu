@@ -27,6 +27,8 @@ type ExpeditionBookingCardProps = {
   trustIndicators: string[];
   compact?: boolean;
   anchorId?: string;
+  questionHref?: string;
+  onQuestionClick?: () => void;
 };
 
 function participantTotal(adults: number, students: number, children: number) {
@@ -87,7 +89,18 @@ function Stepper({
   );
 }
 
-export function ExpeditionBookingCard({ slug, price, equipmentRental, platformFee, departures, conservationContribution, trustIndicators, compact = false, anchorId }: ExpeditionBookingCardProps) {
+export function ExpeditionBookingCard({
+  price,
+  equipmentRental,
+  platformFee,
+  departures,
+  conservationContribution,
+  trustIndicators,
+  compact = false,
+  anchorId,
+  questionHref,
+  onQuestionClick
+}: ExpeditionBookingCardProps) {
   const firstBookableDeparture = departures.find((departure) => departure.status === "open" && departure.availableSeats > 0) ?? departures[0] ?? null;
   const [selectedDepartureId, setSelectedDepartureId] = useState(firstBookableDeparture?.id ?? null);
   const [adults, setAdults] = useState(1);
@@ -203,9 +216,13 @@ export function ExpeditionBookingCard({ slug, price, equipmentRental, platformFe
         </Link>
       )}
       <div className="mt-3 grid grid-cols-2 gap-2">
-        <Link href={`mailto:support@terumbu.eco?subject=Question about ${encodeURIComponent(slug)}`} className="flex min-h-10 items-center justify-center gap-2 rounded-full border border-ocean-900/14 px-3 text-sm font-bold text-ocean-900 hover:border-coral-500">
+        <Link
+          href={questionHref ?? "#ask-question"}
+          className="flex min-h-10 items-center justify-center gap-2 rounded-full border border-ocean-900/14 px-3 text-sm font-bold text-ocean-900 hover:border-coral-500"
+          onClick={onQuestionClick}
+        >
           <HelpCircle size={16} aria-hidden="true" />
-          Ask
+          Ask a Question
         </Link>
         <button type="button" className="flex min-h-10 items-center justify-center gap-2 rounded-full text-sm font-bold text-coral-700 hover:bg-coral-100">
           <Heart size={16} aria-hidden="true" />
@@ -256,7 +273,7 @@ export function ExpeditionMobileBookingBar(props: ExpeditionBookingCardProps) {
                 <X size={17} aria-hidden="true" />
               </button>
             </div>
-            <ExpeditionBookingCard {...props} compact />
+            <ExpeditionBookingCard {...props} compact onQuestionClick={() => setOpen(false)} />
           </div>
         </div>
       ) : null}

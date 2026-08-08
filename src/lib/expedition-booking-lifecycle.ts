@@ -1,6 +1,6 @@
 export const expeditionDepartureStatuses = ["open", "waitlist", "full", "private_group", "cancelled"] as const;
-export const expeditionInterestRequestTypes = ["waitlist", "private_departure"] as const;
-export const expeditionInterestRequestStatuses = ["pending", "contacted", "converted", "declined", "cancelled"] as const;
+export const expeditionInterestRequestTypes = ["waitlist", "private_departure", "question"] as const;
+export const expeditionInterestRequestStatuses = ["pending", "contacted", "resolved", "converted", "declined", "cancelled"] as const;
 
 export type ExpeditionDepartureStatus = (typeof expeditionDepartureStatuses)[number];
 export type ExpeditionInterestRequestType = (typeof expeditionInterestRequestTypes)[number];

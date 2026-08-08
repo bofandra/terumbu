@@ -57,18 +57,27 @@ export const textareaClassName =
 const badgeClasses: Record<string, string> = {
   archived: "bg-ocean-900/8 text-ocean-900/62",
   basic: "bg-ocean-900/8 text-ocean-900/70",
+  cancelled: "bg-coral-100 text-coral-700",
   completed: "bg-kelp-100 text-kelp-700",
+  contacted: "bg-ocean-50 text-ocean-700",
+  converted: "bg-kelp-100 text-kelp-700",
+  declined: "bg-coral-100 text-coral-700",
   document: "bg-ocean-50 text-ocean-700",
   draft: "bg-ocean-900/8 text-ocean-900/62",
   field: "bg-kelp-100 text-kelp-700",
   funded: "bg-kelp-100 text-kelp-700",
   in_review: "bg-sand-100 text-ocean-900",
   needs_clarification: "bg-coral-100 text-coral-700",
+  pending: "bg-sand-100 text-ocean-900",
+  private_departure: "bg-ocean-50 text-ocean-700",
   published: "bg-ocean-50 text-ocean-700",
+  question: "bg-ocean-50 text-ocean-700",
   rejected: "bg-coral-100 text-coral-700",
   review: "bg-sand-100 text-ocean-900",
+  resolved: "bg-kelp-100 text-kelp-700",
   submitted: "bg-sand-100 text-ocean-900",
-  verified: "bg-kelp-100 text-kelp-700"
+  verified: "bg-kelp-100 text-kelp-700",
+  waitlist: "bg-sand-100 text-ocean-900"
 };
 
 export function labelize(value: string) {

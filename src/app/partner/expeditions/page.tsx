@@ -13,7 +13,8 @@ const statusMessages: Record<string, string> = {
   "departure-created": "Departure created.",
   "departure-updated": "Departure updated.",
   "expedition-created": "Expedition created.",
-  "expedition-updated": "Expedition updated."
+  "expedition-updated": "Expedition updated.",
+  "interest-request": "Expedition request updated."
 };
 
 const errorMessages: Record<string, string> = {
@@ -28,6 +29,8 @@ const errorMessages: Record<string, string> = {
   "expedition-slug": "That expedition slug is already in use.",
   "image-size": "Uploaded image is too large.",
   "image-type": "Upload a supported image file.",
+  "interest-request-invalid": "Choose an expedition request and final processing status.",
+  "interest-request-missing": "Expedition request record was not found.",
   "organization-access": "You do not have access to that partner organization.",
   "partner-permission": "Your partner role cannot manage expedition records for that organization."
 };
