@@ -554,31 +554,52 @@ async function upsertMonthlyImpactReport(
 export async function generateMonthlyImpactReportAction() {
   const user = await requireUser("/dashboard");
 
-  await upsertMonthlyImpactReport(user.id);
+  try {
+    await upsertMonthlyImpactReport(user.id);
+  } catch {
+    redirect("/dashboard?error=monthly-report#monthly-report");
+  }
 
   redirect("/dashboard?saved=monthly-report#monthly-report");
 }
 
 export async function emailMonthlyImpactReportAction() {
   const user = await requireUser("/dashboard");
-  const report = await upsertMonthlyImpactReport(user.id, { source: "email_action" });
+  let report: Awaited<ReturnType<typeof upsertMonthlyImpactReport>>;
+
+  try {
+    report = await upsertMonthlyImpactReport(user.id, { source: "email_action" });
+  } catch {
+    redirect("/dashboard?error=monthly-report#monthly-report");
+  }
+
   const now = new Date();
 
-  await sendTransactionalEmail({
-    userId: user.id,
-    recipientEmail: report.userEmail || user.email,
-    subject: `${report.label} from Terumbu.eco`,
-    template: "monthly_impact_report",
-    payload: {
-      name: report.userName,
-      reportMonth: report.reportMonth,
-      contributions: report.contributions,
-      campaignUpdates: report.campaignUpdates,
-      newEvidence: report.newEvidence,
-      coralsMonitored: report.coralsMonitored,
-      academyProgress: report.academyProgress
-    }
-  });
+  let emailResult: Awaited<ReturnType<typeof sendTransactionalEmail>>;
+
+  try {
+    emailResult = await sendTransactionalEmail({
+      userId: user.id,
+      recipientEmail: report.userEmail || user.email,
+      subject: `${report.label} from Terumbu.eco`,
+      template: "monthly_impact_report",
+      payload: {
+        name: report.userName,
+        reportMonth: report.reportMonth,
+        contributions: report.contributions,
+        campaignUpdates: report.campaignUpdates,
+        newEvidence: report.newEvidence,
+        coralsMonitored: report.coralsMonitored,
+        academyProgress: report.academyProgress
+      }
+    });
+  } catch {
+    redirect("/dashboard?error=monthly-email#monthly-report");
+  }
+
+  if (emailResult.status !== "sent") {
+    redirect("/dashboard?error=monthly-email#monthly-report");
+  }
 
   await db
     .update(monthlyImpactReports)

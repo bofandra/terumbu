@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type MouseEvent } from "react";
 
 import { cn } from "@/lib/utils";
 
@@ -13,6 +13,23 @@ type ExpeditionSectionTabsProps = {
 
 export function ExpeditionSectionTabs({ tabs }: ExpeditionSectionTabsProps) {
   const [activeId, setActiveId] = useState(tabs[0]?.id ?? "");
+
+  function handleAvailabilityClick(event: MouseEvent<HTMLAnchorElement>) {
+    event.preventDefault();
+
+    const target = document.getElementById("booking");
+    if (!target) {
+      window.location.hash = "booking";
+      return;
+    }
+
+    if (window.location.hash !== "#booking") {
+      window.history.pushState(null, "", "#booking");
+    }
+
+    target.focus({ preventScroll: true });
+    target.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
 
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -55,7 +72,7 @@ export function ExpeditionSectionTabs({ tabs }: ExpeditionSectionTabsProps) {
             </a>
           ))}
         </div>
-        <a href="#booking" className="hidden min-h-10 shrink-0 items-center rounded-full bg-coral-500 px-4 text-sm font-bold text-white lg:inline-flex">
+        <a href="#booking" onClick={handleAvailabilityClick} className="hidden min-h-10 shrink-0 items-center rounded-full bg-coral-500 px-4 text-sm font-bold text-white lg:inline-flex">
           Check Availability
         </a>
       </div>

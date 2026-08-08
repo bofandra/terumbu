@@ -3135,7 +3135,8 @@ export async function getDashboardData(userId: string) {
           donationCount: 1,
           latestDonationAt: donation.createdAt,
           receiptNumber: donation.receiptNumber,
-          receiptDonationId: donation.id,
+          receiptDonationId: donation.receiptNumber ? donation.id : null,
+          latestReceiptDonationAt: donation.receiptNumber ? donation.createdAt : null,
           progress,
           statusLabel: `${progress}% funded`,
           latestUpdate: latestUpdateByCampaign.get(donation.campaignSlug) ?? null
@@ -3148,8 +3149,12 @@ export async function getDashboardData(userId: string) {
       existing.donationCount += 1;
       if (donation.createdAt > existing.latestDonationAt) {
         existing.latestDonationAt = donation.createdAt;
+      }
+
+      if (donation.receiptNumber && (!existing.latestReceiptDonationAt || donation.createdAt > existing.latestReceiptDonationAt)) {
         existing.receiptNumber = donation.receiptNumber;
         existing.receiptDonationId = donation.id;
+        existing.latestReceiptDonationAt = donation.createdAt;
       }
 
       return contributions;
@@ -3165,7 +3170,8 @@ export async function getDashboardData(userId: string) {
       donationCount: number;
       latestDonationAt: Date;
       receiptNumber: string | null;
-      receiptDonationId: string;
+      receiptDonationId: string | null;
+      latestReceiptDonationAt: Date | null;
       progress: number;
       statusLabel: string;
       latestUpdate: (typeof updateRows)[number] | null;

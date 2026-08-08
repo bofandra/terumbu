@@ -58,7 +58,7 @@ export default async function DashboardImpactPage() {
       </section>
 
       <section className="mt-6">
-        <DashboardPersonalImpactMap sites={data.personalMapSites} />
+        <DashboardPersonalImpactMap sites={data.personalMapSites} fullMapHref="/impact-map" />
       </section>
 
       <section className="mt-6 grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">

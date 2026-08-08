@@ -23,6 +23,12 @@ type PersonalImpactSite = ImpactSiteData & {
   supportedUnits: number;
 };
 
+type DashboardPersonalImpactMapProps = {
+  sites: PersonalImpactSite[];
+  fullMapHref?: string;
+  fullMapLabel?: string;
+};
+
 function pinPosition(site: PersonalImpactSite) {
   const left = ((site.longitude - indonesiaBounds.minLng) / (indonesiaBounds.maxLng - indonesiaBounds.minLng)) * 100;
   const top = ((indonesiaBounds.maxLat - site.latitude) / (indonesiaBounds.maxLat - indonesiaBounds.minLat)) * 100;
@@ -51,7 +57,11 @@ function isImageUrl(value: string | null | undefined) {
   return Boolean(value && (value.startsWith("data:image/") || /\.(jpg|jpeg|png|webp|gif)(\?|$)/i.test(value)));
 }
 
-export function DashboardPersonalImpactMap({ sites }: { sites: PersonalImpactSite[] }) {
+export function DashboardPersonalImpactMap({
+  sites,
+  fullMapHref = "/dashboard/impact",
+  fullMapLabel = "View full map"
+}: DashboardPersonalImpactMapProps) {
   const [selectedName, setSelectedName] = useState(sites[0]?.name ?? null);
   const selectedSite = sites.find((site) => site.name === selectedName) ?? sites[0] ?? null;
 
@@ -81,8 +91,8 @@ export function DashboardPersonalImpactMap({ sites }: { sites: PersonalImpactSit
             Places connected to your activity
           </h2>
         </div>
-        <Link href="/dashboard/impact" className="hidden text-sm font-bold text-coral-700 hover:text-coral-500 sm:inline-flex">
-          View full map
+        <Link href={fullMapHref} className="hidden text-sm font-bold text-coral-700 hover:text-coral-500 sm:inline-flex">
+          {fullMapLabel}
         </Link>
       </div>
 

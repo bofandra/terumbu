@@ -5,6 +5,7 @@ import { CommunityComposer, type CommunityComposerMode } from "@/components/comm
 import { ButtonLink } from "@/components/ui/button";
 import { requireUser } from "@/lib/auth";
 import { getCommunityChapters } from "@/lib/community-queries";
+import { MAX_DATABASE_IMAGE_BYTES } from "@/lib/storage";
 import { cn } from "@/lib/utils";
 
 export const metadata = {
@@ -25,13 +26,14 @@ const tabs: Array<{ mode: CommunityComposerMode; label: string; href: string; ic
   { mode: "event", label: "Event", href: "/dashboard/community/new?type=event", icon: CalendarDays },
   { mode: "challenge", label: "Challenge", href: "/dashboard/community/new?type=challenge", icon: HeartHandshake }
 ];
+const imageSizeLimitLabel = `${(MAX_DATABASE_IMAGE_BYTES / 1_000_000).toFixed(1)} MB`;
 
 const errorMessages: Record<string, string> = {
   "post-invalid": "Enter a post title and body.",
   "event-invalid": "Enter event title, timing, location, summary, and description.",
   "challenge-invalid": "Enter challenge title, summary, description, and valid dates.",
   "image-type": "Upload a PNG, JPEG, WebP, or GIF image.",
-  "image-size": "Upload an image under the current size limit."
+  "image-size": `Upload an image up to ${imageSizeLimitLabel}.`
 };
 
 function normalizeCreateMode(value: string | undefined): CommunityComposerMode {

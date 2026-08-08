@@ -1,7 +1,6 @@
-import { Download, Heart, RotateCcw } from "lucide-react";
+import { Download, Heart } from "lucide-react";
 import Link from "next/link";
 
-import { requestDonationRefundAction } from "@/lib/billing-actions";
 import { requireUser } from "@/lib/auth";
 import { getBillingData, getDashboardData } from "@/lib/queries";
 import { formatCurrency } from "@/lib/utils";
@@ -36,6 +35,7 @@ export default async function DashboardDonationsPage({ searchParams }: Dashboard
   const user = await requireUser("/dashboard/donations");
   const [data, billing] = await Promise.all([getDashboardData(user.id), getBillingData(user.id)]);
   const donationError = "Could not complete that donation action.";
+  const verificationOperations = billing.operations.filter((operation) => !operation.operationType.includes("refund")).slice(0, 6);
 
   return (
     <main className="mx-auto max-w-5xl px-4 py-8 sm:px-6 lg:px-8">
@@ -83,21 +83,6 @@ export default async function DashboardDonationsPage({ searchParams }: Dashboard
               <div className="md:text-right">
                 <p className="font-bold text-ocean-900">{formatCurrency(Number(donation.amount))}</p>
                 <span className={`mt-2 inline-flex rounded-full px-3 py-1 text-xs font-bold ${statusClass(donation.status)}`}>{donation.status}</span>
-                {billing.pendingRefundDonationIds.has(donation.id) ? (
-                  <p className="mt-3 rounded-full bg-sand-100 px-3 py-1 text-xs font-bold text-ocean-900/70">Refund requested</p>
-                ) : null}
-                <div className="mt-4 flex flex-wrap gap-2 md:justify-end">
-                  {donation.status === "paid" && !billing.pendingRefundDonationIds.has(donation.id) ? (
-                    <form action={requestDonationRefundAction}>
-                      <input type="hidden" name="donationId" value={donation.id} />
-                      <input type="hidden" name="reason" value="Requested from donation history" />
-                      <button className="inline-flex min-h-9 items-center gap-2 rounded-full border border-ocean-900/10 px-3 text-xs font-bold text-coral-700 hover:border-coral-500" type="submit">
-                        <RotateCcw size={14} aria-hidden="true" />
-                        Request refund
-                      </button>
-                    </form>
-                  ) : null}
-                </div>
               </div>
             </div>
           </article>
@@ -117,10 +102,10 @@ export default async function DashboardDonationsPage({ searchParams }: Dashboard
       </section>
 
       <section className="mt-6 rounded-2xl border border-ocean-900/10 bg-white p-5 shadow-soft">
-        <p className="text-sm font-bold uppercase tracking-[0.16em] text-coral-700">Payment operations</p>
-        <h2 className="mt-2 text-2xl font-bold tracking-normal text-ocean-900">Recent verification and refund requests</h2>
+        <p className="text-sm font-bold uppercase tracking-[0.16em] text-coral-700">Payment verification</p>
+        <h2 className="mt-2 text-2xl font-bold tracking-normal text-ocean-900">Recent verification activity</h2>
         <div className="mt-5 grid gap-3">
-          {billing.operations.slice(0, 6).map((operation) => (
+          {verificationOperations.map((operation) => (
             <div key={operation.id} className="flex flex-col justify-between gap-2 rounded-xl border border-ocean-900/10 bg-sand-50 p-4 sm:flex-row sm:items-center">
               <div>
                 <p className="font-bold capitalize text-ocean-900">{operation.operationType.replaceAll("_", " ")}</p>
@@ -131,7 +116,7 @@ export default async function DashboardDonationsPage({ searchParams }: Dashboard
               <span className={`w-fit rounded-full px-3 py-1 text-xs font-bold ${statusClass(operation.status)}`}>{operation.status}</span>
             </div>
           ))}
-          {billing.operations.length === 0 ? <p className="rounded-xl border border-dashed border-ocean-900/14 p-4 text-sm font-semibold text-ocean-900/62">No payment operations yet.</p> : null}
+          {verificationOperations.length === 0 ? <p className="rounded-xl border border-dashed border-ocean-900/14 p-4 text-sm font-semibold text-ocean-900/62">No payment verification activity yet.</p> : null}
         </div>
       </section>
     </main>

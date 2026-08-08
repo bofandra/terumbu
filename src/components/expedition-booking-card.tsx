@@ -122,7 +122,14 @@ export function ExpeditionBookingCard({
   const href = checkoutHref(selectedDeparture?.id ?? null, participants);
 
   return (
-    <aside id={anchorId} className={cn("rounded-2xl border border-ocean-900/10 bg-white p-4 shadow-soft sm:p-5", compact ? "" : "lg:sticky lg:top-28")}>
+    <aside
+      id={anchorId}
+      tabIndex={anchorId ? -1 : undefined}
+      className={cn(
+        "rounded-2xl border border-ocean-900/10 bg-white p-4 shadow-soft outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-coral-500 sm:p-5",
+        compact ? "" : "lg:sticky lg:top-28"
+      )}
+    >
       <div className="border-b border-ocean-900/10 pb-4">
         <p className="text-sm font-semibold text-ocean-900/58">From</p>
         <p className="mt-1 text-3xl font-bold tracking-normal text-ocean-900">

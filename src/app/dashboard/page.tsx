@@ -84,6 +84,7 @@ function achievementIcon(name: string) {
 type DashboardPageProps = {
   searchParams?: Promise<{
     saved?: string;
+    error?: string;
   }>;
 };
 
@@ -152,6 +153,28 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
     { label: "Sponsor a Coral", href: "/campaigns", icon: Waves },
     { label: "Start a Free Course", href: "/academy", icon: BookOpen }
   ];
+  const savedMessage = params?.saved === "monthly-report"
+    ? "Monthly report summary saved."
+    : params?.saved === "monthly-email"
+      ? "Monthly report email sent."
+      : params?.saved
+        ? "Dashboard update saved."
+        : null;
+  const errorMessage = params?.error === "monthly-report"
+    ? "We could not save the monthly report summary. Try again."
+    : params?.error === "monthly-email"
+      ? "The monthly report summary was saved, but the email could not be sent."
+      : params?.error
+        ? "We could not complete that dashboard action."
+        : null;
+  const monthlyReportMessage = params?.saved === "monthly-report" || params?.saved === "monthly-email"
+    ? savedMessage
+    : params?.error === "monthly-report" || params?.error === "monthly-email"
+      ? errorMessage
+      : null;
+  const monthlyReportMessageClassName = params?.error === "monthly-report" || params?.error === "monthly-email"
+    ? "border-coral-500/20 bg-coral-100 text-coral-700"
+    : "border-kelp-500/20 bg-kelp-100 text-kelp-700";
 
   return (
     <main className="mx-auto max-w-[1440px] px-4 py-6 sm:px-6 lg:px-8">
@@ -183,9 +206,14 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
         </div>
       </header>
 
-      {params?.saved ? (
+      {savedMessage ? (
         <p className="mt-6 rounded-xl border border-kelp-500/20 bg-kelp-100 px-4 py-3 text-sm font-semibold text-kelp-700">
-          Dashboard update saved.
+          {savedMessage}
+        </p>
+      ) : null}
+      {errorMessage ? (
+        <p className="mt-6 rounded-xl border border-coral-500/20 bg-coral-100 px-4 py-3 text-sm font-semibold text-coral-700">
+          {errorMessage}
         </p>
       ) : null}
 
@@ -478,10 +506,14 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
                     </td>
                     <td className="py-4 text-ocean-900/64">{item.latestUpdate ? `${formatShortDate(item.latestUpdate.publishedAt ?? item.latestUpdate.createdAt)} · New update` : "No new update"}</td>
                     <td className="py-4 text-right">
-                      <Link href={item.receiptNumber ? `/dashboard/donations/${item.receiptDonationId}/receipt` : "/dashboard/donations"} download={Boolean(item.receiptNumber)} className="inline-flex items-center justify-end gap-1 text-xs font-bold text-coral-700">
-                        <Download size={14} aria-hidden="true" />
-                        {item.receiptNumber ?? "Pending"}
-                      </Link>
+                      {item.receiptNumber && item.receiptDonationId ? (
+                        <Link href={`/dashboard/donations/${item.receiptDonationId}/receipt`} download className="inline-flex items-center justify-end gap-1 text-xs font-bold text-coral-700">
+                          <Download size={14} aria-hidden="true" />
+                          {item.receiptNumber}
+                        </Link>
+                      ) : (
+                        <span className="text-xs font-bold text-ocean-900/46">Pending</span>
+                      )}
                     </td>
                   </tr>
                 ))}
@@ -582,7 +614,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
         </article>
 
         <div className="grid gap-6">
-          <article id="monthly-report" className="rounded-2xl border border-ocean-900/10 bg-white p-5 shadow-soft">
+          <article className="rounded-2xl border border-ocean-900/10 bg-white p-5 shadow-soft">
             <p className="text-sm font-bold uppercase tracking-[0.16em] text-coral-700">Achievements</p>
             <div className="mt-5 grid gap-3 sm:grid-cols-2">
               {data.achievements.slice(0, 4).map((achievement) => {
@@ -627,7 +659,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
         {data.passportPreview ? <PassportPreview passport={data.passportPreview} /> : null}
 
         <div className="grid gap-6">
-          <article className="rounded-2xl border border-ocean-900/10 bg-white p-5 shadow-soft">
+          <article id="monthly-report" className="scroll-mt-24 rounded-2xl border border-ocean-900/10 bg-white p-5 shadow-soft">
             <div className="flex items-start justify-between gap-3">
               <div>
                 <p className="text-sm font-bold uppercase tracking-[0.16em] text-coral-700">Monthly report</p>
@@ -637,6 +669,11 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
                 {data.monthlyReport.persisted ? "Saved" : data.monthlyReport.ready ? "Ready" : "Pending"}
               </span>
             </div>
+            {monthlyReportMessage ? (
+              <p className={cn("mt-4 rounded-xl border px-4 py-3 text-sm font-semibold", monthlyReportMessageClassName)}>
+                {monthlyReportMessage}
+              </p>
+            ) : null}
             <div className="mt-5 grid gap-3 sm:grid-cols-2">
               <ReportItem label="Contributions" value={formatCurrency(data.monthlyReport.contributions)} />
               <ReportItem label="Campaign updates" value={String(data.monthlyReport.campaignUpdates)} />

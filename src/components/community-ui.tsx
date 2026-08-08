@@ -1,6 +1,7 @@
 /* eslint-disable @next/next/no-img-element */
 import { CalendarDays, Flag, HeartHandshake, MessageCircle, Send, Sparkles, Users, Waves } from "lucide-react";
 import Link from "next/link";
+import type { ReactNode } from "react";
 
 import {
   cancelCommunityEventRegistrationAction,
@@ -26,12 +27,48 @@ import type {
 import { cn } from "@/lib/utils";
 import { Button, ButtonLink } from "@/components/ui/button";
 import { ProgressMeter } from "@/components/ui/progress-meter";
+import { MAX_DATABASE_IMAGE_BYTES } from "@/lib/storage";
 
 export const communityInputClassName =
   "min-h-11 w-full min-w-0 rounded-lg border border-ocean-900/12 bg-white px-3 text-sm font-semibold text-ocean-900 outline-none transition placeholder:text-ocean-900/34 focus:border-coral-500 focus:ring-2 focus:ring-coral-500/20";
 
 export const communityTextareaClassName =
   "min-h-28 w-full min-w-0 rounded-lg border border-ocean-900/12 bg-white px-3 py-3 text-sm font-semibold leading-6 text-ocean-900 outline-none transition placeholder:text-ocean-900/34 focus:border-coral-500 focus:ring-2 focus:ring-coral-500/20";
+
+function uploadSizeLabel(bytes: number) {
+  const megabytes = bytes / 1_000_000;
+
+  return `${Number.isInteger(megabytes) ? megabytes.toFixed(0) : megabytes.toFixed(1)} MB`;
+}
+
+const communityImageUploadHelp = `PNG, JPG, WebP, or GIF up to ${uploadSizeLabel(MAX_DATABASE_IMAGE_BYTES)}.`;
+
+function RequiredMark() {
+  return <span aria-hidden="true" className="text-coral-700">*</span>;
+}
+
+function ComposerField({
+  label,
+  required = false,
+  help,
+  children
+}: {
+  label: string;
+  required?: boolean;
+  help?: string;
+  children: ReactNode;
+}) {
+  return (
+    <label className="grid gap-2">
+      <span className="flex items-center gap-1 text-sm font-bold text-ocean-900">
+        {label}
+        {required ? <RequiredMark /> : null}
+      </span>
+      {children}
+      {help ? <span className="text-xs font-semibold text-ocean-900/54">{help}</span> : null}
+    </label>
+  );
+}
 
 export function CommunityAuthorBadge({ author, detail }: { author: { name: string; initials: string }; detail?: string }) {
   return (
@@ -342,21 +379,39 @@ export function CommunityComposer({ chapters, mode }: { chapters: CommunityChapt
     return (
       <form action={createCommunityEventAction} encType="multipart/form-data" className={formClassName}>
         {header}
-        <input name="title" placeholder="Mangrove planting day" className={communityInputClassName} required />
-        <input name="summary" placeholder="One-line event summary" className={communityInputClassName} required />
-        <ChapterSelect chapters={chapters} />
-        <input name="location" placeholder="Location" className={communityInputClassName} required />
+        <ComposerField label="Title" required>
+          <input name="title" placeholder="Mangrove planting day" className={communityInputClassName} required />
+        </ComposerField>
+        <ComposerField label="Summary" required>
+          <input name="summary" placeholder="One-line event summary" className={communityInputClassName} required />
+        </ComposerField>
+        <ComposerField label="Chapter">
+          <ChapterSelect chapters={chapters} />
+        </ComposerField>
+        <ComposerField label="Location" required>
+          <input name="location" placeholder="Location" className={communityInputClassName} required />
+        </ComposerField>
         <div className="grid gap-3 sm:grid-cols-2">
-          <input name="startsAt" type="datetime-local" className={communityInputClassName} required />
-          <input name="endsAt" type="datetime-local" className={communityInputClassName} required />
+          <ComposerField label="Starts at" required>
+            <input name="startsAt" type="datetime-local" className={communityInputClassName} required />
+          </ComposerField>
+          <ComposerField label="Ends at" required>
+            <input name="endsAt" type="datetime-local" className={communityInputClassName} required />
+          </ComposerField>
         </div>
-        <input name="capacity" type="number" min={1} defaultValue={40} className={communityInputClassName} required />
+        <ComposerField label="Capacity" required>
+          <input name="capacity" type="number" min={1} defaultValue={40} className={communityInputClassName} required />
+        </ComposerField>
         <label className="flex items-center gap-2 text-sm font-bold text-ocean-900">
           <input name="waitlistEnabled" type="checkbox" defaultChecked className="size-4 accent-coral-500" />
           Waitlist
         </label>
-        <textarea name="description" placeholder="What participants should expect." className={communityTextareaClassName} required />
-        <input name="imageFile" type="file" accept="image/png,image/jpeg,image/webp,image/gif" className={communityInputClassName} />
+        <ComposerField label="Description" required>
+          <textarea name="description" placeholder="What participants should expect." className={communityTextareaClassName} required />
+        </ComposerField>
+        <ComposerField label="Image" help={communityImageUploadHelp}>
+          <input name="imageFile" type="file" accept="image/png,image/jpeg,image/webp,image/gif" className={communityInputClassName} />
+        </ComposerField>
         <Button type="submit" className="justify-self-start">Publish Event</Button>
       </form>
     );
@@ -366,20 +421,40 @@ export function CommunityComposer({ chapters, mode }: { chapters: CommunityChapt
     return (
       <form action={createCommunityChallengeAction} encType="multipart/form-data" className={formClassName}>
         {header}
-        <input name="title" placeholder="Plastic-Free Week" className={communityInputClassName} required />
-        <input name="summary" placeholder="One-line challenge summary" className={communityInputClassName} required />
-        <ChapterSelect chapters={chapters} />
+        <ComposerField label="Title" required>
+          <input name="title" placeholder="Plastic-Free Week" className={communityInputClassName} required />
+        </ComposerField>
+        <ComposerField label="Summary" required>
+          <input name="summary" placeholder="One-line challenge summary" className={communityInputClassName} required />
+        </ComposerField>
+        <ComposerField label="Chapter">
+          <ChapterSelect chapters={chapters} />
+        </ComposerField>
         <div className="grid gap-3 sm:grid-cols-2">
-          <input name="goalTarget" type="number" min={1} defaultValue={7} className={communityInputClassName} required />
-          <input name="unit" placeholder="actions" defaultValue="actions" className={communityInputClassName} required />
+          <ComposerField label="Goal target" required>
+            <input name="goalTarget" type="number" min={1} defaultValue={7} className={communityInputClassName} required />
+          </ComposerField>
+          <ComposerField label="Unit" required>
+            <input name="unit" placeholder="actions" defaultValue="actions" className={communityInputClassName} required />
+          </ComposerField>
         </div>
-        <input name="goalMetric" placeholder="Goal metric" defaultValue="completed actions" className={communityInputClassName} />
+        <ComposerField label="Goal metric">
+          <input name="goalMetric" placeholder="Goal metric" defaultValue="completed actions" className={communityInputClassName} />
+        </ComposerField>
         <div className="grid gap-3 sm:grid-cols-2">
-          <input name="startsAt" type="date" className={communityInputClassName} />
-          <input name="endsAt" type="date" className={communityInputClassName} />
+          <ComposerField label="Starts at">
+            <input name="startsAt" type="date" className={communityInputClassName} />
+          </ComposerField>
+          <ComposerField label="Ends at">
+            <input name="endsAt" type="date" className={communityInputClassName} />
+          </ComposerField>
         </div>
-        <textarea name="description" placeholder="Rules, tracking guidance, and evidence expectations." className={communityTextareaClassName} required />
-        <input name="imageFile" type="file" accept="image/png,image/jpeg,image/webp,image/gif" className={communityInputClassName} />
+        <ComposerField label="Description" required>
+          <textarea name="description" placeholder="Rules, tracking guidance, and evidence expectations." className={communityTextareaClassName} required />
+        </ComposerField>
+        <ComposerField label="Image" help={communityImageUploadHelp}>
+          <input name="imageFile" type="file" accept="image/png,image/jpeg,image/webp,image/gif" className={communityInputClassName} />
+        </ComposerField>
         <Button type="submit" className="justify-self-start">Publish Challenge</Button>
       </form>
     );
@@ -388,16 +463,26 @@ export function CommunityComposer({ chapters, mode }: { chapters: CommunityChapt
   return (
     <form action={createCommunityPostAction} encType="multipart/form-data" className={formClassName}>
       {header}
-      <input name="title" placeholder="Story or field note title" className={communityInputClassName} required />
-      <select name="postType" defaultValue="story" className={communityInputClassName}>
-        <option value="story">Story</option>
-        <option value="field_note">Field note</option>
-        <option value="question">Question</option>
-        <option value="resource">Resource</option>
-      </select>
-      <ChapterSelect chapters={chapters} />
-      <textarea name="body" placeholder="Share what happened, what you learned, or what help is needed." className={communityTextareaClassName} required />
-      <input name="imageFile" type="file" accept="image/png,image/jpeg,image/webp,image/gif" className={communityInputClassName} />
+      <ComposerField label="Title" required>
+        <input name="title" placeholder="Story or field note title" className={communityInputClassName} required />
+      </ComposerField>
+      <ComposerField label="Post type">
+        <select name="postType" defaultValue="story" className={communityInputClassName}>
+          <option value="story">Story</option>
+          <option value="field_note">Field note</option>
+          <option value="question">Question</option>
+          <option value="resource">Resource</option>
+        </select>
+      </ComposerField>
+      <ComposerField label="Chapter">
+        <ChapterSelect chapters={chapters} />
+      </ComposerField>
+      <ComposerField label="Body" required>
+        <textarea name="body" placeholder="Share what happened, what you learned, or what help is needed." className={communityTextareaClassName} required />
+      </ComposerField>
+      <ComposerField label="Image" help={communityImageUploadHelp}>
+        <input name="imageFile" type="file" accept="image/png,image/jpeg,image/webp,image/gif" className={communityInputClassName} />
+      </ComposerField>
       <Button type="submit" className="justify-self-start">Publish Post</Button>
     </form>
   );
