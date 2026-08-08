@@ -12,6 +12,7 @@ import {
   adminTextareaClassName
 } from "@/components/admin-ui";
 import { Button } from "@/components/ui/button";
+import { FormTabs } from "@/components/ui/form-tabs";
 import { requireRole } from "@/lib/auth";
 import { processExpeditionInterestRequestAction } from "@/lib/expedition-interest-actions";
 import { moderateExpeditionReviewAction } from "@/lib/expedition-review-actions";
@@ -193,6 +194,17 @@ export default async function AdminExpeditionDetailPage({ params, searchParams }
         ))}
       </section>
 
+      <FormTabs
+        ariaLabel="Expedition management workflows"
+        tabs={[
+          { id: "requests", label: "Requests", description: "Waitlist demand", badge: expedition.interestRequests.length.toLocaleString("id-ID") },
+          { id: "bookings", label: "Bookings", description: "Cancel bookings", badge: expedition.bookings.length.toLocaleString("id-ID") },
+          { id: "details", label: "Details", description: "Catalog record" },
+          { id: "reviews", label: "Reviews", description: "Moderation", badge: expedition.reviews.length.toLocaleString("id-ID") },
+          { id: "departures", label: "Departures", description: "Schedules", badge: expedition.departures.length.toLocaleString("id-ID") },
+          { id: "danger", label: "Danger", description: "Delete expedition" }
+        ]}
+      >
       <section className={adminPanelClassName}>
         <div className="flex flex-col justify-between gap-3 border-b border-ocean-900/10 p-4 sm:flex-row sm:items-center">
           <div>
@@ -504,41 +516,47 @@ export default async function AdminExpeditionDetailPage({ params, searchParams }
                 </Button>
               </form>
 
-              <form action={cancelExpeditionDepartureAction} className="mt-3 rounded-lg border border-coral-700/20 bg-white p-3">
-                <input type="hidden" name="returnTo" value={returnTo} />
-                <input type="hidden" name="departureId" value={departure.id} />
-                <label className="grid gap-1.5 text-sm font-bold text-ocean-900">
-                  Cancellation reason
-                  <input name="reason" placeholder="Weather, operator change, or safety issue" className={adminInputClassName} disabled={departure.status === "cancelled"} />
-                </label>
-                <Button
-                  type="submit"
-                  tone="ghost"
-                  className="mt-3 w-fit rounded-lg text-coral-700 hover:bg-coral-100 disabled:cursor-not-allowed disabled:opacity-45"
-                  disabled={departure.status === "cancelled"}
-                >
-                  <XCircle className="size-4" aria-hidden="true" />
-                  Cancel departure and bookings
-                </Button>
-              </form>
+              <details className="mt-3 rounded-lg border border-coral-700/20 bg-white">
+                <summary className="cursor-pointer list-none px-3 py-2 text-sm font-bold text-coral-700">Cancel departure</summary>
+                <form action={cancelExpeditionDepartureAction} className="grid gap-3 border-t border-coral-700/20 p-3">
+                  <input type="hidden" name="returnTo" value={returnTo} />
+                  <input type="hidden" name="departureId" value={departure.id} />
+                  <label className="grid gap-1.5 text-sm font-bold text-ocean-900">
+                    Cancellation reason
+                    <input name="reason" placeholder="Weather, operator change, or safety issue" className={adminInputClassName} disabled={departure.status === "cancelled"} />
+                  </label>
+                  <Button
+                    type="submit"
+                    tone="ghost"
+                    className="w-fit rounded-lg text-coral-700 hover:bg-coral-100 disabled:cursor-not-allowed disabled:opacity-45"
+                    disabled={departure.status === "cancelled"}
+                  >
+                    <XCircle className="size-4" aria-hidden="true" />
+                    Cancel departure and bookings
+                  </Button>
+                </form>
+              </details>
 
-              <form action={deleteExpeditionDepartureAction} className="mt-3 rounded-lg border border-coral-700/20 bg-white p-3">
-                <input type="hidden" name="returnTo" value={returnTo} />
-                <input type="hidden" name="departureId" value={departure.id} />
-                <label className="flex items-start gap-2 text-sm font-bold text-ocean-900">
-                  <input name="confirmDelete" type="checkbox" value="delete" className="mt-1 size-4 accent-coral-500" disabled={departure.bookingCount > 0} required />
-                  Delete this departure. Departures with bookings cannot be deleted.
-                </label>
-                <Button
-                  type="submit"
-                  tone="ghost"
-                  className="mt-3 w-fit rounded-lg text-coral-700 hover:bg-coral-100 disabled:cursor-not-allowed disabled:opacity-45"
-                  disabled={departure.bookingCount > 0}
-                >
-                  <Trash2 className="size-4" aria-hidden="true" />
-                  Delete Departure
-                </Button>
-              </form>
+              <details className="mt-3 rounded-lg border border-coral-700/20 bg-white">
+                <summary className="cursor-pointer list-none px-3 py-2 text-sm font-bold text-coral-700">Delete departure</summary>
+                <form action={deleteExpeditionDepartureAction} className="grid gap-3 border-t border-coral-700/20 p-3">
+                  <input type="hidden" name="returnTo" value={returnTo} />
+                  <input type="hidden" name="departureId" value={departure.id} />
+                  <label className="flex items-start gap-2 text-sm font-bold text-ocean-900">
+                    <input name="confirmDelete" type="checkbox" value="delete" className="mt-1 size-4 accent-coral-500" disabled={departure.bookingCount > 0} required />
+                    Delete this departure. Departures with bookings cannot be deleted.
+                  </label>
+                  <Button
+                    type="submit"
+                    tone="ghost"
+                    className="w-fit rounded-lg text-coral-700 hover:bg-coral-100 disabled:cursor-not-allowed disabled:opacity-45"
+                    disabled={departure.bookingCount > 0}
+                  >
+                    <Trash2 className="size-4" aria-hidden="true" />
+                    Delete Departure
+                  </Button>
+                </form>
+              </details>
             </div>
           ))}
           {expedition.departures.length === 0 ? <p className="rounded-lg border border-dashed border-ocean-900/14 p-3 text-sm font-semibold text-ocean-900/58">No departures scheduled.</p> : null}
@@ -620,6 +638,7 @@ export default async function AdminExpeditionDetailPage({ params, searchParams }
           </Button>
         </form>
       </section>
+      </FormTabs>
     </div>
   );
 }

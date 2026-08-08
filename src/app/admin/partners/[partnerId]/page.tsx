@@ -11,6 +11,7 @@ import {
   adminTextareaClassName
 } from "@/components/admin-ui";
 import { Button } from "@/components/ui/button";
+import { FormTabs } from "@/components/ui/form-tabs";
 import { requireRole } from "@/lib/auth";
 import {
   addOrganizationUserAction,
@@ -138,6 +139,14 @@ export default async function AdminPartnerDetailPage({ params, searchParams }: A
         })}
       </section>
 
+      <FormTabs
+        ariaLabel="Partner management workflows"
+        tabs={[
+          { id: "details", label: "Details", description: "Profile and verification" },
+          { id: "users", label: "Users", description: "Portal access", badge: partner.members.length.toLocaleString("id-ID") },
+          { id: "danger", label: "Danger", description: "Delete partner" }
+        ]}
+      >
       <section className={adminPanelClassName}>
         <div className="flex flex-col justify-between gap-3 border-b border-ocean-900/10 p-4 sm:flex-row sm:items-center">
           <div>
@@ -243,24 +252,34 @@ export default async function AdminPartnerDetailPage({ params, searchParams }: A
                     Save
                   </Button>
                 </form>
-                <form action={removeOrganizationUserAction}>
-                  <input type="hidden" name="returnTo" value={returnTo} />
-                  <input type="hidden" name="organizationUserId" value={member.id} />
-                  <Button type="submit" tone="ghost" className="min-h-10 rounded-lg px-3 text-coral-700 hover:bg-coral-100">
-                    <Trash2 className="size-4" aria-hidden="true" />
-                    Remove
-                  </Button>
-                </form>
+                <details className="rounded-lg border border-coral-700/20 bg-white">
+                  <summary className="cursor-pointer list-none px-3 py-2 text-sm font-bold text-coral-700">Remove access</summary>
+                  <form action={removeOrganizationUserAction} className="border-t border-coral-700/20 p-3">
+                    <input type="hidden" name="returnTo" value={returnTo} />
+                    <input type="hidden" name="organizationUserId" value={member.id} />
+                    <Button type="submit" tone="ghost" className="min-h-10 rounded-lg px-3 text-coral-700 hover:bg-coral-100">
+                      <Trash2 className="size-4" aria-hidden="true" />
+                      Remove
+                    </Button>
+                  </form>
+                </details>
               </div>
             </div>
           ))}
           {partner.members.length === 0 ? <p className="rounded-lg border border-dashed border-ocean-900/14 p-3 text-sm font-semibold text-ocean-900/58">No partner users assigned.</p> : null}
         </div>
 
-        <div className="grid gap-4 border-t border-ocean-900/10 p-4 lg:grid-cols-2">
-          <div className="grid gap-3 rounded-lg border border-ocean-900/10 bg-sand-50 p-3">
-            <h3 className="font-bold text-ocean-900">Assign existing user</h3>
-            <form action={addOrganizationUserAction} className="grid gap-2">
+        <div className="border-t border-ocean-900/10 p-4">
+          <FormTabs
+            ariaLabel="Partner user assignment workflows"
+            className="shadow-none"
+            tabs={[
+              { id: "assign", label: "Assign Existing", description: "Use an existing account" },
+              { id: "create", label: "Create New", description: "Setup email queued" }
+            ]}
+          >
+            <form action={addOrganizationUserAction} className="grid gap-3">
+              <h3 className="font-bold text-ocean-900">Assign existing user</h3>
               <input type="hidden" name="returnTo" value={returnTo} />
               <input type="hidden" name="organizationId" value={partner.id} />
               <input name="email" type="email" placeholder="user@example.com" className={adminInputClassName} required />
@@ -285,11 +304,9 @@ export default async function AdminPartnerDetailPage({ params, searchParams }: A
                 </Button>
               </div>
             </form>
-          </div>
 
-          <div className="grid gap-3 rounded-lg border border-ocean-900/10 bg-sand-50 p-3">
-            <h3 className="font-bold text-ocean-900">Create new partner user</h3>
-            <form action={createOrganizationUserAction} className="grid gap-2">
+            <form action={createOrganizationUserAction} className="grid gap-3">
+              <h3 className="font-bold text-ocean-900">Create new partner user</h3>
               <input type="hidden" name="returnTo" value={returnTo} />
               <input type="hidden" name="organizationId" value={partner.id} />
               <div className="grid gap-2 sm:grid-cols-2">
@@ -317,7 +334,7 @@ export default async function AdminPartnerDetailPage({ params, searchParams }: A
                 </Button>
               </div>
             </form>
-          </div>
+          </FormTabs>
         </div>
       </section>
 
@@ -337,6 +354,7 @@ export default async function AdminPartnerDetailPage({ params, searchParams }: A
           </Button>
         </form>
       </section>
+      </FormTabs>
     </div>
   );
 }

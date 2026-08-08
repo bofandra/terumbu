@@ -16,13 +16,15 @@ type FormTabsProps = {
   tabs: FormTab[];
   children: ReactNode;
   className?: string;
+  defaultTabId?: string;
 };
 
-export function FormTabs({ ariaLabel, tabs, children, className }: FormTabsProps) {
+export function FormTabs({ ariaLabel, tabs, children, className, defaultTabId }: FormTabsProps) {
   const generatedId = useId();
   const panels = Children.toArray(children);
   const firstTab = tabs[0]?.id ?? "";
-  const [activeTab, setActiveTab] = useState(firstTab);
+  const initialTab = tabs.some((tab) => tab.id === defaultTabId) ? defaultTabId ?? firstTab : firstTab;
+  const [activeTab, setActiveTab] = useState(initialTab);
   const selectedTab = tabs.some((tab) => tab.id === activeTab) ? activeTab : firstTab;
 
   return (

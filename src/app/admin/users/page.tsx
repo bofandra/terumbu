@@ -19,11 +19,11 @@ import {
   AdminPageHeader,
   AdminStatusBadge,
   adminInputClassName,
-  adminPanelClassName,
   adminSelectClassName,
   adminTextareaClassName
 } from "@/components/admin-ui";
 import { Button } from "@/components/ui/button";
+import { FormTabs } from "@/components/ui/form-tabs";
 import {
   assignGlobalRoleAction,
   clearAdminUserSessionsAction,
@@ -114,6 +114,26 @@ function returnToFor(query: string) {
   return query ? `/admin/users?q=${encodeURIComponent(query)}` : "/admin/users";
 }
 
+function defaultUsersTab(query: string, params: { error?: string; saved?: string } | undefined) {
+  if (query) {
+    return "manage";
+  }
+
+  if (params?.saved === "role-deleted" || params?.saved === "role-saved") {
+    return "roles";
+  }
+
+  if (params?.saved === "user-created" || params?.error === "user-exists" || params?.error === "user-invalid") {
+    return "create";
+  }
+
+  if (params?.saved || params?.error) {
+    return "manage";
+  }
+
+  return "create";
+}
+
 function HiddenReturn({ value }: { value: string }) {
   return <input type="hidden" name="returnTo" value={value} />;
 }
@@ -184,8 +204,20 @@ function UserManagementCard({
         <AccessSummary user={user} />
       </summary>
 
-      <div className="grid gap-4 border-t border-ocean-900/10 p-4">
-        <section className="rounded-lg border border-ocean-900/10 bg-sand-50 p-4">
+      <div className="border-t border-ocean-900/10 p-4">
+        <FormTabs
+          ariaLabel={`Manage ${displayName}`}
+          className="shadow-none"
+          tabs={[
+            { id: "profile", label: "Profile", description: "Identity and public page" },
+            { id: "roles", label: "Roles", description: "Global RBAC", badge: user.roles.length.toLocaleString("id-ID") },
+            { id: "partner", label: "Partner", description: "Organization access", badge: user.partnerMemberships.length.toLocaleString("id-ID") },
+            { id: "corporate", label: "Corporate", description: "Scoped permissions", badge: user.corporatePermissions.length.toLocaleString("id-ID") },
+            { id: "security", label: "Security", description: "Email, password, sessions" },
+            { id: "danger", label: "Danger", description: "Delete account" }
+          ]}
+        >
+        <section className="grid gap-4">
           <h4 className="font-bold text-ocean-900">Profile and account</h4>
           <form action={updateAdminUserProfileAction} className="mt-4 grid gap-3 lg:grid-cols-3">
             <HiddenReturn value={returnTo} />
@@ -215,9 +247,10 @@ function UserManagementCard({
           </form>
         </section>
 
-        <section className="grid gap-4 xl:grid-cols-3">
-          <div className="rounded-lg border border-ocean-900/10 bg-sand-50 p-4">
+        <section className="grid gap-4">
+          <div>
             <h4 className="font-bold text-ocean-900">Global roles</h4>
+            <p className="mt-1 text-sm font-semibold leading-6 text-ocean-900/58">Assign or revoke platform-wide access roles for this user.</p>
             <div className="mt-3 grid gap-2">
               {user.roles.map((role) => (
                 <form key={role.id} action={revokeGlobalRoleAction} className="flex items-center justify-between gap-2 rounded-lg bg-white px-3 py-2">
@@ -231,7 +264,7 @@ function UserManagementCard({
               ))}
               {user.roles.length === 0 ? <p className="rounded-lg border border-dashed border-ocean-900/14 p-3 text-sm font-semibold text-ocean-900/58">No global roles assigned.</p> : null}
             </div>
-            <form action={assignGlobalRoleAction} className="mt-3 grid gap-2 sm:grid-cols-[1fr_auto]">
+            <form action={assignGlobalRoleAction} className="mt-3 grid gap-2 sm:max-w-xl sm:grid-cols-[1fr_auto]">
               <HiddenReturn value={returnTo} />
               <input type="hidden" name="userId" value={user.id} />
               <select name="roleKey" defaultValue="user" className={adminSelectClassName}>
@@ -246,12 +279,15 @@ function UserManagementCard({
               </Button>
             </form>
           </div>
+        </section>
 
-          <div className="rounded-lg border border-ocean-900/10 bg-sand-50 p-4">
+        <section className="grid gap-4">
+          <div>
             <h4 className="font-bold text-ocean-900">Partner access</h4>
+            <p className="mt-1 text-sm font-semibold leading-6 text-ocean-900/58">Manage partner organization membership and partner portal status.</p>
             <div className="mt-3 grid gap-2">
               {user.partnerMemberships.map((membership) => (
-                <div key={membership.id} className="rounded-lg bg-white p-3">
+                <div key={membership.id} className="rounded-lg border border-ocean-900/10 bg-white p-3">
                   <p className="font-bold text-ocean-900">{membership.organizationName}</p>
                   <form action={updatePartnerMembershipAction} className="mt-2 grid gap-2 sm:grid-cols-[1fr_1fr_auto]">
                     <HiddenReturn value={returnTo} />
@@ -268,16 +304,19 @@ function UserManagementCard({
                     </select>
                     <Button type="submit" tone="secondary" className="min-h-10 rounded-lg px-3">Save</Button>
                   </form>
-                  <form action={removePartnerMembershipAction} className="mt-2">
-                    <HiddenReturn value={returnTo} />
-                    <input type="hidden" name="membershipId" value={membership.id} />
-                    <Button type="submit" tone="ghost" className="min-h-9 rounded-lg px-3 text-coral-700 hover:bg-coral-100">Remove partner access</Button>
-                  </form>
+                  <details className="mt-3 rounded-lg border border-coral-700/20 bg-coral-100/30">
+                    <summary className="cursor-pointer list-none px-3 py-2 text-sm font-bold text-coral-700">Remove partner access</summary>
+                    <form action={removePartnerMembershipAction} className="border-t border-coral-700/20 p-3">
+                      <HiddenReturn value={returnTo} />
+                      <input type="hidden" name="membershipId" value={membership.id} />
+                      <Button type="submit" tone="ghost" className="min-h-9 rounded-lg px-3 text-coral-700 hover:bg-coral-100">Remove partner access</Button>
+                    </form>
+                  </details>
                 </div>
               ))}
               {user.partnerMemberships.length === 0 ? <p className="rounded-lg border border-dashed border-ocean-900/14 p-3 text-sm font-semibold text-ocean-900/58">No partner organization membership.</p> : null}
             </div>
-            <form action={setPartnerMembershipAction} className="mt-3 grid gap-2">
+            <form action={setPartnerMembershipAction} className="mt-3 grid gap-2 sm:max-w-2xl">
               <HiddenReturn value={returnTo} />
               <input type="hidden" name="userId" value={user.id} />
               <select name="organizationId" className={adminSelectClassName} disabled={data.organizations.length === 0}>
@@ -304,12 +343,15 @@ function UserManagementCard({
               </div>
             </form>
           </div>
+        </section>
 
-          <div className="rounded-lg border border-ocean-900/10 bg-sand-50 p-4">
+        <section className="grid gap-4">
+          <div>
             <h4 className="font-bold text-ocean-900">Corporate access</h4>
+            <p className="mt-1 text-sm font-semibold leading-6 text-ocean-900/58">Grant or remove scoped corporate account access.</p>
             <div className="mt-3 grid gap-2">
               {user.corporatePermissions.map((permission) => (
-                <form key={permission.id} action={removeCorporatePermissionAction} className="rounded-lg bg-white p-3">
+                <form key={permission.id} action={removeCorporatePermissionAction} className="rounded-lg border border-ocean-900/10 bg-white p-3">
                   <HiddenReturn value={returnTo} />
                   <input type="hidden" name="permissionId" value={permission.id} />
                   <p className="font-bold text-ocean-900">{permission.accountName}</p>
@@ -319,7 +361,7 @@ function UserManagementCard({
               ))}
               {user.corporatePermissions.length === 0 ? <p className="rounded-lg border border-dashed border-ocean-900/14 p-3 text-sm font-semibold text-ocean-900/58">No corporate account access.</p> : null}
             </div>
-            <form action={setCorporatePermissionAction} className="mt-3 grid gap-2">
+            <form action={setCorporatePermissionAction} className="mt-3 grid gap-2 sm:max-w-2xl">
               <HiddenReturn value={returnTo} />
               <input type="hidden" name="userId" value={user.id} />
               <select name="corporateAccountId" className={adminSelectClassName} disabled={data.corporateAccounts.length === 0}>
@@ -343,12 +385,12 @@ function UserManagementCard({
           </div>
         </section>
 
-        <section className="grid gap-4 rounded-lg border border-coral-700/20 bg-white p-4 xl:grid-cols-[1fr_1fr_1fr_auto]">
+        <section className="grid gap-4">
           <div>
             <h4 className="font-bold text-ocean-900">Password and sessions</h4>
             <p className="mt-1 text-sm font-semibold text-ocean-900/58">Send setup or reset links, force sign-out, or disable password login.</p>
           </div>
-          <div className="grid gap-2">
+          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
             <form action={resetAdminUserPasswordAction}>
               <HiddenReturn value={returnTo} />
               <input type="hidden" name="userId" value={user.id} />
@@ -365,8 +407,6 @@ function UserManagementCard({
                 </Button>
               </form>
             ) : null}
-          </div>
-          <div className="grid gap-2">
             <form action={clearAdminUserSessionsAction}>
               <HiddenReturn value={returnTo} />
               <input type="hidden" name="userId" value={user.id} />
@@ -382,6 +422,13 @@ function UserManagementCard({
               </Button>
             </form>
           </div>
+        </section>
+
+        <section className="grid gap-4">
+          <div>
+            <h4 className="font-bold text-ocean-900">Delete user</h4>
+            <p className="mt-1 text-sm font-semibold leading-6 text-ocean-900/58">Deleting a user cascades through owned account rows and cannot be undone from this screen.</p>
+          </div>
           <form action={deleteAdminUserAction} className="grid min-w-48 gap-2">
             <HiddenReturn value={returnTo} />
             <input type="hidden" name="userId" value={user.id} />
@@ -394,6 +441,7 @@ function UserManagementCard({
             </Button>
           </form>
         </section>
+        </FormTabs>
       </div>
     </details>
   );
@@ -449,8 +497,16 @@ export default async function AdminUsersPage({ searchParams }: AdminUsersPagePro
         })}
       </section>
 
-      <section className="grid gap-4 xl:grid-cols-[1fr_0.9fr]">
-        <form action={createAdminUserAction} className={`${adminPanelClassName} p-4`}>
+      <FormTabs
+        ariaLabel="Admin user workflows"
+        defaultTabId={defaultUsersTab(query, params)}
+        tabs={[
+          { id: "create", label: "Create User", description: "New account setup" },
+          { id: "manage", label: "Manage Users", description: "Profiles and access", badge: data.users.length.toLocaleString("id-ID") },
+          { id: "roles", label: "Role Catalog", description: "Global role names", badge: data.roles.length.toLocaleString("id-ID") }
+        ]}
+      >
+        <form action={createAdminUserAction} className="grid gap-4">
           <HiddenReturn value={returnTo} />
           <div className="flex items-start gap-3">
             <span className="grid size-10 place-items-center rounded-lg bg-coral-100 text-coral-700">
@@ -461,7 +517,7 @@ export default async function AdminUsersPage({ searchParams }: AdminUsersPagePro
               <p className="mt-1 text-sm font-semibold leading-6 text-ocean-900/58">Create an account, profile, Impact Passport, and initial access, then email a setup link.</p>
             </div>
           </div>
-          <div className="mt-4 grid gap-3 md:grid-cols-2">
+          <div className="grid gap-3 md:grid-cols-2">
             <Field label="Name">
               <input name="name" className={adminInputClassName} required />
             </Field>
@@ -489,12 +545,39 @@ export default async function AdminUsersPage({ searchParams }: AdminUsersPagePro
               <textarea name="bio" className={adminTextareaClassName} placeholder="Internal profile note or public bio" />
             </Field>
           </div>
-          <Button type="submit" className="mt-4 rounded-lg">
+          <Button type="submit" className="w-fit rounded-lg">
             Create User
           </Button>
         </form>
 
-        <section className={`${adminPanelClassName} p-4`}>
+        <section className="grid gap-4">
+          <div className="grid gap-4 lg:grid-cols-[1fr_auto] lg:items-end">
+            <div>
+              <h2 className="text-xl font-bold tracking-normal text-ocean-900">Managed users</h2>
+              <p className="mt-1 text-sm font-semibold text-ocean-900/58">Open a user row to manage profile, credentials, global roles, partner membership, and corporate access.</p>
+            </div>
+            <form action="/admin/users" className="flex gap-2">
+              <div className="relative min-w-0 flex-1 sm:min-w-72">
+                <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-ocean-900/42" aria-hidden="true" />
+                <input name="q" defaultValue={query} placeholder="Search users, roles, organizations" className={`${adminInputClassName} w-full pl-9`} />
+              </div>
+              <Button type="submit" tone="secondary" className="min-h-10 rounded-lg px-3">Search</Button>
+            </form>
+          </div>
+          <div className="grid gap-3">
+            {data.users.map((user) => (
+              <UserManagementCard key={user.id} data={data} user={user} returnTo={returnTo} />
+            ))}
+            {data.users.length === 0 ? (
+              <AdminEmptyState
+                title="No matching users"
+                description="Adjust the search term or create a new user account from the form above."
+              />
+            ) : null}
+          </div>
+        </section>
+
+        <section className="grid gap-4">
           <div className="flex items-start gap-3">
             <span className="grid size-10 place-items-center rounded-lg bg-ocean-50 text-ocean-700">
               <KeyRound className="size-5" aria-hidden="true" />
@@ -504,13 +587,13 @@ export default async function AdminUsersPage({ searchParams }: AdminUsersPagePro
               <p className="mt-1 text-sm font-semibold leading-6 text-ocean-900/58">Create custom role records and edit role display names.</p>
             </div>
           </div>
-          <form action={createGlobalRoleAction} className="mt-4 grid gap-2 sm:grid-cols-[1fr_1fr_auto]">
+          <form action={createGlobalRoleAction} className="grid gap-2 sm:grid-cols-[1fr_1fr_auto]">
             <HiddenReturn value={returnTo} />
             <input name="roleKey" placeholder="role_key" className={adminInputClassName} required />
             <input name="roleName" placeholder="Role name" className={adminInputClassName} required />
             <Button type="submit" className="min-h-10 rounded-lg px-3">Save Role</Button>
           </form>
-          <div className="mt-4 grid gap-2">
+          <div className="grid gap-2">
             {data.roles.map((role) => (
               <div key={role.id} className="rounded-lg border border-ocean-900/10 bg-sand-50 p-3">
                 <div className="flex flex-wrap items-center justify-between gap-2">
@@ -529,18 +612,21 @@ export default async function AdminUsersPage({ searchParams }: AdminUsersPagePro
                   <Button type="submit" tone="secondary" className="min-h-10 rounded-lg px-3">Rename</Button>
                 </form>
                 {!role.isSystem ? (
-                  <form action={deleteGlobalRoleAction} className="mt-2 flex flex-wrap items-center gap-2">
-                    <HiddenReturn value={returnTo} />
-                    <input type="hidden" name="roleId" value={role.id} />
-                    <label className="flex items-center gap-2 text-xs font-bold text-ocean-900">
-                      <input name="confirmDelete" type="checkbox" value="delete" className="size-4 accent-coral-500" required />
-                      Confirm
-                    </label>
-                    <Button type="submit" tone="ghost" className="min-h-9 rounded-lg px-3 text-coral-700 hover:bg-coral-100">
-                      <Trash2 className="size-4" aria-hidden="true" />
-                      Delete
-                    </Button>
-                  </form>
+                  <details className="mt-3 rounded-lg border border-coral-700/20 bg-white">
+                    <summary className="cursor-pointer list-none px-3 py-2 text-sm font-bold text-coral-700">Delete custom role</summary>
+                    <form action={deleteGlobalRoleAction} className="flex flex-wrap items-center gap-2 border-t border-coral-700/20 p-3">
+                      <HiddenReturn value={returnTo} />
+                      <input type="hidden" name="roleId" value={role.id} />
+                      <label className="flex items-center gap-2 text-xs font-bold text-ocean-900">
+                        <input name="confirmDelete" type="checkbox" value="delete" className="size-4 accent-coral-500" required />
+                        Confirm
+                      </label>
+                      <Button type="submit" tone="ghost" className="min-h-9 rounded-lg px-3 text-coral-700 hover:bg-coral-100">
+                        <Trash2 className="size-4" aria-hidden="true" />
+                        Delete
+                      </Button>
+                    </form>
+                  </details>
                 ) : null}
               </div>
             ))}
@@ -552,34 +638,7 @@ export default async function AdminUsersPage({ searchParams }: AdminUsersPagePro
             ) : null}
           </div>
         </section>
-      </section>
-
-      <section className={adminPanelClassName}>
-        <div className="grid gap-4 border-b border-ocean-900/10 p-4 lg:grid-cols-[1fr_auto] lg:items-end">
-          <div>
-            <h2 className="text-xl font-bold tracking-normal text-ocean-900">Managed users</h2>
-            <p className="mt-1 text-sm font-semibold text-ocean-900/58">Open a user row to manage profile, credentials, global roles, partner membership, and corporate access.</p>
-          </div>
-          <form action="/admin/users" className="flex gap-2">
-            <div className="relative min-w-0 flex-1 sm:min-w-72">
-              <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-ocean-900/42" aria-hidden="true" />
-              <input name="q" defaultValue={query} placeholder="Search users, roles, organizations" className={`${adminInputClassName} w-full pl-9`} />
-            </div>
-            <Button type="submit" tone="secondary" className="min-h-10 rounded-lg px-3">Search</Button>
-          </form>
-        </div>
-        <div className="grid gap-3 p-4">
-          {data.users.map((user) => (
-            <UserManagementCard key={user.id} data={data} user={user} returnTo={returnTo} />
-          ))}
-          {data.users.length === 0 ? (
-            <AdminEmptyState
-              title="No matching users"
-              description="Adjust the search term or create a new user account from the form above."
-            />
-          ) : null}
-        </div>
-      </section>
+      </FormTabs>
 
       <section className="grid gap-3 rounded-lg border border-ocean-900/10 bg-white p-4 shadow-soft md:grid-cols-3">
         <div className="flex gap-3">

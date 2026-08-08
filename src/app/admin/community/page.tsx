@@ -4,6 +4,7 @@ import Link from "next/link";
 import { AdminEmptyState, AdminPageHeader, AdminStatusBadge, adminInputClassName, adminPanelClassName, adminSelectClassName } from "@/components/admin-ui";
 import { CommunityStatusBadge } from "@/components/community-ui";
 import { Button } from "@/components/ui/button";
+import { FormTabs } from "@/components/ui/form-tabs";
 import { requireRole } from "@/lib/auth";
 import { moderateCommunityContentAction, reviewCommunityReportAction } from "@/lib/community-actions";
 import { getAdminCommunityData } from "@/lib/community-queries";
@@ -115,6 +116,16 @@ export default async function AdminCommunityPage({ searchParams }: AdminCommunit
         })}
       </section>
 
+      <FormTabs
+        ariaLabel="Community moderation workflows"
+        tabs={[
+          { id: "reports", label: "Reports", description: "User reports", badge: data.reports.length.toLocaleString("id-ID") },
+          { id: "posts", label: "Posts", description: "Post moderation", badge: data.posts.length.toLocaleString("id-ID") },
+          { id: "events", label: "Events", description: "Event moderation", badge: data.events.length.toLocaleString("id-ID") },
+          { id: "challenges", label: "Challenges", description: "Challenge moderation", badge: data.challenges.length.toLocaleString("id-ID") },
+          { id: "chapters", label: "Chapters", description: "Chapter overview", badge: data.chapters.length.toLocaleString("id-ID") }
+        ]}
+      >
       <section className={adminPanelClassName}>
         <div className="border-b border-ocean-900/10 p-4">
           <h2 className="text-xl font-bold tracking-normal text-ocean-900">Reports</h2>
@@ -237,6 +248,7 @@ export default async function AdminCommunityPage({ searchParams }: AdminCommunit
           ))}
         </div>
       </section>
+      </FormTabs>
     </div>
   );
 }

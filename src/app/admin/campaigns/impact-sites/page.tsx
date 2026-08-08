@@ -10,6 +10,7 @@ import {
   adminSelectClassName
 } from "@/components/admin-ui";
 import { Button } from "@/components/ui/button";
+import { FormTabs } from "@/components/ui/form-tabs";
 import { ProgressMeter } from "@/components/ui/progress-meter";
 import { requireRole } from "@/lib/auth";
 import { createAdminImpactSiteAction, deleteAdminImpactSiteAction, updateAdminImpactSiteAction } from "@/lib/portal-actions";
@@ -186,6 +187,13 @@ export default async function AdminCampaignImpactSitesPage({ searchParams }: Adm
         })}
       </section>
 
+      <FormTabs
+        ariaLabel="Impact site management workflows"
+        tabs={[
+          { id: "create", label: "Create Site", description: "New conservation location" },
+          { id: "manage", label: "Manage Sites", description: "Edit and delete", badge: data.impactSites.length.toLocaleString("id-ID") }
+        ]}
+      >
       <section className={adminPanelClassName}>
         <div className="flex flex-col justify-between gap-3 border-b border-ocean-900/10 p-4 sm:flex-row sm:items-center">
           <div>
@@ -239,27 +247,36 @@ export default async function AdminCampaignImpactSitesPage({ searchParams }: Adm
                 Edit site
               </summary>
               <div className="border-t border-ocean-900/10 p-5">
-                <form action={updateAdminImpactSiteAction} className="grid gap-4">
-                  <input type="hidden" name="returnTo" value="/admin/campaigns/impact-sites" />
-                  <input type="hidden" name="impactSiteId" value={site.id} />
-                  <ImpactSiteFields campaigns={data.campaignOptions} site={site} />
-                  <Button type="submit" tone="secondary" className="w-fit rounded-lg">
-                    <Save className="size-4" aria-hidden="true" />
-                    Save Site
-                  </Button>
-                </form>
-                <form action={deleteAdminImpactSiteAction} className="mt-5 border-t border-ocean-900/10 pt-4">
-                  <input type="hidden" name="returnTo" value="/admin/campaigns/impact-sites" />
-                  <input type="hidden" name="impactSiteId" value={site.id} />
-                  <label className="flex items-start gap-2 text-sm font-bold text-ocean-900">
-                    <input name="confirmDelete" type="checkbox" value="delete" className="mt-1 size-4 accent-coral-500" required />
-                    Delete this site and detach linked evidence, activity, and sponsorship records from the site.
-                  </label>
-                  <Button type="submit" className="mt-3 w-fit rounded-lg bg-coral-500 hover:bg-coral-700">
-                    <Trash2 className="size-4" aria-hidden="true" />
-                    Delete Site
-                  </Button>
-                </form>
+                <FormTabs
+                  ariaLabel={`${site.name} management workflows`}
+                  className="shadow-none"
+                  tabs={[
+                    { id: "edit", label: "Edit", description: "Site fields" },
+                    { id: "danger", label: "Danger", description: "Delete site" }
+                  ]}
+                >
+                  <form action={updateAdminImpactSiteAction} className="grid gap-4">
+                    <input type="hidden" name="returnTo" value="/admin/campaigns/impact-sites" />
+                    <input type="hidden" name="impactSiteId" value={site.id} />
+                    <ImpactSiteFields campaigns={data.campaignOptions} site={site} />
+                    <Button type="submit" tone="secondary" className="w-fit rounded-lg">
+                      <Save className="size-4" aria-hidden="true" />
+                      Save Site
+                    </Button>
+                  </form>
+                  <form action={deleteAdminImpactSiteAction} className="grid gap-3">
+                    <input type="hidden" name="returnTo" value="/admin/campaigns/impact-sites" />
+                    <input type="hidden" name="impactSiteId" value={site.id} />
+                    <label className="flex items-start gap-2 text-sm font-bold text-ocean-900">
+                      <input name="confirmDelete" type="checkbox" value="delete" className="mt-1 size-4 accent-coral-500" required />
+                      Delete this site and detach linked evidence, activity, and sponsorship records from the site.
+                    </label>
+                    <Button type="submit" className="w-fit rounded-lg bg-coral-500 hover:bg-coral-700">
+                      <Trash2 className="size-4" aria-hidden="true" />
+                      Delete Site
+                    </Button>
+                  </form>
+                </FormTabs>
               </div>
             </details>
           </article>
@@ -274,6 +291,7 @@ export default async function AdminCampaignImpactSitesPage({ searchParams }: Adm
           />
         ) : null}
       </section>
+      </FormTabs>
     </div>
   );
 }

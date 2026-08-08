@@ -2,6 +2,7 @@ import { Eye, ReceiptText } from "lucide-react";
 
 import { AdminEmptyState, AdminPageHeader, AdminStatusBadge, adminInputClassName, adminPanelClassName, adminSelectClassName } from "@/components/admin-ui";
 import { Button } from "@/components/ui/button";
+import { FormTabs } from "@/components/ui/form-tabs";
 import { requireRole } from "@/lib/auth";
 import {
   reconcileDonationAction,
@@ -86,6 +87,13 @@ export default async function AdminPaymentsPage({ searchParams }: AdminPaymentsP
       {message ? <p className="rounded-lg border border-kelp-700/20 bg-kelp-100 px-4 py-3 text-sm font-bold text-kelp-700">{message}</p> : null}
       {params?.error ? <p className="rounded-lg border border-coral-700/20 bg-coral-100 px-4 py-3 text-sm font-bold text-coral-700">{errorMessage}</p> : null}
 
+      <FormTabs
+        ariaLabel="Payment reconciliation workflows"
+        tabs={[
+          { id: "donations", label: "Donations", description: "Manual proofs and refunds", badge: donationQueue.length.toLocaleString("id-ID") },
+          { id: "bookings", label: "Expedition Bookings", description: "Booking billing", badge: data.bookingPaymentOperations.length.toLocaleString("id-ID") }
+        ]}
+      >
       <section className={adminPanelClassName}>
         <div className="flex items-center justify-between gap-3 border-b border-ocean-900/10 p-4">
           <div>
@@ -132,25 +140,18 @@ export default async function AdminPaymentsPage({ searchParams }: AdminPaymentsP
                     <p className="rounded-lg border border-dashed border-ocean-900/14 p-3 text-xs font-bold text-ocean-900/54">No payment proof attached.</p>
                   )}
                   {donation.pendingOperation?.operationType === "refund" ? (
-                  <div className="grid gap-2">
-                    <form action={settlePaymentOperationAction} className="grid gap-2">
-                      <input type="hidden" name="operationId" value={donation.pendingOperation.id} />
-                      <input type="hidden" name="decision" value="approve" />
-                      <input name="adminNote" placeholder="Settlement note" className={adminInputClassName} />
-                      <Button type="submit" tone="secondary" className="min-h-10 px-4">
-                        <ReceiptText className="size-4" aria-hidden="true" />
-                        Approve refund
-                      </Button>
-                    </form>
-                    <form action={settlePaymentOperationAction} className="flex flex-wrap gap-2">
-                      <input type="hidden" name="operationId" value={donation.pendingOperation.id} />
-                      <input type="hidden" name="decision" value="reject" />
-                      <input name="adminNote" placeholder="Reject reason" className={adminInputClassName} />
-                      <Button type="submit" tone="ghost" className="min-h-10 px-4 text-coral-700 hover:bg-coral-100">
-                        Reject
-                      </Button>
-                    </form>
-                  </div>
+                  <form action={settlePaymentOperationAction} className="grid gap-2">
+                    <input type="hidden" name="operationId" value={donation.pendingOperation.id} />
+                    <select name="decision" defaultValue="approve" className={adminSelectClassName} aria-label="Refund decision">
+                      <option value="approve">Approve refund</option>
+                      <option value="reject">Reject refund</option>
+                    </select>
+                    <input name="adminNote" placeholder="Admin note" className={adminInputClassName} />
+                    <Button type="submit" tone="secondary" className="min-h-10 px-4">
+                      <ReceiptText className="size-4" aria-hidden="true" />
+                      Settle refund
+                    </Button>
+                  </form>
                 ) : (
                   <form action={reconcileDonationAction} className="flex flex-wrap gap-2">
                     <input type="hidden" name="donationId" value={donation.id} />
@@ -196,25 +197,18 @@ export default async function AdminPaymentsPage({ searchParams }: AdminPaymentsP
                   {operation.reason ? <p className="mt-2 text-xs font-semibold text-ocean-900/52">{operation.reason}</p> : null}
                 </div>
                 {operation.operationType === "refund" ? (
-                  <div className="grid gap-2 sm:min-w-80">
-                    <form action={settlePaymentOperationAction} className="grid gap-2">
-                      <input type="hidden" name="operationId" value={operation.id} />
-                      <input type="hidden" name="decision" value="approve" />
-                      <input name="adminNote" placeholder="Settlement note" className={adminInputClassName} />
-                      <Button type="submit" tone="secondary" className="min-h-10 px-4">
-                        <ReceiptText className="size-4" aria-hidden="true" />
-                        Approve refund
-                      </Button>
-                    </form>
-                    <form action={settlePaymentOperationAction} className="flex flex-wrap gap-2">
-                      <input type="hidden" name="operationId" value={operation.id} />
-                      <input type="hidden" name="decision" value="reject" />
-                      <input name="adminNote" placeholder="Reject reason" className={adminInputClassName} />
-                      <Button type="submit" tone="ghost" className="min-h-10 px-4 text-coral-700 hover:bg-coral-100">
-                        Reject
-                      </Button>
-                    </form>
-                  </div>
+                  <form action={settlePaymentOperationAction} className="grid gap-2 sm:min-w-80">
+                    <input type="hidden" name="operationId" value={operation.id} />
+                    <select name="decision" defaultValue="approve" className={adminSelectClassName} aria-label="Refund decision">
+                      <option value="approve">Approve refund</option>
+                      <option value="reject">Reject refund</option>
+                    </select>
+                    <input name="adminNote" placeholder="Admin note" className={adminInputClassName} />
+                    <Button type="submit" tone="secondary" className="min-h-10 px-4">
+                      <ReceiptText className="size-4" aria-hidden="true" />
+                      Settle refund
+                    </Button>
+                  </form>
                 ) : (
                   <form action={reconcileExpeditionBookingAction} className="flex flex-wrap gap-2">
                     <input type="hidden" name="bookingId" value={operation.bookingId ?? ""} />
@@ -238,6 +232,7 @@ export default async function AdminPaymentsPage({ searchParams }: AdminPaymentsP
           ) : null}
         </div>
       </section>
+      </FormTabs>
     </div>
   );
 }

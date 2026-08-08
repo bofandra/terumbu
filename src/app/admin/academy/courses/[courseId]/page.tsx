@@ -13,6 +13,7 @@ import {
   adminTextareaClassName
 } from "@/components/admin-ui";
 import { Button } from "@/components/ui/button";
+import { FormTabs } from "@/components/ui/form-tabs";
 import {
   createAcademyAssessmentAction,
   createAcademyLessonAction,
@@ -390,6 +391,14 @@ export default async function AdminAcademyCoursePage({ params, searchParams }: A
         </div>
       </section>
 
+      <FormTabs
+        ariaLabel="Academy course management workflows"
+        tabs={[
+          { id: "course", label: "Course", description: "Details and status" },
+          { id: "lessons", label: "Lessons", description: "Learning sequence", badge: course.lessons.length.toLocaleString("id-ID") },
+          { id: "assessments", label: "Assessments", description: "Certificate checks", badge: course.assessments.length.toLocaleString("id-ID") }
+        ]}
+      >
       <section className={adminPanelClassName}>
         <div className="flex flex-col justify-between gap-3 border-b border-ocean-900/10 p-4 sm:flex-row sm:items-center">
           <div>
@@ -695,6 +704,7 @@ export default async function AdminAcademyCoursePage({ params, searchParams }: A
           </form>
         </div>
       </section>
+      </FormTabs>
     </div>
   );
 }

@@ -13,6 +13,7 @@ import {
 } from "@/components/admin-ui";
 import { CampaignContentDepthEditor } from "@/components/campaign-content-depth-editor";
 import { Button } from "@/components/ui/button";
+import { FormTabs } from "@/components/ui/form-tabs";
 import { ProgressMeter } from "@/components/ui/progress-meter";
 import { requireRole } from "@/lib/auth";
 import { deleteAdminCampaignAction, updateAdminCampaignAction, updateCampaignStatusAction } from "@/lib/portal-actions";
@@ -179,6 +180,16 @@ export default async function AdminCampaignDetailPage({ params, searchParams }: 
         ))}
       </section>
 
+      <FormTabs
+        ariaLabel="Campaign management workflows"
+        tabs={[
+          { id: "publishing", label: "Publishing", description: "Status and funding" },
+          { id: "details", label: "Details", description: "Content and ownership" },
+          { id: "impact-sites", label: "Impact Sites", description: "Linked locations", badge: campaignImpactSites.length.toLocaleString("id-ID") },
+          { id: "content", label: "Content", description: "Media, budget, timeline" },
+          { id: "danger", label: "Danger", description: "Delete campaign" }
+        ]}
+      >
       <section className={adminPanelClassName}>
         <div className="grid gap-4 p-4 lg:grid-cols-[1fr_auto] lg:items-center">
           <div>
@@ -222,12 +233,10 @@ export default async function AdminCampaignDetailPage({ params, searchParams }: 
         <form action={updateAdminCampaignAction} encType="multipart/form-data" className="grid gap-4 p-4">
           <input type="hidden" name="returnTo" value={returnTo} />
           <input type="hidden" name="campaignId" value={campaign.id} />
-          <div className="grid gap-3 lg:grid-cols-4">
+          <input type="hidden" name="status" value={campaign.status} />
+          <div className="grid gap-3 lg:grid-cols-3">
             <Field label="Organization" className="lg:col-span-2">
               <OrganizationSelect organizations={data.organizations} defaultValue={campaign.organizationId} />
-            </Field>
-            <Field label="Status">
-              <StatusSelect defaultValue={campaign.status} />
             </Field>
             <Field label="End date">
               <input name="endsAt" type="date" defaultValue={dateValue(campaign.endsAt)} className={adminInputClassName} />
@@ -366,6 +375,7 @@ export default async function AdminCampaignDetailPage({ params, searchParams }: 
           </div>
         </form>
       </section>
+      </FormTabs>
     </div>
   );
 }
