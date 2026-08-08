@@ -304,7 +304,7 @@ export function DashboardShell({ children, displayName, unreadNotificationCount 
           <form action="/dashboard/search" method="get" className="hidden min-h-11 w-full max-w-sm items-center gap-3 rounded-full border border-ocean-900/12 bg-white px-4 text-sm font-semibold text-ocean-900/54 shadow-soft xl:flex">
             <Search size={18} aria-hidden="true" />
             <label htmlFor="dashboard-search" className="sr-only">Search dashboard</label>
-            <input id="dashboard-search" name="q" type="search" defaultValue={currentSearch} className="w-full bg-transparent outline-none placeholder:text-ocean-900/42" placeholder="Search anything..." />
+            <input id="dashboard-search" name="q" type="search" defaultValue={currentSearch} className="w-full min-w-0 bg-transparent outline-none placeholder:text-ocean-900/42" placeholder="Search anything..." />
           </form>
 
           <div className="flex items-center gap-2 sm:gap-3">

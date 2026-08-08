@@ -10,6 +10,8 @@ import { formatCurrency } from "@/lib/utils";
 
 type DonationMode = "one-time" | "coral";
 
+const MIN_DONATION_AMOUNT = 10_000;
+
 type CampaignDonationCardProps = {
   campaignSlug: string;
   raisedLabel: string;
@@ -72,9 +74,11 @@ export function CampaignDonationCard({
   const [mode, setMode] = useState<DonationMode>("one-time");
   const [selectedAmount, setSelectedAmount] = useState(oneTimeAmounts[1] ?? oneTimeAmounts[0] ?? fallbackAmount);
   const [customAmount, setCustomAmount] = useState("");
+  const [isCustomAmountSelected, setIsCustomAmountSelected] = useState(false);
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const customValue = Number(customAmount.replace(/[^0-9]/g, ""));
-  const amount = customValue > 0 ? customValue : selectedAmount;
+  const amount = isCustomAmountSelected ? customValue : selectedAmount;
+  const hasValidDonationAmount = amount >= MIN_DONATION_AMOUNT;
   const href = checkoutHref(campaignSlug, mode, amount);
   const costPerUnit = goal > 0 && impactTarget > 0 ? goal / impactTarget : selectedAmount;
   const impactPackages = useMemo(
@@ -100,6 +104,7 @@ export function CampaignDonationCard({
   function setDonationMode(nextMode: DonationMode) {
     setMode(nextMode);
     setCustomAmount("");
+    setIsCustomAmountSelected(false);
 
     if (nextMode === "coral") {
       setSelectedAmount(impactPackages[1]?.amount ?? impactPackages[0]?.amount ?? selectedAmount);
@@ -156,36 +161,58 @@ export function CampaignDonationCard({
             key={`${mode}-${option.amount}-${option.label}`}
             type="button"
             className={`rounded-xl border px-4 py-4 text-left text-sm font-bold transition ${
-              selectedAmount === option.amount && customValue === 0
+              selectedAmount === option.amount && !isCustomAmountSelected
                 ? "border-coral-500 bg-coral-100/40 text-ocean-900"
                 : "border-ocean-900/10 text-ocean-900 hover:border-coral-500"
             }`}
             onClick={() => {
               setSelectedAmount(option.amount);
               setCustomAmount("");
+              setIsCustomAmountSelected(false);
             }}
           >
             {option.label}
             {mode !== "coral" ? null : <span className="mt-1 block text-xs font-semibold text-ocean-900/56">{formatCurrency(option.amount)}</span>}
           </button>
         ))}
+        <button
+          type="button"
+          className={`rounded-xl border px-4 py-4 text-left text-sm font-bold transition ${
+            isCustomAmountSelected
+              ? "border-coral-500 bg-coral-100/40 text-ocean-900"
+              : "border-ocean-900/10 text-ocean-900 hover:border-coral-500"
+          }`}
+          onClick={() => {
+            if (!isCustomAmountSelected) {
+              setCustomAmount("");
+            }
+            setIsCustomAmountSelected(true);
+          }}
+        >
+          Other amount
+          <span className="mt-1 block text-xs font-semibold text-ocean-900/56">Enter another amount</span>
+        </button>
       </div>
 
-      <label className="mt-4 grid gap-2 text-sm font-semibold text-ocean-900">
-        Custom Amount
-        <input
-          inputMode="numeric"
-          value={customAmount}
-          onChange={(event) => setCustomAmount(event.target.value)}
-          placeholder="Enter another amount"
-          className="rounded-xl border border-ocean-900/14 px-4 py-3 outline-none focus:border-coral-500"
-        />
-      </label>
+      {isCustomAmountSelected ? (
+        <label className="mt-4 grid min-w-0 gap-2 text-sm font-semibold text-ocean-900">
+          Custom Amount
+          <input
+            inputMode="numeric"
+            value={customAmount}
+            onChange={(event) => setCustomAmount(event.target.value)}
+            placeholder="Enter another amount"
+            className="w-full min-w-0 rounded-xl border border-ocean-900/14 px-4 py-3 outline-none focus:border-coral-500"
+          />
+        </label>
+      ) : null}
 
       <div className="mt-5 rounded-xl border border-ocean-900/10 bg-ocean-50 p-4">
         <div className="flex items-start gap-3">
           <HeartHandshake className="mt-0.5 shrink-0 text-coral-500" size={22} aria-hidden="true" />
-          <p className="text-sm leading-6 text-ocean-900/76">{impactText(mode, amount, goal, impactTarget, impactUnit)}</p>
+          <p className="text-sm leading-6 text-ocean-900/76">
+            {hasValidDonationAmount ? impactText(mode, amount, goal, impactTarget, impactUnit) : "Enter an amount to preview your impact."}
+          </p>
         </div>
       </div>
 
@@ -194,9 +221,21 @@ export function CampaignDonationCard({
           {disabledReason}
         </div>
       ) : (
-        <Link href={href} className="mt-5 inline-flex min-h-12 w-full items-center justify-center rounded-full bg-coral-500 px-5 py-3 text-sm font-bold text-white shadow-soft transition hover:bg-coral-700">
-          Continue to Donation
-        </Link>
+        <>
+          {hasValidDonationAmount ? (
+            <Link href={href} className="mt-5 inline-flex min-h-12 w-full items-center justify-center rounded-full bg-coral-500 px-5 py-3 text-sm font-bold text-white shadow-soft transition hover:bg-coral-700">
+              Continue to Donation
+            </Link>
+          ) : (
+            <button
+              type="button"
+              disabled
+              className="mt-5 inline-flex min-h-12 w-full cursor-not-allowed items-center justify-center rounded-full bg-ocean-900/18 px-5 py-3 text-sm font-bold text-ocean-900/50"
+            >
+              Minimum {formatCurrency(MIN_DONATION_AMOUNT)}
+            </button>
+          )}
+        </>
       )}
 
       <div className="mt-4 grid grid-cols-2 gap-2 text-sm">

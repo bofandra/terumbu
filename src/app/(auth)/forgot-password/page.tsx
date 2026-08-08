@@ -39,11 +39,11 @@ export default async function ForgotPasswordPage({ searchParams }: ForgotPasswor
           </p>
         ) : null}
 
-        <form action={requestPasswordResetAction} className="mt-6 grid gap-4">
-          <label className="grid gap-2 text-sm font-semibold text-ocean-900">
+        <form action={requestPasswordResetAction} className="mt-6 grid min-w-0 gap-4">
+          <label className="grid min-w-0 gap-2 text-sm font-semibold text-ocean-900">
             Email
             <input
-              className="rounded-lg border border-ocean-900/14 px-4 py-3 outline-none focus:border-coral-500"
+              className="w-full min-w-0 rounded-lg border border-ocean-900/14 px-4 py-3 outline-none focus:border-coral-500"
               type="email"
               name="email"
               autoComplete="email"

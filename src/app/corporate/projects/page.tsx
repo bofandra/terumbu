@@ -78,7 +78,7 @@ export default async function CorporateProjectsPage({ searchParams }: CorporateP
           <form action="/corporate/projects" className="grid gap-3 sm:grid-cols-[minmax(220px,1fr)_auto] sm:items-end">
             <label className="grid gap-2 text-sm font-bold text-ocean-900">
               Program
-              <select name="programId" defaultValue={data.program.programId} className="min-h-11 rounded-lg border border-ocean-900/12 bg-white px-3 text-sm font-semibold text-ocean-900 outline-none">
+              <select name="programId" defaultValue={data.program.programId} className="min-h-11 w-full min-w-0 rounded-lg border border-ocean-900/12 bg-white px-3 text-sm font-semibold text-ocean-900 outline-none">
                 {data.programOptions.map((program) => (
                   <option key={program.programId} value={program.programId}>
                     {program.programName} · {formatCurrency(program.budgetAmountValue)} · {program.status}
@@ -166,7 +166,7 @@ export default async function CorporateProjectsPage({ searchParams }: CorporateP
                 <input type="hidden" name="programId" value={data.program.programId} />
                 <label className="grid gap-2 text-sm font-bold text-ocean-900">
                   Campaign
-                  <select name="campaignId" className="min-h-11 rounded-lg border border-ocean-900/12 bg-white px-3 text-sm font-semibold text-ocean-900 outline-none">
+                  <select name="campaignId" className="min-h-11 w-full min-w-0 rounded-lg border border-ocean-900/12 bg-white px-3 text-sm font-semibold text-ocean-900 outline-none">
                     {projectOptions.map((option) => (
                       <option key={option.id} value={option.id}>
                         {option.title} · {option.region}{option.alreadyFunded ? ` · ${formatCurrency(option.allocationValue ?? 0)}` : ""}
@@ -182,13 +182,13 @@ export default async function CorporateProjectsPage({ searchParams }: CorporateP
                     min="1"
                     step="1000000"
                     placeholder="IDR"
-                    className="min-h-11 rounded-lg border border-ocean-900/12 px-3 text-sm font-semibold text-ocean-900 outline-none"
+                    className="min-h-11 w-full min-w-0 rounded-lg border border-ocean-900/12 px-3 text-sm font-semibold text-ocean-900 outline-none"
                     required
                   />
                 </label>
                 <label className="grid gap-2 text-sm font-bold text-ocean-900">
                   Contribution
-                  <select name="contributionType" defaultValue="csr" className="min-h-11 rounded-lg border border-ocean-900/12 bg-white px-3 text-sm font-semibold text-ocean-900 outline-none">
+                  <select name="contributionType" defaultValue="csr" className="min-h-11 w-full min-w-0 rounded-lg border border-ocean-900/12 bg-white px-3 text-sm font-semibold text-ocean-900 outline-none">
                     <option value="csr">CSR</option>
                     <option value="grant">Grant</option>
                     <option value="sponsorship">Sponsorship</option>
@@ -198,7 +198,7 @@ export default async function CorporateProjectsPage({ searchParams }: CorporateP
                 </label>
                 <label className="grid gap-2 text-sm font-bold text-ocean-900">
                   Contribution status
-                  <select name="contributionStatus" defaultValue="committed" className="min-h-11 rounded-lg border border-ocean-900/12 bg-white px-3 text-sm font-semibold text-ocean-900 outline-none">
+                  <select name="contributionStatus" defaultValue="committed" className="min-h-11 w-full min-w-0 rounded-lg border border-ocean-900/12 bg-white px-3 text-sm font-semibold text-ocean-900 outline-none">
                     <option value="pledged">Pledged</option>
                     <option value="committed">Committed</option>
                     <option value="disbursed">Disbursed</option>
@@ -208,7 +208,7 @@ export default async function CorporateProjectsPage({ searchParams }: CorporateP
                 </label>
                 <label className="grid gap-2 text-sm font-bold text-ocean-900">
                   Portfolio status
-                  <select name="status" defaultValue="funded" className="min-h-11 rounded-lg border border-ocean-900/12 bg-white px-3 text-sm font-semibold text-ocean-900 outline-none">
+                  <select name="status" defaultValue="funded" className="min-h-11 w-full min-w-0 rounded-lg border border-ocean-900/12 bg-white px-3 text-sm font-semibold text-ocean-900 outline-none">
                     <option value="funded">Funded</option>
                     <option value="monitoring">Monitoring</option>
                     <option value="review">Review</option>
@@ -224,7 +224,7 @@ export default async function CorporateProjectsPage({ searchParams }: CorporateP
                   <input
                     name="notes"
                     placeholder="Optional internal note / PO / CSR reference"
-                    className="min-h-11 rounded-lg border border-ocean-900/12 px-3 text-sm font-semibold text-ocean-900 outline-none"
+                    className="min-h-11 w-full min-w-0 rounded-lg border border-ocean-900/12 px-3 text-sm font-semibold text-ocean-900 outline-none"
                   />
                 </label>
                 <Button type="submit" tone="secondary" className="self-end" disabled={projectOptions.length === 0}>

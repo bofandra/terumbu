@@ -439,20 +439,20 @@ export default async function DashboardPassportPage({ searchParams }: DashboardP
                 <p className="mt-1 text-sm leading-6 text-ocean-900/62">{visibility.description}</p>
               </div>
             </div>
-            <form action={updatePassportVisibilityAction} className="mt-5 grid gap-4">
-              <label className="grid gap-2 text-sm font-bold text-ocean-900">
+            <form action={updatePassportVisibilityAction} className="mt-5 grid min-w-0 gap-4">
+              <label className="grid min-w-0 gap-2 text-sm font-bold text-ocean-900">
                 Visibility
                 <select
                   name="passportVisibility"
                   defaultValue={currentVisibility}
-                  className="min-h-11 rounded-xl border border-ocean-900/12 bg-white px-3 text-sm outline-none focus:border-coral-500"
+                  className="min-h-11 w-full min-w-0 rounded-xl border border-ocean-900/12 bg-white px-3 text-sm outline-none focus:border-coral-500"
                 >
                   <option value="public">Public</option>
                   <option value="link">Link only</option>
                   <option value="private">Private</option>
                 </select>
               </label>
-              <label className="grid gap-2 text-sm font-bold text-ocean-900">
+              <label className="grid min-w-0 gap-2 text-sm font-bold text-ocean-900">
                 Link expiry
                 <span className="relative">
                   <CalendarClock className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ocean-900/38" size={17} aria-hidden="true" />
@@ -460,11 +460,11 @@ export default async function DashboardPassportPage({ searchParams }: DashboardP
                     type="date"
                     name="shareExpiresAt"
                     defaultValue={dateInputValue(data.profile?.passportShareExpiresAt)}
-                    className="min-h-11 w-full rounded-xl border border-ocean-900/12 bg-white py-2 pl-10 pr-3 text-sm outline-none focus:border-coral-500"
+                    className="min-h-11 w-full min-w-0 rounded-xl border border-ocean-900/12 bg-white py-2 pl-10 pr-3 text-sm outline-none focus:border-coral-500"
                   />
                 </span>
               </label>
-              <label className="grid gap-2 text-sm font-bold text-ocean-900">
+              <label className="grid min-w-0 gap-2 text-sm font-bold text-ocean-900">
                 Access code
                 <span className="relative">
                   <KeyRound className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ocean-900/38" size={17} aria-hidden="true" />
@@ -472,7 +472,7 @@ export default async function DashboardPassportPage({ searchParams }: DashboardP
                     type="password"
                     name="shareAccessCode"
                     placeholder={data.profile?.passportHasAccessCode ? "Access code active" : "Optional"}
-                    className="min-h-11 w-full rounded-xl border border-ocean-900/12 bg-white py-2 pl-10 pr-3 text-sm outline-none focus:border-coral-500"
+                    className="min-h-11 w-full min-w-0 rounded-xl border border-ocean-900/12 bg-white py-2 pl-10 pr-3 text-sm outline-none focus:border-coral-500"
                   />
                 </span>
               </label>
@@ -484,12 +484,12 @@ export default async function DashboardPassportPage({ searchParams }: DashboardP
                   </label>
                 ))}
               </div>
-              <label className="grid gap-2 text-sm font-bold text-ocean-900">
+              <label className="grid min-w-0 gap-2 text-sm font-bold text-ocean-900">
                 Evidence links
                 <select
                   name="evidenceConsent"
                   defaultValue={evidenceConsent}
-                  className="min-h-11 rounded-xl border border-ocean-900/12 bg-white px-3 text-sm outline-none focus:border-coral-500"
+                  className="min-h-11 w-full min-w-0 rounded-xl border border-ocean-900/12 bg-white px-3 text-sm outline-none focus:border-coral-500"
                 >
                   <option value="show_evidence">Show evidence links</option>
                   <option value="hide_evidence">Hide evidence links</option>

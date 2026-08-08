@@ -82,7 +82,7 @@ export default async function CorporateFundingPage({ searchParams }: CorporateFu
         <form action="/corporate/funding" className="grid gap-3 sm:grid-cols-[minmax(240px,1fr)_auto] sm:items-end">
           <label className="grid gap-2 text-sm font-bold text-ocean-900">
             Program
-            <select name="programId" defaultValue={data.program.programId} className="min-h-11 rounded-lg border border-ocean-900/12 bg-white px-3 text-sm font-semibold text-ocean-900 outline-none">
+            <select name="programId" defaultValue={data.program.programId} className="min-h-11 w-full min-w-0 rounded-lg border border-ocean-900/12 bg-white px-3 text-sm font-semibold text-ocean-900 outline-none">
               {data.programOptions.map((program) => (
                 <option key={program.programId} value={program.programId}>
                   {program.programName} · {formatCurrency(program.budgetAmountValue)} · {program.status}
@@ -214,7 +214,7 @@ export default async function CorporateFundingPage({ searchParams }: CorporateFu
               <input type="hidden" name="programId" value={data.program.programId} />
               <label className="grid gap-2 text-sm font-bold text-ocean-900">
                 Category
-                <select name="category" className="min-h-11 rounded-lg border border-ocean-900/12 bg-white px-3 text-sm font-semibold text-ocean-900 outline-none">
+                <select name="category" className="min-h-11 w-full min-w-0 rounded-lg border border-ocean-900/12 bg-white px-3 text-sm font-semibold text-ocean-900 outline-none">
                   {data.budgetVariance.map((budget) => (
                     <option key={budget.category} value={budget.category}>
                       {budget.category}
@@ -230,7 +230,7 @@ export default async function CorporateFundingPage({ searchParams }: CorporateFu
                   min="1"
                   step="1000000"
                   placeholder="IDR"
-                  className="min-h-11 rounded-lg border border-ocean-900/12 px-3 text-sm font-semibold text-ocean-900 outline-none"
+                  className="min-h-11 w-full min-w-0 rounded-lg border border-ocean-900/12 px-3 text-sm font-semibold text-ocean-900 outline-none"
                   required
                 />
               </label>
@@ -244,7 +244,7 @@ export default async function CorporateFundingPage({ searchParams }: CorporateFu
               <input type="hidden" name="returnTo" value={`/corporate/funding${selectedProgramHref}`} />
               <label className="grid gap-2 text-sm font-bold text-ocean-900">
                 Verified evidence
-                <select name="evidenceId" className="min-h-11 rounded-lg border border-ocean-900/12 bg-white px-3 text-sm font-semibold text-ocean-900 outline-none" disabled={verifiedEvidenceOptions.length === 0}>
+                <select name="evidenceId" className="min-h-11 w-full min-w-0 rounded-lg border border-ocean-900/12 bg-white px-3 text-sm font-semibold text-ocean-900 outline-none" disabled={verifiedEvidenceOptions.length === 0}>
                   {verifiedEvidenceOptions.map((evidence) => (
                     <option key={evidence.id} value={evidence.id}>
                       {evidence.title} · {evidence.campaignTitle}
@@ -256,7 +256,7 @@ export default async function CorporateFundingPage({ searchParams }: CorporateFu
               </label>
               <label className="grid gap-2 text-sm font-bold text-ocean-900">
                 Finance category
-                <select name="category" className="min-h-11 rounded-lg border border-ocean-900/12 bg-white px-3 text-sm font-semibold text-ocean-900 outline-none" disabled={verifiedEvidenceOptions.length === 0}>
+                <select name="category" className="min-h-11 w-full min-w-0 rounded-lg border border-ocean-900/12 bg-white px-3 text-sm font-semibold text-ocean-900 outline-none" disabled={verifiedEvidenceOptions.length === 0}>
                   {data.budgetVariance.map((budget) => (
                     <option key={budget.category} value={budget.category}>
                       {budget.category}
@@ -272,7 +272,7 @@ export default async function CorporateFundingPage({ searchParams }: CorporateFu
                   min="1"
                   step="1000000"
                   placeholder="IDR"
-                  className="min-h-11 rounded-lg border border-ocean-900/12 px-3 text-sm font-semibold text-ocean-900 outline-none"
+                  className="min-h-11 w-full min-w-0 rounded-lg border border-ocean-900/12 px-3 text-sm font-semibold text-ocean-900 outline-none"
                   disabled={verifiedEvidenceOptions.length === 0}
                   required
                 />

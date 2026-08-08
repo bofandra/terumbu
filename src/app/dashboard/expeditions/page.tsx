@@ -162,15 +162,15 @@ export default async function DashboardExpeditionsPage({ searchParams }: Dashboa
                       </div>
                     ) : null}
                   </div>
-                  <form action={submitExpeditionReviewAction} className="mt-4 grid gap-3">
+                  <form action={submitExpeditionReviewAction} className="mt-4 grid min-w-0 gap-3">
                     <input type="hidden" name="bookingId" value={booking.id} />
-                    <div className="grid gap-3 md:grid-cols-[160px_1fr]">
-                      <label className="grid gap-1.5 text-sm font-bold text-ocean-900">
+                    <div className="grid min-w-0 gap-3 md:grid-cols-[160px_minmax(0,1fr)]">
+                      <label className="grid min-w-0 gap-1.5 text-sm font-bold text-ocean-900">
                         Rating
                         <select
                           name="rating"
                           defaultValue={String(booking.reviewRating ?? 5)}
-                          className="min-h-11 rounded-lg border border-ocean-900/14 bg-white px-3 text-sm font-semibold text-ocean-900 outline-none focus:border-coral-500"
+                          className="min-h-11 w-full min-w-0 rounded-lg border border-ocean-900/14 bg-white px-3 text-sm font-semibold text-ocean-900 outline-none focus:border-coral-500"
                           required
                         >
                           {[5, 4, 3, 2, 1].map((rating) => (
@@ -180,23 +180,23 @@ export default async function DashboardExpeditionsPage({ searchParams }: Dashboa
                           ))}
                         </select>
                       </label>
-                      <label className="grid gap-1.5 text-sm font-bold text-ocean-900">
+                      <label className="grid min-w-0 gap-1.5 text-sm font-bold text-ocean-900">
                         Review title
                         <input
                           name="title"
                           defaultValue={booking.reviewTitle ?? ""}
                           placeholder="Purposeful and well-run"
-                          className="min-h-11 rounded-lg border border-ocean-900/14 bg-white px-3 text-sm font-semibold text-ocean-900 outline-none placeholder:text-ocean-900/36 focus:border-coral-500"
+                          className="min-h-11 w-full min-w-0 rounded-lg border border-ocean-900/14 bg-white px-3 text-sm font-semibold text-ocean-900 outline-none placeholder:text-ocean-900/36 focus:border-coral-500"
                         />
                       </label>
                     </div>
-                    <label className="grid gap-1.5 text-sm font-bold text-ocean-900">
+                    <label className="grid min-w-0 gap-1.5 text-sm font-bold text-ocean-900">
                       Review
                       <textarea
                         name="body"
                         defaultValue={booking.reviewBody ?? ""}
                         placeholder="Share what future participants should know."
-                        className="min-h-28 rounded-lg border border-ocean-900/14 bg-white px-3 py-3 text-sm font-semibold text-ocean-900 outline-none placeholder:text-ocean-900/36 focus:border-coral-500"
+                        className="min-h-28 w-full min-w-0 rounded-lg border border-ocean-900/14 bg-white px-3 py-3 text-sm font-semibold text-ocean-900 outline-none placeholder:text-ocean-900/36 focus:border-coral-500"
                         required
                       />
                     </label>

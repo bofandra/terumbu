@@ -15,7 +15,7 @@ export const metadata = {
 export const dynamic = "force-dynamic";
 
 const inputClassName =
-  "rounded-lg border border-ocean-900/10 bg-white px-3 py-2 text-sm font-semibold text-ocean-900 outline-none transition focus:border-coral-500 focus:ring-2 focus:ring-coral-500/20";
+  "w-full min-w-0 rounded-lg border border-ocean-900/10 bg-white px-3 py-2 text-sm font-semibold text-ocean-900 outline-none transition focus:border-coral-500 focus:ring-2 focus:ring-coral-500/20";
 const selectClassName = `${inputClassName} appearance-none`;
 
 const savedMessages: Record<string, string> = {

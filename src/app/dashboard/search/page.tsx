@@ -317,9 +317,9 @@ export default async function DashboardSearchPage({ searchParams }: DashboardSea
         </p>
       </header>
 
-      <form action="/dashboard/search" method="get" className="mt-6 flex flex-col gap-3 rounded-2xl border border-ocean-900/10 bg-white p-4 shadow-soft sm:flex-row sm:items-center">
+      <form action="/dashboard/search" method="get" className="mt-6 flex min-w-0 flex-col gap-3 rounded-2xl border border-ocean-900/10 bg-white p-4 shadow-soft sm:flex-row sm:items-center">
         <label htmlFor="dashboard-search-page" className="sr-only">Search dashboard</label>
-        <div className="flex min-h-12 flex-1 items-center gap-3 rounded-xl border border-ocean-900/12 bg-sand-50 px-4">
+        <div className="flex min-h-12 min-w-0 flex-1 items-center gap-3 rounded-xl border border-ocean-900/12 bg-sand-50 px-4">
           <Search size={18} aria-hidden="true" className="text-ocean-900/54" />
           <input
             id="dashboard-search-page"
@@ -327,7 +327,7 @@ export default async function DashboardSearchPage({ searchParams }: DashboardSea
             type="search"
             defaultValue={params?.q ?? ""}
             autoFocus
-            className="w-full bg-transparent text-sm font-semibold text-ocean-900 outline-none placeholder:text-ocean-900/42"
+            className="w-full min-w-0 bg-transparent text-sm font-semibold text-ocean-900 outline-none placeholder:text-ocean-900/42"
             placeholder="Search donations, corals, courses, trips..."
           />
         </div>

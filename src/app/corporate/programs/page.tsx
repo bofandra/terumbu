@@ -93,27 +93,27 @@ export default async function CorporateProgramsPage({ searchParams }: CorporateP
               <form action={createCorporateProgramAction} className="grid gap-3 lg:grid-cols-[1.2fr_150px_150px_170px_110px_140px_auto]">
                 <label className="grid gap-2 text-sm font-bold text-ocean-900">
                   Program name
-                  <input name="name" className="min-h-11 rounded-lg border border-ocean-900/12 px-3 text-sm font-semibold text-ocean-900 outline-none" required />
+                  <input name="name" className="min-h-11 w-full min-w-0 rounded-lg border border-ocean-900/12 px-3 text-sm font-semibold text-ocean-900 outline-none" required />
                 </label>
                 <label className="grid gap-2 text-sm font-bold text-ocean-900">
                   Starts
-                  <input name="startsAt" type="date" className="min-h-11 rounded-lg border border-ocean-900/12 px-3 text-sm font-semibold text-ocean-900 outline-none" required />
+                  <input name="startsAt" type="date" className="min-h-11 w-full min-w-0 rounded-lg border border-ocean-900/12 px-3 text-sm font-semibold text-ocean-900 outline-none" required />
                 </label>
                 <label className="grid gap-2 text-sm font-bold text-ocean-900">
                   Ends
-                  <input name="endsAt" type="date" className="min-h-11 rounded-lg border border-ocean-900/12 px-3 text-sm font-semibold text-ocean-900 outline-none" required />
+                  <input name="endsAt" type="date" className="min-h-11 w-full min-w-0 rounded-lg border border-ocean-900/12 px-3 text-sm font-semibold text-ocean-900 outline-none" required />
                 </label>
                 <label className="grid gap-2 text-sm font-bold text-ocean-900">
                   Budget
-                  <input name="budgetAmount" inputMode="decimal" className="min-h-11 rounded-lg border border-ocean-900/12 px-3 text-sm font-semibold text-ocean-900 outline-none" required />
+                  <input name="budgetAmount" inputMode="decimal" className="min-h-11 w-full min-w-0 rounded-lg border border-ocean-900/12 px-3 text-sm font-semibold text-ocean-900 outline-none" required />
                 </label>
                 <label className="grid gap-2 text-sm font-bold text-ocean-900">
                   Currency
-                  <input name="currency" defaultValue="IDR" className="min-h-11 rounded-lg border border-ocean-900/12 px-3 text-sm font-semibold text-ocean-900 outline-none" required />
+                  <input name="currency" defaultValue="IDR" className="min-h-11 w-full min-w-0 rounded-lg border border-ocean-900/12 px-3 text-sm font-semibold text-ocean-900 outline-none" required />
                 </label>
                 <label className="grid gap-2 text-sm font-bold text-ocean-900">
                   Status
-                  <select name="status" defaultValue="active" className="min-h-11 rounded-lg border border-ocean-900/12 bg-white px-3 text-sm font-semibold text-ocean-900 outline-none">
+                  <select name="status" defaultValue="active" className="min-h-11 w-full min-w-0 rounded-lg border border-ocean-900/12 bg-white px-3 text-sm font-semibold text-ocean-900 outline-none">
                     {programStatuses.map((status) => <option key={status} value={status}>{status}</option>)}
                   </select>
                 </label>
@@ -138,27 +138,27 @@ export default async function CorporateProgramsPage({ searchParams }: CorporateP
                       <input type="hidden" name="programId" value={program.id} />
                       <label className="grid gap-2 text-sm font-bold text-ocean-900">
                         Name
-                        <input name="name" defaultValue={program.name} className="min-h-11 rounded-lg border border-ocean-900/12 bg-white px-3 text-sm font-semibold text-ocean-900 outline-none" required />
+                        <input name="name" defaultValue={program.name} className="min-h-11 w-full min-w-0 rounded-lg border border-ocean-900/12 bg-white px-3 text-sm font-semibold text-ocean-900 outline-none" required />
                       </label>
                       <label className="grid gap-2 text-sm font-bold text-ocean-900">
                         Starts
-                        <input name="startsAt" type="date" defaultValue={dateInputValue(program.startsAt)} className="min-h-11 rounded-lg border border-ocean-900/12 bg-white px-3 text-sm font-semibold text-ocean-900 outline-none" required />
+                        <input name="startsAt" type="date" defaultValue={dateInputValue(program.startsAt)} className="min-h-11 w-full min-w-0 rounded-lg border border-ocean-900/12 bg-white px-3 text-sm font-semibold text-ocean-900 outline-none" required />
                       </label>
                       <label className="grid gap-2 text-sm font-bold text-ocean-900">
                         Ends
-                        <input name="endsAt" type="date" defaultValue={dateInputValue(program.endsAt)} className="min-h-11 rounded-lg border border-ocean-900/12 bg-white px-3 text-sm font-semibold text-ocean-900 outline-none" required />
+                        <input name="endsAt" type="date" defaultValue={dateInputValue(program.endsAt)} className="min-h-11 w-full min-w-0 rounded-lg border border-ocean-900/12 bg-white px-3 text-sm font-semibold text-ocean-900 outline-none" required />
                       </label>
                       <label className="grid gap-2 text-sm font-bold text-ocean-900">
                         Budget
-                        <input name="budgetAmount" inputMode="decimal" defaultValue={program.budgetAmountValue} className="min-h-11 rounded-lg border border-ocean-900/12 bg-white px-3 text-sm font-semibold text-ocean-900 outline-none" required />
+                        <input name="budgetAmount" inputMode="decimal" defaultValue={program.budgetAmountValue} className="min-h-11 w-full min-w-0 rounded-lg border border-ocean-900/12 bg-white px-3 text-sm font-semibold text-ocean-900 outline-none" required />
                       </label>
                       <label className="grid gap-2 text-sm font-bold text-ocean-900">
                         Currency
-                        <input name="currency" defaultValue={program.currency} className="min-h-11 rounded-lg border border-ocean-900/12 bg-white px-3 text-sm font-semibold text-ocean-900 outline-none" required />
+                        <input name="currency" defaultValue={program.currency} className="min-h-11 w-full min-w-0 rounded-lg border border-ocean-900/12 bg-white px-3 text-sm font-semibold text-ocean-900 outline-none" required />
                       </label>
                       <label className="grid gap-2 text-sm font-bold text-ocean-900">
                         Status
-                        <select name="status" defaultValue={program.status} className="min-h-11 rounded-lg border border-ocean-900/12 bg-white px-3 text-sm font-semibold text-ocean-900 outline-none">
+                        <select name="status" defaultValue={program.status} className="min-h-11 w-full min-w-0 rounded-lg border border-ocean-900/12 bg-white px-3 text-sm font-semibold text-ocean-900 outline-none">
                           {programStatuses.map((status) => <option key={status} value={status}>{status}</option>)}
                         </select>
                       </label>

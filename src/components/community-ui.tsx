@@ -28,10 +28,10 @@ import { Button, ButtonLink } from "@/components/ui/button";
 import { ProgressMeter } from "@/components/ui/progress-meter";
 
 export const communityInputClassName =
-  "min-h-11 rounded-lg border border-ocean-900/12 bg-white px-3 text-sm font-semibold text-ocean-900 outline-none transition placeholder:text-ocean-900/34 focus:border-coral-500 focus:ring-2 focus:ring-coral-500/20";
+  "min-h-11 w-full min-w-0 rounded-lg border border-ocean-900/12 bg-white px-3 text-sm font-semibold text-ocean-900 outline-none transition placeholder:text-ocean-900/34 focus:border-coral-500 focus:ring-2 focus:ring-coral-500/20";
 
 export const communityTextareaClassName =
-  "min-h-28 rounded-lg border border-ocean-900/12 bg-white px-3 py-3 text-sm font-semibold leading-6 text-ocean-900 outline-none transition placeholder:text-ocean-900/34 focus:border-coral-500 focus:ring-2 focus:ring-coral-500/20";
+  "min-h-28 w-full min-w-0 rounded-lg border border-ocean-900/12 bg-white px-3 py-3 text-sm font-semibold leading-6 text-ocean-900 outline-none transition placeholder:text-ocean-900/34 focus:border-coral-500 focus:ring-2 focus:ring-coral-500/20";
 
 export function CommunityAuthorBadge({ author, detail }: { author: { name: string; initials: string }; detail?: string }) {
   return (

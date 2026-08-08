@@ -71,35 +71,35 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
       ) : null}
 
       <section className="mt-6 grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
-        <form action={updateAccountAction} className="rounded-2xl border border-ocean-900/10 bg-white p-6 shadow-soft">
+        <form action={updateAccountAction} className="min-w-0 rounded-2xl border border-ocean-900/10 bg-white p-6 shadow-soft">
           <h2 className="text-xl font-bold tracking-normal text-ocean-900">Profile</h2>
           <div className="mt-5 grid gap-4">
-            <label className="grid gap-2 text-sm font-semibold text-ocean-900">
+            <label className="grid min-w-0 gap-2 text-sm font-semibold text-ocean-900">
               <span>
                 Name <RequiredMark />
               </span>
-              <input name="name" defaultValue={account?.name ?? ""} className="rounded-xl border border-ocean-900/14 px-4 py-3 outline-none focus:border-coral-500" required />
+              <input name="name" defaultValue={account?.name ?? ""} className="w-full min-w-0 rounded-xl border border-ocean-900/14 px-4 py-3 outline-none focus:border-coral-500" required />
             </label>
-            <label className="grid gap-2 text-sm font-semibold text-ocean-900">
+            <label className="grid min-w-0 gap-2 text-sm font-semibold text-ocean-900">
               <span>
                 Display name <RequiredMark />
               </span>
-              <input name="displayName" defaultValue={account?.displayName ?? ""} className="rounded-xl border border-ocean-900/14 px-4 py-3 outline-none focus:border-coral-500" required />
+              <input name="displayName" defaultValue={account?.displayName ?? ""} className="w-full min-w-0 rounded-xl border border-ocean-900/14 px-4 py-3 outline-none focus:border-coral-500" required />
             </label>
-            <label className="grid gap-2 text-sm font-semibold text-ocean-900">
+            <label className="grid min-w-0 gap-2 text-sm font-semibold text-ocean-900">
               Location
-              <input name="location" defaultValue={account?.location ?? ""} className="rounded-xl border border-ocean-900/14 px-4 py-3 outline-none focus:border-coral-500" />
+              <input name="location" defaultValue={account?.location ?? ""} className="w-full min-w-0 rounded-xl border border-ocean-900/14 px-4 py-3 outline-none focus:border-coral-500" />
             </label>
-            <label className="grid gap-2 text-sm font-semibold text-ocean-900">
+            <label className="grid min-w-0 gap-2 text-sm font-semibold text-ocean-900">
               Bio
-              <textarea name="bio" defaultValue={account?.bio ?? ""} className="min-h-28 rounded-xl border border-ocean-900/14 px-4 py-3 outline-none focus:border-coral-500" />
+              <textarea name="bio" defaultValue={account?.bio ?? ""} className="min-h-28 w-full min-w-0 rounded-xl border border-ocean-900/14 px-4 py-3 outline-none focus:border-coral-500" />
             </label>
-            <label id="privacy" className="grid scroll-mt-24 gap-2 text-sm font-semibold text-ocean-900">
+            <label id="privacy" className="grid min-w-0 scroll-mt-24 gap-2 text-sm font-semibold text-ocean-900">
               Impact Passport visibility
               <select
                 name="passportVisibility"
                 defaultValue={account?.passportVisibility ?? "private"}
-                className="rounded-xl border border-ocean-900/14 px-4 py-3 outline-none focus:border-coral-500"
+                className="w-full min-w-0 rounded-xl border border-ocean-900/14 px-4 py-3 outline-none focus:border-coral-500"
               >
                 <option value="private">Private</option>
                 <option value="link">Link-only</option>
@@ -112,26 +112,26 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
           </Button>
         </form>
 
-        <form action={changePasswordAction} className="rounded-2xl border border-ocean-900/10 bg-white p-6 shadow-soft">
+        <form action={changePasswordAction} className="min-w-0 rounded-2xl border border-ocean-900/10 bg-white p-6 shadow-soft">
           <h2 className="text-xl font-bold tracking-normal text-ocean-900">Password</h2>
           <div className="mt-5 grid gap-4">
-            <label className="grid gap-2 text-sm font-semibold text-ocean-900">
+            <label className="grid min-w-0 gap-2 text-sm font-semibold text-ocean-900">
               <span>
                 Current password <RequiredMark />
               </span>
-              <input name="currentPassword" type="password" className="rounded-xl border border-ocean-900/14 px-4 py-3 outline-none focus:border-coral-500" required />
+              <input name="currentPassword" type="password" className="w-full min-w-0 rounded-xl border border-ocean-900/14 px-4 py-3 outline-none focus:border-coral-500" required />
             </label>
-            <label className="grid gap-2 text-sm font-semibold text-ocean-900">
+            <label className="grid min-w-0 gap-2 text-sm font-semibold text-ocean-900">
               <span>
                 New password <RequiredMark />
               </span>
-              <input name="nextPassword" type="password" minLength={8} className="rounded-xl border border-ocean-900/14 px-4 py-3 outline-none focus:border-coral-500" required />
+              <input name="nextPassword" type="password" minLength={8} className="w-full min-w-0 rounded-xl border border-ocean-900/14 px-4 py-3 outline-none focus:border-coral-500" required />
             </label>
-            <label className="grid gap-2 text-sm font-semibold text-ocean-900">
+            <label className="grid min-w-0 gap-2 text-sm font-semibold text-ocean-900">
               <span>
                 Confirm new password <RequiredMark />
               </span>
-              <input name="confirmPassword" type="password" minLength={8} className="rounded-xl border border-ocean-900/14 px-4 py-3 outline-none focus:border-coral-500" required />
+              <input name="confirmPassword" type="password" minLength={8} className="w-full min-w-0 rounded-xl border border-ocean-900/14 px-4 py-3 outline-none focus:border-coral-500" required />
             </label>
           </div>
           <Button type="submit" tone="secondary" className="mt-6">

@@ -125,19 +125,19 @@ export default async function CorporateEmployeesPage({ searchParams }: Corporate
           <form action={inviteCorporateEmployeeAction} className="mt-5 grid gap-3 lg:grid-cols-[1fr_1fr_180px_170px_140px_auto]">
             <label className="grid gap-2 text-sm font-bold text-ocean-900">
               Name
-              <input name="name" className="min-h-11 rounded-lg border border-ocean-900/12 px-3 text-sm font-semibold text-ocean-900 outline-none" required />
+              <input name="name" className="min-h-11 w-full min-w-0 rounded-lg border border-ocean-900/12 px-3 text-sm font-semibold text-ocean-900 outline-none" required />
             </label>
             <label className="grid gap-2 text-sm font-bold text-ocean-900">
               Email
-              <input name="email" type="email" className="min-h-11 rounded-lg border border-ocean-900/12 px-3 text-sm font-semibold text-ocean-900 outline-none" required />
+              <input name="email" type="email" className="min-h-11 w-full min-w-0 rounded-lg border border-ocean-900/12 px-3 text-sm font-semibold text-ocean-900 outline-none" required />
             </label>
             <label className="grid gap-2 text-sm font-bold text-ocean-900">
               Department
-              <input name="department" className="min-h-11 rounded-lg border border-ocean-900/12 px-3 text-sm font-semibold text-ocean-900 outline-none" />
+              <input name="department" className="min-h-11 w-full min-w-0 rounded-lg border border-ocean-900/12 px-3 text-sm font-semibold text-ocean-900 outline-none" />
             </label>
             <label className="grid gap-2 text-sm font-bold text-ocean-900">
               Role
-              <select name="role" defaultValue={roleOptions[0]?.value ?? "member"} className="min-h-11 rounded-lg border border-ocean-900/12 bg-white px-3 text-sm font-semibold text-ocean-900 outline-none">
+              <select name="role" defaultValue={roleOptions[0]?.value ?? "member"} className="min-h-11 w-full min-w-0 rounded-lg border border-ocean-900/12 bg-white px-3 text-sm font-semibold text-ocean-900 outline-none">
                 {roleOptions.map((option) => (
                   <option key={option.value} value={option.value}>
                     {option.label}
@@ -147,7 +147,7 @@ export default async function CorporateEmployeesPage({ searchParams }: Corporate
             </label>
             <label className="grid gap-2 text-sm font-bold text-ocean-900">
               Status
-              <select name="status" defaultValue="invited" className="min-h-11 rounded-lg border border-ocean-900/12 bg-white px-3 text-sm font-semibold text-ocean-900 outline-none">
+              <select name="status" defaultValue="invited" className="min-h-11 w-full min-w-0 rounded-lg border border-ocean-900/12 bg-white px-3 text-sm font-semibold text-ocean-900 outline-none">
                 <option value="invited">Invited</option>
                 <option value="active">Active</option>
                 <option value="suspended">Suspended</option>
@@ -171,11 +171,11 @@ export default async function CorporateEmployeesPage({ searchParams }: Corporate
           <form action={createCorporateEmployeeEventAction} className="mt-5 grid gap-3 lg:grid-cols-[1.3fr_150px_170px_170px_150px_120px]">
             <label className="grid gap-2 text-sm font-bold text-ocean-900">
               Title
-              <input name="title" className="min-h-11 rounded-lg border border-ocean-900/12 px-3 text-sm font-semibold text-ocean-900 outline-none" required />
+              <input name="title" className="min-h-11 w-full min-w-0 rounded-lg border border-ocean-900/12 px-3 text-sm font-semibold text-ocean-900 outline-none" required />
             </label>
             <label className="grid gap-2 text-sm font-bold text-ocean-900">
               Type
-              <select name="eventType" defaultValue="volunteer" className="min-h-11 rounded-lg border border-ocean-900/12 bg-white px-3 text-sm font-semibold text-ocean-900 outline-none">
+              <select name="eventType" defaultValue="volunteer" className="min-h-11 w-full min-w-0 rounded-lg border border-ocean-900/12 bg-white px-3 text-sm font-semibold text-ocean-900 outline-none">
                 <option value="volunteer">Volunteer</option>
                 <option value="training">Training</option>
                 <option value="challenge">Challenge</option>
@@ -184,19 +184,19 @@ export default async function CorporateEmployeesPage({ searchParams }: Corporate
             </label>
             <label className="grid gap-2 text-sm font-bold text-ocean-900">
               Starts
-              <input name="startsAt" type="datetime-local" className="min-h-11 rounded-lg border border-ocean-900/12 px-3 text-sm font-semibold text-ocean-900 outline-none" required />
+              <input name="startsAt" type="datetime-local" className="min-h-11 w-full min-w-0 rounded-lg border border-ocean-900/12 px-3 text-sm font-semibold text-ocean-900 outline-none" required />
             </label>
             <label className="grid gap-2 text-sm font-bold text-ocean-900">
               Ends
-              <input name="endsAt" type="datetime-local" className="min-h-11 rounded-lg border border-ocean-900/12 px-3 text-sm font-semibold text-ocean-900 outline-none" required />
+              <input name="endsAt" type="datetime-local" className="min-h-11 w-full min-w-0 rounded-lg border border-ocean-900/12 px-3 text-sm font-semibold text-ocean-900 outline-none" required />
             </label>
             <label className="grid gap-2 text-sm font-bold text-ocean-900">
               Capacity
-              <input name="capacity" type="number" min="1" defaultValue="40" className="min-h-11 rounded-lg border border-ocean-900/12 px-3 text-sm font-semibold text-ocean-900 outline-none" required />
+              <input name="capacity" type="number" min="1" defaultValue="40" className="min-h-11 w-full min-w-0 rounded-lg border border-ocean-900/12 px-3 text-sm font-semibold text-ocean-900 outline-none" required />
             </label>
             <label className="grid gap-2 text-sm font-bold text-ocean-900">
               Status
-              <select name="status" defaultValue="registration_open" className="min-h-11 rounded-lg border border-ocean-900/12 bg-white px-3 text-sm font-semibold text-ocean-900 outline-none">
+              <select name="status" defaultValue="registration_open" className="min-h-11 w-full min-w-0 rounded-lg border border-ocean-900/12 bg-white px-3 text-sm font-semibold text-ocean-900 outline-none">
                 <option value="draft">Draft</option>
                 <option value="registration_open">Open</option>
                 <option value="waitlist">Waitlist</option>
@@ -206,11 +206,11 @@ export default async function CorporateEmployeesPage({ searchParams }: Corporate
             </label>
             <label className="grid gap-2 text-sm font-bold text-ocean-900 lg:col-span-2">
               Location
-              <input name="location" className="min-h-11 rounded-lg border border-ocean-900/12 px-3 text-sm font-semibold text-ocean-900 outline-none" />
+              <input name="location" className="min-h-11 w-full min-w-0 rounded-lg border border-ocean-900/12 px-3 text-sm font-semibold text-ocean-900 outline-none" />
             </label>
             <label className="grid gap-2 text-sm font-bold text-ocean-900 lg:col-span-3">
               Notes
-              <input name="description" className="min-h-11 rounded-lg border border-ocean-900/12 px-3 text-sm font-semibold text-ocean-900 outline-none" />
+              <input name="description" className="min-h-11 w-full min-w-0 rounded-lg border border-ocean-900/12 px-3 text-sm font-semibold text-ocean-900 outline-none" />
             </label>
             <label className="flex min-h-11 items-center gap-2 self-end rounded-lg border border-ocean-900/12 px-3 text-sm font-bold text-ocean-900">
               <input name="waitlistEnabled" type="checkbox" defaultChecked className="h-4 w-4 rounded border-ocean-900/20" />
@@ -254,7 +254,7 @@ export default async function CorporateEmployeesPage({ searchParams }: Corporate
                   {canManageEmployees && registrableEmployees.length > 0 ? (
                     <form action={registerCorporateEmployeeEventAction} className="mt-4 grid gap-2 sm:grid-cols-[1fr_auto]">
                       <input type="hidden" name="eventId" value={event.id} />
-                      <select name="employeeId" className="min-h-11 rounded-lg border border-ocean-900/12 bg-white px-3 text-sm font-semibold text-ocean-900 outline-none" required>
+                      <select name="employeeId" className="min-h-11 w-full min-w-0 rounded-lg border border-ocean-900/12 bg-white px-3 text-sm font-semibold text-ocean-900 outline-none" required>
                         {registrableEmployees.map((employee) => (
                           <option key={employee.id} value={employee.id}>
                             {employee.name} · {employee.department ?? "No department"}

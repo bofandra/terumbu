@@ -11,6 +11,23 @@
   box-sizing: border-box;
 }
 
+form,
+fieldset,
+label {
+  min-width: 0;
+}
+
+fieldset {
+  min-inline-size: 0;
+}
+
+input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]),
+select,
+textarea {
+  min-width: 0;
+  max-width: 100%;
+}
+
 html {
   scroll-behavior: smooth;
 }
@@ -35,4 +52,3 @@ img {
   background: #ff9d83;
   color: #07343f;
 }
-

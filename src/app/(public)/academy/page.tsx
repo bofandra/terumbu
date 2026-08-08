@@ -191,15 +191,15 @@ export default async function AcademyPage({
               Build practical conservation knowledge, prepare for field activities, and earn verified credentials connected to your Impact Passport.
             </p>
 
-            <form action="/academy" className="mt-8 flex max-w-2xl flex-col gap-3 rounded-2xl bg-white p-2 shadow-soft sm:flex-row">
-              <label className="flex min-h-12 flex-1 items-center gap-3 px-3 text-ocean-900">
+            <form action="/academy" className="mt-8 flex max-w-2xl min-w-0 flex-col gap-3 rounded-2xl bg-white p-2 shadow-soft sm:flex-row">
+              <label className="flex min-h-12 min-w-0 flex-1 items-center gap-3 px-3 text-ocean-900">
                 <Search size={20} aria-hidden="true" className="text-ocean-900/50" />
                 <span className="sr-only">Search Academy courses</span>
                 <input
                   name="q"
                   defaultValue={query}
                   placeholder="What would you like to learn?"
-                  className="w-full bg-transparent text-sm font-semibold outline-none placeholder:text-ocean-900/44"
+                  className="w-full min-w-0 bg-transparent text-sm font-semibold outline-none placeholder:text-ocean-900/44"
                 />
               </label>
               <Button type="submit" className="sm:min-w-36">
@@ -503,26 +503,26 @@ export default async function AcademyPage({
             <p className="text-sm font-bold uppercase text-coral-700">Course catalog</p>
             <h2 className="mt-2 text-3xl font-bold text-ocean-900">Explore all courses</h2>
           </div>
-          <form action="/academy" className="grid gap-3 rounded-2xl border border-ocean-900/10 bg-white p-3 shadow-sm md:grid-cols-[1fr_180px_180px_auto]">
-            <label className="flex min-h-11 items-center gap-2 rounded-xl bg-ocean-50 px-3">
+          <form action="/academy" className="grid min-w-0 gap-3 rounded-2xl border border-ocean-900/10 bg-white p-3 shadow-sm md:grid-cols-[minmax(0,1fr)_180px_180px_auto]">
+            <label className="flex min-h-11 min-w-0 items-center gap-2 rounded-xl bg-ocean-50 px-3">
               <Search size={17} aria-hidden="true" className="text-ocean-900/48" />
               <span className="sr-only">Search courses</span>
-              <input name="q" defaultValue={query} placeholder="Search courses" className="w-full bg-transparent text-sm font-semibold outline-none placeholder:text-ocean-900/42" />
+              <input name="q" defaultValue={query} placeholder="Search courses" className="w-full min-w-0 bg-transparent text-sm font-semibold outline-none placeholder:text-ocean-900/42" />
             </label>
-            <label className="flex min-h-11 items-center gap-2 rounded-xl bg-ocean-50 px-3 text-sm font-semibold text-ocean-900">
+            <label className="flex min-h-11 min-w-0 items-center gap-2 rounded-xl bg-ocean-50 px-3 text-sm font-semibold text-ocean-900">
               <Filter size={17} aria-hidden="true" />
               <span className="sr-only">Topic</span>
-              <select name="topic" defaultValue={topic} className="w-full bg-transparent outline-none">
+              <select name="topic" defaultValue={topic} className="w-full min-w-0 bg-transparent outline-none">
                 <option value="">All topics</option>
                 {data.popularTopics.map((item) => (
                   <option key={item} value={item}>{item}</option>
                 ))}
               </select>
             </label>
-            <label className="flex min-h-11 items-center gap-2 rounded-xl bg-ocean-50 px-3 text-sm font-semibold text-ocean-900">
+            <label className="flex min-h-11 min-w-0 items-center gap-2 rounded-xl bg-ocean-50 px-3 text-sm font-semibold text-ocean-900">
               <GraduationCap size={17} aria-hidden="true" />
               <span className="sr-only">Difficulty</span>
-              <select name="level" defaultValue={level} className="w-full bg-transparent outline-none">
+              <select name="level" defaultValue={level} className="w-full min-w-0 bg-transparent outline-none">
                 <option value="">All levels</option>
                 <option value="Beginner">Beginner</option>
                 <option value="Intermediate">Intermediate</option>

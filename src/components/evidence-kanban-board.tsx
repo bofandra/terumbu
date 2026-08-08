@@ -242,20 +242,20 @@ export function EvidenceKanbanBoard({
                               </div>
 
                               {reviewAction ? (
-                                <form action={reviewAction} className="mt-3 grid gap-2">
+                                <form action={reviewAction} className="mt-3 grid min-w-0 gap-2">
                                   <input type="hidden" name="evidenceId" value={evidence.id} />
                                   <input type="hidden" name="redirectTo" value={returnTo} />
-                                  <label className="grid gap-1 text-xs font-bold uppercase tracking-normal text-ocean-900/50">
+                                  <label className="grid min-w-0 gap-1 text-xs font-bold uppercase tracking-normal text-ocean-900/50">
                                     Review status
-                                    <select name="status" defaultValue={evidence.verificationStatus} className="min-h-10 rounded-lg border border-ocean-900/12 bg-white px-3 text-sm font-semibold normal-case text-ocean-900 outline-none">
+                                    <select name="status" defaultValue={evidence.verificationStatus} className="min-h-10 w-full min-w-0 rounded-lg border border-ocean-900/12 bg-white px-3 text-sm font-semibold normal-case text-ocean-900 outline-none">
                                       {evidenceVerificationStatuses.map((status) => (
                                         <option key={status} value={status}>{evidenceStatusLabel(status)}</option>
                                       ))}
                                     </select>
                                   </label>
-                                  <label className="grid gap-1 text-xs font-bold uppercase tracking-normal text-ocean-900/50">
+                                  <label className="grid min-w-0 gap-1 text-xs font-bold uppercase tracking-normal text-ocean-900/50">
                                     Reviewer
-                                    <select name="reviewerAssignment" defaultValue={evidence.assignedReviewerUserId ? "keep" : "assign_me"} className="min-h-10 rounded-lg border border-ocean-900/12 bg-white px-3 text-sm font-semibold normal-case text-ocean-900 outline-none">
+                                    <select name="reviewerAssignment" defaultValue={evidence.assignedReviewerUserId ? "keep" : "assign_me"} className="min-h-10 w-full min-w-0 rounded-lg border border-ocean-900/12 bg-white px-3 text-sm font-semibold normal-case text-ocean-900 outline-none">
                                       <option value="assign_me">Assign to me</option>
                                       <option value="keep">Keep current</option>
                                       <option value="clear">Clear assignment</option>
@@ -265,7 +265,7 @@ export function EvidenceKanbanBoard({
                                     name="reviewNote"
                                     defaultValue={evidence.latestReviewNote ?? ""}
                                     placeholder="Note required for clarification or rejection"
-                                    className="min-h-20 rounded-lg border border-ocean-900/12 bg-white px-3 py-2 text-sm font-semibold leading-6 text-ocean-900 outline-none"
+                                    className="min-h-20 w-full min-w-0 rounded-lg border border-ocean-900/12 bg-white px-3 py-2 text-sm font-semibold leading-6 text-ocean-900 outline-none"
                                   />
                                   <Button type="submit" tone="secondary" className="min-h-10 px-4 py-2 text-xs">
                                     <ShieldCheck size={15} aria-hidden="true" />
@@ -275,20 +275,20 @@ export function EvidenceKanbanBoard({
                               ) : null}
 
                               {!reviewAction && revisionAction && evidenceCanBeRevised(evidence.verificationStatus) ? (
-                                <form action={revisionAction} encType="multipart/form-data" className="mt-3 grid gap-2 rounded-lg bg-sand-50 p-3">
+                                <form action={revisionAction} encType="multipart/form-data" className="mt-3 grid min-w-0 gap-2 rounded-lg bg-sand-50 p-3">
                                   <input type="hidden" name="evidenceId" value={evidence.id} />
                                   <input type="hidden" name="redirectTo" value={returnTo} />
-                                  <label className="grid gap-1 text-xs font-bold uppercase tracking-normal text-ocean-900/50">
+                                  <label className="grid min-w-0 gap-1 text-xs font-bold uppercase tracking-normal text-ocean-900/50">
                                     Title
-                                    <input name="title" defaultValue={evidence.title} className="min-h-10 rounded-lg border border-ocean-900/12 bg-white px-3 text-sm font-semibold normal-case text-ocean-900 outline-none" required />
+                                    <input name="title" defaultValue={evidence.title} className="min-h-10 w-full min-w-0 rounded-lg border border-ocean-900/12 bg-white px-3 text-sm font-semibold normal-case text-ocean-900 outline-none" required />
                                   </label>
-                                  <label className="grid gap-1 text-xs font-bold uppercase tracking-normal text-ocean-900/50">
+                                  <label className="grid min-w-0 gap-1 text-xs font-bold uppercase tracking-normal text-ocean-900/50">
                                     Response note
-                                    <textarea name="body" placeholder="Explain what changed in this revision." className="min-h-20 rounded-lg border border-ocean-900/12 bg-white px-3 py-2 text-sm font-semibold leading-6 normal-case text-ocean-900 outline-none" />
+                                    <textarea name="body" placeholder="Explain what changed in this revision." className="min-h-20 w-full min-w-0 rounded-lg border border-ocean-900/12 bg-white px-3 py-2 text-sm font-semibold leading-6 normal-case text-ocean-900 outline-none" />
                                   </label>
-                                  <label className="grid gap-1 text-xs font-bold uppercase tracking-normal text-ocean-900/50">
+                                  <label className="grid min-w-0 gap-1 text-xs font-bold uppercase tracking-normal text-ocean-900/50">
                                     Replace file
-                                    <input name="imageFile" type="file" accept="image/png,image/jpeg,image/webp,image/gif" className="min-h-10 rounded-lg border border-ocean-900/12 bg-white px-3 py-2 text-sm font-semibold normal-case text-ocean-900 outline-none" required />
+                                    <input name="imageFile" type="file" accept="image/png,image/jpeg,image/webp,image/gif" className="min-h-10 w-full min-w-0 rounded-lg border border-ocean-900/12 bg-white px-3 py-2 text-sm font-semibold normal-case text-ocean-900 outline-none" required />
                                   </label>
                                   <Button type="submit" className="min-h-10 px-4 py-2 text-xs">
                                     <RotateCcw size={15} aria-hidden="true" />

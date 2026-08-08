@@ -7,8 +7,7 @@ import {
   CommunityCommentThread,
   CommunityImage,
   CommunityStatusBadge,
-  CommunityTargetActions,
-  communityInputClassName
+  CommunityTargetActions
 } from "@/components/community-ui";
 import { Button, ButtonLink } from "@/components/ui/button";
 import { getSessionUser, getUserRoles } from "@/lib/auth";
@@ -143,7 +142,7 @@ export default async function CommunityEventPage({ params }: CommunityEventPageP
                       <form action={markCommunityEventAttendanceAction} className="mt-3 flex flex-wrap gap-2">
                         <input type="hidden" name="registrationId" value={registration.id} />
                         <input type="hidden" name="next" value={next} />
-                        <input name="attendanceHours" type="number" min={1} max={48} defaultValue={2} className={`${communityInputClassName} min-h-10 w-24`} />
+                        <input name="attendanceHours" type="number" min={1} max={48} defaultValue={2} className="min-h-10 w-24 min-w-0 rounded-lg border border-ocean-900/12 bg-white px-3 text-sm font-semibold text-ocean-900 outline-none transition placeholder:text-ocean-900/34 focus:border-coral-500 focus:ring-2 focus:ring-coral-500/20" />
                         <Button type="submit" tone="secondary" className="min-h-10 px-3">Mark attended</Button>
                       </form>
                     ) : null}

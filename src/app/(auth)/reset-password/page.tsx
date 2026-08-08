@@ -56,15 +56,15 @@ export default async function ResetPasswordPage({ searchParams }: ResetPasswordP
             </ButtonLink>
           </div>
         ) : (
-          <form action={completePasswordResetAction} className="mt-6 grid gap-4">
+          <form action={completePasswordResetAction} className="mt-6 grid min-w-0 gap-4">
             <input type="hidden" name="token" value={token} />
             <p className="rounded-lg border border-ocean-900/10 bg-ocean-50 px-4 py-3 text-sm font-semibold text-ocean-900/68">
               {record.email}
             </p>
-            <label className="grid gap-2 text-sm font-semibold text-ocean-900">
+            <label className="grid min-w-0 gap-2 text-sm font-semibold text-ocean-900">
               New password
               <input
-                className="rounded-lg border border-ocean-900/14 px-4 py-3 outline-none focus:border-coral-500"
+                className="w-full min-w-0 rounded-lg border border-ocean-900/14 px-4 py-3 outline-none focus:border-coral-500"
                 type="password"
                 name="password"
                 autoComplete="new-password"
@@ -72,10 +72,10 @@ export default async function ResetPasswordPage({ searchParams }: ResetPasswordP
                 required
               />
             </label>
-            <label className="grid gap-2 text-sm font-semibold text-ocean-900">
+            <label className="grid min-w-0 gap-2 text-sm font-semibold text-ocean-900">
               Confirm password
               <input
-                className="rounded-lg border border-ocean-900/14 px-4 py-3 outline-none focus:border-coral-500"
+                className="w-full min-w-0 rounded-lg border border-ocean-900/14 px-4 py-3 outline-none focus:border-coral-500"
                 type="password"
                 name="confirmPassword"
                 autoComplete="new-password"

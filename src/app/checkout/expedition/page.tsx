@@ -63,12 +63,12 @@ export default async function ExpeditionCheckoutPage({ searchParams }: Expeditio
             {params.error === "availability" ? "That departure is no longer available for the requested seats." : "Check departure availability and contact details."}
           </p>
         ) : null}
-        <form action={bookExpeditionAction} className="mt-6 grid gap-4">
+        <form action={bookExpeditionAction} className="mt-6 grid min-w-0 gap-4">
           <input type="hidden" name="next" value="/checkout/expedition" />
           <input type="hidden" name="idempotencyKey" value={idempotencyKey} />
-          <label className="grid gap-2 text-sm font-semibold text-ocean-900">
+          <label className="grid min-w-0 gap-2 text-sm font-semibold text-ocean-900">
             Departure
-            <select name="departureId" defaultValue={selectedDeparture} className="rounded-xl border border-ocean-900/14 px-4 py-3 outline-none focus:border-coral-500">
+            <select name="departureId" defaultValue={selectedDeparture} className="w-full min-w-0 rounded-xl border border-ocean-900/14 px-4 py-3 outline-none focus:border-coral-500">
               {visibleOptions.map((option) => (
                 <option key={option.departureId} value={option.departureId}>
                   {option.expeditionTitle} · {option.startsAt.toLocaleDateString("id-ID", { dateStyle: "medium" })} · {option.availabilityLabel} · {option.availableSeats} seats · {formatCurrency(option.basePrice)}
@@ -76,25 +76,25 @@ export default async function ExpeditionCheckoutPage({ searchParams }: Expeditio
               ))}
             </select>
           </label>
-          <label className="grid gap-2 text-sm font-semibold text-ocean-900">
+          <label className="grid min-w-0 gap-2 text-sm font-semibold text-ocean-900">
             Contact name
-            <input name="contactName" defaultValue={user?.displayName ?? user?.name ?? ""} className="rounded-xl border border-ocean-900/14 px-4 py-3 outline-none focus:border-coral-500" required />
+            <input name="contactName" defaultValue={user?.displayName ?? user?.name ?? ""} className="w-full min-w-0 rounded-xl border border-ocean-900/14 px-4 py-3 outline-none focus:border-coral-500" required />
           </label>
-          <label className="grid gap-2 text-sm font-semibold text-ocean-900">
+          <label className="grid min-w-0 gap-2 text-sm font-semibold text-ocean-900">
             Contact email
-            <input name="contactEmail" type="email" defaultValue={user?.email ?? ""} className="rounded-xl border border-ocean-900/14 px-4 py-3 outline-none focus:border-coral-500" required />
+            <input name="contactEmail" type="email" defaultValue={user?.email ?? ""} className="w-full min-w-0 rounded-xl border border-ocean-900/14 px-4 py-3 outline-none focus:border-coral-500" required />
           </label>
-          <label className="grid gap-2 text-sm font-semibold text-ocean-900">
+          <label className="grid min-w-0 gap-2 text-sm font-semibold text-ocean-900">
             Participants
-            <input name="participantsCount" type="number" min={1} max={12} defaultValue={selectedParticipants} className="rounded-xl border border-ocean-900/14 px-4 py-3 outline-none focus:border-coral-500" required />
+            <input name="participantsCount" type="number" min={1} max={12} defaultValue={selectedParticipants} className="w-full min-w-0 rounded-xl border border-ocean-900/14 px-4 py-3 outline-none focus:border-coral-500" required />
           </label>
-          <label className="grid gap-2 text-sm font-semibold text-ocean-900">
+          <label className="grid min-w-0 gap-2 text-sm font-semibold text-ocean-900">
             Participant names
-            <textarea name="participantNames" defaultValue={user?.displayName ?? user?.name ?? ""} className="min-h-24 rounded-xl border border-ocean-900/14 px-4 py-3 outline-none focus:border-coral-500" />
+            <textarea name="participantNames" defaultValue={user?.displayName ?? user?.name ?? ""} className="min-h-24 w-full min-w-0 rounded-xl border border-ocean-900/14 px-4 py-3 outline-none focus:border-coral-500" />
           </label>
-          <label className="grid gap-2 text-sm font-semibold text-ocean-900">
+          <label className="grid min-w-0 gap-2 text-sm font-semibold text-ocean-900">
             Payment result
-            <select name="paymentState" defaultValue="paid" className="rounded-xl border border-ocean-900/14 px-4 py-3 outline-none focus:border-coral-500">
+            <select name="paymentState" defaultValue="paid" className="w-full min-w-0 rounded-xl border border-ocean-900/14 px-4 py-3 outline-none focus:border-coral-500">
               <option value="paid">Paid</option>
               <option value="failed">Failed</option>
             </select>

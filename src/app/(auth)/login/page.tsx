@@ -47,10 +47,10 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
         {params?.error === "unverified" ? (
           <div className="mt-4 rounded-xl border border-coral-500/20 bg-coral-100 px-4 py-3">
             <p className="text-sm font-semibold text-coral-700">Verify your email before logging in. A verification email has been sent.</p>
-            <form action={requestVerificationEmailAction} className="mt-3 grid gap-2 sm:grid-cols-[1fr_auto]">
+            <form action={requestVerificationEmailAction} className="mt-3 grid min-w-0 gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">
               <input type="hidden" name="next" value={nextPath} />
               <input
-                className="min-h-10 rounded-lg border border-coral-700/20 px-3 text-sm font-semibold outline-none focus:border-coral-500"
+                className="min-h-10 w-full min-w-0 rounded-lg border border-coral-700/20 px-3 text-sm font-semibold outline-none focus:border-coral-500"
                 type="email"
                 name="email"
                 placeholder="email@example.com"
@@ -100,22 +100,22 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
           </p>
         ) : null}
 
-        <form action={loginAction} className="mt-6 grid gap-4">
+        <form action={loginAction} className="mt-6 grid min-w-0 gap-4">
           <input type="hidden" name="next" value={nextPath} />
-          <label className="grid gap-2 text-sm font-semibold text-ocean-900">
+          <label className="grid min-w-0 gap-2 text-sm font-semibold text-ocean-900">
             Email
             <input
-              className="rounded-xl border border-ocean-900/14 px-4 py-3 outline-none focus:border-coral-500"
+              className="w-full min-w-0 rounded-xl border border-ocean-900/14 px-4 py-3 outline-none focus:border-coral-500"
               type="email"
               name="email"
               autoComplete="email"
               required
             />
           </label>
-          <label className="grid gap-2 text-sm font-semibold text-ocean-900">
+          <label className="grid min-w-0 gap-2 text-sm font-semibold text-ocean-900">
             Password
             <input
-              className="rounded-xl border border-ocean-900/14 px-4 py-3 outline-none focus:border-coral-500"
+              className="w-full min-w-0 rounded-xl border border-ocean-900/14 px-4 py-3 outline-none focus:border-coral-500"
               type="password"
               name="password"
               autoComplete="current-password"

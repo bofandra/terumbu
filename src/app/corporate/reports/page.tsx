@@ -130,7 +130,7 @@ export default async function CorporateReportsPage({ searchParams }: CorporateRe
               <form action={createCorporateReportExportAction} className="grid gap-3 rounded-lg border border-ocean-900/10 bg-sand-50 p-4 xl:grid-cols-[180px_180px_240px_auto]">
                 <label className="grid gap-2 text-sm font-bold text-ocean-900">
                   Report type
-                  <select name="reportType" defaultValue="esg" className="min-h-11 rounded-lg border border-ocean-900/12 bg-white px-3 text-sm font-bold text-ocean-900 outline-none">
+                  <select name="reportType" defaultValue="esg" className="min-h-11 w-full min-w-0 rounded-lg border border-ocean-900/12 bg-white px-3 text-sm font-bold text-ocean-900 outline-none">
                     <option value="esg">ESG report</option>
                     <option value="csr">CSR report</option>
                     <option value="evidence">Evidence bundle</option>
@@ -138,7 +138,7 @@ export default async function CorporateReportsPage({ searchParams }: CorporateRe
                 </label>
                 <label className="grid gap-2 text-sm font-bold text-ocean-900">
                   Export format
-                  <select name="exportFormat" defaultValue="html_json" className="min-h-11 rounded-lg border border-ocean-900/12 bg-white px-3 text-sm font-bold text-ocean-900 outline-none">
+                  <select name="exportFormat" defaultValue="html_json" className="min-h-11 w-full min-w-0 rounded-lg border border-ocean-900/12 bg-white px-3 text-sm font-bold text-ocean-900 outline-none">
                     <option value="html_json">HTML + JSON</option>
                     <option value="evidence_json">Evidence JSON</option>
                     <option value="full_archive">Full archive</option>
@@ -146,7 +146,7 @@ export default async function CorporateReportsPage({ searchParams }: CorporateRe
                 </label>
                 <label className="grid gap-2 text-sm font-bold text-ocean-900">
                   Schedule
-                  <input name="scheduledFor" type="datetime-local" className="min-h-11 rounded-lg border border-ocean-900/12 bg-white px-3 text-sm font-bold text-ocean-900 outline-none" />
+                  <input name="scheduledFor" type="datetime-local" className="min-h-11 w-full min-w-0 rounded-lg border border-ocean-900/12 bg-white px-3 text-sm font-bold text-ocean-900 outline-none" />
                 </label>
                 <Button type="submit" tone="secondary" className="self-end">
                   <Download size={18} aria-hidden="true" />

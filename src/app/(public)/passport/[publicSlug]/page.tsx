@@ -534,10 +534,10 @@ function PassportAccessGate({ publicSlug, token, hasError }: { publicSlug: strin
         <h1 className="mt-2 text-2xl font-bold tracking-normal text-ocean-900">Enter access code</h1>
         <p className="mt-3 text-sm leading-6 text-ocean-900/62">This share link is protected by the passport owner.</p>
         {hasError ? <p className="mt-4 rounded-xl border border-coral-500/20 bg-coral-50 p-3 text-sm font-bold text-coral-700">Access code did not match.</p> : null}
-        <form action={unlockPassportShareAction} className="mt-5 grid gap-3">
+        <form action={unlockPassportShareAction} className="mt-5 grid min-w-0 gap-3">
           <input type="hidden" name="publicSlug" value={publicSlug} />
           {token ? <input type="hidden" name="token" value={token} /> : null}
-          <label className="grid gap-2 text-sm font-bold text-ocean-900">
+          <label className="grid min-w-0 gap-2 text-sm font-bold text-ocean-900">
             Access code
             <span className="relative">
               <KeyRound className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ocean-900/38" size={17} aria-hidden="true" />
@@ -545,7 +545,7 @@ function PassportAccessGate({ publicSlug, token, hasError }: { publicSlug: strin
                 name="accessCode"
                 type="password"
                 autoComplete="off"
-                className="min-h-11 w-full rounded-xl border border-ocean-900/12 bg-white py-2 pl-10 pr-3 text-sm outline-none focus:border-coral-500"
+                className="min-h-11 w-full min-w-0 rounded-xl border border-ocean-900/12 bg-white py-2 pl-10 pr-3 text-sm outline-none focus:border-coral-500"
               />
             </span>
           </label>

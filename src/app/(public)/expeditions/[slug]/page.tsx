@@ -360,18 +360,18 @@ export default async function ExpeditionDetailPage({
                           Select Date
                         </ButtonLink>
                       ) : (
-                        <form action={submitExpeditionInterestRequestAction} className="mt-5 grid gap-2 rounded-xl border border-ocean-900/10 bg-white p-3">
+                        <form action={submitExpeditionInterestRequestAction} className="mt-5 grid min-w-0 gap-2 rounded-xl border border-ocean-900/10 bg-white p-3">
                           <input type="hidden" name="next" value={requestNextPath} />
                           <input type="hidden" name="expeditionId" value={expedition.id} />
                           <input type="hidden" name="departureId" value={departure.id} />
                           <input type="hidden" name="requestType" value="waitlist" />
-                          <div className="grid gap-2 sm:grid-cols-2">
-                            <input name="contactName" placeholder="Name" className="min-h-10 rounded-lg border border-ocean-900/14 px-3 text-sm font-semibold outline-none focus:border-coral-500" required />
-                            <input name="contactEmail" type="email" placeholder="Email" className="min-h-10 rounded-lg border border-ocean-900/14 px-3 text-sm font-semibold outline-none focus:border-coral-500" required />
+                          <div className="grid min-w-0 gap-2 sm:grid-cols-2">
+                            <input name="contactName" placeholder="Name" className="min-h-10 w-full min-w-0 rounded-lg border border-ocean-900/14 px-3 text-sm font-semibold outline-none focus:border-coral-500" required />
+                            <input name="contactEmail" type="email" placeholder="Email" className="min-h-10 w-full min-w-0 rounded-lg border border-ocean-900/14 px-3 text-sm font-semibold outline-none focus:border-coral-500" required />
                           </div>
-                          <div className="grid gap-2 sm:grid-cols-[120px_1fr]">
-                            <input name="participantsCount" type="number" min={1} max={12} defaultValue={1} className="min-h-10 rounded-lg border border-ocean-900/14 px-3 text-sm font-semibold outline-none focus:border-coral-500" required />
-                            <input name="message" placeholder="Timing or access notes" className="min-h-10 rounded-lg border border-ocean-900/14 px-3 text-sm font-semibold outline-none focus:border-coral-500" />
+                          <div className="grid min-w-0 gap-2 sm:grid-cols-[120px_minmax(0,1fr)]">
+                            <input name="participantsCount" type="number" min={1} max={12} defaultValue={1} className="min-h-10 w-full min-w-0 rounded-lg border border-ocean-900/14 px-3 text-sm font-semibold outline-none focus:border-coral-500" required />
+                            <input name="message" placeholder="Timing or access notes" className="min-h-10 w-full min-w-0 rounded-lg border border-ocean-900/14 px-3 text-sm font-semibold outline-none focus:border-coral-500" />
                           </div>
                           <Button type="submit" tone="light" className="min-h-10 rounded-lg">
                             Join Waitlist
@@ -384,17 +384,17 @@ export default async function ExpeditionDetailPage({
                   <div className="rounded-2xl border border-dashed border-ocean-900/16 bg-sand-50 p-6 md:col-span-2">
                     <p className="font-bold text-ocean-900">No public departures are currently scheduled.</p>
                     <p className="mt-2 text-sm font-semibold text-ocean-900/62">Leave your details and we will contact you when a new date opens.</p>
-                    <form action={submitExpeditionInterestRequestAction} className="mt-4 grid gap-2 rounded-xl border border-ocean-900/10 bg-white p-3">
+                    <form action={submitExpeditionInterestRequestAction} className="mt-4 grid min-w-0 gap-2 rounded-xl border border-ocean-900/10 bg-white p-3">
                       <input type="hidden" name="next" value={requestNextPath} />
                       <input type="hidden" name="expeditionId" value={expedition.id} />
                       <input type="hidden" name="requestType" value="waitlist" />
-                      <div className="grid gap-2 sm:grid-cols-2">
-                        <input name="contactName" placeholder="Name" className="min-h-10 rounded-lg border border-ocean-900/14 px-3 text-sm font-semibold outline-none focus:border-coral-500" required />
-                        <input name="contactEmail" type="email" placeholder="Email" className="min-h-10 rounded-lg border border-ocean-900/14 px-3 text-sm font-semibold outline-none focus:border-coral-500" required />
+                      <div className="grid min-w-0 gap-2 sm:grid-cols-2">
+                        <input name="contactName" placeholder="Name" className="min-h-10 w-full min-w-0 rounded-lg border border-ocean-900/14 px-3 text-sm font-semibold outline-none focus:border-coral-500" required />
+                        <input name="contactEmail" type="email" placeholder="Email" className="min-h-10 w-full min-w-0 rounded-lg border border-ocean-900/14 px-3 text-sm font-semibold outline-none focus:border-coral-500" required />
                       </div>
-                      <div className="grid gap-2 sm:grid-cols-[120px_1fr]">
-                        <input name="participantsCount" type="number" min={1} max={12} defaultValue={1} className="min-h-10 rounded-lg border border-ocean-900/14 px-3 text-sm font-semibold outline-none focus:border-coral-500" required />
-                        <input name="message" placeholder="Preferred month or access notes" className="min-h-10 rounded-lg border border-ocean-900/14 px-3 text-sm font-semibold outline-none focus:border-coral-500" />
+                      <div className="grid min-w-0 gap-2 sm:grid-cols-[120px_minmax(0,1fr)]">
+                        <input name="participantsCount" type="number" min={1} max={12} defaultValue={1} className="min-h-10 w-full min-w-0 rounded-lg border border-ocean-900/14 px-3 text-sm font-semibold outline-none focus:border-coral-500" required />
+                        <input name="message" placeholder="Preferred month or access notes" className="min-h-10 w-full min-w-0 rounded-lg border border-ocean-900/14 px-3 text-sm font-semibold outline-none focus:border-coral-500" />
                       </div>
                       <Button type="submit" tone="light" className="min-h-10 rounded-lg">
                         Join Waitlist
@@ -403,7 +403,7 @@ export default async function ExpeditionDetailPage({
                   </div>
                 )}
               </div>
-              <form action={submitExpeditionInterestRequestAction} className="mt-5 grid gap-3 rounded-2xl border border-ocean-900/10 bg-sand-50 p-4">
+              <form action={submitExpeditionInterestRequestAction} className="mt-5 grid min-w-0 gap-3 rounded-2xl border border-ocean-900/10 bg-sand-50 p-4">
                 <input type="hidden" name="next" value={requestNextPath} />
                 <input type="hidden" name="expeditionId" value={expedition.id} />
                 <input type="hidden" name="requestType" value="private_departure" />
@@ -411,14 +411,14 @@ export default async function ExpeditionDetailPage({
                   <p className="font-bold text-ocean-900">Request private departure</p>
                   <p className="mt-1 text-sm font-semibold text-ocean-900/58">For teams, families, or corporate groups that need a custom schedule.</p>
                 </div>
-                <div className="grid gap-2 sm:grid-cols-2">
-                  <input name="contactName" placeholder="Name" className="min-h-11 rounded-lg border border-ocean-900/14 bg-white px-3 text-sm font-semibold outline-none focus:border-coral-500" required />
-                  <input name="contactEmail" type="email" placeholder="Email" className="min-h-11 rounded-lg border border-ocean-900/14 bg-white px-3 text-sm font-semibold outline-none focus:border-coral-500" required />
+                <div className="grid min-w-0 gap-2 sm:grid-cols-2">
+                  <input name="contactName" placeholder="Name" className="min-h-11 w-full min-w-0 rounded-lg border border-ocean-900/14 bg-white px-3 text-sm font-semibold outline-none focus:border-coral-500" required />
+                  <input name="contactEmail" type="email" placeholder="Email" className="min-h-11 w-full min-w-0 rounded-lg border border-ocean-900/14 bg-white px-3 text-sm font-semibold outline-none focus:border-coral-500" required />
                 </div>
-                <div className="grid gap-2 sm:grid-cols-[130px_180px_1fr]">
-                  <input name="participantsCount" type="number" min={1} max={12} defaultValue={6} className="min-h-11 rounded-lg border border-ocean-900/14 bg-white px-3 text-sm font-semibold outline-none focus:border-coral-500" required />
-                  <input name="preferredStartAt" type="date" className="min-h-11 rounded-lg border border-ocean-900/14 bg-white px-3 text-sm font-semibold outline-none focus:border-coral-500" />
-                  <input name="message" placeholder="Preferred dates, group profile, accessibility needs" className="min-h-11 rounded-lg border border-ocean-900/14 bg-white px-3 text-sm font-semibold outline-none focus:border-coral-500" />
+                <div className="grid min-w-0 gap-2 sm:grid-cols-[130px_180px_minmax(0,1fr)]">
+                  <input name="participantsCount" type="number" min={1} max={12} defaultValue={6} className="min-h-11 w-full min-w-0 rounded-lg border border-ocean-900/14 bg-white px-3 text-sm font-semibold outline-none focus:border-coral-500" required />
+                  <input name="preferredStartAt" type="date" className="min-h-11 w-full min-w-0 rounded-lg border border-ocean-900/14 bg-white px-3 text-sm font-semibold outline-none focus:border-coral-500" />
+                  <input name="message" placeholder="Preferred dates, group profile, accessibility needs" className="min-h-11 w-full min-w-0 rounded-lg border border-ocean-900/14 bg-white px-3 text-sm font-semibold outline-none focus:border-coral-500" />
                 </div>
                 <Button type="submit" tone="secondary" className="w-fit">
                   Request private departure
