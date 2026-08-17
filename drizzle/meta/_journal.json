@@ -169,6 +169,13 @@
       "when": 1784484000000,
       "tag": "0023_saved_expeditions",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1786900000000,
+      "tag": "0024_monthly_report_conflict_indexes",
+      "breakpoints": true
     }
   ]
 }

@@ -497,31 +497,33 @@ async function upsertMonthlyImpactReport(
   } = {}
 ) {
   const now = options.now ?? new Date();
-  const report = await buildMonthlyImpactReport(userId, now);
+  let report: Awaited<ReturnType<typeof buildMonthlyImpactReport>>;
+
+  try {
+    report = await buildMonthlyImpactReport(userId, now);
+  } catch (error) {
+    console.error("Failed to build monthly impact report.", {
+      userId,
+      source: options.source ?? "dashboard_action",
+      error
+    });
+    throw error;
+  }
+
   const metadata = {
     ...report.metadata,
     generatedBy: options.source ?? "dashboard_action",
     generatedAt: now.toISOString()
   };
-  const [savedReport] = await db
-    .insert(monthlyImpactReports)
-    .values({
-      userId,
-      reportMonth: report.reportMonth,
-      label: report.label,
-      contributions: report.contributions.toFixed(2),
-      campaignUpdates: report.campaignUpdates,
-      newEvidence: report.newEvidence,
-      coralsMonitored: report.coralsMonitored,
-      academyProgress: report.academyProgress,
-      status: "ready",
-      metadata,
-      generatedAt: now,
-      updatedAt: now
-    })
-    .onConflictDoUpdate({
-      target: [monthlyImpactReports.userId, monthlyImpactReports.reportMonth],
-      set: {
+
+  let savedReport: { id: string } | undefined;
+
+  try {
+    [savedReport] = await db
+      .insert(monthlyImpactReports)
+      .values({
+        userId,
+        reportMonth: report.reportMonth,
         label: report.label,
         contributions: report.contributions.toFixed(2),
         campaignUpdates: report.campaignUpdates,
@@ -532,21 +534,57 @@ async function upsertMonthlyImpactReport(
         metadata,
         generatedAt: now,
         updatedAt: now
-      }
-    })
-    .returning({ id: monthlyImpactReports.id });
+      })
+      .onConflictDoUpdate({
+        target: [monthlyImpactReports.userId, monthlyImpactReports.reportMonth],
+        set: {
+          label: report.label,
+          contributions: report.contributions.toFixed(2),
+          campaignUpdates: report.campaignUpdates,
+          newEvidence: report.newEvidence,
+          coralsMonitored: report.coralsMonitored,
+          academyProgress: report.academyProgress,
+          status: "ready",
+          metadata,
+          generatedAt: now,
+          updatedAt: now
+        }
+      })
+      .returning({ id: monthlyImpactReports.id });
+  } catch (error) {
+    console.error("Failed to save monthly impact report.", {
+      userId,
+      reportMonth: report.reportMonth,
+      source: options.source ?? "dashboard_action",
+      error
+    });
+    throw error;
+  }
 
-  await createNotification({
-    userId,
-    notificationCode: `monthly-report-${report.reportMonth}`,
-    category: "Monthly report",
-    title: report.label,
-    message: `${report.label} is ready in your dashboard.`,
-    href: "/dashboard#monthly-report",
-    sourceType: "monthly_impact_report",
-    sourceId: savedReport.id,
-    now
-  });
+  if (!savedReport?.id) {
+    throw new Error(`Monthly impact report save did not return an id for user ${userId} and month ${report.reportMonth}.`);
+  }
+
+  try {
+    await createNotification({
+      userId,
+      notificationCode: `monthly-report-${report.reportMonth}`,
+      category: "Monthly report",
+      title: report.label,
+      message: `${report.label} is ready in your dashboard.`,
+      href: "/dashboard#monthly-report",
+      sourceType: "monthly_impact_report",
+      sourceId: savedReport.id,
+      now
+    });
+  } catch (error) {
+    console.error("Failed to create monthly impact report notification.", {
+      userId,
+      reportMonth: report.reportMonth,
+      reportId: savedReport.id,
+      error
+    });
+  }
 
   return { ...report, id: savedReport.id };
 }
@@ -556,7 +594,11 @@ export async function generateMonthlyImpactReportAction() {
 
   try {
     await upsertMonthlyImpactReport(user.id);
-  } catch {
+  } catch (error) {
+    console.error("Monthly impact report dashboard save failed.", {
+      userId: user.id,
+      error
+    });
     redirect("/dashboard?error=monthly-report#monthly-report");
   }
 
@@ -569,7 +611,11 @@ export async function emailMonthlyImpactReportAction() {
 
   try {
     report = await upsertMonthlyImpactReport(user.id, { source: "email_action" });
-  } catch {
+  } catch (error) {
+    console.error("Monthly impact report email save failed.", {
+      userId: user.id,
+      error
+    });
     redirect("/dashboard?error=monthly-report#monthly-report");
   }
 
@@ -593,11 +639,23 @@ export async function emailMonthlyImpactReportAction() {
         academyProgress: report.academyProgress
       }
     });
-  } catch {
+  } catch (error) {
+    console.error("Monthly impact report email send failed.", {
+      userId: user.id,
+      reportId: report.id,
+      reportMonth: report.reportMonth,
+      error
+    });
     redirect("/dashboard?error=monthly-email#monthly-report");
   }
 
   if (emailResult.status !== "sent") {
+    console.error("Monthly impact report email was not sent.", {
+      userId: user.id,
+      reportId: report.id,
+      reportMonth: report.reportMonth,
+      status: emailResult.status
+    });
     redirect("/dashboard?error=monthly-email#monthly-report");
   }
 

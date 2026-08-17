@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
-  buildMonthlyImpactReportDownloadHtml,
+  buildMonthlyImpactReportDownloadPdf,
   monthlyImpactReportDigest,
   monthlyImpactReportFilename,
   monthlyImpactReportHolderName,
@@ -39,7 +39,7 @@ const report: MonthlyImpactReportRecord = {
 };
 
 test("monthly impact report helpers produce stable labels and digest data", () => {
-  assert.equal(monthlyImpactReportFilename(report), "terumbu-impact-report-2026-07.html");
+  assert.equal(monthlyImpactReportFilename(report), "terumbu-impact-report-2026-07.pdf");
   assert.equal(monthlyImpactReportHolderName(report), "Raka Pramana");
 
   const digest = monthlyImpactReportDigest(report.metadata);
@@ -56,16 +56,18 @@ test("monthly impact report helpers produce stable labels and digest data", () =
   });
 });
 
-test("monthly impact report download html escapes unsafe report fields", () => {
-  const html = buildMonthlyImpactReportDownloadHtml(
+test("monthly impact report download pdf includes report details", () => {
+  const pdf = buildMonthlyImpactReportDownloadPdf(
     {
       ...report,
-      label: "July <Impact>",
-      displayName: "Raka & Team",
+      label: "July (Impact)",
+      displayName: "Raka \\ Team",
       metadata: {
+        generatedBy: "dashboard_action",
+        followedCampaignCount: 1,
         campaignDigest: [
           {
-            title: "Campaign <One>",
+            title: "Campaign (One)\nBlue",
             slug: "campaign-one",
             contribution: 1000,
             updateCount: 1,
@@ -76,12 +78,17 @@ test("monthly impact report download html escapes unsafe report fields", () => {
     },
     "https://example.test"
   );
+  const pdfText = Buffer.from(pdf).toString("latin1");
 
-  assert.match(html, /July &lt;Impact&gt;/);
-  assert.match(html, /Raka &amp; Team/);
-  assert.match(html, /Campaign &lt;One&gt;/);
-  assert.doesNotMatch(html, /<Impact>/);
-  assert.match(html, /IDR\s*250\.000/);
-  assert.doesNotMatch(html, /Rp/);
-  assert.match(html, /https:\/\/example.test\/campaigns\/campaign-one/);
+  assert.match(pdfText, /^%PDF-1\.4/);
+  assert.match(pdfText, /Terumbu\.eco Monthly Impact Report/);
+  assert.match(pdfText, /July \\\(Impact\\\)/);
+  assert.match(pdfText, /Raka \\\\ Team/);
+  assert.match(pdfText, /Campaign \\\(One\\\) Blue/);
+  assert.match(pdfText, /IDR\s*250\.000/);
+  assert.match(pdfText, /IDR\s*1\.000/);
+  assert.match(pdfText, /1 updates \/ 1 evidence/);
+  assert.match(pdfText, /dashboard_action/);
+  assert.match(pdfText, /https:\/\/example.test\/campaigns\/campaign-one/);
+  assert.match(pdfText, /https:\/\/example.test\/dashboard#monthly-report/);
 });

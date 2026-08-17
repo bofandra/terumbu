@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 
 import { requireUser } from "@/lib/auth";
-import { buildMonthlyImpactReportDownloadHtml, monthlyImpactReportFilename } from "@/lib/monthly-impact-report";
+import { buildMonthlyImpactReportDownloadPdf, monthlyImpactReportFilename } from "@/lib/monthly-impact-report";
 import { getMonthlyImpactReportDownload } from "@/lib/queries";
 
 export const dynamic = "force-dynamic";
@@ -17,10 +17,10 @@ export async function GET(_request: Request, { params }: { params: Promise<{ rep
     notFound();
   }
 
-  return new Response(buildMonthlyImpactReportDownloadHtml(report, appUrl), {
+  return new Response(buildMonthlyImpactReportDownloadPdf(report, appUrl), {
     headers: {
       "Content-Disposition": `attachment; filename="${monthlyImpactReportFilename(report)}"`,
-      "Content-Type": "text/html; charset=utf-8",
+      "Content-Type": "application/pdf",
       "Cache-Control": "private, no-store"
     }
   });

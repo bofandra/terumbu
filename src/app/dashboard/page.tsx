@@ -691,7 +691,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
               {data.monthlyReport.downloadHref ? (
                 <ButtonLink href={data.monthlyReport.downloadHref} tone="secondary">
                   <Download size={17} aria-hidden="true" />
-                  Download HTML
+                  Download PDF
                 </ButtonLink>
               ) : (
                 <ButtonLink href="/dashboard/impact" tone="secondary">Review Impact</ButtonLink>
