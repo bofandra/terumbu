@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
-  buildDonationReceiptDownloadHtml,
+  buildDonationReceiptDownloadPdf,
   donationReceiptFilename,
   donationReceiptHolderName,
   donationReceiptProviderReference,
@@ -29,7 +29,7 @@ const receipt: DonationReceiptDownloadRecord = {
 };
 
 test("donation receipt helpers produce stable public labels", () => {
-  assert.equal(donationReceiptFilename(receipt), "terumbu-receipt-trb-rcp-2026-0001.html");
+  assert.equal(donationReceiptFilename(receipt), "terumbu-receipt-trb-rcp-2026-0001.pdf");
   assert.equal(donationReceiptHolderName(receipt), "Raka Pramana");
   assert.equal(donationReceiptHolderName({ donorName: null, donorEmail: "supporter@example.test" }), "supporter@example.test");
   assert.equal(donationReceiptHolderName({ donorName: null, donorEmail: null }), "Terumbu.eco supporter");
@@ -37,24 +37,25 @@ test("donation receipt helpers produce stable public labels", () => {
   assert.equal(donationReceiptProviderReference({ payload: {} }), "Recorded");
 });
 
-test("donation receipt download html escapes unsafe fields", () => {
-  const html = buildDonationReceiptDownloadHtml(
+test("donation receipt download pdf includes receipt details", () => {
+  const pdf = buildDonationReceiptDownloadPdf(
     {
       ...receipt,
-      receiptNumber: "TRB<script>",
-      donorName: "Raka & Team",
-      campaignTitle: "Campaign <One>",
-      organizationName: "Org <Two>"
+      receiptNumber: "TRB(script)",
+      donorName: "Raka \\ Team",
+      campaignTitle: "Campaign (One)",
+      organizationName: "Org\nTwo"
     },
     "https://example.test"
   );
+  const pdfText = Buffer.from(pdf).toString("latin1");
 
-  assert.match(html, /Raka &amp; Team/);
-  assert.match(html, /Campaign &lt;One&gt;/);
-  assert.match(html, /Org &lt;Two&gt;/);
-  assert.match(html, /TRB&lt;script&gt;/);
-  assert.doesNotMatch(html, /<script>/);
-  assert.match(html, /IDR\s*250\.000/);
-  assert.doesNotMatch(html, /Rp/);
-  assert.match(html, /https:\/\/example.test\/campaigns\/reef-recovery/);
+  assert.match(pdfText, /^%PDF-1\.4/);
+  assert.match(pdfText, /Terumbu\.eco Donation Receipt/);
+  assert.match(pdfText, /TRB\\\(script\\\)/);
+  assert.match(pdfText, /Raka \\\\ Team/);
+  assert.match(pdfText, /Campaign \\\(One\\\)/);
+  assert.match(pdfText, /Org Two/);
+  assert.match(pdfText, /IDR\s*250\.000/);
+  assert.match(pdfText, /https:\/\/example.test\/campaigns\/reef-recovery/);
 });

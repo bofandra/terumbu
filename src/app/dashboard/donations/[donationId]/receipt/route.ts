@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import { db } from "@/db/client";
 import { campaigns, donationReceipts, donations, organizations } from "@/db/schema";
 import { requireUser } from "@/lib/auth";
-import { buildDonationReceiptDownloadHtml, donationReceiptFilename } from "@/lib/donation-receipt";
+import { buildDonationReceiptDownloadPdf, donationReceiptFilename } from "@/lib/donation-receipt";
 
 export const dynamic = "force-dynamic";
 
@@ -41,10 +41,10 @@ export async function GET(_request: Request, { params }: { params: Promise<{ don
     notFound();
   }
 
-  return new Response(buildDonationReceiptDownloadHtml(receipt, appUrl), {
+  return new Response(buildDonationReceiptDownloadPdf(receipt, appUrl), {
     headers: {
       "Content-Disposition": `attachment; filename="${donationReceiptFilename(receipt)}"`,
-      "Content-Type": "text/html; charset=utf-8",
+      "Content-Type": "application/pdf",
       "Cache-Control": "private, no-store"
     }
   });
