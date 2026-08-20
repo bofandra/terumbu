@@ -31,6 +31,7 @@ import {
 } from "@/lib/portal-actions";
 import type { getPartnerPortalData } from "@/lib/queries";
 import { evidenceSourceHref } from "@/lib/domain";
+import { MAX_DATABASE_IMAGE_BYTES } from "@/lib/storage";
 import { cn, formatCurrency } from "@/lib/utils";
 
 export type PartnerPortalData = Awaited<ReturnType<typeof getPartnerPortalData>>;
@@ -119,6 +120,14 @@ function isImageRecord(value: string | null) {
   return value.startsWith("data:image/") || /\.(jpg|jpeg|png|webp|gif)(\?|$)/i.test(value);
 }
 
+function uploadSizeLabel(bytes: number) {
+  const megabytes = bytes / 1_000_000;
+
+  return `${Number.isInteger(megabytes) ? megabytes.toFixed(0) : megabytes.toFixed(1)} MB`;
+}
+
+const partnerImageUploadHelp = `PNG, JPG, WebP, or GIF up to ${uploadSizeLabel(MAX_DATABASE_IMAGE_BYTES)}.`;
+
 function statusOptionsForCampaign(campaign?: Campaign) {
   return campaign && !partnerCampaignStatuses.includes(campaign.status) ? [campaign.status, ...partnerCampaignStatuses] : partnerCampaignStatuses;
 }
@@ -142,11 +151,35 @@ export function imageBackground(imageUrl: string | null) {
   };
 }
 
-export function Field({ label, children, className }: { label: string; children: ReactNode; className?: string }) {
+function RequiredMark() {
+  return (
+    <span className="font-bold text-coral-700" aria-hidden="true">
+      *
+    </span>
+  );
+}
+
+export function Field({
+  label,
+  children,
+  className,
+  help,
+  required = false
+}: {
+  label: string;
+  children: ReactNode;
+  className?: string;
+  help?: string;
+  required?: boolean;
+}) {
   return (
     <label className={cn("grid min-w-0 gap-1.5 text-sm font-bold text-ocean-900", className)}>
-      <span>{label}</span>
+      <span className="flex items-center gap-1">
+        {label}
+        {required ? <RequiredMark /> : null}
+      </span>
       {children}
+      {help ? <span className="text-xs font-semibold leading-5 text-ocean-900/54">{help}</span> : null}
     </label>
   );
 }
@@ -249,7 +282,7 @@ export function CampaignFields({ campaign, organizations }: { campaign?: Campaig
   return (
     <>
       <div className="grid gap-3 md:grid-cols-2">
-        <Field label="Organization">
+        <Field label="Organization" required>
           <select name="organizationId" defaultValue={campaign?.organizationId ?? organizations[0]?.id} className={inputClassName} disabled={!hasOrganizations} required>
             {hasOrganizations ? (
               organizations.map((organization) => (
@@ -274,26 +307,26 @@ export function CampaignFields({ campaign, organizations }: { campaign?: Campaig
       </div>
 
       <div className="grid gap-3 md:grid-cols-2">
-        <Field label="Campaign title">
+        <Field label="Campaign title" required>
           <input name="title" defaultValue={campaign?.title} placeholder="Campaign title" className={inputClassName} required />
         </Field>
-        <Field label="Category">
+        <Field label="Category" required>
           <input name="category" defaultValue={campaign?.category} placeholder="Coral Restoration" className={inputClassName} required />
         </Field>
       </div>
 
-      <Field label="Region">
+      <Field label="Region" required>
         <input name="region" defaultValue={campaign?.region} placeholder="Raja Ampat, Southwest Papua" className={inputClassName} required />
       </Field>
 
       <div className="grid gap-3 md:grid-cols-3">
-        <Field label="Goal amount">
+        <Field label="Goal amount" required>
           <input name="goalAmount" type="number" min="1000" step="1000" defaultValue={campaign ? Math.round(Number(campaign.goalAmount)) : undefined} className={inputClassName} required />
         </Field>
-        <Field label="Impact target">
+        <Field label="Impact target" required>
           <input name="impactTarget" type="number" min="1" step="1" defaultValue={campaign?.impactTarget} className={inputClassName} required />
         </Field>
-        <Field label="Impact unit">
+        <Field label="Impact unit" required>
           <input name="impactUnit" defaultValue={campaign?.impactUnit} placeholder="coral fragments" className={inputClassName} required />
         </Field>
       </div>
@@ -302,7 +335,7 @@ export function CampaignFields({ campaign, organizations }: { campaign?: Campaig
         <input name="endsAt" type="date" defaultValue={campaign ? dateValue(campaign.endsAt) : undefined} className={inputClassName} />
       </Field>
 
-      <Field label="Summary">
+      <Field label="Summary" required>
         <textarea name="summary" defaultValue={campaign?.summary} placeholder="Public campaign summary" className={textareaClassName} required />
       </Field>
 
@@ -310,7 +343,7 @@ export function CampaignFields({ campaign, organizations }: { campaign?: Campaig
         <textarea name="story" defaultValue={campaign?.story ?? ""} placeholder="Campaign story" className={textareaClassName} />
       </Field>
 
-      <Field label={campaign ? "Replace image" : "Upload image"}>
+      <Field label={campaign ? "Replace image" : "Upload image"} help={partnerImageUploadHelp}>
         <input name="imageFile" type="file" accept="image/png,image/jpeg,image/webp,image/gif" className={inputClassName} />
       </Field>
     </>
@@ -394,7 +427,7 @@ function ImpactSiteFields({
   return (
     <>
       <div className="grid gap-3 md:grid-cols-2">
-        <Field label="Campaign">
+        <Field label="Campaign" required>
           <ImpactSiteCampaignSelect campaigns={campaigns} defaultValue={site?.campaignId} disabled={disabled} />
         </Field>
         <Field label="Verification">
@@ -402,21 +435,21 @@ function ImpactSiteFields({
         </Field>
       </div>
       <div className="grid gap-3 md:grid-cols-3">
-        <Field label="Site name">
+        <Field label="Site name" required>
           <input name="name" defaultValue={site?.name} placeholder="Raja Ampat Reef Garden" className={inputClassName} disabled={disabled} required />
         </Field>
-        <Field label="Ecosystem type">
+        <Field label="Ecosystem type" required>
           <input name="ecosystemType" defaultValue={site?.type} placeholder="Coral" className={inputClassName} disabled={disabled} required />
         </Field>
-        <Field label="Region">
+        <Field label="Region" required>
           <input name="region" defaultValue={site?.region} placeholder="Southwest Papua" className={inputClassName} disabled={disabled} required />
         </Field>
       </div>
       <div className="grid gap-3 md:grid-cols-5">
-        <Field label="Latitude">
+        <Field label="Latitude" required>
           <input name="latitude" type="number" min="-90" max="90" step="0.000001" defaultValue={site?.latitude} placeholder="-0.234900" className={inputClassName} disabled={disabled} required />
         </Field>
-        <Field label="Longitude">
+        <Field label="Longitude" required>
           <input name="longitude" type="number" min="-180" max="180" step="0.000001" defaultValue={site?.longitude} placeholder="130.516600" className={inputClassName} disabled={disabled} required />
         </Field>
         <Field label="Progress">
@@ -962,7 +995,7 @@ export function CampaignActivityForm({
       </div>
       <div className="mt-5 grid gap-4">
         <div className="grid gap-3 md:grid-cols-2">
-          <Field label="Campaign">
+          <Field label="Campaign" required>
             <select name="campaignId" className={inputClassName} disabled={!canSubmit} required>
               {campaigns.map((campaign) => (
                 <option key={campaign.id} value={campaign.id}>
@@ -991,10 +1024,10 @@ export function CampaignActivityForm({
             </select>
           </Field>
         </div>
-        <Field label="Activity title">
+        <Field label="Activity title" required>
           <input name="title" placeholder="Activity title" className={inputClassName} disabled={!canSubmit} required />
         </Field>
-        <Field label="Field note">
+        <Field label="Field note" required>
           <textarea name="body" placeholder="Progress note or reviewer context" className={textareaClassName} disabled={!canSubmit} required />
         </Field>
         <div className="grid gap-3 md:grid-cols-2">
@@ -1005,7 +1038,7 @@ export function CampaignActivityForm({
               <option value="field_report">Field report</option>
             </select>
           </Field>
-          <Field label="Upload attachment">
+          <Field label="Upload attachment" help={`${partnerImageUploadHelp} Required when Activity use includes evidence.`}>
             <input name="imageFile" type="file" accept="image/png,image/jpeg,image/webp,image/gif" className={inputClassName} disabled={!canSubmit} />
           </Field>
         </div>

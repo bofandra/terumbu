@@ -27,6 +27,8 @@ function RequiredMark() {
   );
 }
 
+const passwordHelpText = "Use at least 8 characters. Uppercase letters and numbers are optional under the current policy.";
+
 export default async function SettingsPage({ searchParams }: SettingsPageProps) {
   const params = await searchParams;
   const sessionUser = await requireUser("/dashboard/settings");
@@ -114,6 +116,9 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
 
         <form action={changePasswordAction} className="min-w-0 rounded-2xl border border-ocean-900/10 bg-white p-6 shadow-soft">
           <h2 className="text-xl font-bold tracking-normal text-ocean-900">Password</h2>
+          <p id="password-requirements" className="mt-2 text-sm font-semibold leading-6 text-ocean-900/58">
+            {passwordHelpText}
+          </p>
           <div className="mt-5 grid gap-4">
             <label className="grid min-w-0 gap-2 text-sm font-semibold text-ocean-900">
               <span>
@@ -125,13 +130,27 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
               <span>
                 New password <RequiredMark />
               </span>
-              <input name="nextPassword" type="password" minLength={8} className="w-full min-w-0 rounded-xl border border-ocean-900/14 px-4 py-3 outline-none focus:border-coral-500" required />
+              <input
+                name="nextPassword"
+                type="password"
+                minLength={8}
+                aria-describedby="password-requirements"
+                className="w-full min-w-0 rounded-xl border border-ocean-900/14 px-4 py-3 outline-none focus:border-coral-500"
+                required
+              />
             </label>
             <label className="grid min-w-0 gap-2 text-sm font-semibold text-ocean-900">
               <span>
                 Confirm new password <RequiredMark />
               </span>
-              <input name="confirmPassword" type="password" minLength={8} className="w-full min-w-0 rounded-xl border border-ocean-900/14 px-4 py-3 outline-none focus:border-coral-500" required />
+              <input
+                name="confirmPassword"
+                type="password"
+                minLength={8}
+                aria-describedby="password-requirements"
+                className="w-full min-w-0 rounded-xl border border-ocean-900/14 px-4 py-3 outline-none focus:border-coral-500"
+                required
+              />
             </label>
           </div>
           <Button type="submit" tone="secondary" className="mt-6">

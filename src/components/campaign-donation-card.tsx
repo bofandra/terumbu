@@ -2,13 +2,14 @@
 
 import { Bookmark, CheckCircle2, HeartHandshake, LockKeyhole, Share2, ShieldCheck } from "lucide-react";
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { removeSavedCampaignAction, saveCampaignAction } from "@/lib/retention-actions";
 import { formatCurrency } from "@/lib/utils";
 
 type DonationMode = "one-time" | "coral";
+type ShareStatus = "idle" | "copied" | "shared" | "error";
 
 const MIN_DONATION_AMOUNT = 10_000;
 
@@ -57,6 +58,35 @@ function checkoutHref(campaignSlug: string, mode: DonationMode, amount: number) 
   return `/checkout/donation?${params.toString()}`;
 }
 
+function isAbortError(error: unknown) {
+  return (error as { name?: string } | null)?.name === "AbortError";
+}
+
+async function writeTextToClipboard(value: string) {
+  if (navigator.clipboard?.writeText && window.isSecureContext) {
+    await navigator.clipboard.writeText(value);
+    return;
+  }
+
+  const textArea = document.createElement("textarea");
+  textArea.value = value;
+  textArea.setAttribute("readonly", "");
+  textArea.style.position = "fixed";
+  textArea.style.top = "0";
+  textArea.style.left = "-9999px";
+
+  document.body.appendChild(textArea);
+  textArea.focus();
+  textArea.select();
+
+  const copied = document.execCommand("copy");
+  document.body.removeChild(textArea);
+
+  if (!copied) {
+    throw new Error("Copy command was rejected.");
+  }
+}
+
 export function CampaignDonationCard({
   campaignSlug,
   raisedLabel,
@@ -76,6 +106,8 @@ export function CampaignDonationCard({
   const [customAmount, setCustomAmount] = useState("");
   const [isCustomAmountSelected, setIsCustomAmountSelected] = useState(false);
   const [isSheetOpen, setIsSheetOpen] = useState(false);
+  const [shareStatus, setShareStatus] = useState<ShareStatus>("idle");
+  const shareResetTimer = useRef<number | null>(null);
   const customValue = Number(customAmount.replace(/[^0-9]/g, ""));
   const amount = isCustomAmountSelected ? customValue : selectedAmount;
   const hasValidDonationAmount = amount >= MIN_DONATION_AMOUNT;
@@ -101,6 +133,14 @@ export function CampaignDonationCard({
     }));
   }, [impactPackages, mode, oneTimeAmounts]);
 
+  useEffect(() => {
+    return () => {
+      if (shareResetTimer.current) {
+        window.clearTimeout(shareResetTimer.current);
+      }
+    };
+  }, []);
+
   function setDonationMode(nextMode: DonationMode) {
     setMode(nextMode);
     setCustomAmount("");
@@ -114,27 +154,67 @@ export function CampaignDonationCard({
     setSelectedAmount(oneTimeAmounts[1] ?? oneTimeAmounts[0] ?? fallbackAmount);
   }
 
-  async function shareCampaign() {
-    const nav =
-      typeof window !== "undefined"
-        ? (window.navigator as Navigator & {
-            share?: (data: ShareData) => Promise<void>;
-            clipboard?: Clipboard;
-          })
-        : null;
+  function resetShareStatusSoon() {
+    if (shareResetTimer.current) {
+      window.clearTimeout(shareResetTimer.current);
+    }
 
-    if (nav?.share) {
-      await nav.share({
-        title: "Support this Terumbu campaign",
-        url: window.location.href
-      });
+    shareResetTimer.current = window.setTimeout(() => setShareStatus("idle"), 1800);
+  }
+
+  async function shareCampaign() {
+    if (typeof window === "undefined") {
       return;
     }
 
-    if (nav?.clipboard) {
-      await nav.clipboard.writeText(window.location.href);
+    const nav = window.navigator as Navigator & {
+      canShare?: (data: ShareData) => boolean;
+      share?: (data: ShareData) => Promise<void>;
+    };
+    const shareUrl = new URL(campaignPath, window.location.origin).toString();
+    const shareData = {
+      title: "Support this Terumbu campaign",
+      text: "View this conservation campaign on Terumbu.eco.",
+      url: shareUrl
+    };
+
+    try {
+      if (nav.share) {
+        try {
+          if (!nav.canShare || nav.canShare(shareData)) {
+            await nav.share(shareData);
+            setShareStatus("shared");
+            resetShareStatusSoon();
+            return;
+          }
+        } catch (error) {
+          if (isAbortError(error)) {
+            return;
+          }
+        }
+      }
+
+      await writeTextToClipboard(shareUrl);
+      setShareStatus("copied");
+      resetShareStatusSoon();
+    } catch (error) {
+      if (isAbortError(error)) {
+        return;
+      }
+
+      setShareStatus("error");
+      resetShareStatusSoon();
     }
   }
+
+  const shareLabel =
+    shareStatus === "copied"
+      ? "Link Copied"
+      : shareStatus === "shared"
+        ? "Shared"
+        : shareStatus === "error"
+          ? "Copy Failed"
+          : "Share Campaign";
 
   const card = (
     <div className="rounded-2xl border border-ocean-900/10 bg-white p-6 shadow-soft">
@@ -266,8 +346,8 @@ export function CampaignDonationCard({
           className="inline-flex min-h-10 items-center justify-center gap-2 rounded-full text-ocean-900/68 transition hover:bg-ocean-50 hover:text-ocean-900"
           onClick={() => void shareCampaign()}
         >
-          <Share2 size={16} aria-hidden="true" />
-          Share Campaign
+          {shareStatus === "copied" || shareStatus === "shared" ? <CheckCircle2 size={16} aria-hidden="true" /> : <Share2 size={16} aria-hidden="true" />}
+          <span aria-live="polite">{shareLabel}</span>
         </button>
       </div>
 
