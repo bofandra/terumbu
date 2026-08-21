@@ -6,12 +6,15 @@ import { Button } from "@/components/ui/button";
 import { requireRole } from "@/lib/auth";
 import { createExpeditionAction } from "@/lib/portal-actions";
 import { getAdminOperationsData } from "@/lib/queries";
+import { MAX_DATABASE_IMAGE_BYTES } from "@/lib/storage";
 
 export const metadata = {
   title: "New Admin Expedition"
 };
 
 export const dynamic = "force-dynamic";
+
+const imageUploadHelp = `PNG, JPG, WebP, or GIF up to ${(MAX_DATABASE_IMAGE_BYTES / 1_000_000).toFixed(1)} MB.`;
 
 const errorMessages: Record<string, string> = {
   "campaign-missing": "Choose an existing related campaign or leave the field empty.",
@@ -30,16 +33,31 @@ type AdminExpeditionNewPageProps = {
 function Field({
   label,
   children,
-  className = ""
+  className = "",
+  help,
+  required = false
 }: {
   label: string;
   children: ReactNode;
   className?: string;
+  help?: string;
+  required?: boolean;
 }) {
   return (
     <label className={`grid gap-1.5 text-sm font-bold text-ocean-900 ${className}`}>
-      {label}
+      <span className="flex items-center gap-1">
+        {label}
+        {required ? (
+          <>
+            <span className="text-coral-700" aria-hidden="true">
+              *
+            </span>
+            <span className="sr-only">required</span>
+          </>
+        ) : null}
+      </span>
       {children}
+      {help ? <span className="text-xs font-semibold leading-5 text-ocean-900/54">{help}</span> : null}
     </label>
   );
 }
@@ -91,31 +109,31 @@ export default async function AdminExpeditionNewPage({ searchParams }: AdminExpe
           <input type="hidden" name="errorReturnTo" value="/admin/expeditions/new" />
           <input type="hidden" name="savedReturnTo" value="/admin/expeditions" />
           <div className="grid gap-3 lg:grid-cols-4">
-            <Field label="Title" className="lg:col-span-2">
+            <Field label="Title" className="lg:col-span-2" required>
               <input name="title" placeholder="Raja Ampat Coral Restoration Expedition" className={adminInputClassName} required />
             </Field>
             <Field label="Slug">
               <input name="slug" placeholder="raja-ampat-coral-restoration" className={adminInputClassName} />
             </Field>
-            <Field label="Region">
+            <Field label="Region" required>
               <input name="region" placeholder="Raja Ampat" className={adminInputClassName} required />
             </Field>
           </div>
           <div className="grid gap-3 lg:grid-cols-4">
-            <Field label="Duration days">
+            <Field label="Duration days" required>
               <input name="durationDays" type="number" min={1} defaultValue={4} className={adminInputClassName} required />
             </Field>
-            <Field label="Base price">
+            <Field label="Base price" required>
               <input name="basePrice" type="number" min={1} step={1000} placeholder="2500000" className={adminInputClassName} required />
             </Field>
             <Field label="Related campaign" className="lg:col-span-2">
               <RelatedCampaignSelect campaigns={data.campaignOptions} />
             </Field>
           </div>
-          <Field label="Upload image">
+          <Field label="Upload image" help={imageUploadHelp}>
             <input name="imageFile" type="file" accept="image/png,image/jpeg,image/webp,image/gif" className={adminInputClassName} />
           </Field>
-          <Field label="Summary">
+          <Field label="Summary" required>
             <textarea name="summary" placeholder="Trip summary shown on public expedition cards and detail pages." className={adminTextareaClassName} required />
           </Field>
           <Button type="submit" tone="secondary" className="w-fit rounded-lg">

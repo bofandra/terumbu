@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { requireRole } from "@/lib/auth";
 import { createAdminCampaignAction } from "@/lib/portal-actions";
 import { getAdminPortalData, getAdminUnassignedImpactSiteOptions } from "@/lib/queries";
+import { MAX_DATABASE_IMAGE_BYTES } from "@/lib/storage";
 
 export const metadata = {
   title: "New Admin Campaign"
@@ -14,6 +15,7 @@ export const metadata = {
 export const dynamic = "force-dynamic";
 
 const campaignStatuses = ["draft", "review", "published", "funded", "completed", "archived"];
+const imageUploadHelp = `PNG, JPG, WebP, or GIF up to ${(MAX_DATABASE_IMAGE_BYTES / 1_000_000).toFixed(1)} MB.`;
 
 const errorMessages: Record<string, string> = {
   "campaign-invalid": "Enter campaign title, slug, organization, goal, impact target, summary, category, and region.",
@@ -39,16 +41,31 @@ function labelize(value: string) {
 function Field({
   label,
   children,
-  className = ""
+  className = "",
+  help,
+  required = false
 }: {
   label: string;
   children: ReactNode;
   className?: string;
+  help?: string;
+  required?: boolean;
 }) {
   return (
     <label className={`grid gap-1.5 text-sm font-bold text-ocean-900 ${className}`}>
-      {label}
+      <span className="flex items-center gap-1">
+        {label}
+        {required ? (
+          <>
+            <span className="text-coral-700" aria-hidden="true">
+              *
+            </span>
+            <span className="sr-only">required</span>
+          </>
+        ) : null}
+      </span>
       {children}
+      {help ? <span className="text-xs font-semibold leading-5 text-ocean-900/54">{help}</span> : null}
     </label>
   );
 }
@@ -140,7 +157,7 @@ export default async function AdminCampaignNewPage({ searchParams }: AdminCampai
           <input type="hidden" name="errorReturnTo" value="/admin/campaigns/new" />
           <input type="hidden" name="savedReturnTo" value="/admin/campaigns" />
           <div className="grid gap-3 lg:grid-cols-4">
-            <Field label="Organization" className="lg:col-span-2">
+            <Field label="Organization" className="lg:col-span-2" required>
               <OrganizationSelect organizations={data.organizations} />
             </Field>
             <Field label="Status">
@@ -151,7 +168,7 @@ export default async function AdminCampaignNewPage({ searchParams }: AdminCampai
             </Field>
           </div>
           <div className="grid gap-3 lg:grid-cols-3">
-            <Field label="Title" className="lg:col-span-2">
+            <Field label="Title" className="lg:col-span-2" required>
               <input name="title" placeholder="Restore Raja Ampat Reefs" className={adminInputClassName} required />
             </Field>
             <Field label="Slug">
@@ -159,21 +176,21 @@ export default async function AdminCampaignNewPage({ searchParams }: AdminCampai
             </Field>
           </div>
           <div className="grid gap-3 lg:grid-cols-2">
-            <Field label="Category">
+            <Field label="Category" required>
               <input name="category" placeholder="Coral Restoration" className={adminInputClassName} required />
             </Field>
-            <Field label="Region">
+            <Field label="Region" required>
               <input name="region" placeholder="Raja Ampat" className={adminInputClassName} required />
             </Field>
           </div>
           <div className="grid gap-3 lg:grid-cols-3">
-            <Field label="Goal amount">
+            <Field label="Goal amount" required>
               <input name="goalAmount" type="number" min={1000} step={1000} placeholder="500000000" className={adminInputClassName} required />
             </Field>
-            <Field label="Impact target">
+            <Field label="Impact target" required>
               <input name="impactTarget" type="number" min={1} placeholder="10000" className={adminInputClassName} required />
             </Field>
-            <Field label="Impact unit">
+            <Field label="Impact unit" required>
               <input name="impactUnit" placeholder="coral fragments" className={adminInputClassName} required />
             </Field>
           </div>
@@ -210,22 +227,22 @@ export default async function AdminCampaignNewPage({ searchParams }: AdminCampai
             </div>
 
             <div className="mt-4 grid gap-3 lg:grid-cols-3">
-              <Field label="Impact site name">
+              <Field label="Impact site name" required>
                 <input name="impactSiteName" placeholder="Raja Ampat Reef Garden" className={adminInputClassName} />
               </Field>
-              <Field label="Ecosystem type">
+              <Field label="Ecosystem type" required>
                 <input name="impactSiteEcosystemType" placeholder="Coral" className={adminInputClassName} />
               </Field>
-              <Field label="Site region">
+              <Field label="Site region" required>
                 <input name="impactSiteRegion" placeholder="Southwest Papua" className={adminInputClassName} />
               </Field>
             </div>
 
             <div className="mt-3 grid gap-3 lg:grid-cols-5">
-              <Field label="Latitude">
+              <Field label="Latitude" required>
                 <input name="impactSiteLatitude" type="number" min="-90" max="90" step="0.000001" placeholder="-0.234900" className={adminInputClassName} />
               </Field>
-              <Field label="Longitude">
+              <Field label="Longitude" required>
                 <input name="impactSiteLongitude" type="number" min="-180" max="180" step="0.000001" placeholder="130.516600" className={adminInputClassName} />
               </Field>
               <Field label="Progress">
@@ -246,10 +263,10 @@ export default async function AdminCampaignNewPage({ searchParams }: AdminCampai
             </div>
           </section>
 
-          <Field label="Upload image">
+          <Field label="Upload image" help={imageUploadHelp}>
             <input name="imageFile" type="file" accept="image/png,image/jpeg,image/webp,image/gif" className={adminInputClassName} />
           </Field>
-          <Field label="Summary">
+          <Field label="Summary" required>
             <textarea name="summary" placeholder="Public campaign summary" className={adminTextareaClassName} required />
           </Field>
           <Field label="Story">

@@ -49,15 +49,27 @@ type ImpactSite = AdminOperationsData["impactSites"][number];
 function Field({
   label,
   children,
-  className = ""
+  className = "",
+  required = false
 }: {
   label: string;
   children: ReactNode;
   className?: string;
+  required?: boolean;
 }) {
   return (
     <label className={`grid gap-1.5 text-sm font-bold text-ocean-900 ${className}`}>
-      {label}
+      <span className="flex items-center gap-1">
+        {label}
+        {required ? (
+          <>
+            <span className="text-coral-700" aria-hidden="true">
+              *
+            </span>
+            <span className="sr-only">required</span>
+          </>
+        ) : null}
+      </span>
       {children}
     </label>
   );
@@ -108,21 +120,21 @@ function ImpactSiteFields({ campaigns, site }: { campaigns: CampaignOption[]; si
         </Field>
       </div>
       <div className="grid gap-3 lg:grid-cols-3">
-        <Field label="Site name">
+        <Field label="Site name" required>
           <input name="name" defaultValue={site?.name} placeholder="Raja Ampat Reef Garden" className={adminInputClassName} required />
         </Field>
-        <Field label="Ecosystem type">
+        <Field label="Ecosystem type" required>
           <input name="ecosystemType" defaultValue={site?.ecosystemType} placeholder="Coral" className={adminInputClassName} required />
         </Field>
-        <Field label="Region">
+        <Field label="Region" required>
           <input name="region" defaultValue={site?.region} placeholder="Southwest Papua" className={adminInputClassName} required />
         </Field>
       </div>
       <div className="grid gap-3 lg:grid-cols-5">
-        <Field label="Latitude">
+        <Field label="Latitude" required>
           <input name="latitude" type="number" min="-90" max="90" step="0.000001" defaultValue={site?.latitude} placeholder="-0.234900" className={adminInputClassName} required />
         </Field>
-        <Field label="Longitude">
+        <Field label="Longitude" required>
           <input name="longitude" type="number" min="-180" max="180" step="0.000001" defaultValue={site?.longitude} placeholder="130.516600" className={adminInputClassName} required />
         </Field>
         <Field label="Progress">
