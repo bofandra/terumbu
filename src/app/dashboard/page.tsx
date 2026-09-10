@@ -99,7 +99,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
   const xpTarget = levelTarget(heroLevel);
   const xpProgress = Math.min(100, Math.round((xp / xpTarget) * 100));
   const xpRemaining = Math.max(0, xpTarget - xp);
-  const passportHref = "/dashboard/passport";
+  const passportHref = "/dashboard/impact";
   const passportVisibility = data.profile?.passportVisibility ?? "private";
   const passportShareToken = data.profile?.passportShareToken ?? null;
   const canSharePassport = Boolean(data.profile?.publicSlug && passportVisibility !== "private" && (passportVisibility !== "link" || passportShareToken));
@@ -198,9 +198,9 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
               shareText="See my verified conservation progress on Terumbu.eco."
             />
           ) : (
-            <ButtonLink href="/dashboard/passport#share-settings" tone="light">
+            <ButtonLink href="/dashboard/impact" tone="light">
               <Share2 size={17} aria-hidden="true" />
-              Enable Sharing
+              My Impact
             </ButtonLink>
           )}
         </div>
@@ -715,7 +715,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
           </article>
 
           <article className="rounded-2xl border border-ocean-900/10 bg-white p-5 shadow-soft">
-            <p className="text-sm font-bold uppercase tracking-[0.16em] text-coral-700">Privacy and profile</p>
+            <p className="text-sm font-bold uppercase tracking-[0.16em] text-coral-700">Profile and passport</p>
             <div className="mt-5">
               <div className="flex items-center justify-between gap-3">
                 <div>

@@ -3,11 +3,14 @@ import test from "node:test";
 
 import { formatCurrency, formatCurrencyText } from "../src/lib/utils";
 
-test("currency formatter uses IDR code instead of rupiah symbol", () => {
+test("currency formatter defaults to USD and supports explicit IDR", () => {
   const formatted = formatCurrency(3200000);
+  const rupiah = formatCurrency(3200000, "IDR");
 
-  assert.match(formatted, /^IDR\s*3\.200\.000$/);
+  assert.match(formatted, /^USD\s*3\.200\.000,00$/);
+  assert.match(rupiah, /^IDR\s*3\.200\.000$/);
   assert.doesNotMatch(formatted, /Rp/);
+  assert.doesNotMatch(rupiah, /Rp/);
 });
 
 test("currency text formatter normalizes legacy rupiah labels", () => {

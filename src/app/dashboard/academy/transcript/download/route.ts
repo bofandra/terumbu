@@ -4,13 +4,17 @@ import { requireUser } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
-const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://terumbu.eco";
+function transcriptOrigin(request: Request) {
+  const configuredUrl = process.env.NEXT_PUBLIC_APP_URL?.trim();
 
-export async function GET() {
+  return configuredUrl ? configuredUrl.replace(/\/+$/, "") : new URL(request.url).origin;
+}
+
+export async function GET(request: Request) {
   const user = await requireUser("/dashboard/academy");
   const transcript = await getAcademyTranscriptData(user.id);
 
-  return new Response(buildAcademyTranscriptCsv(transcript, appUrl), {
+  return new Response(buildAcademyTranscriptCsv(transcript, transcriptOrigin(request)), {
     headers: {
       "Content-Disposition": `attachment; filename="${academyTranscriptFilename(transcript)}"`,
       "Content-Type": "text/csv; charset=utf-8",

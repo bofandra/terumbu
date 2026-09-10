@@ -29,9 +29,9 @@ import { getSessionUser, safeRedirectPath } from "@/lib/auth";
 import { trackEvent } from "@/lib/analytics";
 import { sendTransactionalEmail } from "@/lib/email";
 import { expeditionDepartureAvailability } from "@/lib/expedition-booking-lifecycle";
+import { calculateDonationImpact, minimumDonationAmount, normalizeCurrency } from "@/lib/impact-calculations";
 import { readUploadedImageAsDataUrl } from "@/lib/storage";
 import {
-  paymentStatusFromValue,
   recordPaymentOperation,
   transitionExpeditionBookingPayment
 } from "@/lib/payment-workflows";
@@ -54,14 +54,15 @@ export async function createDonationAction(formData: FormData) {
   const paymentReference = String(formData.get("paymentReference") ?? "").trim();
   const sessionUser = await getSessionUser();
 
-  if (!campaignSlug || amount < 10_000 || !donorName || !donorEmail) {
-    redirect("/checkout/donation?error=invalid");
-  }
-
   const [campaign] = await db
     .select({
       id: campaigns.id,
-      title: campaigns.title
+      title: campaigns.title,
+      currency: campaigns.currency,
+      goalAmount: campaigns.goalAmount,
+      impactUnit: campaigns.impactUnit,
+      impactTarget: campaigns.impactTarget,
+      impactUnitCost: campaigns.impactUnitCost
     })
     .from(campaigns)
     .where(and(eq(campaigns.slug, campaignSlug), eq(campaigns.status, "published")))
@@ -69,6 +70,13 @@ export async function createDonationAction(formData: FormData) {
 
   if (!campaign) {
     redirect("/checkout/donation?error=campaign");
+  }
+
+  const campaignCurrency = normalizeCurrency(campaign.currency);
+  const minimumAmount = minimumDonationAmount(campaignCurrency);
+
+  if (!campaignSlug || amount < minimumAmount || !donorName || !donorEmail) {
+    redirect("/checkout/donation?error=invalid");
   }
 
   if (idempotencyKey) {
@@ -95,11 +103,19 @@ export async function createDonationAction(formData: FormData) {
 
   const providerReference = randomReference("MANUAL-DONATION");
   const now = new Date();
-  const sponsoredFragments = contributionIntent === "coral" ? Math.max(1, Math.round(amount / 50_000)) : 0;
+  const impact = calculateDonationImpact({
+    amount,
+    currency: campaignCurrency,
+    campaign
+  });
+  const sponsoredFragments = impact.coralFragments > 0 ? Math.max(1, Math.round(impact.coralFragments)) : 0;
   const submittedAt = now.toISOString();
   const manualPaymentMetadata = {
     method: "manual_external",
     contributionIntent,
+    impactUnit: impact.impactUnit,
+    impactUnitCost: impact.unitCost,
+    impactUnitCount: Number(impact.impactUnitCount.toFixed(2)),
     paymentProofUrl: proofUpload.dataUrl,
     paymentReference: paymentReference || null,
     submittedAt,
@@ -118,7 +134,7 @@ export async function createDonationAction(formData: FormData) {
         donorName,
         donorEmail,
         amount: amount.toFixed(2),
-        currency: "IDR",
+        currency: campaignCurrency,
         status: "pending",
         message,
         createdAt: now
@@ -144,7 +160,7 @@ export async function createDonationAction(formData: FormData) {
       requestedByUserId: sessionUser?.id ?? null,
       status: "pending",
       amount: amount.toFixed(2),
-      currency: "IDR",
+      currency: campaignCurrency,
       provider: "manual_external",
       providerReference,
       reason: paymentReference || "Payment proof submitted for manual verification.",
@@ -159,6 +175,7 @@ export async function createDonationAction(formData: FormData) {
     properties: {
       campaignSlug,
       amount,
+      currency: campaignCurrency,
       contributionIntent,
       sponsoredFragments: sponsoredFragments || undefined,
       status: "pending"
@@ -175,8 +192,9 @@ export async function bookExpeditionAction(formData: FormData) {
     .trim()
     .toLowerCase();
   const participantCount = parseParticipantCount(formData.get("participantsCount"));
-  const participantNames = splitParticipantNames(formData.get("participantNames"), contactName || "Participant", participantCount);
-  const paymentState = paymentStatusFromValue(formData.get("paymentState"), "paid");
+  const additionalParticipantNames = splitParticipantNames(formData.get("additionalParticipantNames"), "Additional participant", Math.max(0, participantCount - 1));
+  const participantNames = [contactName || "Participant", ...additionalParticipantNames].slice(0, participantCount);
+  const paymentState = "pending";
   const nextPath = safeRedirectPath(formData.get("next"));
   const idempotencyKey = String(formData.get("idempotencyKey") ?? "").trim() || null;
   const sessionUser = await getSessionUser();
@@ -191,6 +209,7 @@ export async function bookExpeditionAction(formData: FormData) {
       expeditionId: expeditions.id,
       expeditionTitle: expeditions.title,
       basePrice: expeditions.basePrice,
+      currency: expeditions.currency,
       capacity: expeditionDepartures.capacity,
       seatsBooked: expeditionDepartures.seatsBooked,
       status: expeditionDepartures.status,
@@ -254,7 +273,7 @@ export async function bookExpeditionAction(formData: FormData) {
         participantsCount: participantCount,
         idempotencyKey,
         totalAmount: totalAmount.toFixed(2),
-        currency: "IDR",
+        currency: normalizeCurrency(departure.currency),
         status: "pending_payment",
         paymentStatus: "created",
         bookedAt: now,
@@ -274,11 +293,10 @@ export async function bookExpeditionAction(formData: FormData) {
       bookingId: booking.id,
       provider: "demo_gateway",
       providerReference,
-      status: "created",
+      status: "pending",
       payload: {
-        method: "demo_checkout",
-        completedAt: paymentState === "paid" ? now.toISOString() : null,
-        failedAt: paymentState === "failed" ? now.toISOString() : null
+        method: "gateway_pending",
+        submittedAt: now.toISOString()
       },
       updatedAt: now
     });
@@ -296,9 +314,8 @@ export async function bookExpeditionAction(formData: FormData) {
       nextStatus: paymentState,
       providerReference,
       providerPayload: {
-        method: "demo_checkout",
-        completedAt: paymentState === "paid" ? now.toISOString() : null,
-        failedAt: paymentState === "failed" ? now.toISOString() : null
+        method: "gateway_pending",
+        submittedAt: now.toISOString()
       },
       operationType: "checkout",
       now
@@ -332,13 +349,10 @@ export async function bookExpeditionAction(formData: FormData) {
       departureId,
       participantsCount: participantCount,
       totalAmount,
+      currency: normalizeCurrency(departure.currency),
       status: paymentState
     }
   });
 
-  if (paymentState === "failed") {
-    redirect(`/checkout/success?status=failed&type=expedition&id=${bookingId}`);
-  }
-
-  redirect(`/checkout/success?status=paid&type=expedition&id=${bookingId}`);
+  redirect(`/checkout/success?status=pending&type=expedition&id=${bookingId}`);
 }

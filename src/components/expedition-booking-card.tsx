@@ -21,6 +21,7 @@ type Departure = {
 type ExpeditionBookingCardProps = {
   slug: string;
   price: number;
+  currency: string;
   equipmentRental: number;
   platformFee: number;
   departures: Departure[];
@@ -96,6 +97,7 @@ function Stepper({
 export function ExpeditionBookingCard({
   slug,
   price,
+  currency,
   equipmentRental,
   platformFee,
   departures,
@@ -133,7 +135,7 @@ export function ExpeditionBookingCard({
       <div className="border-b border-ocean-900/10 pb-4">
         <p className="text-sm font-semibold text-ocean-900/58">From</p>
         <p className="mt-1 text-3xl font-bold tracking-normal text-ocean-900">
-          {formatCurrency(price)}
+          {formatCurrency(price, currency)}
           <span className="block text-base font-semibold text-ocean-900/58">per person</span>
         </p>
         <p className="mt-2 text-sm font-semibold text-ocean-900/58">Taxes and conservation contribution included.</p>
@@ -173,7 +175,7 @@ export function ExpeditionBookingCard({
                       {departure.availableSeats > 0 ? `${departure.availableSeats} places left · ${departure.statusLabel}` : "Full"}
                     </span>
                   </span>
-                  <span className="font-bold text-ocean-900 sm:text-right">{formatCurrency(price)}</span>
+                  <span className="font-bold text-ocean-900 sm:text-right">{formatCurrency(price, currency)}</span>
                 </span>
               </label>
             ))
@@ -203,20 +205,20 @@ export function ExpeditionBookingCard({
       <div className="mt-5 border-t border-ocean-900/10 pt-4">
         <div className="grid gap-2 text-sm">
           <div className="flex justify-between gap-3">
-            <span className="text-ocean-900/62">{participants} participants x {formatCurrency(price)}</span>
-            <span className="font-bold text-ocean-900">{formatCurrency(price * participants)}</span>
+            <span className="text-ocean-900/62">{participants} participants x {formatCurrency(price, currency)}</span>
+            <span className="font-bold text-ocean-900">{formatCurrency(price * participants, currency)}</span>
           </div>
           <div className="flex justify-between gap-3">
             <span className="text-ocean-900/62">Equipment rental</span>
-            <span className="font-bold text-ocean-900">{formatCurrency(equipmentRental)}</span>
+            <span className="font-bold text-ocean-900">{formatCurrency(equipmentRental, currency)}</span>
           </div>
           <div className="flex justify-between gap-3">
             <span className="text-ocean-900/62">Platform and payment fees</span>
-            <span className="font-bold text-ocean-900">{formatCurrency(platformFee)}</span>
+            <span className="font-bold text-ocean-900">{formatCurrency(platformFee, currency)}</span>
           </div>
           <div className="flex justify-between gap-3 border-t border-ocean-900/10 pt-3 text-lg">
             <span className="font-bold text-ocean-900">Total</span>
-            <span className="font-bold text-ocean-900">{formatCurrency(total)}</span>
+            <span className="font-bold text-ocean-900">{formatCurrency(total, currency)}</span>
           </div>
         </div>
       </div>
@@ -272,7 +274,7 @@ export function ExpeditionBookingCard({
         ))}
       </div>
       <p className="mt-4 border-t border-ocean-900/10 pt-4 text-xs font-semibold leading-5 text-ocean-900/62">
-        {formatCurrency(conservationContribution)} per participant supports the associated conservation program. Seats are held during checkout only.
+        {formatCurrency(conservationContribution, currency)} per participant supports the associated conservation program. Seats are held during checkout only.
       </p>
     </aside>
   );
@@ -288,7 +290,7 @@ export function ExpeditionMobileBookingBar(props: ExpeditionBookingCardProps) {
         <div className="mx-auto flex max-w-lg items-center justify-between gap-3">
           <div>
             <p className="text-xs font-semibold text-ocean-900/54">From</p>
-            <p className="font-bold text-ocean-900">{formatCurrency(props.price)} / person</p>
+            <p className="font-bold text-ocean-900">{formatCurrency(props.price, props.currency)} / person</p>
             <p className="text-xs text-ocean-900/54">{firstDeparture ? `${firstDeparture.dateRangeLabel} · ${firstDeparture.availableSeats} places left` : "Dates pending"}</p>
           </div>
           <button type="button" className="min-h-11 rounded-full bg-coral-500 px-5 text-sm font-bold text-white" onClick={() => setOpen(true)}>

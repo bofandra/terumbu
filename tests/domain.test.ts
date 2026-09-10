@@ -14,6 +14,7 @@ test("campaign rows map to card data", () => {
       imageUrl: "https://example.com/reef.jpg",
       raisedAmount: "250000000.00",
       goalAmount: "350000000.00",
+      currency: "IDR",
       donorCount: 2350,
       impactUnit: "coral fragments",
       impactTarget: 10000,
@@ -37,6 +38,7 @@ test("expedition rows map duration and price", () => {
     region: "Raja Ampat",
     durationDays: 4,
     basePrice: "2500000.00",
+    currency: "IDR",
     imageUrl: null,
     summary: "Plant corals."
   });

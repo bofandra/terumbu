@@ -28,7 +28,8 @@ export default async function DonationCheckoutPage({ searchParams }: DonationChe
   const [campaigns, user] = await Promise.all([getDonationCheckoutOptions(), getSessionUser()]);
   const selectedCampaign = params?.campaign ?? campaigns[0]?.slug;
   const selectedCampaignData = campaigns.find((campaign) => campaign.slug === selectedCampaign) ?? campaigns[0];
-  const donationAmounts = selectedCampaignData ? suggestedDonationAmounts(selectedCampaignData.goal) : [];
+  const selectedCurrency = selectedCampaignData?.currency ?? "USD";
+  const donationAmounts = selectedCampaignData ? suggestedDonationAmounts(selectedCampaignData.goal, selectedCurrency) : [];
   const requestedAmount = parseDonationAmount(params?.amount);
   const hasRequestedPresetAmount = donationAmounts.includes(requestedAmount);
   const selectedAmount = hasRequestedPresetAmount ? requestedAmount : donationAmounts[0] ?? 0;
@@ -91,7 +92,7 @@ export default async function DonationCheckoutPage({ searchParams }: DonationChe
               ))}
             </select>
           </label>
-          <DonationAmountFields amounts={donationAmounts} defaultAmount={selectedAmount} defaultCustomAmount={customAmount} />
+          <DonationAmountFields amounts={donationAmounts} defaultAmount={selectedAmount} currency={selectedCurrency} defaultCustomAmount={customAmount} />
           <label className="grid min-w-0 gap-2 text-sm font-semibold text-ocean-900">
             Name
             <input name="donorName" defaultValue={user?.displayName ?? user?.name ?? ""} className="w-full min-w-0 rounded-xl border border-ocean-900/14 px-4 py-3 outline-none focus:border-coral-500" required />

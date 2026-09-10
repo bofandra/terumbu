@@ -112,6 +112,8 @@ import {
   normalizeCorporateEventRegistrationStatus
 } from "@/lib/corporate-lifecycle";
 import { verifyPassword } from "@/lib/password";
+import { formatImpactQuantity } from "@/lib/impact-calculations";
+import { getCarbonKgPerUsd } from "@/lib/platform-settings";
 import {
   normalizePassportCategoryVisibility,
   normalizePassportEvidenceConsent,
@@ -268,9 +270,11 @@ export async function getCampaignCards(limit?: number, category?: string): Promi
       imageUrl: campaigns.imageUrl,
       raisedAmount: campaigns.raisedAmount,
       goalAmount: campaigns.goalAmount,
+      currency: campaigns.currency,
       donorCount: campaigns.donorCount,
       impactUnit: campaigns.impactUnit,
       impactTarget: campaigns.impactTarget,
+      impactUnitCost: campaigns.impactUnitCost,
       endsAt: campaigns.endsAt,
       partner: organizations.name,
       partnerSlug: organizations.slug,
@@ -391,9 +395,11 @@ export async function getRetentionCenterData(userId: string) {
         imageUrl: campaigns.imageUrl,
         raisedAmount: campaigns.raisedAmount,
         goalAmount: campaigns.goalAmount,
+        currency: campaigns.currency,
         donorCount: campaigns.donorCount,
         impactUnit: campaigns.impactUnit,
         impactTarget: campaigns.impactTarget,
+        impactUnitCost: campaigns.impactUnitCost,
         endsAt: campaigns.endsAt,
         partner: organizations.name,
         verification: organizations.verification,
@@ -416,7 +422,7 @@ export async function getRetentionCenterData(userId: string) {
       })
       .from(userSavedCourses)
       .innerJoin(courses, eq(userSavedCourses.courseId, courses.id))
-      .where(and(eq(userSavedCourses.userId, userId), eq(userSavedCourses.status, "active"), eq(courses.status, "published")))
+      .where(and(eq(userSavedCourses.userId, userId), eq(userSavedCourses.status, "active")))
       .orderBy(desc(userSavedCourses.savedAt)),
     db
       .select({
@@ -425,6 +431,7 @@ export async function getRetentionCenterData(userId: string) {
         region: expeditions.region,
         durationDays: expeditions.durationDays,
         basePrice: expeditions.basePrice,
+        currency: expeditions.currency,
         imageUrl: expeditions.imageUrl,
         summary: expeditions.summary,
         savedAt: userSavedExpeditions.savedAt
@@ -632,9 +639,11 @@ export async function getPartnerProfile(slug: string) {
         imageUrl: campaigns.imageUrl,
         raisedAmount: campaigns.raisedAmount,
         goalAmount: campaigns.goalAmount,
+        currency: campaigns.currency,
         donorCount: campaigns.donorCount,
         impactUnit: campaigns.impactUnit,
         impactTarget: campaigns.impactTarget,
+        impactUnitCost: campaigns.impactUnitCost,
         endsAt: campaigns.endsAt,
         partner: organizations.name,
         verification: organizations.verification
@@ -675,6 +684,7 @@ export async function getFeaturedFieldUpdate() {
       imageUrl: campaigns.imageUrl,
       raisedAmount: campaigns.raisedAmount,
       goalAmount: campaigns.goalAmount,
+      currency: campaigns.currency,
       donorCount: campaigns.donorCount,
       impactTarget: campaigns.impactTarget,
       impactUnit: campaigns.impactUnit,
@@ -699,7 +709,7 @@ export async function getFeaturedFieldUpdate() {
     imageUrl: row.imageUrl,
     progress,
     title: `${focus} is ${progress}% funded.`,
-    description: `${row.donorCount.toLocaleString("id-ID")} supporters have raised ${formatCurrency(raised)} toward ${formatCurrency(goal)} for ${row.impactTarget.toLocaleString("id-ID")} ${row.impactUnit}.`
+    description: `${row.donorCount.toLocaleString("id-ID")} supporters have raised ${formatCurrency(raised, row.currency)} toward ${formatCurrency(goal, row.currency)} for ${row.impactTarget.toLocaleString("id-ID")} ${row.impactUnit}.`
   };
 }
 
@@ -717,9 +727,11 @@ export async function getCampaignDetail(slug: string) {
       imageUrl: campaigns.imageUrl,
       raisedAmount: campaigns.raisedAmount,
       goalAmount: campaigns.goalAmount,
+      currency: campaigns.currency,
       donorCount: campaigns.donorCount,
       impactUnit: campaigns.impactUnit,
       impactTarget: campaigns.impactTarget,
+      impactUnitCost: campaigns.impactUnitCost,
       endsAt: campaigns.endsAt,
       partner: organizations.name,
       partnerSlug: organizations.slug,
@@ -738,6 +750,7 @@ export async function getCampaignDetail(slug: string) {
     return null;
   }
 
+  const carbonKgPerUsd = await getCarbonKgPerUsd();
   const [
     updates,
     sites,
@@ -790,6 +803,7 @@ export async function getCampaignDetail(slug: string) {
       .select({
         donorName: donations.donorName,
         amount: donations.amount,
+        currency: donations.currency,
         message: donations.message,
         createdAt: donations.createdAt,
         transactionPayload: paymentTransactions.payload
@@ -880,8 +894,11 @@ export async function getCampaignDetail(slug: string) {
 
   return {
     ...toCampaignCard(row),
+    currency: row.currency,
     impactUnit: row.impactUnit,
     impactTarget: row.impactTarget,
+    impactUnitCost: row.impactUnitCost,
+    carbonKgPerUsd,
     story: row.story,
     partnerSlug: row.partnerSlug,
     partnerType: row.partnerType,
@@ -892,6 +909,7 @@ export async function getCampaignDetail(slug: string) {
     donorActivity: donorActivityRows.map((donation) => ({
       donorName: donation.donorName,
       amount: toNumber(donation.amount),
+      currency: donation.currency,
       message: donation.message,
       createdAt: donation.createdAt,
       contributionIntent: getMetadataString(donation.transactionPayload, "contributionIntent") ?? "one-time",
@@ -962,6 +980,7 @@ export async function getExpeditionCards(limit?: number, region?: string): Promi
         region: expeditions.region,
         durationDays: expeditions.durationDays,
         basePrice: expeditions.basePrice,
+        currency: expeditions.currency,
         imageUrl: expeditions.imageUrl,
         summary: expeditions.summary
       })
@@ -1046,6 +1065,7 @@ export async function getExpeditionDetail(slug: string) {
       region: expeditions.region,
       durationDays: expeditions.durationDays,
       basePrice: expeditions.basePrice,
+      currency: expeditions.currency,
       imageUrl: expeditions.imageUrl,
       summary: expeditions.summary,
       metadata: expeditions.metadata,
@@ -1056,6 +1076,7 @@ export async function getExpeditionDetail(slug: string) {
       relatedCampaignImageUrl: campaigns.imageUrl,
       relatedCampaignRaisedAmount: campaigns.raisedAmount,
       relatedCampaignGoalAmount: campaigns.goalAmount,
+      relatedCampaignCurrency: campaigns.currency,
       relatedCampaignImpactUnit: campaigns.impactUnit,
       relatedCampaignImpactTarget: campaigns.impactTarget,
       partner: organizations.name,
@@ -1250,6 +1271,7 @@ export async function getExpeditionDetail(slug: string) {
       region: row.region,
       durationLabel,
       price,
+      currency: row.currency,
       maxCapacity,
       galleryImages: defaultGalleryImages,
       tripUpdates: defaultTripUpdates,
@@ -1309,6 +1331,7 @@ export async function getExpeditionDetail(slug: string) {
     metadataJson: expeditionMetadataEditorJson(expeditionMetadata),
     categoryLabel: expeditionMetadata.categoryLabel,
     activitySummary: expeditionMetadata.activitySummary,
+    documentationUrl: expeditionMetadata.documentationUrl,
     hostedBy: expeditionMetadata.hostedBy,
     galleryImages: expeditionMetadata.galleryImages,
     rating: averageRating,
@@ -1926,7 +1949,7 @@ export async function getAcademyHomeData(userId?: string) {
         title: certificateRows[0].courseTitle,
         credentialId: certificateRows[0].certificateNumber,
         issuedLabel: certificateRows[0].issuedAt.toLocaleDateString("id-ID", { dateStyle: "medium" }),
-        href: "/dashboard/certificates",
+        href: "/dashboard/academy#certificates",
         verified: true,
         example: false
       }
@@ -2262,6 +2285,7 @@ export async function getPassportPreviewForUser(userId: string): Promise<Passpor
   const [passport] = await db
     .select({
       id: impactPassports.id,
+      passportNumber: impactPassports.passportNumber,
       publicSlug: impactPassports.publicSlug,
       visibility: impactPassports.visibility,
       displayName: profiles.displayName,
@@ -2281,8 +2305,8 @@ export async function getPassportPreviewForUser(userId: string): Promise<Passpor
     displayName: passport.displayName,
     heroLevel: passport.heroLevel,
     xp: passport.xp,
-    href: "/dashboard/passport",
-    ctaLabel: "Manage Impact Passport"
+    href: "/dashboard/impact",
+    ctaLabel: "View My Impact"
   });
 }
 
@@ -2297,6 +2321,7 @@ export async function getPublicPassport(publicSlug: string, options: PublicPassp
   const [passport] = await db
     .select({
       id: impactPassports.id,
+      passportNumber: impactPassports.passportNumber,
       publicSlug: impactPassports.publicSlug,
       visibility: impactPassports.visibility,
       shareToken: impactPassports.shareToken,
@@ -2382,6 +2407,7 @@ export async function getPublicPassport(publicSlug: string, options: PublicPassp
   const certificateCount = items.filter((item) => item.itemType === "certificate").length;
   const badgeCount = items.filter((item) => item.itemType === "badge").length;
   const coralCount = items.reduce((total, item) => total + getMetadataNumber(item.metadata, "fragments"), 0);
+  const carbonKg = items.reduce((total, item) => total + getMetadataNumber(item.metadata, "carbonKg"), 0);
   const volunteerHours = items.reduce((total, item) => total + getMetadataNumber(item.metadata, "hours"), 0);
   const projectCount = new Set(items.map((item) => getMetadataString(item.metadata, "campaignSlug") ?? getMetadataString(item.metadata, "project")).filter(isDefined)).size;
   const oldestItems = [...items].sort((a, b) => a.occurredAt.getTime() - b.occurredAt.getTime());
@@ -2399,6 +2425,11 @@ export async function getPublicPassport(publicSlug: string, options: PublicPassp
       label: "Ecosystems",
       value: coralCount,
       support: "coral fragments financially supported"
+    },
+    {
+      label: "Carbon",
+      value: carbonKg,
+      support: "kg CO2e calculated from USD contributions"
     },
     {
       label: "Field activities",
@@ -2419,6 +2450,7 @@ export async function getPublicPassport(publicSlug: string, options: PublicPassp
 
   return {
     id: passport.id,
+    passportNumber: passport.passportNumber,
     publicSlug: passport.publicSlug,
     visibility: passport.visibility,
     shareExpiresAt: passport.visibility === "link" ? passport.shareExpiresAt : null,
@@ -2445,6 +2477,7 @@ export async function getPublicPassport(publicSlug: string, options: PublicPassp
       certificateCount,
       badgeCount,
       coralCount,
+      carbonKg,
       volunteerHours,
       projectCount
     },
@@ -2687,6 +2720,7 @@ async function buildPassportPreview(
   const fieldCount = items.filter((item) => item.itemType === "expedition").length;
   const certificateCount = items.filter((item) => item.itemType === "certificate").length;
   const coralCount = items.reduce((total, item) => total + getMetadataNumber(item.metadata, "fragments"), 0);
+  const carbonKg = items.reduce((total, item) => total + getMetadataNumber(item.metadata, "carbonKg"), 0);
   const xpTarget = Math.max(1000, profile.heroLevel * 2500);
 
   return {
@@ -2700,6 +2734,7 @@ async function buildPassportPreview(
     stats: [
       { label: "Donations", value: String(donationsCount) },
       { label: "Corals", value: String(coralCount) },
+      { label: "Carbon", value: carbonKg > 0 ? `${formatImpactQuantity(carbonKg)} kg CO2e` : "Pending" },
       { label: "Field activities", value: String(fieldCount) },
       { label: "Certificates", value: String(certificateCount) }
     ],
@@ -2746,6 +2781,7 @@ export async function getDashboardData(userId: string) {
         heroLevel: profiles.heroLevel,
         xp: profiles.xp,
         isPublic: profiles.isPublic,
+        passportNumber: impactPassports.passportNumber,
         publicSlug: impactPassports.publicSlug,
         passportVisibility: impactPassports.visibility,
         passportShareToken: impactPassports.shareToken,
@@ -2823,6 +2859,7 @@ export async function getDashboardData(userId: string) {
         paymentStatus: expeditionBookings.paymentStatus,
         participantsCount: expeditionBookings.participantsCount,
         totalAmount: expeditionBookings.totalAmount,
+        currency: expeditionBookings.currency,
         bookedAt: expeditionBookings.bookedAt,
         confirmedAt: expeditionBookings.confirmedAt,
         bookingMetadata: expeditionBookings.metadata,
@@ -2992,11 +3029,23 @@ export async function getDashboardData(userId: string) {
         title: campaigns.title,
         category: campaigns.category,
         region: campaigns.region,
+        summary: campaigns.summary,
         imageUrl: campaigns.imageUrl,
+        raisedAmount: campaigns.raisedAmount,
+        goalAmount: campaigns.goalAmount,
+        currency: campaigns.currency,
+        donorCount: campaigns.donorCount,
+        impactUnit: campaigns.impactUnit,
+        impactTarget: campaigns.impactTarget,
+        impactUnitCost: campaigns.impactUnitCost,
+        endsAt: campaigns.endsAt,
+        partner: organizations.name,
+        verification: organizations.verification,
         savedAt: userSavedCampaigns.savedAt
       })
       .from(userSavedCampaigns)
       .innerJoin(campaigns, eq(userSavedCampaigns.campaignId, campaigns.id))
+      .innerJoin(organizations, eq(campaigns.organizationId, organizations.id))
       .where(and(eq(userSavedCampaigns.userId, userId), eq(userSavedCampaigns.status, "active")))
       .orderBy(desc(userSavedCampaigns.savedAt))
       .limit(6),
@@ -3012,7 +3061,7 @@ export async function getDashboardData(userId: string) {
       })
       .from(userSavedCourses)
       .innerJoin(courses, eq(userSavedCourses.courseId, courses.id))
-      .where(and(eq(userSavedCourses.userId, userId), eq(userSavedCourses.status, "active"), eq(courses.status, "published")))
+      .where(and(eq(userSavedCourses.userId, userId), eq(userSavedCourses.status, "active")))
       .orderBy(desc(userSavedCourses.savedAt))
       .limit(6),
     db
@@ -3022,6 +3071,7 @@ export async function getDashboardData(userId: string) {
         region: expeditions.region,
         durationDays: expeditions.durationDays,
         basePrice: expeditions.basePrice,
+        currency: expeditions.currency,
         imageUrl: expeditions.imageUrl,
         summary: expeditions.summary,
         savedAt: userSavedExpeditions.savedAt
@@ -3085,6 +3135,7 @@ export async function getDashboardData(userId: string) {
   const paidDonations = donationRows.filter((donation) => donation.status === "paid");
   const totalDonated = paidDonations.reduce((total, donation) => total + toNumber(donation.amount), 0);
   const coralFragments = ecosystemRows.reduce((total, ecosystem) => total + getMetadataNumber(ecosystem.metadata, "fragments"), 0);
+  const carbonKg = passportItemRows.reduce((total, item) => total + getMetadataNumber(item.metadata, "carbonKg"), 0);
   const seedlings = ecosystemRows.reduce((total, ecosystem) => total + getMetadataNumber(ecosystem.metadata, "seedlings"), 0);
   const healthyCorals = ecosystemRows.reduce((total, ecosystem) => {
     const survivalRate = getMetadataNumber(ecosystem.metadata, "survivalRate");
@@ -3580,7 +3631,7 @@ export async function getDashboardData(userId: string) {
           category: "Academy",
           title: certificateRows[0].courseTitle,
           message: `${certificateRows[0].courseTitle} certificate is available.`,
-          href: "/dashboard/certificates",
+          href: "/dashboard/academy#certificates",
           sourceType: "course_certificate",
           sourceId: null,
           timestamp: certificateRows[0].issuedAt,
@@ -3681,10 +3732,10 @@ export async function getDashboardData(userId: string) {
     profileRow?.passportVisibility === "private"
       ? {
           type: "Share",
-          title: "Publish your Impact Passport",
-          reason: "Your public profile is private until you choose to share it.",
-          href: "/dashboard/passport#share-settings",
-          action: "Manage visibility"
+          title: "Review your Impact Passport",
+          reason: "Passport privacy is managed by Terumbu admins.",
+          href: "/dashboard/impact",
+          action: "Open My Impact"
         }
       : null,
     coralFragments > 0 && coralFragments < 10
@@ -3702,15 +3753,13 @@ export async function getDashboardData(userId: string) {
     profileRow?.name,
     profileRow?.displayName,
     profileRow?.location,
-    profileRow?.bio,
-    profileRow?.passportVisibility && profileRow.passportVisibility !== "private" ? profileRow.passportVisibility : null
+    profileRow?.bio
   ];
   const profileCompleteness = {
     percent: Math.round((profileFields.filter(isDefined).length / profileFields.length) * 100),
     missing: [
       profileRow?.location ? null : "Location",
-      profileRow?.bio ? null : "Bio",
-      profileRow?.passportVisibility && profileRow.passportVisibility !== "private" ? null : "Passport visibility"
+      profileRow?.bio ? null : "Bio"
     ].filter(isDefined)
   };
 
@@ -3742,6 +3791,7 @@ export async function getDashboardData(userId: string) {
     summary: {
       totalDonated,
       coralFragments,
+      carbonKg,
       seedlings,
       fieldActivities: bookingRows.length,
       certificates: certificateRows.length,
@@ -3773,7 +3823,10 @@ export async function getDashboardData(userId: string) {
     notifications,
     unreadNotificationCount: notifications.filter((notification) => notification.unread).length,
     monthlyReport,
-    savedCampaigns: savedCampaignRows,
+    savedCampaigns: savedCampaignRows.map((row) => ({
+      ...toCampaignCard(row),
+      savedAt: row.savedAt
+    })),
     savedExpeditions: savedExpeditionRows.map((row) => ({
       ...toExpeditionCard(row, "Saved trip"),
       savedAt: row.savedAt
@@ -3782,8 +3835,8 @@ export async function getDashboardData(userId: string) {
     notificationPreferences: preferences,
     profileCompleteness,
     privacyControls: [
-      { label: "Passport visibility", value: profileRow?.passportVisibility ?? "private", href: "/dashboard/settings#privacy" },
-      { label: "Donation value", value: "Private dashboard only", href: "/dashboard/settings#privacy" },
+      { label: "Passport visibility", value: profileRow?.passportVisibility ?? "private", href: "/dashboard/impact" },
+      { label: "Donation value", value: "Private dashboard only", href: "/dashboard/impact" },
       { label: "Approximate impact locations", value: "Enabled", href: "/dashboard/impact" }
     ],
     donations: donationRows,
@@ -4021,6 +4074,7 @@ export async function getExpeditionCheckoutOptions() {
       expeditionSlug: expeditions.slug,
       expeditionTitle: expeditions.title,
       basePrice: expeditions.basePrice,
+      currency: expeditions.currency,
       departureId: expeditionDepartures.id,
       startsAt: expeditionDepartures.startsAt,
       endsAt: expeditionDepartures.endsAt,
@@ -5645,9 +5699,11 @@ export async function getAdminPortalData() {
         status: campaigns.status,
         raisedAmount: campaigns.raisedAmount,
         goalAmount: campaigns.goalAmount,
+        currency: campaigns.currency,
         donorCount: campaigns.donorCount,
         impactUnit: campaigns.impactUnit,
         impactTarget: campaigns.impactTarget,
+        impactUnitCost: campaigns.impactUnitCost,
         publishedAt: campaigns.publishedAt,
         endsAt: campaigns.endsAt,
         partner: organizations.name
@@ -6056,6 +6112,7 @@ export async function getAdminOperationsData() {
         region: expeditions.region,
         durationDays: expeditions.durationDays,
         basePrice: expeditions.basePrice,
+        currency: expeditions.currency,
         summary: expeditions.summary,
         imageUrl: expeditions.imageUrl,
         metadata: expeditions.metadata,
@@ -6256,6 +6313,7 @@ export async function getAdminOperationsData() {
       region: string;
       durationDays: number;
       basePrice: number;
+      currency: string;
       summary: string;
       imageUrl: string | null;
       metadata: unknown;
@@ -6339,6 +6397,7 @@ export async function getAdminOperationsData() {
         region: row.region,
         durationDays: row.durationDays,
         basePrice: toNumber(row.basePrice),
+        currency: row.currency,
         summary: row.summary,
         imageUrl: row.imageUrl,
         metadata: row.metadata,
@@ -6466,6 +6525,7 @@ export async function getAdminOperationsData() {
         region: expedition.region,
         durationLabel: toExpeditionCard(expedition).duration,
         price: expedition.basePrice,
+        currency: expedition.currency,
         maxCapacity,
         galleryImages: [
           {
@@ -6944,9 +7004,11 @@ export async function getPartnerPortalData(userId?: string) {
         status: campaigns.status,
         raisedAmount: campaigns.raisedAmount,
         goalAmount: campaigns.goalAmount,
+        currency: campaigns.currency,
         donorCount: campaigns.donorCount,
         impactUnit: campaigns.impactUnit,
         impactTarget: campaigns.impactTarget,
+        impactUnitCost: campaigns.impactUnitCost,
         endsAt: campaigns.endsAt,
         partner: organizations.name,
         partnerSlug: organizations.slug,
@@ -7076,6 +7138,7 @@ export async function getPartnerPortalData(userId?: string) {
         region: expeditions.region,
         durationDays: expeditions.durationDays,
         basePrice: expeditions.basePrice,
+        currency: expeditions.currency,
         summary: expeditions.summary,
         imageUrl: expeditions.imageUrl,
         metadata: expeditions.metadata,
@@ -7229,6 +7292,7 @@ export async function getPartnerPortalData(userId?: string) {
       region: string;
       durationDays: number;
       basePrice: number;
+      currency: string;
       summary: string;
       imageUrl: string | null;
       metadata: unknown;
@@ -7282,6 +7346,7 @@ export async function getPartnerPortalData(userId?: string) {
         region: row.region,
         durationDays: row.durationDays,
         basePrice: toNumber(row.basePrice),
+        currency: row.currency,
         summary: row.summary,
         imageUrl: row.imageUrl,
         metadata: row.metadata,
@@ -7349,6 +7414,7 @@ export async function getPartnerPortalData(userId?: string) {
         region: expedition.region,
         durationLabel: toExpeditionCard(expedition).duration,
         price: expedition.basePrice,
+        currency: expedition.currency,
         maxCapacity,
         galleryImages: [
           {

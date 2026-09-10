@@ -15,11 +15,10 @@ import {
   Waves
 } from "lucide-react";
 import { cookies } from "next/headers";
-import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
-import { PassportCopyButton } from "@/components/passport-copy-button";
+import { PassportShareButtons } from "@/components/passport-share-buttons";
 import { Button, ButtonLink } from "@/components/ui/button";
 import { getDefaultAuthenticatedPath, getSessionUser } from "@/lib/auth";
 import { evidenceSourceHref } from "@/lib/domain";
@@ -107,13 +106,6 @@ function metadataNumber(metadata: unknown, key: string) {
   return typeof value === "number" && Number.isFinite(value) ? value : 0;
 }
 
-function passportId(publicSlug: string, issuedAt: Date | null | undefined) {
-  const checksum = publicSlug.split("").reduce((total, character) => total + character.charCodeAt(0), 0);
-  const year = issuedAt?.getFullYear() ?? new Date().getFullYear();
-
-  return `TE-ID-${year}-${String(checksum).padStart(6, "0")}`;
-}
-
 function publicPassportUrl(publicSlug: string, visibility: string, shareToken: string | null) {
   return publicPassportShareUrl({
     origin: process.env.NEXT_PUBLIC_APP_URL ?? "https://terumbu.eco",
@@ -165,6 +157,12 @@ function publicMetrics(passport: PublicPassport) {
       value: passport.summary.fieldCount.toLocaleString("id-ID"),
       support: "expeditions or volunteering",
       icon: MapPinned
+    },
+    {
+      label: "Carbon",
+      value: passport.summary.carbonKg > 0 ? `${passport.summary.carbonKg.toLocaleString("id-ID", { maximumFractionDigits: 1 })} kg` : "Pending",
+      support: "CO2e from USD donations",
+      icon: Globe2
     },
     {
       label: "Certificates",
@@ -220,17 +218,16 @@ export default async function PublicPassportPage({ params, searchParams }: Publi
   const publicUrl = publicPassportUrl(passport.publicSlug, passport.visibility, token);
   const publicPath = `/passport/${passport.publicSlug}`;
   const loginNextPath = passport.visibility === "link" && token ? `${publicPath}?token=${encodeURIComponent(token)}` : publicPath;
-  const authenticatedCtaHref = sessionUser ? (sessionUser.id === passport.userId ? "/dashboard/passport" : await getDefaultAuthenticatedPath(sessionUser.id)) : null;
+  const authenticatedCtaHref = sessionUser ? (sessionUser.id === passport.userId ? "/dashboard/impact" : await getDefaultAuthenticatedPath(sessionUser.id)) : null;
   const secondaryCta = authenticatedCtaHref
     ? {
         href: authenticatedCtaHref,
-        label: sessionUser?.id === passport.userId ? "Manage Impact Passport" : "Go to Dashboard"
+        label: sessionUser?.id === passport.userId ? "View My Impact" : "Go to Dashboard"
       }
     : {
         href: `/login?next=${encodeURIComponent(loginNextPath)}`,
         label: "Login to Terumbu.eco"
       };
-  const qrSrc = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(publicUrl)}`;
   const locations = itemLocations(passport.items);
   const ecosystems = passport.items.filter((item) => item.itemType === "ecosystem" || metadataNumber(item.metadata, "fragments") > 0).slice(0, 3);
   const fieldItems = passport.items.filter((item) => ["expedition", "volunteer"].includes(item.itemType)).slice(0, 3);
@@ -264,8 +261,8 @@ export default async function PublicPassportPage({ params, searchParams }: Publi
               </div>
             </div>
             <p className="mt-6 max-w-3xl text-lg leading-8 text-white/76">{publicImpactStory(passport)}</p>
-            <div className="mt-7 flex flex-wrap gap-2">
-              <PassportCopyButton value={publicUrl} label="Share Impact Passport" tone="onDark" />
+            <div className="mt-7 grid gap-3">
+              <PassportShareButtons url={publicUrl} title={`${passport.displayName}'s Terumbu.eco Impact Passport`} tone="onDark" />
               <ButtonLink href={secondaryCta.href} tone="primary">
                 {secondaryCta.label}
               </ButtonLink>
@@ -284,13 +281,10 @@ export default async function PublicPassportPage({ params, searchParams }: Publi
                 </p>
               </div>
             </div>
-            <div className="mt-5 rounded-2xl bg-white p-4">
-              <Image src={qrSrc} alt={`QR code for ${passport.displayName}'s Impact Passport`} width={160} height={160} className="mx-auto size-40" />
-            </div>
             <dl className="mt-5 grid gap-3 text-sm">
               <div>
                 <dt className="text-white/52">Passport ID</dt>
-                <dd className="font-bold">{passportId(passport.publicSlug, passport.createdAt)}</dd>
+                <dd className="font-bold">{passport.passportNumber}</dd>
               </div>
               <div>
                 <dt className="text-white/52">Last verified</dt>

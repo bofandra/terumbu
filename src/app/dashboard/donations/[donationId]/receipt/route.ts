@@ -8,9 +8,13 @@ import { buildDonationReceiptDownloadPdf, donationReceiptFilename } from "@/lib/
 
 export const dynamic = "force-dynamic";
 
-const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://terumbu.eco";
+function receiptOrigin(request: Request) {
+  const configuredUrl = process.env.NEXT_PUBLIC_APP_URL?.trim();
 
-export async function GET(_request: Request, { params }: { params: Promise<{ donationId: string }> }) {
+  return configuredUrl ? configuredUrl.replace(/\/+$/, "") : new URL(request.url).origin;
+}
+
+export async function GET(request: Request, { params }: { params: Promise<{ donationId: string }> }) {
   const user = await requireUser("/dashboard/donations");
   const { donationId } = await params;
   const [receipt] = await db
@@ -41,7 +45,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ don
     notFound();
   }
 
-  return new Response(buildDonationReceiptDownloadPdf(receipt, appUrl), {
+  return new Response(buildDonationReceiptDownloadPdf(receipt, receiptOrigin(request)), {
     headers: {
       "Content-Disposition": `attachment; filename="${donationReceiptFilename(receipt)}"`,
       "Content-Type": "application/pdf",

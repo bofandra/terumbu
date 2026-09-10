@@ -33,6 +33,7 @@ function sizeLimitBytes(value: unknown) {
 
 test("donation amount parsing keeps numeric currency input", () => {
   assert.equal(parseDonationAmount("Rp100.000"), 100000);
+  assert.equal(parseDonationAmount("100.50"), 100.5);
   assert.equal(parseDonationAmount("50000"), 50000);
   assert.equal(parseDonationAmount("oops"), 0);
 });

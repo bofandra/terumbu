@@ -23,6 +23,7 @@ import {
 } from "@/db/schema";
 import { requireRole } from "@/lib/auth";
 import { sendAccountSetupEmail, sendEmailVerificationEmail, sendPasswordResetEmail } from "@/lib/auth-tokens";
+import { buildPassportNumber } from "@/lib/impact-calculations";
 import {
   defaultNameForGlobalRole,
   isSystemGlobalRole,
@@ -277,6 +278,7 @@ export async function createAdminUserAction(formData: FormData) {
 
   await db.insert(impactPassports).values({
     userId: createdUser.id,
+    passportNumber: buildPassportNumber(createdUser.id, now),
     publicSlug: `${toSlug(name)}-${randomBytes(3).toString("hex")}`,
     visibility: checked(formData.get("isPublic")) ? "public" : "private",
     story: "An Impact Passport prepared by the Terumbu admin team.",

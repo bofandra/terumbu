@@ -90,9 +90,9 @@ export function SiteHeader({ user }: { user?: SiteHeaderUser | null }) {
                   <LayoutDashboard size={16} aria-hidden="true" />
                   Dashboard
                 </Link>
-                <Link href="/dashboard/passport" className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-bold hover:bg-ocean-50">
+                <Link href="/dashboard/impact" className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-bold hover:bg-ocean-50">
                   <FileBadge size={16} aria-hidden="true" />
-                  Impact Passport
+                  My Impact
                 </Link>
                 <Link href="/dashboard/settings" className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-bold hover:bg-ocean-50">
                   <Settings size={16} aria-hidden="true" />
@@ -153,8 +153,8 @@ export function SiteHeader({ user }: { user?: SiteHeaderUser | null }) {
                   <Link href={user.dashboardHref} className="rounded-xl px-3 py-2 text-sm font-semibold text-white/88 hover:bg-white/10" onClick={() => setIsOpen(false)}>
                     Dashboard
                   </Link>
-                  <Link href="/dashboard/passport" className="rounded-xl px-3 py-2 text-sm font-semibold text-white/88 hover:bg-white/10" onClick={() => setIsOpen(false)}>
-                    Impact Passport
+                  <Link href="/dashboard/impact" className="rounded-xl px-3 py-2 text-sm font-semibold text-white/88 hover:bg-white/10" onClick={() => setIsOpen(false)}>
+                    My Impact
                   </Link>
                   <Link href="/dashboard/settings" className="rounded-xl px-3 py-2 text-sm font-semibold text-white/88 hover:bg-white/10" onClick={() => setIsOpen(false)}>
                     Account settings

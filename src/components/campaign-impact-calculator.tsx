@@ -3,28 +3,44 @@
 import { Calculator, Info } from "lucide-react";
 import { useMemo, useState } from "react";
 
+import { calculateDonationImpact, currencyMinorStep, formatImpactQuantity, minimumDonationAmount } from "@/lib/impact-calculations";
 import { formatCurrency } from "@/lib/utils";
 
 type CampaignImpactCalculatorProps = {
   goal: number;
   impactTarget: number;
   impactUnit: string;
+  impactUnitCost?: string | number | null;
+  currency: string;
+  carbonKgPerUsd?: number | null;
 };
 
-export function CampaignImpactCalculator({ goal, impactTarget, impactUnit }: CampaignImpactCalculatorProps) {
-  const defaultAmount = Math.max(50_000, Math.round(Math.max(1, goal) * 0.001 / 50_000) * 50_000);
+export function CampaignImpactCalculator({ goal, impactTarget, impactUnit, impactUnitCost, currency, carbonKgPerUsd = null }: CampaignImpactCalculatorProps) {
+  const step = currencyMinorStep(currency);
+  const minimumAmount = minimumDonationAmount(currency);
+  const defaultAmount = Math.max(minimumAmount, Math.round((Math.max(1, goal) * 0.001) / step) * step);
   const [amount, setAmount] = useState(defaultAmount);
-  const costPerUnit = goal > 0 && impactTarget > 0 ? goal / impactTarget : 50_000;
   const outputs = useMemo(() => {
-    const units = Math.max(1, Math.round(amount / costPerUnit));
+    const impact = calculateDonationImpact({
+      amount,
+      currency,
+      campaign: {
+        goalAmount: goal,
+        impactTarget,
+        impactUnit,
+        impactUnitCost
+      },
+      carbonKgPerUsd
+    });
     const goalShare = goal > 0 ? Math.min(100, (amount / goal) * 100) : 0;
 
     return [
-      [`${units.toLocaleString("id-ID")} ${impactUnit}`, "Estimated direct restoration output"],
-      [formatCurrency(costPerUnit), `Recorded campaign cost per ${impactUnit}`],
+      [`${formatImpactQuantity(impact.impactUnitCount)} ${impactUnit}`, "Estimated direct restoration output"],
+      [impact.unitCost > 0 ? formatCurrency(impact.unitCost, currency) : "Pending", `Recorded campaign cost per ${impactUnit}`],
+      [impact.carbonKg == null ? "Pending" : `${formatImpactQuantity(impact.carbonKg)} kg CO2e`, "Carbon calculation from global USD formula"],
       [`${goalShare.toLocaleString("id-ID", { maximumFractionDigits: 2 })}%`, "Share of campaign funding goal"]
     ];
-  }, [amount, costPerUnit, goal, impactUnit]);
+  }, [amount, carbonKgPerUsd, currency, goal, impactTarget, impactUnit, impactUnitCost]);
 
   return (
     <section id="impact-calculator" className="rounded-2xl border border-ocean-900/10 bg-white p-6 shadow-soft">
@@ -42,12 +58,12 @@ export function CampaignImpactCalculator({ goal, impactTarget, impactUnit }: Cam
       </div>
 
       <label className="mt-6 grid gap-3 text-sm font-bold text-ocean-900">
-        Contribution amount: <span className="text-2xl text-coral-700">{formatCurrency(amount)}</span>
+        Contribution amount: <span className="text-2xl text-coral-700">{formatCurrency(amount, currency)}</span>
         <input
           type="range"
-          min={50_000}
-          max={5_000_000}
-          step={50_000}
+          min={minimumAmount}
+          max={Math.max(minimumAmount * 5, Math.round(Math.max(goal * 0.01, minimumAmount) / step) * step)}
+          step={step}
           value={amount}
           className="accent-coral-500"
           onChange={(event) => setAmount(Number(event.target.value))}

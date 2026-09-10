@@ -58,8 +58,8 @@ export function CampaignCard({ campaign }: CampaignCardProps) {
           </div>
           <ProgressMeter value={progress} label={`${campaign.title} funding progress`} className="mt-2 h-3" trackClassName="bg-ocean-50" />
           <p className="mt-3 text-sm text-ocean-900/68">
-            <span className="font-bold text-ocean-900">{formatCurrency(campaign.raised)}</span> raised of{" "}
-            {formatCurrency(campaign.goal)}
+            <span className="font-bold text-ocean-900">{formatCurrency(campaign.raised, campaign.currency)}</span> raised of{" "}
+            {formatCurrency(campaign.goal, campaign.currency)}
           </p>
           <p className="mt-1 text-sm text-ocean-900/68">{campaign.impact}</p>
         </div>

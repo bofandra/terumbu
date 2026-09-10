@@ -2,7 +2,7 @@ import { eq } from "drizzle-orm";
 
 import { Button } from "@/components/ui/button";
 import { db } from "@/db/client";
-import { impactPassports, profiles, users } from "@/db/schema";
+import { profiles, users } from "@/db/schema";
 import { requireUser } from "@/lib/auth";
 import { changePasswordAction, updateAccountAction } from "@/lib/auth-actions";
 import { getNotificationPreferences } from "@/lib/queries";
@@ -40,13 +40,10 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
         displayName: profiles.displayName,
         location: profiles.location,
         bio: profiles.bio,
-        isPublic: profiles.isPublic,
-        publicSlug: impactPassports.publicSlug,
-        passportVisibility: impactPassports.visibility
+        isPublic: profiles.isPublic
       })
       .from(users)
       .leftJoin(profiles, eq(profiles.userId, users.id))
-      .leftJoin(impactPassports, eq(impactPassports.userId, users.id))
       .where(eq(users.id, sessionUser.id))
       .limit(1)
       .then((rows) => rows[0]),
@@ -95,18 +92,6 @@ export default async function SettingsPage({ searchParams }: SettingsPageProps) 
             <label className="grid min-w-0 gap-2 text-sm font-semibold text-ocean-900">
               Bio
               <textarea name="bio" defaultValue={account?.bio ?? ""} className="min-h-28 w-full min-w-0 rounded-xl border border-ocean-900/14 px-4 py-3 outline-none focus:border-coral-500" />
-            </label>
-            <label id="privacy" className="grid min-w-0 scroll-mt-24 gap-2 text-sm font-semibold text-ocean-900">
-              Impact Passport visibility
-              <select
-                name="passportVisibility"
-                defaultValue={account?.passportVisibility ?? "private"}
-                className="w-full min-w-0 rounded-xl border border-ocean-900/14 px-4 py-3 outline-none focus:border-coral-500"
-              >
-                <option value="private">Private</option>
-                <option value="link">Link-only</option>
-                <option value="public">Public</option>
-              </select>
             </label>
           </div>
           <Button type="submit" className="mt-6">

@@ -2,7 +2,6 @@ import { ArrowRight, BadgeCheck, BookOpen, Compass, HeartHandshake, MapPinned, P
 
 import { CampaignCard } from "@/components/campaign-card";
 import { FeaturedExpeditionRail } from "@/components/featured-expedition-rail";
-import { HomeCommunitySection } from "@/components/home-community-section";
 import { ImpactMapPreview } from "@/components/impact-map-preview";
 import { PassportPreview } from "@/components/passport-preview";
 import { PartnerLogoStrip } from "@/components/partner-logo-strip";
@@ -55,8 +54,8 @@ const fallbackPassport: PassportPreviewData = {
   levelLabel: "Start at Level 1",
   xp: 0,
   xpTarget: 1000,
-  href: "/login?next=/dashboard/passport",
-  ctaLabel: "Open your passport",
+  href: "/login?next=/dashboard/impact",
+  ctaLabel: "Open My Impact",
   stats: [
     { label: "Donations", value: "0" },
     { label: "Corals", value: "0" },
@@ -216,8 +215,6 @@ export default async function HomePage() {
           </div>
         </div>
       </section>
-
-      <HomeCommunitySection />
 
       <section className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8">
         <div className="grid gap-10 lg:grid-cols-[0.9fr_1.1fr] lg:items-center">

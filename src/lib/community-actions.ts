@@ -187,6 +187,7 @@ async function addCommunityPassportItem(input: {
   description: string;
   evidenceUrl: string;
   occurredAt: Date;
+  metadata?: Record<string, unknown>;
 }) {
   const [passport] = await db.select({ id: impactPassports.id }).from(impactPassports).where(eq(impactPassports.userId, input.userId)).limit(1);
 
@@ -204,7 +205,8 @@ async function addCommunityPassportItem(input: {
       title: input.title,
       description: input.description,
       evidenceUrl: input.evidenceUrl,
-      occurredAt: input.occurredAt
+      occurredAt: input.occurredAt,
+      metadata: input.metadata ?? null
     })
     .onConflictDoUpdate({
       target: [impactPassportItems.passportId, impactPassportItems.sourceType, impactPassportItems.sourceId],
@@ -212,7 +214,8 @@ async function addCommunityPassportItem(input: {
         title: input.title,
         description: input.description,
         evidenceUrl: input.evidenceUrl,
-        occurredAt: input.occurredAt
+        occurredAt: input.occurredAt,
+        metadata: input.metadata ?? null
       }
     });
 }
@@ -793,7 +796,11 @@ export async function markCommunityEventAttendanceAction(formData: FormData) {
     title: registration.eventTitle,
     description: `Attended a Terumbu community event for ${attendanceHours} hours.`,
     evidenceUrl: `/community/events/${registration.eventSlug}`,
-    occurredAt: now
+    occurredAt: now,
+    metadata: {
+      hours: attendanceHours,
+      verificationStatus: "Verified by Terumbu.eco"
+    }
   });
 
   redirect(withStatus(next, "saved", "attendance"));

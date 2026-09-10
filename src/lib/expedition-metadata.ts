@@ -10,6 +10,7 @@ export type ExpeditionGalleryImage = {
 export type ExpeditionDetailMetadata = {
   categoryLabel: string;
   activitySummary: string;
+  documentationUrl: string;
   rating: number;
   reviewCount: number;
   participantCount: number;
@@ -121,6 +122,7 @@ type DefaultExpeditionMetadataInput = {
   region: string;
   durationLabel: string;
   price: number;
+  currency?: string;
   maxCapacity: number;
   galleryImages: ExpeditionGalleryImage[];
   tripUpdates: ExpeditionDetailMetadata["tripUpdates"];
@@ -215,6 +217,7 @@ export function buildDefaultExpeditionDetailMetadata(input: DefaultExpeditionMet
   return {
     categoryLabel: "Coral Restoration Expedition",
     activitySummary: "Boat travel, snorkeling, and outdoor field conditions.",
+    documentationUrl: "",
     rating: 4.9,
     reviewCount: 128,
     participantCount: 340,
@@ -229,7 +232,7 @@ export function buildDefaultExpeditionDetailMetadata(input: DefaultExpeditionMet
       { label: "Difficulty", value: "Moderate" },
       { label: "Min. age", value: "16+ years old" },
       { label: "Swimming ability", value: "Snorkeling required" },
-      { label: "Per person", value: formatCurrency(input.price) }
+      { label: "Per person", value: formatCurrency(input.price, input.currency) }
     ],
     galleryImages: input.galleryImages,
     hostedBy: input.hostedBy ?? {
@@ -459,6 +462,7 @@ export function normalizeExpeditionDetailMetadata(metadata: unknown, defaults: E
   return {
     categoryLabel: text(source.categoryLabel, defaults.categoryLabel),
     activitySummary: text(source.activitySummary, defaults.activitySummary),
+    documentationUrl: typeof source.documentationUrl === "string" ? source.documentationUrl.trim() : defaults.documentationUrl,
     rating: numberValue(source.rating, defaults.rating),
     reviewCount: numberValue(source.reviewCount, defaults.reviewCount),
     participantCount: numberValue(source.participantCount, defaults.participantCount),

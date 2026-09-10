@@ -293,8 +293,6 @@ export async function updateAccountAction(formData: FormData) {
   const displayName = String(formData.get("displayName") ?? "").trim();
   const location = String(formData.get("location") ?? "").trim();
   const bio = String(formData.get("bio") ?? "").trim();
-  const passportVisibility = normalizePassportVisibility(formData.get("passportVisibility"));
-  const isPublic = passportVisibility !== "private";
   const now = new Date();
 
   if (!name || !displayName) {
@@ -303,14 +301,6 @@ export async function updateAccountAction(formData: FormData) {
 
   await db.update(users).set({ name, updatedAt: now }).where(eq(users.id, user.id));
 
-  const [passport] = await db
-    .select({
-      shareToken: impactPassports.shareToken
-    })
-    .from(impactPassports)
-    .where(eq(impactPassports.userId, user.id))
-    .limit(1);
-
   await db
     .insert(profiles)
     .values({
@@ -318,7 +308,6 @@ export async function updateAccountAction(formData: FormData) {
       displayName,
       location,
       bio,
-      isPublic,
       updatedAt: now
     })
     .onConflictDoUpdate({
@@ -327,20 +316,9 @@ export async function updateAccountAction(formData: FormData) {
         displayName,
         location,
         bio,
-        isPublic,
         updatedAt: now
       }
     });
-
-  await db
-    .update(impactPassports)
-    .set({
-      visibility: passportVisibility,
-      shareToken: passportVisibility === "link" ? passport?.shareToken ?? newPassportShareToken() : passport?.shareToken ?? null,
-      ...(passportVisibility === "link" ? { shareUpdatedAt: now } : {}),
-      updatedAt: now
-    })
-    .where(eq(impactPassports.userId, user.id));
 
   redirect("/dashboard/settings?saved=profile");
 }

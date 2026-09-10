@@ -13,6 +13,7 @@ export type CampaignCardData = {
   imageUrl: string | null;
   raised: number;
   goal: number;
+  currency: string;
   donors: number;
   daysLeft: number;
   impact: string;
@@ -26,6 +27,7 @@ export type ExpeditionCardData = {
   region: string;
   duration: string;
   price: number;
+  currency: string;
   availabilityLabel: string;
   imageUrl: string | null;
   summary: string;
@@ -117,9 +119,11 @@ type CampaignRow = {
   imageUrl: string | null;
   raisedAmount: string | number;
   goalAmount: string | number;
+  currency: string;
   donorCount: number;
   impactUnit: string;
   impactTarget: number;
+  impactUnitCost?: string | number | null;
   endsAt: Date | null;
   partner: string;
   verification: string;
@@ -131,6 +135,7 @@ type ExpeditionRow = {
   region: string;
   durationDays: number;
   basePrice: string | number;
+  currency: string;
   imageUrl: string | null;
   summary: string;
 };
@@ -265,6 +270,7 @@ export function toCampaignCard(row: CampaignRow, now = new Date()): CampaignCard
     imageUrl: row.imageUrl,
     raised: toNumber(row.raisedAmount),
     goal: toNumber(row.goalAmount),
+    currency: row.currency,
     donors: row.donorCount,
     daysLeft: daysUntil(row.endsAt, now),
     impact: `${row.impactTarget.toLocaleString("id-ID")} ${row.impactUnit} target`,
@@ -273,11 +279,12 @@ export function toCampaignCard(row: CampaignRow, now = new Date()): CampaignCard
   };
 }
 
-export function suggestedDonationAmounts(goal: number) {
+export function suggestedDonationAmounts(goal: number, currency = "USD") {
   const baseline = Math.max(1, goal);
+  const normalizedCurrency = currency.toUpperCase();
   const amounts = [0.0002, 0.0005, 0.001].map((multiplier) => {
     const amount = baseline * multiplier;
-    const step = amount >= 1_000_000 ? 100_000 : 50_000;
+    const step = normalizedCurrency === "IDR" ? (amount >= 1_000_000 ? 100_000 : 50_000) : amount >= 1_000 ? 100 : 10;
 
     return Math.max(step, Math.round(amount / step) * step);
   });
@@ -292,6 +299,7 @@ export function toExpeditionCard(row: ExpeditionRow, availabilityLabel = "Depart
     region: row.region,
     duration: `${row.durationDays} days / ${Math.max(0, row.durationDays - 1)} nights`,
     price: toNumber(row.basePrice),
+    currency: row.currency,
     availabilityLabel,
     imageUrl: row.imageUrl,
     summary: row.summary

@@ -477,7 +477,7 @@ export default async function CourseDetailPage({ params }: { params: Promise<{ s
               Certificates verify course completion, learning hours, and assessment result. They do not imply professional licensing.
             </p>
             {course.certificate ? (
-              <ButtonLink href="/dashboard/certificates" tone="secondary" className="mt-4 w-full">
+              <ButtonLink href="/dashboard/academy#certificates" tone="secondary" className="mt-4 w-full">
                 <FileBadge size={18} aria-hidden="true" />
                 View Certificate
               </ButtonLink>

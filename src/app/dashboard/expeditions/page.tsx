@@ -1,12 +1,13 @@
 import Link from "next/link";
-import { BookmarkX, CalendarDays, Heart, RefreshCw, RotateCcw, Star } from "lucide-react";
+import Image from "next/image";
+import { ArrowRight, BookmarkX, CalendarDays, Heart, RefreshCw, Star } from "lucide-react";
 
-import { requestExpeditionRefundAction, retryExpeditionPaymentAction } from "@/lib/billing-actions";
+import { retryExpeditionPaymentAction } from "@/lib/billing-actions";
 import { submitExpeditionReviewAction } from "@/lib/expedition-review-actions";
 import { expeditionReviewStatusLabel, normalizeExpeditionReviewStatus, type ExpeditionReviewStatus } from "@/lib/expedition-reviews";
 import { Button, ButtonLink } from "@/components/ui/button";
 import { requireUser } from "@/lib/auth";
-import { getBillingData, getDashboardData } from "@/lib/queries";
+import { getDashboardData, getExpeditionCards } from "@/lib/queries";
 import { removeSavedExpeditionAction } from "@/lib/retention-actions";
 import { formatCurrency } from "@/lib/utils";
 
@@ -66,7 +67,7 @@ function reviewStatusDescription(status: ExpeditionReviewStatus | null) {
 export default async function DashboardExpeditionsPage({ searchParams }: DashboardExpeditionsPageProps) {
   const params = await searchParams;
   const user = await requireUser("/dashboard/expeditions");
-  const [data, billing] = await Promise.all([getDashboardData(user.id), getBillingData(user.id)]);
+  const [data, highlightedExpeditions] = await Promise.all([getDashboardData(user.id), getExpeditionCards(3)]);
 
   return (
     <main className="mx-auto max-w-5xl px-4 py-8 sm:px-6 lg:px-8">
@@ -100,6 +101,44 @@ export default async function DashboardExpeditionsPage({ searchParams }: Dashboa
       ) : null}
 
       <section className="mt-6 rounded-2xl border border-ocean-900/10 bg-white p-5 shadow-soft">
+        <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
+          <div>
+            <h2 className="text-2xl font-bold tracking-normal text-ocean-900">Book a new expedition</h2>
+            <p className="mt-1 text-sm font-semibold text-ocean-900/58">Pick one of the latest field activities, or browse the full expedition catalog.</p>
+          </div>
+          <ButtonLink href="/expeditions" tone="secondary">
+            Browse all
+          </ButtonLink>
+        </div>
+        <div className="mt-4 flex snap-x gap-4 overflow-x-auto pb-2 lg:grid lg:grid-cols-3 lg:overflow-visible lg:pb-0">
+          {highlightedExpeditions.map((expedition) => (
+            <Link
+              key={expedition.slug}
+              href={`/expeditions/${expedition.slug}`}
+              className="group grid min-w-[280px] snap-start overflow-hidden rounded-xl border border-ocean-900/10 bg-sand-50 text-left transition hover:border-coral-500 sm:min-w-[320px] lg:min-w-0"
+            >
+              <div className="relative h-40 bg-ocean-900">
+                {expedition.imageUrl ? (
+                  <Image src={expedition.imageUrl} alt="" fill className="object-cover transition group-hover:scale-[1.02]" sizes="(min-width: 1024px) 300px, 80vw" />
+                ) : null}
+              </div>
+              <div className="grid gap-2 p-4">
+                <p className="text-xs font-bold uppercase tracking-[0.14em] text-coral-700">{expedition.region}</p>
+                <h3 className="text-lg font-bold tracking-normal text-ocean-900 group-hover:text-coral-700">{expedition.title}</h3>
+                <p className="line-clamp-2 text-sm leading-6 text-ocean-900/62">{expedition.summary}</p>
+                <div className="mt-2 flex items-center justify-between gap-3 text-sm font-bold text-ocean-900">
+                  <span>{formatCurrency(expedition.price, expedition.currency)}</span>
+                  <span className="inline-flex items-center gap-1 text-coral-700">
+                    Detail <ArrowRight size={15} aria-hidden="true" />
+                  </span>
+                </div>
+              </div>
+            </Link>
+          ))}
+        </div>
+      </section>
+
+      <section className="mt-6 rounded-2xl border border-ocean-900/10 bg-white p-5 shadow-soft">
         <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
           <div>
             <h2 className="flex items-center gap-2 text-2xl font-bold tracking-normal text-ocean-900">
@@ -110,9 +149,6 @@ export default async function DashboardExpeditionsPage({ searchParams }: Dashboa
               {data.savedExpeditions.length.toLocaleString("id-ID")} saved expedition{data.savedExpeditions.length === 1 ? "" : "s"}.
             </p>
           </div>
-          <Link href="/dashboard/saved" className="text-sm font-bold text-coral-700 hover:text-coral-500">
-            View all saved
-          </Link>
         </div>
 
         <div className="mt-4 grid gap-3 md:grid-cols-2">
@@ -124,7 +160,7 @@ export default async function DashboardExpeditionsPage({ searchParams }: Dashboa
                     {expedition.title}
                   </Link>
                   <p className="mt-1 text-sm text-ocean-900/58">
-                    {expedition.region} · {expedition.duration} · from {formatCurrency(expedition.price)}
+                    {expedition.region} · {expedition.duration} · from {formatCurrency(expedition.price, expedition.currency)}
                   </p>
                   <p className="mt-2 text-xs font-semibold text-ocean-900/50">
                     Saved {expedition.savedAt.toLocaleDateString("id-ID", { dateStyle: "medium" })}
@@ -174,11 +210,8 @@ export default async function DashboardExpeditionsPage({ searchParams }: Dashboa
                       <span className="rounded-full bg-sand-50 px-3 py-1">{booking.bookingCode}</span>
                       <span className={`rounded-full px-3 py-1 ${statusClass(booking.status)}`}>{booking.status}</span>
                       <span className={`rounded-full px-3 py-1 ${statusClass(booking.paymentStatus)}`}>{booking.paymentStatus}</span>
-                      <span className="rounded-full bg-ocean-50 px-3 py-1">{formatCurrency(Number(booking.totalAmount))}</span>
+                      <span className="rounded-full bg-ocean-50 px-3 py-1">{formatCurrency(Number(booking.totalAmount), booking.currency)}</span>
                     </div>
-                    {billing.pendingRefundBookingIds.has(booking.id) ? (
-                      <p className="mt-3 inline-flex rounded-full bg-sand-100 px-3 py-1 text-xs font-bold text-ocean-900/70">Refund requested</p>
-                    ) : null}
                   </div>
                 </div>
                 <div className="flex flex-wrap gap-2 md:justify-end">
@@ -188,16 +221,6 @@ export default async function DashboardExpeditionsPage({ searchParams }: Dashboa
                       <button className="inline-flex min-h-9 items-center gap-2 rounded-full border border-ocean-900/10 px-3 text-xs font-bold text-ocean-900 hover:border-coral-500" type="submit">
                         <RefreshCw size={14} aria-hidden="true" />
                         Retry
-                      </button>
-                    </form>
-                  ) : null}
-                  {booking.paymentStatus === "paid" && !billing.pendingRefundBookingIds.has(booking.id) ? (
-                    <form action={requestExpeditionRefundAction}>
-                      <input type="hidden" name="bookingId" value={booking.id} />
-                      <input type="hidden" name="reason" value="Requested from expedition booking history" />
-                      <button className="inline-flex min-h-9 items-center gap-2 rounded-full border border-ocean-900/10 px-3 text-xs font-bold text-coral-700 hover:border-coral-500" type="submit">
-                        <RotateCcw size={14} aria-hidden="true" />
-                        Request refund
                       </button>
                     </form>
                   ) : null}

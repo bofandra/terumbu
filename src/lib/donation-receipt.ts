@@ -34,7 +34,7 @@ function formatCurrency(value: string | number, currency: string) {
     style: "currency",
     currency: currency || "IDR",
     currencyDisplay: "code",
-    maximumFractionDigits: 0
+    maximumFractionDigits: (currency || "IDR").toUpperCase() === "IDR" ? 0 : 2
   }).format(Number.isFinite(parsed) ? parsed : 0);
 }
 

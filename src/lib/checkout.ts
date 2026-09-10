@@ -1,11 +1,37 @@
 export function parseDonationAmount(value: FormDataEntryValue | string | number | null | undefined) {
-  const raw = typeof value === "number" ? value : Number(String(value ?? "").replace(/[^0-9]/g, ""));
+  if (typeof value === "number") {
+    return Number.isFinite(value) ? Math.max(0, Math.round(value * 100) / 100) : 0;
+  }
+
+  const normalized = String(value ?? "")
+    .trim()
+    .replace(/[^0-9.,]/g, "");
+
+  if (!normalized) {
+    return 0;
+  }
+
+  const lastComma = normalized.lastIndexOf(",");
+  const lastDot = normalized.lastIndexOf(".");
+  const raw = Number(
+    lastComma >= 0 && lastDot >= 0
+      ? lastComma > lastDot
+        ? normalized.replace(/\./g, "").replace(",", ".")
+        : normalized.replace(/,/g, "")
+      : lastComma >= 0
+        ? normalized.split(",").at(-1)?.length === 3
+          ? normalized.replace(/,/g, "")
+          : normalized.replace(",", ".")
+        : normalized.split(".").length > 2 || normalized.split(".").at(-1)?.length === 3
+          ? normalized.replace(/\./g, "")
+          : normalized
+  );
 
   if (!Number.isFinite(raw)) {
     return 0;
   }
 
-  return Math.max(0, Math.round(raw));
+  return Math.max(0, Math.round(raw * 100) / 100);
 }
 
 export type DonationContributionIntent = "one-time" | "coral";
@@ -44,7 +70,7 @@ export function calculateBookingTotal(basePrice: string | number, participantCou
     return 0;
   }
 
-  return Math.max(0, Math.round(price * participantCount));
+  return Math.max(0, Math.round(price * participantCount * 100) / 100);
 }
 
 export function buildReceiptNumber(sequence: string | number, issuedAt = new Date()) {

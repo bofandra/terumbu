@@ -183,9 +183,15 @@ export default async function AdminCampaignNewPage({ searchParams }: AdminCampai
               <input name="region" placeholder="Raja Ampat" className={adminInputClassName} required />
             </Field>
           </div>
-          <div className="grid gap-3 lg:grid-cols-3">
+          <div className="grid gap-3 lg:grid-cols-4">
             <Field label="Goal amount" required>
-              <input name="goalAmount" type="number" min={1000} step={1000} placeholder="500000000" className={adminInputClassName} required />
+              <input name="goalAmount" type="number" min={1} step="0.01" placeholder="5000" className={adminInputClassName} required />
+            </Field>
+            <Field label="Currency" required>
+              <select name="currency" defaultValue="USD" className={adminInputClassName} required>
+                <option value="USD">USD</option>
+                <option value="IDR">IDR</option>
+              </select>
             </Field>
             <Field label="Impact target" required>
               <input name="impactTarget" type="number" min={1} placeholder="10000" className={adminInputClassName} required />
@@ -194,6 +200,9 @@ export default async function AdminCampaignNewPage({ searchParams }: AdminCampai
               <input name="impactUnit" placeholder="coral fragments" className={adminInputClassName} required />
             </Field>
           </div>
+          <Field label="Cost per impact unit">
+            <input name="impactUnitCost" type="number" min={0} step="0.01" placeholder="Leave blank to use goal divided by target" className={adminInputClassName} />
+          </Field>
 
           <section className="-mx-4 border-y border-ocean-900/10 bg-sand-50 px-4 py-5" aria-labelledby="initial-impact-site-title">
             <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-start">

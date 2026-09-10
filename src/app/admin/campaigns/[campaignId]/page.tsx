@@ -200,7 +200,7 @@ export default async function AdminCampaignDetailPage({ params, searchParams }: 
             <div className="mt-4 max-w-2xl">
               <ProgressMeter value={progress} label={`${campaign.title} funding progress`} trackClassName="bg-sand-100" />
               <p className="mt-2 text-sm font-bold text-ocean-900">
-                {formatCurrency(Number(campaign.raisedAmount))} / {formatCurrency(Number(campaign.goalAmount))}
+                {formatCurrency(Number(campaign.raisedAmount), campaign.currency)} / {formatCurrency(Number(campaign.goalAmount), campaign.currency)}
               </p>
               <p className="mt-1 text-xs font-semibold text-ocean-900/54">
                 {campaign.donorCount.toLocaleString("id-ID")} donors / {campaign.impactTarget.toLocaleString("id-ID")} {campaign.impactUnit}
@@ -258,9 +258,15 @@ export default async function AdminCampaignDetailPage({ params, searchParams }: 
               <input name="region" defaultValue={campaign.region} className={adminInputClassName} required />
             </Field>
           </div>
-          <div className="grid gap-3 lg:grid-cols-3">
+          <div className="grid gap-3 lg:grid-cols-4">
             <Field label="Goal amount">
-              <input name="goalAmount" type="number" min={1000} step={1000} defaultValue={Math.round(Number(campaign.goalAmount))} className={adminInputClassName} required />
+              <input name="goalAmount" type="number" min={1} step="0.01" defaultValue={Number(campaign.goalAmount)} className={adminInputClassName} required />
+            </Field>
+            <Field label="Currency">
+              <select name="currency" defaultValue={campaign.currency ?? "USD"} className={adminInputClassName} required>
+                <option value="USD">USD</option>
+                <option value="IDR">IDR</option>
+              </select>
             </Field>
             <Field label="Impact target">
               <input name="impactTarget" type="number" min={1} defaultValue={campaign.impactTarget} className={adminInputClassName} required />
@@ -269,6 +275,9 @@ export default async function AdminCampaignDetailPage({ params, searchParams }: 
               <input name="impactUnit" defaultValue={campaign.impactUnit} className={adminInputClassName} required />
             </Field>
           </div>
+          <Field label="Cost per impact unit">
+            <input name="impactUnitCost" type="number" min={0} step="0.01" defaultValue={campaign.impactUnitCost ? Number(campaign.impactUnitCost) : undefined} placeholder="Leave blank to use goal divided by target" className={adminInputClassName} />
+          </Field>
           <Field label="Replace image">
             <input name="imageFile" type="file" accept="image/png,image/jpeg,image/webp,image/gif" className={adminInputClassName} />
           </Field>

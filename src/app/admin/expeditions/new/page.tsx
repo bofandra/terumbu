@@ -124,14 +124,23 @@ export default async function AdminExpeditionNewPage({ searchParams }: AdminExpe
               <input name="durationDays" type="number" min={1} defaultValue={4} className={adminInputClassName} required />
             </Field>
             <Field label="Base price" required>
-              <input name="basePrice" type="number" min={1} step={1000} placeholder="2500000" className={adminInputClassName} required />
+              <input name="basePrice" type="number" min={1} step={0.01} placeholder="250.00" className={adminInputClassName} required />
             </Field>
-            <Field label="Related campaign" className="lg:col-span-2">
+            <Field label="Currency" required>
+              <select name="currency" defaultValue="USD" className={adminSelectClassName} required>
+                <option value="USD">USD</option>
+                <option value="IDR">IDR</option>
+              </select>
+            </Field>
+            <Field label="Related campaign">
               <RelatedCampaignSelect campaigns={data.campaignOptions} />
             </Field>
           </div>
           <Field label="Upload image" help={imageUploadHelp}>
             <input name="imageFile" type="file" accept="image/png,image/jpeg,image/webp,image/gif" className={adminInputClassName} />
+          </Field>
+          <Field label="Documentation link">
+            <input name="documentationUrl" type="url" placeholder="https://drive.google.com/..." className={adminInputClassName} />
           </Field>
           <Field label="Summary" required>
             <textarea name="summary" placeholder="Trip summary shown on public expedition cards and detail pages." className={adminTextareaClassName} required />

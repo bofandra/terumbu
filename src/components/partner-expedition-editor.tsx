@@ -78,7 +78,7 @@ function CreateExpeditionForm({ campaigns, canManageExpeditions }: { campaigns: 
             <input name="slug" placeholder="raja-ampat-coral-restoration" className={inputClassName} required />
           </Field>
         </div>
-        <div className="grid gap-3 md:grid-cols-3">
+        <div className="grid gap-3 md:grid-cols-4">
           <Field label="Region">
             <input name="region" placeholder="Raja Ampat" className={inputClassName} required />
           </Field>
@@ -86,7 +86,13 @@ function CreateExpeditionForm({ campaigns, canManageExpeditions }: { campaigns: 
             <input name="durationDays" type="number" min={1} defaultValue={4} className={inputClassName} required />
           </Field>
           <Field label="Base price">
-            <input name="basePrice" type="number" min={1} step={1000} placeholder="2500000" className={inputClassName} required />
+            <input name="basePrice" type="number" min={1} step={0.01} placeholder="250.00" className={inputClassName} required />
+          </Field>
+          <Field label="Currency">
+            <select name="currency" defaultValue="USD" className={inputClassName} required>
+              <option value="USD">USD</option>
+              <option value="IDR">IDR</option>
+            </select>
           </Field>
         </div>
         <div className="grid gap-3 md:grid-cols-2">
@@ -208,6 +214,15 @@ function DetailFields({ detail }: { detail: ExpeditionDetailMetadata }) {
           </div>
           <Field label="Activity summary">
             <input name="activitySummary" defaultValue={detail.activitySummary} className={inputClassName} />
+          </Field>
+          <Field label="Documentation link">
+            <input
+              name="documentationUrl"
+              type="url"
+              defaultValue={detail.documentationUrl}
+              placeholder="https://drive.google.com/..."
+              className={inputClassName}
+            />
           </Field>
           <div className="rounded-lg border border-ocean-900/10 bg-sand-50 p-3">
             <p className="text-sm font-bold text-ocean-900">Participant reviews</p>
@@ -493,7 +508,7 @@ function ExpeditionDetailForm({ expedition, campaigns }: { expedition: Expeditio
           <input name="slug" defaultValue={expedition.slug} className={inputClassName} required />
         </Field>
       </div>
-      <div className="grid gap-3 md:grid-cols-3">
+      <div className="grid gap-3 md:grid-cols-4">
         <Field label="Region">
           <input name="region" defaultValue={expedition.region} className={inputClassName} required />
         </Field>
@@ -501,7 +516,13 @@ function ExpeditionDetailForm({ expedition, campaigns }: { expedition: Expeditio
           <input name="durationDays" type="number" min={1} defaultValue={expedition.durationDays} className={inputClassName} required />
         </Field>
         <Field label="Base price">
-          <input name="basePrice" type="number" min={1} step={1000} defaultValue={expedition.basePrice} className={inputClassName} required />
+          <input name="basePrice" type="number" min={1} step={0.01} defaultValue={expedition.basePrice} className={inputClassName} required />
+        </Field>
+        <Field label="Currency">
+          <select name="currency" defaultValue={expedition.currency} className={inputClassName} required>
+            <option value="USD">USD</option>
+            <option value="IDR">IDR</option>
+          </select>
         </Field>
       </div>
       <div className="grid gap-3 md:grid-cols-2">
@@ -672,7 +693,7 @@ export function PartnerExpeditionWorkspace({
                 <StatusBadge value={expedition.relatedCampaignTitle ? "published" : "draft"} />
               </div>
               <p className="mt-1 text-sm font-semibold text-ocean-900/58">
-                {expedition.partner ?? "Partner"} / {expedition.region} / {expedition.durationDays} days / {formatCurrency(expedition.basePrice)}
+                {expedition.partner ?? "Partner"} / {expedition.region} / {expedition.durationDays} days / {formatCurrency(expedition.basePrice, expedition.currency)}
               </p>
               <p className="mt-2 text-xs font-bold uppercase tracking-[0.12em] text-ocean-900/44">
                 {expedition.departures.length.toLocaleString("id-ID")} departures / {expedition.bookingCount.toLocaleString("id-ID")} bookings / {expedition.interestRequests.length.toLocaleString("id-ID")} requests

@@ -5,6 +5,7 @@ import {
   BadgeCheck,
   CalendarDays,
   CheckCircle2,
+  ExternalLink,
   Home,
   Info,
   Languages,
@@ -71,6 +72,7 @@ export default async function ExpeditionDetailPage({
   const bookingProps = {
     slug: expedition.slug,
     price: expedition.price,
+    currency: expedition.currency,
     equipmentRental: expedition.priceBreakdown.equipmentRental,
     platformFee: expedition.priceBreakdown.platformFee,
     departures: expedition.departures,
@@ -261,7 +263,7 @@ export default async function ExpeditionDetailPage({
                 <p className="text-sm font-bold uppercase tracking-[0.16em] text-coral-700">Conservation impact</p>
                 <h2 className="mt-3 text-3xl font-bold tracking-normal text-ocean-900">{expedition.impact.title}</h2>
                 <p className="mt-3 text-sm leading-7 text-ocean-900/68">
-                  {formatCurrency(expedition.impact.conservationContribution)} from each booking. {expedition.impact.summary}
+                  {formatCurrency(expedition.impact.conservationContribution, expedition.currency)} from each booking. {expedition.impact.summary}
                 </p>
                 <div className="mt-6 grid gap-3 sm:grid-cols-2">
                   {expedition.impact.targets.map((target) => (
@@ -287,7 +289,7 @@ export default async function ExpeditionDetailPage({
                       <div key={item.label}>
                         <div className="flex justify-between gap-3 text-sm font-bold text-ocean-900">
                           <span>{item.label}</span>
-                          <span>{item.percent}% · {formatCurrency(percentAmount(expedition.price, item.percent))}</span>
+                          <span>{item.percent}% · {formatCurrency(percentAmount(expedition.price, item.percent), expedition.currency)}</span>
                         </div>
                         <ProgressMeter value={item.percent} label={`${item.label} allocation`} className="mt-2 h-2" indicatorClassName="bg-kelp-500" trackClassName="bg-ocean-50" />
                       </div>
@@ -722,6 +724,17 @@ export default async function ExpeditionDetailPage({
                     </div>
                   ))}
                 </div>
+                {expedition.documentationUrl ? (
+                  <a
+                    href={expedition.documentationUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="mt-5 inline-flex min-h-11 items-center gap-2 rounded-full border border-ocean-900/10 px-4 text-sm font-bold text-coral-700 hover:border-coral-500"
+                  >
+                    <ExternalLink size={16} aria-hidden="true" />
+                    View expedition documentation
+                  </a>
+                ) : null}
               </article>
               <article className="rounded-2xl border border-ocean-900/10 bg-white p-6 shadow-soft">
                 <p className="text-sm font-bold uppercase tracking-[0.16em] text-coral-700">Cancellation policy</p>

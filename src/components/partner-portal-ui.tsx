@@ -319,9 +319,15 @@ export function CampaignFields({ campaign, organizations }: { campaign?: Campaig
         <input name="region" defaultValue={campaign?.region} placeholder="Raja Ampat, Southwest Papua" className={inputClassName} required />
       </Field>
 
-      <div className="grid gap-3 md:grid-cols-3">
+      <div className="grid gap-3 md:grid-cols-4">
         <Field label="Goal amount" required>
-          <input name="goalAmount" type="number" min="1000" step="1000" defaultValue={campaign ? Math.round(Number(campaign.goalAmount)) : undefined} className={inputClassName} required />
+          <input name="goalAmount" type="number" min="1" step="0.01" defaultValue={campaign ? Number(campaign.goalAmount) : undefined} className={inputClassName} required />
+        </Field>
+        <Field label="Currency" required>
+          <select name="currency" defaultValue={campaign?.currency ?? "USD"} className={inputClassName} required>
+            <option value="USD">USD</option>
+            <option value="IDR">IDR</option>
+          </select>
         </Field>
         <Field label="Impact target" required>
           <input name="impactTarget" type="number" min="1" step="1" defaultValue={campaign?.impactTarget} className={inputClassName} required />
@@ -330,6 +336,9 @@ export function CampaignFields({ campaign, organizations }: { campaign?: Campaig
           <input name="impactUnit" defaultValue={campaign?.impactUnit} placeholder="coral fragments" className={inputClassName} required />
         </Field>
       </div>
+      <Field label="Cost per impact unit">
+        <input name="impactUnitCost" type="number" min="0" step="0.01" defaultValue={campaign?.impactUnitCost ? Number(campaign.impactUnitCost) : undefined} placeholder="Leave blank to use goal divided by target" className={inputClassName} />
+      </Field>
 
       <Field label="Campaign end date">
         <input name="endsAt" type="date" defaultValue={campaign ? dateValue(campaign.endsAt) : undefined} className={inputClassName} />
@@ -879,7 +888,7 @@ export function CampaignList({
                 <div className="mt-4">
                   <ProgressMeter value={progress} label={`${campaign.title} funding progress`} trackClassName="bg-white" />
                   <p className="mt-2 text-sm font-bold text-ocean-900">
-                    {formatCurrency(Number(campaign.raisedAmount))} / {formatCurrency(Number(campaign.goalAmount))}
+                    {formatCurrency(Number(campaign.raisedAmount), campaign.currency)} / {formatCurrency(Number(campaign.goalAmount), campaign.currency)}
                   </p>
                   <p className="mt-1 text-xs font-semibold text-ocean-900/58">{campaign.donorCount.toLocaleString("id-ID")} donors</p>
                 </div>

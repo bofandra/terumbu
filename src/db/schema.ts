@@ -138,6 +138,17 @@ export const profiles = pgTable("profiles", {
   userIdx: uniqueIndex("profiles_user_idx").on(table.userId)
 }));
 
+export const platformSettings = pgTable("platform_settings", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  key: varchar("key", { length: 120 }).notNull(),
+  value: jsonb("value"),
+  updatedByUserId: uuid("updated_by_user_id").references(() => users.id, { onDelete: "set null" }),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull()
+}, (table) => ({
+  keyIdx: uniqueIndex("platform_settings_key_idx").on(table.key)
+}));
+
 export const userPaymentMethods = pgTable("user_payment_methods", {
   id: uuid("id").defaultRandom().primaryKey(),
   userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
@@ -199,9 +210,11 @@ export const campaigns = pgTable("campaigns", {
   imageUrl: text("image_url"),
   goalAmount: numeric("goal_amount", { precision: 14, scale: 2 }).notNull(),
   raisedAmount: numeric("raised_amount", { precision: 14, scale: 2 }).default("0").notNull(),
+  currency: varchar("currency", { length: 8 }).default("USD").notNull(),
   donorCount: integer("donor_count").default(0).notNull(),
   impactUnit: varchar("impact_unit", { length: 120 }).notNull(),
   impactTarget: integer("impact_target").notNull(),
+  impactUnitCost: numeric("impact_unit_cost", { precision: 14, scale: 2 }),
   status: campaignStatus("status").default("draft").notNull(),
   publishedAt: timestamp("published_at", { withTimezone: true }),
   endsAt: timestamp("ends_at", { withTimezone: true }),
@@ -508,7 +521,7 @@ export const donations = pgTable("donations", {
   donorName: varchar("donor_name", { length: 160 }),
   donorEmail: varchar("donor_email", { length: 255 }),
   amount: numeric("amount", { precision: 14, scale: 2 }).notNull(),
-  currency: varchar("currency", { length: 8 }).default("IDR").notNull(),
+  currency: varchar("currency", { length: 8 }).default("USD").notNull(),
   status: paymentStatus("status").default("created").notNull(),
   message: text("message"),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull()
@@ -570,6 +583,7 @@ export const expeditions = pgTable("expeditions", {
   region: varchar("region", { length: 120 }).notNull(),
   durationDays: integer("duration_days").notNull(),
   basePrice: numeric("base_price", { precision: 14, scale: 2 }).notNull(),
+  currency: varchar("currency", { length: 8 }).default("USD").notNull(),
   summary: text("summary").notNull(),
   imageUrl: text("image_url"),
   relatedCampaignId: uuid("related_campaign_id").references(() => campaigns.id, { onDelete: "set null" }),
@@ -618,7 +632,7 @@ export const expeditionBookings = pgTable("expedition_bookings", {
   participantsCount: integer("participants_count").notNull(),
   idempotencyKey: varchar("idempotency_key", { length: 160 }),
   totalAmount: numeric("total_amount", { precision: 14, scale: 2 }).notNull(),
-  currency: varchar("currency", { length: 8 }).default("IDR").notNull(),
+  currency: varchar("currency", { length: 8 }).default("USD").notNull(),
   status: bookingStatus("status").default("pending_payment").notNull(),
   paymentStatus: paymentStatus("payment_status").default("created").notNull(),
   bookedAt: timestamp("booked_at", { withTimezone: true }).defaultNow().notNull(),
@@ -721,7 +735,7 @@ export const paymentOperations = pgTable("payment_operations", {
   processedByUserId: uuid("processed_by_user_id").references(() => users.id, { onDelete: "set null" }),
   status: varchar("status", { length: 80 }).default("pending").notNull(),
   amount: numeric("amount", { precision: 14, scale: 2 }),
-  currency: varchar("currency", { length: 8 }).default("IDR").notNull(),
+  currency: varchar("currency", { length: 8 }).default("USD").notNull(),
   provider: varchar("provider", { length: 80 }).default("demo_gateway").notNull(),
   providerReference: varchar("provider_reference", { length: 255 }),
   reason: text("reason"),
@@ -883,6 +897,7 @@ export const courseCertificates = pgTable("course_certificates", {
 export const impactPassports = pgTable("impact_passports", {
   id: uuid("id").defaultRandom().primaryKey(),
   userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  passportNumber: varchar("passport_number", { length: 32 }).notNull(),
   publicSlug: varchar("public_slug", { length: 180 }).notNull(),
   visibility: varchar("visibility", { length: 40 }).default("private").notNull(),
   story: text("story"),
@@ -896,6 +911,7 @@ export const impactPassports = pgTable("impact_passports", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull()
 }, (table) => ({
   userIdx: uniqueIndex("impact_passports_user_idx").on(table.userId),
+  numberIdx: uniqueIndex("impact_passports_number_idx").on(table.passportNumber),
   slugIdx: uniqueIndex("impact_passports_public_slug_idx").on(table.publicSlug)
 }));
 

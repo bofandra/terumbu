@@ -7,15 +7,17 @@ import { formatCurrency } from "@/lib/utils";
 type DonationAmountFieldsProps = {
   amounts: number[];
   defaultAmount: number;
+  currency: string;
   defaultCustomAmount?: number | string;
 };
 
 export function DonationAmountFields({
   amounts,
   defaultAmount,
+  currency,
   defaultCustomAmount = ""
 }: DonationAmountFieldsProps) {
-  const initialCustomAmount = String(defaultCustomAmount).replace(/[^0-9]/g, "");
+  const initialCustomAmount = String(defaultCustomAmount).replace(/[^0-9.]/g, "");
   const [selectedAmount, setSelectedAmount] = useState(defaultAmount);
   const [customAmount, setCustomAmount] = useState(initialCustomAmount);
   const [isCustomAmountSelected, setIsCustomAmountSelected] = useState(initialCustomAmount.length > 0);
@@ -41,7 +43,7 @@ export function DonationAmountFields({
               setIsCustomAmountSelected(false);
             }}
           >
-            {formatCurrency(amount)}
+            {formatCurrency(amount, currency)}
           </button>
         ))}
         <button

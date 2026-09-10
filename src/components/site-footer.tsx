@@ -36,8 +36,8 @@ export function SiteFooter() {
                 </Link>
               </li>
               <li>
-                <Link href="/dashboard/passport" className="hover:text-ocean-900">
-                  Impact Passport
+                <Link href="/dashboard/impact" className="hover:text-ocean-900">
+                  My Impact
                 </Link>
               </li>
               <li>

@@ -53,6 +53,7 @@ import {
   type ExpeditionDetailMetadata
 } from "@/lib/expedition-metadata";
 import { canCancelExpeditionBooking } from "@/lib/expedition-booking-lifecycle";
+import { buildPassportNumber, normalizeCurrency, parseCarbonKgPerUsd } from "@/lib/impact-calculations";
 import {
   normalizePartnerOrganizationRole,
   partnerRoleAllows,
@@ -60,6 +61,7 @@ import {
 } from "@/lib/partner-permissions";
 import { transitionDonationPayment, transitionExpeditionBookingPayment } from "@/lib/payment-workflows";
 import { demoGatewaySettleRefund } from "@/lib/payment-provider";
+import { upsertCarbonKgPerUsd } from "@/lib/platform-settings";
 import { processDueDonationSubscriptions } from "@/lib/subscription-billing";
 import { getEvidenceStorageProvider, readUploadedImageAsDataUrl } from "@/lib/storage";
 import { formatCurrency } from "@/lib/utils";
@@ -149,8 +151,17 @@ function redirectPartnerSaved(formData: FormData, fallbackPath: string, code: st
 }
 
 function parseIdrAmount(value: FormDataEntryValue | null) {
-  const digits = String(value ?? "").replace(/[^\d]/g, "");
-  const amount = Number(digits);
+  const amount = Number(String(value ?? "").replace(/[^\d.]/g, ""));
+
+  if (!Number.isFinite(amount) || amount <= 0) {
+    return null;
+  }
+
+  return amount.toFixed(2);
+}
+
+function parseOptionalAmount(value: FormDataEntryValue | null) {
+  const amount = Number(String(value ?? "").replace(/[^\d.]/g, ""));
 
   if (!Number.isFinite(amount) || amount <= 0) {
     return null;
@@ -591,12 +602,20 @@ function objectMetadata(value: unknown) {
 
 function expeditionMetadataFromForm(formData: FormData, onError: (code: string, formData?: FormData) => never) {
   const result = parseExpeditionMetadataJson(formText(formData, "metadataJson"));
+  const documentationUrl = formText(formData, "documentationUrl");
 
   if (result.error) {
     onError(result.error, formData);
   }
 
-  return result.metadata;
+  if (!formData.has("documentationUrl")) {
+    return result.metadata;
+  }
+
+  return {
+    ...(result.metadata ?? {}),
+    documentationUrl
+  };
 }
 
 function formNumber(formData: FormData, key: string, fallback = 0) {
@@ -670,6 +689,7 @@ function partnerExpeditionQuickFacts({
   durationDays,
   maxCapacity,
   basePrice,
+  currency,
   difficulty,
   minimumAge,
   swimmingAbility
@@ -677,6 +697,7 @@ function partnerExpeditionQuickFacts({
   durationDays: number;
   maxCapacity: number;
   basePrice: number;
+  currency: string;
   difficulty: string;
   minimumAge: number;
   swimmingAbility: string;
@@ -687,7 +708,7 @@ function partnerExpeditionQuickFacts({
     { label: "Difficulty", value: difficulty },
     { label: "Min. age", value: minimumAge > 0 ? `${minimumAge}+ years old` : "All ages" },
     { label: "Swimming ability", value: swimmingAbility },
-    { label: "Per person", value: formatCurrency(basePrice) }
+    { label: "Per person", value: formatCurrency(basePrice, currency) }
   ];
 }
 
@@ -699,6 +720,7 @@ type PartnerExpeditionMetadataContext = {
   currentMetadata: ExpeditionDetailMetadata;
   durationDays: number;
   basePrice: number;
+  currency: string;
   maxCapacity: number;
 };
 
@@ -764,6 +786,7 @@ async function partnerExpeditionMetadataFromForm(formData: FormData, context: Pa
   return {
     categoryLabel: optionFromForm(formData, "categoryLabel", partnerExpeditionCategoryLabels, context.currentMetadata.categoryLabel || "Coral Restoration Expedition"),
     activitySummary: formTextOrFallback(formData, "activitySummary", context.currentMetadata.activitySummary),
+    documentationUrl: formTextOrFallback(formData, "documentationUrl", context.currentMetadata.documentationUrl),
     rating: context.currentMetadata.rating,
     reviewCount: context.currentMetadata.reviewCount,
     participantCount: context.currentMetadata.participantCount,
@@ -776,6 +799,7 @@ async function partnerExpeditionMetadataFromForm(formData: FormData, context: Pa
       durationDays: context.durationDays,
       maxCapacity: context.maxCapacity,
       basePrice: context.basePrice,
+      currency: context.currency,
       difficulty,
       minimumAge,
       swimmingAbility
@@ -1174,6 +1198,7 @@ async function requireExpeditionAccess(
       region: expeditions.region,
       durationDays: expeditions.durationDays,
       basePrice: expeditions.basePrice,
+      currency: expeditions.currency,
       summary: expeditions.summary,
       imageUrl: expeditions.imageUrl,
       metadata: expeditions.metadata,
@@ -1227,6 +1252,7 @@ function defaultPartnerExpeditionMetadata(
     region: expedition.region,
     durationLabel: expeditionDurationLabel(expedition.durationDays),
     price: Number(expedition.basePrice),
+    currency: expedition.currency,
     maxCapacity,
     galleryImages: [
       {
@@ -1485,6 +1511,7 @@ export async function createOrganizationUserAction(formData: FormData) {
 
   await db.insert(impactPassports).values({
     userId: createdUser.id,
+    passportNumber: buildPassportNumber(createdUser.id, now),
     publicSlug: `${slugifyPartner(name)}-${randomBytes(3).toString("hex")}`,
     visibility: "private",
     story: "A partner team account for managing campaign updates and evidence.",
@@ -1598,8 +1625,10 @@ export async function createPartnerCampaignAction(formData: FormData) {
   const category = formText(formData, "category");
   const region = formText(formData, "region");
   const goalAmount = parseIdrAmount(formData.get("goalAmount"));
+  const currency = normalizeCurrency(String(formData.get("currency") ?? "USD"));
   const impactUnit = formText(formData, "impactUnit");
   const impactTarget = parsePositiveInteger(formData.get("impactTarget"));
+  const impactUnitCost = parseOptionalAmount(formData.get("impactUnitCost"));
   const status = isAdmin ? campaignStatusFromForm(formData.get("status")) : partnerCampaignStatusFromForm(formData.get("status"));
   const imageUrl = await imageFromForm(formData, "imageFile", "/partner/campaigns/new");
   const endsAt = parseOptionalDate(formData.get("endsAt"));
@@ -1630,8 +1659,10 @@ export async function createPartnerCampaignAction(formData: FormData) {
       region,
       imageUrl,
       goalAmount,
+      currency,
       impactUnit,
       impactTarget,
+      impactUnitCost,
       status,
       publishedAt: status === "published" ? now : null,
       endsAt,
@@ -1662,8 +1693,10 @@ export async function updatePartnerCampaignAction(formData: FormData) {
   const category = formText(formData, "category");
   const region = formText(formData, "region");
   const goalAmount = parseIdrAmount(formData.get("goalAmount"));
+  const currency = normalizeCurrency(String(formData.get("currency") ?? "USD"));
   const impactUnit = formText(formData, "impactUnit");
   const impactTarget = parsePositiveInteger(formData.get("impactTarget"));
+  const impactUnitCost = parseOptionalAmount(formData.get("impactUnitCost"));
   const requestedStatus = campaignStatusFromForm(formData.get("status"));
   const uploadedImageUrl = await imageFromForm(formData, "imageFile", "/partner/campaigns");
   const endsAt = parseOptionalDate(formData.get("endsAt"));
@@ -1717,8 +1750,10 @@ export async function updatePartnerCampaignAction(formData: FormData) {
       region,
       imageUrl: removeImage ? null : uploadedImageUrl ?? campaign.imageUrl,
       goalAmount,
+      currency,
       impactUnit,
       impactTarget,
+      impactUnitCost,
       status,
       publishedAt: status === "published" ? campaign.publishedAt ?? now : status === campaign.status ? campaign.publishedAt : null,
       endsAt,
@@ -2281,6 +2316,7 @@ export async function createExpeditionAction(formData: FormData) {
   const region = formText(formData, "region");
   const durationDays = parsePositiveInteger(formData.get("durationDays"));
   const basePrice = parsePositiveDecimal(formData.get("basePrice"));
+  const currency = normalizeCurrency(formData.get("currency"));
   const summary = formText(formData, "summary");
   const relatedCampaignId = nullableText(formData, "relatedCampaignId");
   const metadata = expeditionMetadataFromForm(formData, redirectAdminExpeditionError);
@@ -2312,6 +2348,7 @@ export async function createExpeditionAction(formData: FormData) {
       region,
       durationDays,
       basePrice,
+      currency,
       summary,
       imageUrl,
       relatedCampaignId,
@@ -2338,6 +2375,7 @@ export async function updateExpeditionAction(formData: FormData) {
   const region = formText(formData, "region");
   const durationDays = parsePositiveInteger(formData.get("durationDays"));
   const basePrice = parsePositiveDecimal(formData.get("basePrice"));
+  const currency = normalizeCurrency(formData.get("currency"));
   const summary = formText(formData, "summary");
   const relatedCampaignId = nullableText(formData, "relatedCampaignId");
   const metadata = expeditionMetadataFromForm(formData, redirectAdminExpeditionError);
@@ -2375,6 +2413,7 @@ export async function updateExpeditionAction(formData: FormData) {
       region,
       durationDays,
       basePrice,
+      currency,
       summary,
       imageUrl: uploadedImageUrl ?? currentExpedition.imageUrl,
       relatedCampaignId,
@@ -2767,6 +2806,7 @@ export async function updatePartnerExpeditionAction(formData: FormData) {
   const region = formText(formData, "region");
   const durationDays = parsePositiveInteger(formData.get("durationDays"));
   const basePrice = parsePositiveDecimal(formData.get("basePrice"));
+  const currency = normalizeCurrency(formData.get("currency"));
   const summary = formText(formData, "summary");
   const relatedCampaignId = nullableText(formData, "relatedCampaignId");
 
@@ -2790,6 +2830,7 @@ export async function updatePartnerExpeditionAction(formData: FormData) {
     currentMetadata,
     durationDays,
     basePrice: Number(basePrice),
+    currency,
     maxCapacity
   });
 
@@ -2801,6 +2842,7 @@ export async function updatePartnerExpeditionAction(formData: FormData) {
       region,
       durationDays,
       basePrice,
+      currency,
       summary,
       imageUrl,
       relatedCampaignId,
@@ -2831,6 +2873,7 @@ export async function createPartnerExpeditionAction(formData: FormData) {
   const region = formText(formData, "region");
   const durationDays = parsePositiveInteger(formData.get("durationDays"));
   const basePrice = parsePositiveDecimal(formData.get("basePrice"));
+  const currency = normalizeCurrency(formData.get("currency"));
   const summary = formText(formData, "summary");
   const relatedCampaignId = nullableText(formData, "relatedCampaignId");
 
@@ -2855,6 +2898,7 @@ export async function createPartnerExpeditionAction(formData: FormData) {
       region,
       durationDays,
       basePrice,
+      currency,
       summary,
       imageUrl,
       metadata: null,
@@ -2868,6 +2912,7 @@ export async function createPartnerExpeditionAction(formData: FormData) {
     currentMetadata,
     durationDays,
     basePrice: Number(basePrice),
+    currency,
     maxCapacity: 0
   });
 
@@ -2879,6 +2924,7 @@ export async function createPartnerExpeditionAction(formData: FormData) {
       region,
       durationDays,
       basePrice,
+      currency,
       summary,
       imageUrl,
       relatedCampaignId,
@@ -3020,8 +3066,10 @@ export async function createAdminCampaignAction(formData: FormData) {
   const category = formText(formData, "category");
   const region = formText(formData, "region");
   const goalAmount = parseIdrAmount(formData.get("goalAmount"));
+  const currency = normalizeCurrency(String(formData.get("currency") ?? "USD"));
   const impactUnit = formText(formData, "impactUnit");
   const impactTarget = parsePositiveInteger(formData.get("impactTarget"));
+  const impactUnitCost = parseOptionalAmount(formData.get("impactUnitCost"));
   const status = campaignStatusFromForm(formData.get("status"));
   const imageUrl = await imageFromAdminCampaignForm(formData);
   const endsAt = parseOptionalDate(formData.get("endsAt"));
@@ -3078,8 +3126,10 @@ export async function createAdminCampaignAction(formData: FormData) {
         region,
         imageUrl,
         goalAmount,
+        currency,
         impactUnit,
         impactTarget,
+        impactUnitCost,
         status,
         publishedAt: status === "published" ? now : null,
         endsAt,
@@ -3147,6 +3197,18 @@ export async function createAdminCampaignAction(formData: FormData) {
   redirect(`/admin/campaigns/${campaignId}?saved=${encodeURIComponent("campaign-created")}`);
 }
 
+export async function updateImpactSettingsAction(formData: FormData) {
+  const user = await requireRole(["admin"], "/admin/campaigns");
+  const value = parseCarbonKgPerUsd(formData.get("kgCo2ePerUsd"));
+
+  await upsertCarbonKgPerUsd({
+    value,
+    updatedByUserId: user.id
+  });
+
+  redirect("/admin/campaigns?saved=impact-settings");
+}
+
 export async function updateAdminCampaignAction(formData: FormData) {
   const user = await requireRole(["admin"], "/admin/campaigns");
   const campaignId = formText(formData, "campaignId");
@@ -3158,8 +3220,10 @@ export async function updateAdminCampaignAction(formData: FormData) {
   const category = formText(formData, "category");
   const region = formText(formData, "region");
   const goalAmount = parseIdrAmount(formData.get("goalAmount"));
+  const currency = normalizeCurrency(String(formData.get("currency") ?? "USD"));
   const impactUnit = formText(formData, "impactUnit");
   const impactTarget = parsePositiveInteger(formData.get("impactTarget"));
+  const impactUnitCost = parseOptionalAmount(formData.get("impactUnitCost"));
   const status = campaignStatusFromForm(formData.get("status"));
   const uploadedImageUrl = await imageFromAdminCampaignForm(formData);
   const endsAt = parseOptionalDate(formData.get("endsAt"));
@@ -3210,8 +3274,10 @@ export async function updateAdminCampaignAction(formData: FormData) {
       region,
       imageUrl: removeImage ? null : uploadedImageUrl ?? campaign.imageUrl,
       goalAmount,
+      currency,
       impactUnit,
       impactTarget,
+      impactUnitCost,
       status,
       publishedAt: status === "published" ? campaign.publishedAt ?? now : null,
       endsAt,

@@ -87,8 +87,8 @@ const dashboardDestinations: SearchResult[] = [
     id: "destination-passport",
     section: "Passport",
     title: "Impact Passport",
-    description: "Share settings, visibility, QR code, verified activity, and public profile preview.",
-    href: "/dashboard/passport#share-settings",
+    description: "Verified impact activity, passport summary, share links, and public profile preview.",
+    href: "/dashboard/impact",
     meta: "Share profile",
     icon: Award
   },
@@ -97,24 +97,24 @@ const dashboardDestinations: SearchResult[] = [
     section: "Learning",
     title: "Certificates",
     description: "Verified certificates and downloadable credential files.",
-    href: "/dashboard/certificates",
+    href: "/dashboard/academy#certificates",
     meta: "Credentials",
     icon: FileBadge
   },
   {
     id: "destination-saved",
-    section: "Saved",
-    title: "Saved Projects",
-    description: "Saved campaigns, followed updates, recent notifications, and generated reports.",
-    href: "/dashboard/saved",
-    meta: "Return list",
+    section: "Donations",
+    title: "Saved Campaigns",
+    description: "Saved donation campaigns now live inside the Donations menu.",
+    href: "/dashboard/donations",
+    meta: "Saved campaigns",
     icon: Star
   },
   {
     id: "destination-settings",
     section: "Account",
     title: "Settings",
-    description: "Profile details, password, notification preferences, and passport visibility.",
+    description: "Profile details, password, and notification preferences.",
     href: "/dashboard/settings",
     meta: "Account",
     icon: Settings

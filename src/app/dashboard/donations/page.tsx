@@ -1,8 +1,11 @@
-import { Download, Heart } from "lucide-react";
+import { BookmarkX, Download, Heart } from "lucide-react";
 import Link from "next/link";
 
+import { CampaignCard } from "@/components/campaign-card";
+import { Button, ButtonLink } from "@/components/ui/button";
 import { requireUser } from "@/lib/auth";
-import { getBillingData, getDashboardData } from "@/lib/queries";
+import { getBillingData, getCampaignCards, getDashboardData } from "@/lib/queries";
+import { removeSavedCampaignAction } from "@/lib/retention-actions";
 import { formatCurrency } from "@/lib/utils";
 
 export const metadata = {
@@ -33,7 +36,7 @@ function statusClass(status: string) {
 export default async function DashboardDonationsPage({ searchParams }: DashboardDonationsPageProps) {
   const params = await searchParams;
   const user = await requireUser("/dashboard/donations");
-  const [data, billing] = await Promise.all([getDashboardData(user.id), getBillingData(user.id)]);
+  const [data, billing, highlightedCampaigns] = await Promise.all([getDashboardData(user.id), getBillingData(user.id), getCampaignCards(3)]);
   const donationError = "Could not complete that donation action.";
   const verificationOperations = billing.operations.filter((operation) => !operation.operationType.includes("refund")).slice(0, 6);
 
@@ -53,6 +56,52 @@ export default async function DashboardDonationsPage({ searchParams }: Dashboard
       {params?.error ? (
         <p className="mt-5 rounded-2xl border border-coral-500/20 bg-coral-100 px-4 py-3 text-sm font-bold text-coral-700">{donationError}</p>
       ) : null}
+
+      <section className="mt-6 rounded-2xl border border-ocean-900/10 bg-white p-5 shadow-soft">
+        <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
+          <div>
+            <h2 className="text-2xl font-bold tracking-normal text-ocean-900">Donate to a project</h2>
+            <p className="mt-1 text-sm font-semibold text-ocean-900/58">Choose one of the latest verified campaigns and continue to donation.</p>
+          </div>
+          <ButtonLink href="/campaigns" tone="secondary">
+            Browse all
+          </ButtonLink>
+        </div>
+        <div className="mt-5 grid gap-5 lg:grid-cols-3">
+          {highlightedCampaigns.map((campaign) => (
+            <CampaignCard key={campaign.slug} campaign={campaign} />
+          ))}
+        </div>
+      </section>
+
+      <section className="mt-6 rounded-2xl border border-ocean-900/10 bg-white p-5 shadow-soft">
+        <div>
+          <h2 className="text-2xl font-bold tracking-normal text-ocean-900">Saved campaigns</h2>
+          <p className="mt-1 text-sm font-semibold text-ocean-900/58">
+            {data.savedCampaigns.length.toLocaleString("id-ID")} saved campaign{data.savedCampaigns.length === 1 ? "" : "s"}.
+          </p>
+        </div>
+        <div className="mt-5 grid gap-5 md:grid-cols-2">
+          {data.savedCampaigns.map((campaign) => (
+            <article key={campaign.slug} className="grid gap-3">
+              <CampaignCard campaign={campaign} />
+              <form action={removeSavedCampaignAction}>
+                <input type="hidden" name="campaignSlug" value={campaign.slug} />
+                <input type="hidden" name="next" value="/dashboard/donations" />
+                <Button type="submit" tone="light" className="w-full">
+                  <BookmarkX size={16} aria-hidden="true" />
+                  Remove saved campaign
+                </Button>
+              </form>
+            </article>
+          ))}
+        </div>
+        {data.savedCampaigns.length === 0 ? (
+          <p className="mt-4 rounded-xl border border-dashed border-ocean-900/14 bg-sand-50 p-4 text-sm font-semibold text-ocean-900/62">
+            Save campaigns from a campaign detail page and they will appear here, even after a campaign expires.
+          </p>
+        ) : null}
+      </section>
 
       <section className="mt-6 grid gap-4">
         <h2 className="text-2xl font-bold tracking-normal text-ocean-900">Donation history</h2>
@@ -81,7 +130,7 @@ export default async function DashboardDonationsPage({ searchParams }: Dashboard
                 </div>
               </div>
               <div className="md:text-right">
-                <p className="font-bold text-ocean-900">{formatCurrency(Number(donation.amount))}</p>
+                <p className="font-bold text-ocean-900">{formatCurrency(Number(donation.amount), donation.currency)}</p>
                 <span className={`mt-2 inline-flex rounded-full px-3 py-1 text-xs font-bold ${statusClass(donation.status)}`}>{donation.status}</span>
               </div>
             </div>

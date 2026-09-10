@@ -18,6 +18,7 @@ import {
   userRoles,
   users
 } from "../src/db/schema";
+import { buildPassportNumber } from "../src/lib/impact-calculations";
 import { createPasswordHash } from "../src/lib/password";
 
 const databaseUrl = process.env.DATABASE_URL;
@@ -174,6 +175,7 @@ async function upsertUser(account: (typeof roleAccounts)[number]) {
     .insert(impactPassports)
     .values({
       userId: user.id,
+      passportNumber: buildPassportNumber(user.id, now),
       publicSlug: `${slugFor(account.name)}-role-demo`,
       visibility: account.roleKey === "user" ? "public" : "private",
       story: `Demo ${account.roleName} Impact Passport for validating role-specific user journeys.`,
@@ -183,6 +185,7 @@ async function upsertUser(account: (typeof roleAccounts)[number]) {
       target: impactPassports.userId,
       set: {
         publicSlug: sql`excluded.public_slug`,
+        passportNumber: sql`coalesce(${impactPassports.passportNumber}, excluded.passport_number)`,
         visibility: sql`excluded.visibility`,
         story: sql`excluded.story`,
         updatedAt: now

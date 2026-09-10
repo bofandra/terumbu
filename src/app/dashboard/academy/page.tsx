@@ -1,11 +1,12 @@
 import Link from "next/link";
-import { Award, BookmarkCheck, BookmarkX, BookOpen, Download, Flame, GraduationCap, TimerReset } from "lucide-react";
+import Image from "next/image";
+import { ArrowRight, Award, BookmarkCheck, BookmarkX, BookOpen, Download, Flame, GraduationCap, TimerReset } from "lucide-react";
 
 import { Button, ButtonLink } from "@/components/ui/button";
 import { requireUser } from "@/lib/auth";
 import { removeSavedCourseAction } from "@/lib/academy-actions";
 import { getAcademyTranscriptData } from "@/lib/academy-transcript-data";
-import { getDashboardData } from "@/lib/queries";
+import { getAcademyHomeData, getDashboardData } from "@/lib/queries";
 
 export const metadata = {
   title: "Academy"
@@ -15,9 +16,11 @@ export const dynamic = "force-dynamic";
 
 export default async function DashboardAcademyPage() {
   const user = await requireUser("/dashboard/academy");
-  const [data, transcript] = await Promise.all([getDashboardData(user.id), getAcademyTranscriptData(user.id)]);
+  const [data, transcript, academyHome] = await Promise.all([getDashboardData(user.id), getAcademyTranscriptData(user.id), getAcademyHomeData(user.id)]);
   const enrollments = data.academy.enrollments;
   const savedCourses = data.academy.savedCourses;
+  const enrolledCourseSlugs = new Set(enrollments.map((enrollment) => enrollment.courseSlug));
+  const availableCourses = academyHome.courses.filter((course) => !enrolledCourseSlugs.has(course.slug)).slice(0, 3);
 
   return (
     <main className="mx-auto max-w-5xl px-4 py-8 sm:px-6 lg:px-8">
@@ -27,10 +30,6 @@ export default async function DashboardAcademyPage() {
           <h1 className="mt-2 text-3xl font-bold tracking-normal text-ocean-900">Courses and certificates</h1>
         </div>
         <div className="flex flex-wrap gap-2">
-          <ButtonLink href="/dashboard/academy/transcript/download" tone="secondary" download>
-            <Download size={17} aria-hidden="true" />
-            Download Transcript
-          </ButtonLink>
           <ButtonLink href="/academy">Browse academy</ButtonLink>
         </div>
       </header>
@@ -48,6 +47,38 @@ export default async function DashboardAcademyPage() {
             <p className="mt-1 text-sm font-semibold text-ocean-900/58">{label as string}</p>
           </article>
         ))}
+      </section>
+
+      <section className="mt-6 rounded-2xl border border-ocean-900/10 bg-white p-5 shadow-soft">
+        <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
+          <div>
+            <h2 className="text-xl font-bold tracking-normal text-ocean-900">Courses you can join</h2>
+            <p className="mt-1 text-sm font-semibold text-ocean-900/58">Start a course directly from your Academy dashboard.</p>
+          </div>
+          <ButtonLink href="/academy#course-catalog" tone="secondary">
+            View catalog
+          </ButtonLink>
+        </div>
+        <div className="mt-5 grid gap-4 md:grid-cols-3">
+          {availableCourses.map((course) => (
+            <Link key={course.slug} href={`/academy/courses/${course.slug}`} className="group overflow-hidden rounded-xl border border-ocean-900/10 bg-sand-50 transition hover:border-coral-500">
+              <div className="relative aspect-[16/9] bg-ocean-900">
+                {course.imageUrl ? <Image src={course.imageUrl} alt="" fill className="object-cover transition group-hover:scale-[1.02]" sizes="(min-width: 1024px) 300px, 100vw" /> : null}
+              </div>
+              <div className="grid gap-2 p-4">
+                <p className="text-xs font-bold uppercase tracking-[0.14em] text-coral-700">{course.topic}</p>
+                <h3 className="text-base font-bold leading-6 text-ocean-900 group-hover:text-coral-700">{course.title}</h3>
+                <p className="line-clamp-2 text-sm leading-6 text-ocean-900/62">{course.summary}</p>
+                <div className="mt-2 flex items-center justify-between gap-3 text-xs font-bold text-ocean-900/62">
+                  <span>{course.level}</span>
+                  <span className="inline-flex items-center gap-1 text-coral-700">
+                    Open <ArrowRight size={14} aria-hidden="true" />
+                  </span>
+                </div>
+              </div>
+            </Link>
+          ))}
+        </div>
       </section>
 
       <section id="saved-courses" className="mt-6 rounded-2xl border border-ocean-900/10 bg-white p-5 shadow-soft">
@@ -106,7 +137,7 @@ export default async function DashboardAcademyPage() {
       </section>
 
       <section className="mt-6 grid gap-6 lg:grid-cols-2">
-        <div className="rounded-2xl border border-ocean-900/10 bg-white p-5 shadow-soft">
+        <div id="certificates" className="scroll-mt-24 rounded-2xl border border-ocean-900/10 bg-white p-5 shadow-soft">
           <h2 className="flex items-center gap-2 text-xl font-bold tracking-normal text-ocean-900">
             <BookOpen size={22} aria-hidden="true" className="text-coral-500" />
             Enrollments
@@ -131,9 +162,15 @@ export default async function DashboardAcademyPage() {
                 <p className="mt-2 text-xs font-semibold text-ocean-900/54">
                   {enrollment.nextLessonTitle ? `Next: ${enrollment.nextLessonTitle}` : enrollment.remainingMinutes > 0 ? `${enrollment.remainingMinutes} min remaining` : "Ready for certificate review"}
                 </p>
-                <Link href={`/academy/courses/${enrollment.courseSlug}`} className="mt-3 inline-flex text-sm font-bold text-coral-700">
-                  Continue course
-                </Link>
+                <div className="mt-3 flex flex-wrap gap-3">
+                  <Link href={`/academy/courses/${enrollment.courseSlug}`} className="inline-flex text-sm font-bold text-coral-700">
+                    Continue course
+                  </Link>
+                  <Link href={`/dashboard/academy/transcript/${enrollment.courseSlug}/download`} className="inline-flex items-center gap-1 text-sm font-bold text-ocean-700" download>
+                    <Download size={15} aria-hidden="true" />
+                    Transcript PDF
+                  </Link>
+                </div>
               </article>
             ))}
             {enrollments.length === 0 ? (
@@ -161,6 +198,15 @@ export default async function DashboardAcademyPage() {
                 <p className="mt-1 text-sm text-ocean-900/58">
                   Issued {certificate.issuedAt.toLocaleDateString("id-ID", { dateStyle: "medium" })}
                 </p>
+                <div className="mt-3 flex flex-wrap gap-3">
+                  <Link href={`/certificates/verify/${certificate.publicSlug}`} className="inline-flex text-sm font-bold text-coral-700">
+                    View certificate
+                  </Link>
+                  <Link href={`/certificates/verify/${certificate.publicSlug}/download`} className="inline-flex items-center gap-1 text-sm font-bold text-ocean-700" download>
+                    <Download size={15} aria-hidden="true" />
+                    Certificate PDF
+                  </Link>
+                </div>
               </article>
             ))}
             {data.certificates.length === 0 ? (

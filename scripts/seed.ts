@@ -5,6 +5,7 @@ import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 
 import * as schema from "../src/db/schema";
+import { buildPassportNumber } from "../src/lib/impact-calculations";
 import { createPasswordHash } from "../src/lib/password";
 
 const {
@@ -1834,6 +1835,7 @@ async function seed() {
     .insert(impactPassports)
     .values({
       userId: demoUser.id,
+      passportNumber: buildPassportNumber(demoUser.id, now),
       publicSlug: "raka-demo-ocean-hero",
       visibility: "public",
       story: "A demo Impact Passport showing how donations, sponsored ecosystems, courses, and field activities can become a user profile.",
@@ -1843,6 +1845,7 @@ async function seed() {
       target: impactPassports.userId,
       set: {
         publicSlug: "raka-demo-ocean-hero",
+        passportNumber: sql`coalesce(${impactPassports.passportNumber}, excluded.passport_number)`,
         visibility: "public",
         story:
           "A demo Impact Passport showing how donations, sponsored ecosystems, courses, and field activities can become a user profile.",

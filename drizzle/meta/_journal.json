@@ -176,6 +176,13 @@
       "when": 1786900000000,
       "tag": "0024_monthly_report_conflict_indexes",
       "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1789000000000,
+      "tag": "0025_impact_passport_currency_settings",
+      "breakpoints": true
     }
   ]
 }

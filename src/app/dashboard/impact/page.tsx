@@ -3,8 +3,10 @@ import Link from "next/link";
 
 import { DashboardImpactTrend } from "@/components/dashboard-impact-trend";
 import { DashboardPersonalImpactMap } from "@/components/dashboard-personal-impact-map";
+import { PassportShareButtons } from "@/components/passport-share-buttons";
 import { PassportPreview } from "@/components/passport-preview";
 import { requireUser } from "@/lib/auth";
+import { publicPassportShareUrl } from "@/lib/passport-sharing";
 import { getDashboardData } from "@/lib/queries";
 import { formatCurrency } from "@/lib/utils";
 
@@ -21,9 +23,19 @@ function formatShortDate(value: Date) {
 export default async function DashboardImpactPage() {
   const user = await requireUser("/dashboard/impact");
   const data = await getDashboardData(user.id);
+  const passportUrl =
+    data.profile?.publicSlug
+      ? publicPassportShareUrl({
+          origin: process.env.NEXT_PUBLIC_APP_URL ?? "https://terumbu.eco",
+          publicSlug: data.profile.publicSlug,
+          visibility: data.profile.passportVisibility ?? "private",
+          shareToken: data.profile.passportShareToken
+        })
+      : null;
   const summary = [
     { label: "Total donated", value: formatCurrency(data.summary.totalDonated), icon: Heart },
     { label: "Corals sponsored", value: data.summary.coralFragments.toLocaleString("id-ID"), icon: Waves },
+    { label: "Carbon", value: data.summary.carbonKg > 0 ? `${data.summary.carbonKg.toLocaleString("id-ID", { maximumFractionDigits: 1 })} kg CO2e` : "Pending", icon: Waves },
     { label: "Field activities", value: String(data.summary.fieldActivities), icon: MapPinned },
     { label: "Certificates", value: String(data.summary.certificates), icon: Award }
   ];
@@ -37,13 +49,14 @@ export default async function DashboardImpactPage() {
           <p className="mt-2 max-w-2xl text-sm leading-6 text-ocean-900/62">
             Personal locations, evidence, learning, and contribution history are shown as approximate zones.
           </p>
+          {data.profile?.passportNumber ? (
+            <p className="mt-3 text-sm font-bold text-ocean-900">Passport ID: {data.profile.passportNumber}</p>
+          ) : null}
         </div>
-        <Link href="/dashboard/passport" className="inline-flex min-h-11 items-center rounded-full bg-ocean-900 px-5 text-sm font-bold text-white">
-          View Impact Passport
-        </Link>
+        {passportUrl ? <PassportShareButtons url={passportUrl} title={`${data.profile?.displayName ?? "My"} Terumbu.eco Impact Passport`} /> : null}
       </header>
 
-      <section className="mt-6 grid gap-4 md:grid-cols-4">
+      <section className="mt-6 grid gap-4 md:grid-cols-5">
         {summary.map((item) => {
           const Icon = item.icon;
 

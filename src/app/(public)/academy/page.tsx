@@ -557,9 +557,9 @@ export default async function AcademyPage({
             <p className="mt-4 text-base leading-7 text-ocean-900/62">
               Academy progress connects with campaigns, expeditions, certificates, and the Impact Passport so learning becomes part of a measurable conservation journey.
             </p>
-            <ButtonLink href="/dashboard/passport" tone="secondary" className="mt-6">
+            <ButtonLink href="/dashboard/impact" tone="secondary" className="mt-6">
               <FileBadge size={18} aria-hidden="true" />
-              View Impact Passport
+              View My Impact
             </ButtonLink>
           </div>
           <div className="grid gap-3 sm:grid-cols-5">

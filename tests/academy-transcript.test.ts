@@ -3,7 +3,9 @@ import test from "node:test";
 
 import {
   academyLearningStreak,
+  academyCourseTranscriptFilename,
   academyTranscriptFilename,
+  buildAcademyCourseTranscriptPdf,
   buildAcademyTranscriptCsv,
   type AcademyTranscriptRecord
 } from "../src/lib/academy-transcript";
@@ -62,6 +64,7 @@ test("academy learning streak counts current and longest consecutive activity da
 test("academy transcript filename is stable and safe", () => {
   assert.equal(academyTranscriptFilename(transcript), "terumbu-academy-transcript-raka-demo.csv");
   assert.equal(academyTranscriptFilename({ learnerName: "!!!" }), "terumbu-academy-transcript-learner.csv");
+  assert.equal(academyCourseTranscriptFilename(transcript, transcript.courses[0]), "terumbu-academy-transcript-raka-demo-coral-restoration-basics.pdf");
 });
 
 test("academy transcript csv includes summary, course rows, and escaped cells", () => {
@@ -78,4 +81,14 @@ test("academy transcript csv includes summary, course rows, and escaped cells", 
   assert.match(csv, /"Coral, Restoration Basics"/);
   assert.match(csv, /https:\/\/example.test\/certificates\/verify\/cert-public/);
   assert.match(csv, /Current streak days,2/);
+});
+
+test("academy course transcript pdf includes per-course details", () => {
+  const pdf = buildAcademyCourseTranscriptPdf(transcript, transcript.courses[0], "https://example.test");
+  const text = new TextDecoder().decode(pdf);
+
+  assert.match(text, /^%PDF-1\.4/);
+  assert.match(text, /Coral Restoration Basics/);
+  assert.match(text, /TRB-CERT-2026-ABC123/);
+  assert.match(text, /https:\/\/example.test\/certificates\/verify\/cert-public/);
 });

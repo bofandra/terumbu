@@ -56,7 +56,7 @@ export default async function ExpeditionCheckoutPage({ searchParams }: Expeditio
         <p className="text-sm font-bold uppercase tracking-[0.16em] text-coral-700">Booking</p>
         <h1 className="mt-3 text-3xl font-bold tracking-normal text-ocean-900">Reserve expedition seats</h1>
         <p className="mt-3 text-ocean-900/68">
-          Confirm availability, participant details, and payment status before your seats are recorded.
+          Book for yourself first, then add other participant names if you are bringing a group. Payment will remain pending until the gateway or admin confirmation is ready.
         </p>
         {params?.error ? (
           <p className="mt-4 rounded-xl border border-coral-500/20 bg-coral-100 px-4 py-3 text-sm font-semibold text-coral-700">
@@ -71,7 +71,7 @@ export default async function ExpeditionCheckoutPage({ searchParams }: Expeditio
             <select name="departureId" defaultValue={selectedDeparture} className="w-full min-w-0 rounded-xl border border-ocean-900/14 px-4 py-3 outline-none focus:border-coral-500">
               {visibleOptions.map((option) => (
                 <option key={option.departureId} value={option.departureId}>
-                  {option.expeditionTitle} · {option.startsAt.toLocaleDateString("id-ID", { dateStyle: "medium" })} · {option.availabilityLabel} · {option.availableSeats} seats · {formatCurrency(option.basePrice)}
+                  {option.expeditionTitle} · {option.startsAt.toLocaleDateString("id-ID", { dateStyle: "medium" })} · {option.availabilityLabel} · {option.availableSeats} seats · {formatCurrency(option.basePrice, option.currency)}
                 </option>
               ))}
             </select>
@@ -89,15 +89,8 @@ export default async function ExpeditionCheckoutPage({ searchParams }: Expeditio
             <input name="participantsCount" type="number" min={1} max={12} defaultValue={selectedParticipants} className="w-full min-w-0 rounded-xl border border-ocean-900/14 px-4 py-3 outline-none focus:border-coral-500" required />
           </label>
           <label className="grid min-w-0 gap-2 text-sm font-semibold text-ocean-900">
-            Participant names
-            <textarea name="participantNames" defaultValue={user?.displayName ?? user?.name ?? ""} className="min-h-24 w-full min-w-0 rounded-xl border border-ocean-900/14 px-4 py-3 outline-none focus:border-coral-500" />
-          </label>
-          <label className="grid min-w-0 gap-2 text-sm font-semibold text-ocean-900">
-            Payment result
-            <select name="paymentState" defaultValue="paid" className="w-full min-w-0 rounded-xl border border-ocean-900/14 px-4 py-3 outline-none focus:border-coral-500">
-              <option value="paid">Paid</option>
-              <option value="failed">Failed</option>
-            </select>
+            Additional participant names
+            <textarea name="additionalParticipantNames" placeholder="One name per line, only if participants is more than 1" className="min-h-24 w-full min-w-0 rounded-xl border border-ocean-900/14 px-4 py-3 outline-none focus:border-coral-500" />
           </label>
           <Button type="submit">Continue Booking</Button>
         </form>

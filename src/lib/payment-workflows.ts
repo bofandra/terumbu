@@ -17,6 +17,7 @@ import {
   impactSites,
   paymentOperations,
   paymentTransactions,
+  platformSettings,
   sponsoredEcosystems,
   userPaymentMethods
 } from "@/db/schema";
@@ -31,6 +32,7 @@ import {
 } from "@/lib/checkout";
 import { getMetadataNumber, getMetadataString, toNumber } from "@/lib/domain";
 import { departureStatusAfterSeatChange } from "@/lib/expedition-booking-lifecycle";
+import { CARBON_SETTING_KEY, calculateDonationImpact, formatImpactQuantity, parseCarbonKgPerUsd } from "@/lib/impact-calculations";
 import { formatCurrency } from "@/lib/utils";
 
 export type ManagedPaymentStatus = "created" | "pending" | "paid" | "failed" | "expired" | "refunded";
@@ -99,7 +101,7 @@ export async function recordPaymentOperation(
     processedByUserId: input.processedByUserId ?? null,
     status: input.status ?? "pending",
     amount: input.amount == null ? null : String(input.amount),
-    currency: input.currency ?? "IDR",
+    currency: input.currency ?? "USD",
     provider: input.provider ?? "demo_gateway",
     providerReference: input.providerReference ?? null,
     reason: input.reason ?? null,
@@ -319,7 +321,7 @@ async function ensureDonationPassportItem(
       sourceId: donation.id,
       itemType: "donation",
       title: `Supported ${donation.campaignTitle}`,
-      description: `Donated ${formatCurrency(toNumber(donation.amount))} to ${donation.campaignTitle}.`,
+      description: `Donated ${formatCurrency(toNumber(donation.amount), donation.currency)} to ${donation.campaignTitle}.`,
       occurredAt: donation.createdAt,
       metadata: {
         campaignSlug: donation.campaignSlug,
@@ -373,7 +375,11 @@ async function ensureSponsoredEcosystemForDonation(
     .from(impactSites)
     .where(eq(impactSites.campaignId, donation.campaignId))
     .limit(1);
-  const fragments = getMetadataNumber(payload, "sponsoredFragments", Math.max(1, Math.round(toNumber(donation.amount) / 50_000)));
+  const fragments = getMetadataNumber(payload, "sponsoredFragments", getMetadataNumber(payload, "coralFragments", 0));
+
+  if (fragments <= 0) {
+    return;
+  }
 
   await database
     .insert(sponsoredEcosystems)
@@ -389,6 +395,9 @@ async function ensureSponsoredEcosystemForDonation(
       metadata: {
         donationId: donation.id,
         fragments,
+        impactUnitCount: getMetadataNumber(payload, "impactUnitCount", fragments),
+        impactUnit: getMetadataString(payload, "impactUnit") ?? "coral fragments",
+        carbonKg: getMetadataNumber(payload, "carbonKg"),
         amount: toNumber(donation.amount),
         currency: donation.currency,
         contributionIntent: "coral"
@@ -437,6 +446,10 @@ export async function transitionDonationPayment(
       createdAt: donations.createdAt,
       campaignTitle: campaigns.title,
       campaignSlug: campaigns.slug,
+      campaignGoalAmount: campaigns.goalAmount,
+      campaignImpactUnit: campaigns.impactUnit,
+      campaignImpactTarget: campaigns.impactTarget,
+      campaignImpactUnitCost: campaigns.impactUnitCost,
       paymentMethodId: paymentTransactions.paymentMethodId,
       providerReference: paymentTransactions.providerReference,
       transactionPayload: paymentTransactions.payload
@@ -462,6 +475,32 @@ export async function transitionDonationPayment(
   const contributionIntent = getMetadataString(transactionPayload, "contributionIntent") ?? "one-time";
   const paymentMethodId = input.paymentMethodId ?? donation.paymentMethodId ?? null;
   let subscriptionId = donation.subscriptionId;
+  const [carbonSetting] = await database
+    .select({ value: platformSettings.value })
+    .from(platformSettings)
+    .where(eq(platformSettings.key, CARBON_SETTING_KEY))
+    .limit(1);
+  const impact = calculateDonationImpact({
+    amount: donation.amount,
+    currency: donation.currency,
+    campaign: {
+      goalAmount: donation.campaignGoalAmount,
+      impactUnit: donation.campaignImpactUnit,
+      impactTarget: donation.campaignImpactTarget,
+      impactUnitCost: donation.campaignImpactUnitCost
+    },
+    carbonKgPerUsd: parseCarbonKgPerUsd(payloadObject(carbonSetting?.value).kgCo2ePerUsd)
+  });
+  const roundedCoralFragments = impact.coralFragments > 0 ? Math.max(1, Math.round(impact.coralFragments)) : 0;
+  const impactPayload = {
+    ...transactionPayload,
+    impactUnit: impact.impactUnit,
+    impactUnitCost: impact.unitCost,
+    impactUnitCount: Number(impact.impactUnitCount.toFixed(2)),
+    sponsoredFragments: roundedCoralFragments || null,
+    coralFragments: roundedCoralFragments || null,
+    carbonKg: impact.carbonKg == null ? null : Number(impact.carbonKg.toFixed(2))
+  };
 
   if (contributionIntent === "monthly" && subscriptionId) {
     await database
@@ -504,7 +543,7 @@ export async function transitionDonationPayment(
     .set({
       paymentMethodId,
       status: input.nextStatus,
-      payload: transactionPayload,
+      payload: impactPayload,
       updatedAt: now
     })
     .where(eq(paymentTransactions.donationId, donation.id));
@@ -546,7 +585,7 @@ export async function transitionDonationPayment(
   let receiptCreated = false;
 
   if (isPaid) {
-    const receipt = await receiptForDonation(database, donation, providerReference, transactionPayload, now);
+    const receipt = await receiptForDonation(database, donation, providerReference, impactPayload, now);
     receiptNumber = receipt.receiptNumber;
     receiptCreated = receipt.created;
 
@@ -554,18 +593,28 @@ export async function transitionDonationPayment(
       receiptNumber,
       contributionIntent,
       subscriptionId,
-      providerReference
+      providerReference,
+      impactUnit: impact.impactUnit,
+      impactUnitCost: impact.unitCost,
+      impactUnitCount: Number(impact.impactUnitCount.toFixed(2)),
+      fragments: roundedCoralFragments || null,
+      coralFragments: roundedCoralFragments || null,
+      carbonKg: impact.carbonKg == null ? null : Number(impact.carbonKg.toFixed(2)),
+      impactSummary:
+        impact.impactUnitCount > 0
+          ? `${formatImpactQuantity(impact.impactUnitCount)} ${impact.impactUnit}`
+          : null
     });
 
-    if (contributionIntent === "coral") {
-      await ensureSponsoredEcosystemForDonation(database, donation, providerReference, transactionPayload, now);
+    if (roundedCoralFragments > 0) {
+      await ensureSponsoredEcosystemForDonation(database, donation, providerReference, impactPayload, now);
     }
   }
 
   if (wasPaid && !isPaid) {
     await deleteDonationPassportItem(database, donation.id);
 
-    if (contributionIntent === "coral") {
+    if (roundedCoralFragments > 0) {
       await reverseSponsoredEcosystemForDonation(database, donation.id, input.nextStatus, now);
     }
   }
@@ -584,7 +633,11 @@ export async function transitionDonationPayment(
       metadata: {
         previousStatus: donation.previousStatus,
         nextStatus: input.nextStatus,
-        contributionIntent
+        contributionIntent,
+        impactUnit: impact.impactUnit,
+        impactUnitCount: Number(impact.impactUnitCount.toFixed(2)),
+        coralFragments: roundedCoralFragments || null,
+        carbonKg: impact.carbonKg == null ? null : Number(impact.carbonKg.toFixed(2))
       },
       processedAt: now,
       now

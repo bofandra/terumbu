@@ -125,7 +125,7 @@ export default async function AdminExpeditionsPage({ searchParams }: AdminExpedi
                     {expedition.relatedCampaignTitle ? <AdminStatusBadge value="published" /> : <AdminStatusBadge value="draft" />}
                   </div>
                   <p className="mt-1 text-sm font-semibold text-ocean-900/58">
-                    {expedition.region} / {expedition.durationDays} days / {formatCurrency(expedition.basePrice)}
+                    {expedition.region} / {expedition.durationDays} days / {formatCurrency(expedition.basePrice, expedition.currency)}
                   </p>
                   <p className="mt-2 text-xs font-bold uppercase tracking-[0.12em] text-ocean-900/44">
                     {expedition.departures.length.toLocaleString("id-ID")} departures / {expedition.bookingCount.toLocaleString("id-ID")} bookings /{" "}

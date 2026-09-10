@@ -1,11 +1,12 @@
 import Link from "next/link";
 import { ArrowUpRight, FileCheck2, ImagePlus, MapPinned, Megaphone, Plus, ShieldCheck } from "lucide-react";
 
-import { AdminEmptyState, AdminPageHeader, AdminStatusBadge, adminPanelClassName, adminSelectClassName } from "@/components/admin-ui";
+import { AdminEmptyState, AdminPageHeader, AdminStatusBadge, adminInputClassName, adminPanelClassName, adminSelectClassName } from "@/components/admin-ui";
 import { Button } from "@/components/ui/button";
 import { ProgressMeter } from "@/components/ui/progress-meter";
 import { requireRole } from "@/lib/auth";
-import { updateCampaignStatusAction } from "@/lib/portal-actions";
+import { updateCampaignStatusAction, updateImpactSettingsAction } from "@/lib/portal-actions";
+import { getCarbonKgPerUsd } from "@/lib/platform-settings";
 import { getAdminPortalData, getAdminOperationsData } from "@/lib/queries";
 import { formatCurrency } from "@/lib/utils";
 
@@ -21,6 +22,7 @@ const statusMessages: Record<string, string> = {
   "campaign-created": "Campaign created.",
   "campaign-deleted": "Campaign deleted.",
   "campaign-updated": "Campaign updated.",
+  "impact-settings": "Impact settings updated.",
   status: "Campaign status updated."
 };
 
@@ -73,7 +75,7 @@ function StatusSelect({ defaultValue = "draft" }: { defaultValue?: string }) {
 export default async function AdminCampaignsPage({ searchParams }: AdminCampaignsPageProps) {
   await requireRole(["admin"], "/admin/campaigns");
   const params = await searchParams;
-  const [data, operations] = await Promise.all([getAdminPortalData(), getAdminOperationsData()]);
+  const [data, operations, carbonKgPerUsd] = await Promise.all([getAdminPortalData(), getAdminOperationsData(), getCarbonKgPerUsd()]);
 
   const totalRaised = data.campaigns.reduce((total, campaign) => total + Number(campaign.raisedAmount), 0);
   const reviewCount = data.campaigns.filter((campaign) => campaign.status === "review").length;
@@ -101,6 +103,22 @@ export default async function AdminCampaignsPage({ searchParams }: AdminCampaign
 
       {savedMessage ? <p className="rounded-lg border border-kelp-700/20 bg-kelp-100 px-4 py-3 text-sm font-bold text-kelp-700">{savedMessage}</p> : null}
       {errorMessage ? <p className="rounded-lg border border-coral-700/20 bg-coral-100 px-4 py-3 text-sm font-bold text-coral-700">{errorMessage}</p> : null}
+
+      <form action={updateImpactSettingsAction} className="grid gap-4 rounded-lg border border-ocean-900/10 bg-white p-4 shadow-soft md:grid-cols-[minmax(0,1fr)_220px_auto] md:items-end">
+        <div>
+          <h2 className="text-lg font-bold tracking-normal text-ocean-900">Global carbon formula</h2>
+          <p className="mt-1 text-sm font-semibold leading-6 text-ocean-900/58">
+            Used for kg CO2e calculations from USD donations across all campaigns.
+          </p>
+        </div>
+        <label className="grid gap-2 text-sm font-bold text-ocean-900">
+          kg CO2e per USD
+          <input name="kgCo2ePerUsd" type="number" min="0" step="0.0001" defaultValue={carbonKgPerUsd ?? undefined} placeholder="Pending" className={adminInputClassName} />
+        </label>
+        <Button type="submit" tone="secondary" className="min-h-11 rounded-lg">
+          Save formula
+        </Button>
+      </form>
 
       <section className="grid gap-3 md:grid-cols-4" aria-label="Campaign summary">
         {[
@@ -196,7 +214,7 @@ export default async function AdminCampaignsPage({ searchParams }: AdminCampaign
                   <div>
                     <ProgressMeter value={progress} label={`${campaign.title} funding progress`} trackClassName="bg-sand-100" />
                     <p className="mt-2 text-sm font-bold text-ocean-900">
-                      {formatCurrency(Number(campaign.raisedAmount))} / {formatCurrency(Number(campaign.goalAmount))}
+                      {formatCurrency(Number(campaign.raisedAmount), campaign.currency)} / {formatCurrency(Number(campaign.goalAmount), campaign.currency)}
                     </p>
                     <p className="mt-1 text-xs font-semibold text-ocean-900/54">
                       {campaign.donorCount.toLocaleString("id-ID")} donors / {campaign.impactTarget.toLocaleString("id-ID")} {campaign.impactUnit}

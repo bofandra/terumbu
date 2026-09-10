@@ -1,13 +1,9 @@
 "use client";
 
 import {
-  Award,
   Bell,
   BookOpen,
-  Eye,
-  FileBadge,
   Heart,
-  MessageSquare,
   HelpCircle,
   Home,
   LogOut,
@@ -16,7 +12,6 @@ import {
   Search,
   Settings,
   ShieldQuestion,
-  Star,
   UserCircle,
   Waves
 } from "lucide-react";
@@ -33,17 +28,12 @@ const dashboardNav = [
   { label: "My Corals", href: "/dashboard/corals", icon: Waves },
   { label: "Donations", href: "/dashboard/donations", icon: Heart },
   { label: "Expeditions", href: "/dashboard/expeditions", icon: ShieldQuestion },
-  { label: "Academy", href: "/dashboard/academy", icon: BookOpen },
-  { label: "Community", href: "/dashboard/community", icon: MessageSquare },
-  { label: "Impact Passport", href: "/dashboard/passport", icon: Award },
-  { label: "Certificates", href: "/dashboard/certificates", icon: FileBadge },
-  { label: "Saved Projects", href: "/dashboard/saved", icon: Star }
+  { label: "Academy", href: "/dashboard/academy", icon: BookOpen }
 ];
 
 const accountNav = [
   { label: "Notifications", href: "/dashboard/notifications", icon: Bell },
   { label: "Account Settings", href: "/dashboard/settings", icon: Settings },
-  { label: "Privacy & Visibility", href: "/dashboard/settings#privacy", icon: Eye },
   { label: "Help & Support", href: "/dashboard/support", icon: HelpCircle }
 ];
 
@@ -52,7 +42,7 @@ const mobileNav = [
   { label: "Impact", href: "/dashboard/impact", icon: MapPinned },
   { label: "Corals", href: "/dashboard/corals", icon: Waves },
   { label: "Explore", href: "/campaigns", icon: Search },
-  { label: "Profile", href: "/dashboard/passport", icon: UserCircle }
+  { label: "Profile", href: "/dashboard/impact", icon: UserCircle }
 ];
 
 function splitHref(href: string) {
@@ -321,8 +311,8 @@ export function DashboardShell({ children, displayName, unreadNotificationCount 
                 </span>
               </summary>
               <div className="absolute right-0 mt-3 w-64 rounded-2xl border border-ocean-900/10 bg-white p-2 shadow-soft">
-                <Link href="/dashboard/passport" className="block rounded-xl px-3 py-2 text-sm font-bold text-ocean-900 hover:bg-ocean-50">
-                  View Impact Passport
+                <Link href="/dashboard/impact" className="block rounded-xl px-3 py-2 text-sm font-bold text-ocean-900 hover:bg-ocean-50">
+                  View My Impact
                 </Link>
                 <Link href="/dashboard/settings" className="block rounded-xl px-3 py-2 text-sm font-bold text-ocean-900 hover:bg-ocean-50">
                   Account settings

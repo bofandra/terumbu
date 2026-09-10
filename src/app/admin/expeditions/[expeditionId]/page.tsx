@@ -170,7 +170,7 @@ export default async function AdminExpeditionDetailPage({ params, searchParams }
       <AdminPageHeader
         eyebrow="Expeditions"
         title={expedition.title}
-        description={`${expedition.region} / ${expedition.durationDays} days / ${formatCurrency(expedition.basePrice)}`}
+        description={`${expedition.region} / ${expedition.durationDays} days / ${formatCurrency(expedition.basePrice, expedition.currency)}`}
         actionHref="/admin/expeditions"
         actionLabel="Expedition list"
       />
@@ -328,7 +328,7 @@ export default async function AdminExpeditionDetailPage({ params, searchParams }
               <input name="slug" defaultValue={expedition.slug} className={adminInputClassName} required />
             </Field>
           </div>
-          <div className="grid gap-3 lg:grid-cols-3">
+          <div className="grid gap-3 lg:grid-cols-4">
             <Field label="Region">
               <input name="region" defaultValue={expedition.region} className={adminInputClassName} required />
             </Field>
@@ -336,7 +336,13 @@ export default async function AdminExpeditionDetailPage({ params, searchParams }
               <input name="durationDays" type="number" min={1} defaultValue={expedition.durationDays} className={adminInputClassName} required />
             </Field>
             <Field label="Base price">
-              <input name="basePrice" type="number" min={1} step={1000} defaultValue={expedition.basePrice} className={adminInputClassName} required />
+              <input name="basePrice" type="number" min={1} step={0.01} defaultValue={expedition.basePrice} className={adminInputClassName} required />
+            </Field>
+            <Field label="Currency">
+              <select name="currency" defaultValue={expedition.currency} className={adminSelectClassName} required>
+                <option value="USD">USD</option>
+                <option value="IDR">IDR</option>
+              </select>
             </Field>
           </div>
           <div className="grid gap-3 lg:grid-cols-2">
@@ -349,6 +355,9 @@ export default async function AdminExpeditionDetailPage({ params, searchParams }
           </div>
           <Field label="Summary">
             <textarea name="summary" defaultValue={expedition.summary} className={adminTextareaClassName} required />
+          </Field>
+          <Field label="Documentation link">
+            <input name="documentationUrl" type="url" defaultValue={expedition.detailMetadata?.documentationUrl ?? ""} placeholder="https://drive.google.com/..." className={adminInputClassName} />
           </Field>
           <Field label="Trip detail content JSON">
             <textarea name="metadataJson" defaultValue={expedition.metadataJson} className={`${adminTextareaClassName} min-h-96 font-mono text-xs`} spellCheck={false} />

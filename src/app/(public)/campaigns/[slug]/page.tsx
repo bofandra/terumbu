@@ -136,7 +136,7 @@ export default async function CampaignDetailPage({ params }: { params: Promise<{
   ]);
   const progress = campaign.goal > 0 ? Math.min(100, Math.round((campaign.raised / campaign.goal) * 100)) : 0;
   const impactFunded = campaign.goal > 0 ? Math.round((campaign.raised / campaign.goal) * campaign.impactTarget) : 0;
-  const donationAmounts = suggestedDonationAmounts(campaign.goal);
+  const donationAmounts = suggestedDonationAmounts(campaign.goal, campaign.currency);
   const relatedExpeditions = allExpeditions
     .filter((expedition) => campaign.region.includes(expedition.region) || campaign.summary.toLowerCase().includes(expedition.region.toLowerCase()))
     .slice(0, 1);
@@ -313,17 +313,21 @@ export default async function CampaignDetailPage({ params }: { params: Promise<{
                 daysLeft={campaign.daysLeft}
                 impactFunded={impactFunded}
                 impactUnit={campaign.impactUnit}
+                currency={campaign.currency}
               />
             </div>
 
             <aside className="grid h-fit gap-6 xl:sticky xl:top-28">
               <CampaignDonationCard
                 campaignSlug={campaign.slug}
-                raisedLabel={`${formatCurrency(campaign.raised)} raised`}
+                raisedLabel={`${formatCurrency(campaign.raised, campaign.currency)} raised`}
                 progress={progress}
                 impactUnit={campaign.impactUnit}
                 impactTarget={campaign.impactTarget}
+                impactUnitCost={campaign.impactUnitCost}
                 goal={campaign.goal}
+                currency={campaign.currency}
+                carbonKgPerUsd={campaign.carbonKgPerUsd}
                 oneTimeAmounts={donationAmounts}
                 disabledReason={disabledReason}
                 isAuthenticated={Boolean(sessionUser)}
@@ -446,7 +450,14 @@ export default async function CampaignDetailPage({ params }: { params: Promise<{
 
           <section id="impact" className="scroll-mt-40">
             <div className="grid gap-8">
-              <CampaignImpactCalculator goal={campaign.goal} impactTarget={campaign.impactTarget} impactUnit={campaign.impactUnit} />
+              <CampaignImpactCalculator
+                goal={campaign.goal}
+                impactTarget={campaign.impactTarget}
+                impactUnit={campaign.impactUnit}
+                impactUnitCost={campaign.impactUnitCost}
+                currency={campaign.currency}
+                carbonKgPerUsd={campaign.carbonKgPerUsd}
+              />
 
               <article className="grid gap-5 lg:grid-cols-2">
                 <div className="rounded-2xl border border-ocean-900/10 bg-white p-6 shadow-soft">
@@ -679,9 +690,9 @@ export default async function CampaignDetailPage({ params }: { params: Promise<{
               </SectionHeading>
               <div className="mt-8 grid gap-4 md:grid-cols-4">
                 {[
-                  [formatCurrency(campaign.goal), "Campaign goal"],
-                  [formatCurrency(campaign.raised), "Raised"],
-                  [formatCurrency(Math.max(0, campaign.goal - campaign.raised)), "Remaining"],
+                  [formatCurrency(campaign.goal, campaign.currency), "Campaign goal"],
+                  [formatCurrency(campaign.raised, campaign.currency), "Raised"],
+                  [formatCurrency(Math.max(0, campaign.goal - campaign.raised), campaign.currency), "Remaining"],
                   [campaign.donors.toLocaleString("id-ID"), "Paid supporters"]
                 ].map(([value, label]) => (
                   <div key={label} className="rounded-xl bg-sand-50 p-4">
@@ -698,7 +709,7 @@ export default async function CampaignDetailPage({ params }: { params: Promise<{
                       Budget line items
                     </h3>
                     <p className="text-sm font-bold text-ocean-900/58">
-                      {formatCurrency(campaign.budgetUtilization.spent)} spent / {formatCurrency(campaign.budgetUtilization.planned)} planned
+                      {formatCurrency(campaign.budgetUtilization.spent, campaign.currency)} spent / {formatCurrency(campaign.budgetUtilization.planned, campaign.currency)} planned
                     </p>
                   </div>
                   <div className="mt-4 grid gap-3">
@@ -709,7 +720,7 @@ export default async function CampaignDetailPage({ params }: { params: Promise<{
                           {item.description ? <p className="mt-1 leading-6 text-ocean-900/62">{item.description}</p> : null}
                         </div>
                         <p className="font-bold text-ocean-900">
-                          {formatCurrency(item.spentAmount)} / {formatCurrency(item.amount)}
+                          {formatCurrency(item.spentAmount, campaign.currency)} / {formatCurrency(item.amount, campaign.currency)}
                         </p>
                       </div>
                     ))}
@@ -725,7 +736,7 @@ export default async function CampaignDetailPage({ params }: { params: Promise<{
             <p className="mt-4 max-w-2xl text-white/72">
               Every contribution supports local restoration teams, long-term monitoring, and healthier marine ecosystems.
             </p>
-            <p className="mt-5 text-sm font-bold text-white/82">{progress}% funded · {formatCurrency(Math.max(0, campaign.goal - campaign.raised))} remaining</p>
+            <p className="mt-5 text-sm font-bold text-white/82">{progress}% funded · {formatCurrency(Math.max(0, campaign.goal - campaign.raised), campaign.currency)} remaining</p>
             <div className="mt-6 flex flex-wrap gap-3">
               {disabledReason ? (
                 <ButtonLink href="#updates" tone="light">Follow Implementation</ButtonLink>

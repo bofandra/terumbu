@@ -5,13 +5,12 @@ import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import { calculateDonationImpact, currencyMinorStep, formatImpactQuantity, minimumDonationAmount } from "@/lib/impact-calculations";
 import { removeSavedCampaignAction, saveCampaignAction } from "@/lib/retention-actions";
 import { formatCurrency } from "@/lib/utils";
 
 type DonationMode = "one-time" | "coral";
 type ShareStatus = "idle" | "copied" | "shared" | "error";
-
-const MIN_DONATION_AMOUNT = 10_000;
 
 type CampaignDonationCardProps = {
   campaignSlug: string;
@@ -19,7 +18,10 @@ type CampaignDonationCardProps = {
   progress: number;
   impactUnit: string;
   impactTarget: number;
+  impactUnitCost?: string | number | null;
   goal: number;
+  currency: string;
+  carbonKgPerUsd?: number | null;
   oneTimeAmounts: number[];
   disabledReason?: string | null;
   isAuthenticated?: boolean;
@@ -27,22 +29,44 @@ type CampaignDonationCardProps = {
   campaignPath?: string;
 };
 
-function roundedIdr(value: number, step = 50_000) {
+function roundedCurrency(value: number, currency: string) {
+  const step = currencyMinorStep(currency);
+
   return Math.max(step, Math.round(value / step) * step);
 }
 
-function impactText(mode: DonationMode, amount: number, goal: number, impactTarget: number, impactUnit: string) {
-  const costPerUnit = goal > 0 && impactTarget > 0 ? goal / impactTarget : amount;
+function impactText(
+  mode: DonationMode,
+  amount: number,
+  currency: string,
+  goal: number,
+  impactTarget: number,
+  impactUnit: string,
+  impactUnitCost: string | number | null | undefined,
+  carbonKgPerUsd: number | null | undefined
+) {
+  const impact = calculateDonationImpact({
+    amount,
+    currency,
+    campaign: {
+      goalAmount: goal,
+      impactTarget,
+      impactUnit,
+      impactUnitCost
+    },
+    carbonKgPerUsd
+  });
+  const impactLabel =
+    impact.impactUnitCount > 0
+      ? `${formatImpactQuantity(impact.impactUnitCount)} ${impactUnit}`
+      : `this ${impactUnit} target`;
+  const carbonLabel = impact.carbonKg == null ? "Carbon calculation is pending admin setup." : `${formatImpactQuantity(impact.carbonKg)} kg CO2e calculated.`;
 
   if (mode === "coral") {
-    const fragments = Math.max(1, Math.round(amount / costPerUnit));
-
-    return `${formatCurrency(amount)} sponsors approximately ${fragments.toLocaleString("id-ID")} ${impactUnit}.`;
+    return `${formatCurrency(amount, currency)} sponsors approximately ${impactLabel}. ${carbonLabel}`;
   }
 
-  const units = Math.max(1, Math.round(amount / costPerUnit));
-
-  return `${formatCurrency(amount)} can support approximately ${units.toLocaleString("id-ID")} ${impactUnit}.`;
+  return `${formatCurrency(amount, currency)} can support approximately ${impactLabel}. ${carbonLabel}`;
 }
 
 function checkoutHref(campaignSlug: string, mode: DonationMode, amount: number) {
@@ -93,14 +117,18 @@ export function CampaignDonationCard({
   progress,
   impactUnit,
   impactTarget,
+  impactUnitCost,
   goal,
+  currency,
+  carbonKgPerUsd = null,
   oneTimeAmounts,
   disabledReason = null,
   isAuthenticated = false,
   isSaved = false,
   campaignPath = `/campaigns/${campaignSlug}`
 }: CampaignDonationCardProps) {
-  const fallbackAmount = roundedIdr(Math.max(1, goal) * 0.0005);
+  const minimumAmount = minimumDonationAmount(currency);
+  const fallbackAmount = roundedCurrency(Math.max(1, goal) * 0.0005, currency);
   const [mode, setMode] = useState<DonationMode>("one-time");
   const [selectedAmount, setSelectedAmount] = useState(oneTimeAmounts[1] ?? oneTimeAmounts[0] ?? fallbackAmount);
   const [customAmount, setCustomAmount] = useState("");
@@ -108,18 +136,23 @@ export function CampaignDonationCard({
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [shareStatus, setShareStatus] = useState<ShareStatus>("idle");
   const shareResetTimer = useRef<number | null>(null);
-  const customValue = Number(customAmount.replace(/[^0-9]/g, ""));
+  const customValue = Number(customAmount.replace(/[^0-9.]/g, ""));
   const amount = isCustomAmountSelected ? customValue : selectedAmount;
-  const hasValidDonationAmount = amount >= MIN_DONATION_AMOUNT;
+  const hasValidDonationAmount = amount >= minimumAmount;
   const href = checkoutHref(campaignSlug, mode, amount);
-  const costPerUnit = goal > 0 && impactTarget > 0 ? goal / impactTarget : selectedAmount;
+  const costPerUnit =
+    calculateDonationImpact({
+      amount: selectedAmount,
+      currency,
+      campaign: { goalAmount: goal, impactTarget, impactUnit, impactUnitCost }
+    }).unitCost || selectedAmount;
   const impactPackages = useMemo(
     () =>
       [1, 5, 10].map((units) => ({
         label: `${units.toLocaleString("id-ID")} ${impactUnit}`,
-        amount: roundedIdr(costPerUnit * units)
+        amount: roundedCurrency(costPerUnit * units, currency)
       })),
-    [costPerUnit, impactUnit]
+    [costPerUnit, currency, impactUnit]
   );
 
   const options = useMemo(() => {
@@ -128,10 +161,10 @@ export function CampaignDonationCard({
     }
 
     return oneTimeAmounts.map((oneTimeAmount) => ({
-      label: formatCurrency(oneTimeAmount),
+      label: formatCurrency(oneTimeAmount, currency),
       amount: oneTimeAmount
     }));
-  }, [impactPackages, mode, oneTimeAmounts]);
+  }, [currency, impactPackages, mode, oneTimeAmounts]);
 
   useEffect(() => {
     return () => {
@@ -252,7 +285,7 @@ export function CampaignDonationCard({
             }}
           >
             {option.label}
-            {mode !== "coral" ? null : <span className="mt-1 block text-xs font-semibold text-ocean-900/56">{formatCurrency(option.amount)}</span>}
+            {mode !== "coral" ? null : <span className="mt-1 block text-xs font-semibold text-ocean-900/56">{formatCurrency(option.amount, currency)}</span>}
           </button>
         ))}
         <button
@@ -291,7 +324,9 @@ export function CampaignDonationCard({
         <div className="flex items-start gap-3">
           <HeartHandshake className="mt-0.5 shrink-0 text-coral-500" size={22} aria-hidden="true" />
           <p className="text-sm leading-6 text-ocean-900/76">
-            {hasValidDonationAmount ? impactText(mode, amount, goal, impactTarget, impactUnit) : "Enter an amount to preview your impact."}
+            {hasValidDonationAmount
+              ? impactText(mode, amount, currency, goal, impactTarget, impactUnit, impactUnitCost, carbonKgPerUsd)
+              : "Enter an amount to preview your impact."}
           </p>
         </div>
       </div>
@@ -312,7 +347,7 @@ export function CampaignDonationCard({
               disabled
               className="mt-5 inline-flex min-h-12 w-full cursor-not-allowed items-center justify-center rounded-full bg-ocean-900/18 px-5 py-3 text-sm font-bold text-ocean-900/50"
             >
-              Minimum {formatCurrency(MIN_DONATION_AMOUNT)}
+              Minimum {formatCurrency(minimumAmount, currency)}
             </button>
           )}
         </>
