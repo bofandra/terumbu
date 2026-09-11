@@ -4539,7 +4539,7 @@ export async function getCorporateDashboardData(userId: string, requestedProgram
       metricValue,
       financeCategory,
       financeSpendAmount,
-      financeSpendCurrency: getMetadataString(item.metadata, "financeSpendCurrency") ?? "IDR",
+      financeSpendCurrency: getMetadataString(item.metadata, "financeSpendCurrency") ?? "USD",
       sourceHref: evidenceSourceHref(item.campaignSlug, item.evidenceCode) ?? item.fileUrl
     };
   });

@@ -19,8 +19,8 @@ const receipt: DonationReceiptDownloadRecord = {
   },
   donorName: "Raka Pramana",
   donorEmail: "raka@example.test",
-  amount: "250000.00",
-  currency: "IDR",
+  amount: "250.00",
+  currency: "USD",
   status: "paid",
   createdAt: new Date("2026-07-12T00:00:00.000Z"),
   campaignTitle: "Reef Recovery",
@@ -56,6 +56,6 @@ test("donation receipt download pdf includes receipt details", () => {
   assert.match(pdfText, /Raka \\\\ Team/);
   assert.match(pdfText, /Campaign \\\(One\\\)/);
   assert.match(pdfText, /Org Two/);
-  assert.match(pdfText, /IDR\s*250\.000/);
+  assert.match(pdfText, /USD\s*250,00/);
   assert.match(pdfText, /https:\/\/example.test\/campaigns\/reef-recovery/);
 });

@@ -139,7 +139,7 @@ export default async function AdminCorporatePage({ searchParams }: AdminCorporat
             </label>
             <label className="grid gap-2 text-sm font-bold text-ocean-900">
               Currency
-              <input name="currency" defaultValue="IDR" className={adminInputClassName} maxLength={8} />
+              <input name="currency" defaultValue="USD" className={adminInputClassName} maxLength={8} />
             </label>
           </div>
           <Button type="submit" className="justify-self-start">Save Workspace</Button>

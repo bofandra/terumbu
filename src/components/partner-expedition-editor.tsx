@@ -91,7 +91,6 @@ function CreateExpeditionForm({ campaigns, canManageExpeditions }: { campaigns: 
           <Field label="Currency">
             <select name="currency" defaultValue="USD" className={inputClassName} required>
               <option value="USD">USD</option>
-              <option value="IDR">IDR</option>
             </select>
           </Field>
         </div>
@@ -521,7 +520,6 @@ function ExpeditionDetailForm({ expedition, campaigns }: { expedition: Expeditio
         <Field label="Currency">
           <select name="currency" defaultValue={expedition.currency} className={inputClassName} required>
             <option value="USD">USD</option>
-            <option value="IDR">IDR</option>
           </select>
         </Field>
       </div>

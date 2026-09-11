@@ -326,7 +326,6 @@ export function CampaignFields({ campaign, organizations }: { campaign?: Campaig
         <Field label="Currency" required>
           <select name="currency" defaultValue={campaign?.currency ?? "USD"} className={inputClassName} required>
             <option value="USD">USD</option>
-            <option value="IDR">IDR</option>
           </select>
         </Field>
         <Field label="Impact target" required>

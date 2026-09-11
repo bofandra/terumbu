@@ -87,7 +87,7 @@ export function monthlyImpactReportHolderName(report: Pick<MonthlyImpactReportRe
 function formatCurrency(value: number) {
   return new Intl.NumberFormat("id-ID", {
     style: "currency",
-    currency: "IDR",
+    currency: "USD",
     currencyDisplay: "code",
     maximumFractionDigits: 0
   }).format(value);

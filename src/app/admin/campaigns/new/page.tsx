@@ -190,7 +190,6 @@ export default async function AdminCampaignNewPage({ searchParams }: AdminCampai
             <Field label="Currency" required>
               <select name="currency" defaultValue="USD" className={adminInputClassName} required>
                 <option value="USD">USD</option>
-                <option value="IDR">IDR</option>
               </select>
             </Field>
             <Field label="Impact target" required>

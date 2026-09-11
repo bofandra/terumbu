@@ -71,22 +71,22 @@ test("demo payment provider maps charge and refund outcomes into managed statuse
 
   const paid = demoGatewayChargeSubscription({
     idempotencyKey: "cycle-1",
-    amount: 100_000,
-    currency: "IDR",
+    amount: 100,
+    currency: "USD",
     paymentMethod: { status: "active", last4: "4242" },
     now
   });
   const failed = demoGatewayChargeSubscription({
     idempotencyKey: "cycle-2",
-    amount: 100_000,
-    currency: "IDR",
+    amount: 100,
+    currency: "USD",
     paymentMethod: { status: "active", last4: "0000" },
     now
   });
   const refund = demoGatewaySettleRefund({
     idempotencyKey: "refund-1",
-    amount: 100_000,
-    currency: "IDR",
+    amount: 100,
+    currency: "USD",
     now
   });
 

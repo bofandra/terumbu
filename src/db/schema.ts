@@ -319,7 +319,7 @@ export const donationSubscriptions = pgTable("donation_subscriptions", {
   donorName: varchar("donor_name", { length: 160 }).notNull(),
   donorEmail: varchar("donor_email", { length: 255 }).notNull(),
   amount: numeric("amount", { precision: 14, scale: 2 }).notNull(),
-  currency: varchar("currency", { length: 8 }).default("IDR").notNull(),
+  currency: varchar("currency", { length: 8 }).default("USD").notNull(),
   interval: varchar("interval", { length: 40 }).default("month").notNull(),
   status: varchar("status", { length: 80 }).default("incomplete").notNull(),
   provider: varchar("provider", { length: 80 }).default("demo_gateway").notNull(),
@@ -1189,7 +1189,7 @@ export const corporatePrograms = pgTable("corporate_programs", {
   startsAt: timestamp("starts_at", { withTimezone: true }).notNull(),
   endsAt: timestamp("ends_at", { withTimezone: true }).notNull(),
   budgetAmount: numeric("budget_amount", { precision: 14, scale: 2 }).notNull(),
-  currency: varchar("currency", { length: 8 }).default("IDR").notNull(),
+  currency: varchar("currency", { length: 8 }).default("USD").notNull(),
   status: varchar("status", { length: 80 }).default("active").notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull()
 }, (table) => ({
@@ -1313,7 +1313,7 @@ export const corporateContributions = pgTable("corporate_contributions", {
   referenceCode: varchar("reference_code", { length: 160 }).notNull(),
   contributionType: varchar("contribution_type", { length: 80 }).default("csr").notNull(),
   amount: numeric("amount", { precision: 14, scale: 2 }).notNull(),
-  currency: varchar("currency", { length: 8 }).default("IDR").notNull(),
+  currency: varchar("currency", { length: 8 }).default("USD").notNull(),
   status: varchar("status", { length: 80 }).default("committed").notNull(),
   countsTowardCampaignGoal: boolean("counts_toward_campaign_goal").default(false).notNull(),
   contributionDate: timestamp("contribution_date", { withTimezone: true }).defaultNow().notNull(),

@@ -220,8 +220,8 @@ async function attachCorporateAccess(userId: string) {
       slug: "nusantara-bank-ocean-impact-2026",
       startsAt: new Date("2026-01-01T00:00:00.000Z"),
       endsAt: new Date("2026-12-31T16:59:59.000Z"),
-      budgetAmount: "500000000.00",
-      currency: "IDR",
+      budgetAmount: "50000.00",
+      currency: "USD",
       status: "active"
     })
     .onConflictDoUpdate({

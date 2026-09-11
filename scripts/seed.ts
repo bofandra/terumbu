@@ -420,8 +420,9 @@ async function seed() {
         category: "Coral Restoration",
         region: "Raja Ampat, Southwest Papua",
         imageUrl: "https://images.unsplash.com/photo-1583212292454-1fe6229603b7?auto=format&fit=crop&w=1200&q=80",
-        goalAmount: "350000000.00",
-        raisedAmount: "250000000.00",
+        goalAmount: "35000.00",
+        raisedAmount: "25000.00",
+        currency: "USD",
         donorCount: 2350,
         impactUnit: "coral fragments",
         impactTarget: 10000,
@@ -440,8 +441,9 @@ async function seed() {
         category: "Mangrove Restoration",
         region: "Buleleng, Bali",
         imageUrl: "https://images.unsplash.com/photo-1518837695005-2083093ee35b?auto=format&fit=crop&w=1200&q=80",
-        goalAmount: "150000000.00",
-        raisedAmount: "92000000.00",
+        goalAmount: "15000.00",
+        raisedAmount: "9200.00",
+        currency: "USD",
         donorCount: 890,
         impactUnit: "mangrove seedlings",
         impactTarget: 25000,
@@ -460,8 +462,9 @@ async function seed() {
         category: "Ocean Cleanup",
         region: "Labuan Bajo, East Nusa Tenggara",
         imageUrl: "https://images.unsplash.com/photo-1546026423-cc4642628d2b?auto=format&fit=crop&w=1200&q=80",
-        goalAmount: "100000000.00",
-        raisedAmount: "63000000.00",
+        goalAmount: "10000.00",
+        raisedAmount: "6300.00",
+        currency: "USD",
         donorCount: 510,
         impactUnit: "tons of plastic removed",
         impactTarget: 12,
@@ -483,6 +486,7 @@ async function seed() {
         imageUrl: sql`excluded.image_url`,
         goalAmount: sql`excluded.goal_amount`,
         raisedAmount: sql`excluded.raised_amount`,
+        currency: sql`excluded.currency`,
         donorCount: sql`excluded.donor_count`,
         impactUnit: sql`excluded.impact_unit`,
         impactTarget: sql`excluded.impact_target`,
@@ -554,8 +558,8 @@ async function seed() {
         campaignId: campaignBySlug.get("restore-raja-ampat-reefs")!,
         category: "Restoration materials",
         description: "Coral tables, ties, tags, and nursery maintenance supplies.",
-        amount: "175000000.00",
-        spentAmount: "94000000.00",
+        amount: "17500.00",
+        spentAmount: "9400.00",
         sortOrder: 0,
         updatedAt: now
       },
@@ -564,8 +568,8 @@ async function seed() {
         campaignId: campaignBySlug.get("restore-raja-ampat-reefs")!,
         category: "Monitoring dives",
         description: "Monthly diver surveys, visual evidence capture, and field data entry.",
-        amount: "105000000.00",
-        spentAmount: "52000000.00",
+        amount: "10500.00",
+        spentAmount: "5200.00",
         sortOrder: 1,
         updatedAt: now
       },
@@ -574,8 +578,8 @@ async function seed() {
         campaignId: campaignBySlug.get("restore-raja-ampat-reefs")!,
         category: "Community coordination",
         description: "Village coordination, boat logistics, and youth reef learning sessions.",
-        amount: "70000000.00",
-        spentAmount: "28000000.00",
+        amount: "7000.00",
+        spentAmount: "2800.00",
         sortOrder: 2,
         updatedAt: now
       }
@@ -816,8 +820,8 @@ async function seed() {
           metricValue: 0,
           reviewer: "field_partner",
           financeCategory: "Employee learning",
-          financeSpendAmount: 54000000,
-          financeSpendCurrency: "IDR"
+          financeSpendAmount: 5400,
+          financeSpendCurrency: "USD"
         }
       },
       {
@@ -842,8 +846,8 @@ async function seed() {
           survivalRate: 94,
           reviewer: "field_partner",
           financeCategory: "Restoration portfolio",
-          financeSpendAmount: 238000000,
-          financeSpendCurrency: "IDR"
+          financeSpendAmount: 23800,
+          financeSpendCurrency: "USD"
         }
       },
       {
@@ -888,8 +892,8 @@ async function seed() {
           seedlingsReady: 18400,
           survivalRate: 89,
           financeCategory: "Verification and reports",
-          financeSpendAmount: 48000000,
-          financeSpendCurrency: "IDR"
+          financeSpendAmount: 4800,
+          financeSpendCurrency: "USD"
         }
       },
       {
@@ -1141,8 +1145,8 @@ async function seed() {
         userId: demoUser.id,
         donorName: "Raka Demo",
         donorEmail: DEMO_EMAIL,
-        amount: "1500000.00",
-        currency: "IDR",
+        amount: "150.00",
+        currency: "USD",
         status: "paid",
         message: "For the next coral monitoring milestone.",
         createdAt: date("2026-06-01T04:30:00.000Z")
@@ -1153,8 +1157,8 @@ async function seed() {
         userId: demoUser.id,
         donorName: "Raka Demo",
         donorEmail: DEMO_EMAIL,
-        amount: "1000000.00",
-        currency: "IDR",
+        amount: "100.00",
+        currency: "USD",
         status: "paid",
         message: "Supporting coastal communities in Bali.",
         createdAt: date("2026-06-07T06:15:00.000Z")
@@ -1165,8 +1169,8 @@ async function seed() {
         userId: demoUser.id,
         donorName: "Raka Demo",
         donorEmail: DEMO_EMAIL,
-        amount: "700000.00",
-        currency: "IDR",
+        amount: "70.00",
+        currency: "USD",
         status: "paid",
         message: "Cleanup teams need visible wins.",
         createdAt: date("2026-06-13T08:45:00.000Z")
@@ -1248,8 +1252,8 @@ async function seed() {
         emailedAt: date("2026-06-01T04:32:00.000Z"),
         payload: {
           campaign: "Restore Raja Ampat Reefs",
-          amount: 1500000,
-          currency: "IDR"
+          amount: 150,
+          currency: "USD"
         }
       },
       {
@@ -1260,8 +1264,8 @@ async function seed() {
         emailedAt: date("2026-06-07T06:17:00.000Z"),
         payload: {
           campaign: "Mangrove Shield for North Bali",
-          amount: 1000000,
-          currency: "IDR"
+          amount: 100,
+          currency: "USD"
         }
       },
       {
@@ -1272,8 +1276,8 @@ async function seed() {
         emailedAt: date("2026-06-13T08:47:00.000Z"),
         payload: {
           campaign: "Cleanup Komodo Coastline",
-          amount: 700000,
-          currency: "IDR"
+          amount: 70,
+          currency: "USD"
         }
       }
     ])
@@ -1361,7 +1365,8 @@ async function seed() {
         slug: "raja-ampat-coral-restoration",
         region: "Raja Ampat",
         durationDays: 4,
-        basePrice: "2500000.00",
+        basePrice: "250.00",
+        currency: "USD",
         summary: "Plant coral fragments, join reef monitoring, and learn directly from local field teams.",
         imageUrl: "https://images.unsplash.com/photo-1546026423-cc4642628d2b?auto=format&fit=crop&w=1200&q=80",
         relatedCampaignId: campaignBySlug.get("restore-raja-ampat-reefs")!
@@ -1371,7 +1376,8 @@ async function seed() {
         slug: "wakatobi-reef-monitoring",
         region: "Wakatobi",
         durationDays: 3,
-        basePrice: "1850000.00",
+        basePrice: "185.00",
+        currency: "USD",
         summary: "Practice reef survey basics, document restoration sites, and support community guides.",
         imageUrl: "https://images.unsplash.com/photo-1583212292454-1fe6229603b7?auto=format&fit=crop&w=1200&q=80",
         relatedCampaignId: campaignBySlug.get("restore-raja-ampat-reefs")!
@@ -1386,6 +1392,7 @@ async function seed() {
         basePrice: sql`excluded.base_price`,
         summary: sql`excluded.summary`,
         imageUrl: sql`excluded.image_url`,
+        currency: sql`excluded.currency`,
         relatedCampaignId: sql`excluded.related_campaign_id`
       }
     })
@@ -1445,8 +1452,8 @@ async function seed() {
       contactName: "Raka Demo",
       contactEmail: DEMO_EMAIL,
       participantsCount: 1,
-      totalAmount: "2500000.00",
-      currency: "IDR",
+      totalAmount: "250.00",
+      currency: "USD",
       status: "confirmed",
       paymentStatus: "paid",
       bookedAt: date("2026-06-14T05:00:00.000Z"),
@@ -1862,12 +1869,12 @@ async function seed() {
         passportId: passport.id,
         itemType: "donation",
         title: "Funded Raja Ampat reef restoration",
-        description: "IDR 1.5M donation connected to coral restoration progress.",
+        description: "USD 150 donation connected to coral restoration progress.",
         evidenceUrl: "https://example.com/evidence/raja-ampat-donation",
         occurredAt: date("2026-06-01T04:30:00.000Z"),
         metadata: {
-          amount: 1500000,
-          currency: "IDR",
+          amount: 150,
+          currency: "USD",
           campaign: "restore-raja-ampat-reefs",
           campaignSlug: "restore-raja-ampat-reefs",
           evidenceCode: "EVD-RAJA-AMPAT-REEF-001"
@@ -2646,7 +2653,8 @@ async function seed() {
       slug: "nusantara-bank-ocean-impact-2026",
       startsAt: date("2026-01-01T00:00:00.000Z"),
       endsAt: date("2026-12-31T16:59:59.000Z"),
-      budgetAmount: "500000000.00",
+      budgetAmount: "50000.00",
+      currency: "USD",
       status: "active"
     })
     .onConflictDoUpdate({
@@ -2656,7 +2664,8 @@ async function seed() {
         name: "Ocean Impact Program 2026",
         startsAt: date("2026-01-01T00:00:00.000Z"),
         endsAt: date("2026-12-31T16:59:59.000Z"),
-        budgetAmount: "500000000.00",
+        budgetAmount: "50000.00",
+        currency: "USD",
         status: "active"
       }
     });
@@ -2668,8 +2677,8 @@ async function seed() {
         id: ids.corporateBudgetRestoration,
         programId: ids.corporateProgram,
         category: "Restoration portfolio",
-        allocatedAmount: "350000000.00",
-        spentAmount: "238000000.00",
+        allocatedAmount: "35000.00",
+        spentAmount: "23800.00",
         metadata: {
           reportingCode: "RESTORE"
         }
@@ -2678,8 +2687,8 @@ async function seed() {
         id: ids.corporateBudgetEducation,
         programId: ids.corporateProgram,
         category: "Employee learning",
-        allocatedAmount: "90000000.00",
-        spentAmount: "54000000.00",
+        allocatedAmount: "9000.00",
+        spentAmount: "5400.00",
         metadata: {
           reportingCode: "LEARN"
         }
@@ -2688,8 +2697,8 @@ async function seed() {
         id: ids.corporateBudgetReporting,
         programId: ids.corporateProgram,
         category: "Verification and reports",
-        allocatedAmount: "60000000.00",
-        spentAmount: "48000000.00",
+        allocatedAmount: "6000.00",
+        spentAmount: "4800.00",
         metadata: {
           reportingCode: "VERIFY"
         }
@@ -2745,14 +2754,14 @@ async function seed() {
         id: ids.corporatePortfolioRaja,
         programId: ids.corporateProgram,
         campaignId: campaignBySlug.get("restore-raja-ampat-reefs")!,
-        allocationAmount: "220000000.00",
+        allocationAmount: "22000.00",
         status: "funded"
       },
       {
         id: ids.corporatePortfolioBali,
         programId: ids.corporateProgram,
         campaignId: campaignBySlug.get("mangrove-shield-bali")!,
-        allocationAmount: "118000000.00",
+        allocationAmount: "11800.00",
         status: "monitoring"
       }
     ])
@@ -2775,8 +2784,8 @@ async function seed() {
         createdByUserId: demoUser.id,
         referenceCode: "TRB-CORP-2026-DEMO-RAJA-CSR",
         contributionType: "csr",
-        amount: "120000000.00",
-        currency: "IDR",
+        amount: "12000.00",
+        currency: "USD",
         status: "disbursed",
         countsTowardCampaignGoal: true,
         contributionDate: date("2026-05-18"),
@@ -2793,8 +2802,8 @@ async function seed() {
         createdByUserId: demoUser.id,
         referenceCode: "TRB-CORP-2026-DEMO-BALI-GRANT",
         contributionType: "grant",
-        amount: "85000000.00",
-        currency: "IDR",
+        amount: "8500.00",
+        currency: "USD",
         status: "committed",
         countsTowardCampaignGoal: false,
         contributionDate: date("2026-06-02"),

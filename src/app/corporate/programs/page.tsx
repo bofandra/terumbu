@@ -125,7 +125,7 @@ export default async function CorporateProgramsPage({ searchParams }: CorporateP
                 </label>
                 <label className="grid gap-2 text-sm font-bold text-ocean-900">
                   <RequiredLabel label="Currency" />
-                  <input name="currency" defaultValue="IDR" className="min-h-11 w-full min-w-0 rounded-lg border border-ocean-900/12 px-3 text-sm font-semibold text-ocean-900 outline-none" required />
+                  <input name="currency" defaultValue="USD" className="min-h-11 w-full min-w-0 rounded-lg border border-ocean-900/12 px-3 text-sm font-semibold text-ocean-900 outline-none" required />
                 </label>
                 <label className="grid gap-2 text-sm font-bold text-ocean-900">
                   Status

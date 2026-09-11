@@ -181,7 +181,7 @@ export default async function CorporateProjectsPage({ searchParams }: CorporateP
                     type="number"
                     min="1"
                     step="1000000"
-                    placeholder="IDR"
+                    placeholder="USD"
                     className="min-h-11 w-full min-w-0 rounded-lg border border-ocean-900/12 px-3 text-sm font-semibold text-ocean-900 outline-none"
                     required
                   />

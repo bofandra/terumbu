@@ -265,7 +265,6 @@ export default async function AdminCampaignDetailPage({ params, searchParams }: 
             <Field label="Currency">
               <select name="currency" defaultValue={campaign.currency ?? "USD"} className={adminInputClassName} required>
                 <option value="USD">USD</option>
-                <option value="IDR">IDR</option>
               </select>
             </Field>
             <Field label="Impact target">

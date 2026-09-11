@@ -341,7 +341,6 @@ export default async function AdminExpeditionDetailPage({ params, searchParams }
             <Field label="Currency">
               <select name="currency" defaultValue={expedition.currency} className={adminSelectClassName} required>
                 <option value="USD">USD</option>
-                <option value="IDR">IDR</option>
               </select>
             </Field>
           </div>

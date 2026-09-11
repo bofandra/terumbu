@@ -13,7 +13,7 @@ const report: MonthlyImpactReportRecord = {
   id: "report-1",
   reportMonth: "2026-07",
   label: "July 2026 Impact Report",
-  contributions: 250000,
+  contributions: 250,
   campaignUpdates: 3,
   newEvidence: 2,
   coralsMonitored: 42,
@@ -27,7 +27,7 @@ const report: MonthlyImpactReportRecord = {
       {
         title: "Reef Recovery",
         slug: "reef-recovery",
-        contribution: 250000,
+        contribution: 250,
         updateCount: 2,
         evidenceCount: 1
       }
@@ -50,7 +50,7 @@ test("monthly impact report helpers produce stable labels and digest data", () =
   assert.deepEqual(digest.campaignDigest[0], {
     title: "Reef Recovery",
     slug: "reef-recovery",
-    contribution: 250000,
+    contribution: 250,
     updateCount: 2,
     evidenceCount: 1
   });
@@ -69,7 +69,7 @@ test("monthly impact report download pdf includes report details", () => {
           {
             title: "Campaign (One)\nBlue",
             slug: "campaign-one",
-            contribution: 1000,
+            contribution: 1,
             updateCount: 1,
             evidenceCount: 1
           }
@@ -85,8 +85,8 @@ test("monthly impact report download pdf includes report details", () => {
   assert.match(pdfText, /July \\\(Impact\\\)/);
   assert.match(pdfText, /Raka \\\\ Team/);
   assert.match(pdfText, /Campaign \\\(One\\\) Blue/);
-  assert.match(pdfText, /IDR\s*250\.000/);
-  assert.match(pdfText, /IDR\s*1\.000/);
+  assert.match(pdfText, /USD\s*250/);
+  assert.match(pdfText, /USD\s*1/);
   assert.match(pdfText, /1 updates \/ 1 evidence/);
   assert.match(pdfText, /dashboard_action/);
   assert.match(pdfText, /https:\/\/example.test\/campaigns\/campaign-one/);

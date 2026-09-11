@@ -32,9 +32,9 @@ function formatCurrency(value: string | number, currency: string) {
 
   return new Intl.NumberFormat("id-ID", {
     style: "currency",
-    currency: currency || "IDR",
+    currency: currency || "USD",
     currencyDisplay: "code",
-    maximumFractionDigits: (currency || "IDR").toUpperCase() === "IDR" ? 0 : 2
+    maximumFractionDigits: (currency || "USD").toUpperCase() === "IDR" ? 0 : 2
   }).format(Number.isFinite(parsed) ? parsed : 0);
 }
 

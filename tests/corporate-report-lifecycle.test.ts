@@ -25,12 +25,12 @@ const artifactInput: CorporateReportArtifactInput = {
   programName: "Ocean Restoration 2026",
   generatedAt: new Date("2026-07-12T00:00:00Z"),
   executiveMetrics: [
-    { label: "Total committed funding", value: "IDR 1.000.000", support: "Across 2 projects" },
+    { label: "Total committed funding", value: "USD 1.000,00", support: "Across 2 projects" },
     { label: "Verified evidence", value: "3", support: "Field records" }
   ],
   financials: {
-    committedFunding: 1000000,
-    fundsDisbursed: 500000
+    committedFunding: 1000,
+    fundsDisbursed: 500
   },
   impactOutputs: {
     restorationUnits: 1200,

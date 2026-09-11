@@ -12,9 +12,9 @@ test("campaign rows map to card data", () => {
       region: "Raja Ampat",
       summary: "Restore coral fragments.",
       imageUrl: "https://example.com/reef.jpg",
-      raisedAmount: "250000000.00",
-      goalAmount: "350000000.00",
-      currency: "IDR",
+      raisedAmount: "25000.00",
+      goalAmount: "35000.00",
+      currency: "USD",
       donorCount: 2350,
       impactUnit: "coral fragments",
       impactTarget: 10000,
@@ -25,8 +25,8 @@ test("campaign rows map to card data", () => {
     new Date("2026-06-20T00:00:00.000Z")
   );
 
-  assert.equal(card.raised, 250000000);
-  assert.equal(card.goal, 350000000);
+  assert.equal(card.raised, 25000);
+  assert.equal(card.goal, 35000);
   assert.equal(card.daysLeft, 11);
   assert.equal(card.verification, "Field verified");
 });
@@ -37,14 +37,14 @@ test("expedition rows map duration and price", () => {
     title: "Raja Ampat Coral Restoration Expedition",
     region: "Raja Ampat",
     durationDays: 4,
-    basePrice: "2500000.00",
-    currency: "IDR",
+    basePrice: "250.00",
+    currency: "USD",
     imageUrl: null,
     summary: "Plant corals."
   });
 
   assert.equal(card.duration, "4 days / 3 nights");
-  assert.equal(card.price, 2500000);
+  assert.equal(card.price, 250);
 });
 
 test("metadata and label helpers are defensive", () => {

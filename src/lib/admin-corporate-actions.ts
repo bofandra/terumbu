@@ -81,7 +81,7 @@ export async function createCorporateWorkspaceAction(formData: FormData) {
   const startsAt = parseDate(formData.get("startsAt"));
   const endsAt = parseDate(formData.get("endsAt"));
   const budgetAmount = parseAmount(formData.get("budgetAmount"));
-  const currency = textValue(formData.get("currency"), 8).toUpperCase() || "IDR";
+  const currency = textValue(formData.get("currency"), 8).toUpperCase() || "USD";
 
   if (!accountName || !accountSlug || !programName || !programSlug || !startsAt || !endsAt || !budgetAmount || endsAt <= startsAt) {
     redirect("/admin/corporate?error=workspace-invalid");

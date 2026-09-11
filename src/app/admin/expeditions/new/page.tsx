@@ -129,7 +129,6 @@ export default async function AdminExpeditionNewPage({ searchParams }: AdminExpe
             <Field label="Currency" required>
               <select name="currency" defaultValue="USD" className={adminSelectClassName} required>
                 <option value="USD">USD</option>
-                <option value="IDR">IDR</option>
               </select>
             </Field>
             <Field label="Related campaign">

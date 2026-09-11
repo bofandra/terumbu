@@ -682,7 +682,7 @@ export async function createCorporateProgramAction(formData: FormData) {
   const startsAt = dateValue(formData.get("startsAt"));
   const endsAt = dateValue(formData.get("endsAt"));
   const budgetAmount = parsePositiveAmount(formData.get("budgetAmount"));
-  const currency = textValue(formData.get("currency"), 8).toUpperCase() || "IDR";
+  const currency = textValue(formData.get("currency"), 8).toUpperCase() || "USD";
   const status = normalizeCorporateProgramStatus(textValue(formData.get("status"), 80));
 
   if (!name || !startsAt || !endsAt || startsAt >= endsAt || !budgetAmount) {
@@ -735,7 +735,7 @@ export async function updateCorporateProgramAction(formData: FormData) {
   const startsAt = dateValue(formData.get("startsAt"));
   const endsAt = dateValue(formData.get("endsAt"));
   const budgetAmount = parsePositiveAmount(formData.get("budgetAmount"));
-  const currency = textValue(formData.get("currency"), 8).toUpperCase() || "IDR";
+  const currency = textValue(formData.get("currency"), 8).toUpperCase() || "USD";
   const status = normalizeCorporateProgramStatus(textValue(formData.get("status"), 80));
 
   if (!programId || !isUuid(programId) || !name || !startsAt || !endsAt || startsAt >= endsAt || !budgetAmount) {
@@ -1081,7 +1081,7 @@ export async function fundCorporateProjectAction(formData: FormData) {
       referenceCode: referenceCode ?? `${context.programId}-${campaign.id}-${contributionType}`,
       contributionType,
       amount: allocationAmount.toFixed(2),
-      currency: "IDR",
+      currency: "USD",
       status: contributionStatus,
       countsTowardCampaignGoal,
       contributionDate: now,
@@ -1832,7 +1832,7 @@ export async function updateCorporateEvidenceSpendAction(formData: FormData) {
     ...metadataObject(evidence.metadata),
     financeCategory: category,
     financeSpendAmount: spendAmount,
-    financeSpendCurrency: "IDR",
+    financeSpendCurrency: "USD",
     financeSpendRecordedAt: now.toISOString(),
     financeSpendRecordedByUserId: user.id
   };
