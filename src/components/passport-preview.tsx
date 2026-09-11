@@ -1,6 +1,7 @@
 import { Award, Leaf, MapPinned, Waves } from "lucide-react";
 import Link from "next/link";
 
+import { MetricValue } from "@/components/ui/metric-value";
 import { ProgressMeter } from "@/components/ui/progress-meter";
 import type { PassportPreviewData } from "@/lib/domain";
 
@@ -46,9 +47,9 @@ export function PassportPreview({ passport }: PassportPreviewProps) {
             const Icon = iconByLabel[item.label as keyof typeof iconByLabel] ?? Leaf;
 
             return (
-              <div key={item.label} className="rounded-xl border border-ocean-900/10 bg-sand-50 p-4">
+              <div key={item.label} className="min-w-0 rounded-xl border border-ocean-900/10 bg-sand-50 p-4">
                 <Icon className="text-coral-500" size={22} aria-hidden="true" />
-                <p className="mt-4 text-2xl font-bold tracking-normal text-ocean-900">{item.value}</p>
+                <MetricValue className="mt-4 text-ocean-900">{item.value}</MetricValue>
                 <p className="mt-1 text-sm font-medium text-ocean-900/62">{item.label}</p>
               </div>
             );

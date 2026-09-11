@@ -20,6 +20,7 @@ import { notFound } from "next/navigation";
 
 import { PassportShareButtons } from "@/components/passport-share-buttons";
 import { Button, ButtonLink } from "@/components/ui/button";
+import { MetricValue } from "@/components/ui/metric-value";
 import { getDefaultAuthenticatedPath, getSessionUser } from "@/lib/auth";
 import { evidenceSourceHref } from "@/lib/domain";
 import { unlockPassportShareAction } from "@/lib/passport-share-actions";
@@ -311,9 +312,9 @@ export default async function PublicPassportPage({ params, searchParams }: Publi
             const Icon = item.icon;
 
             return (
-              <article key={item.label} className="rounded-2xl border border-ocean-900/10 bg-white p-5 shadow-soft">
+              <article key={item.label} className="min-w-0 rounded-2xl border border-ocean-900/10 bg-white p-5 shadow-soft">
                 <Icon className="text-coral-500" size={24} aria-hidden="true" />
-                <p className="mt-4 text-2xl font-bold tracking-normal text-ocean-900">{item.value}</p>
+                <MetricValue className="mt-4 text-ocean-900">{item.value}</MetricValue>
                 <h2 className="mt-1 text-sm font-bold text-ocean-900">{item.label}</h2>
                 <p className="mt-2 text-xs font-semibold text-ocean-900/56">{item.support}</p>
               </article>

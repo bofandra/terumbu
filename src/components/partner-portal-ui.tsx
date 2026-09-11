@@ -19,6 +19,7 @@ import type { ReactNode } from "react";
 
 import { CampaignContentDepthEditor } from "@/components/campaign-content-depth-editor";
 import { Button } from "@/components/ui/button";
+import { MetricValue } from "@/components/ui/metric-value";
 import { ProgressMeter } from "@/components/ui/progress-meter";
 import {
   createCampaignActivityAction,
@@ -233,11 +234,11 @@ export function PartnerMetricCards({ data }: { data: PartnerPortalData }) {
         const Icon = metric.icon;
 
         return (
-          <article key={metric.label} className="rounded-lg border border-ocean-900/10 bg-white p-4">
+          <article key={metric.label} className="min-w-0 rounded-lg border border-ocean-900/10 bg-white p-4">
             <div className="flex items-start justify-between gap-3">
-              <div>
+              <div className="min-w-0">
                 <p className="text-sm font-bold text-ocean-900/58">{metric.label}</p>
-                <p className="mt-3 text-2xl font-bold tracking-normal text-ocean-900">{metric.value}</p>
+                <MetricValue className="mt-3 text-ocean-900">{metric.value}</MetricValue>
               </div>
               <span className="grid size-10 place-items-center rounded-lg bg-ocean-50 text-ocean-700">
                 <Icon className="size-5" aria-hidden="true" />

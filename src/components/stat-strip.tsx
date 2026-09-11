@@ -1,5 +1,6 @@
 import { CircleDollarSign, Sprout, Users, Waves } from "lucide-react";
 
+import { MetricValue } from "@/components/ui/metric-value";
 import type { ImpactStatData } from "@/lib/domain";
 
 const toneClass: Record<ImpactStatData["tone"], string> = {
@@ -28,12 +29,12 @@ export function StatStrip({ stats }: StatStripProps) {
           const Icon = toneIcon[stat.tone];
 
           return (
-            <div key={stat.label} className={`flex items-center gap-4 rounded-xl border px-4 py-5 ${toneClass[stat.tone]}`}>
+            <div key={stat.label} className={`flex min-w-0 items-center gap-4 rounded-xl border px-4 py-5 ${toneClass[stat.tone]}`}>
               <span className="flex size-12 shrink-0 items-center justify-center rounded-full bg-white/70 shadow-sm">
                 <Icon size={24} aria-hidden="true" />
               </span>
-              <div>
-                <p className="text-2xl font-bold tracking-normal">{stat.value}</p>
+              <div className="min-w-0 flex-1">
+                <MetricValue>{stat.value}</MetricValue>
                 <p className="mt-1 text-sm font-medium opacity-80">{stat.label}</p>
               </div>
             </div>

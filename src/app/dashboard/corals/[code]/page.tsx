@@ -4,6 +4,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { ImpactMapPreview } from "@/components/impact-map-preview";
+import { MetricValue } from "@/components/ui/metric-value";
 import { requireUser } from "@/lib/auth";
 import { isVisualEvidenceUrl } from "@/lib/coral-monitoring";
 import { getSponsoredEcosystemDetail } from "@/lib/queries";
@@ -126,9 +127,9 @@ export default async function SponsoredEcosystemDetailPage({ params }: { params:
           ["In review", ecosystem.pendingEvidenceCount.toLocaleString("id-ID"), Clock3],
           ["Milestone progress", `${ecosystem.progress}%`, Activity]
         ].map(([label, value, Icon]) => (
-          <article key={label as string} className="rounded-2xl border border-ocean-900/10 bg-white p-5 shadow-soft">
+          <article key={label as string} className="min-w-0 rounded-2xl border border-ocean-900/10 bg-white p-5 shadow-soft">
             <Icon size={22} aria-hidden="true" className="text-coral-500" />
-            <p className="mt-4 text-2xl font-bold tracking-normal text-ocean-900">{value as string}</p>
+            <MetricValue className="mt-4 text-ocean-900">{value as string}</MetricValue>
             <p className="mt-1 text-sm font-semibold text-ocean-900/58">{label as string}</p>
           </article>
         ))}

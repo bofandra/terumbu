@@ -2,6 +2,7 @@ import { KeyRound, LockKeyhole, Puzzle, ShieldCheck, Users } from "lucide-react"
 
 import { Button } from "@/components/ui/button";
 import { FormTabs } from "@/components/ui/form-tabs";
+import { MetricValue } from "@/components/ui/metric-value";
 import { requireUser } from "@/lib/auth";
 import { requireCorporateDashboardData } from "@/lib/corporate-access";
 import { updateCorporateIntegrationAction, updateCorporateSecuritySettingsAction } from "@/lib/corporate-actions";
@@ -92,10 +93,10 @@ export default async function CorporateSettingsPage({ searchParams }: CorporateS
           const Icon = metric.icon;
 
           return (
-            <article key={metric.label} className="rounded-lg border border-ocean-900/10 bg-white p-5 shadow-soft">
+            <article key={metric.label} className="min-w-0 rounded-lg border border-ocean-900/10 bg-white p-5 shadow-soft">
               <Icon size={22} aria-hidden="true" className="text-coral-500" />
               <p className="mt-4 text-sm font-bold text-ocean-900/56">{metric.label}</p>
-              <p className="mt-2 text-xl font-bold tracking-normal text-ocean-900">{metric.value}</p>
+              <MetricValue className="mt-2 text-ocean-900">{metric.value}</MetricValue>
             </article>
           );
         })}

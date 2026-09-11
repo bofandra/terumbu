@@ -120,7 +120,7 @@ export default async function AdminPaymentsPage({ searchParams }: AdminPaymentsP
                   <p className="mt-1 text-sm font-semibold text-ocean-900/58">
                     {donation.donorName ?? "Anonymous donor"}{donation.donorEmail ? ` / ${donation.donorEmail}` : ""}
                   </p>
-                  <p className="mt-2 text-sm font-bold text-ocean-900">{formatCurrency(Number(donation.amount))}</p>
+                  <p className="mt-2 min-w-0 break-words text-sm font-bold text-ocean-900 [overflow-wrap:anywhere]">{formatCurrency(Number(donation.amount))}</p>
                   <div className="mt-3 grid gap-1 text-xs font-semibold text-ocean-900/54">
                     <p>Reference: {paymentReference ?? donation.providerReference ?? "Not provided"}</p>
                     <p>Submitted: {submittedAt ? new Date(submittedAt).toLocaleString("id-ID", { dateStyle: "medium", timeStyle: "short" }) : donation.createdAt.toLocaleString("id-ID", { dateStyle: "medium" })}</p>
@@ -193,7 +193,7 @@ export default async function AdminPaymentsPage({ searchParams }: AdminPaymentsP
                     <AdminStatusBadge value={operation.operationType} />
                   </div>
                   <p className="mt-1 text-sm font-semibold text-ocean-900/58">{operation.contactName} / {operation.bookingCode}</p>
-                  <p className="mt-2 text-sm font-bold text-ocean-900">{formatCurrency(Number(operation.amount ?? 0))}</p>
+                  <p className="mt-2 min-w-0 break-words text-sm font-bold text-ocean-900 [overflow-wrap:anywhere]">{formatCurrency(Number(operation.amount ?? 0))}</p>
                   {operation.reason ? <p className="mt-2 text-xs font-semibold text-ocean-900/52">{operation.reason}</p> : null}
                 </div>
                 {operation.operationType === "refund" ? (

@@ -32,7 +32,7 @@ export function DonationAmountFields({
             key={amount}
             type="button"
             aria-pressed={!isCustomAmountSelected && selectedAmount === amount}
-            className={`rounded-xl border px-4 py-4 text-left text-sm font-bold transition ${
+            className={`min-w-0 break-words rounded-xl border px-4 py-4 text-left text-sm font-bold transition [overflow-wrap:anywhere] ${
               !isCustomAmountSelected && selectedAmount === amount
                 ? "border-coral-500 bg-coral-100/40 text-ocean-900"
                 : "border-ocean-900/10 text-ocean-900 hover:border-coral-500"

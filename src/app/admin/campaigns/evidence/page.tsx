@@ -2,6 +2,7 @@ import { AlertTriangle, FileCheck2, Kanban, MessageSquare, ShieldCheck } from "l
 
 import { AdminPageHeader } from "@/components/admin-ui";
 import { EvidenceKanbanBoard, type EvidenceKanbanCard } from "@/components/evidence-kanban-board";
+import { MetricValue } from "@/components/ui/metric-value";
 import { requireRole } from "@/lib/auth";
 import { verifyEvidenceAction } from "@/lib/portal-actions";
 import { getAdminPortalData } from "@/lib/queries";
@@ -99,10 +100,10 @@ export default async function AdminCampaignEvidencePage({ searchParams }: AdminC
           const Icon = item.icon;
 
           return (
-            <article key={item.label} className="rounded-lg border border-ocean-900/10 bg-white p-4 shadow-soft">
+            <article key={item.label} className="min-w-0 rounded-lg border border-ocean-900/10 bg-white p-4 shadow-soft">
               <Icon className="size-5 text-coral-500" aria-hidden="true" />
               <p className="mt-3 text-sm font-bold text-ocean-900/58">{item.label}</p>
-              <p className="mt-3 text-2xl font-bold tracking-normal text-ocean-900">{item.value}</p>
+              <MetricValue className="mt-3 text-ocean-900">{item.value}</MetricValue>
             </article>
           );
         })}

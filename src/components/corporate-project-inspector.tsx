@@ -207,12 +207,12 @@ function MetricBlock({
   detail: string;
 }) {
   return (
-    <div className="rounded-lg border border-ocean-900/10 bg-sand-50 p-4">
+    <div className="min-w-0 rounded-lg border border-ocean-900/10 bg-sand-50 p-4">
       <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.14em] text-ocean-900/46">
         <Icon size={15} aria-hidden="true" />
         {label}
       </div>
-      <p className="mt-3 font-bold text-ocean-900">{value}</p>
+      <p className="mt-3 min-w-0 break-words font-bold text-ocean-900 [overflow-wrap:anywhere]">{value}</p>
       <p className="mt-1 text-xs leading-5 text-ocean-900/54">{detail}</p>
     </div>
   );

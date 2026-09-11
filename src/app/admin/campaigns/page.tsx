@@ -3,6 +3,7 @@ import { ArrowUpRight, FileCheck2, ImagePlus, MapPinned, Megaphone, Plus, Shield
 
 import { AdminEmptyState, AdminPageHeader, AdminStatusBadge, adminInputClassName, adminPanelClassName, adminSelectClassName } from "@/components/admin-ui";
 import { Button } from "@/components/ui/button";
+import { MetricValue } from "@/components/ui/metric-value";
 import { ProgressMeter } from "@/components/ui/progress-meter";
 import { requireRole } from "@/lib/auth";
 import { updateCampaignStatusAction, updateImpactSettingsAction } from "@/lib/portal-actions";
@@ -127,9 +128,9 @@ export default async function AdminCampaignsPage({ searchParams }: AdminCampaign
           { label: "Published", value: publishedCount.toLocaleString("id-ID") },
           { label: "History locked", value: historyLockedCount.toLocaleString("id-ID") }
         ].map((item) => (
-          <article key={item.label} className="rounded-lg border border-ocean-900/10 bg-white p-4 shadow-soft">
+          <article key={item.label} className="min-w-0 rounded-lg border border-ocean-900/10 bg-white p-4 shadow-soft">
             <p className="text-sm font-bold text-ocean-900/58">{item.label}</p>
-            <p className="mt-3 text-2xl font-bold tracking-normal text-ocean-900">{item.value}</p>
+            <MetricValue className="mt-3 text-ocean-900">{item.value}</MetricValue>
           </article>
         ))}
       </section>

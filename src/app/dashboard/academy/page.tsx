@@ -3,6 +3,7 @@ import Image from "next/image";
 import { ArrowRight, Award, BookmarkCheck, BookmarkX, BookOpen, Download, Flame, GraduationCap, TimerReset } from "lucide-react";
 
 import { Button, ButtonLink } from "@/components/ui/button";
+import { MetricValue } from "@/components/ui/metric-value";
 import { requireUser } from "@/lib/auth";
 import { removeSavedCourseAction } from "@/lib/academy-actions";
 import { getAcademyTranscriptData } from "@/lib/academy-transcript-data";
@@ -41,9 +42,9 @@ export default async function DashboardAcademyPage() {
           ["Completed", transcript.completedCourses.toLocaleString("id-ID"), GraduationCap],
           ["Certificates", transcript.certificatesEarned.toLocaleString("id-ID"), Award]
         ].map(([label, value, Icon]) => (
-          <article key={label as string} className="rounded-2xl border border-ocean-900/10 bg-white p-5 shadow-soft">
+          <article key={label as string} className="min-w-0 rounded-2xl border border-ocean-900/10 bg-white p-5 shadow-soft">
             <Icon size={22} aria-hidden="true" className="text-coral-500" />
-            <p className="mt-4 text-2xl font-bold tracking-normal text-ocean-900">{value as string}</p>
+            <MetricValue className="mt-4 text-ocean-900">{value as string}</MetricValue>
             <p className="mt-1 text-sm font-semibold text-ocean-900/58">{label as string}</p>
           </article>
         ))}

@@ -20,6 +20,7 @@ import Image from "next/image";
 import Link from "next/link";
 
 import { Button, ButtonLink } from "@/components/ui/button";
+import { MetricValue } from "@/components/ui/metric-value";
 import { ProgressMeter } from "@/components/ui/progress-meter";
 import { removeSavedCourseAction, saveCourseAction } from "@/lib/academy-actions";
 import { getSessionUser } from "@/lib/auth";
@@ -270,9 +271,9 @@ export default async function AcademyPage({
                   const Icon = stat.icon;
 
                   return (
-                    <div key={stat.label} className="rounded-xl border border-ocean-900/10 bg-ocean-50 p-3 text-center">
+                    <div key={stat.label} className="min-w-0 rounded-xl border border-ocean-900/10 bg-ocean-50 p-3 text-center">
                       <Icon size={18} aria-hidden="true" className="mx-auto text-coral-500" />
-                      <p className="mt-2 text-2xl font-bold">{stat.value.toLocaleString("id-ID")}</p>
+                      <MetricValue className="mt-2 text-ocean-900">{stat.value.toLocaleString("id-ID")}</MetricValue>
                       <p className="text-xs font-semibold text-ocean-900/54">{stat.label}</p>
                     </div>
                   );

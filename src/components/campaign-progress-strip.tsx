@@ -1,4 +1,5 @@
 import { ProgressMeter } from "@/components/ui/progress-meter";
+import { MetricValue } from "@/components/ui/metric-value";
 import { formatCurrency } from "@/lib/utils";
 
 type CampaignProgressStripProps = {
@@ -18,8 +19,8 @@ export function CampaignProgressStrip({ raised, goal, progress, donors, daysLeft
   return (
     <section className="rounded-2xl border border-ocean-900/10 bg-white p-5 shadow-soft" aria-label={`Campaign is ${progress} percent funded`}>
       <div className="grid gap-5 md:grid-cols-5">
-        <div>
-          <p className="text-2xl font-bold tracking-normal text-coral-700">{formatCurrency(raised, currency)}</p>
+        <div className="min-w-0">
+          <MetricValue className="text-coral-700">{formatCurrency(raised, currency)}</MetricValue>
           <p className="mt-1 text-sm text-ocean-900/62">raised of {formatCurrency(goal, currency)} goal</p>
         </div>
         {[
@@ -28,8 +29,8 @@ export function CampaignProgressStrip({ raised, goal, progress, donors, daysLeft
           [String(daysLeft), "days left"],
           [impactFunded.toLocaleString("id-ID"), `${impactUnit} funded`]
         ].map(([value, label]) => (
-          <div key={label} className="md:border-l md:border-ocean-900/10 md:pl-5">
-            <p className="text-2xl font-bold tracking-normal text-ocean-900">{value}</p>
+          <div key={label} className="min-w-0 md:border-l md:border-ocean-900/10 md:pl-5">
+            <MetricValue className="text-ocean-900">{value}</MetricValue>
             <p className="mt-1 text-sm text-ocean-900/62">{label}</p>
           </div>
         ))}

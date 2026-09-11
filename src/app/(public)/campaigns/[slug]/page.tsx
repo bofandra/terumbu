@@ -26,6 +26,7 @@ import { ExpeditionCard } from "@/components/expedition-card";
 import { ImpactMapPreview } from "@/components/impact-map-preview";
 import { SectionHeading } from "@/components/section-heading";
 import { Button, ButtonLink } from "@/components/ui/button";
+import { MetricValue } from "@/components/ui/metric-value";
 import { VerificationExplainer } from "@/components/verification-explainer";
 import { getSessionUser } from "@/lib/auth";
 import { evidenceAnchorId, evidenceSourceHref, evidenceStage, evidenceStageLabel, getMetadataNumberOrString, getMetadataString, suggestedDonationAmounts } from "@/lib/domain";
@@ -380,10 +381,10 @@ export default async function CampaignDetailPage({ params }: { params: Promise<{
                     [ClipboardCheck, campaign.evidence.length.toLocaleString("id-ID"), "Evidence records"],
                     [Users, campaign.donors.toLocaleString("id-ID"), "Paid supporters"]
                   ].map(([Icon, value, label]) => (
-                    <div key={label as string} className="flex items-center gap-3 border-b border-ocean-900/10 pb-4 last:border-b-0 last:pb-0">
+                    <div key={label as string} className="flex min-w-0 items-center gap-3 border-b border-ocean-900/10 pb-4 last:border-b-0 last:pb-0">
                       <Icon className="text-coral-500" size={24} aria-hidden="true" />
-                      <div>
-                        <p className="font-bold text-ocean-900">{value as string}</p>
+                      <div className="min-w-0">
+                        <p className="min-w-0 break-words font-bold text-ocean-900 [overflow-wrap:anywhere]">{value as string}</p>
                         <p className="text-sm text-ocean-900/62">{label as string}</p>
                       </div>
                     </div>
@@ -695,8 +696,8 @@ export default async function CampaignDetailPage({ params }: { params: Promise<{
                   [formatCurrency(Math.max(0, campaign.goal - campaign.raised), campaign.currency), "Remaining"],
                   [campaign.donors.toLocaleString("id-ID"), "Paid supporters"]
                 ].map(([value, label]) => (
-                  <div key={label} className="rounded-xl bg-sand-50 p-4">
-                    <p className="text-xl font-bold tracking-normal text-ocean-900">{value}</p>
+                  <div key={label} className="min-w-0 rounded-xl bg-sand-50 p-4">
+                    <MetricValue className="text-ocean-900">{value}</MetricValue>
                     <p className="mt-1 text-sm text-ocean-900/62">{label}</p>
                   </div>
                 ))}
@@ -771,7 +772,7 @@ export default async function CampaignDetailPage({ params }: { params: Promise<{
         <aside className="grid h-fit gap-5 xl:sticky xl:top-40">
           <div className="rounded-2xl border border-ocean-900/10 bg-white p-5 shadow-soft">
             <p className="text-sm font-bold uppercase tracking-[0.16em] text-coral-700">Donor community</p>
-            <p className="mt-3 text-2xl font-bold tracking-normal text-ocean-900">{campaign.donors.toLocaleString("id-ID")} supporters</p>
+            <p className="mt-3 min-w-0 break-words text-2xl font-bold tracking-normal text-ocean-900 [overflow-wrap:anywhere]">{campaign.donors.toLocaleString("id-ID")} supporters</p>
             <div className="mt-5 grid gap-3 text-sm text-ocean-900/66">
               {campaign.donorActivity.length > 0 ? (
                 campaign.donorActivity.map((activity) => {

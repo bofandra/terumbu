@@ -2,6 +2,7 @@ import { Bell, CheckCircle2, MailCheck, Settings, type LucideIcon } from "lucide
 import Link from "next/link";
 
 import { Button, ButtonLink } from "@/components/ui/button";
+import { MetricValue } from "@/components/ui/metric-value";
 import { requireUser } from "@/lib/auth";
 import { getDashboardData } from "@/lib/queries";
 import { markAllNotificationsReadAction, markNotificationReadAction } from "@/lib/retention-actions";
@@ -55,9 +56,9 @@ export default async function DashboardNotificationsPage() {
           const Icon = item.icon;
 
           return (
-            <article key={item.label} className="rounded-2xl border border-ocean-900/10 bg-white p-5 shadow-soft">
+            <article key={item.label} className="min-w-0 rounded-2xl border border-ocean-900/10 bg-white p-5 shadow-soft">
               <Icon className="text-coral-500" size={22} aria-hidden="true" />
-              <p className="mt-4 text-2xl font-bold tracking-normal text-ocean-900">{item.value}</p>
+              <MetricValue className="mt-4 text-ocean-900">{item.value}</MetricValue>
               <p className="mt-1 text-sm font-semibold text-ocean-900/58">{item.label}</p>
             </article>
           );

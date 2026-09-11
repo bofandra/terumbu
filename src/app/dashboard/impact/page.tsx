@@ -5,6 +5,7 @@ import { DashboardImpactTrend } from "@/components/dashboard-impact-trend";
 import { DashboardPersonalImpactMap } from "@/components/dashboard-personal-impact-map";
 import { PassportShareButtons } from "@/components/passport-share-buttons";
 import { PassportPreview } from "@/components/passport-preview";
+import { MetricValue } from "@/components/ui/metric-value";
 import { requireUser } from "@/lib/auth";
 import { publicPassportShareUrl } from "@/lib/passport-sharing";
 import { getDashboardData } from "@/lib/queries";
@@ -61,9 +62,9 @@ export default async function DashboardImpactPage() {
           const Icon = item.icon;
 
           return (
-            <article key={item.label} className="rounded-2xl border border-ocean-900/10 bg-white p-5 shadow-soft">
+            <article key={item.label} className="min-w-0 rounded-2xl border border-ocean-900/10 bg-white p-5 shadow-soft">
               <Icon className="text-coral-500" size={22} aria-hidden="true" />
-              <p className="mt-4 text-2xl font-bold tracking-normal text-ocean-900">{item.value}</p>
+              <MetricValue className="mt-4 text-ocean-900">{item.value}</MetricValue>
               <p className="mt-1 text-sm font-semibold text-ocean-900/58">{item.label}</p>
             </article>
           );

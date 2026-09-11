@@ -4,6 +4,7 @@ import Link from "next/link";
 
 import { DashboardPersonalImpactMap } from "@/components/dashboard-personal-impact-map";
 import { ButtonLink } from "@/components/ui/button";
+import { MetricValue } from "@/components/ui/metric-value";
 import { ProgressMeter } from "@/components/ui/progress-meter";
 import { requireUser } from "@/lib/auth";
 import { getDashboardData } from "@/lib/queries";
@@ -76,9 +77,9 @@ export default async function DashboardCoralsPage({ searchParams }: DashboardCor
           ["Under monitoring", data.summary.monitoringCorals.toLocaleString("id-ID"), Activity],
           ["Linked sites", coralMapSites.length.toLocaleString("id-ID"), MapIcon]
         ].map(([label, value, Icon]) => (
-          <article key={label as string} className="rounded-2xl border border-ocean-900/10 bg-white p-5 shadow-soft">
+          <article key={label as string} className="min-w-0 rounded-2xl border border-ocean-900/10 bg-white p-5 shadow-soft">
             <Icon size={22} aria-hidden="true" className="text-coral-500" />
-            <p className="mt-4 text-2xl font-bold tracking-normal text-ocean-900">{value as string}</p>
+            <MetricValue className="mt-4 text-ocean-900">{value as string}</MetricValue>
             <p className="mt-1 text-sm font-semibold text-ocean-900/58">{label as string}</p>
           </article>
         ))}
@@ -153,8 +154,8 @@ export default async function DashboardCoralsPage({ searchParams }: DashboardCor
                 ["Evidence records", totalEvidence.toLocaleString("id-ID")],
                 ["Verified records", verifiedEvidence.toLocaleString("id-ID")]
               ].map(([label, value]) => (
-                <article key={label} className="rounded-2xl border border-ocean-900/10 bg-sand-50 p-5">
-                  <p className="text-2xl font-bold tracking-normal text-ocean-900">{value}</p>
+                <article key={label} className="min-w-0 rounded-2xl border border-ocean-900/10 bg-sand-50 p-5">
+                  <MetricValue className="text-ocean-900">{value}</MetricValue>
                   <p className="mt-1 text-sm font-semibold text-ocean-900/58">{label}</p>
                 </article>
               ))}

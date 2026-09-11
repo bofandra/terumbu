@@ -3,6 +3,7 @@ import Link from "next/link";
 
 import { EvidenceKanbanBoard, type EvidenceKanbanCard } from "@/components/evidence-kanban-board";
 import { ButtonLink } from "@/components/ui/button";
+import { MetricValue } from "@/components/ui/metric-value";
 import { requireUser } from "@/lib/auth";
 import { requireCorporateDashboardData } from "@/lib/corporate-access";
 import { cn, formatCurrency } from "@/lib/utils";
@@ -132,10 +133,10 @@ export default async function CorporateBoardPage({ searchParams }: CorporateBoar
           const Icon = metric.icon;
 
           return (
-            <article key={metric.label} className="rounded-lg border border-ocean-900/10 bg-white p-4 shadow-soft">
+            <article key={metric.label} className="min-w-0 rounded-lg border border-ocean-900/10 bg-white p-4 shadow-soft">
               <Icon size={20} aria-hidden="true" className="text-coral-500" />
               <p className="mt-3 text-sm font-bold text-ocean-900/56">{metric.label}</p>
-              <p className="mt-2 text-2xl font-bold tracking-normal text-ocean-900">{metric.value}</p>
+              <MetricValue className="mt-2 text-ocean-900">{metric.value}</MetricValue>
             </article>
           );
         })}

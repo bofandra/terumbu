@@ -51,7 +51,7 @@ export function ExpeditionCard({ expedition }: ExpeditionCardProps) {
         </h3>
         <p className="mt-3 text-sm leading-6 text-ocean-900/68">{expedition.summary}</p>
         <div className="mt-auto flex flex-wrap items-center justify-between gap-4 pt-6">
-          <p className="text-sm text-ocean-900/62">
+          <p className="min-w-0 break-words text-sm text-ocean-900/62 [overflow-wrap:anywhere]">
             From <span className="text-lg font-bold text-ocean-900">{formatCurrency(expedition.price, expedition.currency)}</span>
           </p>
           <ButtonLink href={`/expeditions/${expedition.slug}`} tone="secondary">

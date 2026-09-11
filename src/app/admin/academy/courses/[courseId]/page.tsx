@@ -14,6 +14,7 @@ import {
 } from "@/components/admin-ui";
 import { Button } from "@/components/ui/button";
 import { FormTabs } from "@/components/ui/form-tabs";
+import { MetricValue } from "@/components/ui/metric-value";
 import {
   createAcademyAssessmentAction,
   createAcademyLessonAction,
@@ -130,9 +131,9 @@ type AdminQuestion = AdminAssessment["questions"][number];
 
 function AssessmentMetric({ label, value }: { label: string; value: string }) {
   return (
-    <div className="border-l border-ocean-900/10 pl-3">
+    <div className="min-w-0 border-l border-ocean-900/10 pl-3">
       <p className="text-xs font-bold uppercase text-ocean-900/48">{label}</p>
-      <p className="mt-1 text-lg font-bold tracking-normal text-ocean-900">{value}</p>
+      <p className="mt-1 min-w-0 break-words text-lg font-bold tracking-normal text-ocean-900 [overflow-wrap:anywhere]">{value}</p>
     </div>
   );
 }
@@ -353,13 +354,13 @@ export default async function AdminAcademyCoursePage({ params, searchParams }: A
           const Icon = item.icon;
 
           return (
-            <article key={item.label} className="rounded-lg border border-ocean-900/10 bg-white p-4 shadow-soft">
+            <article key={item.label} className="min-w-0 rounded-lg border border-ocean-900/10 bg-white p-4 shadow-soft">
               <div className="flex items-start justify-between gap-3">
-                <div>
+                <div className="min-w-0">
                   <p className="text-sm font-bold text-ocean-900/58">{item.label}</p>
-                  <p className="mt-3 text-2xl font-bold capitalize tracking-normal text-ocean-900">{item.value}</p>
+                  <MetricValue className="mt-3 capitalize text-ocean-900">{item.value}</MetricValue>
                 </div>
-                <span className="grid size-10 place-items-center rounded-lg bg-ocean-50 text-ocean-700">
+                <span className="grid size-10 shrink-0 place-items-center rounded-lg bg-ocean-50 text-ocean-700">
                   <Icon className="size-5" aria-hidden="true" />
                 </span>
               </div>

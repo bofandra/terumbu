@@ -2,6 +2,7 @@ import { Camera, FileCheck2, Kanban, MessageSquare, RotateCcw } from "lucide-rea
 
 import { EvidenceKanbanBoard, type EvidenceKanbanCard } from "@/components/evidence-kanban-board";
 import { PartnerPageHeader } from "@/components/partner-portal-ui";
+import { MetricValue } from "@/components/ui/metric-value";
 import { requireRole } from "@/lib/auth";
 import { reviseEvidenceAction } from "@/lib/portal-actions";
 import { getPartnerPortalData } from "@/lib/queries";
@@ -95,13 +96,13 @@ export default async function PartnerEvidencePage({ searchParams }: PartnerEvide
         ].map((item) => {
           const Icon = item.icon;
           return (
-            <article key={item.label} className="rounded-lg border border-ocean-900/10 bg-white p-4 shadow-soft">
+            <article key={item.label} className="min-w-0 rounded-lg border border-ocean-900/10 bg-white p-4 shadow-soft">
               <div className="flex items-start justify-between gap-3">
-                <div>
+                <div className="min-w-0">
                   <p className="text-sm font-bold text-ocean-900/58">{item.label}</p>
-                  <p className="mt-3 text-2xl font-bold tracking-normal text-ocean-900">{item.value.toLocaleString("id-ID")}</p>
+                  <MetricValue className="mt-3 text-ocean-900">{item.value.toLocaleString("id-ID")}</MetricValue>
                 </div>
-                <span className="grid size-10 place-items-center rounded-lg bg-ocean-50 text-ocean-700"><Icon className="size-5" aria-hidden="true" /></span>
+                <span className="grid size-10 shrink-0 place-items-center rounded-lg bg-ocean-50 text-ocean-700"><Icon className="size-5" aria-hidden="true" /></span>
               </div>
             </article>
           );

@@ -2,6 +2,7 @@ import { ArrowRight, BriefcaseBusiness, CircleDollarSign, Kanban, PlusCircle, Sa
 
 import { Button, ButtonLink } from "@/components/ui/button";
 import { FormTabs } from "@/components/ui/form-tabs";
+import { MetricValue } from "@/components/ui/metric-value";
 import { requireUser } from "@/lib/auth";
 import { requireCorporateDashboardData } from "@/lib/corporate-access";
 import { createCorporateProgramAction, updateCorporateProgramAction } from "@/lib/corporate-actions";
@@ -84,17 +85,17 @@ export default async function CorporateProgramsPage({ searchParams }: CorporateP
       ) : null}
 
       <section className="mt-6 grid gap-4 md:grid-cols-3">
-        <div className="rounded-lg border border-ocean-900/10 bg-white p-5 shadow-soft">
+        <div className="min-w-0 rounded-lg border border-ocean-900/10 bg-white p-5 shadow-soft">
           <p className="text-sm font-bold text-ocean-900/56">Current program budget</p>
-          <p className="mt-3 text-2xl font-bold text-ocean-900">{formatCurrency(Number(data.program.budgetAmount))}</p>
+          <MetricValue className="mt-3 text-ocean-900">{formatCurrency(Number(data.program.budgetAmount))}</MetricValue>
         </div>
-        <div className="rounded-lg border border-ocean-900/10 bg-white p-5 shadow-soft">
+        <div className="min-w-0 rounded-lg border border-ocean-900/10 bg-white p-5 shadow-soft">
           <p className="text-sm font-bold text-ocean-900/56">Current start</p>
-          <p className="mt-3 text-2xl font-bold text-ocean-900">{data.program.startsAt.toLocaleDateString("id-ID", { dateStyle: "medium" })}</p>
+          <MetricValue className="mt-3 text-ocean-900">{data.program.startsAt.toLocaleDateString("id-ID", { dateStyle: "medium" })}</MetricValue>
         </div>
-        <div className="rounded-lg border border-ocean-900/10 bg-white p-5 shadow-soft">
+        <div className="min-w-0 rounded-lg border border-ocean-900/10 bg-white p-5 shadow-soft">
           <p className="text-sm font-bold text-ocean-900/56">Current end</p>
-          <p className="mt-3 text-2xl font-bold text-ocean-900">{data.program.endsAt.toLocaleDateString("id-ID", { dateStyle: "medium" })}</p>
+          <MetricValue className="mt-3 text-ocean-900">{data.program.endsAt.toLocaleDateString("id-ID", { dateStyle: "medium" })}</MetricValue>
         </div>
       </section>
 
@@ -206,7 +207,7 @@ export default async function CorporateProgramsPage({ searchParams }: CorporateP
                       <p className="mt-1 text-sm text-ocean-900/58">{program.startsAt.toLocaleDateString("id-ID", { dateStyle: "medium" })} – {program.endsAt.toLocaleDateString("id-ID", { dateStyle: "medium" })}</p>
                     </div>
                     <div className="flex flex-wrap items-center gap-2">
-                      <div className="text-sm font-bold text-ocean-900">{formatCurrency(program.budgetAmountValue)}</div>
+                      <div className="min-w-0 break-words text-sm font-bold text-ocean-900 [overflow-wrap:anywhere]">{formatCurrency(program.budgetAmountValue)}</div>
                       <ButtonLink href={`/corporate/board?programId=${encodeURIComponent(program.id)}`} tone="secondary">
                         <Kanban size={17} aria-hidden="true" />
                         Board

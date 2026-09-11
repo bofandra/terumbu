@@ -10,6 +10,7 @@ import {
 } from "@/components/admin-ui";
 import { Button } from "@/components/ui/button";
 import { FormTabs } from "@/components/ui/form-tabs";
+import { MetricValue } from "@/components/ui/metric-value";
 import { createCorporateWorkspaceAction, assignCorporatePermissionAction } from "@/lib/admin-corporate-actions";
 import { requireRole } from "@/lib/auth";
 import { getAdminCorporateData } from "@/lib/queries";
@@ -77,13 +78,13 @@ export default async function AdminCorporatePage({ searchParams }: AdminCorporat
           const Icon = item.icon;
 
           return (
-            <article key={item.label} className="rounded-lg border border-ocean-900/10 bg-white p-4 shadow-soft">
+            <article key={item.label} className="min-w-0 rounded-lg border border-ocean-900/10 bg-white p-4 shadow-soft">
               <div className="flex items-start justify-between gap-3">
-                <div>
+                <div className="min-w-0">
                   <p className="text-sm font-bold text-ocean-900/58">{item.label}</p>
-                  <p className="mt-3 text-xl font-bold tracking-normal text-ocean-900">{item.value}</p>
+                  <MetricValue className="mt-3 text-ocean-900">{item.value}</MetricValue>
                 </div>
-                <span className="grid size-10 place-items-center rounded-lg bg-ocean-50 text-ocean-700">
+                <span className="grid size-10 shrink-0 place-items-center rounded-lg bg-ocean-50 text-ocean-700">
                   <Icon className="size-5" aria-hidden="true" />
                 </span>
               </div>
@@ -193,13 +194,13 @@ export default async function AdminCorporatePage({ searchParams }: AdminCorporat
                   <p className="mt-1 text-sm font-semibold text-ocean-900/58">/{account.slug} · {account.programs.length} programs · {account.permissions.length} access rows</p>
                   <div className="mt-3 flex flex-wrap gap-2">
                     {account.programs.map((program) => (
-                      <span key={program.id} className="rounded-full bg-ocean-50 px-3 py-1 text-xs font-bold text-ocean-700">
+                      <span key={program.id} className="min-w-0 break-words rounded-full bg-ocean-50 px-3 py-1 text-xs font-bold text-ocean-700 [overflow-wrap:anywhere]">
                         {program.name} · {formatCurrency(Number(program.budgetAmount))}
                       </span>
                     ))}
                   </div>
                 </div>
-                <p className="text-right text-lg font-bold text-ocean-900">{formatCurrency(account.contributionTotal)}</p>
+                <p className="min-w-0 break-words text-right text-lg font-bold text-ocean-900 [overflow-wrap:anywhere]">{formatCurrency(account.contributionTotal)}</p>
               </div>
             </article>
           ))}
@@ -229,7 +230,7 @@ export default async function AdminCorporatePage({ searchParams }: AdminCorporat
               </div>
               <AdminStatusBadge value={contribution.status} />
               <div className="text-right">
-                <p className="font-bold text-ocean-900">{formatCurrency(contribution.amountValue)}</p>
+                <p className="min-w-0 break-words font-bold text-ocean-900 [overflow-wrap:anywhere]">{formatCurrency(contribution.amountValue)}</p>
                 <p className="mt-1 text-xs font-bold uppercase text-ocean-900/48">{contribution.publicGoalLabel}</p>
               </div>
             </article>

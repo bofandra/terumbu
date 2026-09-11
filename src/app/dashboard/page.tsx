@@ -22,6 +22,7 @@ import Link from "next/link";
 import { DashboardImpactTrend } from "@/components/dashboard-impact-trend";
 import { DashboardPersonalImpactMap } from "@/components/dashboard-personal-impact-map";
 import { PassportCopyButton } from "@/components/passport-copy-button";
+import { MetricValue } from "@/components/ui/metric-value";
 import { PassportPreview } from "@/components/passport-preview";
 import { Button, ButtonLink } from "@/components/ui/button";
 import { ProgressMeter } from "@/components/ui/progress-meter";
@@ -275,11 +276,11 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
             const Icon = item.icon;
 
             return (
-              <article key={item.label} className="rounded-2xl border border-ocean-900/10 bg-white p-5 shadow-soft">
+              <article key={item.label} className="min-w-0 rounded-2xl border border-ocean-900/10 bg-white p-5 shadow-soft">
                 <div className={cn("flex size-14 items-center justify-center rounded-full", item.tone)}>
                   <Icon size={24} aria-hidden="true" />
                 </div>
-                <p className="mt-5 text-2xl font-bold tracking-normal text-ocean-900">{item.value}</p>
+                <MetricValue className="mt-5 text-ocean-900">{item.value}</MetricValue>
                 <h2 className="mt-1 text-sm font-bold text-ocean-900">{item.label}</h2>
                 <p className="mt-3 text-sm text-ocean-900/58">{item.support}</p>
                 <p className="mt-4 border-t border-ocean-900/10 pt-3 text-xs font-bold text-kelp-700">{item.delta}</p>
@@ -468,7 +469,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
           <div className="flex items-start justify-between gap-3">
             <div>
               <p className="text-sm font-bold uppercase tracking-[0.16em] text-coral-700">My contributions</p>
-              <h2 className="mt-2 text-2xl font-bold tracking-normal text-ocean-900">{formatCurrency(data.summary.totalDonated)} across {data.summary.campaignsSupported} campaigns</h2>
+              <MetricValue as="h2" className="mt-2 text-ocean-900">{formatCurrency(data.summary.totalDonated)} across {data.summary.campaignsSupported} campaigns</MetricValue>
             </div>
             <Link href="/dashboard/donations" className="text-sm font-bold text-coral-700 hover:text-coral-500">View all donations</Link>
           </div>
@@ -750,8 +751,8 @@ function CameraIcon() {
 
 function ReportItem({ label, value }: { label: string; value: string }) {
   return (
-    <div>
-      <p className="text-xl font-bold text-ocean-900">{value}</p>
+    <div className="min-w-0">
+      <MetricValue className="text-ocean-900">{value}</MetricValue>
       <p className="mt-1 text-sm font-semibold text-ocean-900/54">{label}</p>
     </div>
   );

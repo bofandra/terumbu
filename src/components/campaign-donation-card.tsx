@@ -273,7 +273,7 @@ export function CampaignDonationCard({
           <button
             key={`${mode}-${option.amount}-${option.label}`}
             type="button"
-            className={`rounded-xl border px-4 py-4 text-left text-sm font-bold transition ${
+            className={`min-w-0 rounded-xl border px-4 py-4 text-left text-sm font-bold transition [overflow-wrap:anywhere] ${
               selectedAmount === option.amount && !isCustomAmountSelected
                 ? "border-coral-500 bg-coral-100/40 text-ocean-900"
                 : "border-ocean-900/10 text-ocean-900 hover:border-coral-500"
@@ -285,7 +285,7 @@ export function CampaignDonationCard({
             }}
           >
             {option.label}
-            {mode !== "coral" ? null : <span className="mt-1 block text-xs font-semibold text-ocean-900/56">{formatCurrency(option.amount, currency)}</span>}
+            {mode !== "coral" ? null : <span className="mt-1 block min-w-0 break-words text-xs font-semibold text-ocean-900/56 [overflow-wrap:anywhere]">{formatCurrency(option.amount, currency)}</span>}
           </button>
         ))}
         <button

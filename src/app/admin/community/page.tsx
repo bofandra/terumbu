@@ -5,6 +5,7 @@ import { AdminEmptyState, AdminPageHeader, AdminStatusBadge, adminInputClassName
 import { CommunityStatusBadge } from "@/components/community-ui";
 import { Button } from "@/components/ui/button";
 import { FormTabs } from "@/components/ui/form-tabs";
+import { MetricValue } from "@/components/ui/metric-value";
 import { requireRole } from "@/lib/auth";
 import { moderateCommunityContentAction, reviewCommunityReportAction } from "@/lib/community-actions";
 import { getAdminCommunityData } from "@/lib/community-queries";
@@ -107,9 +108,9 @@ export default async function AdminCommunityPage({ searchParams }: AdminCommunit
           const Icon = item.icon;
 
           return (
-            <article key={item.label} className="rounded-lg border border-ocean-900/10 bg-white p-4 shadow-soft">
+            <article key={item.label} className="min-w-0 rounded-lg border border-ocean-900/10 bg-white p-4 shadow-soft">
               <Icon className="size-5 text-coral-700" aria-hidden="true" />
-              <p className="mt-3 text-2xl font-bold tracking-normal text-ocean-900">{Number(item.value).toLocaleString("id-ID")}</p>
+              <MetricValue className="mt-3 text-ocean-900">{Number(item.value).toLocaleString("id-ID")}</MetricValue>
               <p className="mt-1 text-sm font-semibold text-ocean-900/58">{item.label}</p>
             </article>
           );

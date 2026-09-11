@@ -16,6 +16,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { ButtonLink } from "@/components/ui/button";
+import { MetricValue } from "@/components/ui/metric-value";
 import { getPublicCorporateImpactReport } from "@/lib/queries";
 import { formatCurrency } from "@/lib/utils";
 
@@ -200,11 +201,11 @@ export default async function PublicCorporateImpactPage({ params }: { params: Pr
             const Icon = metric.icon;
 
             return (
-              <article key={metric.label} className="rounded-2xl border border-ocean-900/10 bg-white p-5 shadow-soft">
+              <article key={metric.label} className="min-w-0 rounded-2xl border border-ocean-900/10 bg-white p-5 shadow-soft">
                 <div className="flex size-11 items-center justify-center rounded-full bg-ocean-700 text-white">
                   <Icon size={20} aria-hidden="true" />
                 </div>
-                <p className="mt-4 text-2xl font-bold tracking-normal text-ocean-900">{metric.value}</p>
+                <MetricValue className="mt-4 text-ocean-900">{metric.value}</MetricValue>
                 <h2 className="mt-1 text-sm font-bold text-ocean-900">{metric.label}</h2>
                 <p className="mt-2 text-xs font-semibold leading-5 text-ocean-900/58">{metric.support}</p>
               </article>

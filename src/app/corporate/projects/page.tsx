@@ -3,6 +3,7 @@ import { ArrowRight, BriefcaseBusiness, CircleDollarSign, Kanban, ShieldCheck } 
 import { CorporateProjectInspector } from "@/components/corporate-project-inspector";
 import { Button, ButtonLink } from "@/components/ui/button";
 import { FormTabs } from "@/components/ui/form-tabs";
+import { MetricValue } from "@/components/ui/metric-value";
 import { requireUser } from "@/lib/auth";
 import { requireCorporateDashboardData } from "@/lib/corporate-access";
 import { fundCorporateProjectAction } from "@/lib/corporate-actions";
@@ -112,12 +113,12 @@ export default async function CorporateProjectsPage({ searchParams }: CorporateP
             const Icon = item.icon;
 
             return (
-              <div key={item.label} className="rounded-lg border border-ocean-900/10 bg-sand-50 p-3">
+              <div key={item.label} className="min-w-0 rounded-lg border border-ocean-900/10 bg-sand-50 p-3">
                 <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-normal text-ocean-900/46">
                   <Icon className="size-4" aria-hidden="true" />
                   {item.label}
                 </div>
-                <p className="mt-2 font-bold text-ocean-900">{item.value}</p>
+                <p className="mt-2 min-w-0 break-words font-bold text-ocean-900 [overflow-wrap:anywhere]">{item.value}</p>
                 <p className="mt-1 text-sm font-semibold leading-6 text-ocean-900/58">{item.support}</p>
               </div>
             );
@@ -140,9 +141,9 @@ export default async function CorporateProjectsPage({ searchParams }: CorporateP
           ["Counts to public goal", formatCurrency(data.financials.campaignGoalContribution)],
           ["Needs action", data.portfolio.filter((project) => project.statusLabel !== "On Track").length.toLocaleString("id-ID")]
         ].map(([label, value]) => (
-          <article key={label} className="rounded-lg border border-ocean-900/10 bg-white p-5 shadow-soft">
+          <article key={label} className="min-w-0 rounded-lg border border-ocean-900/10 bg-white p-5 shadow-soft">
             <p className="text-sm font-bold text-ocean-900/56">{label}</p>
-            <p className="mt-3 text-2xl font-bold tracking-normal text-ocean-900">{value}</p>
+            <MetricValue className="mt-3 text-ocean-900">{value}</MetricValue>
           </article>
         ))}
       </section>
@@ -264,7 +265,7 @@ export default async function CorporateProjectsPage({ searchParams }: CorporateP
                   <span className="rounded-full bg-sand-100 px-3 py-1 text-xs font-bold capitalize text-ocean-900">
                     {contribution.statusLabel}
                   </span>
-                  <p className="text-lg font-bold tracking-normal text-ocean-900">{formatCurrency(contribution.amountValue)}</p>
+                  <p className="min-w-0 break-words text-lg font-bold tracking-normal text-ocean-900 [overflow-wrap:anywhere]">{formatCurrency(contribution.amountValue)}</p>
                 </article>
               ))}
               {data.contributions.length === 0 ? (

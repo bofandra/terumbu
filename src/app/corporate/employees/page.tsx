@@ -1,6 +1,7 @@
 import { CalendarDays, CheckCircle2, Download, Gift, Trophy, UserPlus, Users, XCircle } from "lucide-react";
 
 import { Button, ButtonLink } from "@/components/ui/button";
+import { MetricValue } from "@/components/ui/metric-value";
 import { ProgressMeter } from "@/components/ui/progress-meter";
 import { requireUser } from "@/lib/auth";
 import { requireCorporateDashboardData } from "@/lib/corporate-access";
@@ -109,10 +110,10 @@ export default async function CorporateEmployeesPage({ searchParams }: Corporate
           const Icon = metric.icon;
 
           return (
-            <article key={metric.label} className="rounded-lg border border-ocean-900/10 bg-white p-5 shadow-soft">
+            <article key={metric.label} className="min-w-0 rounded-lg border border-ocean-900/10 bg-white p-5 shadow-soft">
               <Icon size={22} aria-hidden="true" className="text-coral-500" />
               <p className="mt-4 text-sm font-bold text-ocean-900/56">{metric.label}</p>
-              <p className="mt-2 text-2xl font-bold tracking-normal text-ocean-900">{metric.value}</p>
+              <MetricValue className="mt-2 text-ocean-900">{metric.value}</MetricValue>
             </article>
           );
         })}

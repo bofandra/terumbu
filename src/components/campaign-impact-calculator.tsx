@@ -3,6 +3,7 @@
 import { Calculator, Info } from "lucide-react";
 import { useMemo, useState } from "react";
 
+import { MetricValue } from "@/components/ui/metric-value";
 import { calculateDonationImpact, currencyMinorStep, formatImpactQuantity, minimumDonationAmount } from "@/lib/impact-calculations";
 import { formatCurrency } from "@/lib/utils";
 
@@ -58,7 +59,7 @@ export function CampaignImpactCalculator({ goal, impactTarget, impactUnit, impac
       </div>
 
       <label className="mt-6 grid gap-3 text-sm font-bold text-ocean-900">
-        Contribution amount: <span className="text-2xl text-coral-700">{formatCurrency(amount, currency)}</span>
+        Contribution amount: <span className="min-w-0 break-words text-2xl text-coral-700 [overflow-wrap:anywhere]">{formatCurrency(amount, currency)}</span>
         <input
           type="range"
           min={minimumAmount}
@@ -72,8 +73,8 @@ export function CampaignImpactCalculator({ goal, impactTarget, impactUnit, impac
 
       <div className="mt-6 grid gap-3 md:grid-cols-2">
         {outputs.map(([value, label]) => (
-          <div key={value} className="rounded-xl bg-sand-50 p-4">
-            <p className="text-xl font-bold tracking-normal text-ocean-900">{value}</p>
+          <div key={value} className="min-w-0 rounded-xl bg-sand-50 p-4">
+            <MetricValue className="text-ocean-900">{value}</MetricValue>
             <p className="mt-2 text-sm leading-6 text-ocean-900/62">{label}</p>
           </div>
         ))}

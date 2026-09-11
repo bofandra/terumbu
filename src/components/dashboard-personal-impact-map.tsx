@@ -195,7 +195,7 @@ export function DashboardPersonalImpactMap({
                 trackClassName="bg-white"
               />
               <div className="mt-5 grid gap-2 text-sm font-semibold text-ocean-900/68">
-                <span>{formatCurrency(selectedSite.contributed)} contributed here</span>
+                <span className="min-w-0 break-words [overflow-wrap:anywhere]">{formatCurrency(selectedSite.contributed)} contributed here</span>
                 <span>{selectedSite.supportedUnits.toLocaleString("id-ID")} supported restoration units</span>
               </div>
               <Link href={`/campaigns/${selectedSite.campaignSlug}`} className="mt-5 inline-flex text-sm font-bold text-coral-700 hover:text-coral-500">

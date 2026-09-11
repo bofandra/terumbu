@@ -14,6 +14,7 @@ import {
 import { CampaignContentDepthEditor } from "@/components/campaign-content-depth-editor";
 import { Button } from "@/components/ui/button";
 import { FormTabs } from "@/components/ui/form-tabs";
+import { MetricValue } from "@/components/ui/metric-value";
 import { ProgressMeter } from "@/components/ui/progress-meter";
 import { requireRole } from "@/lib/auth";
 import { deleteAdminCampaignAction, updateAdminCampaignAction, updateCampaignStatusAction } from "@/lib/portal-actions";
@@ -173,9 +174,9 @@ export default async function AdminCampaignDetailPage({ params, searchParams }: 
           { label: "Donors", value: campaign.donorCount.toLocaleString("id-ID") },
           { label: "Impact target", value: campaign.impactTarget.toLocaleString("id-ID") }
         ].map((item) => (
-          <article key={item.label} className="rounded-lg border border-ocean-900/10 bg-white p-4 shadow-soft">
+          <article key={item.label} className="min-w-0 rounded-lg border border-ocean-900/10 bg-white p-4 shadow-soft">
             <p className="text-sm font-bold text-ocean-900/58">{item.label}</p>
-            <p className="mt-3 text-2xl font-bold capitalize tracking-normal text-ocean-900">{item.value}</p>
+            <MetricValue className="mt-3 capitalize text-ocean-900">{item.value}</MetricValue>
           </article>
         ))}
       </section>
@@ -199,7 +200,7 @@ export default async function AdminCampaignDetailPage({ params, searchParams }: 
             </div>
             <div className="mt-4 max-w-2xl">
               <ProgressMeter value={progress} label={`${campaign.title} funding progress`} trackClassName="bg-sand-100" />
-              <p className="mt-2 text-sm font-bold text-ocean-900">
+              <p className="mt-2 min-w-0 break-words text-sm font-bold text-ocean-900 [overflow-wrap:anywhere]">
                 {formatCurrency(Number(campaign.raisedAmount), campaign.currency)} / {formatCurrency(Number(campaign.goalAmount), campaign.currency)}
               </p>
               <p className="mt-1 text-xs font-semibold text-ocean-900/54">

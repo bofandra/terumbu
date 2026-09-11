@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ArrowUpRight, BadgeCheck, Globe2, Handshake, Plus, UsersRound } from "lucide-react";
 
 import { AdminEmptyState, AdminPageHeader, AdminStatusBadge, adminPanelClassName } from "@/components/admin-ui";
+import { MetricValue } from "@/components/ui/metric-value";
 import { requireRole } from "@/lib/auth";
 import { getAdminOperationsData } from "@/lib/queries";
 
@@ -77,13 +78,13 @@ export default async function AdminPartnersPage({ searchParams }: AdminPartnersP
           const Icon = item.icon;
 
           return (
-            <article key={item.label} className="rounded-lg border border-ocean-900/10 bg-white p-4 shadow-soft">
+            <article key={item.label} className="min-w-0 rounded-lg border border-ocean-900/10 bg-white p-4 shadow-soft">
               <div className="flex items-start justify-between gap-3">
-                <div>
+                <div className="min-w-0">
                   <p className="text-sm font-bold text-ocean-900/58">{item.label}</p>
-                  <p className="mt-3 text-2xl font-bold tracking-normal text-ocean-900">{item.value}</p>
+                  <MetricValue className="mt-3 text-ocean-900">{item.value}</MetricValue>
                 </div>
-                <span className="grid size-10 place-items-center rounded-lg bg-sand-100 text-ocean-900">
+                <span className="grid size-10 shrink-0 place-items-center rounded-lg bg-sand-100 text-ocean-900">
                   <Icon className="size-5" aria-hidden="true" />
                 </span>
               </div>
