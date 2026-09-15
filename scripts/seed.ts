@@ -146,6 +146,10 @@ const ids = {
   monthlyReportDemo: "dddddddd-dddd-4ddd-8ddd-dddddddddd0a",
   departureRajaAmpat: "dddddddd-dddd-4ddd-8ddd-dddddddddd11",
   departureWakatobi: "dddddddd-dddd-4ddd-8ddd-dddddddddd12",
+  departureBondowoso: "dddddddd-dddd-4ddd-8ddd-dddddddddd13",
+  departureJember: "dddddddd-dddd-4ddd-8ddd-dddddddddd14",
+  departureBaliContent: "dddddddd-dddd-4ddd-8ddd-dddddddddd15",
+  departureKomodoCleanup: "dddddddd-dddd-4ddd-8ddd-dddddddddd16",
   bookingRajaAmpat: "dddddddd-dddd-4ddd-8ddd-dddddddddd21",
   bookingParticipantRaka: "dddddddd-dddd-4ddd-8ddd-dddddddddd31",
   bookingPaymentRajaAmpat: "dddddddd-dddd-4ddd-8ddd-dddddddddd41",
@@ -1369,7 +1373,25 @@ async function seed() {
         currency: "USD",
         summary: "Plant coral fragments, join reef monitoring, and learn directly from local field teams.",
         imageUrl: "https://images.unsplash.com/photo-1546026423-cc4642628d2b?auto=format&fit=crop&w=1200&q=80",
-        relatedCampaignId: campaignBySlug.get("restore-raja-ampat-reefs")!
+        relatedCampaignId: campaignBySlug.get("restore-raja-ampat-reefs")!,
+        metadata: {
+          marketplace: {
+            typeLabel: "Eco Village",
+            programTypes: ["Eco Program", "Work exchange"],
+            highlights: ["Higher chance of approval", "Top Hosts"],
+            purposes: ["Connect with nature", "Learn about sustainability", "Expand your environmental consciousness"],
+            helpActivities: ["Farming & Eco Activities", "Reef Monitoring", "Community Work", "Photography"],
+            styles: ["Contact with nature", "Rural", "Beach"],
+            collaborationHoursPerWeek: 20,
+            travelLengthLabel: "Short Term Stay",
+            accommodations: ["Shared Dorm", "Team Dorm"],
+            mealsIncluded: "3 meals",
+            digitalNomadAmenities: ["Basic Internet Access"],
+            benefits: ["Use our equipped kitchen", "Free Hiking Tours", "Certificate"],
+            badges: ["Sustainable project", "Top Host", "Higher approval"],
+            additionalFee: null
+          }
+        }
       },
       {
         title: "Wakatobi Reef Monitoring Weekend",
@@ -1380,7 +1402,147 @@ async function seed() {
         currency: "USD",
         summary: "Practice reef survey basics, document restoration sites, and support community guides.",
         imageUrl: "https://images.unsplash.com/photo-1583212292454-1fe6229603b7?auto=format&fit=crop&w=1200&q=80",
-        relatedCampaignId: campaignBySlug.get("restore-raja-ampat-reefs")!
+        relatedCampaignId: campaignBySlug.get("restore-raja-ampat-reefs")!,
+        metadata: {
+          marketplace: {
+            typeLabel: "Community",
+            programTypes: ["Eco Program", "Social Impact"],
+            highlights: ["Higher chance of approval"],
+            purposes: ["Connect with the locals", "Learn about sustainability"],
+            helpActivities: ["Reef Monitoring", "Documentation", "Community Work"],
+            styles: ["Contact with nature", "Beach", "Family"],
+            collaborationHoursPerWeek: 16,
+            travelLengthLabel: "Short Term Stay",
+            accommodations: ["Homestay"],
+            mealsIncluded: "2 meals",
+            digitalNomadAmenities: ["Basic Internet Access"],
+            benefits: ["Language lessons", "Free Events"],
+            badges: ["Sustainable project", "Higher approval"],
+            additionalFee: null
+          }
+        }
+      },
+      {
+        title: "Volunteer as a Teacher: Grow Together with Local Students",
+        slug: "bondowoso-student-teaching-eco-village",
+        region: "Kabupaten Bondowoso",
+        durationDays: 7,
+        basePrice: "95.00",
+        currency: "USD",
+        summary: "Support English practice, sports, gardening, and slow-living activities with students in an eco village.",
+        imageUrl: "https://images.unsplash.com/photo-1509099836639-18ba1795216d?auto=format&fit=crop&w=1200&q=80",
+        relatedCampaignId: campaignBySlug.get("mangrove-shield-bali")!,
+        metadata: {
+          marketplace: {
+            typeLabel: "Eco Village",
+            programTypes: ["Social Impact", "Eco Program"],
+            highlights: ["Top Hosts", "Higher chance of approval"],
+            purposes: ["Connect with the locals", "Practice English", "Make a real social impact"],
+            helpActivities: ["Teaching", "Sports", "Gardening", "Social Work"],
+            styles: ["Rural", "Family", "Contact with nature"],
+            collaborationHoursPerWeek: 8,
+            travelLengthLabel: "Short Term Stay",
+            accommodations: ["Shared Dorm"],
+            mealsIncluded: "3 meals",
+            digitalNomadAmenities: ["Basic Internet Access"],
+            benefits: ["Language lessons", "Certificate", "Free Events"],
+            badges: ["Sustainable project", "Top Host", "Higher approval"],
+            additionalFee: null
+          }
+        }
+      },
+      {
+        title: "Tropical Farm Volunteering: Avocado, Orange, Sugarcane & Orchid",
+        slug: "jember-tropical-farm-volunteering",
+        region: "Kabupaten Jember",
+        durationDays: 14,
+        basePrice: "140.00",
+        currency: "USD",
+        summary: "Join farm tasks, social work, gardening, and homestay life while supporting a local sustainable project.",
+        imageUrl: "https://images.unsplash.com/photo-1500382017468-9049fed747ef?auto=format&fit=crop&w=1200&q=80",
+        relatedCampaignId: campaignBySlug.get("mangrove-shield-bali")!,
+        metadata: {
+          marketplace: {
+            typeLabel: "Farm",
+            programTypes: ["Eco Program", "Work exchange"],
+            highlights: ["Higher chance of approval"],
+            purposes: ["Connect with nature", "Learn about sustainability"],
+            helpActivities: ["Farming & Eco Activities", "Gardening", "Social Work"],
+            styles: ["Rural", "Vegetarian / Vegan", "Contact with nature"],
+            collaborationHoursPerWeek: 20,
+            travelLengthLabel: "Medium Term Stay",
+            accommodations: ["Private Room"],
+            mealsIncluded: "3 meals",
+            digitalNomadAmenities: ["Basic Internet Access", "Dedicated Workspace"],
+            benefits: ["Use our equipped kitchen", "Free Laundry"],
+            badges: ["Sustainable project", "Higher approval"],
+            additionalFee: {
+              amount: 10,
+              currency: "USD",
+              period: "per day",
+              description: "Supports project operations, accommodation, three daily meals, and structured volunteer activities.",
+              paysFor: ["Donation to project", "Meals", "Homestay support"]
+            }
+          }
+        }
+      },
+      {
+        title: "Help create content & manage social media for our homestay",
+        slug: "bali-homestay-content-social-media",
+        region: "Kota Denpasar",
+        durationDays: 10,
+        basePrice: "120.00",
+        currency: "USD",
+        summary: "Create photos, short videos, and social media stories for a Bali conservation homestay and local partner.",
+        imageUrl: "https://images.unsplash.com/photo-1537996194471-e657df975ab4?auto=format&fit=crop&w=1200&q=80",
+        relatedCampaignId: campaignBySlug.get("mangrove-shield-bali")!,
+        metadata: {
+          marketplace: {
+            typeLabel: "Homestay",
+            programTypes: ["Work exchange"],
+            highlights: ["Last minute", "New"],
+            purposes: ["Connect with international travelers", "Immerse yourself in the local culture"],
+            helpActivities: ["Video Making", "Social Media", "Photography", "Content Writer"],
+            styles: ["City & Town", "Beach", "Business"],
+            collaborationHoursPerWeek: 18,
+            travelLengthLabel: "Short Term Stay",
+            accommodations: ["Private Room"],
+            mealsIncluded: "3 meals",
+            digitalNomadAmenities: ["Fast Internet Access", "Dedicated Workspace"],
+            benefits: ["Discounts on Accommodation", "Free Tours"],
+            badges: ["Sustainable project", "Needs help immediately", "New"],
+            additionalFee: null
+          }
+        }
+      },
+      {
+        title: "Plastic-Free Coast: Cleanup, Sorting & Community Education",
+        slug: "komodo-coast-cleanup-community-education",
+        region: "Labuan Bajo",
+        durationDays: 5,
+        basePrice: "110.00",
+        currency: "USD",
+        summary: "Help sort coastal waste, document cleanup evidence, and support community education near Komodo.",
+        imageUrl: "https://images.unsplash.com/photo-1618477461853-cf6ed80faba5?auto=format&fit=crop&w=1200&q=80",
+        relatedCampaignId: campaignBySlug.get("cleanup-komodo-coast")!,
+        metadata: {
+          marketplace: {
+            typeLabel: "NGO",
+            programTypes: ["Social Impact", "Eco Program"],
+            highlights: ["Higher chance of approval"],
+            purposes: ["Make a real social impact", "Expand your environmental consciousness"],
+            helpActivities: ["Ocean Cleanup", "Community Work", "Photography", "Administration"],
+            styles: ["Beach", "City & Town", "Contact with nature"],
+            collaborationHoursPerWeek: 22,
+            travelLengthLabel: "Short Term Stay",
+            accommodations: ["Team Dorm"],
+            mealsIncluded: "2 meals",
+            digitalNomadAmenities: ["Basic Internet Access"],
+            benefits: ["Free Events", "Certificate", "Pick Up"],
+            badges: ["Sustainable project", "Higher approval"],
+            additionalFee: null
+          }
+        }
       }
     ])
     .onConflictDoUpdate({
@@ -1393,7 +1555,8 @@ async function seed() {
         summary: sql`excluded.summary`,
         imageUrl: sql`excluded.image_url`,
         currency: sql`excluded.currency`,
-        relatedCampaignId: sql`excluded.related_campaign_id`
+        relatedCampaignId: sql`excluded.related_campaign_id`,
+        metadata: sql`excluded.metadata`
       }
     })
     .returning({ id: expeditions.id, slug: expeditions.slug });
@@ -1427,6 +1590,63 @@ async function seed() {
         metadata: {
           meetingPoint: "Wanci Harbor",
           guide: "Community reef monitor network"
+        }
+      },
+      {
+        id: ids.departureBondowoso,
+        expeditionId: expeditionBySlug.get("bondowoso-student-teaching-eco-village")!,
+        startsAt: date("2026-10-03T01:00:00.000Z"),
+        endsAt: date("2026-10-09T09:00:00.000Z"),
+        capacity: 8,
+        seatsBooked: 2,
+        status: "open",
+        metadata: {
+          meetingPoint: "Bondowoso Station",
+          guide: "Eco village education coordinator",
+          minParticipants: 2
+        }
+      },
+      {
+        id: ids.departureJember,
+        expeditionId: expeditionBySlug.get("jember-tropical-farm-volunteering")!,
+        startsAt: date("2026-11-02T01:00:00.000Z"),
+        endsAt: date("2026-11-15T09:00:00.000Z"),
+        capacity: 10,
+        seatsBooked: 4,
+        status: "open",
+        metadata: {
+          meetingPoint: "Jember Station",
+          guide: "Farm host team",
+          minParticipants: 3
+        }
+      },
+      {
+        id: ids.departureBaliContent,
+        expeditionId: expeditionBySlug.get("bali-homestay-content-social-media")!,
+        startsAt: date("2026-09-25T01:00:00.000Z"),
+        endsAt: date("2026-10-04T09:00:00.000Z"),
+        capacity: 6,
+        seatsBooked: 0,
+        status: "open",
+        metadata: {
+          meetingPoint: "Denpasar",
+          guide: "Homestay host",
+          minParticipants: 1,
+          weatherAdvisory: "Content schedule may shift around ceremony days and local partner availability."
+        }
+      },
+      {
+        id: ids.departureKomodoCleanup,
+        expeditionId: expeditionBySlug.get("komodo-coast-cleanup-community-education")!,
+        startsAt: date("2026-10-18T01:00:00.000Z"),
+        endsAt: date("2026-10-22T09:00:00.000Z"),
+        capacity: 14,
+        seatsBooked: 5,
+        status: "open",
+        metadata: {
+          meetingPoint: "Labuan Bajo Harbor",
+          guide: "Komodo Ocean Watch cleanup coordinator",
+          minParticipants: 5
         }
       }
     ])

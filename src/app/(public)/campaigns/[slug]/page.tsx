@@ -516,7 +516,7 @@ export default async function CampaignDetailPage({ params }: { params: Promise<{
                         This sponsorship record appears after paid sponsorship activity is confirmed and linked to the campaign.
                       </p>
                       {sponsorAmount > 0 ? (
-                        <ButtonLink href={`/checkout/donation?campaign=${campaign.slug}&amount=${sponsorAmount}&intent=coral`} className="mt-6">
+                        <ButtonLink href={`/checkout/donation?campaign=${campaign.slug}&amount=${sponsorAmount}&intent=coral`} tone="donation" className="mt-6">
                           Sponsor This Campaign
                         </ButtonLink>
                       ) : null}
@@ -743,7 +743,7 @@ export default async function CampaignDetailPage({ params }: { params: Promise<{
                 <ButtonLink href="#updates" tone="light">Follow Implementation</ButtonLink>
               ) : (
                 <>
-                  <ButtonLink href={`/checkout/donation?campaign=${campaign.slug}`} tone="light">Donate Now</ButtonLink>
+                  <ButtonLink href={`/checkout/donation?campaign=${campaign.slug}`} tone="donation">Donate Now</ButtonLink>
                   {sponsorAmount > 0 ? (
                     <ButtonLink href={`/checkout/donation?campaign=${campaign.slug}&amount=${sponsorAmount}&intent=coral`} className="bg-coral-500 text-white hover:bg-coral-700">
                       Sponsor a Coral

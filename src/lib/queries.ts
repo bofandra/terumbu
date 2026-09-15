@@ -122,6 +122,14 @@ import {
   passportShareAccessStatus
 } from "@/lib/passport-sharing";
 import { normalizeSavedExpeditionStatus } from "@/lib/saved-expeditions";
+import {
+  buildDefaultExpeditionMarketplaceMetadata,
+  buildExpeditionMarketplaceFacets,
+  expeditionMatchesMarketplaceFilters,
+  normalizeExpeditionMarketplaceMetadata,
+  sortExpeditionMarketplaceItems,
+  type ExpeditionSearchFilters
+} from "@/lib/expedition-marketplace";
 import { corporateCapabilitiesForPermission } from "@/lib/corporate-permissions";
 import { corporateReportFormatLabel, corporateReportTypeLabel, scheduledReportIsDue } from "@/lib/corporate-report-lifecycle";
 import { evidenceReviewActionLabel, evidenceReviewStage, evidenceStatusLabel } from "@/lib/evidence-review-workflow";
@@ -970,7 +978,19 @@ export async function getCampaignUpdateDetail(campaignSlug: string, updateId: st
     : null;
 }
 
-export async function getExpeditionCards(limit?: number, region?: string): Promise<ExpeditionCardData[]> {
+type ExpeditionCardsOptions = {
+  limit?: number;
+  region?: string;
+  filters?: ExpeditionSearchFilters;
+};
+
+function expeditionCardsOptions(limitOrOptions?: number | ExpeditionCardsOptions, region?: string): ExpeditionCardsOptions {
+  return typeof limitOrOptions === "object" && limitOrOptions !== null ? limitOrOptions : { limit: limitOrOptions, region };
+}
+
+export async function getExpeditionCards(limitOrOptions?: number | ExpeditionCardsOptions, region?: string): Promise<ExpeditionCardData[]> {
+  const options = expeditionCardsOptions(limitOrOptions, region);
+  const selectedRegion = options.region;
   const [rows, departureRows] = await Promise.all([
     db
       .select({
@@ -982,10 +1002,11 @@ export async function getExpeditionCards(limit?: number, region?: string): Promi
         basePrice: expeditions.basePrice,
         currency: expeditions.currency,
         imageUrl: expeditions.imageUrl,
-        summary: expeditions.summary
+        summary: expeditions.summary,
+        metadata: expeditions.metadata
       })
       .from(expeditions)
-      .where(region ? eq(expeditions.region, region) : undefined)
+      .where(selectedRegion ? eq(expeditions.region, selectedRegion) : undefined)
       .orderBy(asc(expeditions.title)),
     db
       .select({
@@ -1038,10 +1059,25 @@ export async function getExpeditionCards(limit?: number, region?: string): Promi
       ? `${nextAvailability.availableSeats} seats available`
       : nextAvailability?.label ?? "No open departures";
 
-    return toExpeditionCard(row, availabilityLabel);
+    return toExpeditionCard({ ...row, nextDepartureStartsAt: nextDeparture?.startsAt ?? null }, availabilityLabel);
   });
+  const filteredCards = options.filters
+    ? cards.filter((card) => expeditionMatchesMarketplaceFilters(card, options.filters ?? {}))
+    : cards;
+  const sortedCards = sortExpeditionMarketplaceItems(filteredCards, options.filters?.sort);
 
-  return typeof limit === "number" ? cards.slice(0, limit) : cards;
+  return typeof options.limit === "number" ? sortedCards.slice(0, options.limit) : sortedCards;
+}
+
+export async function getExpeditionMarketplaceResults(filters: ExpeditionSearchFilters = {}) {
+  const [allExpeditions, expeditions] = await Promise.all([getExpeditionCards(), getExpeditionCards({ filters })]);
+
+  return {
+    expeditions,
+    total: expeditions.length,
+    facets: buildExpeditionMarketplaceFacets(allExpeditions),
+    filters
+  };
 }
 
 export async function getExpeditionRegions() {
@@ -6319,6 +6355,7 @@ export async function getAdminOperationsData() {
       metadata: unknown;
       metadataJson: string;
       detailMetadata: ReturnType<typeof normalizeExpeditionDetailMetadata> | null;
+      marketplaceMetadata: ReturnType<typeof normalizeExpeditionMarketplaceMetadata> | null;
       relatedCampaignId: string | null;
       relatedCampaignTitle: string | null;
       bookingCount: number;
@@ -6403,6 +6440,7 @@ export async function getAdminOperationsData() {
         metadata: row.metadata,
         metadataJson: "",
         detailMetadata: null,
+        marketplaceMetadata: null,
         relatedCampaignId: row.relatedCampaignId,
         relatedCampaignTitle: row.relatedCampaignTitle,
         bookingCount: expeditionBookingCounts.get(row.id) ?? 0,
@@ -6547,6 +6585,15 @@ export async function getAdminOperationsData() {
 
     expedition.metadataJson = expeditionMetadataEditorJson(metadata);
     expedition.detailMetadata = metadata;
+    expedition.marketplaceMetadata = normalizeExpeditionMarketplaceMetadata(
+      expedition.metadata,
+      buildDefaultExpeditionMarketplaceMetadata({
+        title: expedition.title,
+        region: expedition.region,
+        summary: expedition.summary,
+        durationDays: expedition.durationDays
+      })
+    );
   }
 
   return {
@@ -7298,6 +7345,7 @@ export async function getPartnerPortalData(userId?: string) {
       metadata: unknown;
       metadataJson: string;
       detailMetadata: ReturnType<typeof normalizeExpeditionDetailMetadata> | null;
+      marketplaceMetadata: ReturnType<typeof normalizeExpeditionMarketplaceMetadata> | null;
       relatedCampaignId: string | null;
       relatedCampaignTitle: string | null;
       organizationId: string | null;
@@ -7352,6 +7400,7 @@ export async function getPartnerPortalData(userId?: string) {
         metadata: row.metadata,
         metadataJson: "",
         detailMetadata: null,
+        marketplaceMetadata: null,
         relatedCampaignId: row.relatedCampaignId,
         relatedCampaignTitle: row.relatedCampaignTitle,
         organizationId: row.organizationId,
@@ -7436,6 +7485,15 @@ export async function getPartnerPortalData(userId?: string) {
 
     expedition.metadataJson = expeditionMetadataEditorJson(metadata);
     expedition.detailMetadata = metadata;
+    expedition.marketplaceMetadata = normalizeExpeditionMarketplaceMetadata(
+      expedition.metadata,
+      buildDefaultExpeditionMarketplaceMetadata({
+        title: expedition.title,
+        region: expedition.region,
+        summary: expedition.summary,
+        durationDays: expedition.durationDays
+      })
+    );
   }
 
   const evidenceReviewEventsById = await getEvidenceReviewEventsByEvidenceIds(evidenceRows.map((item) => item.id));

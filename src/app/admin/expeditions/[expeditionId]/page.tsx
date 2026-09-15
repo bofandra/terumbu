@@ -12,6 +12,7 @@ import {
   adminTextareaClassName
 } from "@/components/admin-ui";
 import { Button } from "@/components/ui/button";
+import { ExpeditionMarketplaceFields } from "@/components/expedition-marketplace-fields";
 import { FormTabs } from "@/components/ui/form-tabs";
 import { MetricValue } from "@/components/ui/metric-value";
 import { requireRole } from "@/lib/auth";
@@ -359,9 +360,19 @@ export default async function AdminExpeditionDetailPage({ params, searchParams }
           <Field label="Documentation link">
             <input name="documentationUrl" type="url" defaultValue={expedition.detailMetadata?.documentationUrl ?? ""} placeholder="https://drive.google.com/..." className={adminInputClassName} />
           </Field>
-          <Field label="Trip detail content JSON">
-            <textarea name="metadataJson" defaultValue={expedition.metadataJson} className={`${adminTextareaClassName} min-h-96 font-mono text-xs`} spellCheck={false} />
-          </Field>
+          <ExpeditionMarketplaceFields
+            marketplace={expedition.marketplaceMetadata!}
+            inputClassName={adminInputClassName}
+            textareaClassName={adminTextareaClassName}
+          />
+          <details className="rounded-lg border border-ocean-900/10 bg-sand-50">
+            <summary className="cursor-pointer px-4 py-3 text-sm font-bold text-ocean-900">Advanced trip detail JSON</summary>
+            <div className="border-t border-ocean-900/10 p-4">
+              <Field label="Trip detail content JSON">
+                <textarea name="metadataJson" defaultValue={expedition.metadataJson} className={`${adminTextareaClassName} min-h-96 font-mono text-xs`} spellCheck={false} />
+              </Field>
+            </div>
+          </details>
           <Button type="submit" tone="secondary" className="w-fit rounded-lg">
             <Save className="size-4" aria-hidden="true" />
             Save Expedition

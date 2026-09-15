@@ -40,7 +40,7 @@ export function SiteHeader({ user }: { user?: SiteHeaderUser | null }) {
     <header className="sticky top-0 z-50 border-b border-white/15 bg-ocean-900/90 text-white backdrop-blur-xl">
       <div className="mx-auto flex h-20 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
         <Link href="/" className="flex items-center gap-3" aria-label="Terumbu.eco home">
-          <span className="flex size-10 items-center justify-center rounded-full bg-coral-500 text-white">
+          <span className="flex size-10 items-center justify-center rounded-full bg-kelp-500 text-white">
             <Heart size={19} aria-hidden="true" />
           </span>
           <span className="text-lg font-bold tracking-normal">Terumbu.eco</span>
@@ -75,7 +75,7 @@ export function SiteHeader({ user }: { user?: SiteHeaderUser | null }) {
           {user ? (
             <details className="group relative">
               <summary className="flex min-h-11 cursor-pointer list-none items-center gap-3 rounded-full px-2 py-1 text-left transition hover:bg-white/10">
-                <span className="flex size-9 items-center justify-center rounded-full bg-coral-500 text-xs font-bold text-white">{initials}</span>
+                <span className="flex size-9 items-center justify-center rounded-full bg-kelp-500 text-xs font-bold text-white">{initials}</span>
                 <span className="min-w-0 pr-2">
                   <span className="block max-w-36 truncate text-sm font-bold text-white">{user.displayName}</span>
                   <span className="block max-w-36 truncate text-xs font-semibold text-white/58">{levelLabel(user.heroLevel)}</span>
@@ -143,7 +143,7 @@ export function SiteHeader({ user }: { user?: SiteHeaderUser | null }) {
             {user ? (
               <div className="mt-3 rounded-2xl border border-white/12 bg-white/8 p-3">
                 <div className="flex items-center gap-3">
-                  <span className="flex size-10 items-center justify-center rounded-full bg-coral-500 text-xs font-bold text-white">{initials}</span>
+                  <span className="flex size-10 items-center justify-center rounded-full bg-kelp-500 text-xs font-bold text-white">{initials}</span>
                   <span className="min-w-0">
                     <span className="block truncate text-sm font-bold text-white">{user.displayName}</span>
                     <span className="block truncate text-xs font-semibold text-white/58">{user.email}</span>

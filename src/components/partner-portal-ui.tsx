@@ -52,9 +52,9 @@ type OrganizationTeamMember = PartnerPortalData["organizationTeamMembers"][numbe
 const partnerCampaignStatuses = ["draft", "review"];
 
 export const inputClassName =
-  "min-h-11 w-full min-w-0 rounded-lg border border-ocean-900/14 bg-white px-3 text-sm font-semibold text-ocean-900 outline-none transition placeholder:text-ocean-900/36 focus:border-coral-500";
+  "min-h-11 w-full min-w-0 rounded-lg border border-ocean-900/14 bg-white px-3 text-sm font-semibold text-ocean-900 outline-none transition placeholder:text-ocean-900/36 focus:border-kelp-500";
 export const textareaClassName =
-  "min-h-28 w-full min-w-0 rounded-lg border border-ocean-900/14 bg-white px-3 py-3 text-sm font-semibold text-ocean-900 outline-none transition placeholder:text-ocean-900/36 focus:border-coral-500";
+  "min-h-28 w-full min-w-0 rounded-lg border border-ocean-900/14 bg-white px-3 py-3 text-sm font-semibold text-ocean-900 outline-none transition placeholder:text-ocean-900/36 focus:border-kelp-500";
 
 const badgeClasses: Record<string, string> = {
   archived: "bg-ocean-900/8 text-ocean-900/62",

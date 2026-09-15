@@ -1,6 +1,6 @@
 "use client";
 
-import { Heart, HelpCircle, Minus, Plus, ShieldCheck, X } from "lucide-react";
+import { ArrowRight, Heart, HelpCircle, Minus, Plus, ShieldCheck } from "lucide-react";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 
@@ -229,8 +229,8 @@ export function ExpeditionBookingCard({
           Select Available Date
         </button>
       ) : (
-        <Link href={href} className="mt-5 flex min-h-12 w-full items-center justify-center rounded-full bg-coral-500 px-5 text-sm font-bold text-white shadow-soft hover:bg-coral-700">
-          Reserve Your Place
+        <Link href={href} className="mt-5 flex min-h-12 w-full items-center justify-center rounded-full bg-kelp-500 px-5 text-sm font-bold text-white shadow-soft hover:bg-kelp-700">
+          Reserve / Apply
         </Link>
       )}
       <div className="mt-3 grid grid-cols-2 gap-2">
@@ -282,37 +282,21 @@ export function ExpeditionBookingCard({
 }
 
 export function ExpeditionMobileBookingBar(props: ExpeditionBookingCardProps) {
-  const [open, setOpen] = useState(false);
-  const firstDeparture = props.departures[0];
+  const firstDeparture = props.departures.find((departure) => departure.status === "open" && departure.availableSeats > 0) ?? props.departures[0];
 
   return (
-    <>
-      <div className="fixed inset-x-0 bottom-0 z-40 border-t border-ocean-900/10 bg-white/94 p-3 shadow-soft backdrop-blur lg:hidden">
-        <div className="mx-auto flex max-w-lg items-center justify-between gap-3">
-          <div className="min-w-0">
-            <p className="text-xs font-semibold text-ocean-900/54">From</p>
-            <p className="min-w-0 break-words font-bold text-ocean-900 [overflow-wrap:anywhere]">{formatCurrency(props.price, props.currency)} / person</p>
-            <p className="text-xs text-ocean-900/54">{firstDeparture ? `${firstDeparture.dateRangeLabel} · ${firstDeparture.availableSeats} places left` : "Dates pending"}</p>
-          </div>
-          <button type="button" className="min-h-11 rounded-full bg-coral-500 px-5 text-sm font-bold text-white" onClick={() => setOpen(true)}>
-            Check Dates
-          </button>
+    <div className="fixed inset-x-0 bottom-0 z-40 border-t border-ocean-900/10 bg-white/96 p-3 shadow-soft backdrop-blur lg:hidden">
+      <div className="mx-auto flex max-w-lg items-center justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-xs font-semibold text-ocean-900/54">From</p>
+          <p className="min-w-0 break-words font-bold text-ocean-900 [overflow-wrap:anywhere]">{formatCurrency(props.price, props.currency)} / person</p>
+          <p className="truncate text-xs text-ocean-900/54">{firstDeparture ? `${firstDeparture.dateRangeLabel} · ${firstDeparture.availableSeats} places left` : "Dates pending"}</p>
         </div>
+        <a href="#availability" className="inline-flex min-h-12 shrink-0 items-center gap-2 rounded-full bg-kelp-500 px-5 text-sm font-bold text-white shadow-soft">
+          Reserve / Apply
+          <ArrowRight size={17} aria-hidden="true" />
+        </a>
       </div>
-
-      {open ? (
-        <div className="fixed inset-0 z-50 bg-ocean-950/62 p-3 backdrop-blur lg:hidden" role="dialog" aria-modal="true" aria-label="Mobile expedition booking">
-          <div className="absolute inset-x-3 bottom-3 max-h-[88vh] overflow-y-auto rounded-2xl bg-white p-4 shadow-soft">
-            <div className="mb-3 flex items-center justify-between">
-              <p className="font-bold text-ocean-900">Reserve expedition seats</p>
-              <button type="button" aria-label="Close booking sheet" className="flex size-10 items-center justify-center rounded-full bg-ocean-50" onClick={() => setOpen(false)}>
-                <X size={17} aria-hidden="true" />
-              </button>
-            </div>
-            <ExpeditionBookingCard {...props} compact onQuestionClick={() => setOpen(false)} />
-          </div>
-        </div>
-      ) : null}
-    </>
+    </div>
   );
 }

@@ -3,17 +3,18 @@ import type { AnchorHTMLAttributes, ButtonHTMLAttributes, ReactNode } from "reac
 
 import { cn } from "@/lib/utils";
 
-type ButtonTone = "primary" | "secondary" | "ghost" | "light";
+type ButtonTone = "primary" | "secondary" | "ghost" | "light" | "donation";
 
 const toneClasses: Record<ButtonTone, string> = {
-  primary: "bg-coral-500 text-white shadow-soft hover:bg-coral-700",
+  primary: "bg-kelp-500 text-white shadow-soft hover:bg-kelp-700",
   secondary: "bg-ocean-900 text-white shadow-soft hover:bg-ocean-700",
   ghost: "bg-transparent text-ocean-900 hover:bg-ocean-50",
-  light: "bg-white text-ocean-900 shadow-soft hover:bg-sand-50"
+  light: "bg-white text-ocean-900 shadow-soft hover:bg-sand-50",
+  donation: "bg-coral-500 text-white shadow-soft hover:bg-coral-700"
 };
 
 const baseClasses =
-  "inline-flex min-h-11 items-center justify-center gap-2 rounded-lg px-5 py-2.5 text-sm font-semibold transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-coral-500";
+  "inline-flex min-h-11 items-center justify-center gap-2 rounded-lg px-5 py-2.5 text-sm font-semibold transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-kelp-500";
 
 type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
   tone?: ButtonTone;

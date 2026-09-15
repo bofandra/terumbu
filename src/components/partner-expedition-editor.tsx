@@ -5,6 +5,7 @@ import { ArrowUpRight, CalendarPlus, Edit3, MessageSquareText, Plus, Save } from
 import { Field, StatusBadge, inputClassName, labelize, textareaClassName, type PartnerPortalData } from "@/components/partner-portal-ui";
 import { RepeatableFields } from "@/components/partner-expedition-repeatable-fields";
 import { Button } from "@/components/ui/button";
+import { ExpeditionMarketplaceFields } from "@/components/expedition-marketplace-fields";
 import { processPartnerExpeditionInterestRequestAction } from "@/lib/expedition-interest-actions";
 import {
   createPartnerExpeditionAction,
@@ -13,6 +14,7 @@ import {
   updatePartnerExpeditionDepartureAction
 } from "@/lib/portal-actions";
 import type { ExpeditionDetailMetadata } from "@/lib/expedition-metadata";
+import type { ExpeditionMarketplaceMetadata } from "@/lib/expedition-marketplace";
 import { formatCurrency } from "@/lib/utils";
 
 type Expedition = PartnerPortalData["expeditions"][number];
@@ -27,6 +29,22 @@ const physicalLevelOptions = ["Light", "Moderate", "Active", "Challenging"];
 const accommodationTypeOptions = ["Shared twin room included", "Private room upgrade", "Homestay", "Eco-lodge", "Liveaboard", "Hotel partner stay"];
 const quickFactLabels = ["Duration", "Small group", "Difficulty", "Min. age", "Swimming ability", "Per person"];
 const requestStatuses = ["contacted", "resolved", "converted", "declined", "cancelled"];
+const createMarketplaceDefaults: ExpeditionMarketplaceMetadata = {
+  typeLabel: "Eco Program",
+  programTypes: ["Eco Program"],
+  highlights: ["Higher chance of approval"],
+  purposes: ["Connect with nature", "Learn about sustainability"],
+  helpActivities: ["Coral Restoration", "Reef Monitoring", "Community Work"],
+  styles: ["Contact with nature", "Rural"],
+  collaborationHoursPerWeek: 20,
+  travelLengthLabel: "Short Term Stay",
+  accommodations: ["Shared Dorm"],
+  mealsIncluded: "2 meals",
+  digitalNomadAmenities: ["Basic Internet Access"],
+  benefits: ["Use our equipped kitchen", "Free Events"],
+  badges: ["Sustainable project", "Higher approval"],
+  additionalFee: null
+};
 const fileInputClassName =
   "min-h-11 w-full min-w-0 rounded-lg border border-ocean-900/14 bg-white px-3 py-2 text-sm font-semibold text-ocean-900 outline-none transition file:mr-3 file:rounded-full file:border-0 file:bg-ocean-50 file:px-3 file:py-1.5 file:text-sm file:font-bold file:text-ocean-700 focus:border-coral-500";
 
@@ -153,6 +171,7 @@ function CreateExpeditionForm({ campaigns, canManageExpeditions }: { campaigns: 
             </Field>
           </div>
         </details>
+        <ExpeditionMarketplaceFields marketplace={createMarketplaceDefaults} inputClassName={inputClassName} textareaClassName={textareaClassName} />
         <Button type="submit" className="w-fit" disabled={!canSubmit}>
           <Plus className="size-4" aria-hidden="true" />
           Create Expedition
@@ -162,7 +181,7 @@ function CreateExpeditionForm({ campaigns, canManageExpeditions }: { campaigns: 
   );
 }
 
-function DetailFields({ detail }: { detail: ExpeditionDetailMetadata }) {
+function DetailFields({ detail, marketplace }: { detail: ExpeditionDetailMetadata; marketplace: ExpeditionMarketplaceMetadata }) {
   const galleryRows = withRows(detail.galleryImages, 5, { src: "", label: "", caption: "", provenance: "" });
   const pillarRows = withRows(detail.overview.pillars, 3, { title: "", body: "" });
   const highlightRows = withRows(detail.highlights, 6, { title: "", status: "" });
@@ -185,6 +204,8 @@ function DetailFields({ detail }: { detail: ExpeditionDetailMetadata }) {
 
   return (
     <div className="grid gap-4">
+      <ExpeditionMarketplaceFields marketplace={marketplace} inputClassName={inputClassName} textareaClassName={textareaClassName} />
+
       <details open className="rounded-lg border border-ocean-900/10 bg-white">
         <summary className="cursor-pointer px-4 py-3 text-sm font-bold text-ocean-900">Public summary</summary>
         <div className="grid gap-4 border-t border-ocean-900/10 p-4">
@@ -542,7 +563,7 @@ function ExpeditionDetailForm({ expedition, campaigns }: { expedition: Expeditio
       <Field label="Summary">
         <textarea name="summary" defaultValue={expedition.summary} className={textareaClassName} required />
       </Field>
-      <DetailFields detail={detail} />
+      <DetailFields detail={detail} marketplace={expedition.marketplaceMetadata!} />
       <Button type="submit" className="w-fit">
         <Save className="size-4" aria-hidden="true" />
         Save Expedition

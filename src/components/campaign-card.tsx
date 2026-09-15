@@ -64,7 +64,7 @@ export function CampaignCard({ campaign }: CampaignCardProps) {
           <p className="mt-1 text-sm text-ocean-900/68">{campaign.impact}</p>
         </div>
 
-        <ButtonLink href={`/campaigns/${campaign.slug}`} className="mt-5 w-full">
+        <ButtonLink href={`/campaigns/${campaign.slug}`} tone="donation" className="mt-5 w-full">
           Donate
         </ButtonLink>
       </div>

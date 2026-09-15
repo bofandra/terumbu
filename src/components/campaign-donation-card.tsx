@@ -411,7 +411,7 @@ export function CampaignDonationCard({
             <p className="text-sm font-bold text-ocean-900">{raisedLabel}</p>
             <p className="text-xs font-semibold text-ocean-900/58">{progress}% funded</p>
           </div>
-          <Button type="button" disabled={Boolean(disabledReason)} onClick={() => setIsSheetOpen(true)}>
+          <Button type="button" tone="donation" disabled={Boolean(disabledReason)} onClick={() => setIsSheetOpen(true)}>
             Donate Now
           </Button>
         </div>

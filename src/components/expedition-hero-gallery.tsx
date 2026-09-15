@@ -1,6 +1,6 @@
 "use client";
 
-import { Camera, Play, X } from "lucide-react";
+import { Camera, X } from "lucide-react";
 import Image from "next/image";
 import { useState } from "react";
 
@@ -18,39 +18,23 @@ type ExpeditionHeroGalleryProps = {
 
 export function ExpeditionHeroGallery({ images, region }: ExpeditionHeroGalleryProps) {
   const [open, setOpen] = useState(false);
-  const gallery = images.slice(0, 5);
-  const main = gallery[0];
+  const main = images[0];
 
   return (
     <>
-      <div className="grid gap-3 lg:grid-cols-[1.55fr_1fr]">
-        <button type="button" className="group relative h-[320px] overflow-hidden rounded-2xl bg-ocean-900 text-left shadow-soft sm:h-[380px] lg:h-[360px]" onClick={() => setOpen(true)}>
-          {main ? <Image src={main.src} alt={main.caption} fill className="object-cover transition duration-500 group-hover:scale-105" sizes="(min-width: 1280px) 52vw, (min-width: 1024px) 48vw, 100vw" priority /> : null}
-          <div className="absolute inset-0 bg-gradient-to-t from-ocean-900/58 via-transparent to-transparent" />
-          <span className="absolute bottom-5 left-5 rounded-full bg-ocean-900/84 px-4 py-2 text-sm font-bold text-white">{region}</span>
-        </button>
-
-        <div className="grid h-[280px] grid-cols-2 grid-rows-2 gap-3 sm:h-[320px] lg:h-[360px]">
-          {gallery.slice(1, 5).map((item, index) => (
-            <button key={`${item.src}-${item.label}`} type="button" className="group relative overflow-hidden rounded-2xl bg-ocean-900 text-left shadow-soft" onClick={() => setOpen(true)}>
-              <Image src={item.src} alt={item.caption} fill className="object-cover transition duration-500 group-hover:scale-105" sizes="(min-width: 1280px) 18vw, (min-width: 1024px) 16vw, 50vw" />
-              <div className="absolute inset-0 bg-gradient-to-t from-ocean-900/60 via-transparent to-transparent" />
-              <span className="absolute left-3 top-3 rounded-full bg-white/90 px-3 py-1 text-xs font-bold text-ocean-900">{item.label}</span>
-              {index === 0 ? (
-                <span className="absolute right-3 top-3 flex size-11 items-center justify-center rounded-full bg-ocean-900/78 text-white">
-                  <Play size={20} aria-hidden="true" />
-                </span>
-              ) : null}
-              {index === 3 ? (
-                <span className="absolute bottom-3 right-3 inline-flex items-center gap-2 rounded-full bg-ocean-900/84 px-4 py-2 text-sm font-bold text-white">
-                  <Camera size={16} aria-hidden="true" />
-                  View all {images.length} photos
-                </span>
-              ) : null}
-            </button>
-          ))}
-        </div>
-      </div>
+      <button
+        type="button"
+        className="group relative h-[340px] w-full overflow-hidden rounded-md bg-ocean-900 text-left sm:h-[430px] lg:h-[480px]"
+        onClick={() => setOpen(true)}
+      >
+        {main ? <Image src={main.src} alt={main.caption} fill className="object-cover transition duration-500 group-hover:scale-[1.03]" sizes="(min-width: 1024px) 48vw, 100vw" priority /> : null}
+        <div className="absolute inset-0 bg-gradient-to-t from-ocean-900/18 via-transparent to-transparent" />
+        <span className="absolute bottom-5 right-5 inline-flex min-h-11 items-center gap-2 rounded-full bg-white px-5 text-sm font-bold text-ocean-900 shadow-soft">
+          <Camera size={16} aria-hidden="true" />
+          View all {images.length} photos
+        </span>
+        <span className="absolute left-4 top-4 rounded-full bg-white/92 px-3 py-1 text-xs font-bold text-ocean-900 shadow-sm">{region}</span>
+      </button>
 
       {open ? (
         <div className="fixed inset-0 z-50 overflow-y-auto bg-ocean-950/80 p-4 backdrop-blur" role="dialog" aria-modal="true" aria-label="Expedition photo gallery">

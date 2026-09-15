@@ -1,3 +1,9 @@
+import {
+  buildDefaultExpeditionMarketplaceMetadata,
+  normalizeExpeditionMarketplaceMetadata,
+  type ExpeditionMarketplaceMetadata
+} from "@/lib/expedition-marketplace";
+
 export type ImpactStatData = {
   label: string;
   value: string;
@@ -31,6 +37,8 @@ export type ExpeditionCardData = {
   availabilityLabel: string;
   imageUrl: string | null;
   summary: string;
+  marketplace: ExpeditionMarketplaceMetadata;
+  nextDepartureStartsAt: Date | null;
 };
 
 export type ImpactSiteData = {
@@ -138,6 +146,8 @@ type ExpeditionRow = {
   currency: string;
   imageUrl: string | null;
   summary: string;
+  metadata?: unknown;
+  nextDepartureStartsAt?: Date | null;
 };
 
 export function toNumber(value: string | number | null | undefined) {
@@ -293,6 +303,16 @@ export function suggestedDonationAmounts(goal: number, currency = "USD") {
 }
 
 export function toExpeditionCard(row: ExpeditionRow, availabilityLabel = "Departure schedule pending"): ExpeditionCardData {
+  const marketplace = normalizeExpeditionMarketplaceMetadata(
+    row.metadata,
+    buildDefaultExpeditionMarketplaceMetadata({
+      region: row.region,
+      title: row.title,
+      summary: row.summary,
+      durationDays: row.durationDays
+    })
+  );
+
   return {
     slug: row.slug,
     title: row.title,
@@ -302,6 +322,8 @@ export function toExpeditionCard(row: ExpeditionRow, availabilityLabel = "Depart
     currency: row.currency,
     availabilityLabel,
     imageUrl: row.imageUrl,
-    summary: row.summary
+    summary: row.summary,
+    marketplace,
+    nextDepartureStartsAt: row.nextDepartureStartsAt ?? null
   };
 }

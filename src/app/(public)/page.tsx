@@ -105,7 +105,7 @@ export default async function HomePage() {
               Fund conservation, explore Indonesia, learn from field teams, and watch your verified impact grow over time.
             </p>
             <div className="mt-9 flex flex-col gap-3 sm:flex-row">
-              <ButtonLink href="/campaigns" className="sm:min-w-40">
+              <ButtonLink href="/campaigns" tone="donation" className="sm:min-w-40">
                 Donate Now
                 <ArrowRight size={18} aria-hidden="true" />
               </ButtonLink>

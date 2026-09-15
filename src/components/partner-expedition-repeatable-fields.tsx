@@ -65,7 +65,7 @@ export function RepeatableFields({
                     defaultValue={value}
                     placeholder={field.placeholder}
                     className={cn(
-                      "min-h-28 w-full min-w-0 rounded-lg border border-ocean-900/14 bg-white px-3 py-3 text-sm font-semibold text-ocean-900 outline-none transition placeholder:text-ocean-900/36 focus:border-coral-500",
+                      "min-h-28 w-full min-w-0 rounded-lg border border-ocean-900/14 bg-white px-3 py-3 text-sm font-semibold text-ocean-900 outline-none transition placeholder:text-ocean-900/36 focus:border-kelp-500",
                       field.className
                     )}
                   />
@@ -79,7 +79,7 @@ export function RepeatableFields({
                     name={field.name}
                     defaultValue={value}
                     className={cn(
-                      "min-h-11 w-full min-w-0 rounded-lg border border-ocean-900/14 bg-white px-3 text-sm font-semibold text-ocean-900 outline-none transition focus:border-coral-500",
+                      "min-h-11 w-full min-w-0 rounded-lg border border-ocean-900/14 bg-white px-3 text-sm font-semibold text-ocean-900 outline-none transition focus:border-kelp-500",
                       field.className
                     )}
                   >
@@ -104,7 +104,7 @@ export function RepeatableFields({
                       type="file"
                       accept="image/png,image/jpeg,image/webp,image/gif"
                       className={cn(
-                        "min-h-11 w-full min-w-0 rounded-lg border border-ocean-900/14 bg-white px-3 py-2 text-sm font-semibold text-ocean-900 outline-none transition file:mr-3 file:rounded-full file:border-0 file:bg-ocean-50 file:px-3 file:py-1.5 file:text-sm file:font-bold file:text-ocean-700 focus:border-coral-500",
+                        "min-h-11 w-full min-w-0 rounded-lg border border-ocean-900/14 bg-white px-3 py-2 text-sm font-semibold text-ocean-900 outline-none transition file:mr-3 file:rounded-full file:border-0 file:bg-ocean-50 file:px-3 file:py-1.5 file:text-sm file:font-bold file:text-ocean-700 focus:border-kelp-500",
                         field.className
                       )}
                     />
@@ -123,7 +123,7 @@ export function RepeatableFields({
                   defaultValue={value}
                   placeholder={field.placeholder}
                   className={cn(
-                    "min-h-11 w-full min-w-0 rounded-lg border border-ocean-900/14 bg-white px-3 text-sm font-semibold text-ocean-900 outline-none transition placeholder:text-ocean-900/36 focus:border-coral-500",
+                    "min-h-11 w-full min-w-0 rounded-lg border border-ocean-900/14 bg-white px-3 text-sm font-semibold text-ocean-900 outline-none transition placeholder:text-ocean-900/36 focus:border-kelp-500",
                     field.className
                   )}
                 />

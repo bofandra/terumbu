@@ -52,6 +52,11 @@ import {
   parseExpeditionMetadataJson,
   type ExpeditionDetailMetadata
 } from "@/lib/expedition-metadata";
+import {
+  buildDefaultExpeditionMarketplaceMetadata,
+  normalizeExpeditionMarketplaceMetadata,
+  type ExpeditionMarketplaceMetadata
+} from "@/lib/expedition-marketplace";
 import { canCancelExpeditionBooking } from "@/lib/expedition-booking-lifecycle";
 import { buildPassportNumber, normalizeCurrency, parseCarbonKgPerUsd } from "@/lib/impact-calculations";
 import {
@@ -608,13 +613,18 @@ function expeditionMetadataFromForm(formData: FormData, onError: (code: string, 
     onError(result.error, formData);
   }
 
-  if (!formData.has("documentationUrl")) {
-    return result.metadata;
+  const metadata = {
+    ...(result.metadata ?? {}),
+    ...(formData.has("documentationUrl") ? { documentationUrl } : {})
+  };
+
+  if (!hasMarketplaceFields(formData)) {
+    return Object.keys(metadata).length > 0 ? metadata : null;
   }
 
   return {
-    ...(result.metadata ?? {}),
-    documentationUrl
+    ...metadata,
+    marketplace: marketplaceMetadataFromForm(formData, marketplaceDefaultsFromForm(formData, metadata))
   };
 }
 
@@ -677,6 +687,73 @@ function formPercentPairs(formData: FormData, labelKey: string, percentKey: stri
   })).filter((item) => item.label || item.percent > 0);
 }
 
+function hasMarketplaceFields(formData: FormData) {
+  return [
+    "marketplaceTypeLabel",
+    "marketplaceProgramTypes",
+    "marketplaceHighlights",
+    "marketplacePurposes",
+    "marketplaceHelpActivities",
+    "marketplaceStyles",
+    "marketplaceHoursPerWeek",
+    "marketplaceTravelLength",
+    "marketplaceAccommodations",
+    "marketplaceMealsIncluded",
+    "marketplaceDigitalNomad",
+    "marketplaceBenefits",
+    "marketplaceBadges",
+    "marketplaceAdditionalFeeAmount"
+  ].some((key) => formData.has(key));
+}
+
+function marketplaceDefaultsFromForm(formData: FormData, metadata: unknown): ExpeditionMarketplaceMetadata {
+  const title = formText(formData, "title");
+  const region = formText(formData, "region");
+  const summary = formText(formData, "summary");
+  const durationDays = parsePositiveInteger(formData.get("durationDays")) ?? 1;
+
+  return normalizeExpeditionMarketplaceMetadata(
+    metadata,
+    buildDefaultExpeditionMarketplaceMetadata({
+      title,
+      region,
+      summary,
+      durationDays
+    })
+  );
+}
+
+function marketplaceMetadataFromForm(formData: FormData, fallback: ExpeditionMarketplaceMetadata): ExpeditionMarketplaceMetadata {
+  const additionalFeeAmount = formOptionalNumber(formData, "marketplaceAdditionalFeeAmount");
+  const additionalFee =
+    additionalFeeAmount && additionalFeeAmount > 0
+      ? {
+          amount: additionalFeeAmount,
+          currency: formTextOrFallback(formData, "marketplaceAdditionalFeeCurrency", fallback.additionalFee?.currency ?? "USD"),
+          period: formTextOrFallback(formData, "marketplaceAdditionalFeePeriod", fallback.additionalFee?.period ?? "per day"),
+          description: formTextOrFallback(formData, "marketplaceAdditionalFeeDescription", fallback.additionalFee?.description ?? ""),
+          paysFor: formLinesOrFallback(formData, "marketplaceAdditionalFeePaysFor", fallback.additionalFee?.paysFor ?? [])
+        }
+      : null;
+
+  return {
+    typeLabel: formTextOrFallback(formData, "marketplaceTypeLabel", fallback.typeLabel),
+    programTypes: formLinesOrFallback(formData, "marketplaceProgramTypes", fallback.programTypes),
+    highlights: formLinesOrFallback(formData, "marketplaceHighlights", fallback.highlights),
+    purposes: formLinesOrFallback(formData, "marketplacePurposes", fallback.purposes),
+    helpActivities: formLinesOrFallback(formData, "marketplaceHelpActivities", fallback.helpActivities),
+    styles: formLinesOrFallback(formData, "marketplaceStyles", fallback.styles),
+    collaborationHoursPerWeek: Math.max(0, Math.min(60, formNumber(formData, "marketplaceHoursPerWeek", fallback.collaborationHoursPerWeek))),
+    travelLengthLabel: formTextOrFallback(formData, "marketplaceTravelLength", fallback.travelLengthLabel),
+    accommodations: formLinesOrFallback(formData, "marketplaceAccommodations", fallback.accommodations),
+    mealsIncluded: formTextOrFallback(formData, "marketplaceMealsIncluded", fallback.mealsIncluded),
+    digitalNomadAmenities: formLinesOrFallback(formData, "marketplaceDigitalNomad", fallback.digitalNomadAmenities),
+    benefits: formLinesOrFallback(formData, "marketplaceBenefits", fallback.benefits),
+    badges: formLinesOrFallback(formData, "marketplaceBadges", fallback.badges),
+    additionalFee
+  };
+}
+
 function expeditionDurationLabel(durationDays: number) {
   return `${durationDays} days / ${Math.max(0, durationDays - 1)} nights`;
 }
@@ -724,7 +801,10 @@ type PartnerExpeditionMetadataContext = {
   maxCapacity: number;
 };
 
-async function partnerExpeditionMetadataFromForm(formData: FormData, context: PartnerExpeditionMetadataContext): Promise<ExpeditionDetailMetadata> {
+async function partnerExpeditionMetadataFromForm(
+  formData: FormData,
+  context: PartnerExpeditionMetadataContext
+): Promise<ExpeditionDetailMetadata & { marketplace?: ExpeditionMarketplaceMetadata }> {
   const galleryUploads = await uploadedPartnerImages(formData, "galleryImageFile");
   const galleryExistingSrc = formArray(formData, "galleryExistingSrc");
   const existingGalleryImages = new Set(context.currentMetadata.galleryImages.map((image) => image.src).filter(Boolean));
@@ -783,7 +863,7 @@ async function partnerExpeditionMetadataFromForm(formData: FormData, context: Pa
     formData.has("preparationCourseImageFile");
   const hasFinalCtaFields = formData.has("finalCtaEyebrow") || formData.has("finalCtaTitle") || formData.has("finalCtaBody") || formData.has("finalCtaPrimaryLabel") || formData.has("finalCtaSecondaryLabel");
 
-  return {
+  const detailMetadata: ExpeditionDetailMetadata = {
     categoryLabel: optionFromForm(formData, "categoryLabel", partnerExpeditionCategoryLabels, context.currentMetadata.categoryLabel || "Coral Restoration Expedition"),
     activitySummary: formTextOrFallback(formData, "activitySummary", context.currentMetadata.activitySummary),
     documentationUrl: formTextOrFallback(formData, "documentationUrl", context.currentMetadata.documentationUrl),
@@ -946,6 +1026,15 @@ async function partnerExpeditionMetadataFromForm(formData: FormData, context: Pa
       body: formTextOrFallback(formData, "weatherAdvisoryBody", context.currentMetadata.weatherAdvisory.body)
     },
     bookingTrustIndicators: formLinesOrFallback(formData, "bookingTrustIndicators", context.currentMetadata.bookingTrustIndicators)
+  };
+
+  if (!hasMarketplaceFields(formData)) {
+    return detailMetadata;
+  }
+
+  return {
+    ...detailMetadata,
+    marketplace: marketplaceMetadataFromForm(formData, marketplaceDefaultsFromForm(formData, context.currentMetadata))
   };
 }
 
