@@ -26,7 +26,6 @@ import {
   corporateReportExports,
   corporateSecuritySettings,
   projectEvidence,
-  users
 } from "@/db/schema";
 import { requireUser, safeRedirectPath } from "@/lib/auth";
 import {
@@ -1544,20 +1543,12 @@ export async function inviteCorporateEmployeeAction(formData: FormData) {
     redirect("/corporate/employees?error=employee");
   }
 
-  const [linkedUser] = await db
-    .select({
-      id: users.id
-    })
-    .from(users)
-    .where(eq(users.email, email))
-    .limit(1);
-
   const now = new Date();
   const [employee] = await db
     .insert(corporateEmployees)
     .values({
       corporateAccountId: context.accountId,
-      userId: status === "active" ? linkedUser?.id : null,
+      userId: null,
       email,
       name,
       department,
@@ -1567,7 +1558,7 @@ export async function inviteCorporateEmployeeAction(formData: FormData) {
     .onConflictDoUpdate({
       target: [corporateEmployees.corporateAccountId, corporateEmployees.email],
       set: {
-        userId: status === "active" ? linkedUser?.id : null,
+        userId: null,
         name,
         department,
         role,
@@ -1579,20 +1570,7 @@ export async function inviteCorporateEmployeeAction(formData: FormData) {
   const permission = CORPORATE_ACCESS_PERMISSION;
   let inviteToken: string | null = null;
 
-  if (status === "active" && linkedUser) {
-    await db
-      .insert(corporatePermissions)
-      .values({
-        corporateAccountId: context.accountId,
-        userId: linkedUser.id,
-        permission
-      })
-      .onConflictDoNothing({
-        target: [corporatePermissions.corporateAccountId, corporatePermissions.userId, corporatePermissions.permission]
-      });
-  }
-
-  if (status === "invited" && employee?.id) {
+  if (employee?.id) {
     inviteToken = randomBytes(24).toString("hex");
     await db
       .update(corporateEmployeeInvites)
@@ -1626,7 +1604,6 @@ export async function inviteCorporateEmployeeAction(formData: FormData) {
       email,
       role,
       status,
-      linkedUserId: linkedUser?.id ?? null,
       inviteCreated: Boolean(inviteToken)
     }
   });

@@ -20,7 +20,7 @@ export default async function CorporateLayout({ children }: Readonly<{ children:
   return (
     <CorporateShell
       displayName={displayName}
-      roleLabel={roleLabel(data.program.permission)}
+      roleLabel={roleLabel()}
       accountName={data.program.accountName}
       programName={data.program.programName}
       accountLogoUrl={data.program.accountLogoUrl}
