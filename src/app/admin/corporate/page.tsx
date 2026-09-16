@@ -1,4 +1,4 @@
-import { Building2, CircleDollarSign, ShieldCheck, UsersRound } from "lucide-react";
+import { Building2, CircleDollarSign, UsersRound } from "lucide-react";
 
 import {
   AdminEmptyState,
@@ -11,7 +11,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { FormTabs } from "@/components/ui/form-tabs";
 import { MetricValue } from "@/components/ui/metric-value";
-import { createCorporateWorkspaceAction, assignCorporatePermissionAction } from "@/lib/admin-corporate-actions";
+import { assignCorporatePermissionAction, createCorporateWorkspaceAction } from "@/lib/admin-corporate-actions";
 import { requireRole } from "@/lib/auth";
 import { getAdminCorporateData } from "@/lib/queries";
 import { formatCurrency } from "@/lib/utils";
@@ -24,13 +24,13 @@ export const dynamic = "force-dynamic";
 
 const savedMessages: Record<string, string> = {
   workspace: "Corporate workspace saved.",
-  permission: "Corporate permission assigned."
+  permission: "Corporate access assigned."
 };
 
 const errorMessages: Record<string, string> = {
   "image-size": "Uploaded image is too large.",
   "image-type": "Upload a supported image file.",
-  "workspace-invalid": "Enter a valid company, program, reporting period, and budget.",
+  "workspace-invalid": "Enter company name, program name, and a valid budget.",
   "permission-invalid": "Choose a corporate account and user email.",
   "permission-missing": "Corporate account or user was not found. Create the user first, then assign access."
 };
@@ -42,17 +42,10 @@ type AdminCorporatePageProps = {
   }>;
 };
 
-function dateInput(value: Date) {
-  return value.toISOString().slice(0, 10);
-}
-
 export default async function AdminCorporatePage({ searchParams }: AdminCorporatePageProps) {
   await requireRole(["admin"], "/admin/corporate");
   const params = await searchParams;
   const data = await getAdminCorporateData();
-  const now = new Date();
-  const defaultStart = new Date(now.getFullYear(), 0, 1);
-  const defaultEnd = new Date(now.getFullYear(), 11, 31);
   const savedMessage = params?.saved ? savedMessages[params.saved] : null;
   const errorMessage = params?.error ? errorMessages[params.error] : null;
 
@@ -60,20 +53,18 @@ export default async function AdminCorporatePage({ searchParams }: AdminCorporat
     <div className="space-y-6">
       <AdminPageHeader
         eyebrow="Corporate"
-        title="Corporate workspace management"
-        description="Create corporate ESG/CSR workspaces, assign corporate users, and monitor contribution records separately from individual donations."
+        title="Corporate workspaces"
+        description="Create a company workspace, assign access, and review contribution records."
       />
 
       {savedMessage ? <p className="rounded-lg border border-kelp-700/20 bg-kelp-100 px-4 py-3 text-sm font-bold text-kelp-700">{savedMessage}</p> : null}
       {errorMessage ? <p className="rounded-lg border border-coral-700/20 bg-coral-100 px-4 py-3 text-sm font-bold text-coral-700">{errorMessage}</p> : null}
 
-      <section className="grid gap-3 md:grid-cols-5" aria-label="Corporate summary">
+      <section className="grid gap-3 md:grid-cols-3" aria-label="Corporate summary">
         {[
-          { label: "Corporate accounts", value: data.metrics.accounts.toLocaleString("id-ID"), icon: Building2 },
-          { label: "Active programs", value: data.metrics.activePrograms.toLocaleString("id-ID"), icon: ShieldCheck },
+          { label: "Companies", value: data.metrics.accounts.toLocaleString("id-ID"), icon: Building2 },
           { label: "Corporate users", value: data.metrics.corporateUsers.toLocaleString("id-ID"), icon: UsersRound },
-          { label: "Contribution ledger", value: formatCurrency(data.metrics.contributionTotal), icon: CircleDollarSign },
-          { label: "Public goal impact", value: formatCurrency(data.metrics.publicGoalContribution), icon: CircleDollarSign }
+          { label: "Contributions", value: formatCurrency(data.metrics.contributionTotal), icon: CircleDollarSign }
         ].map((item) => {
           const Icon = item.icon;
 
@@ -96,62 +87,38 @@ export default async function AdminCorporatePage({ searchParams }: AdminCorporat
       <FormTabs
         ariaLabel="Corporate administration actions"
         tabs={[
-          { id: "workspace", label: "Workspace", description: "Company and first program" },
-          { id: "access", label: "Access", description: "Assign existing users", badge: data.accounts.length.toLocaleString("id-ID") }
+          { id: "workspace", label: "Workspace", description: "Company setup" },
+          { id: "access", label: "Access", description: "Corporate users", badge: data.accounts.length.toLocaleString("id-ID") }
         ]}
       >
-        <form action={createCorporateWorkspaceAction} encType="multipart/form-data" className="grid gap-4">
-          <h2 className="text-xl font-bold tracking-normal text-ocean-900">Create or update workspace</h2>
-          <p className="mt-1 text-sm font-semibold leading-6 text-ocean-900/58">
-            This creates the corporate account and first reporting program. No real payment gateway is used in this phase.
-          </p>
-          <div className="grid gap-3 md:grid-cols-2">
+        <form action={createCorporateWorkspaceAction} className="grid gap-4">
+          <div>
+            <h2 className="text-xl font-bold tracking-normal text-ocean-900">Create workspace</h2>
+            <p className="mt-1 text-sm font-semibold leading-6 text-ocean-900/58">Only the minimum fields are required now. Details can be refined later.</p>
+          </div>
+          <div className="grid gap-3 md:grid-cols-3">
             <label className="grid gap-2 text-sm font-bold text-ocean-900">
               Company name
-              <input name="accountName" className={adminInputClassName} placeholder="Blue Carbon Indonesia" required />
-            </label>
-            <label className="grid gap-2 text-sm font-bold text-ocean-900">
-              Company slug
-              <input name="accountSlug" className={adminInputClassName} placeholder="blue-carbon-indonesia" />
-            </label>
-            <label className="grid gap-2 text-sm font-bold text-ocean-900 md:col-span-2">
-              Upload logo
-              <input name="logoFile" type="file" accept="image/png,image/jpeg,image/webp,image/gif" className={adminInputClassName} />
+              <input name="accountName" className={adminInputClassName} placeholder="Nusantara Bank" required />
             </label>
             <label className="grid gap-2 text-sm font-bold text-ocean-900">
               Program name
-              <input name="programName" className={adminInputClassName} placeholder="2026 Ocean CSR Portfolio" required />
-            </label>
-            <label className="grid gap-2 text-sm font-bold text-ocean-900">
-              Program slug
-              <input name="programSlug" className={adminInputClassName} placeholder="2026-ocean-csr-portfolio" />
-            </label>
-            <label className="grid gap-2 text-sm font-bold text-ocean-900">
-              Starts at
-              <input name="startsAt" type="date" defaultValue={dateInput(defaultStart)} className={adminInputClassName} required />
-            </label>
-            <label className="grid gap-2 text-sm font-bold text-ocean-900">
-              Ends at
-              <input name="endsAt" type="date" defaultValue={dateInput(defaultEnd)} className={adminInputClassName} required />
+              <input name="programName" className={adminInputClassName} placeholder="Ocean Program 2026" required />
             </label>
             <label className="grid gap-2 text-sm font-bold text-ocean-900">
               Budget amount
               <input name="budgetAmount" type="number" min="1" step="1000000" className={adminInputClassName} placeholder="500000000" required />
-            </label>
-            <label className="grid gap-2 text-sm font-bold text-ocean-900">
-              Currency
-              <input name="currency" defaultValue="USD" className={adminInputClassName} maxLength={8} />
             </label>
           </div>
           <Button type="submit" className="justify-self-start">Save Workspace</Button>
         </form>
 
         <form action={assignCorporatePermissionAction} className="grid gap-4">
-          <h2 className="text-xl font-bold tracking-normal text-ocean-900">Assign corporate access</h2>
-          <p className="mt-1 text-sm font-semibold leading-6 text-ocean-900/58">
-            Assign an existing app user to a corporate account. Create the user first from Admin Users if the email does not exist.
-          </p>
-          <div className="grid gap-3">
+          <div>
+            <h2 className="text-xl font-bold tracking-normal text-ocean-900">Assign corporate access</h2>
+            <p className="mt-1 text-sm font-semibold leading-6 text-ocean-900/58">Give an existing user access to one company workspace.</p>
+          </div>
+          <div className="grid gap-3 md:grid-cols-[1fr_1fr_auto] md:items-end">
             <label className="grid gap-2 text-sm font-bold text-ocean-900">
               Corporate account
               <select name="corporateAccountId" className={adminSelectClassName} required>
@@ -164,26 +131,15 @@ export default async function AdminCorporatePage({ searchParams }: AdminCorporat
               User email
               <input name="email" type="email" className={adminInputClassName} placeholder="name@company.com" required />
             </label>
-            <label className="grid gap-2 text-sm font-bold text-ocean-900">
-              Permission
-              <select name="permission" defaultValue="esg_manager" className={adminSelectClassName}>
-                <option value="program.manage">Program Admin</option>
-                <option value="esg_manager">ESG Manager</option>
-                <option value="finance_reviewer">Finance Reviewer</option>
-                <option value="employee_engagement">Employee Engagement</option>
-                <option value="executive_viewer">Executive Viewer</option>
-                <option value="auditor">Auditor</option>
-              </select>
-            </label>
+            <Button type="submit" className="min-h-10" disabled={data.accounts.length === 0}>Assign</Button>
           </div>
-          <Button type="submit" className="justify-self-start" disabled={data.accounts.length === 0}>Assign Access</Button>
         </form>
       </FormTabs>
 
       <section className={adminPanelClassName}>
         <div className="border-b border-ocean-900/10 p-4">
           <h2 className="text-xl font-bold tracking-normal text-ocean-900">Corporate accounts</h2>
-          <p className="mt-1 text-sm font-semibold text-ocean-900/58">Programs, users, and contribution ledger totals by company.</p>
+          <p className="mt-1 text-sm font-semibold text-ocean-900/58">Companies, programs, and assigned users.</p>
         </div>
         <div className="divide-y divide-ocean-900/10">
           {data.accounts.map((account) => (
@@ -191,7 +147,7 @@ export default async function AdminCorporatePage({ searchParams }: AdminCorporat
               <div className="grid gap-4 lg:grid-cols-[1fr_auto] lg:items-start">
                 <div>
                   <h3 className="text-lg font-bold tracking-normal text-ocean-900">{account.name}</h3>
-                  <p className="mt-1 text-sm font-semibold text-ocean-900/58">/{account.slug} · {account.programs.length} programs · {account.permissions.length} access rows</p>
+                  <p className="mt-1 text-sm font-semibold text-ocean-900/58">/{account.slug} · {account.programs.length} programs · {account.permissions.length} users</p>
                   <div className="mt-3 flex flex-wrap gap-2">
                     {account.programs.map((program) => (
                       <span key={program.id} className="min-w-0 break-words rounded-full bg-ocean-50 px-3 py-1 text-xs font-bold text-ocean-700 [overflow-wrap:anywhere]">
@@ -205,19 +161,15 @@ export default async function AdminCorporatePage({ searchParams }: AdminCorporat
             </article>
           ))}
           {data.accounts.length === 0 ? (
-            <AdminEmptyState
-              className="m-4"
-              title="No corporate accounts yet"
-              description="Create the first corporate workspace so ESG managers can start recording portfolio allocations and verified contribution records."
-            />
+            <AdminEmptyState className="m-4" title="No corporate accounts yet" description="Create a company workspace when the first corporate partner is ready." />
           ) : null}
         </div>
       </section>
 
       <section className={adminPanelClassName}>
         <div className="border-b border-ocean-900/10 p-4">
-          <h2 className="text-xl font-bold tracking-normal text-ocean-900">Recent corporate contributions</h2>
-          <p className="mt-1 text-sm font-semibold text-ocean-900/58">Simulated CSR/grant/sponsorship records. These are separate from individual donations.</p>
+          <h2 className="text-xl font-bold tracking-normal text-ocean-900">Recent contributions</h2>
+          <p className="mt-1 text-sm font-semibold text-ocean-900/58">Company support records, separate from individual contributions.</p>
         </div>
         <div className="divide-y divide-ocean-900/10">
           {data.contributions.slice(0, 20).map((contribution) => (
@@ -236,11 +188,7 @@ export default async function AdminCorporatePage({ searchParams }: AdminCorporat
             </article>
           ))}
           {data.contributions.length === 0 ? (
-            <AdminEmptyState
-              className="m-4"
-              title="No corporate contributions yet"
-              description="Corporate users will create contribution records from the Corporate Projects page."
-            />
+            <AdminEmptyState className="m-4" title="No corporate contributions yet" description="Corporate users can create contribution records from their workspace." />
           ) : null}
         </div>
       </section>

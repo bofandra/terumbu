@@ -1,12 +1,10 @@
 "use client";
 
 import {
-  BriefcaseBusiness,
   Building2,
   FileBadge,
   FileText,
   Home,
-  Kanban,
   LogOut,
   Settings,
   ShieldCheck,
@@ -28,11 +26,9 @@ type CorporateNavItem = {
 };
 
 const corporateNavItems: CorporateNavItem[] = [
-  { label: "Task hub", href: "/corporate", icon: Home },
-  { label: "Kanban board", href: "/corporate/board", icon: Kanban },
-  { label: "Programs", href: "/corporate/programs", icon: BriefcaseBusiness },
-  { label: "Funded campaigns", href: "/corporate/projects", icon: ShieldCheck },
-  { label: "Finance", href: "/corporate/funding", icon: FileBadge },
+  { label: "Overview", href: "/corporate", icon: Home },
+  { label: "Projects", href: "/corporate/projects", icon: ShieldCheck },
+  { label: "Contributions", href: "/corporate/funding", icon: FileBadge },
   { label: "Employees", href: "/corporate/employees", icon: Users },
   { label: "Evidence", href: "/corporate/evidence", icon: FileText },
   { label: "Reports", href: "/corporate/reports", icon: FileBadge },
@@ -59,7 +55,7 @@ function currentTaskForPath(pathname: string) {
     .filter((item) => isActive(pathname, item.href))
     .sort((a, b) => b.href.length - a.href.length)[0];
 
-  return activeItem?.label ?? "Task hub";
+  return activeItem?.label ?? "Overview";
 }
 
 export function CorporateShell({
@@ -136,7 +132,7 @@ export function CorporateShell({
         <div className="flex min-w-0 flex-1 flex-col">
           <header className="sticky top-0 z-40 flex min-h-20 items-center justify-between gap-4 border-b border-ocean-900/10 bg-white/94 px-4 backdrop-blur sm:px-6 lg:px-8">
             <div className="flex min-w-0 items-center gap-3">
-              <Link href="/corporate" aria-label="Corporate task hub" className="flex size-11 items-center justify-center rounded-full bg-ocean-50 text-ocean-900 lg:hidden">
+              <Link href="/corporate" aria-label="Corporate overview" className="flex size-11 items-center justify-center rounded-full bg-ocean-50 text-ocean-900 lg:hidden">
                 <Building2 size={20} aria-hidden="true" />
               </Link>
               <div className="min-w-0">
@@ -146,7 +142,7 @@ export function CorporateShell({
             </div>
 
             <div className="hidden items-center gap-4 text-sm font-semibold text-ocean-900/58 md:flex">
-              <span>{activeProjects.toLocaleString("id-ID")} funded campaigns</span>
+              <span>{activeProjects.toLocaleString("id-ID")} projects</span>
               <span className="h-4 w-px bg-ocean-900/14" />
               <span>Report due {nextReportDue}</span>
             </div>
@@ -163,10 +159,10 @@ export function CorporateShell({
               </summary>
               <div className="absolute right-0 z-50 mt-3 w-64 rounded-lg border border-ocean-900/10 bg-white p-2 shadow-soft">
                 <Link href="/corporate" className="block rounded-lg px-3 py-2 text-sm font-bold text-ocean-900 hover:bg-ocean-50">
-                  Corporate task hub
+                  Corporate overview
                 </Link>
                 <Link href="/corporate/settings" className="block rounded-lg px-3 py-2 text-sm font-bold text-ocean-900 hover:bg-ocean-50">
-                  Team and access
+                  Settings
                 </Link>
                 <Link href="/corporate/reports" className="block rounded-lg px-3 py-2 text-sm font-bold text-ocean-900 hover:bg-ocean-50">
                   Report workflow

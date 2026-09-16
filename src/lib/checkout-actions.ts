@@ -8,6 +8,8 @@ import { redirect } from "next/navigation";
 import { db } from "@/db/client";
 import {
   campaigns,
+  corporateAccounts,
+  corporateEmployees,
   donations,
   expeditionBookingPayments,
   expeditionBookings,
@@ -197,10 +199,47 @@ export async function bookExpeditionAction(formData: FormData) {
   const paymentState = "pending";
   const nextPath = safeRedirectPath(formData.get("next"));
   const idempotencyKey = String(formData.get("idempotencyKey") ?? "").trim() || null;
+  const joinAs = String(formData.get("joinAs") ?? "personal").trim();
+  const selectedCorporateAccountId = joinAs.startsWith("corporate:") ? joinAs.replace("corporate:", "").trim() : null;
   const sessionUser = await getSessionUser();
 
   if (!departureId || !contactName || !contactEmail) {
     redirect(`${nextPath}?error=invalid`);
+  }
+
+  let corporateAttribution: {
+    type: "corporate";
+    corporateAccountId: string;
+    corporateAccountName: string;
+    corporateEmployeeId: string;
+  } | null = null;
+
+  if (selectedCorporateAccountId) {
+    if (!sessionUser) {
+      redirect(`${nextPath}?error=attribution`);
+    }
+
+    const [employee] = await db
+      .select({
+        employeeId: corporateEmployees.id,
+        accountId: corporateAccounts.id,
+        accountName: corporateAccounts.name
+      })
+      .from(corporateEmployees)
+      .innerJoin(corporateAccounts, eq(corporateEmployees.corporateAccountId, corporateAccounts.id))
+      .where(and(eq(corporateEmployees.userId, sessionUser.id), eq(corporateEmployees.status, "active"), eq(corporateAccounts.id, selectedCorporateAccountId)))
+      .limit(1);
+
+    if (!employee) {
+      redirect(`${nextPath}?error=attribution`);
+    }
+
+    corporateAttribution = {
+      type: "corporate",
+      corporateAccountId: employee.accountId,
+      corporateAccountName: employee.accountName,
+      corporateEmployeeId: employee.employeeId
+    };
   }
 
   const [departure] = await db
@@ -282,7 +321,8 @@ export async function bookExpeditionAction(formData: FormData) {
           providerReference,
           participantNames,
           availabilityCode: availability.code,
-          availabilityMessage: availability.message
+          availabilityMessage: availability.message,
+          attribution: corporateAttribution ?? { type: "personal" }
         }
       })
       .returning({ id: expeditionBookings.id });
@@ -350,7 +390,9 @@ export async function bookExpeditionAction(formData: FormData) {
       participantsCount: participantCount,
       totalAmount,
       currency: normalizeCurrency(departure.currency),
-      status: paymentState
+      status: paymentState,
+      attributionType: corporateAttribution?.type ?? "personal",
+      corporateAccountId: corporateAttribution?.corporateAccountId ?? null
     }
   });
 

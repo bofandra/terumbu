@@ -10,9 +10,6 @@ import {
   Handshake,
   LayoutDashboard,
   LogOut,
-  MapPinned,
-  Megaphone,
-  MessageSquare,
   ReceiptText,
   ScrollText,
   ShipWheel,
@@ -29,29 +26,19 @@ type AdminNavItem = {
   href: string;
   label: string;
   icon: LucideIcon;
-  children?: AdminNavItem[];
 };
 
 const adminNavItems: AdminNavItem[] = [
-  { href: "/admin", label: "Task hub", icon: LayoutDashboard },
-  {
-    href: "/admin/campaigns",
-    label: "Campaigns",
-    icon: Megaphone,
-    children: [
-      { href: "/admin/campaigns", label: "Campaign list", icon: Megaphone },
-      { href: "/admin/campaigns/impact-sites", label: "Impact sites", icon: MapPinned },
-      { href: "/admin/campaigns/evidence", label: "Evidence", icon: FileCheck2 }
-    ]
-  },
+  { href: "/admin", label: "Overview", icon: LayoutDashboard },
+  { href: "/admin/campaigns", label: "Projects", icon: FileCheck2 },
   { href: "/admin/expeditions", label: "Expeditions", icon: ShipWheel },
-  { href: "/admin/payments", label: "Payments", icon: ReceiptText },
-  { href: "/admin/corporate", label: "Corporate", icon: Building2 },
-  { href: "/admin/academy", label: "Academy", icon: GraduationCap },
-  { href: "/admin/community", label: "Community", icon: MessageSquare },
+  { href: "/admin/campaigns/evidence", label: "Evidence", icon: FileCheck2 },
   { href: "/admin/partners", label: "Partners", icon: Handshake },
-  { href: "/admin/reports", label: "Reports", icon: BarChart3 },
+  { href: "/admin/corporate", label: "Corporate", icon: Building2 },
   { href: "/admin/users", label: "Users", icon: Users },
+  { href: "/admin/payments", label: "Payments", icon: ReceiptText },
+  { href: "/admin/academy", label: "Academy", icon: GraduationCap },
+  { href: "/admin/reports", label: "Reports", icon: BarChart3 },
   { href: "/admin/audit", label: "Audit", icon: ScrollText }
 ];
 
@@ -64,13 +51,24 @@ function initialsForName(value: string) {
     .join("") || "AD";
 }
 
+function navItemIsActive(pathname: string, href: string) {
+  if (href === "/admin") {
+    return pathname === href;
+  }
+
+  if (href === "/admin/campaigns") {
+    return pathname === href || (pathname.startsWith("/admin/campaigns/") && !pathname.startsWith("/admin/campaigns/evidence"));
+  }
+
+  return pathname === href || pathname.startsWith(`${href}/`);
+}
+
 function currentTaskForPath(pathname: string) {
-  const items = adminNavItems.flatMap((item) => [item, ...(item.children ?? [])]);
-  const activeItem = items
-    .filter((item) => pathname === item.href || (item.href !== "/admin" && pathname.startsWith(`${item.href}/`)))
+  const activeItem = adminNavItems
+    .filter((item) => navItemIsActive(pathname, item.href))
     .sort((a, b) => b.href.length - a.href.length)[0];
 
-  return activeItem?.label ?? "Task hub";
+  return activeItem?.label ?? "Overview";
 }
 
 export function AdminShell({ children, displayName, roleLabel }: { children: ReactNode; displayName: string; roleLabel: string }) {
@@ -96,7 +94,7 @@ export function AdminShell({ children, displayName, roleLabel }: { children: Rea
           <nav className="mt-5 flex gap-2 overflow-x-auto pb-1 lg:grid lg:overflow-visible lg:pb-0" aria-label="Admin sections">
             {adminNavItems.map((item) => {
               const Icon = item.icon;
-              const isActive = pathname === item.href || (item.href !== "/admin" && pathname.startsWith(`${item.href}/`));
+              const isActive = navItemIsActive(pathname, item.href);
 
               return (
                 <div key={item.href} className="shrink-0 lg:w-full">
@@ -113,36 +111,6 @@ export function AdminShell({ children, displayName, roleLabel }: { children: Rea
                     <Icon className="size-4" aria-hidden="true" />
                     <span>{item.label}</span>
                   </Link>
-
-                  {item.children?.length ? (
-                    <div className="mt-1 hidden border-l border-ocean-900/10 pl-4 lg:grid">
-                      {item.children.map((child) => {
-                        const ChildIcon = child.icon;
-                        const anotherChildIsActive = item.children?.some(
-                          (sibling) => sibling.href !== item.href && (pathname === sibling.href || pathname.startsWith(`${sibling.href}/`))
-                        );
-                        const childIsActive =
-                          child.href === item.href ? isActive && !anotherChildIsActive : pathname === child.href || pathname.startsWith(`${child.href}/`);
-
-                        return (
-                          <Link
-                            key={child.href}
-                            href={child.href}
-                            aria-current={childIsActive ? "page" : undefined}
-                            className={cn(
-                              "inline-flex min-h-9 items-center gap-2 rounded-lg px-3 text-xs font-bold transition",
-                              childIsActive
-                                ? "bg-ocean-50 text-ocean-900"
-                                : "text-ocean-900/58 hover:bg-ocean-50 hover:text-ocean-900"
-                            )}
-                          >
-                            <ChildIcon className="size-3.5" aria-hidden="true" />
-                            <span>{child.label}</span>
-                          </Link>
-                        );
-                      })}
-                    </div>
-                  ) : null}
                 </div>
               );
             })}

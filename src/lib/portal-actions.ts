@@ -301,11 +301,11 @@ function impactSiteFormValues(formData: FormData, campaignRequired: boolean, onE
 }
 
 function adminCampaignImpactLinkModeFromForm(value: FormDataEntryValue | null) {
-  const mode = String(value ?? "new");
+  const mode = String(value ?? "none");
 
   return adminCampaignImpactLinkModes.includes(mode as (typeof adminCampaignImpactLinkModes)[number])
     ? (mode as (typeof adminCampaignImpactLinkModes)[number])
-    : "new";
+    : "none";
 }
 
 function initialAdminCampaignImpactLinkFromForm(formData: FormData):
@@ -3152,14 +3152,14 @@ export async function createAdminCampaignAction(formData: FormData) {
   const slug = slugifyTitle(formText(formData, "slug") || title);
   const summary = formText(formData, "summary");
   const story = formText(formData, "story");
-  const category = formText(formData, "category");
+  const category = formText(formData, "category") || "Conservation";
   const region = formText(formData, "region");
   const goalAmount = parseIdrAmount(formData.get("goalAmount"));
-  const currency = normalizeCurrency(String(formData.get("currency") ?? "USD"));
-  const impactUnit = formText(formData, "impactUnit");
-  const impactTarget = parsePositiveInteger(formData.get("impactTarget"));
+  const currency = normalizeCurrency(String(formData.get("currency") ?? "IDR"));
+  const impactUnit = formText(formData, "impactUnit") || "project milestone";
+  const impactTarget = parsePositiveInteger(formData.get("impactTarget")) ?? 1;
   const impactUnitCost = parseOptionalAmount(formData.get("impactUnitCost"));
-  const status = campaignStatusFromForm(formData.get("status"));
+  const status = campaignStatusFromForm(formData.get("status") ?? "draft");
   const imageUrl = await imageFromAdminCampaignForm(formData);
   const endsAt = parseOptionalDate(formData.get("endsAt"));
   const impactLink = initialAdminCampaignImpactLinkFromForm(formData);

@@ -78,7 +78,7 @@ export default async function AdminPortalPage({ searchParams }: AdminPortalPageP
   await requireRole(["admin"], "/admin");
   const [data, operations] = await Promise.all([getAdminPortalData(), getAdminOperationsData()]);
 
-  const reviewCampaigns = data.campaigns.filter((campaign) => campaign.status === "review").length;
+  const reviewProjects = data.campaigns.filter((campaign) => campaign.status === "review").length;
   const pendingEvidence = data.evidence.filter((item) => item.verificationStatus !== "verified").length;
   const paymentChecks =
     data.donations.filter((donation) => donation.status !== "paid" || donation.pendingOperation).length + data.bookingPaymentOperations.length;
@@ -102,11 +102,11 @@ export default async function AdminPortalPage({ searchParams }: AdminPortalPageP
       countLabel: "checks"
     },
     {
-      title: "Approve campaign status",
+      title: "Approve project status",
       description: "Move reviewed campaigns toward publishing, funding, completion, or archival.",
       href: "/admin/campaigns",
       icon: Megaphone,
-      count: reviewCampaigns,
+      count: reviewProjects,
       countLabel: "in review"
     }
   ];

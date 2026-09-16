@@ -3,13 +3,9 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  ClipboardList,
   FileCheck2,
   LayoutDashboard,
   LogOut,
-  MapPinned,
-  Megaphone,
-  Plus,
   ShipWheel,
   Waves,
   type LucideIcon
@@ -26,13 +22,11 @@ type PartnerNavItem = {
 };
 
 const partnerNavItems: PartnerNavItem[] = [
-  { href: "/partner", label: "Task hub", icon: LayoutDashboard },
-  { href: "/partner/campaigns/new", label: "Create campaign", icon: Plus },
-  { href: "/partner/campaigns", label: "Campaigns", icon: Megaphone },
-  { href: "/partner/impact-sites", label: "Impact sites", icon: MapPinned },
+  { href: "/partner", label: "Overview", icon: LayoutDashboard },
+  { href: "/partner/campaigns", label: "Projects", icon: FileCheck2 },
   { href: "/partner/expeditions", label: "Expeditions", icon: ShipWheel },
-  { href: "/partner/activity", label: "Activity", icon: ClipboardList },
-  { href: "/partner/evidence", label: "Evidence", icon: FileCheck2 }
+  { href: "/partner/evidence", label: "Evidence", icon: FileCheck2 },
+  { href: "/partner/updates", label: "Updates", icon: FileCheck2 }
 ];
 
 function initialsForName(value: string) {
@@ -49,7 +43,7 @@ function currentTaskForPath(pathname: string) {
     .filter((item) => pathname === item.href || (item.href !== "/partner" && pathname.startsWith(`${item.href}/`)))
     .sort((a, b) => b.href.length - a.href.length)[0];
 
-  return activeItem?.label ?? "Task hub";
+  return activeItem?.label ?? "Overview";
 }
 
 export function PartnerShell({ children, displayName, roleLabel }: { children: ReactNode; displayName: string; roleLabel: string }) {
@@ -99,7 +93,7 @@ export function PartnerShell({ children, displayName, roleLabel }: { children: R
           <header className="sticky top-0 z-40 flex min-h-20 items-center justify-between gap-4 border-b border-ocean-900/10 bg-white/94 px-4 backdrop-blur sm:px-6 lg:px-8">
             <div className="flex min-w-0 items-center gap-3">
               <Link href="/partner" aria-label="Partner overview" className="flex size-11 items-center justify-center rounded-full bg-ocean-50 text-ocean-900 lg:hidden">
-                <Megaphone size={20} aria-hidden="true" />
+                <LayoutDashboard size={20} aria-hidden="true" />
               </Link>
               <div className="min-w-0">
                 <p className="text-xs font-bold uppercase tracking-[0.16em] text-coral-700">Partner portal</p>
@@ -122,8 +116,8 @@ export function PartnerShell({ children, displayName, roleLabel }: { children: R
                   <Link href="/partner" className="block rounded-lg px-3 py-2 text-sm font-bold text-ocean-900 hover:bg-ocean-50">
                     Partner overview
                   </Link>
-                  <Link href="/partner/activity" className="block rounded-lg px-3 py-2 text-sm font-bold text-ocean-900 hover:bg-ocean-50">
-                    Activity center
+                  <Link href="/partner/evidence" className="block rounded-lg px-3 py-2 text-sm font-bold text-ocean-900 hover:bg-ocean-50">
+                    Evidence
                   </Link>
                   <form action={logoutAction}>
                     <button type="submit" className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm font-bold text-coral-700 hover:bg-coral-100">

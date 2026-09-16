@@ -118,7 +118,7 @@ export default async function AdminPartnerDetailPage({ params, searchParams }: A
       <section className="grid gap-3 md:grid-cols-3" aria-label="Partner detail summary">
         {[
           { label: "Verification", value: labelize(partner.verification), icon: BadgeCheck },
-          { label: "Campaigns", value: partner.campaignCount.toLocaleString("id-ID"), icon: Globe2 },
+          { label: "Projects", value: partner.campaignCount.toLocaleString("id-ID"), icon: Globe2 },
           { label: "Active users", value: activeUsers.toLocaleString("id-ID"), icon: UsersRound }
         ].map((item) => {
           const Icon = item.icon;

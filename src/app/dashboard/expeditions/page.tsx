@@ -48,6 +48,21 @@ function reviewStatusClass(status: ExpeditionReviewStatus) {
   return "bg-sand-100 text-ocean-900";
 }
 
+
+function bookingAttributionLabel(metadata: unknown) {
+  const metadataObject = metadata && typeof metadata === "object" && !Array.isArray(metadata) ? (metadata as Record<string, unknown>) : {};
+  const attribution =
+    metadataObject.attribution && typeof metadataObject.attribution === "object" && !Array.isArray(metadataObject.attribution)
+      ? (metadataObject.attribution as Record<string, unknown>)
+      : null;
+
+  if (attribution?.type === "corporate" && typeof attribution.corporateAccountName === "string") {
+    return attribution.corporateAccountName;
+  }
+
+  return "Personal";
+}
+
 function reviewStatusDescription(status: ExpeditionReviewStatus | null) {
   if (status === "published") {
     return "Your approved review appears on the expedition public page as a verified completed-participant review.";
@@ -210,6 +225,7 @@ export default async function DashboardExpeditionsPage({ searchParams }: Dashboa
                       <span className="rounded-full bg-sand-50 px-3 py-1">{booking.bookingCode}</span>
                       <span className={`rounded-full px-3 py-1 ${statusClass(booking.status)}`}>{booking.status}</span>
                       <span className={`rounded-full px-3 py-1 ${statusClass(booking.paymentStatus)}`}>{booking.paymentStatus}</span>
+                      <span className="rounded-full bg-ocean-50 px-3 py-1">{bookingAttributionLabel(booking.bookingMetadata)}</span>
                       <span className="rounded-full bg-ocean-50 px-3 py-1">{formatCurrency(Number(booking.totalAmount), booking.currency)}</span>
                     </div>
                   </div>

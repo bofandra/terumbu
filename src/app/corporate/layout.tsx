@@ -2,16 +2,8 @@ import { CorporateShell } from "@/components/corporate-shell";
 import { requireUser } from "@/lib/auth";
 import { getCorporateDashboardData } from "@/lib/queries";
 
-function roleLabel(permission: string | undefined) {
-  const labels: Record<string, string> = {
-    executive_viewer: "Executive Viewer",
-    esg_manager: "ESG Program Manager",
-    finance_reviewer: "Finance Reviewer",
-    employee_engagement: "Employee Engagement Manager",
-    auditor: "External Reviewer"
-  };
-
-  return labels[permission ?? ""] ?? "ESG Program Manager";
+function roleLabel() {
+  return "Corporate User";
 }
 
 export default async function CorporateLayout({ children }: Readonly<{ children: React.ReactNode }>) {

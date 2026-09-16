@@ -69,7 +69,8 @@ async function corporateLogoFromForm(formData: FormData) {
   return upload.dataUrl;
 }
 
-const permissionValues = ["program.manage", "esg_manager", "finance_reviewer", "employee_engagement", "executive_viewer", "auditor"];
+const corporateAccessPermission = "corporate_user";
+
 
 export async function createCorporateWorkspaceAction(formData: FormData) {
   const admin = await requireRole(["admin"], "/admin/corporate");
@@ -78,12 +79,13 @@ export async function createCorporateWorkspaceAction(formData: FormData) {
   const logoUrl = await corporateLogoFromForm(formData);
   const programName = textValue(formData.get("programName"), 220);
   const programSlug = toSlug(textValue(formData.get("programSlug"), 220) || programName);
-  const startsAt = parseDate(formData.get("startsAt"));
-  const endsAt = parseDate(formData.get("endsAt"));
+  const now = new Date();
+  const startsAt = parseDate(formData.get("startsAt")) ?? new Date(now.getFullYear(), 0, 1);
+  const endsAt = parseDate(formData.get("endsAt")) ?? new Date(now.getFullYear(), 11, 31);
   const budgetAmount = parseAmount(formData.get("budgetAmount"));
-  const currency = textValue(formData.get("currency"), 8).toUpperCase() || "USD";
+  const currency = textValue(formData.get("currency"), 8).toUpperCase() || "IDR";
 
-  if (!accountName || !accountSlug || !programName || !programSlug || !startsAt || !endsAt || !budgetAmount || endsAt <= startsAt) {
+  if (!accountName || !accountSlug || !programName || !programSlug || !budgetAmount || endsAt <= startsAt) {
     redirect("/admin/corporate?error=workspace-invalid");
   }
 
@@ -161,8 +163,7 @@ export async function assignCorporatePermissionAction(formData: FormData) {
   const admin = await requireRole(["admin"], "/admin/corporate");
   const accountId = textValue(formData.get("corporateAccountId"), 80);
   const email = textValue(formData.get("email"), 255).toLowerCase();
-  const requestedPermission = textValue(formData.get("permission"), 120);
-  const permission = permissionValues.includes(requestedPermission) ? requestedPermission : "executive_viewer";
+  const permission = corporateAccessPermission;
 
   if (!accountId || !email) {
     redirect("/admin/corporate?error=permission-invalid");

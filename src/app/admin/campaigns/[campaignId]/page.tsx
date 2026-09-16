@@ -34,7 +34,7 @@ const statusMessages: Record<string, string> = {
   "campaign-updated": "Campaign updated.",
   "campaign-content-deleted": "Campaign content deleted.",
   "campaign-content-saved": "Campaign content saved.",
-  status: "Campaign status updated."
+  status: "Project status updated."
 };
 
 const errorMessages: Record<string, string> = {
@@ -43,10 +43,10 @@ const errorMessages: Record<string, string> = {
   "campaign-content-invalid": "Enter the required content fields before saving.",
   "campaign-content-missing": "Campaign content record was not found.",
   "campaign-delete": "Confirm campaign deletion by checking the delete box.",
-  "campaign-has-history": "Campaigns with donations, sponsorships, corporate portfolio links, or related expeditions cannot be deleted.",
-  "campaign-invalid": "Enter campaign title, slug, organization, goal, impact target, summary, category, and region.",
+  "campaign-has-history": "Projects with donations, sponsorships, corporate portfolio links, or related expeditions cannot be deleted.",
+  "campaign-invalid": "Enter project title, slug, organization, goal, impact target, summary, category, and region.",
   "campaign-missing": "Campaign record was not found.",
-  "campaign-slug": "That campaign slug is already in use.",
+  "campaign-slug": "That project slug is already in use.",
   "image-size": "Uploaded image is too large.",
   "image-type": "Upload a supported image file.",
   "organization-missing": "Choose an existing partner organization."
@@ -157,11 +157,11 @@ export default async function AdminCampaignDetailPage({ params, searchParams }: 
   return (
     <div className="space-y-6">
       <AdminPageHeader
-        eyebrow="Campaigns"
+        eyebrow="Projects"
         title={campaign.title}
         description={`${campaign.partner} / ${campaign.region}`}
         actionHref="/admin/campaigns"
-        actionLabel="Campaign list"
+        actionLabel="Project list"
       />
 
       {savedMessage ? <p className="rounded-lg border border-kelp-700/20 bg-kelp-100 px-4 py-3 text-sm font-bold text-kelp-700">{savedMessage}</p> : null}
@@ -223,7 +223,7 @@ export default async function AdminCampaignDetailPage({ params, searchParams }: 
       <section className={adminPanelClassName}>
         <div className="flex flex-col justify-between gap-3 border-b border-ocean-900/10 p-4 sm:flex-row sm:items-center">
           <div>
-            <h2 className="text-xl font-bold tracking-normal text-ocean-900">Campaign details</h2>
+            <h2 className="text-xl font-bold tracking-normal text-ocean-900">Project details</h2>
             <p className="mt-1 text-sm font-semibold text-ocean-900/58">Edit content, target numbers, media, and ownership.</p>
           </div>
           <Link href={`/campaigns/${campaign.slug}`} className="inline-flex items-center gap-2 text-sm font-bold text-coral-700 hover:text-coral-500">
@@ -359,7 +359,7 @@ export default async function AdminCampaignDetailPage({ params, searchParams }: 
           <div>
             <h2 className="text-xl font-bold tracking-normal text-ocean-900">Delete campaign</h2>
             <p className="mt-1 text-sm font-semibold text-ocean-900/58">
-              Campaigns with donations, sponsorships, corporate portfolio links, or related expeditions are locked.
+              Projects with donations, sponsorships, corporate portfolio links, or related expeditions are locked.
             </p>
           </div>
           {hasHistory ? <AdminStatusBadge value="archived" /> : null}

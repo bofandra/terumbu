@@ -45,7 +45,6 @@ import {
   updatePartnerMembershipAction
 } from "@/lib/admin-user-actions";
 import {
-  adminAssignableCorporatePermissionOptions,
   adminCreateUserAccessOptions,
   isSystemGlobalRole,
   partnerMembershipStatuses,
@@ -93,7 +92,7 @@ const savedMessages: Record<string, string> = {
 const errorMessages: Record<string, string> = {
   "admin-last": "At least one admin account must remain.",
   "admin-self": "You cannot remove or disable your own admin access from this screen.",
-  "corporate-invalid": "Choose a valid user, corporate account, and permission.",
+  "corporate-invalid": "Choose a valid user and corporate account.",
   "delete-confirm": "Confirm destructive actions before submitting.",
   "partner-invalid": "Choose a valid user, organization, partner role, and status.",
   "role-assigned": "Remove all assignments before deleting this role.",
@@ -213,7 +212,7 @@ function UserManagementCard({
             { id: "profile", label: "Profile", description: "Identity and public page" },
             { id: "roles", label: "Roles", description: "Global RBAC", badge: user.roles.length.toLocaleString("id-ID") },
             { id: "partner", label: "Partner", description: "Organization access", badge: user.partnerMemberships.length.toLocaleString("id-ID") },
-            { id: "corporate", label: "Corporate", description: "Scoped permissions", badge: user.corporatePermissions.length.toLocaleString("id-ID") },
+            { id: "corporate", label: "Corporate", description: "Workspace access", badge: user.corporatePermissions.length.toLocaleString("id-ID") },
             { id: "security", label: "Security", description: "Email, password, sessions" },
             { id: "danger", label: "Danger", description: "Delete account" }
           ]}
@@ -349,14 +348,14 @@ function UserManagementCard({
         <section className="grid gap-4">
           <div>
             <h4 className="font-bold text-ocean-900">Corporate access</h4>
-            <p className="mt-1 text-sm font-semibold leading-6 text-ocean-900/58">Grant or remove scoped corporate account access.</p>
+            <p className="mt-1 text-sm font-semibold leading-6 text-ocean-900/58">Grant or remove corporate workspace access.</p>
             <div className="mt-3 grid gap-2">
               {user.corporatePermissions.map((permission) => (
                 <form key={permission.id} action={removeCorporatePermissionAction} className="rounded-lg border border-ocean-900/10 bg-white p-3">
                   <HiddenReturn value={returnTo} />
                   <input type="hidden" name="permissionId" value={permission.id} />
                   <p className="font-bold text-ocean-900">{permission.accountName}</p>
-                  <p className="mt-1 text-sm font-semibold text-ocean-900/58">{permission.permission}</p>
+                  <p className="mt-1 text-sm font-semibold text-ocean-900/58">Corporate User</p>
                   <Button type="submit" tone="ghost" className="mt-2 min-h-9 rounded-lg px-3 text-coral-700 hover:bg-coral-100">Remove corporate access</Button>
                 </form>
               ))}
@@ -372,16 +371,9 @@ function UserManagementCard({
                   </option>
                 ))}
               </select>
-              <div className="grid gap-2 sm:grid-cols-[1fr_auto]">
-                <select name="permission" defaultValue="program.manage" className={adminSelectClassName}>
-                  {adminAssignableCorporatePermissionOptions.map((permission) => (
-                    <option key={permission.value} value={permission.value}>{permission.label}</option>
-                  ))}
-                </select>
-                <Button type="submit" className="min-h-10 rounded-lg px-3" disabled={data.corporateAccounts.length === 0}>
-                  Set
-                </Button>
-              </div>
+              <Button type="submit" className="min-h-10 w-fit rounded-lg px-3" disabled={data.corporateAccounts.length === 0}>
+                Grant Access
+              </Button>
             </form>
           </div>
         </section>
@@ -463,7 +455,7 @@ export default async function AdminUsersPage({ searchParams }: AdminUsersPagePro
       <AdminPageHeader
         eyebrow="Users"
         title="User and role management"
-        description="Public registration is closed. Create accounts here, edit profiles, reset credentials, manage global roles, and assign partner or corporate scoped access."
+        description="Create users, reset credentials, and assign partner or corporate access."
         actionHref="/admin/audit"
         actionLabel="Audit Log"
       />
@@ -652,7 +644,7 @@ export default async function AdminUsersPage({ searchParams }: AdminUsersPagePro
         </div>
         <div className="flex gap-3">
           <Mail className="mt-1 size-5 text-ocean-700" aria-hidden="true" />
-          <p className="text-sm font-semibold leading-6 text-ocean-900/62">Partner and corporate access are scoped; global roles remain visible separately for auth routing and audits.</p>
+          <p className="text-sm font-semibold leading-6 text-ocean-900/62">Partner and corporate access are scoped to a specific workspace.</p>
         </div>
       </section>
     </div>

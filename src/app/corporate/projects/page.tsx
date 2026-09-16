@@ -1,8 +1,6 @@
-import { ArrowRight, BriefcaseBusiness, CircleDollarSign, Kanban, ShieldCheck } from "lucide-react";
+import { ArrowRight, CircleDollarSign, ShieldCheck } from "lucide-react";
 
-import { CorporateProjectInspector } from "@/components/corporate-project-inspector";
 import { Button, ButtonLink } from "@/components/ui/button";
-import { FormTabs } from "@/components/ui/form-tabs";
 import { MetricValue } from "@/components/ui/metric-value";
 import { requireUser } from "@/lib/auth";
 import { requireCorporateDashboardData } from "@/lib/corporate-access";
@@ -11,7 +9,7 @@ import { getCorporateProjectOptions } from "@/lib/queries";
 import { formatCurrency } from "@/lib/utils";
 
 export const metadata = {
-  title: "Corporate Funded Campaigns"
+  title: "Corporate Projects"
 };
 
 export const dynamic = "force-dynamic";
@@ -20,14 +18,9 @@ type CorporateProjectsPageProps = {
   searchParams?: Promise<{
     error?: string;
     programId?: string;
-    project?: string;
     saved?: string;
   }>;
 };
-
-function dateString(value: Date | null | undefined) {
-  return value ? value.toISOString() : null;
-}
 
 export default async function CorporateProjectsPage({ searchParams }: CorporateProjectsPageProps) {
   const params = await searchParams;
@@ -35,111 +28,42 @@ export default async function CorporateProjectsPage({ searchParams }: CorporateP
   const data = await requireCorporateDashboardData(user.id, "/corporate/projects", params?.programId);
   const projectOptions = await getCorporateProjectOptions(user.id, data.program.programId);
   const canManageProjects = data.capabilities.canManageProjects;
-  const selectedProgramHref = `?programId=${encodeURIComponent(data.program.programId)}`;
-  const campaignAllocated = data.portfolio.reduce((total, project) => total + project.allocationValue, 0);
-
-  const inspectorProjects = data.portfolio.map((project) => ({
-    campaignSlug: project.campaignSlug,
-    campaignTitle: project.campaignTitle,
-    campaignCategory: project.campaignCategory,
-    campaignHref: `/campaigns/${project.campaignSlug}`,
-    region: project.region,
-    organizationName: project.organizationName,
-    organizationVerification: project.organizationVerification,
-    allocationValue: project.allocationValue,
-    utilization: project.utilization,
-    impactProgress: project.impactProgress,
-    impactTarget: project.impactTarget,
-    impactUnit: project.impactUnit,
-    statusLabel: project.statusLabel,
-    statusExplanation: project.statusExplanation,
-    nextMilestone: project.nextMilestone,
-    nextMilestoneDate: dateString(project.nextMilestoneDate),
-    partnerScore: project.partnerScore,
-    invoiceStatus: project.invoiceStatus,
-    disbursementStatus: project.disbursementStatus,
-    evidenceSummary: project.evidenceSummary,
-    milestones: project.milestones.map((milestone) => ({
-      ...milestone,
-      dueDate: dateString(milestone.dueDate)
-    })),
-    nextActions: project.nextActions
-  }));
+  const projectTotal = data.portfolio.reduce((total, project) => total + project.allocationValue, 0);
 
   return (
     <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
-      <p className="text-sm font-bold uppercase tracking-[0.16em] text-coral-700">Funded campaigns</p>
-      <h1 className="mt-2 text-3xl font-bold tracking-normal text-ocean-900">{data.program.programName}</h1>
-      <p className="mt-2 max-w-2xl text-sm font-semibold leading-6 text-ocean-900/62">
-        Funded campaigns are the public conservation campaigns inside this program. Use this page to allocate corporate support, track milestones, and inspect campaign evidence.
-      </p>
-
-      <section className="mt-6 border-y border-ocean-900/10 bg-white/70 py-4" aria-label="Program campaign funding relationship">
-        <div className="grid gap-3 lg:grid-cols-[minmax(260px,1fr)_auto] lg:items-end">
-          <form action="/corporate/projects" className="grid gap-3 sm:grid-cols-[minmax(220px,1fr)_auto] sm:items-end">
-            <label className="grid gap-2 text-sm font-bold text-ocean-900">
-              Program
-              <select name="programId" defaultValue={data.program.programId} className="min-h-11 w-full min-w-0 rounded-lg border border-ocean-900/12 bg-white px-3 text-sm font-semibold text-ocean-900 outline-none">
-                {data.programOptions.map((program) => (
-                  <option key={program.programId} value={program.programId}>
-                    {program.programName} · {formatCurrency(program.budgetAmountValue)} · {program.status}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <Button type="submit" tone="secondary">
-              View Program
-              <ArrowRight className="size-4" aria-hidden="true" />
-            </Button>
-          </form>
-          <div className="flex flex-wrap gap-2 justify-self-start lg:justify-self-end">
-            <ButtonLink href={`/corporate/board${selectedProgramHref}`} tone="secondary">
-              <Kanban className="size-4" aria-hidden="true" />
-              Board
-            </ButtonLink>
-            <ButtonLink href={`/corporate/funding${selectedProgramHref}`} tone="ghost">
-              Finance
-              <ArrowRight className="size-4" aria-hidden="true" />
-            </ButtonLink>
-          </div>
+      <div className="flex flex-col justify-between gap-4 border-b border-ocean-900/10 pb-6 lg:flex-row lg:items-end">
+        <div>
+          <p className="text-sm font-bold uppercase tracking-[0.16em] text-coral-700">Projects</p>
+          <h1 className="mt-2 text-3xl font-bold tracking-normal text-ocean-900">{data.program.programName}</h1>
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-ocean-900/62">Choose projects your company supports.</p>
         </div>
+        <form action="/corporate/projects" className="grid gap-2 sm:min-w-80 sm:grid-cols-[1fr_auto] sm:items-end">
+          <label className="grid gap-2 text-sm font-bold text-ocean-900">
+            Program
+            <select name="programId" defaultValue={data.program.programId} className="min-h-11 w-full min-w-0 rounded-lg border border-ocean-900/12 bg-white px-3 text-sm font-semibold text-ocean-900 outline-none">
+              {data.programOptions.map((program) => (
+                <option key={program.programId} value={program.programId}>
+                  {program.programName}
+                </option>
+              ))}
+            </select>
+          </label>
+          <Button type="submit" tone="secondary">
+            View
+            <ArrowRight className="size-4" aria-hidden="true" />
+          </Button>
+        </form>
+      </div>
 
-        <div className="mt-4 grid gap-3 md:grid-cols-3">
-          {[
-            { label: "Program", value: data.program.programName, support: `${formatCurrency(data.financials.committedFunding)} approved budget`, icon: BriefcaseBusiness },
-            { label: "Campaigns", value: `${data.portfolio.length.toLocaleString("id-ID")} funded`, support: `${formatCurrency(campaignAllocated)} allocated from this program`, icon: ShieldCheck },
-            { label: "Contribution ledger", value: formatCurrency(data.financials.contributionTotal), support: `${data.contributions.length.toLocaleString("id-ID")} ledger records`, icon: CircleDollarSign }
-          ].map((item) => {
-            const Icon = item.icon;
+      {params?.saved ? <p className="mt-6 rounded-lg border border-kelp-500/20 bg-kelp-100 px-4 py-3 text-sm font-bold text-kelp-700">Project support saved.</p> : null}
+      {params?.error ? <p className="mt-6 rounded-lg border border-coral-500/20 bg-coral-100 px-4 py-3 text-sm font-bold text-coral-700">Project support could not be saved.</p> : null}
 
-            return (
-              <div key={item.label} className="min-w-0 rounded-lg border border-ocean-900/10 bg-sand-50 p-3">
-                <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-normal text-ocean-900/46">
-                  <Icon className="size-4" aria-hidden="true" />
-                  {item.label}
-                </div>
-                <p className="mt-2 min-w-0 break-words font-bold text-ocean-900 [overflow-wrap:anywhere]">{item.value}</p>
-                <p className="mt-1 text-sm font-semibold leading-6 text-ocean-900/58">{item.support}</p>
-              </div>
-            );
-          })}
-        </div>
-      </section>
-
-      {params?.saved ? (
-        <p className="mt-6 rounded-lg border border-kelp-500/20 bg-kelp-100 px-4 py-3 text-sm font-bold text-kelp-700">Funded campaign portfolio updated.</p>
-      ) : null}
-      {params?.error ? (
-        <p className="mt-6 rounded-lg border border-coral-500/20 bg-coral-100 px-4 py-3 text-sm font-bold text-coral-700">Campaign funding could not be saved with the current input or permission.</p>
-      ) : null}
-
-      <section className="mt-6 grid gap-4 md:grid-cols-4">
+      <section className="mt-6 grid gap-4 md:grid-cols-3">
         {[
-          ["Funded campaigns", data.portfolio.length.toLocaleString("id-ID")],
-          ["Allocated funding", formatCurrency(campaignAllocated)],
-          ["Recorded contributions", formatCurrency(data.financials.contributionTotal)],
-          ["Counts to public goal", formatCurrency(data.financials.campaignGoalContribution)],
-          ["Needs action", data.portfolio.filter((project) => project.statusLabel !== "On Track").length.toLocaleString("id-ID")]
+          ["Projects", data.portfolio.length.toLocaleString("id-ID")],
+          ["Project support", formatCurrency(projectTotal)],
+          ["Contributions", formatCurrency(data.financials.contributionTotal)]
         ].map(([label, value]) => (
           <article key={label} className="min-w-0 rounded-lg border border-ocean-900/10 bg-white p-5 shadow-soft">
             <p className="text-sm font-bold text-ocean-900/56">{label}</p>
@@ -148,135 +72,102 @@ export default async function CorporateProjectsPage({ searchParams }: CorporateP
         ))}
       </section>
 
-      <div className="mt-6">
-        <FormTabs
-          ariaLabel="Corporate campaign funding workspace"
-          tabs={[
-            { id: "fund", label: "Fund Campaign", description: "Allocate or update support" },
-            { id: "ledger", label: "Ledger", description: "Corporate commitments", badge: data.contributions.length.toLocaleString("id-ID") },
-            { id: "inspect", label: "Inspector", description: "Milestones and evidence", badge: data.portfolio.length.toLocaleString("id-ID") }
-          ]}
-        >
-          <div className="grid gap-4">
-            <div>
-              <p className="text-sm font-bold uppercase text-coral-700">Campaign funding actions</p>
-              <h2 className="mt-2 text-xl font-bold tracking-normal text-ocean-900">Fund or update a conservation campaign</h2>
-            </div>
-            {canManageProjects ? (
-              <form action={fundCorporateProjectAction} className="grid gap-2 xl:grid-cols-[minmax(260px,1fr)_160px_150px_150px_auto]">
-                <input type="hidden" name="programId" value={data.program.programId} />
-                <label className="grid gap-2 text-sm font-bold text-ocean-900">
-                  Campaign
-                  <select name="campaignId" className="min-h-11 w-full min-w-0 rounded-lg border border-ocean-900/12 bg-white px-3 text-sm font-semibold text-ocean-900 outline-none">
-                    {projectOptions.map((option) => (
-                      <option key={option.id} value={option.id}>
-                        {option.title} · {option.region}{option.alreadyFunded ? ` · ${formatCurrency(option.allocationValue ?? 0)}` : ""}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <label className="grid gap-2 text-sm font-bold text-ocean-900">
-                  Amount
-                  <input
-                    name="allocationAmount"
-                    type="number"
-                    min="1"
-                    step="1000000"
-                    placeholder="USD"
-                    className="min-h-11 w-full min-w-0 rounded-lg border border-ocean-900/12 px-3 text-sm font-semibold text-ocean-900 outline-none"
-                    required
-                  />
-                </label>
-                <label className="grid gap-2 text-sm font-bold text-ocean-900">
-                  Contribution
-                  <select name="contributionType" defaultValue="csr" className="min-h-11 w-full min-w-0 rounded-lg border border-ocean-900/12 bg-white px-3 text-sm font-semibold text-ocean-900 outline-none">
-                    <option value="csr">CSR</option>
-                    <option value="grant">Grant</option>
-                    <option value="sponsorship">Sponsorship</option>
-                    <option value="employee_matching">Employee matching</option>
-                    <option value="in_kind">In-kind</option>
-                  </select>
-                </label>
-                <label className="grid gap-2 text-sm font-bold text-ocean-900">
-                  Contribution status
-                  <select name="contributionStatus" defaultValue="committed" className="min-h-11 w-full min-w-0 rounded-lg border border-ocean-900/12 bg-white px-3 text-sm font-semibold text-ocean-900 outline-none">
-                    <option value="pledged">Pledged</option>
-                    <option value="committed">Committed</option>
-                    <option value="disbursed">Disbursed</option>
-                    <option value="verified">Verified</option>
-                    <option value="cancelled">Cancelled</option>
-                  </select>
-                </label>
-                <label className="grid gap-2 text-sm font-bold text-ocean-900">
-                  Portfolio status
-                  <select name="status" defaultValue="funded" className="min-h-11 w-full min-w-0 rounded-lg border border-ocean-900/12 bg-white px-3 text-sm font-semibold text-ocean-900 outline-none">
-                    <option value="funded">Funded</option>
-                    <option value="monitoring">Monitoring</option>
-                    <option value="review">Review</option>
-                    <option value="completed">Completed</option>
-                  </select>
-                </label>
-                <label className="flex min-h-11 items-center gap-2 rounded-lg border border-ocean-900/12 px-3 text-sm font-bold text-ocean-900 xl:col-span-2">
-                  <input name="countsTowardCampaignGoal" type="checkbox" className="size-4 rounded border-ocean-900/20" />
-                  Count this corporate contribution toward the public campaign goal
-                </label>
-                <label className="grid gap-2 text-sm font-bold text-ocean-900 xl:col-span-2">
-                  Notes
-                  <input
-                    name="notes"
-                    placeholder="Optional internal note / PO / CSR reference"
-                    className="min-h-11 w-full min-w-0 rounded-lg border border-ocean-900/12 px-3 text-sm font-semibold text-ocean-900 outline-none"
-                  />
-                </label>
-                <Button type="submit" tone="secondary" className="self-end" disabled={projectOptions.length === 0}>
-                  Save Contribution
-                </Button>
-              </form>
-            ) : (
-              <p className="max-w-lg rounded-lg border border-ocean-900/10 bg-ocean-50 px-4 py-3 text-sm font-semibold leading-6 text-ocean-900/68">
-                Your corporate role can inspect campaign status and evidence, but cannot change campaign funding.
-              </p>
-            )}
+      <section className="mt-6 grid gap-6 lg:grid-cols-[0.9fr_1.1fr]">
+        <article className="rounded-lg border border-ocean-900/10 bg-white p-5 shadow-soft">
+          <div className="flex items-center gap-2">
+            <CircleDollarSign className="size-5 text-coral-500" aria-hidden="true" />
+            <h2 className="text-xl font-bold tracking-normal text-ocean-900">Add project support</h2>
           </div>
+          <p className="mt-2 text-sm font-semibold leading-6 text-ocean-900/58">Record support without payment gateway integration.</p>
 
-          <div className="grid gap-4">
-            <div className="flex flex-col justify-between gap-3 md:flex-row md:items-end">
-              <div>
-                <p className="text-sm font-bold uppercase text-coral-700">Contribution ledger</p>
-                <h2 className="mt-2 text-xl font-bold tracking-normal text-ocean-900">Corporate commitments without real payment integration</h2>
-                <p className="mt-1 text-sm font-semibold leading-6 text-ocean-900/58">
-                  These rows separate corporate CSR/grant/sponsorship records from individual donations. They can optionally update public campaign progress.
-                </p>
-              </div>
-              <p className="rounded-full bg-ocean-50 px-3 py-1 text-xs font-bold text-ocean-700">
-                {data.contributions.length.toLocaleString("id-ID")} records
-              </p>
-            </div>
-            <div className="divide-y divide-ocean-900/10">
-              {data.contributions.slice(0, 8).map((contribution) => (
-                <article key={contribution.id} className="grid gap-3 py-4 lg:grid-cols-[1fr_auto_auto] lg:items-center">
+          {canManageProjects ? (
+            <form action={fundCorporateProjectAction} className="mt-5 grid gap-3">
+              <input type="hidden" name="programId" value={data.program.programId} />
+              <input type="hidden" name="status" value="funded" />
+              <input type="hidden" name="contributionType" value="csr" />
+              <input type="hidden" name="contributionStatus" value="committed" />
+              <label className="grid gap-2 text-sm font-bold text-ocean-900">
+                Project
+                <select name="campaignId" className="min-h-11 w-full min-w-0 rounded-lg border border-ocean-900/12 bg-white px-3 text-sm font-semibold text-ocean-900 outline-none" required>
+                  {projectOptions.map((option) => (
+                    <option key={option.id} value={option.id}>
+                      {option.title} · {option.region}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="grid gap-2 text-sm font-bold text-ocean-900">
+                Amount
+                <input name="allocationAmount" type="number" min="1" step="1000000" placeholder="50000000" className="min-h-11 w-full rounded-lg border border-ocean-900/12 px-3 text-sm font-semibold text-ocean-900 outline-none focus:border-coral-500" required />
+              </label>
+              <label className="flex items-start gap-3 rounded-lg bg-sand-50 p-3 text-sm font-semibold text-ocean-900">
+                <input type="checkbox" name="countsTowardCampaignGoal" className="mt-1" />
+                <span>
+                  <span className="block font-bold">Show this support in project progress</span>
+                  <span className="block text-xs leading-5 text-ocean-900/58">Leave unchecked for company reporting only.</span>
+                </span>
+              </label>
+              <Button type="submit" disabled={projectOptions.length === 0}>Save support</Button>
+            </form>
+          ) : (
+            <p className="mt-5 rounded-lg border border-dashed border-ocean-900/14 bg-sand-50 p-4 text-sm font-semibold text-ocean-900/58">You can view projects, but cannot update support records.</p>
+          )}
+        </article>
+
+        <article className="rounded-lg border border-ocean-900/10 bg-white p-5 shadow-soft">
+          <div className="flex items-center gap-2">
+            <ShieldCheck className="size-5 text-kelp-700" aria-hidden="true" />
+            <h2 className="text-xl font-bold tracking-normal text-ocean-900">Supported projects</h2>
+          </div>
+          <div className="mt-5 grid gap-3">
+            {data.portfolio.map((project) => (
+              <div key={project.campaignSlug} className="rounded-lg border border-ocean-900/10 bg-sand-50 p-4">
+                <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-start">
                   <div>
-                    <h3 className="font-bold text-ocean-900">{contribution.campaignTitle}</h3>
-                    <p className="mt-1 text-sm font-semibold text-ocean-900/58">
-                      {contribution.referenceCode} · {contribution.contributionType.replace(/_/g, " ")} · {contribution.publicGoalLabel}
-                    </p>
-                    {contribution.notes ? <p className="mt-2 text-sm leading-6 text-ocean-900/58">{contribution.notes}</p> : null}
+                    <p className="font-bold text-ocean-900">{project.campaignTitle}</p>
+                    <p className="mt-1 text-sm font-semibold text-ocean-900/58">{project.region} · {project.organizationName}</p>
                   </div>
-                  <span className="rounded-full bg-sand-100 px-3 py-1 text-xs font-bold capitalize text-ocean-900">
-                    {contribution.statusLabel}
-                  </span>
-                  <p className="min-w-0 break-words text-lg font-bold tracking-normal text-ocean-900 [overflow-wrap:anywhere]">{formatCurrency(contribution.amountValue)}</p>
-                </article>
-              ))}
-              {data.contributions.length === 0 ? (
-                <p className="py-6 text-sm font-semibold text-ocean-900/58">No corporate contributions have been recorded yet. Use the form above to create the first CSR/grant/sponsorship record.</p>
-              ) : null}
-            </div>
+                  <span className="w-fit rounded-full bg-white px-3 py-1 text-xs font-bold text-ocean-700 ring-1 ring-ocean-900/10">{formatCurrency(project.allocationValue)}</span>
+                </div>
+              </div>
+            ))}
+            {data.portfolio.length === 0 ? <p className="rounded-lg border border-dashed border-ocean-900/14 bg-sand-50 p-4 text-sm font-semibold text-ocean-900/58">No supported projects yet.</p> : null}
           </div>
+        </article>
+      </section>
 
-          <CorporateProjectInspector projects={inspectorProjects} initialSelectedSlug={params?.project} />
-        </FormTabs>
-      </div>
+      <section className="mt-6 rounded-lg border border-ocean-900/10 bg-white p-5 shadow-soft">
+        <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
+          <div>
+            <h2 className="text-xl font-bold tracking-normal text-ocean-900">Contributions</h2>
+            <p className="mt-1 text-sm font-semibold text-ocean-900/58">Company support recorded for reporting.</p>
+          </div>
+          <ButtonLink href="/corporate/funding" tone="secondary">View all</ButtonLink>
+        </div>
+        <div className="mt-4 overflow-x-auto rounded-lg border border-ocean-900/10">
+          <table className="min-w-[720px] w-full border-separate border-spacing-0 text-left text-sm">
+            <thead>
+              <tr className="text-xs uppercase text-ocean-900/46">
+                <th className="border-b border-ocean-900/10 px-4 py-3">Project</th>
+                <th className="border-b border-ocean-900/10 px-4 py-3">Amount</th>
+                <th className="border-b border-ocean-900/10 px-4 py-3">Status</th>
+                <th className="border-b border-ocean-900/10 px-4 py-3">Visibility</th>
+              </tr>
+            </thead>
+            <tbody>
+              {data.contributions.slice(0, 6).map((contribution) => (
+                <tr key={contribution.id}>
+                  <td className="border-b border-ocean-900/8 px-4 py-4 font-bold text-ocean-900">{contribution.campaignTitle}</td>
+                  <td className="border-b border-ocean-900/8 px-4 py-4 font-semibold text-ocean-900/70">{formatCurrency(contribution.amountValue, contribution.currency)}</td>
+                  <td className="border-b border-ocean-900/8 px-4 py-4 capitalize text-ocean-900/70">{contribution.statusLabel}</td>
+                  <td className="border-b border-ocean-900/8 px-4 py-4 text-ocean-900/70">{contribution.countsTowardCampaignGoal ? "Project progress" : "Report only"}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        {data.contributions.length === 0 ? <p className="mt-4 rounded-lg border border-dashed border-ocean-900/14 bg-sand-50 p-4 text-sm font-semibold text-ocean-900/58">No contributions yet.</p> : null}
+      </section>
     </main>
   );
 }

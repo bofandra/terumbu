@@ -1,31 +1,27 @@
-import { Link2, MapPinned, Plus } from "lucide-react";
+import { Plus } from "lucide-react";
 import type { ReactNode } from "react";
 
 import { AdminPageHeader, adminInputClassName, adminPanelClassName, adminSelectClassName, adminTextareaClassName } from "@/components/admin-ui";
 import { Button } from "@/components/ui/button";
 import { requireRole } from "@/lib/auth";
 import { createAdminCampaignAction } from "@/lib/portal-actions";
-import { getAdminPortalData, getAdminUnassignedImpactSiteOptions } from "@/lib/queries";
-import { MAX_DATABASE_IMAGE_BYTES } from "@/lib/storage";
+import { getAdminPortalData } from "@/lib/queries";
 
 export const metadata = {
-  title: "New Admin Campaign"
+  title: "New Project"
 };
 
 export const dynamic = "force-dynamic";
 
-const campaignStatuses = ["draft", "review", "published", "funded", "completed", "archived"];
-const imageUploadHelp = `PNG, JPG, WebP, or GIF up to ${(MAX_DATABASE_IMAGE_BYTES / 1_000_000).toFixed(1)} MB.`;
-
 const errorMessages: Record<string, string> = {
-  "campaign-invalid": "Enter campaign title, slug, organization, goal, impact target, summary, category, and region.",
-  "campaign-slug": "That campaign slug is already in use.",
+  "campaign-invalid": "Enter project title, partner, region, goal amount, and summary.",
+  "campaign-slug": "That project title is already in use.",
   "image-size": "Uploaded image is too large.",
   "image-type": "Upload a supported image file.",
   "impact-site-assigned": "Choose an unassigned impact site or create a new linked site.",
-  "impact-site-invalid": "Enter impact site name, ecosystem type, region, valid coordinates, progress between 0 and 100, and evidence count.",
+  "impact-site-invalid": "Enter valid impact site details.",
   "impact-site-missing": "Choose an existing unassigned impact site.",
-  "organization-missing": "Choose an existing partner organization."
+  "organization-missing": "Choose an existing partner."
 };
 
 type AdminCampaignNewPageProps = {
@@ -42,28 +38,16 @@ function Field({
   label,
   children,
   className = "",
-  help,
-  required = false
+  help
 }: {
   label: string;
   children: ReactNode;
   className?: string;
   help?: string;
-  required?: boolean;
 }) {
   return (
     <label className={`grid gap-1.5 text-sm font-bold text-ocean-900 ${className}`}>
-      <span className="flex items-center gap-1">
-        {label}
-        {required ? (
-          <>
-            <span className="text-coral-700" aria-hidden="true">
-              *
-            </span>
-            <span className="sr-only">required</span>
-          </>
-        ) : null}
-      </span>
+      {label}
       {children}
       {help ? <span className="text-xs font-semibold leading-5 text-ocean-900/54">{help}</span> : null}
     </label>
@@ -79,48 +63,7 @@ function OrganizationSelect({
     <select name="organizationId" defaultValue={organizations[0]?.id} className={adminSelectClassName} required>
       {organizations.map((organization) => (
         <option key={organization.id} value={organization.id}>
-          {organization.name} / {labelize(organization.type)} / {organization.verification}
-        </option>
-      ))}
-    </select>
-  );
-}
-
-function StatusSelect() {
-  return (
-    <select name="status" defaultValue="draft" className={adminSelectClassName}>
-      {campaignStatuses.map((status) => (
-        <option key={status} value={status}>
-          {labelize(status)}
-        </option>
-      ))}
-    </select>
-  );
-}
-
-function InitialImpactSiteSelect({
-  impactSites
-}: {
-  impactSites: Awaited<ReturnType<typeof getAdminUnassignedImpactSiteOptions>>;
-}) {
-  return (
-    <select name="existingImpactSiteId" defaultValue="" className={adminSelectClassName}>
-      <option value="">{impactSites.length > 0 ? "Select unassigned site" : "No unassigned sites available"}</option>
-      {impactSites.map((site) => (
-        <option key={site.id} value={site.id}>
-          {site.name} / {site.ecosystemType} / {site.region}
-        </option>
-      ))}
-    </select>
-  );
-}
-
-function ImpactSiteVerificationSelect() {
-  return (
-    <select name="impactSiteVerification" defaultValue="basic" className={adminSelectClassName}>
-      {["basic", "document", "field"].map((status) => (
-        <option key={status} value={status}>
-          {labelize(status)}
+          {organization.name} / {labelize(organization.type)}
         </option>
       ))}
     </select>
@@ -130,17 +73,17 @@ function ImpactSiteVerificationSelect() {
 export default async function AdminCampaignNewPage({ searchParams }: AdminCampaignNewPageProps) {
   await requireRole(["admin"], "/admin/campaigns/new");
   const params = await searchParams;
-  const [data, unassignedImpactSites] = await Promise.all([getAdminPortalData(), getAdminUnassignedImpactSiteOptions()]);
+  const data = await getAdminPortalData();
   const errorMessage = params?.error ? errorMessages[params.error] : null;
 
   return (
     <div className="space-y-6">
       <AdminPageHeader
-        eyebrow="Campaigns"
-        title="Create campaign"
-        description="Add a platform-owned campaign or register a partner submission for review."
+        eyebrow="Projects"
+        title="Create project"
+        description="Start with the basics. Add story, media, and impact site details after creation."
         actionHref="/admin/campaigns"
-        actionLabel="Campaign list"
+        actionLabel="Back to projects"
       />
 
       {errorMessage ? <p className="rounded-lg border border-coral-700/20 bg-coral-100 px-4 py-3 text-sm font-bold text-coral-700">{errorMessage}</p> : null}
@@ -148,141 +91,43 @@ export default async function AdminCampaignNewPage({ searchParams }: AdminCampai
       <section className={adminPanelClassName}>
         <div className="flex flex-col justify-between gap-3 border-b border-ocean-900/10 p-4 sm:flex-row sm:items-center">
           <div>
-            <h2 className="text-xl font-bold tracking-normal text-ocean-900">Campaign details</h2>
-            <p className="mt-1 text-sm font-semibold text-ocean-900/58">Core content, funding target, impact unit, field site, and publication state.</p>
+            <h2 className="text-xl font-bold tracking-normal text-ocean-900">Project</h2>
+            <p className="mt-1 text-sm font-semibold text-ocean-900/58">Only the required setup fields are shown.</p>
           </div>
           <Plus className="size-5 text-coral-700" aria-hidden="true" />
         </div>
         <form action={createAdminCampaignAction} encType="multipart/form-data" className="grid gap-4 p-4">
           <input type="hidden" name="errorReturnTo" value="/admin/campaigns/new" />
           <input type="hidden" name="savedReturnTo" value="/admin/campaigns" />
-          <div className="grid gap-3 lg:grid-cols-4">
-            <Field label="Organization" className="lg:col-span-2" required>
-              <OrganizationSelect organizations={data.organizations} />
-            </Field>
-            <Field label="Status">
-              <StatusSelect />
-            </Field>
-            <Field label="End date">
-              <input name="endsAt" type="date" className={adminInputClassName} />
-            </Field>
-          </div>
-          <div className="grid gap-3 lg:grid-cols-3">
-            <Field label="Title" className="lg:col-span-2" required>
+          <input type="hidden" name="status" value="draft" />
+          <input type="hidden" name="currency" value="IDR" />
+          <input type="hidden" name="category" value="Conservation" />
+          <input type="hidden" name="impactTarget" value="1" />
+          <input type="hidden" name="impactUnit" value="project milestone" />
+          <input type="hidden" name="impactLinkMode" value="none" />
+
+          <div className="grid gap-3 lg:grid-cols-2">
+            <Field label="Project title">
               <input name="title" placeholder="Restore Raja Ampat Reefs" className={adminInputClassName} required />
             </Field>
-            <Field label="Slug">
-              <input name="slug" placeholder="restore-raja-ampat-reefs" className={adminInputClassName} />
+            <Field label="Partner">
+              <OrganizationSelect organizations={data.organizations} />
             </Field>
           </div>
           <div className="grid gap-3 lg:grid-cols-2">
-            <Field label="Category" required>
-              <input name="category" placeholder="Coral Restoration" className={adminInputClassName} required />
-            </Field>
-            <Field label="Region" required>
+            <Field label="Region">
               <input name="region" placeholder="Raja Ampat" className={adminInputClassName} required />
             </Field>
-          </div>
-          <div className="grid gap-3 lg:grid-cols-4">
-            <Field label="Goal amount" required>
-              <input name="goalAmount" type="number" min={1} step="0.01" placeholder="5000" className={adminInputClassName} required />
-            </Field>
-            <Field label="Currency" required>
-              <select name="currency" defaultValue="USD" className={adminInputClassName} required>
-                <option value="USD">USD</option>
-              </select>
-            </Field>
-            <Field label="Impact target" required>
-              <input name="impactTarget" type="number" min={1} placeholder="10000" className={adminInputClassName} required />
-            </Field>
-            <Field label="Impact unit" required>
-              <input name="impactUnit" placeholder="coral fragments" className={adminInputClassName} required />
+            <Field label="Goal amount" help="Use IDR. Currency and status can be changed later.">
+              <input name="goalAmount" type="number" min={1} step="1" placeholder="50000000" className={adminInputClassName} required />
             </Field>
           </div>
-          <Field label="Cost per impact unit">
-            <input name="impactUnitCost" type="number" min={0} step="0.01" placeholder="Leave blank to use goal divided by target" className={adminInputClassName} />
-          </Field>
-
-          <section className="-mx-4 border-y border-ocean-900/10 bg-sand-50 px-4 py-5" aria-labelledby="initial-impact-site-title">
-            <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-start">
-              <div className="flex gap-3">
-                <span className="grid size-10 shrink-0 place-items-center rounded-lg bg-white text-kelp-700 ring-1 ring-ocean-900/10">
-                  <MapPinned className="size-5" aria-hidden="true" />
-                </span>
-                <div>
-                  <h3 id="initial-impact-site-title" className="text-lg font-bold tracking-normal text-ocean-900">
-                    Campaign and impact relationship
-                  </h3>
-                  <p className="mt-1 max-w-2xl text-sm font-semibold leading-6 text-ocean-900/58">
-                    Link this campaign to the field location used for evidence, activity, sponsorship, and public impact records.
-                  </p>
-                </div>
-              </div>
-              <Link2 className="size-5 shrink-0 text-coral-700" aria-hidden="true" />
-            </div>
-
-            <div className="mt-4 grid gap-3 lg:grid-cols-3">
-              <Field label="Relationship">
-                <select name="impactLinkMode" defaultValue="new" className={adminSelectClassName}>
-                  <option value="new">Create linked impact site</option>
-                  <option value="existing">Attach unassigned impact site</option>
-                  <option value="none">Campaign only for now</option>
-                </select>
-              </Field>
-              <Field label="Unassigned impact site" className="lg:col-span-2">
-                <InitialImpactSiteSelect impactSites={unassignedImpactSites} />
-              </Field>
-            </div>
-
-            <div className="mt-4 grid gap-3 lg:grid-cols-3">
-              <Field label="Impact site name" required>
-                <input name="impactSiteName" placeholder="Raja Ampat Reef Garden" className={adminInputClassName} />
-              </Field>
-              <Field label="Ecosystem type" required>
-                <input name="impactSiteEcosystemType" placeholder="Coral" className={adminInputClassName} />
-              </Field>
-              <Field label="Site region" required>
-                <input name="impactSiteRegion" placeholder="Southwest Papua" className={adminInputClassName} />
-              </Field>
-            </div>
-
-            <div className="mt-3 grid gap-3 lg:grid-cols-5">
-              <Field label="Latitude" required>
-                <input name="impactSiteLatitude" type="number" min="-90" max="90" step="0.000001" placeholder="-0.234900" className={adminInputClassName} />
-              </Field>
-              <Field label="Longitude" required>
-                <input name="impactSiteLongitude" type="number" min="-180" max="180" step="0.000001" placeholder="130.516600" className={adminInputClassName} />
-              </Field>
-              <Field label="Progress">
-                <input name="impactSiteProgress" type="number" min="0" max="100" step="1" defaultValue={0} className={adminInputClassName} />
-              </Field>
-              <Field label="Evidence records">
-                <input name="impactSiteEvidenceCount" type="number" min="0" step="1" defaultValue={0} className={adminInputClassName} />
-              </Field>
-              <Field label="Verification">
-                <ImpactSiteVerificationSelect />
-              </Field>
-            </div>
-
-            <div className="mt-3 grid gap-3 lg:grid-cols-3">
-              <Field label="Latest survey">
-                <input name="impactSiteLatestSurvey" type="date" className={adminInputClassName} />
-              </Field>
-            </div>
-          </section>
-
-          <Field label="Upload image" help={imageUploadHelp}>
-            <input name="imageFile" type="file" accept="image/png,image/jpeg,image/webp,image/gif" className={adminInputClassName} />
-          </Field>
-          <Field label="Summary" required>
-            <textarea name="summary" placeholder="Public campaign summary" className={adminTextareaClassName} required />
-          </Field>
-          <Field label="Story">
-            <textarea name="story" placeholder="Long-form campaign story" className={adminTextareaClassName} />
+          <Field label="Short summary">
+            <textarea name="summary" placeholder="One or two sentences describing the project." className={adminTextareaClassName} required />
           </Field>
           <Button type="submit" tone="secondary" className="w-fit rounded-lg" disabled={data.organizations.length === 0}>
             <Plus className="size-4" aria-hidden="true" />
-            Create Campaign
+            Create project
           </Button>
         </form>
       </section>

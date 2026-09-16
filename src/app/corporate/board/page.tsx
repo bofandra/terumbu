@@ -76,11 +76,11 @@ export default async function CorporateBoardPage({ searchParams }: CorporateBoar
         </div>
         <div className="flex flex-wrap gap-2">
           <ButtonLink href={`/corporate/projects?programId=${encodeURIComponent(data.program.programId)}`} tone="ghost">
-            Funded Campaigns
+            Projects
             <ArrowRight size={17} aria-hidden="true" />
           </ButtonLink>
           <ButtonLink href={`/corporate/funding?programId=${encodeURIComponent(data.program.programId)}`} tone="secondary">
-            Finance
+            Contributions
             <CircleDollarSign size={17} aria-hidden="true" />
           </ButtonLink>
         </div>

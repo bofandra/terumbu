@@ -166,11 +166,11 @@ export default async function AdminCampaignImpactSitesPage({ searchParams }: Adm
   return (
     <div className="space-y-6">
       <AdminPageHeader
-        eyebrow="Campaigns / Impact sites"
+        eyebrow="Projects / Impact sites"
         title="Impact site management"
         description="Impact sites are the real conservation locations behind campaign claims: the reef, mangrove, or community area where progress and evidence are tracked."
         actionHref="/admin/campaigns"
-        actionLabel="Campaigns"
+        actionLabel="Projects"
       />
 
       {savedMessage ? <p className="rounded-lg border border-kelp-700/20 bg-kelp-100 px-4 py-3 text-sm font-bold text-kelp-700">{savedMessage}</p> : null}

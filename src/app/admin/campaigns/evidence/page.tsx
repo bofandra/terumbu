@@ -75,11 +75,11 @@ export default async function AdminCampaignEvidencePage({ searchParams }: AdminC
   return (
     <div className="space-y-6">
       <AdminPageHeader
-        eyebrow="Campaigns / Evidence"
+        eyebrow="Projects / Evidence"
         title="Evidence kanban"
         description="Review partner-submitted field records by campaign. Admin platform is the single place for evidence status decisions."
         actionHref="/admin/campaigns"
-        actionLabel="Campaigns"
+        actionLabel="Projects"
       />
 
       {savedMessage ? (
@@ -113,7 +113,7 @@ export default async function AdminCampaignEvidencePage({ searchParams }: AdminC
         cards={campaignCards}
         reviewAction={verifyEvidenceAction}
         returnTo="/admin/campaigns/evidence"
-        emptyMessage="No campaign evidence cards are available yet. Partner submissions will appear here when field teams upload photos, survey notes, or verification records."
+        emptyMessage="No project evidence cards are available yet. Partner submissions will appear here when field teams upload photos, survey notes, or verification records."
       />
     </div>
   );

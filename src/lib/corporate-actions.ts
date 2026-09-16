@@ -34,10 +34,9 @@ import {
   normalizeCorporateIntegrationType
 } from "@/lib/corporate-governance";
 import {
-  canAssignCorporateEmployeeRole,
+  CORPORATE_ACCESS_PERMISSION,
   corporateCapabilitiesForPermission,
-  normalizeCorporateEmployeeRole,
-  permissionForCorporateEmployeeRole
+  normalizeCorporateEmployeeRole
 } from "@/lib/corporate-permissions";
 import {
   canAcceptCorporateEmployeeInvite,
@@ -1538,14 +1537,8 @@ export async function inviteCorporateEmployeeAction(formData: FormData) {
   const name = textValue(formData.get("name"), 160);
   const email = textValue(formData.get("email"), 255).toLowerCase();
   const department = textValue(formData.get("department"), 120) || null;
-  const requestedRole = textValue(formData.get("role"), 120);
-  const role = normalizeCorporateEmployeeRole(requestedRole);
-  const requestedStatus = textValue(formData.get("status"), 80);
-  const status = ["active", "invited", "suspended"].includes(requestedStatus) ? requestedStatus : "invited";
-
-  if (!canAssignCorporateEmployeeRole(context.permission, role)) {
-    redirect("/corporate/employees?error=permission");
-  }
+  const role = normalizeCorporateEmployeeRole(formData.get("role")?.toString());
+  const status = "invited";
 
   if (!name || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
     redirect("/corporate/employees?error=employee");
@@ -1583,7 +1576,7 @@ export async function inviteCorporateEmployeeAction(formData: FormData) {
     })
     .returning({ id: corporateEmployees.id });
 
-  const permission = permissionForCorporateEmployeeRole(role);
+  const permission = CORPORATE_ACCESS_PERMISSION;
   let inviteToken: string | null = null;
 
   if (status === "active" && linkedUser) {

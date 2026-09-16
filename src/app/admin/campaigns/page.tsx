@@ -12,7 +12,7 @@ import { getAdminPortalData, getAdminOperationsData } from "@/lib/queries";
 import { formatCurrency } from "@/lib/utils";
 
 export const metadata = {
-  title: "Admin Campaigns"
+  title: "Admin Projects"
 };
 
 export const dynamic = "force-dynamic";
@@ -24,22 +24,22 @@ const statusMessages: Record<string, string> = {
   "campaign-deleted": "Campaign deleted.",
   "campaign-updated": "Campaign updated.",
   "impact-settings": "Impact settings updated.",
-  status: "Campaign status updated."
+  status: "Project status updated."
 };
 
 const errorMessages: Record<string, string> = {
   campaign: "Choose a campaign and valid status.",
   "campaign-delete": "Confirm campaign deletion by checking the delete box.",
-  "campaign-has-history": "Campaigns with donations, sponsorships, corporate portfolio links, or related expeditions cannot be deleted.",
-  "campaign-invalid": "Enter campaign title, slug, organization, goal, impact target, summary, category, and region.",
+  "campaign-has-history": "Projects with donations, sponsorships, corporate portfolio links, or related expeditions cannot be deleted.",
+  "campaign-invalid": "Enter project title, slug, organization, goal, impact target, summary, category, and region.",
   "campaign-missing": "Campaign record was not found.",
-  "campaign-slug": "That campaign slug is already in use.",
+  "campaign-slug": "That project slug is already in use.",
   "image-size": "Uploaded image is too large.",
   "image-type": "Upload a supported image file.",
   "organization-missing": "Choose an existing partner organization."
 };
 
-type AdminCampaignsPageProps = {
+type AdminProjectsPageProps = {
   searchParams?: Promise<{
     error?: string;
     saved?: string;
@@ -73,7 +73,7 @@ function StatusSelect({ defaultValue = "draft" }: { defaultValue?: string }) {
   );
 }
 
-export default async function AdminCampaignsPage({ searchParams }: AdminCampaignsPageProps) {
+export default async function AdminProjectsPage({ searchParams }: AdminProjectsPageProps) {
   await requireRole(["admin"], "/admin/campaigns");
   const params = await searchParams;
   const [data, operations, carbonKgPerUsd] = await Promise.all([getAdminPortalData(), getAdminOperationsData(), getCarbonKgPerUsd()]);
@@ -95,7 +95,7 @@ export default async function AdminCampaignsPage({ searchParams }: AdminCampaign
   return (
     <div className="space-y-6">
       <AdminPageHeader
-        eyebrow="Campaigns"
+        eyebrow="Projects"
         title="Campaign management"
         description="Review the campaign portfolio, route evidence decisions, and jump into focused campaign editing when needed."
         actionHref="/admin/campaigns/new"
@@ -137,7 +137,7 @@ export default async function AdminCampaignsPage({ searchParams }: AdminCampaign
 
       <section className="grid gap-3 md:grid-cols-3" aria-label="Campaign workspace shortcuts">
         {[
-          { label: "Create campaign", detail: "Add a public fundraising record", href: "/admin/campaigns/new", icon: Plus },
+          { label: "Create project", detail: "Add a public fundraising record", href: "/admin/campaigns/new", icon: Plus },
           { label: "Impact sites", detail: `${operations.impactSites.length.toLocaleString("id-ID")} conservation locations`, href: "/admin/campaigns/impact-sites", icon: MapPinned },
           { label: "Evidence", detail: `${pendingEvidence.toLocaleString("id-ID")} records need decisions`, href: "/admin/campaigns/evidence", icon: FileCheck2 }
         ].map((item) => {
@@ -250,7 +250,7 @@ export default async function AdminCampaignsPage({ searchParams }: AdminCampaign
               title="No campaigns yet"
               description="Create a campaign to publish public fundraising pages, connect partners, and begin evidence tracking."
               actionHref="/admin/campaigns/new"
-              actionLabel="Create campaign"
+              actionLabel="Create project"
             />
           ) : null}
         </div>

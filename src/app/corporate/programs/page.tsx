@@ -191,11 +191,11 @@ export default async function CorporateProgramsPage({ searchParams }: CorporateP
                       </ButtonLink>
                       <ButtonLink href={`/corporate/projects?programId=${encodeURIComponent(program.id)}`} tone="ghost">
                         <ShieldCheck size={17} aria-hidden="true" />
-                        Funded Campaigns
+                        Projects
                       </ButtonLink>
                       <ButtonLink href={`/corporate/funding?programId=${encodeURIComponent(program.id)}`} tone="ghost">
                         <CircleDollarSign size={17} aria-hidden="true" />
-                        Finance
+                        Contributions
                         <ArrowRight size={17} aria-hidden="true" />
                       </ButtonLink>
                     </div>
@@ -214,11 +214,11 @@ export default async function CorporateProgramsPage({ searchParams }: CorporateP
                       </ButtonLink>
                       <ButtonLink href={`/corporate/projects?programId=${encodeURIComponent(program.id)}`} tone="ghost">
                         <ShieldCheck size={17} aria-hidden="true" />
-                        Funded Campaigns
+                        Projects
                       </ButtonLink>
                       <ButtonLink href={`/corporate/funding?programId=${encodeURIComponent(program.id)}`} tone="ghost">
                         <CircleDollarSign size={17} aria-hidden="true" />
-                        Finance
+                        Contributions
                         <ArrowRight size={17} aria-hidden="true" />
                       </ButtonLink>
                     </div>

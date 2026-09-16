@@ -2670,17 +2670,8 @@ function addMonths(value: Date, offset: number) {
   return new Date(value.getFullYear(), value.getMonth() + offset, 1);
 }
 
-function governanceActor(permission: string | null | undefined) {
-  const labels: Record<string, string> = {
-    "program.manage": "ESG Program Manager",
-    executive_viewer: "Executive Viewer",
-    esg_manager: "ESG Program Manager",
-    finance_reviewer: "Finance Reviewer",
-    employee_engagement: "Employee Engagement Manager",
-    auditor: "External Reviewer"
-  };
-
-  return labels[permission ?? ""] ?? "Corporate user";
+function governanceActor(_permission: string | null | undefined) {
+  return "Corporate User";
 }
 
 function isSameMonth(value: Date | null | undefined, reference: Date) {
@@ -4145,6 +4136,31 @@ export async function getExpeditionCheckoutOptions() {
     .filter((row) => row.canBook);
 }
 
+export async function getUserCorporateAttributionOptions(userId: string) {
+  const rows = await db
+    .select({
+      accountId: corporateAccounts.id,
+      accountName: corporateAccounts.name,
+      employeeId: corporateEmployees.id
+    })
+    .from(corporateEmployees)
+    .innerJoin(corporateAccounts, eq(corporateEmployees.corporateAccountId, corporateAccounts.id))
+    .where(and(eq(corporateEmployees.userId, userId), eq(corporateEmployees.status, "active")))
+    .orderBy(asc(corporateAccounts.name));
+
+  return Array.from(
+    rows
+      .reduce((options, row) => {
+        if (!options.has(row.accountId)) {
+          options.set(row.accountId, row);
+        }
+
+        return options;
+      }, new Map<string, (typeof rows)[number]>())
+      .values()
+  );
+}
+
 export async function getCorporateDashboardData(userId: string, requestedProgramId?: string | null) {
   const now = new Date();
   const programRows = await db
@@ -4778,15 +4794,15 @@ export async function getCorporateDashboardData(userId: string, requestedProgram
       evidenceCsvUrl: corporateReportArtifactSourceUrl(artifactSource, "evidence-csv"),
       isScheduledDue: item.status === "scheduled" && scheduledReportIsDue(item.scheduledFor, now),
       generatedAt: item.generatedAt ?? (item.status === "scheduled" ? null : item.createdAt),
-      verifiedMetrics: Math.max(verifiedOutputs, portfolioRows.length * 3),
+      verifiedMetrics: verifiedOutputs,
       pendingMetrics: Math.max(0, corporateEvidence.length - verifiedOutputs),
       publicHref: item.publicSlug ? `/corporate-impact/${item.publicSlug}` : null
     };
   });
   const latestPublishedReport = reportExports.find((item) => item.status === "published" && item.publicHref);
   const latestReport = reportExports[0] ?? {
-    exportCode: "Q2-2026-ESG-DRAFT",
-    status: corporateEvidence.length > 0 ? "ready_for_review" : "draft",
+    exportCode: "No report generated",
+    status: "draft",
     fileUrl: null,
     previewUrl: null,
     evidenceBundleUrl: null,
@@ -4797,63 +4813,31 @@ export async function getCorporateDashboardData(userId: string, requestedProgram
     artifactFiles: [],
     publicSlug: null,
     publicHref: null,
-    createdAt: now,
+    createdAt: null,
     scheduledFor: null,
     generatedAt: null,
-    reportType: "Q2 2026 ESG Report",
-    reportTypeLabel: "Q2 2026 ESG Report",
+    reportType: "none",
+    reportTypeLabel: "No report generated",
     exportFormat: "html_json",
     exportFormatLabel: "HTML + JSON",
-    artifactVersion: 1,
-    artifactVersionLabel: "v1",
-    artifactReadiness: "draft",
+    artifactVersion: 0,
+    artifactVersionLabel: "v0",
+    artifactReadiness: "empty",
     manifestUrl: null,
     isScheduledDue: false,
-    verifiedMetrics: Math.max(verifiedOutputs, portfolioRows.length * 3),
+    verifiedMetrics: verifiedOutputs,
     pendingMetrics: Math.max(0, corporateEvidence.length - verifiedOutputs)
   };
 
-  const goalProgress = [
-    {
-      goal: "Restoration units supported",
-      target: Math.max(restorationUnits, 100000),
-      current: restorationUnits,
-      unit: "units",
-      forecast: Math.max(restorationUnits, Math.round(restorationUnits * 1.12))
-    },
-    {
-      goal: "Employees engaged",
-      target: Math.max(eligibleEmployees, 2000),
-      current: employeesEngaged,
-      unit: "employees",
-      forecast: Math.max(employeesEngaged, Math.round(employeesEngaged * 1.25))
-    },
-    {
-      goal: "Volunteer hours",
-      target: Math.max(volunteerHours, 8000),
-      current: volunteerHours,
-      unit: "hours",
-      forecast: Math.max(volunteerHours, Math.round(volunteerHours * 1.18))
-    },
-    {
-      goal: "Provinces reached",
-      target: Math.max(provinces.size, 10),
-      current: provinces.size,
-      unit: "provinces",
-      forecast: Math.max(provinces.size, provinces.size + 1)
-    },
-    {
-      goal: "Verified evidence records",
-      target: Math.max(corporateEvidence.length + 3, 12),
-      current: verifiedOutputs,
-      unit: "records",
-      forecast: Math.max(verifiedOutputs, corporateEvidence.length)
-    }
-  ].map((goal) => ({
-    ...goal,
-    progress: Math.min(100, Math.round((goal.current / Math.max(1, goal.target)) * 100)),
-    status: goal.current >= goal.target ? "Complete" : goal.current / Math.max(1, goal.target) >= 0.75 ? "On Track" : "Needs Attention"
-  }));
+  const goalProgress: Array<{
+    goal: string;
+    target: number;
+    current: number;
+    unit: string;
+    forecast: number;
+    progress: number;
+    status: string;
+  }> = [];
 
   const departmentMap = employeeRows.reduce((departments, employee) => {
     const key = employee.department ?? "Unassigned";
@@ -4870,17 +4854,7 @@ export async function getCorporateDashboardData(userId: string, requestedProgram
     ...department,
     participationRate: department.employees > 0 ? Math.round((department.participants / department.employees) * 100) : 0
   }));
-  const trendMonths = Array.from({ length: 6 }, (_, index) => addMonths(now, index - 5));
-  const employeeTrend = trendMonths.map((month, index) => {
-    const multiplier = 0.45 + index * 0.11;
-
-    return {
-      label: monthLabel(month),
-      employees: Math.max(0, Math.round(employeesEngaged * multiplier)),
-      volunteerHours: Math.max(0, Math.round(volunteerHours * multiplier)),
-      academyCompletions: Math.max(0, Math.round(verifiedOutputs * multiplier))
-    };
-  });
+  const employeeTrend: Array<{ label: string; employees: number; volunteerHours: number; academyCompletions: number }> = [];
   const departmentLeaders = [...departmentEngagement]
     .sort((left, right) => right.participationRate - left.participationRate || right.volunteerHours - left.volunteerHours)
     .slice(0, 5);
@@ -4892,18 +4866,18 @@ export async function getCorporateDashboardData(userId: string, requestedProgram
       .filter((event) => event.startsAt.getTime() >= now.getTime() && !["completed", "cancelled"].includes(event.status))
       .slice(0, 6),
     challenge: {
-      title: "Blue Office Challenge",
+      title: "No challenge configured",
       progress: challengeParticipationRate,
-      targetDepartments: Math.max(3, departmentEngagement.length),
+      targetDepartments: departmentEngagement.length,
       activeDepartments: departmentLeaders.filter((department) => department.participants > 0).length,
       leaderboard: departmentLeaders
     },
     donationMatching: {
-      policy: "1:1 employee matching",
-      pool: Math.round(committedFunding * 0.03),
-      matched: Math.min(Math.round(committedFunding * 0.03), employeesEngaged * 250000),
-      pending: Math.max(0, Math.round(employeesEngaged * 0.18)),
-      status: participationRate > 50 ? "Healthy" : "Needs promotion"
+      policy: "No matching policy configured",
+      pool: 0,
+      matched: 0,
+      pending: 0,
+      status: "Not configured"
     }
   };
   const budgetVariance = budgets.map((budget) => {
@@ -5068,7 +5042,7 @@ export async function getCorporateDashboardData(userId: string, requestedProgram
     lastVerifiedAt: corporateEvidence.find((item) => item.verificationStatus === "verified")?.verifiedAt ?? latestReport.approvedAt ?? null,
     href: publicImpactPreview.href ?? "/corporate/reports",
     highlights: [
-      `${portfolioRows.length.toLocaleString("id-ID")} funded campaigns`,
+      `${portfolioRows.length.toLocaleString("id-ID")} supported projects`,
       `${verifiedOutputs.toLocaleString("id-ID")} verified evidence records`,
       `${employeesEngaged.toLocaleString("id-ID")} employees engaged`,
       `${formatCurrency(verifiedUtilization)} verified utilization`
@@ -5076,41 +5050,16 @@ export async function getCorporateDashboardData(userId: string, requestedProgram
     verificationItems: [
       { label: "Corporate account", status: "Verified" },
       { label: "Finance utilization", status: verifiedUtilizationRate >= 70 ? "Verified" : "In review" },
-      { label: "Campaign evidence", status: verifiedOutputs > 0 ? "Verified" : "Needs evidence" },
+      { label: "Project evidence", status: verifiedOutputs > 0 ? "Verified" : "Needs evidence" },
       { label: "Public report", status: latestPublishedReport ? "Published" : "Draft" }
     ]
   };
-  const benchmarks = [
-    {
-      label: "Budget utilization",
-      current: budgetUsed,
-      previous: Math.max(0, budgetUsed - 8),
-      benchmark: 72,
-      unit: "%",
-      insight: budgetUsed >= 72 ? "Ahead of similar ESG portfolios" : "Below platform benchmark"
-    },
-    {
-      label: "Evidence verification",
-      current: corporateEvidence.length > 0 ? Math.round((verifiedOutputs / corporateEvidence.length) * 100) : 0,
-      previous: Math.max(0, corporateEvidence.length > 0 ? Math.round((verifiedOutputs / corporateEvidence.length) * 100) - 12 : 0),
-      benchmark: 68,
-      unit: "%",
-      insight: verifiedOutputs > 0 ? "Verification pipeline is active" : "Evidence review has not started"
-    },
-    {
-      label: "Employee participation",
-      current: participationRate,
-      previous: Math.max(0, participationRate - 6),
-      benchmark: 42,
-      unit: "%",
-      insight: participationRate >= 42 ? "Above employee engagement benchmark" : "Promotion campaign recommended"
-    }
-  ];
+  const benchmarks: Array<{ label: string; current: number; previous: number; benchmark: number; unit: string; insight: string }> = [];
   const quickActions = [
-    { label: "Add Campaign", href: "/corporate/projects" },
+    { label: "Add Project", href: "/corporate/projects" },
     { label: "Review Evidence", href: "/corporate/evidence" },
-    { label: "Review Finance", href: "/corporate/funding" },
-    { label: "Create Event", href: "/corporate/employees" },
+    { label: "Review Contributions", href: "/corporate/funding" },
+    { label: "Invite Employee", href: "/corporate/employees" },
     { label: "Generate Report", href: "/corporate/reports" },
     { label: "Invite Team Member", href: "/corporate/settings" },
     { label: "Export Data", href: "/corporate/reports" }
@@ -5119,7 +5068,7 @@ export async function getCorporateDashboardData(userId: string, requestedProgram
     {
       label: "Approved program budget",
       value: formatCurrency(committedFunding),
-      support: `Across ${portfolioRows.length.toLocaleString("id-ID")} conservation campaigns`
+      support: `Across ${portfolioRows.length.toLocaleString("id-ID")} projects`
     },
     {
       label: "Category budget",
@@ -5147,43 +5096,17 @@ export async function getCorporateDashboardData(userId: string, requestedProgram
       support: `Across ${activityCount.toLocaleString("id-ID")} activities`
     }
   ];
-  const currentPermission = program.permission ?? "esg_manager";
+  const currentPermission = program.permission ?? "corporate_user";
   const capabilities = corporateCapabilitiesForPermission(currentPermission);
   const roleCapabilities = [
     {
-      role: "Executive Viewer",
-      permission: "executive_viewer",
-      access: "View KPIs, approved reports, portfolio progress, and major risks.",
-      allowedActions: ["Download approved reports", "Review executive risks", "Open public impact page"]
-    },
-    {
-      role: "ESG Program Manager",
-      permission: "esg_manager",
-      access: "Manage programs, campaign performance, targets, exports, reports, and publication.",
-      allowedActions: ["Generate reports", "Submit reports", "Publish public page", "Coordinate partners"]
-    },
-    {
-      role: "Finance Reviewer",
-      permission: "finance_reviewer",
-      access: "Review committed funds, disbursements, invoices, utilization, and financial exports.",
-      allowedActions: ["Approve report", "Review variance", "Export financial data"]
-    },
-    {
-      role: "Employee Engagement Manager",
-      permission: "employee_engagement",
-      access: "Create events, manage registrations, track challenges, and review participation.",
-      allowedActions: ["Create event", "Invite employees", "Export attendance"]
-    },
-    {
-      role: "Auditor or External Reviewer",
-      permission: "auditor",
-      access: "Read approved evidence, financial summaries, verification records, and methodology.",
-      allowedActions: ["Preview reports", "Review evidence trail", "Download approved files"]
+      role: "Corporate User",
+      permission: "corporate_user",
+      access: "Manage the company workspace, projects, contributions, employees, evidence, reports, and settings.",
+      allowedActions: ["Manage projects", "Invite employees", "Generate reports"],
+      active: true
     }
-  ].map((role) => ({
-    ...role,
-    active: currentPermission === role.permission || (currentPermission === "program.manage" && role.permission === "esg_manager")
-  }));
+  ];
   const securitySettings = securityRows[0] ?? {
     id: null,
     mfaRequired: false,
@@ -5237,7 +5160,7 @@ export async function getCorporateDashboardData(userId: string, requestedProgram
       invitedEmployees: employeeRows.filter((employee) => employee.status === "invited").length,
       suspendedEmployees: employeeRows.filter((employee) => employee.status === "suspended").length,
       currentPermission,
-      currentRole: roleCapabilities.find((role) => role.active)?.role ?? "ESG Program Manager"
+      currentRole: "Corporate User"
     },
     roleCapabilities,
     integrations: governanceIntegrations,
