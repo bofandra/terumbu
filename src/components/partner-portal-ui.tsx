@@ -21,6 +21,7 @@ import { CampaignContentDepthEditor } from "@/components/campaign-content-depth-
 import { Button } from "@/components/ui/button";
 import { MetricValue } from "@/components/ui/metric-value";
 import { ProgressMeter } from "@/components/ui/progress-meter";
+import { campaignCategories, campaignCurrencies, campaignImpactUnits, partnerCampaignStatuses } from "@/lib/campaign-content";
 import {
   createCampaignActivityAction,
   createPartnerImpactSiteAction,
@@ -48,8 +49,6 @@ type CampaignMediaItem = PartnerPortalData["campaignMediaItems"][number];
 type CampaignBudgetLineItem = PartnerPortalData["campaignBudgetLineItems"][number];
 type CampaignTimelinePhase = PartnerPortalData["campaignTimelinePhases"][number];
 type OrganizationTeamMember = PartnerPortalData["organizationTeamMembers"][number];
-
-const partnerCampaignStatuses = ["draft", "review"];
 
 export const inputClassName =
   "min-h-11 w-full min-w-0 rounded-lg border border-ocean-900/14 bg-white px-3 text-sm font-semibold text-ocean-900 outline-none transition placeholder:text-ocean-900/36 focus:border-kelp-500";
@@ -130,7 +129,9 @@ function uploadSizeLabel(bytes: number) {
 const partnerImageUploadHelp = `PNG, JPG, WebP, or GIF up to ${uploadSizeLabel(MAX_DATABASE_IMAGE_BYTES)}.`;
 
 function statusOptionsForCampaign(campaign?: Campaign) {
-  return campaign && !partnerCampaignStatuses.includes(campaign.status) ? [campaign.status, ...partnerCampaignStatuses] : partnerCampaignStatuses;
+  return campaign && !partnerCampaignStatuses.includes(campaign.status as (typeof partnerCampaignStatuses)[number])
+    ? [campaign.status, ...partnerCampaignStatuses]
+    : partnerCampaignStatuses;
 }
 
 function initialsForName(value: string) {
@@ -277,13 +278,126 @@ export function OperationCard({
   );
 }
 
-export function CampaignFields({ campaign, organizations }: { campaign?: Campaign; organizations: Organization[] }) {
+export function CampaignFields({
+  campaign,
+  organizations,
+  impactSites = []
+}: {
+  campaign?: Campaign;
+  organizations: Organization[];
+  impactSites?: CampaignImpactSite[];
+}) {
   const hasOrganizations = organizations.length > 0;
+  const singleOrganization = organizations.length === 1;
+  const organizationValue = campaign?.organizationId ?? organizations[0]?.id ?? "";
+  const selectedOrganization = organizations.find((organization) => organization.id === organizationValue);
+  const linkedSite = impactSites[0];
+  const categoryOptions = campaign?.category && !campaignCategories.includes(campaign.category as (typeof campaignCategories)[number])
+    ? [campaign.category, ...campaignCategories]
+    : campaignCategories;
+  const impactUnitOptions = campaign?.impactUnit && !campaignImpactUnits.includes(campaign.impactUnit as (typeof campaignImpactUnits)[number])
+    ? [campaign.impactUnit, ...campaignImpactUnits]
+    : campaignImpactUnits;
+  const createMode = !campaign;
+
+  if (createMode) {
+    return (
+      <>
+        {singleOrganization && selectedOrganization ? (
+          <Field label="Organization" required>
+            <input type="hidden" name="organizationId" value={selectedOrganization.id} />
+            <span className="flex min-h-11 items-center rounded-lg border border-ocean-900/10 bg-ocean-50 px-3 text-sm font-bold text-ocean-900">
+              {selectedOrganization.name}
+            </span>
+          </Field>
+        ) : (
+          <Field label="Organization" required>
+            <select name="organizationId" defaultValue={organizationValue} className={inputClassName} disabled={!hasOrganizations} required>
+              {hasOrganizations ? (
+                organizations.map((organization) => (
+                  <option key={organization.id} value={organization.id}>
+                    {organization.name}
+                  </option>
+                ))
+              ) : (
+                <option>No active partner access</option>
+              )}
+            </select>
+          </Field>
+        )}
+        <input type="hidden" name="status" value="draft" />
+        <input type="hidden" name="currency" value="USD" />
+
+        <div className="grid gap-3 md:grid-cols-2">
+          <Field label="Campaign title" required>
+            <input name="title" placeholder="Restore Raja Ampat Reefs" className={inputClassName} required />
+          </Field>
+          <Field label="Goal amount" required>
+            <input name="goalAmount" type="number" min="1" step="0.01" className={inputClassName} required />
+          </Field>
+        </div>
+        <Field label="Summary" required>
+          <textarea name="summary" placeholder="One or two sentences for the public campaign card." className={textareaClassName} required />
+        </Field>
+
+        <details className="rounded-lg border border-ocean-900/10 bg-sand-50 p-4">
+          <summary className="cursor-pointer text-sm font-bold text-ocean-900">Advanced public details</summary>
+          <div className="mt-4 grid gap-4">
+            <div className="grid gap-3 md:grid-cols-2">
+              <Field label="Category">
+                <select name="category" defaultValue="Conservation" className={inputClassName}>
+                  {campaignCategories.map((category) => (
+                    <option key={category} value={category}>
+                      {category}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+              <Field label="Region">
+                <input name="region" placeholder="Indonesia" className={inputClassName} />
+              </Field>
+            </div>
+            <div className="grid gap-3 md:grid-cols-3">
+              <Field label="Impact target">
+                <input name="impactTarget" type="number" min="1" step="1" placeholder="1" className={inputClassName} />
+              </Field>
+              <Field label="Impact unit">
+                <select name="impactUnit" defaultValue="project milestones" className={inputClassName}>
+                  {campaignImpactUnits.map((unit) => (
+                    <option key={unit} value={unit}>
+                      {unit}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+              <Field label="Campaign end date">
+                <input name="endsAt" type="date" className={inputClassName} />
+              </Field>
+            </div>
+            <Field label="Story">
+              <textarea name="story" placeholder="Long-form public campaign story." className={textareaClassName} />
+            </Field>
+            <Field label="Upload image" help={partnerImageUploadHelp}>
+              <input name="imageFile" type="file" accept="image/png,image/jpeg,image/webp,image/gif" className={inputClassName} />
+            </Field>
+          </div>
+        </details>
+      </>
+    );
+  }
 
   return (
     <>
       <div className="grid gap-3 md:grid-cols-2">
-        <Field label="Organization" required>
+        {singleOrganization && selectedOrganization ? (
+          <Field label="Organization" required>
+            <input type="hidden" name="organizationId" value={selectedOrganization.id} />
+            <span className="flex min-h-11 items-center rounded-lg border border-ocean-900/10 bg-ocean-50 px-3 text-sm font-bold text-ocean-900">
+              {selectedOrganization.name}
+            </span>
+          </Field>
+        ) : (
+          <Field label="Organization" required>
           <select name="organizationId" defaultValue={campaign?.organizationId ?? organizations[0]?.id} className={inputClassName} disabled={!hasOrganizations} required>
             {hasOrganizations ? (
               organizations.map((organization) => (
@@ -295,7 +409,8 @@ export function CampaignFields({ campaign, organizations }: { campaign?: Campaig
               <option>No active partner access</option>
             )}
           </select>
-        </Field>
+          </Field>
+        )}
         <Field label="Status">
           <select name="status" defaultValue={campaign?.status ?? "draft"} className={inputClassName}>
             {statusOptionsForCampaign(campaign).map((status) => (
@@ -311,50 +426,80 @@ export function CampaignFields({ campaign, organizations }: { campaign?: Campaig
         <Field label="Campaign title" required>
           <input name="title" defaultValue={campaign?.title} placeholder="Campaign title" className={inputClassName} required />
         </Field>
-        <Field label="Category" required>
-          <input name="category" defaultValue={campaign?.category} placeholder="Coral Restoration" className={inputClassName} required />
-        </Field>
-      </div>
-
-      <Field label="Region" required>
-        <input name="region" defaultValue={campaign?.region} placeholder="Raja Ampat, Southwest Papua" className={inputClassName} required />
-      </Field>
-
-      <div className="grid gap-3 md:grid-cols-4">
         <Field label="Goal amount" required>
-          <input name="goalAmount" type="number" min="1" step="0.01" defaultValue={campaign ? Number(campaign.goalAmount) : undefined} className={inputClassName} required />
-        </Field>
-        <Field label="Currency" required>
-          <select name="currency" defaultValue={campaign?.currency ?? "USD"} className={inputClassName} required>
-            <option value="USD">USD</option>
-          </select>
-        </Field>
-        <Field label="Impact target" required>
-          <input name="impactTarget" type="number" min="1" step="1" defaultValue={campaign?.impactTarget} className={inputClassName} required />
-        </Field>
-        <Field label="Impact unit" required>
-          <input name="impactUnit" defaultValue={campaign?.impactUnit} placeholder="coral fragments" className={inputClassName} required />
+          <input name="goalAmount" type="number" min="1" step="0.01" defaultValue={Number(campaign.goalAmount)} className={inputClassName} required />
         </Field>
       </div>
-      <Field label="Cost per impact unit">
-        <input name="impactUnitCost" type="number" min="0" step="0.01" defaultValue={campaign?.impactUnitCost ? Number(campaign.impactUnitCost) : undefined} placeholder="Leave blank to use goal divided by target" className={inputClassName} />
-      </Field>
-
-      <Field label="Campaign end date">
-        <input name="endsAt" type="date" defaultValue={campaign ? dateValue(campaign.endsAt) : undefined} className={inputClassName} />
-      </Field>
 
       <Field label="Summary" required>
-        <textarea name="summary" defaultValue={campaign?.summary} placeholder="Public campaign summary" className={textareaClassName} required />
+        <textarea name="summary" defaultValue={campaign.summary} placeholder="Public campaign summary" className={textareaClassName} required />
       </Field>
 
-      <Field label="Story">
-        <textarea name="story" defaultValue={campaign?.story ?? ""} placeholder="Campaign story" className={textareaClassName} />
-      </Field>
+      <div className="grid gap-3 md:grid-cols-2">
+        {linkedSite ? (
+          <Field label="Linked impact site region">
+            <input type="hidden" name="region" value={linkedSite.region} />
+            <span className="flex min-h-11 items-center rounded-lg border border-ocean-900/10 bg-ocean-50 px-3 text-sm font-bold text-ocean-900">
+              {linkedSite.name} / {linkedSite.region}
+            </span>
+          </Field>
+        ) : (
+          <Field label="Region" required>
+            <input name="region" defaultValue={campaign.region} placeholder="Raja Ampat, Southwest Papua" className={inputClassName} required />
+          </Field>
+        )}
+        <Field label="Category" required>
+          <select name="category" defaultValue={campaign.category} className={inputClassName} required>
+            {categoryOptions.map((category) => (
+              <option key={category} value={category}>
+                {category}
+              </option>
+            ))}
+          </select>
+        </Field>
+      </div>
 
-      <Field label={campaign ? "Replace image" : "Upload image"} help={partnerImageUploadHelp}>
-        <input name="imageFile" type="file" accept="image/png,image/jpeg,image/webp,image/gif" className={inputClassName} />
-      </Field>
+      <details className="rounded-lg border border-ocean-900/10 bg-sand-50 p-4">
+        <summary className="cursor-pointer text-sm font-bold text-ocean-900">Advanced public details</summary>
+        <div className="mt-4 grid gap-4">
+          <div className="grid gap-3 md:grid-cols-4">
+            <Field label="Currency" required>
+              <select name="currency" defaultValue={campaign.currency ?? "USD"} className={inputClassName} required>
+                {campaignCurrencies.map((currency) => (
+                  <option key={currency} value={currency}>
+                    {currency}
+                  </option>
+                ))}
+              </select>
+            </Field>
+            <Field label="Impact target" required>
+              <input name="impactTarget" type="number" min="1" step="1" defaultValue={campaign.impactTarget} className={inputClassName} required />
+            </Field>
+            <Field label="Impact unit" required>
+              <select name="impactUnit" defaultValue={campaign.impactUnit} className={inputClassName} required>
+                {impactUnitOptions.map((unit) => (
+                  <option key={unit} value={unit}>
+                    {unit}
+                  </option>
+                ))}
+              </select>
+            </Field>
+            <Field label="Campaign end date">
+              <input name="endsAt" type="date" defaultValue={dateValue(campaign.endsAt)} className={inputClassName} />
+            </Field>
+          </div>
+          <Field label="Cost per impact unit">
+            <input name="impactUnitCost" type="number" min="0" step="0.01" defaultValue={campaign.impactUnitCost ? Number(campaign.impactUnitCost) : undefined} placeholder="Auto-calculated from goal and target if empty" className={inputClassName} />
+          </Field>
+          <Field label="Story">
+            <textarea name="story" defaultValue={campaign.story ?? ""} placeholder="Campaign story" className={textareaClassName} />
+          </Field>
+
+          <Field label="Replace image" help={partnerImageUploadHelp}>
+            <input name="imageFile" type="file" accept="image/png,image/jpeg,image/webp,image/gif" className={inputClassName} />
+          </Field>
+        </div>
+      </details>
     </>
   );
 }
@@ -902,11 +1047,13 @@ export function CampaignList({
                     <form action={updatePartnerCampaignAction} encType="multipart/form-data" className="grid gap-4 border-t border-ocean-900/10 p-4">
                       <input type="hidden" name="campaignId" value={campaign.id} />
                       <input type="hidden" name="redirectTo" value="/partner/campaigns" />
-                      <CampaignFields campaign={campaign} organizations={organizations} />
-                      <label className="flex items-center gap-2 text-sm font-bold text-ocean-900">
-                        <input name="removeImage" type="checkbox" className="size-4 accent-coral-500" />
-                        Remove current image
-                      </label>
+                      <CampaignFields campaign={campaign} organizations={organizations} impactSites={campaignImpactSites} />
+                      {campaign.imageUrl ? (
+                        <label className="flex items-center gap-2 text-sm font-bold text-ocean-900">
+                          <input name="removeImage" type="checkbox" className="size-4 accent-coral-500" />
+                          Remove current image
+                        </label>
+                      ) : null}
                       <Button type="submit" tone="secondary" className="w-fit">
                         <Save className="size-4" aria-hidden="true" />
                         Save Campaign

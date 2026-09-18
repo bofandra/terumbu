@@ -5,6 +5,7 @@ import { AdminEmptyState, AdminPageHeader, AdminStatusBadge, adminInputClassName
 import { Button } from "@/components/ui/button";
 import { MetricValue } from "@/components/ui/metric-value";
 import { ProgressMeter } from "@/components/ui/progress-meter";
+import { campaignStatuses } from "@/lib/campaign-content";
 import { requireRole } from "@/lib/auth";
 import { updateCampaignStatusAction, updateImpactSettingsAction } from "@/lib/portal-actions";
 import { getCarbonKgPerUsd } from "@/lib/platform-settings";
@@ -16,8 +17,6 @@ export const metadata = {
 };
 
 export const dynamic = "force-dynamic";
-
-const campaignStatuses = ["draft", "review", "published", "funded", "completed", "archived"];
 
 const statusMessages: Record<string, string> = {
   "campaign-created": "Campaign created.",

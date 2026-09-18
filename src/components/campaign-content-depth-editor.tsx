@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 
 import { FormTabs } from "@/components/ui/form-tabs";
 import { Button } from "@/components/ui/button";
+import { campaignBudgetCategories, campaignMediaTypes, campaignTimelinePhaseStatuses, organizationTeamRoles } from "@/lib/campaign-content";
 import {
   deleteCampaignBudgetLineItemAction,
   deleteCampaignMediaItemAction,
@@ -136,45 +137,41 @@ function DeleteButton({
 function MediaForm({
   campaign,
   item,
-  returnTo
+  returnTo,
+  sortOrder
 }: {
   campaign: CampaignContentCampaign;
   item?: CampaignMediaItem;
   returnTo: string;
+  sortOrder?: number;
 }) {
   return (
     <form action={upsertCampaignMediaItemAction} encType="multipart/form-data" className="grid gap-3 rounded-lg border border-ocean-900/10 bg-sand-50 p-4">
       <input type="hidden" name="returnTo" value={returnTo} />
       <input type="hidden" name="campaignId" value={campaign.id} />
+      <input type="hidden" name="mediaType" value={item?.mediaType ?? "image"} />
+      <input type="hidden" name="sortOrder" value={item?.sortOrder ?? sortOrder ?? 0} />
       {item ? <input type="hidden" name="mediaItemId" value={item.id} /> : null}
-      <div className="grid gap-3 md:grid-cols-3">
+      <div className="grid gap-3 md:grid-cols-2">
         <Field label="Title">
           <input name="title" defaultValue={item?.title} placeholder="Gallery title" className={inputClassName} required />
         </Field>
         <Field label="Type">
-          <select name="mediaType" defaultValue={item?.mediaType ?? "image"} className={inputClassName}>
-            {["image", "video", "document"].map((type) => (
+          <select value={item?.mediaType ?? "image"} className={inputClassName} disabled>
+            {campaignMediaTypes.map((type) => (
               <option key={type} value={type}>
                 {labelize(type)}
               </option>
             ))}
           </select>
         </Field>
-        <Field label="Sort">
-          <input name="sortOrder" type="number" min="0" step="1" defaultValue={item?.sortOrder ?? 0} className={inputClassName} />
-        </Field>
       </div>
       <Field label={item ? "Replace image" : "Upload image"}>
         <input name="fileUpload" type="file" accept="image/png,image/jpeg,image/webp,image/gif" className={inputClassName} required={!item} />
       </Field>
-      <div className="grid gap-3 md:grid-cols-2">
-        <Field label="Alt text">
-          <input name="altText" defaultValue={item?.altText ?? ""} className={inputClassName} />
-        </Field>
-        <Field label="Provenance">
-          <input name="provenance" defaultValue={item?.provenance ?? ""} placeholder="Partner-managed public gallery" className={inputClassName} />
-        </Field>
-      </div>
+      <Field label="Alt text">
+        <input name="altText" defaultValue={item?.altText ?? ""} className={inputClassName} />
+      </Field>
       <Field label="Caption">
         <textarea name="caption" defaultValue={item?.caption ?? ""} className={textareaClassName} />
       </Field>
@@ -193,20 +190,32 @@ function MediaForm({
 function BudgetForm({
   campaign,
   item,
-  returnTo
+  returnTo,
+  sortOrder
 }: {
   campaign: CampaignContentCampaign;
   item?: CampaignBudgetLineItem;
   returnTo: string;
+  sortOrder?: number;
 }) {
   return (
     <form action={upsertCampaignBudgetLineItemAction} className="grid gap-3 rounded-lg border border-ocean-900/10 bg-sand-50 p-4">
       <input type="hidden" name="returnTo" value={returnTo} />
       <input type="hidden" name="campaignId" value={campaign.id} />
+      <input type="hidden" name="sortOrder" value={item?.sortOrder ?? sortOrder ?? 0} />
       {item ? <input type="hidden" name="budgetLineItemId" value={item.id} /> : null}
-      <div className="grid gap-3 md:grid-cols-4">
+      <div className="grid gap-3 md:grid-cols-3">
         <Field label="Category">
-          <input name="category" defaultValue={item?.category} placeholder="Restoration materials" className={inputClassName} required />
+          <select name="category" defaultValue={item?.category ?? "Restoration materials"} className={inputClassName} required>
+            {item?.category && !campaignBudgetCategories.includes(item.category as (typeof campaignBudgetCategories)[number]) ? (
+              <option value={item.category}>{item.category}</option>
+            ) : null}
+            {campaignBudgetCategories.map((category) => (
+              <option key={category} value={category}>
+                {category}
+              </option>
+            ))}
+          </select>
         </Field>
         <Field label="Planned amount">
           <input name="amount" type="number" min="1" step="1000" defaultValue={item?.amount} className={inputClassName} required />
@@ -214,13 +223,7 @@ function BudgetForm({
         <Field label="Spent amount">
           <input name="spentAmount" type="number" min="0" step="1000" defaultValue={item?.spentAmount ?? 0} className={inputClassName} />
         </Field>
-        <Field label="Sort">
-          <input name="sortOrder" type="number" min="0" step="1" defaultValue={item?.sortOrder ?? 0} className={inputClassName} />
-        </Field>
       </div>
-      <Field label="Description">
-        <textarea name="description" defaultValue={item?.description ?? ""} className={textareaClassName} />
-      </Field>
       <Button type="submit" tone="secondary" className="w-fit rounded-lg">
         <Save className="size-4" aria-hidden="true" />
         {item ? "Save Budget" : "Add Budget"}
@@ -232,16 +235,19 @@ function BudgetForm({
 function TimelineForm({
   campaign,
   item,
-  returnTo
+  returnTo,
+  sortOrder
 }: {
   campaign: CampaignContentCampaign;
   item?: CampaignTimelinePhase;
   returnTo: string;
+  sortOrder?: number;
 }) {
   return (
     <form action={upsertCampaignTimelinePhaseAction} className="grid gap-3 rounded-lg border border-ocean-900/10 bg-sand-50 p-4">
       <input type="hidden" name="returnTo" value={returnTo} />
       <input type="hidden" name="campaignId" value={campaign.id} />
+      <input type="hidden" name="sortOrder" value={item?.sortOrder ?? sortOrder ?? 0} />
       {item ? <input type="hidden" name="timelinePhaseId" value={item.id} /> : null}
       <div className="grid gap-3 md:grid-cols-4">
         <Field label="Title">
@@ -249,7 +255,7 @@ function TimelineForm({
         </Field>
         <Field label="Status">
           <select name="status" defaultValue={item?.status ?? "planned"} className={inputClassName}>
-            {["planned", "in_progress", "completed", "blocked"].map((status) => (
+            {campaignTimelinePhaseStatuses.map((status) => (
               <option key={status} value={status}>
                 {labelize(status)}
               </option>
@@ -263,20 +269,6 @@ function TimelineForm({
           <input name="endsAt" type="date" defaultValue={dateValue(item?.endsAt ?? null)} className={inputClassName} />
         </Field>
       </div>
-      <div className="grid gap-3 md:grid-cols-3">
-        <Field label="Sort">
-          <input name="sortOrder" type="number" min="0" step="1" defaultValue={item?.sortOrder ?? 0} className={inputClassName} />
-        </Field>
-        <Field label="Deliverable">
-          <input name="deliverable" defaultValue={item?.deliverable ?? ""} className={inputClassName} />
-        </Field>
-        <Field label="Evidence note">
-          <input name="evidenceNote" defaultValue={item?.evidenceNote ?? ""} className={inputClassName} />
-        </Field>
-      </div>
-      <Field label="Description">
-        <textarea name="description" defaultValue={item?.description ?? ""} className={textareaClassName} />
-      </Field>
       <Button type="submit" tone="secondary" className="w-fit rounded-lg">
         <Save className="size-4" aria-hidden="true" />
         {item ? "Save Timeline" : "Add Timeline"}
@@ -288,43 +280,41 @@ function TimelineForm({
 function TeamForm({
   campaign,
   item,
-  returnTo
+  returnTo,
+  sortOrder
 }: {
   campaign: CampaignContentCampaign;
   item?: OrganizationTeamMember;
   returnTo: string;
+  sortOrder?: number;
 }) {
   return (
     <form action={upsertOrganizationTeamMemberAction} encType="multipart/form-data" className="grid gap-3 rounded-lg border border-ocean-900/10 bg-sand-50 p-4">
       <input type="hidden" name="returnTo" value={returnTo} />
       <input type="hidden" name="organizationId" value={campaign.organizationId} />
+      <input type="hidden" name="sortOrder" value={item?.sortOrder ?? sortOrder ?? 0} />
       {item ? <input type="hidden" name="teamMemberId" value={item.id} /> : null}
-      <div className="grid gap-3 md:grid-cols-4">
+      <div className="grid gap-3 md:grid-cols-[1fr_1fr_auto]">
         <Field label="Name">
           <input name="name" defaultValue={item?.name} className={inputClassName} required />
         </Field>
         <Field label="Role">
-          <input name="role" defaultValue={item?.role} className={inputClassName} required />
-        </Field>
-        <Field label="Sort">
-          <input name="sortOrder" type="number" min="0" step="1" defaultValue={item?.sortOrder ?? 0} className={inputClassName} />
+          <select name="role" defaultValue={item?.role ?? "Project lead"} className={inputClassName} required>
+            {item?.role && !organizationTeamRoles.includes(item.role as (typeof organizationTeamRoles)[number]) ? (
+              <option value={item.role}>{item.role}</option>
+            ) : null}
+            {organizationTeamRoles.map((role) => (
+              <option key={role} value={role}>
+                {role}
+              </option>
+            ))}
+          </select>
         </Field>
         <label className="mt-7 flex items-center gap-2 text-sm font-bold text-ocean-900">
           <input name="isPublic" type="checkbox" defaultChecked={item?.isPublic ?? true} className="size-4 accent-coral-500" />
           Public
         </label>
       </div>
-      <div className="grid gap-3 md:grid-cols-2">
-        <Field label={item ? "Replace portrait" : "Portrait upload"}>
-          <input name="imageFile" type="file" accept="image/png,image/jpeg,image/webp,image/gif" className={inputClassName} />
-        </Field>
-        <Field label="Profile URL">
-          <input name="profileUrl" defaultValue={item?.profileUrl ?? ""} placeholder="https://..." className={inputClassName} />
-        </Field>
-      </div>
-      <Field label="Bio">
-        <textarea name="bio" defaultValue={item?.bio ?? ""} className={textareaClassName} />
-      </Field>
       <Button type="submit" tone="secondary" className="w-fit rounded-lg">
         <Save className="size-4" aria-hidden="true" />
         {item ? "Save Team Member" : "Add Team Member"}
@@ -344,6 +334,10 @@ export function CampaignContentDepthEditor({
 }: CampaignContentDepthEditorProps) {
   const plannedBudget = budgetLineItems.reduce((total, item) => total + item.amount, 0);
   const spentBudget = budgetLineItems.reduce((total, item) => total + item.spentAmount, 0);
+  const nextMediaSortOrder = Math.max(-1, ...mediaItems.map((item) => item.sortOrder)) + 1;
+  const nextBudgetSortOrder = Math.max(-1, ...budgetLineItems.map((item) => item.sortOrder)) + 1;
+  const nextTimelineSortOrder = Math.max(-1, ...timelinePhases.map((item) => item.sortOrder)) + 1;
+  const nextTeamSortOrder = Math.max(-1, ...teamMembers.map((item) => item.sortOrder)) + 1;
 
   return (
     <section className="grid gap-4">
@@ -385,7 +379,7 @@ export function CampaignContentDepthEditor({
               </div>
             </details>
           ))}
-          {canManage ? <MediaForm campaign={campaign} returnTo={returnTo} /> : null}
+          {canManage ? <MediaForm campaign={campaign} returnTo={returnTo} sortOrder={nextMediaSortOrder} /> : null}
         </div>
 
         <div className="grid gap-3">
@@ -400,7 +394,7 @@ export function CampaignContentDepthEditor({
               </div>
             </details>
           ))}
-          {canManage ? <BudgetForm campaign={campaign} returnTo={returnTo} /> : null}
+          {canManage ? <BudgetForm campaign={campaign} returnTo={returnTo} sortOrder={nextBudgetSortOrder} /> : null}
         </div>
 
         <div className="grid gap-3">
@@ -415,7 +409,7 @@ export function CampaignContentDepthEditor({
               </div>
             </details>
           ))}
-          {canManage ? <TimelineForm campaign={campaign} returnTo={returnTo} /> : null}
+          {canManage ? <TimelineForm campaign={campaign} returnTo={returnTo} sortOrder={nextTimelineSortOrder} /> : null}
         </div>
 
         <div className="grid gap-3">
@@ -430,7 +424,7 @@ export function CampaignContentDepthEditor({
               </div>
             </details>
           ))}
-          {canManage ? <TeamForm campaign={campaign} returnTo={returnTo} /> : null}
+          {canManage ? <TeamForm campaign={campaign} returnTo={returnTo} sortOrder={nextTeamSortOrder} /> : null}
         </div>
       </FormTabs>
     </section>

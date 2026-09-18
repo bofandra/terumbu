@@ -3,9 +3,10 @@ import type { ReactNode } from "react";
 
 import { AdminPageHeader, adminInputClassName, adminPanelClassName, adminSelectClassName, adminTextareaClassName } from "@/components/admin-ui";
 import { Button } from "@/components/ui/button";
+import { campaignCurrencies } from "@/lib/campaign-content";
 import { requireRole } from "@/lib/auth";
 import { createAdminCampaignAction } from "@/lib/portal-actions";
-import { getAdminPortalData } from "@/lib/queries";
+import { getAdminPortalData, getAdminUnassignedImpactSiteOptions } from "@/lib/queries";
 
 export const metadata = {
   title: "New Project"
@@ -73,7 +74,7 @@ function OrganizationSelect({
 export default async function AdminCampaignNewPage({ searchParams }: AdminCampaignNewPageProps) {
   await requireRole(["admin"], "/admin/campaigns/new");
   const params = await searchParams;
-  const data = await getAdminPortalData();
+  const [data, unassignedImpactSites] = await Promise.all([getAdminPortalData(), getAdminUnassignedImpactSiteOptions()]);
   const errorMessage = params?.error ? errorMessages[params.error] : null;
 
   return (
@@ -100,11 +101,6 @@ export default async function AdminCampaignNewPage({ searchParams }: AdminCampai
           <input type="hidden" name="errorReturnTo" value="/admin/campaigns/new" />
           <input type="hidden" name="savedReturnTo" value="/admin/campaigns" />
           <input type="hidden" name="status" value="draft" />
-          <input type="hidden" name="currency" value="IDR" />
-          <input type="hidden" name="category" value="Conservation" />
-          <input type="hidden" name="impactTarget" value="1" />
-          <input type="hidden" name="impactUnit" value="project milestone" />
-          <input type="hidden" name="impactLinkMode" value="none" />
 
           <div className="grid gap-3 lg:grid-cols-2">
             <Field label="Project title">
@@ -114,17 +110,74 @@ export default async function AdminCampaignNewPage({ searchParams }: AdminCampai
               <OrganizationSelect organizations={data.organizations} />
             </Field>
           </div>
-          <div className="grid gap-3 lg:grid-cols-2">
-            <Field label="Region">
-              <input name="region" placeholder="Raja Ampat" className={adminInputClassName} required />
-            </Field>
-            <Field label="Goal amount" help="Use IDR. Currency and status can be changed later.">
-              <input name="goalAmount" type="number" min={1} step="1" placeholder="50000000" className={adminInputClassName} required />
-            </Field>
-          </div>
+          <Field label="Goal amount" help="Use IDR. Currency and status can be changed later.">
+            <input name="goalAmount" type="number" min={1} step="1" placeholder="50000000" className={adminInputClassName} required />
+          </Field>
           <Field label="Short summary">
             <textarea name="summary" placeholder="One or two sentences describing the project." className={adminTextareaClassName} required />
           </Field>
+
+          <details className="rounded-lg border border-ocean-900/10 bg-sand-50 p-4">
+            <summary className="cursor-pointer text-sm font-bold text-ocean-900">Optional impact site and public defaults</summary>
+            <div className="mt-4 grid gap-4">
+              <div className="grid gap-3 lg:grid-cols-2">
+                <Field label="Impact site link">
+                  <select name="impactLinkMode" defaultValue="none" className={adminSelectClassName}>
+                    <option value="none">No impact site yet</option>
+                    <option value="existing">Link unassigned impact site</option>
+                    <option value="new">Create new impact site</option>
+                  </select>
+                </Field>
+                <Field label="Existing impact site">
+                  <select name="existingImpactSiteId" defaultValue="" className={adminSelectClassName}>
+                    <option value="">Choose when linking existing</option>
+                    {unassignedImpactSites.map((site) => (
+                      <option key={site.id} value={site.id}>
+                        {site.name} / {site.ecosystemType} / {site.region}
+                      </option>
+                    ))}
+                  </select>
+                </Field>
+              </div>
+              <div className="grid gap-3 lg:grid-cols-3">
+                <Field label="New site name">
+                  <input name="impactSiteName" placeholder="Raja Ampat Reef Garden" className={adminInputClassName} />
+                </Field>
+                <Field label="Ecosystem type">
+                  <select name="impactSiteEcosystemType" defaultValue="Coral" className={adminSelectClassName}>
+                    {["Coral", "Mangrove", "Seagrass", "Marine", "Community"].map((type) => (
+                      <option key={type} value={type}>
+                        {type}
+                      </option>
+                    ))}
+                  </select>
+                </Field>
+                <Field label="Region">
+                  <input name="impactSiteRegion" placeholder="Raja Ampat" className={adminInputClassName} />
+                </Field>
+              </div>
+              <div className="grid gap-3 lg:grid-cols-4">
+                <Field label="Latitude">
+                  <input name="impactSiteLatitude" type="number" min="-90" max="90" step="0.000001" placeholder="-0.234900" className={adminInputClassName} />
+                </Field>
+                <Field label="Longitude">
+                  <input name="impactSiteLongitude" type="number" min="-180" max="180" step="0.000001" placeholder="130.516600" className={adminInputClassName} />
+                </Field>
+                <Field label="Currency">
+                  <select name="currency" defaultValue="IDR" className={adminSelectClassName}>
+                    {campaignCurrencies.map((currency) => (
+                      <option key={currency} value={currency}>
+                        {currency}
+                      </option>
+                    ))}
+                  </select>
+                </Field>
+                <Field label="Fallback region">
+                  <input name="region" placeholder="Indonesia" className={adminInputClassName} />
+                </Field>
+              </div>
+            </div>
+          </details>
           <Button type="submit" tone="secondary" className="w-fit rounded-lg" disabled={data.organizations.length === 0}>
             <Plus className="size-4" aria-hidden="true" />
             Create project

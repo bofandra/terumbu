@@ -2,7 +2,7 @@
 
 import { randomBytes } from "node:crypto";
 
-import { and, eq, sql } from "drizzle-orm";
+import { and, desc, eq, sql } from "drizzle-orm";
 import { redirect } from "next/navigation";
 
 import { db } from "@/db/client";
@@ -35,7 +35,20 @@ import {
   userRoles,
   users
 } from "@/db/schema";
-import { normalizeCampaignMediaType, normalizeCampaignTimelinePhaseStatus } from "@/lib/campaign-content";
+import {
+  campaignCategoryFromEcosystemType,
+  campaignStatuses,
+  normalizeCampaignBudgetCategory,
+  normalizeCampaignCategory,
+  normalizeCampaignCurrency,
+  normalizeCampaignImpactUnit,
+  normalizeCampaignMediaType,
+  normalizeCampaignStatus,
+  normalizeCampaignTimelinePhaseStatus,
+  normalizeOrganizationTeamRole,
+  normalizePartnerCampaignStatus,
+  partnerCampaignStatuses
+} from "@/lib/campaign-content";
 import { requireRole, safeRedirectPath } from "@/lib/auth";
 import { sendAccountSetupEmail } from "@/lib/auth-tokens";
 import { corporateEvidenceVisibilityForStatus, shouldLinkEvidenceToCorporateProgram } from "@/lib/corporate-lifecycle";
@@ -79,8 +92,6 @@ function activityCode() {
   return `ACT-${randomBytes(5).toString("hex").toUpperCase()}`;
 }
 
-const campaignStatuses = ["draft", "review", "published", "funded", "completed", "archived"] as const;
-const partnerCampaignStatuses = ["draft", "review"] as const;
 const adminCampaignImpactLinkModes = ["new", "existing", "none"] as const;
 const verificationStatuses = ["basic", "document", "field"] as const;
 const organizationUserStatuses = ["active", "inactive"] as const;
@@ -106,6 +117,10 @@ function nullableText(formData: FormData, key: string) {
   const value = formText(formData, key);
 
   return value || null;
+}
+
+function optionalNullableText(formData: FormData, key: string, fallback: string | null) {
+  return formData.has(key) ? nullableText(formData, key) : fallback;
 }
 
 function metadataObject(value: unknown) {
@@ -173,6 +188,36 @@ function parseOptionalAmount(value: FormDataEntryValue | null) {
   }
 
   return amount.toFixed(2);
+}
+
+function derivedImpactUnitCost(goalAmount: string | null, impactTarget: number | null, explicitCost: string | null) {
+  if (explicitCost) {
+    return explicitCost;
+  }
+
+  const goal = Number(goalAmount);
+
+  if (!Number.isFinite(goal) || goal <= 0 || !impactTarget || impactTarget <= 0) {
+    return null;
+  }
+
+  return (goal / impactTarget).toFixed(2);
+}
+
+function campaignRegionValue(input: string, linkedSite?: { region: string } | null) {
+  return input || linkedSite?.region || "Indonesia";
+}
+
+function campaignCategoryValue(input: string, linkedSite?: { ecosystemType: string } | null) {
+  return input || (linkedSite ? campaignCategoryFromEcosystemType(linkedSite.ecosystemType) : normalizeCampaignCategory(null));
+}
+
+function campaignImpactTargetValue(value: FormDataEntryValue | null) {
+  return parsePositiveInteger(value) ?? 1;
+}
+
+function campaignImpactUnitValue(input: string, category: string) {
+  return input || normalizeCampaignImpactUnit(null, category);
 }
 
 function parsePositiveInteger(value: FormDataEntryValue | null) {
@@ -384,15 +429,11 @@ function initialAdminCampaignImpactLinkFromForm(formData: FormData):
 }
 
 function campaignStatusFromForm(value: FormDataEntryValue | null) {
-  const status = String(value ?? "draft");
-
-  return campaignStatuses.includes(status as (typeof campaignStatuses)[number]) ? (status as (typeof campaignStatuses)[number]) : "draft";
+  return normalizeCampaignStatus(value);
 }
 
 function partnerCampaignStatusFromForm(value: FormDataEntryValue | null) {
-  const status = String(value ?? "draft");
-
-  return partnerCampaignStatuses.includes(status as (typeof partnerCampaignStatuses)[number]) ? (status as (typeof partnerCampaignStatuses)[number]) : "review";
+  return normalizePartnerCampaignStatus(value);
 }
 
 function expeditionDepartureStatusFromForm(value: FormDataEntryValue | null) {
@@ -1272,6 +1313,50 @@ async function requirePartnerImpactSiteAccess(
   return site;
 }
 
+async function nextCampaignMediaSortOrder(campaignId: string) {
+  const [lastItem] = await db
+    .select({ sortOrder: campaignMediaItems.sortOrder })
+    .from(campaignMediaItems)
+    .where(eq(campaignMediaItems.campaignId, campaignId))
+    .orderBy(desc(campaignMediaItems.sortOrder))
+    .limit(1);
+
+  return (lastItem?.sortOrder ?? -1) + 1;
+}
+
+async function nextCampaignBudgetSortOrder(campaignId: string) {
+  const [lastItem] = await db
+    .select({ sortOrder: campaignBudgetLineItems.sortOrder })
+    .from(campaignBudgetLineItems)
+    .where(eq(campaignBudgetLineItems.campaignId, campaignId))
+    .orderBy(desc(campaignBudgetLineItems.sortOrder))
+    .limit(1);
+
+  return (lastItem?.sortOrder ?? -1) + 1;
+}
+
+async function nextCampaignTimelineSortOrder(campaignId: string) {
+  const [lastItem] = await db
+    .select({ sortOrder: campaignTimelinePhases.sortOrder })
+    .from(campaignTimelinePhases)
+    .where(eq(campaignTimelinePhases.campaignId, campaignId))
+    .orderBy(desc(campaignTimelinePhases.sortOrder))
+    .limit(1);
+
+  return (lastItem?.sortOrder ?? -1) + 1;
+}
+
+async function nextOrganizationTeamSortOrder(organizationId: string) {
+  const [lastItem] = await db
+    .select({ sortOrder: organizationTeamMembers.sortOrder })
+    .from(organizationTeamMembers)
+    .where(eq(organizationTeamMembers.organizationId, organizationId))
+    .orderBy(desc(organizationTeamMembers.sortOrder))
+    .limit(1);
+
+  return (lastItem?.sortOrder ?? -1) + 1;
+}
+
 async function requireExpeditionAccess(
   userId: string,
   expeditionId: string,
@@ -1711,18 +1796,18 @@ export async function createPartnerCampaignAction(formData: FormData) {
   const title = formText(formData, "title");
   const summary = formText(formData, "summary");
   const story = formText(formData, "story");
-  const category = formText(formData, "category");
-  const region = formText(formData, "region");
   const goalAmount = parseIdrAmount(formData.get("goalAmount"));
-  const currency = normalizeCurrency(String(formData.get("currency") ?? "USD"));
-  const impactUnit = formText(formData, "impactUnit");
-  const impactTarget = parsePositiveInteger(formData.get("impactTarget"));
-  const impactUnitCost = parseOptionalAmount(formData.get("impactUnitCost"));
+  const currency = normalizeCampaignCurrency(formData.get("currency"), "USD");
   const status = isAdmin ? campaignStatusFromForm(formData.get("status")) : partnerCampaignStatusFromForm(formData.get("status"));
   const imageUrl = await imageFromForm(formData, "imageFile", "/partner/campaigns/new");
   const endsAt = parseOptionalDate(formData.get("endsAt"));
+  const category = campaignCategoryValue(formText(formData, "category"));
+  const region = campaignRegionValue(formText(formData, "region"));
+  const impactTarget = campaignImpactTargetValue(formData.get("impactTarget"));
+  const impactUnit = campaignImpactUnitValue(formText(formData, "impactUnit"), category);
+  const impactUnitCost = derivedImpactUnitCost(goalAmount, impactTarget, parseOptionalAmount(formData.get("impactUnitCost")));
 
-  if (!organizationId || !title || !summary || !category || !region || !goalAmount || !impactUnit || !impactTarget) {
+  if (!organizationId || !title || !summary || !goalAmount) {
     redirectPartnerError(formData, "/partner/campaigns/new", "campaign");
   }
 
@@ -1779,19 +1864,14 @@ export async function updatePartnerCampaignAction(formData: FormData) {
   const title = formText(formData, "title");
   const summary = formText(formData, "summary");
   const story = formText(formData, "story");
-  const category = formText(formData, "category");
-  const region = formText(formData, "region");
   const goalAmount = parseIdrAmount(formData.get("goalAmount"));
-  const currency = normalizeCurrency(String(formData.get("currency") ?? "USD"));
-  const impactUnit = formText(formData, "impactUnit");
-  const impactTarget = parsePositiveInteger(formData.get("impactTarget"));
-  const impactUnitCost = parseOptionalAmount(formData.get("impactUnitCost"));
+  const currency = normalizeCampaignCurrency(formData.get("currency"), "USD");
   const requestedStatus = campaignStatusFromForm(formData.get("status"));
   const uploadedImageUrl = await imageFromForm(formData, "imageFile", "/partner/campaigns");
   const endsAt = parseOptionalDate(formData.get("endsAt"));
   const removeImage = formData.get("removeImage") === "on";
 
-  if (!campaignId || !organizationId || !title || !summary || !category || !region || !goalAmount || !impactUnit || !impactTarget) {
+  if (!campaignId || !organizationId || !title || !summary || !goalAmount) {
     redirectPartnerError(formData, "/partner/campaigns", "campaign-update");
   }
 
@@ -1821,12 +1901,26 @@ export async function updatePartnerCampaignAction(formData: FormData) {
 
   await requireOrganizationPermission(user.id, organizationId, "campaign:update", formData, "/partner/campaigns");
 
+  const [linkedImpactSite] = await db
+    .select({
+      region: impactSites.region,
+      ecosystemType: impactSites.ecosystemType
+    })
+    .from(impactSites)
+    .where(eq(impactSites.campaignId, campaignId))
+    .limit(1);
+
   const now = new Date();
   const status = isAdmin
     ? requestedStatus
     : partnerCampaignStatuses.includes(requestedStatus as (typeof partnerCampaignStatuses)[number])
       ? (requestedStatus as (typeof partnerCampaignStatuses)[number])
       : campaign.status;
+  const category = campaignCategoryValue(formText(formData, "category"), linkedImpactSite);
+  const region = campaignRegionValue(formText(formData, "region"), linkedImpactSite);
+  const impactTarget = campaignImpactTargetValue(formData.get("impactTarget"));
+  const impactUnit = campaignImpactUnitValue(formText(formData, "impactUnit"), category);
+  const impactUnitCost = derivedImpactUnitCost(goalAmount, impactTarget, parseOptionalAmount(formData.get("impactUnitCost")));
 
   await db
     .update(campaigns)
@@ -1985,7 +2079,7 @@ export async function upsertCampaignMediaItemAction(formData: FormData) {
   const title = formText(formData, "title");
   const uploadedFileUrl = await campaignContentImageFromForm(formData, fallbackPath);
   const mediaType = normalizeCampaignMediaType(formData.get("mediaType"));
-  const sortOrder = parseNonNegativeInteger(formData.get("sortOrder")) ?? 0;
+  const requestedSortOrder = formData.has("sortOrder") ? parseNonNegativeInteger(formData.get("sortOrder")) : null;
   const isFeatured = formData.get("isFeatured") === "on";
   const now = new Date();
 
@@ -1994,7 +2088,10 @@ export async function upsertCampaignMediaItemAction(formData: FormData) {
         .select({
           id: campaignMediaItems.id,
           campaignId: campaignMediaItems.campaignId,
-          fileUrl: campaignMediaItems.fileUrl
+          fileUrl: campaignMediaItems.fileUrl,
+          thumbnailUrl: campaignMediaItems.thumbnailUrl,
+          provenance: campaignMediaItems.provenance,
+          sortOrder: campaignMediaItems.sortOrder
         })
         .from(campaignMediaItems)
         .where(eq(campaignMediaItems.id, mediaItemId))
@@ -2012,6 +2109,10 @@ export async function upsertCampaignMediaItemAction(formData: FormData) {
     redirectCampaignContentError(formData, fallbackPath, "campaign-content-missing");
   }
 
+  const sortOrder = requestedSortOrder ?? existingItem?.sortOrder ?? (await nextCampaignMediaSortOrder(campaignId));
+  const thumbnailUrl = optionalNullableText(formData, "thumbnailUrl", existingItem?.thumbnailUrl ?? null);
+  const provenance = optionalNullableText(formData, "provenance", existingItem?.provenance ?? "Partner-managed public gallery");
+
   if (existingItem) {
     await db
       .update(campaignMediaItems)
@@ -2019,10 +2120,10 @@ export async function upsertCampaignMediaItemAction(formData: FormData) {
         title,
         mediaType,
         fileUrl: uploadedFileUrl ?? existingItem.fileUrl,
-        thumbnailUrl: nullableText(formData, "thumbnailUrl"),
+        thumbnailUrl,
         altText: nullableText(formData, "altText"),
         caption: nullableText(formData, "caption"),
-        provenance: nullableText(formData, "provenance"),
+        provenance,
         sortOrder,
         isFeatured,
         updatedAt: now
@@ -2034,10 +2135,10 @@ export async function upsertCampaignMediaItemAction(formData: FormData) {
       title,
       mediaType,
       fileUrl: uploadedFileUrl!,
-      thumbnailUrl: nullableText(formData, "thumbnailUrl"),
+      thumbnailUrl,
       altText: nullableText(formData, "altText"),
       caption: nullableText(formData, "caption"),
-      provenance: nullableText(formData, "provenance"),
+      provenance,
       sortOrder,
       isFeatured,
       updatedAt: now
@@ -2093,20 +2194,27 @@ export async function upsertCampaignBudgetLineItemAction(formData: FormData) {
   const user = await requireRole(["partner", "admin"], fallbackPath);
   const budgetLineItemId = formText(formData, "budgetLineItemId");
   const campaignIdFromForm = formText(formData, "campaignId");
-  const category = formText(formData, "category");
+  const categoryInput = formText(formData, "category");
   const amount = parsePositiveDecimal(formData.get("amount"));
   const spentAmount = parseNonNegativeDecimal(formData.get("spentAmount"));
-  const sortOrder = parseNonNegativeInteger(formData.get("sortOrder")) ?? 0;
+  const requestedSortOrder = formData.has("sortOrder") ? parseNonNegativeInteger(formData.get("sortOrder")) : null;
   const now = new Date();
 
   const [existingItem] = budgetLineItemId
     ? await db
-        .select({ id: campaignBudgetLineItems.id, campaignId: campaignBudgetLineItems.campaignId })
+        .select({
+          id: campaignBudgetLineItems.id,
+          campaignId: campaignBudgetLineItems.campaignId,
+          category: campaignBudgetLineItems.category,
+          description: campaignBudgetLineItems.description,
+          sortOrder: campaignBudgetLineItems.sortOrder
+        })
         .from(campaignBudgetLineItems)
         .where(eq(campaignBudgetLineItems.id, budgetLineItemId))
         .limit(1)
     : [];
   const campaignId = existingItem?.campaignId ?? campaignIdFromForm;
+  const category = categoryInput || existingItem?.category || normalizeCampaignBudgetCategory(null);
 
   if (!campaignId || !category || !amount || spentAmount === null) {
     redirectCampaignContentError(formData, fallbackPath, "campaign-content-invalid");
@@ -2118,12 +2226,15 @@ export async function upsertCampaignBudgetLineItemAction(formData: FormData) {
     redirectCampaignContentError(formData, fallbackPath, "campaign-content-missing");
   }
 
+  const sortOrder = requestedSortOrder ?? existingItem?.sortOrder ?? (await nextCampaignBudgetSortOrder(campaignId));
+  const description = optionalNullableText(formData, "description", existingItem?.description ?? null);
+
   if (existingItem) {
     await db
       .update(campaignBudgetLineItems)
       .set({
         category,
-        description: nullableText(formData, "description"),
+        description,
         amount,
         spentAmount,
         sortOrder,
@@ -2134,7 +2245,7 @@ export async function upsertCampaignBudgetLineItemAction(formData: FormData) {
     await db.insert(campaignBudgetLineItems).values({
       campaignId,
       category,
-      description: nullableText(formData, "description"),
+      description,
       amount,
       spentAmount,
       sortOrder,
@@ -2195,12 +2306,19 @@ export async function upsertCampaignTimelinePhaseAction(formData: FormData) {
   const status = normalizeCampaignTimelinePhaseStatus(formData.get("status"));
   const startsAt = parseOptionalDate(formData.get("startsAt"));
   const endsAt = parseOptionalDate(formData.get("endsAt"));
-  const sortOrder = parseNonNegativeInteger(formData.get("sortOrder")) ?? 0;
+  const requestedSortOrder = formData.has("sortOrder") ? parseNonNegativeInteger(formData.get("sortOrder")) : null;
   const now = new Date();
 
   const [existingItem] = timelinePhaseId
     ? await db
-        .select({ id: campaignTimelinePhases.id, campaignId: campaignTimelinePhases.campaignId })
+        .select({
+          id: campaignTimelinePhases.id,
+          campaignId: campaignTimelinePhases.campaignId,
+          description: campaignTimelinePhases.description,
+          deliverable: campaignTimelinePhases.deliverable,
+          evidenceNote: campaignTimelinePhases.evidenceNote,
+          sortOrder: campaignTimelinePhases.sortOrder
+        })
         .from(campaignTimelinePhases)
         .where(eq(campaignTimelinePhases.id, timelinePhaseId))
         .limit(1)
@@ -2217,17 +2335,22 @@ export async function upsertCampaignTimelinePhaseAction(formData: FormData) {
     redirectCampaignContentError(formData, fallbackPath, "campaign-content-missing");
   }
 
+  const sortOrder = requestedSortOrder ?? existingItem?.sortOrder ?? (await nextCampaignTimelineSortOrder(campaignId));
+  const description = optionalNullableText(formData, "description", existingItem?.description ?? null);
+  const deliverable = optionalNullableText(formData, "deliverable", existingItem?.deliverable ?? null);
+  const evidenceNote = optionalNullableText(formData, "evidenceNote", existingItem?.evidenceNote ?? null);
+
   if (existingItem) {
     await db
       .update(campaignTimelinePhases)
       .set({
         title,
-        description: nullableText(formData, "description"),
+        description,
         status,
         startsAt,
         endsAt,
-        deliverable: nullableText(formData, "deliverable"),
-        evidenceNote: nullableText(formData, "evidenceNote"),
+        deliverable,
+        evidenceNote,
         sortOrder,
         updatedAt: now
       })
@@ -2236,12 +2359,12 @@ export async function upsertCampaignTimelinePhaseAction(formData: FormData) {
     await db.insert(campaignTimelinePhases).values({
       campaignId,
       title,
-      description: nullableText(formData, "description"),
+      description,
       status,
       startsAt,
       endsAt,
-      deliverable: nullableText(formData, "deliverable"),
-      evidenceNote: nullableText(formData, "evidenceNote"),
+      deliverable,
+      evidenceNote,
       sortOrder,
       updatedAt: now
     });
@@ -2297,10 +2420,9 @@ export async function upsertOrganizationTeamMemberAction(formData: FormData) {
   const teamMemberId = formText(formData, "teamMemberId");
   const organizationIdFromForm = formText(formData, "organizationId");
   const name = formText(formData, "name");
-  const role = formText(formData, "role");
+  const roleInput = formText(formData, "role");
   const uploadedImageUrl = await campaignContentPortraitFromForm(formData, fallbackPath);
-  const sortOrder = parseNonNegativeInteger(formData.get("sortOrder")) ?? 0;
-  const isPublic = formData.get("isPublic") === "on";
+  const requestedSortOrder = formData.has("sortOrder") ? parseNonNegativeInteger(formData.get("sortOrder")) : null;
   const now = new Date();
 
   const [existingItem] = teamMemberId
@@ -2308,13 +2430,19 @@ export async function upsertOrganizationTeamMemberAction(formData: FormData) {
         .select({
           id: organizationTeamMembers.id,
           organizationId: organizationTeamMembers.organizationId,
-          imageUrl: organizationTeamMembers.imageUrl
+          role: organizationTeamMembers.role,
+          bio: organizationTeamMembers.bio,
+          imageUrl: organizationTeamMembers.imageUrl,
+          profileUrl: organizationTeamMembers.profileUrl,
+          sortOrder: organizationTeamMembers.sortOrder,
+          isPublic: organizationTeamMembers.isPublic
         })
         .from(organizationTeamMembers)
         .where(eq(organizationTeamMembers.id, teamMemberId))
         .limit(1)
     : [];
   const organizationId = existingItem?.organizationId ?? organizationIdFromForm;
+  const role = roleInput || existingItem?.role || normalizeOrganizationTeamRole(null);
 
   if (!organizationId || !name || !role) {
     redirectCampaignContentError(formData, fallbackPath, "campaign-content-invalid");
@@ -2326,15 +2454,20 @@ export async function upsertOrganizationTeamMemberAction(formData: FormData) {
     redirectCampaignContentError(formData, fallbackPath, "campaign-content-missing");
   }
 
+  const sortOrder = requestedSortOrder ?? existingItem?.sortOrder ?? (await nextOrganizationTeamSortOrder(organizationId));
+  const bio = optionalNullableText(formData, "bio", existingItem?.bio ?? null);
+  const profileUrl = optionalNullableText(formData, "profileUrl", existingItem?.profileUrl ?? null);
+  const isPublic = formData.get("isPublic") === "on";
+
   if (existingItem) {
     await db
       .update(organizationTeamMembers)
       .set({
         name,
         role,
-        bio: nullableText(formData, "bio"),
+        bio,
         imageUrl: uploadedImageUrl ?? existingItem.imageUrl,
-        profileUrl: nullableText(formData, "profileUrl"),
+        profileUrl,
         sortOrder,
         isPublic,
         updatedAt: now
@@ -2345,9 +2478,9 @@ export async function upsertOrganizationTeamMemberAction(formData: FormData) {
       organizationId,
       name,
       role,
-      bio: nullableText(formData, "bio"),
+      bio,
       imageUrl: uploadedImageUrl,
-      profileUrl: nullableText(formData, "profileUrl"),
+      profileUrl,
       sortOrder,
       isPublic,
       updatedAt: now
@@ -3152,19 +3285,21 @@ export async function createAdminCampaignAction(formData: FormData) {
   const slug = slugifyTitle(formText(formData, "slug") || title);
   const summary = formText(formData, "summary");
   const story = formText(formData, "story");
-  const category = formText(formData, "category") || "Conservation";
-  const region = formText(formData, "region");
   const goalAmount = parseIdrAmount(formData.get("goalAmount"));
-  const currency = normalizeCurrency(String(formData.get("currency") ?? "IDR"));
-  const impactUnit = formText(formData, "impactUnit") || "project milestone";
-  const impactTarget = parsePositiveInteger(formData.get("impactTarget")) ?? 1;
-  const impactUnitCost = parseOptionalAmount(formData.get("impactUnitCost"));
+  const currency = normalizeCampaignCurrency(formData.get("currency"), "IDR");
   const status = campaignStatusFromForm(formData.get("status") ?? "draft");
   const imageUrl = await imageFromAdminCampaignForm(formData);
   const endsAt = parseOptionalDate(formData.get("endsAt"));
   const impactLink = initialAdminCampaignImpactLinkFromForm(formData);
+  let linkedImpactSiteDefaults: { region: string; ecosystemType: string } | null =
+    impactLink.mode === "new"
+      ? {
+          region: impactLink.values.region,
+          ecosystemType: impactLink.values.ecosystemType
+        }
+      : null;
 
-  if (!organizationId || !title || !slug || !summary || !category || !region || !goalAmount || !impactUnit || !impactTarget) {
+  if (!organizationId || !title || !slug || !summary || !goalAmount) {
     redirectAdminCampaignError("campaign-invalid", formData);
   }
 
@@ -3184,7 +3319,9 @@ export async function createAdminCampaignAction(formData: FormData) {
     const [site] = await db
       .select({
         id: impactSites.id,
-        campaignId: impactSites.campaignId
+        campaignId: impactSites.campaignId,
+        region: impactSites.region,
+        ecosystemType: impactSites.ecosystemType
       })
       .from(impactSites)
       .where(eq(impactSites.id, impactLink.impactSiteId))
@@ -3197,10 +3334,20 @@ export async function createAdminCampaignAction(formData: FormData) {
     if (site.campaignId) {
       redirectAdminCampaignError("impact-site-assigned", formData);
     }
+
+    linkedImpactSiteDefaults = {
+      region: site.region,
+      ecosystemType: site.ecosystemType
+    };
   }
 
   const now = new Date();
   let campaignId = "";
+  const category = campaignCategoryValue(formText(formData, "category"), linkedImpactSiteDefaults);
+  const region = campaignRegionValue(formText(formData, "region"), linkedImpactSiteDefaults);
+  const impactTarget = campaignImpactTargetValue(formData.get("impactTarget"));
+  const impactUnit = campaignImpactUnitValue(formText(formData, "impactUnit"), category);
+  const impactUnitCost = derivedImpactUnitCost(goalAmount, impactTarget, parseOptionalAmount(formData.get("impactUnitCost")));
 
   await db.transaction(async (tx) => {
     const [campaign] = await tx
@@ -3306,19 +3453,14 @@ export async function updateAdminCampaignAction(formData: FormData) {
   const slug = slugifyTitle(formText(formData, "slug") || title);
   const summary = formText(formData, "summary");
   const story = formText(formData, "story");
-  const category = formText(formData, "category");
-  const region = formText(formData, "region");
   const goalAmount = parseIdrAmount(formData.get("goalAmount"));
-  const currency = normalizeCurrency(String(formData.get("currency") ?? "USD"));
-  const impactUnit = formText(formData, "impactUnit");
-  const impactTarget = parsePositiveInteger(formData.get("impactTarget"));
-  const impactUnitCost = parseOptionalAmount(formData.get("impactUnitCost"));
+  const currency = normalizeCampaignCurrency(formData.get("currency"), "USD");
   const status = campaignStatusFromForm(formData.get("status"));
   const uploadedImageUrl = await imageFromAdminCampaignForm(formData);
   const endsAt = parseOptionalDate(formData.get("endsAt"));
   const removeImage = formData.get("removeImage") === "on";
 
-  if (!campaignId || !organizationId || !title || !slug || !summary || !category || !region || !goalAmount || !impactUnit || !impactTarget) {
+  if (!campaignId || !organizationId || !title || !slug || !summary || !goalAmount) {
     redirectAdminCampaignError("campaign-invalid", formData);
   }
 
@@ -3327,7 +3469,12 @@ export async function updateAdminCampaignAction(formData: FormData) {
       id: campaigns.id,
       slug: campaigns.slug,
       imageUrl: campaigns.imageUrl,
-      publishedAt: campaigns.publishedAt
+      publishedAt: campaigns.publishedAt,
+      category: campaigns.category,
+      region: campaigns.region,
+      impactUnit: campaigns.impactUnit,
+      impactTarget: campaigns.impactTarget,
+      impactUnitCost: campaigns.impactUnitCost
     })
     .from(campaigns)
     .where(eq(campaigns.id, campaignId))
@@ -3350,6 +3497,20 @@ export async function updateAdminCampaignAction(formData: FormData) {
   }
 
   const now = new Date();
+  const [linkedImpactSite] = await db
+    .select({
+      region: impactSites.region,
+      ecosystemType: impactSites.ecosystemType
+    })
+    .from(impactSites)
+    .where(eq(impactSites.campaignId, campaignId))
+    .limit(1);
+  const category = campaignCategoryValue(formText(formData, "category") || campaign.category, linkedImpactSite);
+  const region = campaignRegionValue(formText(formData, "region") || campaign.region, linkedImpactSite);
+  const impactTarget = parsePositiveInteger(formData.get("impactTarget")) ?? campaign.impactTarget;
+  const impactUnit = campaignImpactUnitValue(formText(formData, "impactUnit") || campaign.impactUnit, category);
+  const explicitImpactUnitCost = formData.has("impactUnitCost") ? parseOptionalAmount(formData.get("impactUnitCost")) : campaign.impactUnitCost;
+  const impactUnitCost = derivedImpactUnitCost(goalAmount, impactTarget, explicitImpactUnitCost);
 
   await db
     .update(campaigns)

@@ -16,6 +16,7 @@ import { Button } from "@/components/ui/button";
 import { FormTabs } from "@/components/ui/form-tabs";
 import { MetricValue } from "@/components/ui/metric-value";
 import { ProgressMeter } from "@/components/ui/progress-meter";
+import { campaignCategories, campaignCurrencies, campaignImpactUnits, campaignStatuses } from "@/lib/campaign-content";
 import { requireRole } from "@/lib/auth";
 import { deleteAdminCampaignAction, updateAdminCampaignAction, updateCampaignStatusAction } from "@/lib/portal-actions";
 import { getAdminOperationsData, getAdminPortalData } from "@/lib/queries";
@@ -26,8 +27,6 @@ export const metadata = {
 };
 
 export const dynamic = "force-dynamic";
-
-const campaignStatuses = ["draft", "review", "published", "funded", "completed", "archived"];
 
 const statusMessages: Record<string, string> = {
   "campaign-created": "Campaign created with its impact relationship.",
@@ -235,65 +234,101 @@ export default async function AdminCampaignDetailPage({ params, searchParams }: 
           <input type="hidden" name="returnTo" value={returnTo} />
           <input type="hidden" name="campaignId" value={campaign.id} />
           <input type="hidden" name="status" value={campaign.status} />
-          <div className="grid gap-3 lg:grid-cols-3">
-            <Field label="Organization" className="lg:col-span-2">
-              <OrganizationSelect organizations={data.organizations} defaultValue={campaign.organizationId} />
-            </Field>
-            <Field label="End date">
-              <input name="endsAt" type="date" defaultValue={dateValue(campaign.endsAt)} className={adminInputClassName} />
-            </Field>
-          </div>
-          <div className="grid gap-3 lg:grid-cols-3">
-            <Field label="Title" className="lg:col-span-2">
+          <Field label="Organization">
+            <OrganizationSelect organizations={data.organizations} defaultValue={campaign.organizationId} />
+          </Field>
+          <div className="grid gap-3 lg:grid-cols-2">
+            <Field label="Title">
               <input name="title" defaultValue={campaign.title} className={adminInputClassName} required />
             </Field>
-            <Field label="Slug">
-              <input name="slug" defaultValue={campaign.slug} className={adminInputClassName} required />
-            </Field>
-          </div>
-          <div className="grid gap-3 lg:grid-cols-2">
-            <Field label="Category">
-              <input name="category" defaultValue={campaign.category} className={adminInputClassName} required />
-            </Field>
-            <Field label="Region">
-              <input name="region" defaultValue={campaign.region} className={adminInputClassName} required />
-            </Field>
-          </div>
-          <div className="grid gap-3 lg:grid-cols-4">
             <Field label="Goal amount">
               <input name="goalAmount" type="number" min={1} step="0.01" defaultValue={Number(campaign.goalAmount)} className={adminInputClassName} required />
             </Field>
-            <Field label="Currency">
-              <select name="currency" defaultValue={campaign.currency ?? "USD"} className={adminInputClassName} required>
-                <option value="USD">USD</option>
-              </select>
-            </Field>
-            <Field label="Impact target">
-              <input name="impactTarget" type="number" min={1} defaultValue={campaign.impactTarget} className={adminInputClassName} required />
-            </Field>
-            <Field label="Impact unit">
-              <input name="impactUnit" defaultValue={campaign.impactUnit} className={adminInputClassName} required />
-            </Field>
           </div>
-          <Field label="Cost per impact unit">
-            <input name="impactUnitCost" type="number" min={0} step="0.01" defaultValue={campaign.impactUnitCost ? Number(campaign.impactUnitCost) : undefined} placeholder="Leave blank to use goal divided by target" className={adminInputClassName} />
-          </Field>
-          <Field label="Replace image">
-            <input name="imageFile" type="file" accept="image/png,image/jpeg,image/webp,image/gif" className={adminInputClassName} />
-          </Field>
-          {campaign.imageUrl ? (
-            <label className="flex items-center gap-2 text-sm font-bold text-ocean-900">
-              <input name="removeImage" type="checkbox" className="size-4 accent-coral-500" />
-              <ImagePlus className="size-4 text-ocean-900/48" aria-hidden="true" />
-              Remove current image
-            </label>
-          ) : null}
           <Field label="Summary">
             <textarea name="summary" defaultValue={campaign.summary} className={adminTextareaClassName} required />
           </Field>
-          <Field label="Story">
-            <textarea name="story" defaultValue={campaign.story ?? ""} className={adminTextareaClassName} />
-          </Field>
+          <div className="grid gap-3 lg:grid-cols-2">
+            {campaignImpactSites[0] ? (
+              <Field label="Linked impact site region">
+                <input type="hidden" name="region" value={campaignImpactSites[0].region} />
+                <span className="flex min-h-10 items-center rounded-lg border border-ocean-900/10 bg-ocean-50 px-3 text-sm font-bold text-ocean-900">
+                  {campaignImpactSites[0].name} / {campaignImpactSites[0].region}
+                </span>
+              </Field>
+            ) : (
+              <Field label="Region">
+                <input name="region" defaultValue={campaign.region} className={adminInputClassName} required />
+              </Field>
+            )}
+            <Field label="Category">
+              <select name="category" defaultValue={campaign.category} className={adminSelectClassName} required>
+                {campaign.category && !campaignCategories.includes(campaign.category as (typeof campaignCategories)[number]) ? (
+                  <option value={campaign.category}>{campaign.category}</option>
+                ) : null}
+                {campaignCategories.map((category) => (
+                  <option key={category} value={category}>
+                    {category}
+                  </option>
+                ))}
+              </select>
+            </Field>
+          </div>
+          <details className="rounded-lg border border-ocean-900/10 bg-sand-50 p-4">
+            <summary className="cursor-pointer text-sm font-bold text-ocean-900">Advanced public details</summary>
+            <div className="mt-4 grid gap-4">
+              <div className="grid gap-3 lg:grid-cols-2">
+                <Field label="Custom slug">
+                  <input name="slug" defaultValue={campaign.slug} className={adminInputClassName} required />
+                </Field>
+                <Field label="End date">
+                  <input name="endsAt" type="date" defaultValue={dateValue(campaign.endsAt)} className={adminInputClassName} />
+                </Field>
+              </div>
+              <div className="grid gap-3 lg:grid-cols-4">
+                <Field label="Currency">
+                  <select name="currency" defaultValue={campaign.currency ?? "USD"} className={adminSelectClassName} required>
+                    {campaignCurrencies.map((currency) => (
+                      <option key={currency} value={currency}>
+                        {currency}
+                      </option>
+                    ))}
+                  </select>
+                </Field>
+                <Field label="Impact target">
+                  <input name="impactTarget" type="number" min={1} defaultValue={campaign.impactTarget} className={adminInputClassName} required />
+                </Field>
+                <Field label="Impact unit">
+                  <select name="impactUnit" defaultValue={campaign.impactUnit} className={adminSelectClassName} required>
+                    {campaign.impactUnit && !campaignImpactUnits.includes(campaign.impactUnit as (typeof campaignImpactUnits)[number]) ? (
+                      <option value={campaign.impactUnit}>{campaign.impactUnit}</option>
+                    ) : null}
+                    {campaignImpactUnits.map((unit) => (
+                      <option key={unit} value={unit}>
+                        {unit}
+                      </option>
+                    ))}
+                  </select>
+                </Field>
+                <Field label="Cost per impact unit">
+                  <input name="impactUnitCost" type="number" min={0} step="0.01" defaultValue={campaign.impactUnitCost ? Number(campaign.impactUnitCost) : undefined} placeholder="Auto-calculated if empty" className={adminInputClassName} />
+                </Field>
+              </div>
+              <Field label="Story">
+                <textarea name="story" defaultValue={campaign.story ?? ""} className={adminTextareaClassName} />
+              </Field>
+              <Field label="Replace image">
+                <input name="imageFile" type="file" accept="image/png,image/jpeg,image/webp,image/gif" className={adminInputClassName} />
+              </Field>
+              {campaign.imageUrl ? (
+                <label className="flex items-center gap-2 text-sm font-bold text-ocean-900">
+                  <input name="removeImage" type="checkbox" className="size-4 accent-coral-500" />
+                  <ImagePlus className="size-4 text-ocean-900/48" aria-hidden="true" />
+                  Remove current image
+                </label>
+              ) : null}
+            </div>
+          </details>
           <Button type="submit" tone="secondary" className="w-fit rounded-lg">
             <Save className="size-4" aria-hidden="true" />
             Save Campaign
