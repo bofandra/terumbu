@@ -10,14 +10,17 @@ import {
   Handshake,
   LayoutDashboard,
   LogOut,
+  Menu,
+  MessageCircle,
   ReceiptText,
   ScrollText,
   ShipWheel,
   Users,
   Waves,
+  X,
   type LucideIcon
 } from "lucide-react";
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 
 import { logoutAction } from "@/lib/auth-actions";
 import { cn } from "@/lib/utils";
@@ -38,6 +41,7 @@ const adminNavItems: AdminNavItem[] = [
   { href: "/admin/users", label: "Users", icon: Users },
   { href: "/admin/payments", label: "Payments", icon: ReceiptText },
   { href: "/admin/academy", label: "Academy", icon: GraduationCap },
+  { href: "/admin/community", label: "Community", icon: MessageCircle },
   { href: "/admin/reports", label: "Reports", icon: BarChart3 },
   { href: "/admin/audit", label: "Audit", icon: ScrollText }
 ];
@@ -71,14 +75,42 @@ function currentTaskForPath(pathname: string) {
   return activeItem?.label ?? "Overview";
 }
 
+function AdminNavLinks({ pathname, onNavigate }: { pathname: string; onNavigate?: () => void }) {
+  return (
+    <nav className="grid gap-2" aria-label="Admin sections">
+      {adminNavItems.map((item) => {
+        const Icon = item.icon;
+        const isActive = navItemIsActive(pathname, item.href);
+
+        return (
+          <Link
+            key={item.href}
+            href={item.href}
+            aria-current={isActive ? "page" : undefined}
+            onClick={onNavigate}
+            className={cn(
+              "inline-flex min-h-11 w-full items-center gap-3 rounded-lg px-3 text-sm font-bold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-kelp-500 focus-visible:ring-offset-2",
+              isActive ? "bg-ocean-900 text-white" : "text-ocean-900/70 hover:bg-ocean-50 hover:text-ocean-900"
+            )}
+          >
+            <Icon className="size-4" aria-hidden="true" />
+            <span>{item.label}</span>
+          </Link>
+        );
+      })}
+    </nav>
+  );
+}
+
 export function AdminShell({ children, displayName, roleLabel }: { children: ReactNode; displayName: string; roleLabel: string }) {
   const pathname = usePathname();
   const currentTask = currentTaskForPath(pathname);
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
   return (
     <main className="min-h-screen bg-sand-50 text-ocean-900">
       <div className="mx-auto flex min-h-screen max-w-[1440px] flex-col lg:flex-row">
-        <aside className="border-b border-ocean-900/10 bg-white px-4 py-4 sm:px-6 lg:sticky lg:top-0 lg:min-h-screen lg:w-64 lg:border-b-0 lg:border-r lg:px-5 lg:py-6">
+        <aside className="hidden border-ocean-900/10 bg-white px-4 py-4 sm:px-6 lg:sticky lg:top-0 lg:block lg:min-h-screen lg:w-64 lg:border-r lg:px-5 lg:py-6">
           <div className="flex items-center justify-between gap-4 lg:block">
             <Link href="/" className="inline-flex items-center gap-3">
               <span className="grid size-10 place-items-center rounded-lg bg-ocean-900 text-white">
@@ -91,38 +123,23 @@ export function AdminShell({ children, displayName, roleLabel }: { children: Rea
             </Link>
           </div>
 
-          <nav className="mt-5 flex gap-2 overflow-x-auto pb-1 lg:grid lg:overflow-visible lg:pb-0" aria-label="Admin sections">
-            {adminNavItems.map((item) => {
-              const Icon = item.icon;
-              const isActive = navItemIsActive(pathname, item.href);
-
-              return (
-                <div key={item.href} className="shrink-0 lg:w-full">
-                  <Link
-                    href={item.href}
-                    aria-current={isActive ? "page" : undefined}
-                    className={cn(
-                      "inline-flex min-h-11 w-full items-center gap-3 rounded-lg px-3 text-sm font-bold transition",
-                      isActive
-                        ? "bg-ocean-900 text-white"
-                        : "text-ocean-900/70 hover:bg-ocean-50 hover:text-ocean-900"
-                    )}
-                  >
-                    <Icon className="size-4" aria-hidden="true" />
-                    <span>{item.label}</span>
-                  </Link>
-                </div>
-              );
-            })}
-          </nav>
+          <div className="mt-5">
+            <AdminNavLinks pathname={pathname} />
+          </div>
         </aside>
 
         <div className="flex min-w-0 flex-1 flex-col">
           <header className="sticky top-0 z-40 flex min-h-20 items-center justify-between gap-4 border-b border-ocean-900/10 bg-white/94 px-4 backdrop-blur sm:px-6 lg:px-8">
             <div className="flex min-w-0 items-center gap-3">
-              <Link href="/admin" aria-label="Admin overview" className="flex size-11 items-center justify-center rounded-full bg-ocean-50 text-ocean-900 lg:hidden">
-                <LayoutDashboard size={20} aria-hidden="true" />
-              </Link>
+              <button
+                type="button"
+                aria-label="Open admin navigation"
+                aria-expanded={mobileNavOpen}
+                onClick={() => setMobileNavOpen(true)}
+                className="flex size-11 items-center justify-center rounded-full bg-ocean-50 text-ocean-900 transition hover:bg-ocean-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-kelp-500 focus-visible:ring-offset-2 lg:hidden"
+              >
+                <Menu size={20} aria-hidden="true" />
+              </button>
               <div className="min-w-0">
                 <p className="text-xs font-bold uppercase tracking-[0.16em] text-coral-700">Admin portal</p>
                 <p className="truncate text-lg font-bold tracking-normal text-ocean-900 sm:text-xl">{currentTask}</p>
@@ -157,6 +174,38 @@ export function AdminShell({ children, displayName, roleLabel }: { children: Rea
               </details>
             </div>
           </header>
+
+          {mobileNavOpen ? (
+            <div className="fixed inset-0 z-50 bg-ocean-950/60 lg:hidden" role="dialog" aria-modal="true" aria-label="Admin navigation">
+              <div className="flex min-h-full">
+                <div className="w-[min(86vw,22rem)] overflow-y-auto bg-white p-4 shadow-soft">
+                  <div className="flex items-center justify-between gap-3">
+                    <Link href="/" className="inline-flex items-center gap-3" onClick={() => setMobileNavOpen(false)}>
+                      <span className="grid size-10 place-items-center rounded-lg bg-ocean-900 text-white">
+                        <Waves className="size-5" aria-hidden="true" />
+                      </span>
+                      <span>
+                        <span className="block text-base font-bold text-ocean-900">Terumbu.eco</span>
+                        <span className="block text-xs font-semibold uppercase tracking-[0.14em] text-ocean-900/54">Admin</span>
+                      </span>
+                    </Link>
+                    <button
+                      type="button"
+                      aria-label="Close admin navigation"
+                      onClick={() => setMobileNavOpen(false)}
+                      className="grid size-11 place-items-center rounded-full bg-ocean-50 text-ocean-900 transition hover:bg-ocean-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-kelp-500 focus-visible:ring-offset-2"
+                    >
+                      <X className="size-5" aria-hidden="true" />
+                    </button>
+                  </div>
+                  <div className="mt-5">
+                    <AdminNavLinks pathname={pathname} onNavigate={() => setMobileNavOpen(false)} />
+                  </div>
+                </div>
+                <button type="button" aria-label="Close admin navigation" className="min-w-0 flex-1" onClick={() => setMobileNavOpen(false)} />
+              </div>
+            </div>
+          ) : null}
 
           <section className="flex-1 px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
             <div className="mx-auto max-w-5xl">{children}</div>

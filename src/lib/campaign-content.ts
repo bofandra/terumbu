@@ -26,6 +26,19 @@ export const campaignImpactUnits = [
 ] as const;
 export type CampaignImpactUnit = (typeof campaignImpactUnits)[number];
 
+export const impactSiteEcosystemTypes = [
+  "Coral",
+  "Mangrove",
+  "Seagrass",
+  "Marine protection",
+  "Community conservation",
+  "Conservation"
+] as const;
+export type ImpactSiteEcosystemType = (typeof impactSiteEcosystemTypes)[number];
+
+export const impactSiteVerificationStatuses = ["basic", "document", "field"] as const;
+export type ImpactSiteVerificationStatus = (typeof impactSiteVerificationStatuses)[number];
+
 export const campaignBudgetCategories = [
   "Restoration materials",
   "Field team",
@@ -134,6 +147,22 @@ export function normalizeCampaignImpactUnit(value: unknown, category: string): C
   return campaignImpactUnits.includes(normalized as CampaignImpactUnit)
     ? (normalized as CampaignImpactUnit)
     : defaultImpactUnitForCategory(category);
+}
+
+export function normalizeImpactSiteEcosystemType(value: unknown): ImpactSiteEcosystemType {
+  const normalized = String(value ?? "").trim();
+
+  return impactSiteEcosystemTypes.includes(normalized as ImpactSiteEcosystemType)
+    ? (normalized as ImpactSiteEcosystemType)
+    : "Coral";
+}
+
+export function normalizeImpactSiteVerificationStatus(value: unknown): ImpactSiteVerificationStatus {
+  const normalized = String(value ?? "basic").trim();
+
+  return impactSiteVerificationStatuses.includes(normalized as ImpactSiteVerificationStatus)
+    ? (normalized as ImpactSiteVerificationStatus)
+    : "basic";
 }
 
 export function normalizeCampaignBudgetCategory(value: unknown): CampaignBudgetCategory {

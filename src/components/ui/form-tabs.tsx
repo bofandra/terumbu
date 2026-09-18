@@ -1,6 +1,6 @@
 "use client";
 
-import { Children, type ReactNode, useId, useState } from "react";
+import { Children, type KeyboardEvent, type ReactNode, useId, useRef, useState } from "react";
 
 import { cn } from "@/lib/utils";
 
@@ -25,13 +25,47 @@ export function FormTabs({ ariaLabel, tabs, children, className, defaultTabId }:
   const firstTab = tabs[0]?.id ?? "";
   const initialTab = tabs.some((tab) => tab.id === defaultTabId) ? defaultTabId ?? firstTab : firstTab;
   const [activeTab, setActiveTab] = useState(initialTab);
+  const tabRefs = useRef<Array<HTMLButtonElement | null>>([]);
   const selectedTab = tabs.some((tab) => tab.id === activeTab) ? activeTab : firstTab;
+
+  function focusTab(index: number) {
+    const tab = tabs[index];
+
+    if (!tab) {
+      return;
+    }
+
+    setActiveTab(tab.id);
+    tabRefs.current[index]?.focus();
+  }
+
+  function handleTabKeyDown(event: KeyboardEvent<HTMLButtonElement>, index: number) {
+    if (event.key === "ArrowRight") {
+      event.preventDefault();
+      focusTab((index + 1) % tabs.length);
+    }
+
+    if (event.key === "ArrowLeft") {
+      event.preventDefault();
+      focusTab((index - 1 + tabs.length) % tabs.length);
+    }
+
+    if (event.key === "Home") {
+      event.preventDefault();
+      focusTab(0);
+    }
+
+    if (event.key === "End") {
+      event.preventDefault();
+      focusTab(tabs.length - 1);
+    }
+  }
 
   return (
     <div className={cn("rounded-lg border border-ocean-900/10 bg-white shadow-soft", className)}>
       <div className="border-b border-ocean-900/10 bg-sand-50/70 p-2">
         <div role="tablist" aria-label={ariaLabel} className="flex gap-2 overflow-x-auto">
-          {tabs.map((tab) => {
+          {tabs.map((tab, index) => {
             const active = selectedTab === tab.id;
             const tabId = `${generatedId}-${tab.id}-tab`;
             const panelId = `${generatedId}-${tab.id}-panel`;
@@ -44,9 +78,14 @@ export function FormTabs({ ariaLabel, tabs, children, className, defaultTabId }:
                 role="tab"
                 aria-selected={active}
                 aria-controls={panelId}
+                tabIndex={active ? 0 : -1}
+                ref={(element) => {
+                  tabRefs.current[index] = element;
+                }}
                 onClick={() => setActiveTab(tab.id)}
+                onKeyDown={(event) => handleTabKeyDown(event, index)}
                 className={cn(
-                  "min-h-12 shrink-0 rounded-lg px-3 py-2 text-left text-sm font-bold transition sm:px-4",
+                  "min-h-12 shrink-0 rounded-lg px-3 py-2 text-left text-sm font-bold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-kelp-500 focus-visible:ring-offset-2 sm:px-4",
                   active ? "bg-ocean-900 text-white shadow-soft" : "bg-white text-ocean-900/68 ring-1 ring-ocean-900/10 hover:text-ocean-900"
                 )}
               >
@@ -76,6 +115,7 @@ export function FormTabs({ ariaLabel, tabs, children, className, defaultTabId }:
             id={panelId}
             role="tabpanel"
             aria-labelledby={tabId}
+            tabIndex={active ? 0 : undefined}
             hidden={!active}
             className="p-4 sm:p-5"
           >

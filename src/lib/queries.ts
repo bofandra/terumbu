@@ -72,7 +72,8 @@ import {
   correctChoiceIdsFromAssessmentMetadata,
   selectedChoiceIdsFromAssessmentMetadata
 } from "@/lib/academy-assessment";
-import { campaignBudgetUtilization, campaignContentCompleteness } from "@/lib/campaign-content";
+import { adminListOffset, adminPaginationMeta, parseAdminListQuery } from "@/lib/admin-list-query";
+import { campaignBudgetUtilization, campaignContentCompleteness, impactSiteVerificationStatuses } from "@/lib/campaign-content";
 import { corporateReportArtifactSourceUrl } from "@/lib/corporate-report-artifact-links";
 import {
   getMetadataNumber,
@@ -6556,6 +6557,225 @@ export async function getAdminOperationsData() {
     },
     users: userRows,
     auditLogs: auditRows
+  };
+}
+
+export type AdminImpactSiteFilters = {
+  q?: string | string[];
+  page?: string | string[];
+  pageSize?: string | string[];
+  sort?: string | string[];
+  dir?: string | string[];
+  verification?: string | string[];
+  assignment?: string | string[];
+  site?: string | string[];
+};
+
+const adminImpactSiteAssignments = ["all", "assigned", "unassigned"] as const;
+const adminImpactSiteSorts = ["name", "region", "ecosystemType", "campaign", "createdAt"] as const;
+
+type AdminImpactSiteDbRow = {
+  id: string;
+  campaignId: string | null;
+  name: string;
+  ecosystemType: string;
+  region: string;
+  latitude: string | number;
+  longitude: string | number;
+  createdAt: Date;
+  campaignTitle: string | null;
+  campaignSlug: string | null;
+  metadata: unknown;
+};
+
+function firstAdminFilterValue(value: string | string[] | undefined) {
+  return Array.isArray(value) ? value[0] : value;
+}
+
+function cleanAdminImpactSiteFilter(value: string | string[] | undefined, maxLength = 120) {
+  return String(firstAdminFilterValue(value) ?? "")
+    .trim()
+    .slice(0, maxLength);
+}
+
+function adminImpactSiteVerificationFilter(value: string | string[] | undefined) {
+  const candidate = cleanAdminImpactSiteFilter(value, 40);
+
+  return impactSiteVerificationStatuses.includes(candidate as (typeof impactSiteVerificationStatuses)[number]) ? candidate : "all";
+}
+
+function adminImpactSiteAssignmentFilter(value: string | string[] | undefined) {
+  const candidate = cleanAdminImpactSiteFilter(value, 40);
+
+  return adminImpactSiteAssignments.includes(candidate as (typeof adminImpactSiteAssignments)[number])
+    ? (candidate as (typeof adminImpactSiteAssignments)[number])
+    : "all";
+}
+
+function adminImpactSiteIdFilter(value: string | string[] | undefined) {
+  const candidate = cleanAdminImpactSiteFilter(value, 80);
+
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(candidate)
+    ? candidate
+    : null;
+}
+
+function adminImpactSiteSelect() {
+  return {
+    id: impactSites.id,
+    campaignId: impactSites.campaignId,
+    name: impactSites.name,
+    ecosystemType: impactSites.ecosystemType,
+    region: impactSites.region,
+    latitude: impactSites.latitude,
+    longitude: impactSites.longitude,
+    createdAt: impactSites.createdAt,
+    campaignTitle: campaigns.title,
+    campaignSlug: campaigns.slug,
+    metadata: impactSites.metadata
+  };
+}
+
+function toAdminImpactSiteListRow(site: AdminImpactSiteDbRow) {
+  return {
+    ...site,
+    latitude: toNumber(site.latitude),
+    longitude: toNumber(site.longitude),
+    progress: getMetadataNumber(site.metadata, "progress"),
+    evidenceCount: getMetadataNumber(site.metadata, "evidenceCount"),
+    latestSurvey: getMetadataString(site.metadata, "latestSurvey"),
+    verification: getMetadataString(site.metadata, "verification") ?? "basic"
+  };
+}
+
+function adminImpactSiteWhere(filters: { q: string; verification: string; assignment: "all" | "assigned" | "unassigned" }) {
+  const conditions = [];
+
+  if (filters.q) {
+    const pattern = `%${filters.q.toLowerCase()}%`;
+
+    conditions.push(
+      or(
+        sql`lower(${impactSites.name}) like ${pattern}`,
+        sql`lower(${impactSites.ecosystemType}) like ${pattern}`,
+        sql`lower(${impactSites.region}) like ${pattern}`,
+        sql`lower(coalesce(${campaigns.title}, '')) like ${pattern}`
+      )
+    );
+  }
+
+  if (filters.verification !== "all") {
+    conditions.push(sql`coalesce(${impactSites.metadata}->>'verification', 'basic') = ${filters.verification}`);
+  }
+
+  if (filters.assignment === "assigned") {
+    conditions.push(sql`${impactSites.campaignId} is not null`);
+  } else if (filters.assignment === "unassigned") {
+    conditions.push(sql`${impactSites.campaignId} is null`);
+  }
+
+  return conditions.length > 0 ? and(...conditions) : sql`true`;
+}
+
+function adminImpactSiteOrderBy(sort: string | undefined, dir: "asc" | "desc") {
+  const sortColumn =
+    sort === "region"
+      ? impactSites.region
+      : sort === "ecosystemType"
+        ? impactSites.ecosystemType
+        : sort === "campaign"
+          ? campaigns.title
+          : sort === "createdAt"
+            ? impactSites.createdAt
+            : impactSites.name;
+
+  return dir === "desc" ? desc(sortColumn) : asc(sortColumn);
+}
+
+export async function getAdminImpactSitesPage(params: AdminImpactSiteFilters = {}) {
+  const query = parseAdminListQuery(params, {
+    defaultSort: "name",
+    allowedSorts: adminImpactSiteSorts,
+    defaultPageSize: 25,
+    maxPageSize: 100
+  });
+  const filters = {
+    q: query.q,
+    verification: adminImpactSiteVerificationFilter(params.verification),
+    assignment: adminImpactSiteAssignmentFilter(params.assignment)
+  };
+  const whereClause = adminImpactSiteWhere(filters);
+  const progressValue = sql<number>`case when coalesce(${impactSites.metadata}->>'progress', '') ~ '^[0-9]+(\\.[0-9]+)?$' then (${impactSites.metadata}->>'progress')::numeric else 0 end`;
+  const evidenceValue = sql<number>`case when coalesce(${impactSites.metadata}->>'evidenceCount', '') ~ '^[0-9]+$' then (${impactSites.metadata}->>'evidenceCount')::integer else 0 end`;
+
+  const [totalRows, summaryRows, campaignOptionRows] = await Promise.all([
+    db
+      .select({ total: sql<number>`count(*)::int` })
+      .from(impactSites)
+      .leftJoin(campaigns, eq(impactSites.campaignId, campaigns.id))
+      .where(whereClause),
+    db
+      .select({
+        totalEvidence: sql<number>`coalesce(sum(${evidenceValue}), 0)::int`,
+        averageProgress: sql<number>`coalesce(round(avg(${progressValue})), 0)::int`
+      })
+      .from(impactSites)
+      .leftJoin(campaigns, eq(impactSites.campaignId, campaigns.id))
+      .where(whereClause),
+    db
+      .select({
+        id: campaigns.id,
+        title: campaigns.title,
+        slug: campaigns.slug,
+        status: campaigns.status,
+        organizationName: organizations.name
+      })
+      .from(campaigns)
+      .innerJoin(organizations, eq(campaigns.organizationId, organizations.id))
+      .orderBy(asc(campaigns.title))
+  ]);
+
+  const totalItems = Number(totalRows[0]?.total ?? 0);
+  const pagination = adminPaginationMeta(totalItems, query);
+  const selectedSiteId = adminImpactSiteIdFilter(params.site);
+
+  const [siteRows, selectedRows] = await Promise.all([
+    db
+      .select(adminImpactSiteSelect())
+      .from(impactSites)
+      .leftJoin(campaigns, eq(impactSites.campaignId, campaigns.id))
+      .where(whereClause)
+      .orderBy(adminImpactSiteOrderBy(query.sort, query.dir), asc(impactSites.name))
+      .limit(pagination.pageSize)
+      .offset(adminListOffset(query, totalItems)),
+    selectedSiteId
+      ? db
+          .select(adminImpactSiteSelect())
+          .from(impactSites)
+          .leftJoin(campaigns, eq(impactSites.campaignId, campaigns.id))
+          .where(eq(impactSites.id, selectedSiteId))
+          .limit(1)
+      : Promise.resolve([])
+  ]);
+
+  const selectedSite = selectedRows[0] ? toAdminImpactSiteListRow(selectedRows[0]) : null;
+
+  return {
+    campaignOptions: campaignOptionRows,
+    filters: {
+      ...filters,
+      sort: query.sort ?? "name",
+      dir: query.dir,
+      selectedSiteId
+    },
+    impactSites: siteRows.map(toAdminImpactSiteListRow),
+    pagination,
+    selectedSite,
+    summary: {
+      sites: totalItems,
+      averageProgress: Number(summaryRows[0]?.averageProgress ?? 0),
+      totalEvidence: Number(summaryRows[0]?.totalEvidence ?? 0)
+    }
   };
 }
 

@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import { AdminPageHeader, adminInputClassName, adminPanelClassName, adminSelectClassName } from "@/components/admin-ui";
 import { Button } from "@/components/ui/button";
 import { requireRole } from "@/lib/auth";
+import { impactSiteVerificationStatuses } from "@/lib/campaign-content";
 import { createOrganizationAction } from "@/lib/portal-actions";
 
 export const metadata = {
@@ -12,7 +13,6 @@ export const metadata = {
 
 export const dynamic = "force-dynamic";
 
-const verificationLevels = ["basic", "document", "field"];
 const organizationTypes = ["ngo", "community_cooperative", "community_group", "corporate_partner", "government", "research"];
 
 const errorMessages: Record<string, string> = {
@@ -92,7 +92,7 @@ export default async function AdminPartnerNewPage({ searchParams }: AdminPartner
             </Field>
             <Field label="Verification level">
               <select name="verification" defaultValue="basic" className={adminSelectClassName}>
-                {verificationLevels.map((verification) => (
+                {impactSiteVerificationStatuses.map((verification) => (
                   <option key={verification} value={verification}>
                     {verification}
                   </option>

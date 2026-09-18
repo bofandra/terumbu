@@ -21,7 +21,14 @@ import { CampaignContentDepthEditor } from "@/components/campaign-content-depth-
 import { Button } from "@/components/ui/button";
 import { MetricValue } from "@/components/ui/metric-value";
 import { ProgressMeter } from "@/components/ui/progress-meter";
-import { campaignCategories, campaignCurrencies, campaignImpactUnits, partnerCampaignStatuses } from "@/lib/campaign-content";
+import {
+  campaignCategories,
+  campaignCurrencies,
+  campaignImpactUnits,
+  impactSiteEcosystemTypes,
+  impactSiteVerificationStatuses,
+  partnerCampaignStatuses
+} from "@/lib/campaign-content";
 import {
   createCampaignActivityAction,
   createPartnerImpactSiteAction,
@@ -51,9 +58,9 @@ type CampaignTimelinePhase = PartnerPortalData["campaignTimelinePhases"][number]
 type OrganizationTeamMember = PartnerPortalData["organizationTeamMembers"][number];
 
 export const inputClassName =
-  "min-h-11 w-full min-w-0 rounded-lg border border-ocean-900/14 bg-white px-3 text-sm font-semibold text-ocean-900 outline-none transition placeholder:text-ocean-900/36 focus:border-kelp-500";
+  "min-h-11 w-full min-w-0 rounded-lg border border-ocean-900/14 bg-white px-3 text-sm font-semibold text-ocean-900 outline-none transition placeholder:text-ocean-900/36 focus:border-kelp-500 focus-visible:ring-2 focus-visible:ring-kelp-500 focus-visible:ring-offset-2";
 export const textareaClassName =
-  "min-h-28 w-full min-w-0 rounded-lg border border-ocean-900/14 bg-white px-3 py-3 text-sm font-semibold text-ocean-900 outline-none transition placeholder:text-ocean-900/36 focus:border-kelp-500";
+  "min-h-28 w-full min-w-0 rounded-lg border border-ocean-900/14 bg-white px-3 py-3 text-sm font-semibold text-ocean-900 outline-none transition placeholder:text-ocean-900/36 focus:border-kelp-500 focus-visible:ring-2 focus-visible:ring-kelp-500 focus-visible:ring-offset-2";
 
 const badgeClasses: Record<string, string> = {
   archived: "bg-ocean-900/8 text-ocean-900/62",
@@ -132,6 +139,12 @@ function statusOptionsForCampaign(campaign?: Campaign) {
   return campaign && !partnerCampaignStatuses.includes(campaign.status as (typeof partnerCampaignStatuses)[number])
     ? [campaign.status, ...partnerCampaignStatuses]
     : partnerCampaignStatuses;
+}
+
+function impactSiteEcosystemOptionsForSite(site?: CampaignImpactSite) {
+  return site?.type && !impactSiteEcosystemTypes.includes(site.type as (typeof impactSiteEcosystemTypes)[number])
+    ? [site.type, ...impactSiteEcosystemTypes]
+    : impactSiteEcosystemTypes;
 }
 
 function initialsForName(value: string) {
@@ -345,7 +358,8 @@ export function CampaignFields({
           <div className="mt-4 grid gap-4">
             <div className="grid gap-3 md:grid-cols-2">
               <Field label="Category">
-                <select name="category" defaultValue="Conservation" className={inputClassName}>
+                <select name="category" defaultValue="" className={inputClassName}>
+                  <option value="">Auto from linked site</option>
                   {campaignCategories.map((category) => (
                     <option key={category} value={category}>
                       {category}
@@ -362,7 +376,8 @@ export function CampaignFields({
                 <input name="impactTarget" type="number" min="1" step="1" placeholder="1" className={inputClassName} />
               </Field>
               <Field label="Impact unit">
-                <select name="impactUnit" defaultValue="project milestones" className={inputClassName}>
+                <select name="impactUnit" defaultValue="" className={inputClassName}>
+                  <option value="">Auto from category</option>
                   {campaignImpactUnits.map((unit) => (
                     <option key={unit} value={unit}>
                       {unit}
@@ -377,6 +392,41 @@ export function CampaignFields({
             <Field label="Story">
               <textarea name="story" placeholder="Long-form public campaign story." className={textareaClassName} />
             </Field>
+            <div className="rounded-lg border border-ocean-900/10 bg-white p-4">
+              <div className="grid gap-3 md:grid-cols-2">
+                <Field label="Impact site">
+                  <select name="impactLinkMode" defaultValue="none" className={inputClassName}>
+                    <option value="none">No impact site yet</option>
+                    <option value="new">Create linked impact site</option>
+                  </select>
+                </Field>
+                <Field label="New site ecosystem">
+                  <select name="impactSiteEcosystemType" defaultValue="Coral" className={inputClassName}>
+                    {impactSiteEcosystemTypes.map((type) => (
+                      <option key={type} value={type}>
+                        {type}
+                      </option>
+                    ))}
+                  </select>
+                </Field>
+              </div>
+              <div className="mt-3 grid gap-3 md:grid-cols-2">
+                <Field label="New site name">
+                  <input name="impactSiteName" placeholder="Raja Ampat Reef Garden" className={inputClassName} />
+                </Field>
+                <Field label="New site region">
+                  <input name="impactSiteRegion" placeholder="Southwest Papua" className={inputClassName} />
+                </Field>
+              </div>
+              <div className="mt-3 grid gap-3 md:grid-cols-2">
+                <Field label="Latitude">
+                  <input name="impactSiteLatitude" type="number" min="-90" max="90" step="0.000001" placeholder="-0.234900" className={inputClassName} />
+                </Field>
+                <Field label="Longitude">
+                  <input name="impactSiteLongitude" type="number" min="-180" max="180" step="0.000001" placeholder="130.516600" className={inputClassName} />
+                </Field>
+              </div>
+            </div>
             <Field label="Upload image" help={partnerImageUploadHelp}>
               <input name="imageFile" type="file" accept="image/png,image/jpeg,image/webp,image/gif" className={inputClassName} />
             </Field>
@@ -560,7 +610,7 @@ function ImpactSiteCampaignSelect({
 function ImpactSiteVerificationSelect({ defaultValue = "basic", disabled }: { defaultValue?: string | null; disabled?: boolean }) {
   return (
     <select name="verification" defaultValue={defaultValue ?? "basic"} className={inputClassName} disabled={disabled}>
-      {["basic", "document", "field"].map((status) => (
+      {impactSiteVerificationStatuses.map((status) => (
         <option key={status} value={status}>
           {labelize(status)}
         </option>
@@ -578,6 +628,8 @@ function ImpactSiteFields({
   site?: CampaignImpactSite;
   disabled?: boolean;
 }) {
+  const ecosystemOptions = impactSiteEcosystemOptionsForSite(site);
+
   return (
     <>
       <div className="grid gap-3 md:grid-cols-2">
@@ -593,29 +645,40 @@ function ImpactSiteFields({
           <input name="name" defaultValue={site?.name} placeholder="Raja Ampat Reef Garden" className={inputClassName} disabled={disabled} required />
         </Field>
         <Field label="Ecosystem type" required>
-          <input name="ecosystemType" defaultValue={site?.type} placeholder="Coral" className={inputClassName} disabled={disabled} required />
+          <select name="ecosystemType" defaultValue={site?.type ?? "Coral"} className={inputClassName} disabled={disabled} required>
+            {ecosystemOptions.map((type) => (
+              <option key={type} value={type}>
+                {type}
+              </option>
+            ))}
+          </select>
         </Field>
         <Field label="Region" required>
           <input name="region" defaultValue={site?.region} placeholder="Southwest Papua" className={inputClassName} disabled={disabled} required />
         </Field>
       </div>
-      <div className="grid gap-3 md:grid-cols-5">
+      <div className="grid gap-3 md:grid-cols-2">
         <Field label="Latitude" required>
           <input name="latitude" type="number" min="-90" max="90" step="0.000001" defaultValue={site?.latitude} placeholder="-0.234900" className={inputClassName} disabled={disabled} required />
         </Field>
         <Field label="Longitude" required>
           <input name="longitude" type="number" min="-180" max="180" step="0.000001" defaultValue={site?.longitude} placeholder="130.516600" className={inputClassName} disabled={disabled} required />
         </Field>
-        <Field label="Progress">
-          <input name="progress" type="number" min="0" max="100" step="1" defaultValue={site?.progress ?? 0} className={inputClassName} disabled={disabled} />
-        </Field>
-        <Field label="Evidence records">
-          <input name="evidenceCount" type="number" min="0" step="1" defaultValue={site?.evidenceCount ?? 0} className={inputClassName} disabled={disabled} />
-        </Field>
-        <Field label="Latest survey">
-          <input name="latestSurvey" type="date" defaultValue={site?.latestSurvey ?? ""} className={inputClassName} disabled={disabled} />
-        </Field>
       </div>
+      <details className="rounded-lg border border-ocean-900/10 bg-sand-50 p-4" open={Boolean(site)}>
+        <summary className="cursor-pointer text-sm font-bold text-ocean-900">Advanced tracking fields</summary>
+        <div className="mt-4 grid gap-3 md:grid-cols-3">
+          <Field label="Progress">
+            <input name="progress" type="number" min="0" max="100" step="1" defaultValue={site?.progress ?? 0} className={inputClassName} disabled={disabled} />
+          </Field>
+          <Field label="Evidence records">
+            <input name="evidenceCount" type="number" min="0" step="1" defaultValue={site?.evidenceCount ?? 0} className={inputClassName} disabled={disabled} />
+          </Field>
+          <Field label="Latest survey">
+            <input name="latestSurvey" type="date" defaultValue={site?.latestSurvey ?? ""} className={inputClassName} disabled={disabled} />
+          </Field>
+        </div>
+      </details>
     </>
   );
 }
@@ -983,7 +1046,7 @@ export function CampaignList({
       <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
         <div>
           <h2 className="text-xl font-bold tracking-normal text-ocean-900">Campaigns</h2>
-          <p className="mt-1 text-sm font-semibold text-ocean-900/58">Edit campaign records and images.</p>
+          <p className="mt-1 text-sm font-semibold text-ocean-900/58">Edit campaign essentials, public details, and content depth.</p>
         </div>
         {canCreateCampaign ? (
           <Link href="/partner/campaigns/new" className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border border-ocean-900/10 px-3 text-sm font-bold text-ocean-900 hover:border-coral-500 hover:text-coral-700">

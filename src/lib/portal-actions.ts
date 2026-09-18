@@ -38,6 +38,7 @@ import {
 import {
   campaignCategoryFromEcosystemType,
   campaignStatuses,
+  impactSiteVerificationStatuses,
   normalizeCampaignBudgetCategory,
   normalizeCampaignCategory,
   normalizeCampaignCurrency,
@@ -45,6 +46,8 @@ import {
   normalizeCampaignMediaType,
   normalizeCampaignStatus,
   normalizeCampaignTimelinePhaseStatus,
+  normalizeImpactSiteEcosystemType,
+  normalizeImpactSiteVerificationStatus,
   normalizeOrganizationTeamRole,
   normalizePartnerCampaignStatus,
   partnerCampaignStatuses
@@ -93,7 +96,6 @@ function activityCode() {
 }
 
 const adminCampaignImpactLinkModes = ["new", "existing", "none"] as const;
-const verificationStatuses = ["basic", "document", "field"] as const;
 const organizationUserStatuses = ["active", "inactive"] as const;
 const expeditionDepartureStatuses = ["open", "waitlist", "full", "private_group", "cancelled"] as const;
 const activityUses = ["public_update", "evidence", "update_and_evidence"] as const;
@@ -128,9 +130,7 @@ function metadataObject(value: unknown) {
 }
 
 function verificationFromForm(value: FormDataEntryValue | null) {
-  const verification = String(value ?? "basic");
-
-  return verificationStatuses.includes(verification as (typeof verificationStatuses)[number]) ? (verification as (typeof verificationStatuses)[number]) : "basic";
+  return normalizeImpactSiteVerificationStatus(value);
 }
 
 function organizationUserRoleFromForm(value: FormDataEntryValue | null) {
@@ -324,7 +324,7 @@ function impactSiteMetadataFromForm(formData: FormData) {
 function impactSiteFormValues(formData: FormData, campaignRequired: boolean, onError: (code: string) => never) {
   const campaignId = campaignRequired ? formText(formData, "campaignId") : nullableText(formData, "campaignId");
   const name = formText(formData, "name");
-  const ecosystemType = formText(formData, "ecosystemType");
+  const ecosystemType = normalizeImpactSiteEcosystemType(formData.get("ecosystemType"));
   const region = formText(formData, "region");
   const latitude = parseCoordinate(formData.get("latitude"), -90, 90);
   const longitude = parseCoordinate(formData.get("longitude"), -180, 180);
@@ -366,7 +366,7 @@ function initialAdminCampaignImpactLinkFromForm(formData: FormData):
           progress: number;
           evidenceCount: number;
           latestSurvey: string | null;
-          verification: (typeof verificationStatuses)[number];
+          verification: (typeof impactSiteVerificationStatuses)[number];
         };
       };
     }
@@ -397,7 +397,7 @@ function initialAdminCampaignImpactLinkFromForm(formData: FormData):
   }
 
   const name = formText(formData, "impactSiteName");
-  const ecosystemType = formText(formData, "impactSiteEcosystemType");
+  const ecosystemType = normalizeImpactSiteEcosystemType(formData.get("impactSiteEcosystemType"));
   const region = formText(formData, "impactSiteRegion");
   const latitude = parseCoordinate(formData.get("impactSiteLatitude"), -90, 90);
   const longitude = parseCoordinate(formData.get("impactSiteLongitude"), -180, 180);
@@ -406,7 +406,7 @@ function initialAdminCampaignImpactLinkFromForm(formData: FormData):
   const latestSurvey = nullableText(formData, "impactSiteLatestSurvey");
   const verification = verificationFromForm(formData.get("impactSiteVerification"));
 
-  if (!name || !ecosystemType || !region || !latitude || !longitude || progress === null || evidenceCount === null) {
+  if (!name || !region || !latitude || !longitude || progress === null || evidenceCount === null) {
     redirectAdminCampaignError("impact-site-invalid", formData);
   }
 
@@ -571,7 +571,9 @@ function adminReturnPath(formData: FormData | undefined, fallbackPath: string, o
 }
 
 function redirectAdminForm(path: string, key: "error" | "saved", code: string): never {
-  redirect(`${path}?${key}=${encodeURIComponent(code)}`);
+  const separator = path.includes("?") ? "&" : "?";
+
+  redirect(`${path}${separator}${key}=${encodeURIComponent(code)}`);
 }
 
 function redirectAdminPartnerError(code: string, formData?: FormData): never {
@@ -1801,11 +1803,7 @@ export async function createPartnerCampaignAction(formData: FormData) {
   const status = isAdmin ? campaignStatusFromForm(formData.get("status")) : partnerCampaignStatusFromForm(formData.get("status"));
   const imageUrl = await imageFromForm(formData, "imageFile", "/partner/campaigns/new");
   const endsAt = parseOptionalDate(formData.get("endsAt"));
-  const category = campaignCategoryValue(formText(formData, "category"));
-  const region = campaignRegionValue(formText(formData, "region"));
-  const impactTarget = campaignImpactTargetValue(formData.get("impactTarget"));
-  const impactUnit = campaignImpactUnitValue(formText(formData, "impactUnit"), category);
-  const impactUnitCost = derivedImpactUnitCost(goalAmount, impactTarget, parseOptionalAmount(formData.get("impactUnitCost")));
+  const impactLinkMode = formText(formData, "impactLinkMode") === "new" ? "new" : "none";
 
   if (!organizationId || !title || !summary || !goalAmount) {
     redirectPartnerError(formData, "/partner/campaigns/new", "campaign");
@@ -1821,35 +1819,97 @@ export async function createPartnerCampaignAction(formData: FormData) {
 
   const now = new Date();
   const slug = `${slugifyTitle(title)}-${randomBytes(3).toString("hex")}`;
-  const [campaign] = await db
-    .insert(campaigns)
-    .values({
-      organizationId,
-      title,
-      slug,
-      summary,
-      story: story || null,
-      category,
-      region,
-      imageUrl,
-      goalAmount,
-      currency,
-      impactUnit,
-      impactTarget,
-      impactUnitCost,
-      status,
-      publishedAt: status === "published" ? now : null,
-      endsAt,
-      updatedAt: now
-    })
-    .returning({ id: campaigns.id });
+  const impactSiteValues =
+    impactLinkMode === "new"
+      ? {
+          name: formText(formData, "impactSiteName"),
+          ecosystemType: normalizeImpactSiteEcosystemType(formData.get("impactSiteEcosystemType")),
+          region: formText(formData, "impactSiteRegion"),
+          latitude: parseCoordinate(formData.get("impactSiteLatitude"), -90, 90),
+          longitude: parseCoordinate(formData.get("impactSiteLongitude"), -180, 180),
+          metadata: {
+            progress: parsePercent(formData.get("impactSiteProgress")) ?? 0,
+            evidenceCount: parseOptionalCount(formData.get("impactSiteEvidenceCount")) ?? 0,
+            latestSurvey: nullableText(formData, "impactSiteLatestSurvey"),
+            verification: verificationFromForm(formData.get("impactSiteVerification"))
+          }
+        }
+      : null;
 
-  await db.insert(adminAuditLogs).values({
-    actorUserId: user.id,
-    action: "campaign.created",
-    entityType: "campaign",
-    entityId: campaign.id,
-    metadata: { source: "partner_portal", status }
+  if (impactSiteValues && (!impactSiteValues.name || !impactSiteValues.region || !impactSiteValues.latitude || !impactSiteValues.longitude)) {
+    redirectPartnerError(formData, "/partner/campaigns/new", "impact-site-invalid");
+  }
+
+  const linkedImpactSiteDefaults = impactSiteValues
+    ? {
+        region: impactSiteValues.region,
+        ecosystemType: impactSiteValues.ecosystemType
+      }
+    : null;
+  const category = campaignCategoryValue(formText(formData, "category"), linkedImpactSiteDefaults);
+  const region = campaignRegionValue(formText(formData, "region"), linkedImpactSiteDefaults);
+  const impactTarget = campaignImpactTargetValue(formData.get("impactTarget"));
+  const impactUnit = campaignImpactUnitValue(formText(formData, "impactUnit"), category);
+  const impactUnitCost = derivedImpactUnitCost(goalAmount, impactTarget, parseOptionalAmount(formData.get("impactUnitCost")));
+
+  await db.transaction(async (tx) => {
+    const [campaign] = await tx
+      .insert(campaigns)
+      .values({
+        organizationId,
+        title,
+        slug,
+        summary,
+        story: story || null,
+        category,
+        region,
+        imageUrl,
+        goalAmount,
+        currency,
+        impactUnit,
+        impactTarget,
+        impactUnitCost,
+        status,
+        publishedAt: status === "published" ? now : null,
+        endsAt,
+        updatedAt: now
+      })
+      .returning({ id: campaigns.id });
+
+    let linkedImpactSiteId: string | null = null;
+
+    if (impactSiteValues) {
+      const [site] = await tx
+        .insert(impactSites)
+        .values({
+          campaignId: campaign.id,
+          name: impactSiteValues.name,
+          ecosystemType: impactSiteValues.ecosystemType,
+          region: impactSiteValues.region,
+          latitude: impactSiteValues.latitude!,
+          longitude: impactSiteValues.longitude!,
+          metadata: impactSiteValues.metadata
+        })
+        .returning({ id: impactSites.id });
+
+      linkedImpactSiteId = site.id;
+
+      await tx.insert(adminAuditLogs).values({
+        actorUserId: user.id,
+        action: "impact_site.created",
+        entityType: "impact_site",
+        entityId: site.id,
+        metadata: { source: "partner_campaign_create", campaignId: campaign.id, name: impactSiteValues.name }
+      });
+    }
+
+    await tx.insert(adminAuditLogs).values({
+      actorUserId: user.id,
+      action: "campaign.created",
+      entityType: "campaign",
+      entityId: campaign.id,
+      metadata: { source: "partner_portal", status, impactLinkMode, impactSiteId: linkedImpactSiteId }
+    });
   });
 
   redirectPartnerSaved(formData, "/partner/campaigns/new", "campaign-created");
@@ -2214,7 +2274,10 @@ export async function upsertCampaignBudgetLineItemAction(formData: FormData) {
         .limit(1)
     : [];
   const campaignId = existingItem?.campaignId ?? campaignIdFromForm;
-  const category = categoryInput || existingItem?.category || normalizeCampaignBudgetCategory(null);
+  const category =
+    existingItem && categoryInput === existingItem.category
+      ? existingItem.category
+      : normalizeCampaignBudgetCategory(categoryInput || existingItem?.category);
 
   if (!campaignId || !category || !amount || spentAmount === null) {
     redirectCampaignContentError(formData, fallbackPath, "campaign-content-invalid");
@@ -2442,7 +2505,10 @@ export async function upsertOrganizationTeamMemberAction(formData: FormData) {
         .limit(1)
     : [];
   const organizationId = existingItem?.organizationId ?? organizationIdFromForm;
-  const role = roleInput || existingItem?.role || normalizeOrganizationTeamRole(null);
+  const role =
+    existingItem && roleInput === existingItem.role
+      ? existingItem.role
+      : normalizeOrganizationTeamRole(roleInput || existingItem?.role);
 
   if (!organizationId || !name || !role) {
     redirectCampaignContentError(formData, fallbackPath, "campaign-content-invalid");
@@ -3731,14 +3797,14 @@ export async function updateOrganizationVerificationAction(formData: FormData) {
   const organizationId = String(formData.get("organizationId") ?? "");
   const verification = String(formData.get("verification") ?? "");
 
-  if (!organizationId || !verificationStatuses.includes(verification as (typeof verificationStatuses)[number])) {
+  if (!organizationId || !impactSiteVerificationStatuses.includes(verification as (typeof impactSiteVerificationStatuses)[number])) {
     redirect("/admin/partners?error=partner");
   }
 
   await db
     .update(organizations)
     .set({
-      verification: verification as (typeof verificationStatuses)[number],
+      verification: verification as (typeof impactSiteVerificationStatuses)[number],
       updatedAt: new Date()
     })
     .where(eq(organizations.id, organizationId));

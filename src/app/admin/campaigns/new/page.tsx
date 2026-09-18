@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 
 import { AdminPageHeader, adminInputClassName, adminPanelClassName, adminSelectClassName, adminTextareaClassName } from "@/components/admin-ui";
 import { Button } from "@/components/ui/button";
-import { campaignCurrencies } from "@/lib/campaign-content";
+import { campaignCurrencies, impactSiteEcosystemTypes } from "@/lib/campaign-content";
 import { requireRole } from "@/lib/auth";
 import { createAdminCampaignAction } from "@/lib/portal-actions";
 import { getAdminPortalData, getAdminUnassignedImpactSiteOptions } from "@/lib/queries";
@@ -145,7 +145,7 @@ export default async function AdminCampaignNewPage({ searchParams }: AdminCampai
                 </Field>
                 <Field label="Ecosystem type">
                   <select name="impactSiteEcosystemType" defaultValue="Coral" className={adminSelectClassName}>
-                    {["Coral", "Mangrove", "Seagrass", "Marine", "Community"].map((type) => (
+                    {impactSiteEcosystemTypes.map((type) => (
                       <option key={type} value={type}>
                         {type}
                       </option>

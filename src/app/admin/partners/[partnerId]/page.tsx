@@ -13,6 +13,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { FormTabs } from "@/components/ui/form-tabs";
 import { requireRole } from "@/lib/auth";
+import { impactSiteVerificationStatuses } from "@/lib/campaign-content";
 import {
   addOrganizationUserAction,
   createOrganizationUserAction,
@@ -29,7 +30,6 @@ export const metadata = {
 
 export const dynamic = "force-dynamic";
 
-const verificationLevels = ["basic", "document", "field"];
 const organizationTypes = ["ngo", "community_cooperative", "community_group", "corporate_partner", "government", "research"];
 const partnerUserRoles = ["owner", "manager", "contributor", "viewer"];
 const partnerUserStatuses = ["active", "inactive"];
@@ -181,7 +181,7 @@ export default async function AdminPartnerDetailPage({ params, searchParams }: A
             </Field>
             <Field label="Verification">
               <select name="verification" defaultValue={partner.verification} className={adminSelectClassName}>
-                {verificationLevels.map((verification) => (
+                {impactSiteVerificationStatuses.map((verification) => (
                   <option key={verification} value={verification}>
                     {verification}
                   </option>

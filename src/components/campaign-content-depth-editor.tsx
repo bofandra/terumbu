@@ -137,21 +137,23 @@ function DeleteButton({
 function MediaForm({
   campaign,
   item,
-  returnTo,
-  sortOrder
+  returnTo
 }: {
   campaign: CampaignContentCampaign;
   item?: CampaignMediaItem;
   returnTo: string;
-  sortOrder?: number;
 }) {
   return (
     <form action={upsertCampaignMediaItemAction} encType="multipart/form-data" className="grid gap-3 rounded-lg border border-ocean-900/10 bg-sand-50 p-4">
       <input type="hidden" name="returnTo" value={returnTo} />
       <input type="hidden" name="campaignId" value={campaign.id} />
       <input type="hidden" name="mediaType" value={item?.mediaType ?? "image"} />
-      <input type="hidden" name="sortOrder" value={item?.sortOrder ?? sortOrder ?? 0} />
-      {item ? <input type="hidden" name="mediaItemId" value={item.id} /> : null}
+      {item ? (
+        <>
+          <input type="hidden" name="mediaItemId" value={item.id} />
+          <input type="hidden" name="sortOrder" value={item.sortOrder} />
+        </>
+      ) : null}
       <div className="grid gap-3 md:grid-cols-2">
         <Field label="Title">
           <input name="title" defaultValue={item?.title} placeholder="Gallery title" className={inputClassName} required />
@@ -190,20 +192,22 @@ function MediaForm({
 function BudgetForm({
   campaign,
   item,
-  returnTo,
-  sortOrder
+  returnTo
 }: {
   campaign: CampaignContentCampaign;
   item?: CampaignBudgetLineItem;
   returnTo: string;
-  sortOrder?: number;
 }) {
   return (
     <form action={upsertCampaignBudgetLineItemAction} className="grid gap-3 rounded-lg border border-ocean-900/10 bg-sand-50 p-4">
       <input type="hidden" name="returnTo" value={returnTo} />
       <input type="hidden" name="campaignId" value={campaign.id} />
-      <input type="hidden" name="sortOrder" value={item?.sortOrder ?? sortOrder ?? 0} />
-      {item ? <input type="hidden" name="budgetLineItemId" value={item.id} /> : null}
+      {item ? (
+        <>
+          <input type="hidden" name="budgetLineItemId" value={item.id} />
+          <input type="hidden" name="sortOrder" value={item.sortOrder} />
+        </>
+      ) : null}
       <div className="grid gap-3 md:grid-cols-3">
         <Field label="Category">
           <select name="category" defaultValue={item?.category ?? "Restoration materials"} className={inputClassName} required>
@@ -235,20 +239,22 @@ function BudgetForm({
 function TimelineForm({
   campaign,
   item,
-  returnTo,
-  sortOrder
+  returnTo
 }: {
   campaign: CampaignContentCampaign;
   item?: CampaignTimelinePhase;
   returnTo: string;
-  sortOrder?: number;
 }) {
   return (
     <form action={upsertCampaignTimelinePhaseAction} className="grid gap-3 rounded-lg border border-ocean-900/10 bg-sand-50 p-4">
       <input type="hidden" name="returnTo" value={returnTo} />
       <input type="hidden" name="campaignId" value={campaign.id} />
-      <input type="hidden" name="sortOrder" value={item?.sortOrder ?? sortOrder ?? 0} />
-      {item ? <input type="hidden" name="timelinePhaseId" value={item.id} /> : null}
+      {item ? (
+        <>
+          <input type="hidden" name="timelinePhaseId" value={item.id} />
+          <input type="hidden" name="sortOrder" value={item.sortOrder} />
+        </>
+      ) : null}
       <div className="grid gap-3 md:grid-cols-4">
         <Field label="Title">
           <input name="title" defaultValue={item?.title} placeholder="Field restoration phase" className={inputClassName} required />
@@ -280,20 +286,22 @@ function TimelineForm({
 function TeamForm({
   campaign,
   item,
-  returnTo,
-  sortOrder
+  returnTo
 }: {
   campaign: CampaignContentCampaign;
   item?: OrganizationTeamMember;
   returnTo: string;
-  sortOrder?: number;
 }) {
   return (
     <form action={upsertOrganizationTeamMemberAction} encType="multipart/form-data" className="grid gap-3 rounded-lg border border-ocean-900/10 bg-sand-50 p-4">
       <input type="hidden" name="returnTo" value={returnTo} />
       <input type="hidden" name="organizationId" value={campaign.organizationId} />
-      <input type="hidden" name="sortOrder" value={item?.sortOrder ?? sortOrder ?? 0} />
-      {item ? <input type="hidden" name="teamMemberId" value={item.id} /> : null}
+      {item ? (
+        <>
+          <input type="hidden" name="teamMemberId" value={item.id} />
+          <input type="hidden" name="sortOrder" value={item.sortOrder} />
+        </>
+      ) : null}
       <div className="grid gap-3 md:grid-cols-[1fr_1fr_auto]">
         <Field label="Name">
           <input name="name" defaultValue={item?.name} className={inputClassName} required />
@@ -334,11 +342,6 @@ export function CampaignContentDepthEditor({
 }: CampaignContentDepthEditorProps) {
   const plannedBudget = budgetLineItems.reduce((total, item) => total + item.amount, 0);
   const spentBudget = budgetLineItems.reduce((total, item) => total + item.spentAmount, 0);
-  const nextMediaSortOrder = Math.max(-1, ...mediaItems.map((item) => item.sortOrder)) + 1;
-  const nextBudgetSortOrder = Math.max(-1, ...budgetLineItems.map((item) => item.sortOrder)) + 1;
-  const nextTimelineSortOrder = Math.max(-1, ...timelinePhases.map((item) => item.sortOrder)) + 1;
-  const nextTeamSortOrder = Math.max(-1, ...teamMembers.map((item) => item.sortOrder)) + 1;
-
   return (
     <section className="grid gap-4">
       <div className="rounded-lg border border-ocean-900/10 bg-white p-4 shadow-soft">
@@ -379,7 +382,7 @@ export function CampaignContentDepthEditor({
               </div>
             </details>
           ))}
-          {canManage ? <MediaForm campaign={campaign} returnTo={returnTo} sortOrder={nextMediaSortOrder} /> : null}
+          {canManage ? <MediaForm campaign={campaign} returnTo={returnTo} /> : null}
         </div>
 
         <div className="grid gap-3">
@@ -394,7 +397,7 @@ export function CampaignContentDepthEditor({
               </div>
             </details>
           ))}
-          {canManage ? <BudgetForm campaign={campaign} returnTo={returnTo} sortOrder={nextBudgetSortOrder} /> : null}
+          {canManage ? <BudgetForm campaign={campaign} returnTo={returnTo} /> : null}
         </div>
 
         <div className="grid gap-3">
@@ -409,7 +412,7 @@ export function CampaignContentDepthEditor({
               </div>
             </details>
           ))}
-          {canManage ? <TimelineForm campaign={campaign} returnTo={returnTo} sortOrder={nextTimelineSortOrder} /> : null}
+          {canManage ? <TimelineForm campaign={campaign} returnTo={returnTo} /> : null}
         </div>
 
         <div className="grid gap-3">
@@ -424,7 +427,7 @@ export function CampaignContentDepthEditor({
               </div>
             </details>
           ))}
-          {canManage ? <TeamForm campaign={campaign} returnTo={returnTo} sortOrder={nextTeamSortOrder} /> : null}
+          {canManage ? <TeamForm campaign={campaign} returnTo={returnTo} /> : null}
         </div>
       </FormTabs>
     </section>
