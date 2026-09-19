@@ -12,7 +12,7 @@ type Pagination = {
   hasNext: boolean;
 };
 
-function pageHref(pathname: string, params: Record<string, string | number | undefined>, page: number) {
+function pageHref(pathname: string, params: Record<string, string | number | undefined>, page: number, pageParam = "page") {
   const search = new URLSearchParams();
 
   for (const [key, value] of Object.entries(params)) {
@@ -21,7 +21,7 @@ function pageHref(pathname: string, params: Record<string, string | number | und
     }
   }
 
-  search.set("page", String(page));
+  search.set(pageParam, String(page));
 
   return `${pathname}?${search.toString()}`;
 }
@@ -53,12 +53,14 @@ export function AdminPagination({
   pathname,
   params,
   pagination,
-  className
+  className,
+  pageParam = "page"
 }: {
   pathname: string;
   params: Record<string, string | number | undefined>;
   pagination: Pagination;
   className?: string;
+  pageParam?: string;
 }) {
   const firstItem = pagination.totalItems === 0 ? 0 : (pagination.page - 1) * pagination.pageSize + 1;
   const lastItem = Math.min(pagination.totalItems, pagination.page * pagination.pageSize);
@@ -73,10 +75,10 @@ export function AdminPagination({
         {firstItem}-{lastItem} of {pagination.totalItems.toLocaleString("id-ID")} / Page {pagination.page} of {pagination.totalPages}
       </p>
       <div className="flex gap-2">
-        <PageLink href={pageHref(pathname, params, pagination.page - 1)} disabled={!pagination.hasPrevious}>
+        <PageLink href={pageHref(pathname, params, pagination.page - 1, pageParam)} disabled={!pagination.hasPrevious}>
           Previous
         </PageLink>
-        <PageLink href={pageHref(pathname, params, pagination.page + 1)} disabled={!pagination.hasNext}>
+        <PageLink href={pageHref(pathname, params, pagination.page + 1, pageParam)} disabled={!pagination.hasNext}>
           Next
         </PageLink>
       </div>

@@ -14,7 +14,9 @@ export function AdminListToolbar({
   createLabel,
   children,
   hiddenFields,
-  className
+  className,
+  searchName = "q",
+  pageName = "page"
 }: {
   action: string;
   searchValue?: string;
@@ -25,10 +27,12 @@ export function AdminListToolbar({
   children?: ReactNode;
   hiddenFields?: Record<string, string | number | undefined>;
   className?: string;
+  searchName?: string;
+  pageName?: string;
 }) {
   return (
     <form action={action} method="GET" className={cn("rounded-lg border border-ocean-900/10 bg-white p-3 shadow-soft", className)}>
-      <input type="hidden" name="page" value="1" />
+      <input type="hidden" name={pageName} value="1" />
       {Object.entries(hiddenFields ?? {}).map(([key, value]) =>
         value === undefined ? null : <input key={key} type="hidden" name={key} value={String(value)} />
       )}
@@ -36,7 +40,7 @@ export function AdminListToolbar({
         <label className="relative min-w-0">
           <span className="sr-only">{searchPlaceholder}</span>
           <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-ocean-900/44" aria-hidden="true" />
-          <input name="q" defaultValue={searchValue} placeholder={searchPlaceholder} className={cn(adminInputClassName, "pl-9")} />
+          <input name={searchName} defaultValue={searchValue} placeholder={searchPlaceholder} className={cn(adminInputClassName, "pl-9")} />
         </label>
         <div className="flex flex-wrap gap-2 md:justify-end">
           {children}

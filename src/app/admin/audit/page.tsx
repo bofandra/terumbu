@@ -1,10 +1,14 @@
-import { Filter, Search, ScrollText, UserRound } from "lucide-react";
+import Link from "next/link";
+import { ArrowUpDown, Eye, ScrollText, UserRound } from "lucide-react";
 
-import { AdminEmptyState, AdminPageHeader, adminInputClassName, adminPanelClassName, adminSelectClassName } from "@/components/admin-ui";
-import { Button } from "@/components/ui/button";
+import { AdminDataTable, type AdminDataTableColumn } from "@/components/admin/admin-data-table";
+import { AdminListToolbar } from "@/components/admin/admin-list-toolbar";
+import { AdminPagination } from "@/components/admin/admin-pagination";
+import { AdminEmptyState, AdminPageHeader, adminInputClassName, adminSelectClassName } from "@/components/admin-ui";
 import { MetricValue } from "@/components/ui/metric-value";
 import { requireRole } from "@/lib/auth";
-import { getAdminAuditData } from "@/lib/queries";
+import { getAdminAuditData, type AdminAuditFilters } from "@/lib/queries";
+import { cn } from "@/lib/utils";
 
 export const metadata = {
   title: "Admin Audit"
@@ -12,44 +16,154 @@ export const metadata = {
 
 export const dynamic = "force-dynamic";
 
+const pathname = "/admin/audit";
+
 type AdminAuditPageProps = {
-  searchParams?: Promise<{
-    action?: string;
-    actor?: string;
-    entityType?: string;
-    q?: string;
-  }>;
+  searchParams?: Promise<AdminAuditFilters>;
 };
+
+type AdminAuditData = Awaited<ReturnType<typeof getAdminAuditData>>;
+type AdminAuditRow = AdminAuditData["auditLogs"][number];
 
 function metadataPreview(value: unknown) {
   if (!value) {
-    return null;
+    return "—";
   }
 
-  const text = JSON.stringify(value);
+  try {
+    const text = JSON.stringify(value);
+    return text.length > 160 ? `${text.slice(0, 160)}…` : text;
+  } catch {
+    return "Metadata available";
+  }
+}
 
-  return text.length > 260 ? `${text.slice(0, 260)}...` : text;
+function auditHref(params: Record<string, string | number | undefined>) {
+  const search = new URLSearchParams();
+
+  for (const [key, value] of Object.entries(params)) {
+    if (value !== undefined && value !== "" && value !== "all") {
+      search.set(key, String(value));
+    }
+  }
+
+  const query = search.toString();
+  return query ? `${pathname}?${query}` : pathname;
+}
+
+function listParams(data: AdminAuditData) {
+  return {
+    q: data.filters.q || undefined,
+    action: data.filters.action === "all" ? undefined : data.filters.action,
+    entityType: data.filters.entityType === "all" ? undefined : data.filters.entityType,
+    actor: data.filters.actor === "all" ? undefined : data.filters.actor,
+    from: data.filters.from || undefined,
+    to: data.filters.to || undefined,
+    sort: data.filters.sort === "createdAt" ? undefined : data.filters.sort,
+    dir: data.filters.dir === "desc" ? undefined : data.filters.dir
+  };
+}
+
+function SortHeader({ label, sort, data }: { label: string; sort: string; data: AdminAuditData }) {
+  const active = data.filters.sort === sort;
+  const nextDir = active && data.filters.dir === "asc" ? "desc" : "asc";
+
+  return (
+    <Link
+      href={auditHref({ ...listParams(data), sort, dir: nextDir, page: 1 })}
+      className="inline-flex items-center gap-1 rounded-md text-ocean-900/70 transition hover:text-coral-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-kelp-500 focus-visible:ring-offset-2"
+    >
+      {label}
+      <ArrowUpDown className={cn("size-3.5", active ? "text-coral-700" : "text-ocean-900/38")} aria-hidden="true" />
+    </Link>
+  );
+}
+
+function actorLabel(row: AdminAuditRow) {
+  return row.actorDisplayName ?? row.actorName ?? row.actorEmail ?? "System";
 }
 
 export default async function AdminAuditPage({ searchParams }: AdminAuditPageProps) {
-  await requireRole(["admin"], "/admin/audit");
+  await requireRole(["admin"], pathname);
   const params = await searchParams;
   const data = await getAdminAuditData(params);
+  const baseParams = listParams(data);
+  const returnTo = auditHref({ ...baseParams, page: data.pagination.page });
+  const columns: AdminDataTableColumn<AdminAuditRow>[] = [
+    {
+      key: "time",
+      header: <SortHeader label="Time" sort="createdAt" data={data} />,
+      render: (row) => (
+        <div className="min-w-40">
+          <time dateTime={row.createdAt.toISOString()} className="font-bold text-ocean-900">
+            {row.createdAt.toLocaleDateString("id-ID", { day: "2-digit", month: "short", year: "numeric" })}
+          </time>
+          <p className="mt-1 text-xs font-semibold text-ocean-900/48">
+            {row.createdAt.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit", second: "2-digit" })}
+          </p>
+        </div>
+      )
+    },
+    {
+      key: "actor",
+      header: <SortHeader label="Actor" sort="actor" data={data} />,
+      render: (row) => (
+        <div className="min-w-44">
+          <p className={cn("font-bold", row.actorEmail ? "text-kelp-700" : "text-ocean-900/58")}>{actorLabel(row)}</p>
+          {row.actorEmail ? <p className="mt-1 text-xs font-semibold text-ocean-900/48">{row.actorEmail}</p> : <p className="mt-1 text-xs font-semibold text-ocean-900/42">Automated / system</p>}
+        </div>
+      )
+    },
+    {
+      key: "action",
+      header: <SortHeader label="Action" sort="action" data={data} />,
+      render: (row) => <span className="min-w-52 font-bold text-ocean-900">{row.action}</span>
+    },
+    {
+      key: "entity",
+      header: <SortHeader label="Entity" sort="entityType" data={data} />,
+      render: (row) => (
+        <div className="min-w-48">
+          <p className="font-bold text-ocean-900">{row.entityType}</p>
+          <p className="mt-1 break-all text-xs font-semibold text-ocean-900/48">{row.entityId ?? "No entity ID"}</p>
+        </div>
+      )
+    },
+    {
+      key: "metadata",
+      header: "Metadata",
+      render: (row) => <code className="block max-w-md break-words text-xs font-semibold leading-5 text-ocean-900/58">{metadataPreview(row.metadata)}</code>
+    },
+    {
+      key: "actions",
+      header: <span className="sr-only">Actions</span>,
+      className: "text-right",
+      render: (row) => (
+        <Link
+          href={`/admin/audit/${row.id}?returnTo=${encodeURIComponent(returnTo)}`}
+          className="inline-flex min-h-9 items-center justify-center gap-2 rounded-lg border border-ocean-900/10 bg-white px-3 text-sm font-bold text-ocean-900 transition hover:border-coral-500 hover:text-coral-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-kelp-500 focus-visible:ring-offset-2"
+        >
+          <Eye className="size-4" aria-hidden="true" />
+          Detail
+        </Link>
+      )
+    }
+  ];
 
   return (
     <div className="space-y-6">
       <AdminPageHeader
         eyebrow="Audit"
         title="Audit log"
-        description="Search admin actions by actor, entity, action, affected ID, or metadata payload."
+        description="Search and inspect admin and system actions with server-side filtering, date ranges, sorting, and pagination."
         actionHref="/admin"
         actionLabel="Overview"
       />
 
       <section className="grid gap-3 md:grid-cols-3" aria-label="Audit summary">
         {[
-          { label: "Visible actions", value: data.metrics.visibleActions.toLocaleString("id-ID"), icon: ScrollText },
-          { label: "Admin actors", value: data.metrics.humanActions.toLocaleString("id-ID"), icon: UserRound },
+          { label: "Matching actions", value: data.metrics.visibleActions.toLocaleString("id-ID"), icon: ScrollText },
+          { label: "Human actions", value: data.metrics.humanActions.toLocaleString("id-ID"), icon: UserRound },
           { label: "System actions", value: data.metrics.systemActions.toLocaleString("id-ID"), icon: ScrollText }
         ].map((item) => {
           const Icon = item.icon;
@@ -70,93 +184,53 @@ export default async function AdminAuditPage({ searchParams }: AdminAuditPagePro
         })}
       </section>
 
-      <section className={adminPanelClassName}>
-        <div className="grid gap-4 border-b border-ocean-900/10 p-4 lg:grid-cols-[1fr_auto] lg:items-end">
-          <div>
-            <h2 className="text-xl font-bold tracking-normal text-ocean-900">Query events</h2>
-            <p className="mt-1 text-sm font-semibold text-ocean-900/58">Latest 200 matching audit rows.</p>
-          </div>
-          <Filter className="size-5 text-ocean-700" aria-hidden="true" />
-        </div>
+      <AdminListToolbar
+        action={pathname}
+        searchValue={data.filters.q}
+        searchPlaceholder="Search action, entity ID, actor, metadata"
+        clearHref={pathname}
+        hiddenFields={{
+          sort: data.filters.sort === "createdAt" ? undefined : data.filters.sort,
+          dir: data.filters.dir === "desc" ? undefined : data.filters.dir
+        }}
+      >
+        <select name="action" defaultValue={data.filters.action} className={cn(adminSelectClassName, "min-w-44")} aria-label="Filter audit action">
+          <option value="all">All actions</option>
+          {data.options.actions.map((action) => (
+            <option key={action} value={action}>{action}</option>
+          ))}
+        </select>
+        <select name="entityType" defaultValue={data.filters.entityType} className={cn(adminSelectClassName, "min-w-40")} aria-label="Filter entity type">
+          <option value="all">All entities</option>
+          {data.options.entityTypes.map((entityType) => (
+            <option key={entityType} value={entityType}>{entityType}</option>
+          ))}
+        </select>
+        <select name="actor" defaultValue={data.filters.actor} className={cn(adminSelectClassName, "min-w-44")} aria-label="Filter audit actor">
+          <option value="all">All actors</option>
+          {data.options.actors.map((actor) => (
+            <option key={actor} value={actor}>{actor === "system" ? "System" : actor}</option>
+          ))}
+        </select>
+        <label className="grid gap-1 text-xs font-bold text-ocean-900/58">
+          From
+          <input type="date" name="from" defaultValue={data.filters.from} className={cn(adminInputClassName, "min-w-40")} />
+        </label>
+        <label className="grid gap-1 text-xs font-bold text-ocean-900/58">
+          To
+          <input type="date" name="to" defaultValue={data.filters.to} className={cn(adminInputClassName, "min-w-40")} />
+        </label>
+      </AdminListToolbar>
 
-        <form action="/admin/audit" className="grid gap-3 border-b border-ocean-900/10 bg-sand-50 p-4 xl:grid-cols-[minmax(220px,1fr)_220px_200px_220px_auto]">
-          <label className="relative grid gap-2 text-sm font-bold text-ocean-900">
-            Search
-            <Search className="pointer-events-none absolute bottom-3 left-3 size-4 text-ocean-900/42" aria-hidden="true" />
-            <input name="q" defaultValue={data.filters.q} placeholder="action, metadata, id, actor" className={`${adminInputClassName} pl-9`} />
-          </label>
-          <label className="grid gap-2 text-sm font-bold text-ocean-900">
-            Action
-            <select name="action" defaultValue={data.filters.action || "all"} className={adminSelectClassName}>
-              <option value="all">All actions</option>
-              {data.options.actions.map((action) => (
-                <option key={action} value={action}>
-                  {action}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="grid gap-2 text-sm font-bold text-ocean-900">
-            Entity
-            <select name="entityType" defaultValue={data.filters.entityType || "all"} className={adminSelectClassName}>
-              <option value="all">All entities</option>
-              {data.options.entityTypes.map((entityType) => (
-                <option key={entityType} value={entityType}>
-                  {entityType}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="grid gap-2 text-sm font-bold text-ocean-900">
-            Actor
-            <select name="actor" defaultValue={data.filters.actor || "all"} className={adminSelectClassName}>
-              <option value="all">All actors</option>
-              {data.options.actors.map((actor) => (
-                <option key={actor} value={actor}>
-                  {actor === "system" ? "System" : actor}
-                </option>
-              ))}
-            </select>
-          </label>
-          <Button type="submit" tone="secondary" className="self-end rounded-lg">
-            Apply
-          </Button>
-        </form>
+      <AdminDataTable
+        caption="Administrative audit events"
+        rows={data.auditLogs}
+        getRowKey={(row) => row.id}
+        columns={columns}
+        emptyState={<AdminEmptyState title="No audit events match" description="Adjust the filters or clear the search terms to inspect a broader audit trail." />}
+      />
 
-        <div className="divide-y divide-ocean-900/10">
-          {data.auditLogs.map((item) => {
-            const preview = metadataPreview(item.metadata);
-
-            return (
-              <article key={item.id} className="p-4">
-                <div className="grid gap-3 lg:grid-cols-[1fr_auto] lg:items-start">
-                  <div>
-                    <h2 className="text-lg font-bold tracking-normal text-ocean-900">{item.action}</h2>
-                    <p className="mt-1 text-sm font-semibold text-ocean-900/58">
-                      {item.entityType}
-                      {item.entityId ? ` / ${item.entityId}` : ""}
-                    </p>
-                    {preview ? (
-                      <code className="mt-3 block break-words rounded-lg bg-sand-50 px-3 py-2 text-xs font-semibold leading-5 text-ocean-900/62">
-                        {preview}
-                      </code>
-                    ) : null}
-                    <p className="mt-3 text-sm font-bold text-kelp-700">{item.actorEmail ?? "System"}</p>
-                  </div>
-                  <p className="text-sm font-semibold text-ocean-900/58">{item.createdAt.toLocaleDateString("id-ID", { dateStyle: "medium" })}</p>
-                </div>
-              </article>
-            );
-          })}
-          {data.auditLogs.length === 0 ? (
-            <AdminEmptyState
-              className="m-4"
-              title="No audit events match"
-              description="Adjust the filters or clear search terms to inspect a broader audit trail."
-            />
-          ) : null}
-        </div>
-      </section>
+      <AdminPagination pathname={pathname} params={baseParams} pagination={data.pagination} />
     </div>
   );
 }

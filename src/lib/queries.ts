@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, inArray, lte, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gte, inArray, lte, or, sql } from "drizzle-orm";
 
 import { db } from "@/db/client";
 import {
@@ -7677,67 +7677,121 @@ export async function getAdminUserWorkspaceData(userId: string) {
 }
 
 export type AdminAuditFilters = {
-  action?: string;
-  actor?: string;
-  entityType?: string;
-  q?: string;
+  action?: string | string[];
+  actor?: string | string[];
+  entityType?: string | string[];
+  q?: string | string[];
+  page?: string | string[];
+  pageSize?: string | string[];
+  sort?: string | string[];
+  dir?: string | string[];
+  from?: string | string[];
+  to?: string | string[];
 };
 
-function cleanAuditFilter(value: string | null | undefined, maxLength = 160) {
-  return String(value ?? "")
-    .trim()
-    .slice(0, maxLength);
+const adminAuditSorts = ["createdAt", "action", "entityType", "actor"] as const;
+
+function adminDateFilter(value: string | string[] | undefined, endOfDay = false) {
+  const candidate = cleanAdminDirectoryFilter(value, 10);
+
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(candidate)) {
+    return null;
+  }
+
+  const date = new Date(`${candidate}T${endOfDay ? "23:59:59.999" : "00:00:00.000"}Z`);
+
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function adminAuditWhere(filters: {
+  q: string;
+  action: string;
+  actor: string;
+  entityType: string;
+  fromDate: Date | null;
+  toDate: Date | null;
+}) {
+  const conditions = [];
+
+  if (filters.q) {
+    const pattern = `%${filters.q.toLowerCase()}%`;
+
+    conditions.push(
+      or(
+        sql`lower(${adminAuditLogs.action}) like ${pattern}`,
+        sql`lower(${adminAuditLogs.entityType}) like ${pattern}`,
+        sql`cast(${adminAuditLogs.entityId} as text) like ${pattern}`,
+        sql`lower(coalesce(${users.email}, 'system')) like ${pattern}`,
+        sql`lower(cast(${adminAuditLogs.metadata} as text)) like ${pattern}`
+      )
+    );
+  }
+
+  if (filters.action && filters.action !== "all") {
+    conditions.push(eq(adminAuditLogs.action, filters.action));
+  }
+
+  if (filters.entityType && filters.entityType !== "all") {
+    conditions.push(eq(adminAuditLogs.entityType, filters.entityType));
+  }
+
+  if (filters.actor && filters.actor !== "all") {
+    conditions.push(filters.actor === "system" ? sql`${adminAuditLogs.actorUserId} is null` : eq(users.email, filters.actor));
+  }
+
+  if (filters.fromDate) {
+    conditions.push(gte(adminAuditLogs.createdAt, filters.fromDate));
+  }
+
+  if (filters.toDate) {
+    conditions.push(lte(adminAuditLogs.createdAt, filters.toDate));
+  }
+
+  return conditions.length > 0 ? and(...conditions) : sql`true`;
 }
 
 export async function getAdminAuditData(filters: AdminAuditFilters = {}) {
-  const q = cleanAuditFilter(filters.q, 240).toLowerCase();
-  const action = cleanAuditFilter(filters.action);
-  const actor = cleanAuditFilter(filters.actor, 255).toLowerCase();
-  const entityType = cleanAuditFilter(filters.entityType, 120);
-  const conditions = [];
+  const query = parseAdminListQuery(filters, {
+    defaultSort: "createdAt",
+    defaultDir: "desc",
+    allowedSorts: adminAuditSorts,
+    defaultPageSize: 25,
+    maxPageSize: 100
+  });
+  const normalizedFilters = {
+    q: query.q,
+    action: cleanAdminDirectoryFilter(filters.action, 160) || "all",
+    actor: cleanAdminDirectoryFilter(filters.actor, 255).toLowerCase() || "all",
+    entityType: cleanAdminDirectoryFilter(filters.entityType, 120) || "all",
+    from: cleanAdminDirectoryFilter(filters.from, 10),
+    to: cleanAdminDirectoryFilter(filters.to, 10),
+    fromDate: adminDateFilter(filters.from),
+    toDate: adminDateFilter(filters.to, true)
+  };
+  const whereClause = adminAuditWhere(normalizedFilters);
+  const sortColumn =
+    query.sort === "action"
+      ? adminAuditLogs.action
+      : query.sort === "entityType"
+        ? adminAuditLogs.entityType
+        : query.sort === "actor"
+          ? users.email
+          : adminAuditLogs.createdAt;
 
-  if (q) {
-    const pattern = `%${q}%`;
-
-    conditions.push(or(
-      sql`lower(${adminAuditLogs.action}) like ${pattern}`,
-      sql`lower(${adminAuditLogs.entityType}) like ${pattern}`,
-      sql`cast(${adminAuditLogs.entityId} as text) like ${pattern}`,
-      sql`lower(coalesce(${users.email}, 'system')) like ${pattern}`,
-      sql`lower(cast(${adminAuditLogs.metadata} as text)) like ${pattern}`
-    ));
-  }
-
-  if (action && action !== "all") {
-    conditions.push(eq(adminAuditLogs.action, action));
-  }
-
-  if (entityType && entityType !== "all") {
-    conditions.push(eq(adminAuditLogs.entityType, entityType));
-  }
-
-  if (actor && actor !== "all") {
-    conditions.push(actor === "system" ? sql`${adminAuditLogs.actorUserId} is null` : eq(users.email, actor));
-  }
-
-  const whereClause = conditions.length > 0 ? and(...conditions) : sql`true`;
-
-  const [eventRows, actionRows, entityRows, actorRows] = await Promise.all([
+  const [totalRows, summaryRows, actionRows, entityRows, actorRows] = await Promise.all([
+    db
+      .select({ total: sql<number>`count(*)::int` })
+      .from(adminAuditLogs)
+      .leftJoin(users, eq(adminAuditLogs.actorUserId, users.id))
+      .where(whereClause),
     db
       .select({
-        id: adminAuditLogs.id,
-        action: adminAuditLogs.action,
-        entityType: adminAuditLogs.entityType,
-        entityId: adminAuditLogs.entityId,
-        metadata: adminAuditLogs.metadata,
-        createdAt: adminAuditLogs.createdAt,
-        actorEmail: users.email
+        systemActions: sql<number>`sum(case when ${adminAuditLogs.actorUserId} is null then 1 else 0 end)::int`,
+        humanActions: sql<number>`sum(case when ${adminAuditLogs.actorUserId} is not null then 1 else 0 end)::int`
       })
       .from(adminAuditLogs)
       .leftJoin(users, eq(adminAuditLogs.actorUserId, users.id))
-      .where(whereClause)
-      .orderBy(desc(adminAuditLogs.createdAt))
-      .limit(200),
+      .where(whereClause),
     db
       .select({ action: adminAuditLogs.action })
       .from(adminAuditLogs)
@@ -7756,15 +7810,40 @@ export async function getAdminAuditData(filters: AdminAuditFilters = {}) {
       .orderBy(asc(users.email))
   ]);
 
-  const systemActions = eventRows.filter((item) => !item.actorEmail).length;
+  const totalItems = Number(totalRows[0]?.total ?? 0);
+  const pagination = adminPaginationMeta(totalItems, query);
+  const eventRows = await db
+    .select({
+      id: adminAuditLogs.id,
+      action: adminAuditLogs.action,
+      entityType: adminAuditLogs.entityType,
+      entityId: adminAuditLogs.entityId,
+      metadata: adminAuditLogs.metadata,
+      createdAt: adminAuditLogs.createdAt,
+      actorUserId: adminAuditLogs.actorUserId,
+      actorEmail: users.email,
+      actorName: users.name,
+      actorDisplayName: profiles.displayName
+    })
+    .from(adminAuditLogs)
+    .leftJoin(users, eq(adminAuditLogs.actorUserId, users.id))
+    .leftJoin(profiles, eq(profiles.userId, users.id))
+    .where(whereClause)
+    .orderBy(query.dir === "desc" ? desc(sortColumn) : asc(sortColumn), desc(adminAuditLogs.createdAt))
+    .limit(pagination.pageSize)
+    .offset(adminListOffset(query, totalItems));
 
   return {
     auditLogs: eventRows,
     filters: {
-      action,
-      actor,
-      entityType,
-      q
+      q: normalizedFilters.q,
+      action: normalizedFilters.action,
+      actor: normalizedFilters.actor,
+      entityType: normalizedFilters.entityType,
+      from: normalizedFilters.from,
+      to: normalizedFilters.to,
+      sort: query.sort ?? "createdAt",
+      dir: query.dir
     },
     options: {
       actions: actionRows.map((row) => row.action),
@@ -7776,10 +7855,393 @@ export async function getAdminAuditData(filters: AdminAuditFilters = {}) {
       ],
       entityTypes: entityRows.map((row) => row.entityType)
     },
+    pagination,
     metrics: {
-      visibleActions: eventRows.length,
-      humanActions: eventRows.length - systemActions,
-      systemActions
+      visibleActions: totalItems,
+      humanActions: Number(summaryRows[0]?.humanActions ?? 0),
+      systemActions: Number(summaryRows[0]?.systemActions ?? 0)
+    }
+  };
+}
+
+export async function getAdminAuditEvent(auditId: string) {
+  const safeAuditId = adminUuidFilter(auditId);
+
+  if (!safeAuditId) {
+    return null;
+  }
+
+  const [event] = await db
+    .select({
+      id: adminAuditLogs.id,
+      action: adminAuditLogs.action,
+      entityType: adminAuditLogs.entityType,
+      entityId: adminAuditLogs.entityId,
+      metadata: adminAuditLogs.metadata,
+      createdAt: adminAuditLogs.createdAt,
+      actorUserId: adminAuditLogs.actorUserId,
+      actorEmail: users.email,
+      actorName: users.name,
+      actorDisplayName: profiles.displayName
+    })
+    .from(adminAuditLogs)
+    .leftJoin(users, eq(adminAuditLogs.actorUserId, users.id))
+    .leftJoin(profiles, eq(profiles.userId, users.id))
+    .where(eq(adminAuditLogs.id, safeAuditId))
+    .limit(1);
+
+  return event ?? null;
+}
+
+export type AdminReportFilters = {
+  q?: string | string[];
+  page?: string | string[];
+  pageSize?: string | string[];
+  sort?: string | string[];
+  dir?: string | string[];
+  status?: string | string[];
+  account?: string | string[];
+  from?: string | string[];
+  to?: string | string[];
+  monthlyQ?: string | string[];
+  monthlyPage?: string | string[];
+  monthlyPageSize?: string | string[];
+  monthlySort?: string | string[];
+  monthlyDir?: string | string[];
+  monthlyStatus?: string | string[];
+  monthlyEmail?: string | string[];
+  monthlyMonth?: string | string[];
+};
+
+const adminReportSorts = ["createdAt", "exportCode", "status", "account", "program", "generatedAt"] as const;
+const adminMonthlyReportSorts = ["generatedAt", "reportMonth", "status", "user", "contributions"] as const;
+
+function adminReportWhere(filters: {
+  q: string;
+  status: string;
+  account: string;
+  fromDate: Date | null;
+  toDate: Date | null;
+}) {
+  const conditions = [];
+
+  if (filters.q) {
+    const pattern = `%${filters.q.toLowerCase()}%`;
+
+    conditions.push(
+      or(
+        sql`lower(${corporateReportExports.exportCode}) like ${pattern}`,
+        sql`lower(${corporateReportExports.status}) like ${pattern}`,
+        sql`lower(${corporateReportExports.reportType}) like ${pattern}`,
+        sql`lower(${corporateReportExports.exportFormat}) like ${pattern}`,
+        sql`lower(${corporateAccounts.name}) like ${pattern}`,
+        sql`lower(${corporatePrograms.name}) like ${pattern}`
+      )
+    );
+  }
+
+  if (filters.status !== "all") {
+    conditions.push(eq(corporateReportExports.status, filters.status));
+  }
+
+  if (filters.account) {
+    conditions.push(eq(corporateAccounts.id, filters.account));
+  }
+
+  if (filters.fromDate) {
+    conditions.push(gte(corporateReportExports.createdAt, filters.fromDate));
+  }
+
+  if (filters.toDate) {
+    conditions.push(lte(corporateReportExports.createdAt, filters.toDate));
+  }
+
+  return conditions.length > 0 ? and(...conditions) : sql`true`;
+}
+
+function adminMonthlyReportWhere(filters: { q: string; status: string; email: string; month: string }) {
+  const conditions = [];
+
+  if (filters.q) {
+    const pattern = `%${filters.q.toLowerCase()}%`;
+
+    conditions.push(
+      or(
+        sql`lower(${monthlyImpactReports.label}) like ${pattern}`,
+        sql`lower(${monthlyImpactReports.reportMonth}) like ${pattern}`,
+        sql`lower(${monthlyImpactReports.status}) like ${pattern}`,
+        sql`lower(${users.email}) like ${pattern}`,
+        sql`lower(coalesce(${users.name}, '')) like ${pattern}`,
+        sql`lower(coalesce(${profiles.displayName}, '')) like ${pattern}`
+      )
+    );
+  }
+
+  if (filters.status !== "all") {
+    conditions.push(eq(monthlyImpactReports.status, filters.status));
+  }
+
+  if (filters.email === "emailed") {
+    conditions.push(sql`${monthlyImpactReports.emailedAt} is not null`);
+  }
+
+  if (filters.email === "not_emailed") {
+    conditions.push(sql`${monthlyImpactReports.emailedAt} is null`);
+  }
+
+  if (filters.month) {
+    conditions.push(eq(monthlyImpactReports.reportMonth, filters.month));
+  }
+
+  return conditions.length > 0 ? and(...conditions) : sql`true`;
+}
+
+export async function getAdminReportsPage(params: AdminReportFilters = {}) {
+  const exportQuery = parseAdminListQuery(params, {
+    defaultSort: "createdAt",
+    defaultDir: "desc",
+    allowedSorts: adminReportSorts,
+    defaultPageSize: 25,
+    maxPageSize: 100
+  });
+  const monthlyQuery = parseAdminListQuery(
+    {
+      q: params.monthlyQ,
+      page: params.monthlyPage,
+      pageSize: params.monthlyPageSize,
+      sort: params.monthlySort,
+      dir: params.monthlyDir
+    },
+    {
+      defaultSort: "generatedAt",
+      defaultDir: "desc",
+      allowedSorts: adminMonthlyReportSorts,
+      defaultPageSize: 12,
+      maxPageSize: 100
+    }
+  );
+  const exportFilters = {
+    q: exportQuery.q,
+    status: cleanAdminDirectoryFilter(params.status, 80) || "all",
+    account: adminUuidFilter(params.account),
+    from: cleanAdminDirectoryFilter(params.from, 10),
+    to: cleanAdminDirectoryFilter(params.to, 10),
+    fromDate: adminDateFilter(params.from),
+    toDate: adminDateFilter(params.to, true)
+  };
+  const monthlyEmailCandidate = cleanAdminDirectoryFilter(params.monthlyEmail, 40);
+  const monthlyMonthCandidate = cleanAdminDirectoryFilter(params.monthlyMonth, 7);
+  const monthlyFilters = {
+    q: monthlyQuery.q,
+    status: cleanAdminDirectoryFilter(params.monthlyStatus, 80) || "all",
+    email: ["emailed", "not_emailed"].includes(monthlyEmailCandidate) ? monthlyEmailCandidate : "all",
+    month: /^\d{4}-\d{2}$/.test(monthlyMonthCandidate) ? monthlyMonthCandidate : ""
+  };
+  const exportWhere = adminReportWhere(exportFilters);
+  const monthlyWhere = adminMonthlyReportWhere(monthlyFilters);
+  const exportSortColumn =
+    exportQuery.sort === "exportCode"
+      ? corporateReportExports.exportCode
+      : exportQuery.sort === "status"
+        ? corporateReportExports.status
+        : exportQuery.sort === "account"
+          ? corporateAccounts.name
+          : exportQuery.sort === "program"
+            ? corporatePrograms.name
+            : exportQuery.sort === "generatedAt"
+              ? corporateReportExports.generatedAt
+              : corporateReportExports.createdAt;
+  const monthlySortColumn =
+    monthlyQuery.sort === "reportMonth"
+      ? monthlyImpactReports.reportMonth
+      : monthlyQuery.sort === "status"
+        ? monthlyImpactReports.status
+        : monthlyQuery.sort === "user"
+          ? users.email
+          : monthlyQuery.sort === "contributions"
+            ? monthlyImpactReports.contributions
+            : monthlyImpactReports.generatedAt;
+
+  const [
+    exportTotalRows,
+    exportSummaryRows,
+    exportStatusRows,
+    accountOptionRows,
+    monthlyTotalRows,
+    monthlySummaryRows,
+    monthlyStatusRows,
+    monthlyMonthRows,
+    monthlyEligibleRows
+  ] = await Promise.all([
+    db
+      .select({ total: sql<number>`count(*)::int` })
+      .from(corporateReportExports)
+      .innerJoin(corporatePrograms, eq(corporateReportExports.programId, corporatePrograms.id))
+      .innerJoin(corporateAccounts, eq(corporatePrograms.corporateAccountId, corporateAccounts.id))
+      .where(exportWhere),
+    db
+      .select({
+        published: sql<number>`sum(case when ${corporateReportExports.status} = 'published' then 1 else 0 end)::int`,
+        withArtifacts: sql<number>`sum(case when ${corporateReportExports.fileUrl} is not null then 1 else 0 end)::int`,
+        accountCount: sql<number>`count(distinct ${corporateAccounts.id})::int`
+      })
+      .from(corporateReportExports)
+      .innerJoin(corporatePrograms, eq(corporateReportExports.programId, corporatePrograms.id))
+      .innerJoin(corporateAccounts, eq(corporatePrograms.corporateAccountId, corporateAccounts.id))
+      .where(exportWhere),
+    db
+      .select({ status: corporateReportExports.status })
+      .from(corporateReportExports)
+      .groupBy(corporateReportExports.status)
+      .orderBy(asc(corporateReportExports.status)),
+    db
+      .select({ id: corporateAccounts.id, name: corporateAccounts.name })
+      .from(corporateReportExports)
+      .innerJoin(corporatePrograms, eq(corporateReportExports.programId, corporatePrograms.id))
+      .innerJoin(corporateAccounts, eq(corporatePrograms.corporateAccountId, corporateAccounts.id))
+      .groupBy(corporateAccounts.id, corporateAccounts.name)
+      .orderBy(asc(corporateAccounts.name)),
+    db
+      .select({ total: sql<number>`count(*)::int` })
+      .from(monthlyImpactReports)
+      .innerJoin(users, eq(monthlyImpactReports.userId, users.id))
+      .leftJoin(profiles, eq(profiles.userId, users.id))
+      .where(monthlyWhere),
+    db
+      .select({
+        ready: sql<number>`sum(case when ${monthlyImpactReports.status} = 'ready' then 1 else 0 end)::int`,
+        emailed: sql<number>`sum(case when ${monthlyImpactReports.emailedAt} is not null then 1 else 0 end)::int`,
+        latestGeneratedAt: sql<Date | null>`max(${monthlyImpactReports.generatedAt})`
+      })
+      .from(monthlyImpactReports)
+      .innerJoin(users, eq(monthlyImpactReports.userId, users.id))
+      .leftJoin(profiles, eq(profiles.userId, users.id))
+      .where(monthlyWhere),
+    db
+      .select({ status: monthlyImpactReports.status })
+      .from(monthlyImpactReports)
+      .groupBy(monthlyImpactReports.status)
+      .orderBy(asc(monthlyImpactReports.status)),
+    db
+      .select({ reportMonth: monthlyImpactReports.reportMonth })
+      .from(monthlyImpactReports)
+      .groupBy(monthlyImpactReports.reportMonth)
+      .orderBy(desc(monthlyImpactReports.reportMonth)),
+    db
+      .select({
+        total: sql<number>`count(${notificationPreferences.userId})::int`,
+        emailEnabled: sql<number>`sum(case when ${notificationPreferences.monthlyImpactEmail} then 1 else 0 end)::int`
+      })
+      .from(notificationPreferences)
+      .where(eq(notificationPreferences.monthlyImpactReport, true))
+  ]);
+
+  const exportTotalItems = Number(exportTotalRows[0]?.total ?? 0);
+  const exportPagination = adminPaginationMeta(exportTotalItems, exportQuery);
+  const monthlyTotalItems = Number(monthlyTotalRows[0]?.total ?? 0);
+  const monthlyPagination = adminPaginationMeta(monthlyTotalItems, monthlyQuery);
+
+  const [reportRows, monthlyReportRows] = await Promise.all([
+    db
+      .select({
+        id: corporateReportExports.id,
+        exportCode: corporateReportExports.exportCode,
+        status: corporateReportExports.status,
+        reportType: corporateReportExports.reportType,
+        exportFormat: corporateReportExports.exportFormat,
+        artifactVersion: corporateReportExports.artifactVersion,
+        fileUrl: corporateReportExports.fileUrl,
+        previewUrl: corporateReportExports.previewUrl,
+        generatedAt: corporateReportExports.generatedAt,
+        publishedAt: corporateReportExports.publishedAt,
+        createdAt: corporateReportExports.createdAt,
+        programId: corporatePrograms.id,
+        programName: corporatePrograms.name,
+        accountId: corporateAccounts.id,
+        accountName: corporateAccounts.name
+      })
+      .from(corporateReportExports)
+      .innerJoin(corporatePrograms, eq(corporateReportExports.programId, corporatePrograms.id))
+      .innerJoin(corporateAccounts, eq(corporatePrograms.corporateAccountId, corporateAccounts.id))
+      .where(exportWhere)
+      .orderBy(exportQuery.dir === "desc" ? desc(exportSortColumn) : asc(exportSortColumn), desc(corporateReportExports.createdAt))
+      .limit(exportPagination.pageSize)
+      .offset(adminListOffset(exportQuery, exportTotalItems)),
+    db
+      .select({
+        id: monthlyImpactReports.id,
+        userId: monthlyImpactReports.userId,
+        reportMonth: monthlyImpactReports.reportMonth,
+        status: monthlyImpactReports.status,
+        label: monthlyImpactReports.label,
+        contributions: monthlyImpactReports.contributions,
+        campaignUpdates: monthlyImpactReports.campaignUpdates,
+        newEvidence: monthlyImpactReports.newEvidence,
+        coralsMonitored: monthlyImpactReports.coralsMonitored,
+        academyProgress: monthlyImpactReports.academyProgress,
+        emailedAt: monthlyImpactReports.emailedAt,
+        generatedAt: monthlyImpactReports.generatedAt,
+        userEmail: users.email,
+        userName: users.name,
+        displayName: profiles.displayName
+      })
+      .from(monthlyImpactReports)
+      .innerJoin(users, eq(monthlyImpactReports.userId, users.id))
+      .leftJoin(profiles, eq(profiles.userId, users.id))
+      .where(monthlyWhere)
+      .orderBy(monthlyQuery.dir === "desc" ? desc(monthlySortColumn) : asc(monthlySortColumn), desc(monthlyImpactReports.generatedAt))
+      .limit(monthlyPagination.pageSize)
+      .offset(adminListOffset(monthlyQuery, monthlyTotalItems))
+  ]);
+
+  return {
+    reports: reportRows,
+    monthlyImpactReports: monthlyReportRows.map((report) => ({
+      ...report,
+      contributions: toNumber(report.contributions)
+    })),
+    filters: {
+      exports: {
+        q: exportFilters.q,
+        status: exportFilters.status,
+        account: exportFilters.account,
+        from: exportFilters.from,
+        to: exportFilters.to,
+        sort: exportQuery.sort ?? "createdAt",
+        dir: exportQuery.dir
+      },
+      monthly: {
+        q: monthlyFilters.q,
+        status: monthlyFilters.status,
+        email: monthlyFilters.email,
+        month: monthlyFilters.month,
+        sort: monthlyQuery.sort ?? "generatedAt",
+        dir: monthlyQuery.dir
+      }
+    },
+    options: {
+      reportStatuses: exportStatusRows.map((row) => row.status),
+      accounts: accountOptionRows,
+      monthlyStatuses: monthlyStatusRows.map((row) => row.status),
+      monthlyMonths: monthlyMonthRows.map((row) => row.reportMonth)
+    },
+    pagination: {
+      exports: exportPagination,
+      monthly: monthlyPagination
+    },
+    summary: {
+      reports: exportTotalItems,
+      publishedReports: Number(exportSummaryRows[0]?.published ?? 0),
+      withArtifacts: Number(exportSummaryRows[0]?.withArtifacts ?? 0),
+      accounts: Number(exportSummaryRows[0]?.accountCount ?? 0)
+    },
+    monthlyImpactSummary: {
+      eligibleUsers: Number(monthlyEligibleRows[0]?.total ?? 0),
+      emailEnabledUsers: Number(monthlyEligibleRows[0]?.emailEnabled ?? 0),
+      filteredReports: monthlyTotalItems,
+      readyReports: Number(monthlySummaryRows[0]?.ready ?? 0),
+      emailedReports: Number(monthlySummaryRows[0]?.emailed ?? 0),
+      latestGeneratedAt: monthlySummaryRows[0]?.latestGeneratedAt ?? null
     }
   };
 }
