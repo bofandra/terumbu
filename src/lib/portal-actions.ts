@@ -4134,6 +4134,15 @@ async function linkEvidenceToCorporatePrograms(evidenceId: string, status: strin
   return fundedPrograms.map((program) => program.programId);
 }
 
+function evidenceReviewRedirect(path: string, key: "saved" | "error", value: string) {
+  const hashIndex = path.indexOf("#");
+  const base = hashIndex >= 0 ? path.slice(0, hashIndex) : path;
+  const hash = hashIndex >= 0 ? path.slice(hashIndex) : "";
+  const separator = base.includes("?") ? "&" : "?";
+
+  return `${base}${separator}${encodeURIComponent(key)}=${encodeURIComponent(value)}${hash}`;
+}
+
 export async function verifyEvidenceAction(formData: FormData) {
   const user = await requireRole(["admin"], "/admin");
   const evidenceId = String(formData.get("evidenceId") ?? "");
@@ -4147,7 +4156,7 @@ export async function verifyEvidenceAction(formData: FormData) {
   }
 
   if (evidenceReviewNoteRequired(status) && !reviewNote) {
-    redirect(`${redirectTo}?error=review-note`);
+    redirect(evidenceReviewRedirect(redirectTo, "error", "review-note"));
   }
 
   const now = new Date();
@@ -4163,7 +4172,7 @@ export async function verifyEvidenceAction(formData: FormData) {
     .limit(1);
 
   if (!evidence) {
-    redirect(`${redirectTo}?error=evidence-missing`);
+    redirect(evidenceReviewRedirect(redirectTo, "error", "evidence-missing"));
   }
 
   const assignedReviewerUserId =
@@ -4274,7 +4283,7 @@ export async function verifyEvidenceAction(formData: FormData) {
     );
   }
 
-  redirect(`${redirectTo}?saved=evidence`);
+  redirect(evidenceReviewRedirect(redirectTo, "saved", "evidence"));
 }
 
 export async function reconcileDonationAction(formData: FormData) {

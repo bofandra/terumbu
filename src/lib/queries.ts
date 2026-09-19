@@ -133,7 +133,7 @@ import {
 } from "@/lib/expedition-marketplace";
 import { corporateCapabilitiesForPermission } from "@/lib/corporate-permissions";
 import { corporateReportFormatLabel, corporateReportTypeLabel, scheduledReportIsDue } from "@/lib/corporate-report-lifecycle";
-import { evidenceReviewActionLabel, evidenceReviewStage, evidenceStatusLabel } from "@/lib/evidence-review-workflow";
+import { evidenceReviewActionLabel, evidenceReviewStage, evidenceStatusLabel, evidenceVerificationStatuses } from "@/lib/evidence-review-workflow";
 import {
   buildDefaultExpeditionDetailMetadata,
   expeditionMetadataEditorJson,
@@ -8631,6 +8631,280 @@ export async function getPartnerPortalData(userId?: string) {
       ...donation,
       amount: toNumber(donation.amount)
     }))
+  };
+}
+
+
+export type AdminEvidenceReviewFilters = {
+  q?: string | string[];
+  page?: string | string[];
+  pageSize?: string | string[];
+  sort?: string | string[];
+  dir?: string | string[];
+  status?: string | string[];
+  partner?: string | string[];
+  campaign?: string | string[];
+  reviewer?: string | string[];
+};
+
+const adminEvidenceReviewSorts = ["createdAt", "title", "status", "campaign", "partner", "reviewedAt"] as const;
+const adminEvidenceReviewerFilters = ["all", "me", "unassigned"] as const;
+
+function adminEvidenceStatusFilter(value: string | string[] | undefined) {
+  const candidate = cleanAdminDirectoryFilter(value, 40);
+
+  return evidenceVerificationStatuses.includes(candidate as (typeof evidenceVerificationStatuses)[number]) ? candidate : "all";
+}
+
+function adminEvidenceReviewerFilter(value: string | string[] | undefined) {
+  const candidate = cleanAdminDirectoryFilter(value, 40);
+
+  return adminEvidenceReviewerFilters.includes(candidate as (typeof adminEvidenceReviewerFilters)[number])
+    ? (candidate as (typeof adminEvidenceReviewerFilters)[number])
+    : "all";
+}
+
+function adminEvidenceReviewWhere(
+  filters: { q: string; status: string; partner: string; campaign: string; reviewer: "all" | "me" | "unassigned" },
+  reviewerUserId?: string,
+  options: { ignoreStatus?: boolean } = {}
+) {
+  const conditions = [];
+
+  if (filters.q) {
+    const pattern = `%${filters.q.toLowerCase()}%`;
+
+    conditions.push(
+      or(
+        sql`lower(${projectEvidence.title}) like ${pattern}`,
+        sql`lower(${projectEvidence.evidenceCode}) like ${pattern}`,
+        sql`lower(${projectEvidence.evidenceType}) like ${pattern}`,
+        sql`lower(${campaigns.title}) like ${pattern}`,
+        sql`lower(${organizations.name}) like ${pattern}`,
+        sql`lower(coalesce(${impactSites.name}, '')) like ${pattern}`,
+        sql`lower(coalesce(${impactSites.region}, '')) like ${pattern}`
+      )
+    );
+  }
+
+  if (!options.ignoreStatus && filters.status !== "all") {
+    conditions.push(eq(projectEvidence.verificationStatus, filters.status as (typeof evidenceVerificationStatuses)[number]));
+  }
+
+  if (filters.partner) {
+    conditions.push(eq(organizations.id, filters.partner));
+  }
+
+  if (filters.campaign) {
+    conditions.push(eq(campaigns.id, filters.campaign));
+  }
+
+  if (filters.reviewer === "unassigned") {
+    conditions.push(sql`${projectEvidence.assignedReviewerUserId} is null`);
+  } else if (filters.reviewer === "me" && reviewerUserId) {
+    conditions.push(eq(projectEvidence.assignedReviewerUserId, reviewerUserId));
+  }
+
+  return conditions.length > 0 ? and(...conditions) : sql`true`;
+}
+
+export async function getAdminEvidenceReviewPage(params: AdminEvidenceReviewFilters = {}, reviewerUserId?: string) {
+  const query = parseAdminListQuery(params, {
+    defaultSort: "createdAt",
+    defaultDir: "desc",
+    allowedSorts: adminEvidenceReviewSorts,
+    defaultPageSize: 25,
+    maxPageSize: 100
+  });
+  const filters = {
+    q: query.q,
+    status: adminEvidenceStatusFilter(params.status),
+    partner: adminUuidFilter(params.partner),
+    campaign: adminUuidFilter(params.campaign),
+    reviewer: adminEvidenceReviewerFilter(params.reviewer)
+  };
+  const whereClause = adminEvidenceReviewWhere(filters, reviewerUserId);
+  const summaryWhereClause = adminEvidenceReviewWhere(filters, reviewerUserId, { ignoreStatus: true });
+  const sortColumn =
+    query.sort === "title"
+      ? projectEvidence.title
+      : query.sort === "status"
+        ? projectEvidence.verificationStatus
+        : query.sort === "campaign"
+          ? campaigns.title
+          : query.sort === "partner"
+            ? organizations.name
+            : query.sort === "reviewedAt"
+              ? projectEvidence.reviewedAt
+              : projectEvidence.createdAt;
+
+  const [totalRows, summaryRows, partnerOptionRows, campaignOptionRows] = await Promise.all([
+    db
+      .select({ total: sql<number>`count(*)::int` })
+      .from(projectEvidence)
+      .innerJoin(campaigns, eq(projectEvidence.campaignId, campaigns.id))
+      .innerJoin(organizations, eq(campaigns.organizationId, organizations.id))
+      .leftJoin(impactSites, eq(projectEvidence.impactSiteId, impactSites.id))
+      .where(whereClause),
+    db
+      .select({
+        total: sql<number>`count(*)::int`,
+        submitted: sql<number>`sum(case when ${projectEvidence.verificationStatus} = 'submitted' then 1 else 0 end)::int`,
+        inReview: sql<number>`sum(case when ${projectEvidence.verificationStatus} = 'in_review' then 1 else 0 end)::int`,
+        clarification: sql<number>`sum(case when ${projectEvidence.verificationStatus} = 'needs_clarification' then 1 else 0 end)::int`,
+        verified: sql<number>`sum(case when ${projectEvidence.verificationStatus} = 'verified' then 1 else 0 end)::int`,
+        rejected: sql<number>`sum(case when ${projectEvidence.verificationStatus} = 'rejected' then 1 else 0 end)::int`
+      })
+      .from(projectEvidence)
+      .innerJoin(campaigns, eq(projectEvidence.campaignId, campaigns.id))
+      .innerJoin(organizations, eq(campaigns.organizationId, organizations.id))
+      .leftJoin(impactSites, eq(projectEvidence.impactSiteId, impactSites.id))
+      .where(summaryWhereClause),
+    db
+      .select({ id: organizations.id, name: organizations.name })
+      .from(projectEvidence)
+      .innerJoin(campaigns, eq(projectEvidence.campaignId, campaigns.id))
+      .innerJoin(organizations, eq(campaigns.organizationId, organizations.id))
+      .groupBy(organizations.id, organizations.name)
+      .orderBy(asc(organizations.name)),
+    db
+      .select({ id: campaigns.id, title: campaigns.title, organizationId: campaigns.organizationId })
+      .from(projectEvidence)
+      .innerJoin(campaigns, eq(projectEvidence.campaignId, campaigns.id))
+      .groupBy(campaigns.id, campaigns.title, campaigns.organizationId)
+      .orderBy(asc(campaigns.title))
+  ]);
+
+  const totalItems = Number(totalRows[0]?.total ?? 0);
+  const pagination = adminPaginationMeta(totalItems, query);
+  const rows = await db
+    .select({
+      id: projectEvidence.id,
+      campaignId: campaigns.id,
+      campaignTitle: campaigns.title,
+      campaignSlug: campaigns.slug,
+      partnerId: organizations.id,
+      partnerName: organizations.name,
+      impactSiteId: impactSites.id,
+      impactSiteName: impactSites.name,
+      impactSiteRegion: impactSites.region,
+      title: projectEvidence.title,
+      evidenceCode: projectEvidence.evidenceCode,
+      evidenceType: projectEvidence.evidenceType,
+      fileUrl: projectEvidence.fileUrl,
+      verificationStatus: projectEvidence.verificationStatus,
+      assignedReviewerUserId: projectEvidence.assignedReviewerUserId,
+      reviewedAt: projectEvidence.reviewedAt,
+      createdAt: projectEvidence.createdAt
+    })
+    .from(projectEvidence)
+    .innerJoin(campaigns, eq(projectEvidence.campaignId, campaigns.id))
+    .innerJoin(organizations, eq(campaigns.organizationId, organizations.id))
+    .leftJoin(impactSites, eq(projectEvidence.impactSiteId, impactSites.id))
+    .where(whereClause)
+    .orderBy(query.dir === "desc" ? desc(sortColumn) : asc(sortColumn), desc(projectEvidence.createdAt))
+    .limit(pagination.pageSize)
+    .offset(adminListOffset(query, totalItems));
+
+  const summary = summaryRows[0];
+
+  return {
+    filters: {
+      ...filters,
+      sort: query.sort ?? "createdAt",
+      dir: query.dir
+    },
+    evidence: rows,
+    partnerOptions: partnerOptionRows,
+    campaignOptions: campaignOptionRows,
+    pagination,
+    summary: {
+      total: Number(summary?.total ?? 0),
+      submitted: Number(summary?.submitted ?? 0),
+      inReview: Number(summary?.inReview ?? 0),
+      clarification: Number(summary?.clarification ?? 0),
+      verified: Number(summary?.verified ?? 0),
+      rejected: Number(summary?.rejected ?? 0)
+    }
+  };
+}
+
+export async function getAdminEvidenceReviewItem(evidenceId: string) {
+  const [row] = await db
+    .select({
+      id: projectEvidence.id,
+      campaignId: projectEvidence.campaignId,
+      campaignTitle: campaigns.title,
+      campaignSlug: campaigns.slug,
+      partnerName: organizations.name,
+      partnerSlug: organizations.slug,
+      impactSiteId: projectEvidence.impactSiteId,
+      impactSiteName: impactSites.name,
+      impactSiteRegion: impactSites.region,
+      uploadedByUserId: projectEvidence.uploadedByUserId,
+      evidenceCode: projectEvidence.evidenceCode,
+      title: projectEvidence.title,
+      evidenceType: projectEvidence.evidenceType,
+      fileUrl: projectEvidence.fileUrl,
+      verificationStatus: projectEvidence.verificationStatus,
+      assignedReviewerUserId: projectEvidence.assignedReviewerUserId,
+      reviewedByUserId: projectEvidence.reviewedByUserId,
+      reviewedAt: projectEvidence.reviewedAt,
+      verifiedAt: projectEvidence.verifiedAt,
+      clarificationNote: projectEvidence.clarificationNote,
+      clarificationRequestedAt: projectEvidence.clarificationRequestedAt,
+      clarificationResolvedAt: projectEvidence.clarificationResolvedAt,
+      rejectionReason: projectEvidence.rejectionReason,
+      metadata: projectEvidence.metadata,
+      createdAt: projectEvidence.createdAt,
+      updatedAt: projectEvidence.updatedAt
+    })
+    .from(projectEvidence)
+    .innerJoin(campaigns, eq(projectEvidence.campaignId, campaigns.id))
+    .innerJoin(organizations, eq(campaigns.organizationId, organizations.id))
+    .leftJoin(impactSites, eq(projectEvidence.impactSiteId, impactSites.id))
+    .where(eq(projectEvidence.id, evidenceId))
+    .limit(1);
+
+  if (!row) {
+    return null;
+  }
+
+  const identityIds = Array.from(
+    new Set([row.uploadedByUserId, row.assignedReviewerUserId, row.reviewedByUserId].filter((value): value is string => Boolean(value)))
+  );
+  const [eventMap, identityRows] = await Promise.all([
+    getEvidenceReviewEventsByEvidenceIds([row.id]),
+    identityIds.length > 0
+      ? db.select({ id: users.id, name: users.name, email: users.email }).from(users).where(inArray(users.id, identityIds))
+      : Promise.resolve([])
+  ]);
+  const identities = new Map(identityRows.map((identity) => [identity.id, identity.name ?? identity.email]));
+  const reviewEvents = eventMap.get(row.id) ?? [];
+  const stage = evidenceStage(row.metadata, row.evidenceType);
+  const survivalRate = getMetadataNumberOrString(row.metadata, "survivalRate");
+  const sortedWaste = getMetadataNumberOrString(row.metadata, "sortedWasteKg");
+  const seedlingsReady = getMetadataNumberOrString(row.metadata, "seedlingsReady");
+  const explicitMetricValue = getMetadataNumberOrString(row.metadata, "metricValue");
+  const metricLabel =
+    getMetadataString(row.metadata, "metricLabel") ??
+    (survivalRate ? "Survival rate" : sortedWaste ? "Waste sorted" : seedlingsReady ? "Seedlings ready" : null);
+  const metricValue = explicitMetricValue ?? (survivalRate ? `${survivalRate}%` : sortedWaste ? `${sortedWaste} kg` : seedlingsReady);
+
+  return {
+    ...row,
+    statusLabel: evidenceStatusLabel(row.verificationStatus),
+    reviewStage: evidenceReviewStage(row.verificationStatus),
+    stageLabel: evidenceStageLabel(stage),
+    sourceHref: evidenceSourceHref(row.campaignSlug, row.evidenceCode) ?? row.fileUrl,
+    observation: getMetadataString(row.metadata, "observation") ?? getMetadataString(row.metadata, "summary"),
+    metricLabel,
+    metricValue,
+    latestReviewNote: latestEvidenceReviewNote(reviewEvents, row.clarificationNote ?? row.rejectionReason),
+    uploadedBy: row.uploadedByUserId ? identities.get(row.uploadedByUserId) ?? null : null,
+    assignedReviewer: row.assignedReviewerUserId ? identities.get(row.assignedReviewerUserId) ?? null : null,
+    reviewedBy: row.reviewedByUserId ? identities.get(row.reviewedByUserId) ?? null : null,
+    reviewEvents
   };
 }
 
