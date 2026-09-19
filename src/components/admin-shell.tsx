@@ -115,6 +115,7 @@ export function AdminShell({ children, displayName, roleLabel }: { children: Rea
     }
 
     const panel = mobileNavPanelRef.current;
+    const mobileNavButton = mobileNavButtonRef.current;
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
 
@@ -159,7 +160,7 @@ export function AdminShell({ children, displayName, roleLabel }: { children: Rea
     return () => {
       document.body.style.overflow = previousOverflow;
       document.removeEventListener("keydown", handleKeyDown);
-      requestAnimationFrame(() => mobileNavButtonRef.current?.focus());
+      requestAnimationFrame(() => mobileNavButton?.focus());
     };
   }, [mobileNavOpen]);
 

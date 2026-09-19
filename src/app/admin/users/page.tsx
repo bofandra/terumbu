@@ -410,7 +410,7 @@ export default async function AdminUsersPage({ searchParams }: AdminUsersPagePro
       </FormTabs>
 
       <section className="grid gap-3 rounded-lg border border-ocean-900/10 bg-white p-4 shadow-soft md:grid-cols-3">
-        <div className="flex gap-3"><LockKeyhole className="mt-1 size-5 text-coral-700" aria-hidden="true" /><p className="text-sm font-semibold leading-6 text-ocean-900/62">Destructive account actions live inside the selected user's workspace, not the directory.</p></div>
+        <div className="flex gap-3"><LockKeyhole className="mt-1 size-5 text-coral-700" aria-hidden="true" /><p className="text-sm font-semibold leading-6 text-ocean-900/62">Destructive account actions live inside the selected user&apos;s workspace, not the directory.</p></div>
         <div className="flex gap-3"><ShieldCheck className="mt-1 size-5 text-kelp-700" aria-hidden="true" /><p className="text-sm font-semibold leading-6 text-ocean-900/62">The last platform admin remains protected from revoke, password disable, and delete flows.</p></div>
         <div className="flex gap-3"><Mail className="mt-1 size-5 text-ocean-700" aria-hidden="true" /><p className="text-sm font-semibold leading-6 text-ocean-900/62">Partner and corporate access remain scoped to their specific workspaces.</p></div>
       </section>

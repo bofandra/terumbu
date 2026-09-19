@@ -2672,6 +2672,7 @@ function addMonths(value: Date, offset: number) {
 }
 
 function governanceActor(_permission: string | null | undefined) {
+  void _permission;
   return "Corporate User";
 }
 

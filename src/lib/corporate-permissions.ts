@@ -25,6 +25,7 @@ export function isCorporateProgramManager(permission: string | null | undefined)
 }
 
 export function corporateCapabilitiesForPermission(_permission?: string | null) {
+  void _permission;
   return {
     canApproveReport: true,
     canGenerateReport: true,
@@ -42,17 +43,22 @@ export function corporateCapabilitiesForPermission(_permission?: string | null) 
 }
 
 export function normalizeCorporateEmployeeRole(_value: string | null | undefined): CorporateEmployeeRole {
+  void _value;
   return "member";
 }
 
 export function permissionForCorporateEmployeeRole(_role: string | null | undefined) {
+  void _role;
   return CORPORATE_ACCESS_PERMISSION;
 }
 
 export function canAssignCorporateEmployeeRole(_actorPermission: string | null | undefined, _requestedRole: string | null | undefined) {
+  void _actorPermission;
+  void _requestedRole;
   return true;
 }
 
 export function assignableCorporateEmployeeRoleOptions(_actorPermission: string | null | undefined) {
+  void _actorPermission;
   return corporateEmployeeRoleOptions;
 }
