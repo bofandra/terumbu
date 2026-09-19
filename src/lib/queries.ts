@@ -6568,7 +6568,6 @@ export type AdminImpactSiteFilters = {
   dir?: string | string[];
   verification?: string | string[];
   assignment?: string | string[];
-  site?: string | string[];
 };
 
 const adminImpactSiteAssignments = ["all", "assigned", "unassigned"] as const;
@@ -6708,7 +6707,7 @@ export async function getAdminImpactSitesPage(params: AdminImpactSiteFilters = {
   const progressValue = sql<number>`case when coalesce(${impactSites.metadata}->>'progress', '') ~ '^[0-9]+(\\.[0-9]+)?$' then (${impactSites.metadata}->>'progress')::numeric else 0 end`;
   const evidenceValue = sql<number>`case when coalesce(${impactSites.metadata}->>'evidenceCount', '') ~ '^[0-9]+$' then (${impactSites.metadata}->>'evidenceCount')::integer else 0 end`;
 
-  const [totalRows, summaryRows, campaignOptionRows] = await Promise.all([
+  const [totalRows, summaryRows] = await Promise.all([
     db
       .select({ total: sql<number>`count(*)::int` })
       .from(impactSites)
@@ -6721,7 +6720,39 @@ export async function getAdminImpactSitesPage(params: AdminImpactSiteFilters = {
       })
       .from(impactSites)
       .leftJoin(campaigns, eq(impactSites.campaignId, campaigns.id))
-      .where(whereClause),
+      .where(whereClause)
+  ]);
+
+  const totalItems = Number(totalRows[0]?.total ?? 0);
+  const pagination = adminPaginationMeta(totalItems, query);
+  const siteRows = await db
+    .select(adminImpactSiteSelect())
+    .from(impactSites)
+    .leftJoin(campaigns, eq(impactSites.campaignId, campaigns.id))
+    .where(whereClause)
+    .orderBy(adminImpactSiteOrderBy(query.sort, query.dir), asc(impactSites.name))
+    .limit(pagination.pageSize)
+    .offset(adminListOffset(query, totalItems));
+
+  return {
+    filters: {
+      ...filters,
+      sort: query.sort ?? "name",
+      dir: query.dir
+    },
+    impactSites: siteRows.map(toAdminImpactSiteListRow),
+    pagination,
+    summary: {
+      sites: totalItems,
+      averageProgress: Number(summaryRows[0]?.averageProgress ?? 0),
+      totalEvidence: Number(summaryRows[0]?.totalEvidence ?? 0)
+    }
+  };
+}
+
+export async function getAdminImpactSiteEditorData(impactSiteId?: string) {
+  const selectedSiteId = adminImpactSiteIdFilter(impactSiteId);
+  const [campaignOptionRows, siteRows] = await Promise.all([
     db
       .select({
         id: campaigns.id,
@@ -6732,22 +6763,7 @@ export async function getAdminImpactSitesPage(params: AdminImpactSiteFilters = {
       })
       .from(campaigns)
       .innerJoin(organizations, eq(campaigns.organizationId, organizations.id))
-      .orderBy(asc(campaigns.title))
-  ]);
-
-  const totalItems = Number(totalRows[0]?.total ?? 0);
-  const pagination = adminPaginationMeta(totalItems, query);
-  const selectedSiteId = adminImpactSiteIdFilter(params.site);
-
-  const [siteRows, selectedRows] = await Promise.all([
-    db
-      .select(adminImpactSiteSelect())
-      .from(impactSites)
-      .leftJoin(campaigns, eq(impactSites.campaignId, campaigns.id))
-      .where(whereClause)
-      .orderBy(adminImpactSiteOrderBy(query.sort, query.dir), asc(impactSites.name))
-      .limit(pagination.pageSize)
-      .offset(adminListOffset(query, totalItems)),
+      .orderBy(asc(campaigns.title)),
     selectedSiteId
       ? db
           .select(adminImpactSiteSelect())
@@ -6758,24 +6774,9 @@ export async function getAdminImpactSitesPage(params: AdminImpactSiteFilters = {
       : Promise.resolve([])
   ]);
 
-  const selectedSite = selectedRows[0] ? toAdminImpactSiteListRow(selectedRows[0]) : null;
-
   return {
     campaignOptions: campaignOptionRows,
-    filters: {
-      ...filters,
-      sort: query.sort ?? "name",
-      dir: query.dir,
-      selectedSiteId
-    },
-    impactSites: siteRows.map(toAdminImpactSiteListRow),
-    pagination,
-    selectedSite,
-    summary: {
-      sites: totalItems,
-      averageProgress: Number(summaryRows[0]?.averageProgress ?? 0),
-      totalEvidence: Number(summaryRows[0]?.totalEvidence ?? 0)
-    }
+    site: siteRows[0] ? toAdminImpactSiteListRow(siteRows[0]) : null
   };
 }
 

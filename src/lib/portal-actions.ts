@@ -592,6 +592,46 @@ function redirectAdminCampaignSaved(code: string, formData?: FormData): never {
   redirectAdminForm(adminReturnPath(formData, "/admin/campaigns", "saved"), "saved", code);
 }
 
+const adminImpactSiteDraftFields = [
+  "campaignId",
+  "name",
+  "ecosystemType",
+  "region",
+  "latitude",
+  "longitude",
+  "verification",
+  "progress",
+  "evidenceCount",
+  "latestSurvey"
+] as const;
+
+function adminImpactSiteErrorPath(formData: FormData) {
+  const path = adminReturnPath(formData, "/admin/campaigns/impact-sites", "error");
+  const hashIndex = path.indexOf("#");
+  const hash = hashIndex >= 0 ? path.slice(hashIndex) : "";
+  const withoutHash = hashIndex >= 0 ? path.slice(0, hashIndex) : path;
+  const [pathname, rawQuery = ""] = withoutHash.split("?", 2);
+  const search = new URLSearchParams(rawQuery);
+
+  for (const field of adminImpactSiteDraftFields) {
+    const value = formText(formData, field).slice(0, 240);
+
+    if (value) {
+      search.set(field, value);
+    } else {
+      search.delete(field);
+    }
+  }
+
+  const query = search.toString();
+
+  return `${pathname}${query ? `?${query}` : ""}${hash}`;
+}
+
+function redirectAdminImpactSiteError(code: string, formData: FormData): never {
+  redirectAdminForm(adminImpactSiteErrorPath(formData), "error", code);
+}
+
 function campaignContentReturnPath(formData: FormData, fallbackPath: string) {
   const path = safeRedirectPath(formData.get("returnTo"), fallbackPath);
 
@@ -3614,13 +3654,13 @@ export async function updateAdminCampaignAction(formData: FormData) {
 
 export async function createAdminImpactSiteAction(formData: FormData) {
   const user = await requireRole(["admin"], "/admin/campaigns/impact-sites");
-  const values = impactSiteFormValues(formData, false, (code) => redirectAdminCampaignError(code, formData));
+  const values = impactSiteFormValues(formData, false, (code) => redirectAdminImpactSiteError(code, formData));
 
   if (values.campaignId) {
     const [campaign] = await db.select({ id: campaigns.id }).from(campaigns).where(eq(campaigns.id, values.campaignId)).limit(1);
 
     if (!campaign) {
-      redirectAdminCampaignError("campaign-missing", formData);
+      redirectAdminImpactSiteError("campaign-missing", formData);
     }
   }
 
@@ -3643,23 +3683,23 @@ export async function createAdminImpactSiteAction(formData: FormData) {
 export async function updateAdminImpactSiteAction(formData: FormData) {
   const user = await requireRole(["admin"], "/admin/campaigns/impact-sites");
   const impactSiteId = formText(formData, "impactSiteId");
-  const values = impactSiteFormValues(formData, false, (code) => redirectAdminCampaignError(code, formData));
+  const values = impactSiteFormValues(formData, false, (code) => redirectAdminImpactSiteError(code, formData));
 
   if (!impactSiteId) {
-    redirectAdminCampaignError("impact-site-missing", formData);
+    redirectAdminImpactSiteError("impact-site-missing", formData);
   }
 
   const [site] = await db.select({ id: impactSites.id, name: impactSites.name }).from(impactSites).where(eq(impactSites.id, impactSiteId)).limit(1);
 
   if (!site) {
-    redirectAdminCampaignError("impact-site-missing", formData);
+    redirectAdminImpactSiteError("impact-site-missing", formData);
   }
 
   if (values.campaignId) {
     const [campaign] = await db.select({ id: campaigns.id }).from(campaigns).where(eq(campaigns.id, values.campaignId)).limit(1);
 
     if (!campaign) {
-      redirectAdminCampaignError("campaign-missing", formData);
+      redirectAdminImpactSiteError("campaign-missing", formData);
     }
   }
 

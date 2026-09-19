@@ -1,25 +1,14 @@
 import Link from "next/link";
-import { ArrowUpDown, FileCheck2, MapPinned, Pencil, Plus, Save, Target } from "lucide-react";
-import type { ReactNode } from "react";
+import { ArrowUpDown, FileCheck2, MapPinned, Pencil, Target } from "lucide-react";
 
 import { AdminAlert } from "@/components/admin/admin-alert";
-import { AdminConfirmSubmit } from "@/components/admin/admin-confirm-submit";
 import { AdminDataTable, type AdminDataTableColumn } from "@/components/admin/admin-data-table";
 import { AdminListToolbar } from "@/components/admin/admin-list-toolbar";
 import { AdminPagination } from "@/components/admin/admin-pagination";
-import {
-  AdminEmptyState,
-  AdminPageHeader,
-  AdminStatusBadge,
-  adminInputClassName,
-  adminPanelClassName,
-  adminSelectClassName
-} from "@/components/admin-ui";
-import { Button } from "@/components/ui/button";
+import { AdminEmptyState, AdminPageHeader, AdminStatusBadge, adminSelectClassName } from "@/components/admin-ui";
 import { ProgressMeter } from "@/components/ui/progress-meter";
 import { requireRole } from "@/lib/auth";
-import { impactSiteEcosystemTypes, impactSiteVerificationStatuses } from "@/lib/campaign-content";
-import { createAdminImpactSiteAction, deleteAdminImpactSiteAction, updateAdminImpactSiteAction } from "@/lib/portal-actions";
+import { impactSiteVerificationStatuses } from "@/lib/campaign-content";
 import { getAdminImpactSitesPage, type AdminImpactSiteFilters } from "@/lib/queries";
 import { cn } from "@/lib/utils";
 
@@ -38,16 +27,12 @@ const statusMessages: Record<string, string> = {
 };
 
 const errorMessages: Record<string, string> = {
-  "campaign-missing": "Choose an existing campaign.",
-  "impact-site-delete": "Delete confirmation was not submitted.",
-  "impact-site-invalid": "Enter site name, ecosystem type, region, valid coordinates, progress between 0 and 100, and evidence count.",
   "impact-site-missing": "Impact site record was not found."
 };
 
 type AdminCampaignImpactSitesPageProps = {
   searchParams?: Promise<
     AdminImpactSiteFilters & {
-      create?: string;
       error?: string;
       saved?: string;
     }
@@ -55,52 +40,10 @@ type AdminCampaignImpactSitesPageProps = {
 };
 
 type AdminImpactSitesData = Awaited<ReturnType<typeof getAdminImpactSitesPage>>;
-type CampaignOption = AdminImpactSitesData["campaignOptions"][number];
 type ImpactSite = AdminImpactSitesData["impactSites"][number];
-
-function Field({
-  label,
-  children,
-  className = "",
-  required = false
-}: {
-  label: string;
-  children: ReactNode;
-  className?: string;
-  required?: boolean;
-}) {
-  return (
-    <label className={`grid gap-1.5 text-sm font-bold text-ocean-900 ${className}`}>
-      <span className="flex items-center gap-1">
-        {label}
-        {required ? (
-          <>
-            <span className="text-coral-700" aria-hidden="true">
-              *
-            </span>
-            <span className="sr-only">required</span>
-          </>
-        ) : null}
-      </span>
-      {children}
-    </label>
-  );
-}
 
 function labelize(value: string) {
   return value.replace(/_/g, " ");
-}
-
-function dateValue(value: string | null | undefined) {
-  return value ?? "";
-}
-
-function coordinateValue(value: number | undefined) {
-  return typeof value === "number" ? value.toFixed(6) : "";
-}
-
-function optionValuesWithCurrent(options: string[], current?: string | null) {
-  return current && !options.includes(current) ? [...options, current] : options;
 }
 
 function adminImpactSitesHref(params: Record<string, string | number | null | undefined>) {
@@ -127,15 +70,7 @@ function listParams(data: AdminImpactSitesData) {
   };
 }
 
-function SortHeader({
-  label,
-  sort,
-  data
-}: {
-  label: string;
-  sort: string;
-  data: AdminImpactSitesData;
-}) {
+function SortHeader({ label, sort, data }: { label: string; sort: string; data: AdminImpactSitesData }) {
   const active = data.filters.sort === sort;
   const nextDir = active && data.filters.dir === "asc" ? "desc" : "asc";
 
@@ -147,119 +82,6 @@ function SortHeader({
       {label}
       <ArrowUpDown className={cn("size-3.5", active ? "text-coral-700" : "text-ocean-900/38")} aria-hidden="true" />
     </Link>
-  );
-}
-
-function CampaignSelect({ campaigns, defaultValue }: { campaigns: CampaignOption[]; defaultValue?: string | null }) {
-  return (
-    <select name="campaignId" defaultValue={defaultValue ?? ""} className={adminSelectClassName}>
-      <option value="">Unassigned staging site</option>
-      {campaigns.map((campaign) => (
-        <option key={campaign.id} value={campaign.id}>
-          {campaign.title} / {campaign.organizationName} / {labelize(campaign.status)}
-        </option>
-      ))}
-    </select>
-  );
-}
-
-function VerificationSelect({ defaultValue = "basic" }: { defaultValue?: string | null }) {
-  return (
-    <select name="verification" defaultValue={defaultValue ?? "basic"} className={adminSelectClassName}>
-      {impactSiteVerificationStatuses.map((status) => (
-        <option key={status} value={status}>
-          {labelize(status)}
-        </option>
-      ))}
-    </select>
-  );
-}
-
-function EcosystemTypeSelect({ defaultValue }: { defaultValue?: string | null }) {
-  return (
-    <select name="ecosystemType" defaultValue={defaultValue ?? "Coral"} className={adminSelectClassName} required>
-      {optionValuesWithCurrent([...impactSiteEcosystemTypes], defaultValue).map((type) => (
-        <option key={type} value={type}>
-          {type}
-        </option>
-      ))}
-    </select>
-  );
-}
-
-function ImpactSiteFields({
-  campaigns,
-  site,
-  advancedOpen = false
-}: {
-  campaigns: CampaignOption[];
-  site?: ImpactSite | null;
-  advancedOpen?: boolean;
-}) {
-  return (
-    <>
-      <div className="grid gap-3 lg:grid-cols-3">
-        <Field label="Linked campaign" className="lg:col-span-2">
-          <CampaignSelect campaigns={campaigns} defaultValue={site?.campaignId} />
-        </Field>
-        <Field label="Verification">
-          <VerificationSelect defaultValue={site?.verification} />
-        </Field>
-      </div>
-      <div className="grid gap-3 lg:grid-cols-3">
-        <Field label="Site name" required>
-          <input name="name" defaultValue={site?.name} placeholder="Raja Ampat Reef Garden" className={adminInputClassName} required />
-        </Field>
-        <Field label="Ecosystem type" required>
-          <EcosystemTypeSelect defaultValue={site?.ecosystemType} />
-        </Field>
-        <Field label="Region" required>
-          <input name="region" defaultValue={site?.region} placeholder="Southwest Papua" className={adminInputClassName} required />
-        </Field>
-      </div>
-      <div className="grid gap-3 lg:grid-cols-2">
-        <Field label="Latitude" required>
-          <input
-            name="latitude"
-            type="number"
-            min="-90"
-            max="90"
-            step="0.000001"
-            defaultValue={coordinateValue(site?.latitude)}
-            placeholder="-0.234900"
-            className={adminInputClassName}
-            required
-          />
-        </Field>
-        <Field label="Longitude" required>
-          <input
-            name="longitude"
-            type="number"
-            min="-180"
-            max="180"
-            step="0.000001"
-            defaultValue={coordinateValue(site?.longitude)}
-            placeholder="130.516600"
-            className={adminInputClassName}
-            required
-          />
-        </Field>
-      </div>
-      <details className="rounded-lg border border-ocean-900/10 bg-sand-50 p-3" open={advancedOpen}>
-        <summary className="cursor-pointer text-sm font-bold text-ocean-900">Advanced tracking fields</summary>
-        <div className="mt-3 grid gap-3 lg:grid-cols-3">
-          <Field label="Progress">
-            <input name="progress" type="number" min="0" max="100" step="1" defaultValue={site?.progress ?? 0} className={adminInputClassName} />
-          </Field>
-          <Field label="Evidence records">
-            <input name="evidenceCount" type="number" min="0" step="1" defaultValue={site?.evidenceCount ?? 0} className={adminInputClassName} />
-          </Field>
-          <Field label="Latest survey">
-            <input name="latestSurvey" type="date" defaultValue={dateValue(site?.latestSurvey)} className={adminInputClassName} />
-          </Field>
-        </div>
-      </details>
-    </>
   );
 }
 
@@ -287,16 +109,20 @@ export default async function AdminCampaignImpactSitesPage({ searchParams }: Adm
   const errorMessage = params?.error ? errorMessages[String(params.error)] : null;
   const baseParams = listParams(data);
   const pageParams = { ...baseParams, page: data.pagination.page };
-  const createOpen = String(params?.create ?? "") === "1";
   const returnTo = adminImpactSitesHref(pageParams);
-  const selectedReturnTo = data.selectedSite ? adminImpactSitesHref({ ...pageParams, site: data.selectedSite.id }) : returnTo;
+  const newSiteHref = `/admin/campaigns/impact-sites/new?returnTo=${encodeURIComponent(returnTo)}`;
   const columns: AdminDataTableColumn<ImpactSite>[] = [
     {
       key: "site",
       header: <SortHeader label="Site" sort="name" data={data} />,
       render: (site) => (
         <div className="min-w-56">
-          <p className="font-bold text-ocean-900">{site.name}</p>
+          <Link
+            href={`/admin/campaigns/impact-sites/${site.id}?returnTo=${encodeURIComponent(returnTo)}`}
+            className="font-bold text-ocean-900 hover:text-coral-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-kelp-500 focus-visible:ring-offset-2"
+          >
+            {site.name}
+          </Link>
           <p className="mt-1 text-xs font-bold uppercase tracking-[0.12em] text-coral-700">{site.ecosystemType}</p>
           <p className="mt-1 text-sm font-semibold text-ocean-900/58">
             {site.latitude.toFixed(6)}, {site.longitude.toFixed(6)}
@@ -344,11 +170,11 @@ export default async function AdminCampaignImpactSitesPage({ searchParams }: Adm
       className: "text-right",
       render: (site) => (
         <Link
-          href={`${adminImpactSitesHref({ ...pageParams, site: site.id })}#edit-site`}
+          href={`/admin/campaigns/impact-sites/${site.id}?returnTo=${encodeURIComponent(returnTo)}`}
           className="inline-flex min-h-9 items-center justify-center gap-2 rounded-lg border border-ocean-900/10 bg-white px-3 text-sm font-bold text-ocean-900 transition hover:border-coral-500 hover:text-coral-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-kelp-500 focus-visible:ring-offset-2"
         >
           <Pencil className="size-4" aria-hidden="true" />
-          Edit
+          Manage
         </Link>
       )
     }
@@ -359,7 +185,7 @@ export default async function AdminCampaignImpactSitesPage({ searchParams }: Adm
       <AdminPageHeader
         eyebrow="Projects / Impact sites"
         title="Impact site management"
-        description="Manage conservation locations through a searchable, paginated list. Create only the minimum record first, then add tracking detail when evidence is available."
+        description="Manage conservation locations through a searchable, paginated directory. Open one site to edit its location, tracking, verification, or assignment."
         actionHref="/admin/campaigns"
         actionLabel="Projects"
       />
@@ -378,51 +204,27 @@ export default async function AdminCampaignImpactSitesPage({ searchParams }: Adm
         searchValue={data.filters.q}
         searchPlaceholder="Search site, region, ecosystem, or campaign"
         clearHref={pathname}
-        createHref={`${adminImpactSitesHref({ ...pageParams, create: "1" })}#create-site`}
+        createHref={newSiteHref}
         createLabel="New site"
         hiddenFields={{
           sort: data.filters.sort === "name" ? undefined : data.filters.sort,
           dir: data.filters.dir === "asc" ? undefined : data.filters.dir
         }}
       >
-        <label className="sr-only" htmlFor="verification">
-          Verification
-        </label>
+        <label className="sr-only" htmlFor="verification">Verification</label>
         <select id="verification" name="verification" defaultValue={data.filters.verification} className={cn(adminSelectClassName, "min-w-40")}>
           <option value="all">All verification</option>
           {impactSiteVerificationStatuses.map((status) => (
-            <option key={status} value={status}>
-              {labelize(status)}
-            </option>
+            <option key={status} value={status}>{labelize(status)}</option>
           ))}
         </select>
-        <label className="sr-only" htmlFor="assignment">
-          Assignment
-        </label>
+        <label className="sr-only" htmlFor="assignment">Assignment</label>
         <select id="assignment" name="assignment" defaultValue={data.filters.assignment} className={cn(adminSelectClassName, "min-w-40")}>
           <option value="all">All assignments</option>
           <option value="assigned">Assigned</option>
           <option value="unassigned">Unassigned</option>
         </select>
       </AdminListToolbar>
-
-      <details id="create-site" className={adminPanelClassName} open={createOpen}>
-        <summary className="flex cursor-pointer list-none items-center justify-between gap-3 border-b border-ocean-900/10 p-4 text-left">
-          <span>
-            <span className="block text-xl font-bold tracking-normal text-ocean-900">Create impact site</span>
-            <span className="mt-1 block text-sm font-semibold text-ocean-900/58">Start with campaign link, location, ecosystem, and coordinates.</span>
-          </span>
-          <Plus className="size-5 shrink-0 text-coral-700" aria-hidden="true" />
-        </summary>
-        <form action={createAdminImpactSiteAction} className="grid gap-4 p-4">
-          <input type="hidden" name="returnTo" value={returnTo} />
-          <ImpactSiteFields campaigns={data.campaignOptions} />
-          <Button type="submit" tone="secondary" className="w-fit rounded-lg">
-            <Plus className="size-4" aria-hidden="true" />
-            Create Impact Site
-          </Button>
-        </form>
-      </details>
 
       <section className="space-y-3" aria-label="Impact sites">
         <AdminDataTable
@@ -434,60 +236,13 @@ export default async function AdminCampaignImpactSitesPage({ searchParams }: Adm
             <AdminEmptyState
               title="No impact sites found"
               description="Adjust filters or create the first conservation location for campaign tracking."
-              actionHref={`${pathname}#create-site`}
+              actionHref={newSiteHref}
               actionLabel="Create site"
             />
           }
         />
         <AdminPagination pathname={pathname} params={baseParams} pagination={data.pagination} />
       </section>
-
-      {data.selectedSite ? (
-        <section id="edit-site" className={adminPanelClassName}>
-          <div className="flex flex-col justify-between gap-3 border-b border-ocean-900/10 p-4 sm:flex-row sm:items-start">
-            <div>
-              <p className="text-xs font-bold uppercase tracking-[0.14em] text-coral-700">Selected impact site</p>
-              <h2 className="mt-2 text-xl font-bold tracking-normal text-ocean-900">{data.selectedSite.name}</h2>
-              <p className="mt-1 text-sm font-semibold text-ocean-900/58">{data.selectedSite.campaignTitle ?? "Unassigned staging site"}</p>
-            </div>
-            <Link
-              href={returnTo}
-              className="inline-flex min-h-10 items-center justify-center rounded-lg border border-ocean-900/10 bg-white px-3 text-sm font-bold text-ocean-900 transition hover:border-coral-500 hover:text-coral-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-kelp-500 focus-visible:ring-offset-2"
-            >
-              Close editor
-            </Link>
-          </div>
-          <div className="grid gap-6 p-4">
-            <form action={updateAdminImpactSiteAction} className="grid gap-4">
-              <input type="hidden" name="returnTo" value={selectedReturnTo} />
-              <input type="hidden" name="impactSiteId" value={data.selectedSite.id} />
-              <ImpactSiteFields campaigns={data.campaignOptions} site={data.selectedSite} advancedOpen />
-              <Button type="submit" tone="secondary" className="w-fit rounded-lg">
-                <Save className="size-4" aria-hidden="true" />
-                Save Site
-              </Button>
-            </form>
-
-            <div className="rounded-lg border border-coral-700/20 bg-coral-100 p-4">
-              <h3 className="text-sm font-bold text-coral-700">Danger zone</h3>
-              <p className="mt-1 max-w-2xl text-sm font-semibold leading-6 text-coral-700/80">
-                Delete this site and detach linked evidence, activity, and sponsorship records from the site.
-              </p>
-              <form id={`delete-impact-site-${data.selectedSite.id}`} action={deleteAdminImpactSiteAction} className="mt-4">
-                <input type="hidden" name="returnTo" value={returnTo} />
-                <input type="hidden" name="impactSiteId" value={data.selectedSite.id} />
-              </form>
-              <AdminConfirmSubmit
-                formId={`delete-impact-site-${data.selectedSite.id}`}
-                title="Delete impact site?"
-                body="This removes the impact site record and unlinks related campaign evidence from this location."
-                triggerLabel="Delete Site"
-                submitLabel="Delete Site"
-              />
-            </div>
-          </div>
-        </section>
-      ) : null}
     </div>
   );
 }
