@@ -1,6 +1,8 @@
 import { Flag, MessageCircle, ShieldCheck, Target, Users } from "lucide-react";
 import Link from "next/link";
 
+import { AdminAlert } from "@/components/admin/admin-alert";
+import { AdminConfirmSubmit } from "@/components/admin/admin-confirm-submit";
 import { AdminEmptyState, AdminPageHeader, AdminStatusBadge, adminInputClassName, adminPanelClassName, adminSelectClassName } from "@/components/admin-ui";
 import { CommunityStatusBadge } from "@/components/community-ui";
 import { Button } from "@/components/ui/button";
@@ -30,7 +32,8 @@ const savedMessages: Record<string, string> = {
 
 const errorMessages: Record<string, string> = {
   target: "Community target was not found.",
-  permission: "You do not have permission for that action."
+  permission: "You do not have permission for that action.",
+  "delete-confirmation": "Confirm deletion before permanently removing community content from the active experience."
 };
 
 function formatDate(value: Date | null | undefined) {
@@ -57,24 +60,52 @@ function targetHref(type: string, slug?: string) {
   return "/community";
 }
 
-function ModerationForm({ targetType, targetId }: { targetType: "post" | "event" | "challenge" | "comment"; targetId: string }) {
+function ModerationForm({
+  targetType,
+  targetId,
+  targetLabel
+}: {
+  targetType: "post" | "event" | "challenge" | "comment";
+  targetId: string;
+  targetLabel: string;
+}) {
+  const deleteFormId = `delete-community-${targetType}-${targetId}`;
+
   return (
-    <form action={moderateCommunityContentAction} className="mt-3 flex flex-wrap gap-2">
-      <input type="hidden" name="targetType" value={targetType} />
-      <input type="hidden" name="targetId" value={targetId} />
-      <input type="hidden" name="next" value="/admin/community" />
-      <select name="action" defaultValue="hide" className={`${adminSelectClassName} min-h-10`}>
-        <option value="hide">Hide</option>
-        <option value="restore">Restore</option>
-        <option value="archive">Archive</option>
-        <option value="delete">Delete</option>
-      </select>
-      <input name="reason" placeholder="Reason" className={`${adminInputClassName} min-h-10 min-w-52`} />
-      <Button type="submit" tone="secondary" className="min-h-10 px-3">
-        <ShieldCheck size={16} aria-hidden="true" />
-        Apply
-      </Button>
-    </form>
+    <div className="mt-3 grid gap-2 lg:grid-cols-[1fr_auto] lg:items-start">
+      <form action={moderateCommunityContentAction} className="flex flex-wrap gap-2">
+        <input type="hidden" name="targetType" value={targetType} />
+        <input type="hidden" name="targetId" value={targetId} />
+        <input type="hidden" name="next" value="/admin/community" />
+        <select name="action" defaultValue="hide" className={`${adminSelectClassName} min-h-10`}>
+          <option value="hide">Hide</option>
+          <option value="restore">Restore</option>
+          <option value="archive">Archive</option>
+        </select>
+        <input name="reason" placeholder="Moderation reason" className={`${adminInputClassName} min-h-10 min-w-52`} />
+        <Button type="submit" tone="secondary" className="min-h-10 px-3">
+          <ShieldCheck size={16} aria-hidden="true" />
+          Apply
+        </Button>
+      </form>
+
+      <div className="flex flex-wrap items-start justify-end gap-2">
+        <form id={deleteFormId} action={moderateCommunityContentAction} className="flex min-w-56 flex-1">
+          <input type="hidden" name="targetType" value={targetType} />
+          <input type="hidden" name="targetId" value={targetId} />
+          <input type="hidden" name="action" value="delete" />
+          <input type="hidden" name="next" value="/admin/community" />
+          <input name="reason" aria-label={`Deletion reason for ${targetLabel}`} placeholder="Deletion reason" className={`${adminInputClassName} min-h-10`} required />
+        </form>
+        <AdminConfirmSubmit
+          formId={deleteFormId}
+          title={`Delete ${targetType}?`}
+          body={`Delete “${targetLabel}” from the active community experience? This is a destructive moderation action and will be recorded in the audit log.`}
+          triggerLabel="Delete"
+          submitLabel={`Delete ${targetType}`}
+        />
+      </div>
+    </div>
   );
 }
 
@@ -94,8 +125,8 @@ export default async function AdminCommunityPage({ searchParams }: AdminCommunit
         actionLabel="Open Community"
       />
 
-      {savedMessage ? <p className="rounded-lg border border-kelp-700/20 bg-kelp-100 px-4 py-3 text-sm font-bold text-kelp-700">{savedMessage}</p> : null}
-      {errorMessage ? <p className="rounded-lg border border-coral-700/20 bg-coral-100 px-4 py-3 text-sm font-bold text-coral-700">{errorMessage}</p> : null}
+      {savedMessage ? <AdminAlert tone="success">{savedMessage}</AdminAlert> : null}
+      {errorMessage ? <AdminAlert tone="error">{errorMessage}</AdminAlert> : null}
 
       <section className="grid gap-3 md:grid-cols-5" aria-label="Community summary">
         {[
@@ -181,7 +212,7 @@ export default async function AdminCommunityPage({ searchParams }: AdminCommunit
                   {post.deletedAt ? <AdminStatusBadge value="deleted" /> : null}
                 </div>
               </div>
-              <ModerationForm targetType="post" targetId={post.id} />
+              <ModerationForm targetType="post" targetId={post.id} targetLabel={post.title} />
             </article>
           ))}
         </div>
@@ -205,7 +236,7 @@ export default async function AdminCommunityPage({ searchParams }: AdminCommunit
                   {event.deletedAt ? <AdminStatusBadge value="deleted" /> : null}
                 </div>
               </div>
-              <ModerationForm targetType="event" targetId={event.id} />
+              <ModerationForm targetType="event" targetId={event.id} targetLabel={event.title} />
             </article>
           ))}
         </div>
@@ -229,7 +260,7 @@ export default async function AdminCommunityPage({ searchParams }: AdminCommunit
                   {challenge.deletedAt ? <AdminStatusBadge value="deleted" /> : null}
                 </div>
               </div>
-              <ModerationForm targetType="challenge" targetId={challenge.id} />
+              <ModerationForm targetType="challenge" targetId={challenge.id} targetLabel={challenge.title} />
             </article>
           ))}
         </div>

@@ -1,26 +1,23 @@
-import { Building2, CircleDollarSign, UsersRound } from "lucide-react";
+import Link from "next/link";
+import { ArrowUpDown, Building2, CircleDollarSign, UsersRound } from "lucide-react";
 
-import {
-  AdminEmptyState,
-  AdminPageHeader,
-  AdminStatusBadge,
-  adminInputClassName,
-  adminPanelClassName,
-  adminSelectClassName
-} from "@/components/admin-ui";
+import { AdminAlert } from "@/components/admin/admin-alert";
+import { AdminDataTable, type AdminDataTableColumn } from "@/components/admin/admin-data-table";
+import { AdminListToolbar } from "@/components/admin/admin-list-toolbar";
+import { AdminPagination } from "@/components/admin/admin-pagination";
+import { AdminEmptyState, AdminPageHeader, adminInputClassName, adminSelectClassName } from "@/components/admin-ui";
 import { Button } from "@/components/ui/button";
 import { FormTabs } from "@/components/ui/form-tabs";
 import { MetricValue } from "@/components/ui/metric-value";
 import { assignCorporatePermissionAction, createCorporateWorkspaceAction } from "@/lib/admin-corporate-actions";
 import { requireRole } from "@/lib/auth";
-import { getAdminCorporateData } from "@/lib/queries";
-import { formatCurrency } from "@/lib/utils";
+import { getAdminCorporatePage, type AdminCorporateFilters } from "@/lib/queries";
+import { cn } from "@/lib/utils";
 
-export const metadata = {
-  title: "Admin Corporate"
-};
-
+export const metadata = { title: "Admin Corporate" };
 export const dynamic = "force-dynamic";
+
+const pathname = "/admin/corporate";
 
 const savedMessages: Record<string, string> = {
   workspace: "Corporate workspace saved.",
@@ -36,162 +33,129 @@ const errorMessages: Record<string, string> = {
 };
 
 type AdminCorporatePageProps = {
-  searchParams?: Promise<{
-    error?: string;
-    saved?: string;
-  }>;
+  searchParams?: Promise<AdminCorporateFilters & { error?: string; saved?: string }>;
 };
 
+type AdminCorporateData = Awaited<ReturnType<typeof getAdminCorporatePage>>;
+type AdminCorporateAccount = AdminCorporateData["accounts"][number];
+
+function adminCorporateHref(params: Record<string, string | number | undefined>) {
+  const search = new URLSearchParams();
+  for (const [key, value] of Object.entries(params)) {
+    if (value !== undefined && value !== "") search.set(key, String(value));
+  }
+  const query = search.toString();
+  return query ? `${pathname}?${query}` : pathname;
+}
+
+function listParams(data: AdminCorporateData) {
+  return {
+    q: data.filters.q || undefined,
+    sort: data.filters.sort === "name" ? undefined : data.filters.sort,
+    dir: data.filters.dir === "asc" ? undefined : data.filters.dir
+  };
+}
+
+function SortHeader({ label, sort, data }: { label: string; sort: string; data: AdminCorporateData }) {
+  const active = data.filters.sort === sort;
+  const nextDir = active && data.filters.dir === "asc" ? "desc" : "asc";
+  return (
+    <Link href={adminCorporateHref({ ...listParams(data), sort, dir: nextDir, page: 1 })} className="inline-flex items-center gap-1 rounded-md text-ocean-900/70 transition hover:text-coral-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-kelp-500 focus-visible:ring-offset-2">
+      {label}
+      <ArrowUpDown className={cn("size-3.5", active ? "text-coral-700" : "text-ocean-900/38")} aria-hidden="true" />
+    </Link>
+  );
+}
+
+function SummaryMetric({ label, value, icon: Icon }: { label: string; value: string; icon: typeof Building2 }) {
+  return (
+    <article className="min-w-0 rounded-lg border border-ocean-900/10 bg-white p-4 shadow-soft">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-sm font-bold text-ocean-900/58">{label}</p>
+          <MetricValue className="mt-3 text-ocean-900">{value}</MetricValue>
+        </div>
+        <span className="grid size-10 shrink-0 place-items-center rounded-lg bg-ocean-50 text-ocean-700"><Icon className="size-5" aria-hidden="true" /></span>
+      </div>
+    </article>
+  );
+}
+
 export default async function AdminCorporatePage({ searchParams }: AdminCorporatePageProps) {
-  await requireRole(["admin"], "/admin/corporate");
+  await requireRole(["admin"], pathname);
   const params = await searchParams;
-  const data = await getAdminCorporateData();
-  const savedMessage = params?.saved ? savedMessages[params.saved] : null;
-  const errorMessage = params?.error ? errorMessages[params.error] : null;
+  const data = await getAdminCorporatePage(params);
+  const savedMessage = params?.saved ? savedMessages[String(params.saved)] : null;
+  const errorMessage = params?.error ? errorMessages[String(params.error)] : null;
+  const baseParams = listParams(data);
+  const columns: AdminDataTableColumn<AdminCorporateAccount>[] = [
+    {
+      key: "company",
+      header: <SortHeader label="Company" sort="name" data={data} />,
+      render: (account) => <div className="min-w-56"><p className="font-bold text-ocean-900">{account.name}</p><p className="mt-1 text-sm font-semibold text-ocean-900/58">/{account.slug}</p></div>
+    },
+    {
+      key: "programs",
+      header: <SortHeader label="Programs" sort="programs" data={data} />,
+      render: (account) => <div><p className="font-bold">{account.programCount.toLocaleString("id-ID")}</p><p className="mt-1 text-xs font-semibold text-ocean-900/54">{account.activeProgramCount.toLocaleString("id-ID")} active</p></div>
+    },
+    {
+      key: "users",
+      header: <SortHeader label="Users" sort="users" data={data} />,
+      render: (account) => <span className="font-bold">{account.userCount.toLocaleString("id-ID")}</span>
+    },
+    {
+      key: "contributions",
+      header: <SortHeader label="Contributions" sort="contributions" data={data} />,
+      render: (account) => <span className="font-bold">{account.contributionCount.toLocaleString("id-ID")}</span>
+    },
+    {
+      key: "created",
+      header: <SortHeader label="Created" sort="createdAt" data={data} />,
+      render: (account) => <time dateTime={account.createdAt.toISOString()} className="whitespace-nowrap font-semibold text-ocean-900/68">{account.createdAt.toLocaleDateString("id-ID", { day: "2-digit", month: "short", year: "numeric" })}</time>
+    }
+  ];
 
   return (
     <div className="space-y-6">
-      <AdminPageHeader
-        eyebrow="Corporate"
-        title="Corporate workspaces"
-        description="Create a company workspace, assign access, and review contribution records."
-      />
+      <AdminPageHeader eyebrow="Corporate" title="Corporate workspaces" description="Create company workspaces, assign access, and manage the corporate account directory from a scalable admin view." />
 
-      {savedMessage ? <p className="rounded-lg border border-kelp-700/20 bg-kelp-100 px-4 py-3 text-sm font-bold text-kelp-700">{savedMessage}</p> : null}
-      {errorMessage ? <p className="rounded-lg border border-coral-700/20 bg-coral-100 px-4 py-3 text-sm font-bold text-coral-700">{errorMessage}</p> : null}
+      {savedMessage ? <AdminAlert tone="success">{savedMessage}</AdminAlert> : null}
+      {errorMessage ? <AdminAlert tone="error">{errorMessage}</AdminAlert> : null}
 
-      <section className="grid gap-3 md:grid-cols-3" aria-label="Corporate summary">
-        {[
-          { label: "Companies", value: data.metrics.accounts.toLocaleString("id-ID"), icon: Building2 },
-          { label: "Corporate users", value: data.metrics.corporateUsers.toLocaleString("id-ID"), icon: UsersRound },
-          { label: "Contributions", value: formatCurrency(data.metrics.contributionTotal), icon: CircleDollarSign }
-        ].map((item) => {
-          const Icon = item.icon;
-
-          return (
-            <article key={item.label} className="min-w-0 rounded-lg border border-ocean-900/10 bg-white p-4 shadow-soft">
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <p className="text-sm font-bold text-ocean-900/58">{item.label}</p>
-                  <MetricValue className="mt-3 text-ocean-900">{item.value}</MetricValue>
-                </div>
-                <span className="grid size-10 shrink-0 place-items-center rounded-lg bg-ocean-50 text-ocean-700">
-                  <Icon className="size-5" aria-hidden="true" />
-                </span>
-              </div>
-            </article>
-          );
-        })}
+      <section className="grid gap-3 md:grid-cols-4" aria-label="Corporate summary">
+        <SummaryMetric label="Filtered companies" value={data.metrics.accounts.toLocaleString("id-ID")} icon={Building2} />
+        <SummaryMetric label="Active programs" value={data.metrics.activePrograms.toLocaleString("id-ID")} icon={Building2} />
+        <SummaryMetric label="Corporate users" value={data.metrics.corporateUsers.toLocaleString("id-ID")} icon={UsersRound} />
+        <SummaryMetric label="Contributions" value={data.metrics.contributions.toLocaleString("id-ID")} icon={CircleDollarSign} />
       </section>
 
-      <FormTabs
-        ariaLabel="Corporate administration actions"
-        tabs={[
-          { id: "workspace", label: "Workspace", description: "Company setup" },
-          { id: "access", label: "Access", description: "Corporate users", badge: data.accounts.length.toLocaleString("id-ID") }
-        ]}
-      >
+      <FormTabs ariaLabel="Corporate administration actions" tabs={[{ id: "workspace", label: "Create workspace", description: "Company setup" }, { id: "access", label: "Assign access", description: "Corporate users" }]}>
         <form action={createCorporateWorkspaceAction} className="grid gap-4">
-          <div>
-            <h2 className="text-xl font-bold tracking-normal text-ocean-900">Create workspace</h2>
-            <p className="mt-1 text-sm font-semibold leading-6 text-ocean-900/58">Only the minimum fields are required now. Details can be refined later.</p>
-          </div>
+          <div><h2 className="text-xl font-bold tracking-normal text-ocean-900">Create workspace</h2><p className="mt-1 text-sm font-semibold leading-6 text-ocean-900/58">Only the minimum fields are required now. Details can be refined later.</p></div>
           <div className="grid gap-3 md:grid-cols-3">
-            <label className="grid gap-2 text-sm font-bold text-ocean-900">
-              Company name
-              <input name="accountName" className={adminInputClassName} placeholder="Nusantara Bank" required />
-            </label>
-            <label className="grid gap-2 text-sm font-bold text-ocean-900">
-              Program name
-              <input name="programName" className={adminInputClassName} placeholder="Ocean Program 2026" required />
-            </label>
-            <label className="grid gap-2 text-sm font-bold text-ocean-900">
-              Budget amount
-              <input name="budgetAmount" type="number" min="1" step="1000000" className={adminInputClassName} placeholder="500000000" required />
-            </label>
+            <label className="grid gap-2 text-sm font-bold text-ocean-900">Company name<input name="accountName" className={adminInputClassName} placeholder="Nusantara Bank" required /></label>
+            <label className="grid gap-2 text-sm font-bold text-ocean-900">Program name<input name="programName" className={adminInputClassName} placeholder="Ocean Program 2026" required /></label>
+            <label className="grid gap-2 text-sm font-bold text-ocean-900">Budget amount<input name="budgetAmount" type="number" min="1" step="1000000" className={adminInputClassName} placeholder="500000000" required /></label>
           </div>
           <Button type="submit" className="justify-self-start">Save Workspace</Button>
         </form>
 
         <form action={assignCorporatePermissionAction} className="grid gap-4">
-          <div>
-            <h2 className="text-xl font-bold tracking-normal text-ocean-900">Assign corporate access</h2>
-            <p className="mt-1 text-sm font-semibold leading-6 text-ocean-900/58">Give an existing user access to one company workspace.</p>
-          </div>
+          <div><h2 className="text-xl font-bold tracking-normal text-ocean-900">Assign corporate access</h2><p className="mt-1 text-sm font-semibold leading-6 text-ocean-900/58">Give an existing user access to one company workspace.</p></div>
           <div className="grid gap-3 md:grid-cols-[1fr_1fr_auto] md:items-end">
-            <label className="grid gap-2 text-sm font-bold text-ocean-900">
-              Corporate account
-              <select name="corporateAccountId" className={adminSelectClassName} required>
-                {data.accounts.map((account) => (
-                  <option key={account.id} value={account.id}>{account.name}</option>
-                ))}
-              </select>
-            </label>
-            <label className="grid gap-2 text-sm font-bold text-ocean-900">
-              User email
-              <input name="email" type="email" className={adminInputClassName} placeholder="name@company.com" required />
-            </label>
-            <Button type="submit" className="min-h-10" disabled={data.accounts.length === 0}>Assign</Button>
+            <label className="grid gap-2 text-sm font-bold text-ocean-900">Corporate account<select name="corporateAccountId" className={adminSelectClassName} required>{data.accountOptions.map((account) => <option key={account.id} value={account.id}>{account.name}</option>)}</select></label>
+            <label className="grid gap-2 text-sm font-bold text-ocean-900">User email<input name="email" type="email" className={adminInputClassName} placeholder="name@company.com" required /></label>
+            <Button type="submit" className="min-h-10" disabled={data.accountOptions.length === 0}>Assign</Button>
           </div>
         </form>
       </FormTabs>
 
-      <section className={adminPanelClassName}>
-        <div className="border-b border-ocean-900/10 p-4">
-          <h2 className="text-xl font-bold tracking-normal text-ocean-900">Corporate accounts</h2>
-          <p className="mt-1 text-sm font-semibold text-ocean-900/58">Companies, programs, and assigned users.</p>
-        </div>
-        <div className="divide-y divide-ocean-900/10">
-          {data.accounts.map((account) => (
-            <article key={account.id} className="p-4">
-              <div className="grid gap-4 lg:grid-cols-[1fr_auto] lg:items-start">
-                <div>
-                  <h3 className="text-lg font-bold tracking-normal text-ocean-900">{account.name}</h3>
-                  <p className="mt-1 text-sm font-semibold text-ocean-900/58">/{account.slug} · {account.programs.length} programs · {account.permissions.length} users</p>
-                  <div className="mt-3 flex flex-wrap gap-2">
-                    {account.programs.map((program) => (
-                      <span key={program.id} className="min-w-0 break-words rounded-full bg-ocean-50 px-3 py-1 text-xs font-bold text-ocean-700 [overflow-wrap:anywhere]">
-                        {program.name} · {formatCurrency(Number(program.budgetAmount))}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-                <p className="min-w-0 break-words text-right text-lg font-bold text-ocean-900 [overflow-wrap:anywhere]">{formatCurrency(account.contributionTotal)}</p>
-              </div>
-            </article>
-          ))}
-          {data.accounts.length === 0 ? (
-            <AdminEmptyState className="m-4" title="No corporate accounts yet" description="Create a company workspace when the first corporate partner is ready." />
-          ) : null}
-        </div>
-      </section>
+      <AdminListToolbar action={pathname} searchValue={data.filters.q} searchPlaceholder="Search company name or slug" clearHref={pathname} hiddenFields={{ sort: data.filters.sort === "name" ? undefined : data.filters.sort, dir: data.filters.dir === "asc" ? undefined : data.filters.dir }} />
 
-      <section className={adminPanelClassName}>
-        <div className="border-b border-ocean-900/10 p-4">
-          <h2 className="text-xl font-bold tracking-normal text-ocean-900">Recent contributions</h2>
-          <p className="mt-1 text-sm font-semibold text-ocean-900/58">Company support records, separate from individual contributions.</p>
-        </div>
-        <div className="divide-y divide-ocean-900/10">
-          {data.contributions.slice(0, 20).map((contribution) => (
-            <article key={contribution.id} className="grid gap-3 p-4 lg:grid-cols-[1fr_auto_auto] lg:items-center">
-              <div>
-                <h3 className="font-bold text-ocean-900">{contribution.campaignTitle}</h3>
-                <p className="mt-1 text-sm font-semibold text-ocean-900/58">
-                  {contribution.accountName} · {contribution.programName} · {contribution.referenceCode}
-                </p>
-              </div>
-              <AdminStatusBadge value={contribution.status} />
-              <div className="text-right">
-                <p className="min-w-0 break-words font-bold text-ocean-900 [overflow-wrap:anywhere]">{formatCurrency(contribution.amountValue)}</p>
-                <p className="mt-1 text-xs font-bold uppercase text-ocean-900/48">{contribution.publicGoalLabel}</p>
-              </div>
-            </article>
-          ))}
-          {data.contributions.length === 0 ? (
-            <AdminEmptyState className="m-4" title="No corporate contributions yet" description="Corporate users can create contribution records from their workspace." />
-          ) : null}
-        </div>
-      </section>
+      <AdminDataTable caption="Corporate account directory" columns={columns} rows={data.accounts} getRowKey={(account) => account.id} emptyState={<AdminEmptyState title="No corporate accounts match" description="Adjust the search or create a new workspace." />} />
+
+      <AdminPagination pathname={pathname} params={baseParams} pagination={data.pagination} />
     </div>
   );
 }

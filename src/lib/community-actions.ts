@@ -932,6 +932,11 @@ export async function moderateCommunityContentAction(formData: FormData) {
   const action = normalizeCommunityModerationAction(formData.get("action"));
   const reason = textValue(formData.get("reason"), 1000) || action;
   const next = nextPath(formData, "/admin/community");
+
+  if (action === "delete" && formData.get("confirmDelete") !== "delete") {
+    redirect(withStatus(next, "error", "delete-confirmation"));
+  }
+
   const target = await targetRecord(targetType, targetId);
 
   if (!target) {

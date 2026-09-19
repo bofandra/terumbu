@@ -9607,3 +9607,254 @@ export async function getMonthlyImpactReportDownload(reportId: string, userId: s
       }
     : null;
 }
+
+export type AdminCorporateFilters = {
+  q?: string | string[];
+  page?: string | string[];
+  pageSize?: string | string[];
+  sort?: string | string[];
+  dir?: string | string[];
+};
+
+const adminCorporateSorts = ["name", "programs", "users", "contributions", "createdAt"] as const;
+
+export async function getAdminCorporatePage(params: AdminCorporateFilters = {}) {
+  const query = parseAdminListQuery(params, {
+    defaultSort: "name",
+    defaultDir: "asc",
+    allowedSorts: adminCorporateSorts,
+    defaultPageSize: 25,
+    maxPageSize: 100
+  });
+  const conditions = [];
+
+  if (query.q) {
+    const pattern = `%${query.q.toLowerCase()}%`;
+    conditions.push(or(sql`lower(${corporateAccounts.name}) like ${pattern}`, sql`lower(${corporateAccounts.slug}) like ${pattern}`));
+  }
+
+  const where = conditions.length > 0 ? and(...conditions) : sql`true`;
+  const programCount = sql<number>`count(distinct ${corporatePrograms.id})::int`;
+  const activeProgramCount = sql<number>`count(distinct case when ${corporatePrograms.status} = 'active' then ${corporatePrograms.id} end)::int`;
+  const userCount = sql<number>`count(distinct ${corporatePermissions.userId})::int`;
+  const contributionCount = sql<number>`count(distinct ${corporateContributions.id})::int`;
+  const sortColumn =
+    query.sort === "programs"
+      ? programCount
+      : query.sort === "users"
+        ? userCount
+        : query.sort === "contributions"
+          ? contributionCount
+          : query.sort === "createdAt"
+            ? corporateAccounts.createdAt
+            : corporateAccounts.name;
+
+  const [totalRows, summaryRows, accountOptions] = await Promise.all([
+    db.select({ total: sql<number>`count(*)::int` }).from(corporateAccounts).where(where),
+    db
+      .select({
+        accounts: sql<number>`count(distinct ${corporateAccounts.id})::int`,
+        activePrograms: sql<number>`count(distinct case when ${corporatePrograms.status} = 'active' then ${corporatePrograms.id} end)::int`,
+        corporateUsers: sql<number>`count(distinct ${corporatePermissions.userId})::int`,
+        contributions: sql<number>`count(distinct ${corporateContributions.id})::int`
+      })
+      .from(corporateAccounts)
+      .leftJoin(corporatePrograms, eq(corporatePrograms.corporateAccountId, corporateAccounts.id))
+      .leftJoin(corporatePermissions, eq(corporatePermissions.corporateAccountId, corporateAccounts.id))
+      .leftJoin(corporateContributions, eq(corporateContributions.corporateAccountId, corporateAccounts.id))
+      .where(where),
+    db.select({ id: corporateAccounts.id, name: corporateAccounts.name }).from(corporateAccounts).orderBy(asc(corporateAccounts.name))
+  ]);
+
+  const totalItems = Number(totalRows[0]?.total ?? 0);
+  const pagination = adminPaginationMeta(totalItems, query);
+  const rows = await db
+    .select({
+      id: corporateAccounts.id,
+      name: corporateAccounts.name,
+      slug: corporateAccounts.slug,
+      logoUrl: corporateAccounts.logoUrl,
+      createdAt: corporateAccounts.createdAt,
+      programCount,
+      activeProgramCount,
+      userCount,
+      contributionCount
+    })
+    .from(corporateAccounts)
+    .leftJoin(corporatePrograms, eq(corporatePrograms.corporateAccountId, corporateAccounts.id))
+    .leftJoin(corporatePermissions, eq(corporatePermissions.corporateAccountId, corporateAccounts.id))
+    .leftJoin(corporateContributions, eq(corporateContributions.corporateAccountId, corporateAccounts.id))
+    .where(where)
+    .groupBy(corporateAccounts.id, corporateAccounts.name, corporateAccounts.slug, corporateAccounts.logoUrl, corporateAccounts.createdAt)
+    .orderBy(query.dir === "desc" ? desc(sortColumn) : asc(sortColumn), asc(corporateAccounts.name))
+    .limit(query.pageSize)
+    .offset(adminListOffset(query, totalItems));
+
+  return {
+    accounts: rows,
+    accountOptions,
+    filters: {
+      q: query.q,
+      sort: query.sort ?? "name",
+      dir: query.dir
+    },
+    pagination,
+    metrics: {
+      accounts: Number(summaryRows[0]?.accounts ?? 0),
+      activePrograms: Number(summaryRows[0]?.activePrograms ?? 0),
+      corporateUsers: Number(summaryRows[0]?.corporateUsers ?? 0),
+      contributions: Number(summaryRows[0]?.contributions ?? 0)
+    }
+  };
+}
+
+export type AdminAcademyFilters = {
+  q?: string | string[];
+  page?: string | string[];
+  pageSize?: string | string[];
+  sort?: string | string[];
+  dir?: string | string[];
+  status?: string | string[];
+  level?: string | string[];
+};
+
+const adminAcademySorts = ["title", "status", "level", "lessons", "enrollments", "updatedAt"] as const;
+
+export async function getAdminAcademyPage(params: AdminAcademyFilters = {}) {
+  const query = parseAdminListQuery(params, {
+    defaultSort: "updatedAt",
+    defaultDir: "desc",
+    allowedSorts: adminAcademySorts,
+    defaultPageSize: 25,
+    maxPageSize: 100
+  });
+  const status = cleanAdminDirectoryFilter(params.status, 80) || "all";
+  const level = cleanAdminDirectoryFilter(params.level, 80);
+  const conditions = [];
+
+  if (query.q) {
+    const pattern = `%${query.q.toLowerCase()}%`;
+    conditions.push(
+      or(
+        sql`lower(${courses.title}) like ${pattern}`,
+        sql`lower(${courses.slug}) like ${pattern}`,
+        sql`lower(${courses.level}) like ${pattern}`,
+        sql`lower(${courses.summary}) like ${pattern}`
+      )
+    );
+  }
+
+  if (status !== "all") {
+    conditions.push(eq(courses.status, status));
+  }
+
+  if (level) {
+    conditions.push(eq(courses.level, level));
+  }
+
+  const where = conditions.length > 0 ? and(...conditions) : sql`true`;
+  const lessonCount = sql<number>`count(distinct ${courseLessons.id})::int`;
+  const assessmentCount = sql<number>`count(distinct ${courseAssessments.id})::int`;
+  const enrollmentCount = sql<number>`count(distinct ${courseEnrollments.id})::int`;
+  const completedCount = sql<number>`count(distinct case when ${courseEnrollments.status} = 'completed' then ${courseEnrollments.id} end)::int`;
+  const certificateCount = sql<number>`count(distinct ${courseCertificates.id})::int`;
+  const attemptCount = sql<number>`count(distinct ${assessmentAttempts.id})::int`;
+  const sortColumn =
+    query.sort === "title"
+      ? courses.title
+      : query.sort === "status"
+        ? courses.status
+        : query.sort === "level"
+          ? courses.level
+          : query.sort === "lessons"
+            ? lessonCount
+            : query.sort === "enrollments"
+              ? enrollmentCount
+              : courses.updatedAt;
+
+  const [totalRows, summaryRows, levelRows] = await Promise.all([
+    db.select({ total: sql<number>`count(*)::int` }).from(courses).where(where),
+    db
+      .select({
+        courses: sql<number>`count(distinct ${courses.id})::int`,
+        published: sql<number>`count(distinct case when ${courses.status} = 'published' then ${courses.id} end)::int`,
+        lessons: sql<number>`count(distinct ${courseLessons.id})::int`,
+        enrollments: sql<number>`count(distinct ${courseEnrollments.id})::int`,
+        attempts: sql<number>`count(distinct ${assessmentAttempts.id})::int`,
+        certificates: sql<number>`count(distinct ${courseCertificates.id})::int`
+      })
+      .from(courses)
+      .leftJoin(courseLessons, eq(courseLessons.courseId, courses.id))
+      .leftJoin(courseAssessments, eq(courseAssessments.courseId, courses.id))
+      .leftJoin(assessmentAttempts, eq(assessmentAttempts.assessmentId, courseAssessments.id))
+      .leftJoin(courseEnrollments, eq(courseEnrollments.courseId, courses.id))
+      .leftJoin(courseCertificates, eq(courseCertificates.courseId, courses.id))
+      .where(where),
+    db.select({ level: courses.level }).from(courses).groupBy(courses.level).orderBy(asc(courses.level))
+  ]);
+
+  const totalItems = Number(totalRows[0]?.total ?? 0);
+  const pagination = adminPaginationMeta(totalItems, query);
+  const rows = await db
+    .select({
+      id: courses.id,
+      title: courses.title,
+      slug: courses.slug,
+      level: courses.level,
+      durationMinutes: courses.durationMinutes,
+      summary: courses.summary,
+      status: courses.status,
+      publishedAt: courses.publishedAt,
+      createdAt: courses.createdAt,
+      updatedAt: courses.updatedAt,
+      lessonCount,
+      assessmentCount,
+      enrollmentCount,
+      completedCount,
+      certificateCount,
+      attemptCount
+    })
+    .from(courses)
+    .leftJoin(courseLessons, eq(courseLessons.courseId, courses.id))
+    .leftJoin(courseAssessments, eq(courseAssessments.courseId, courses.id))
+    .leftJoin(assessmentAttempts, eq(assessmentAttempts.assessmentId, courseAssessments.id))
+    .leftJoin(courseEnrollments, eq(courseEnrollments.courseId, courses.id))
+    .leftJoin(courseCertificates, eq(courseCertificates.courseId, courses.id))
+    .where(where)
+    .groupBy(
+      courses.id,
+      courses.title,
+      courses.slug,
+      courses.level,
+      courses.durationMinutes,
+      courses.summary,
+      courses.status,
+      courses.publishedAt,
+      courses.createdAt,
+      courses.updatedAt
+    )
+    .orderBy(query.dir === "desc" ? desc(sortColumn) : asc(sortColumn), asc(courses.title))
+    .limit(query.pageSize)
+    .offset(adminListOffset(query, totalItems));
+
+  return {
+    courses: rows.map((course) => ({ ...course, duration: academyDuration(course.durationMinutes) })),
+    levelOptions: levelRows.map((row) => row.level),
+    filters: {
+      q: query.q,
+      status,
+      level,
+      sort: query.sort ?? "updatedAt",
+      dir: query.dir
+    },
+    pagination,
+    metrics: {
+      courses: Number(summaryRows[0]?.courses ?? 0),
+      published: Number(summaryRows[0]?.published ?? 0),
+      lessons: Number(summaryRows[0]?.lessons ?? 0),
+      enrollments: Number(summaryRows[0]?.enrollments ?? 0),
+      attempts: Number(summaryRows[0]?.attempts ?? 0),
+      certificates: Number(summaryRows[0]?.certificates ?? 0)
+    }
+  };
+}
