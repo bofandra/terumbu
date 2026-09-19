@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef } from "react";
+import { useId, useRef } from "react";
 import { Trash2 } from "lucide-react";
 
 export function AdminConfirmSubmit({
@@ -17,6 +17,8 @@ export function AdminConfirmSubmit({
   submitLabel: string;
 }) {
   const dialogRef = useRef<HTMLDialogElement | null>(null);
+  const titleId = useId();
+  const descriptionId = useId();
 
   return (
     <>
@@ -28,10 +30,15 @@ export function AdminConfirmSubmit({
         <Trash2 className="size-4" aria-hidden="true" />
         {triggerLabel}
       </button>
-      <dialog ref={dialogRef} className="w-[min(92vw,30rem)] rounded-lg border border-ocean-900/10 bg-white p-0 text-ocean-900 shadow-soft backdrop:bg-ocean-950/60">
+      <dialog
+        ref={dialogRef}
+        aria-labelledby={titleId}
+        aria-describedby={descriptionId}
+        className="w-[min(92vw,30rem)] rounded-lg border border-ocean-900/10 bg-white p-0 text-ocean-900 shadow-soft backdrop:bg-ocean-950/60"
+      >
         <div className="p-5">
-          <h2 className="text-lg font-bold tracking-normal">{title}</h2>
-          <p className="mt-2 text-sm font-semibold leading-6 text-ocean-900/62">{body}</p>
+          <h2 id={titleId} className="text-lg font-bold tracking-normal">{title}</h2>
+          <p id={descriptionId} className="mt-2 text-sm font-semibold leading-6 text-ocean-900/62">{body}</p>
           <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
             <button
               type="button"
