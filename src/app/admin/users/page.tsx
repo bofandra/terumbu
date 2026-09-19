@@ -1,58 +1,22 @@
-import {
-  BadgeCheck,
-  Building2,
-  Handshake,
-  KeyRound,
-  LockKeyhole,
-  Mail,
-  Search,
-  ShieldCheck,
-  Trash2,
-  UserPlus,
-  Users
-} from "lucide-react";
+import Link from "next/link";
+import { ArrowUpDown, BadgeCheck, Building2, Handshake, KeyRound, LockKeyhole, Mail, ShieldCheck, Trash2, UserPlus, Users } from "lucide-react";
 import type { ReactNode } from "react";
 
 import { AdminCreateUserAccessFields } from "@/components/admin-create-user-access-fields";
-import {
-  AdminEmptyState,
-  AdminPageHeader,
-  AdminStatusBadge,
-  adminInputClassName,
-  adminSelectClassName,
-  adminTextareaClassName
-} from "@/components/admin-ui";
+import { AdminAlert } from "@/components/admin/admin-alert";
+import { AdminDataTable, type AdminDataTableColumn } from "@/components/admin/admin-data-table";
+import { AdminListToolbar } from "@/components/admin/admin-list-toolbar";
+import { AdminPagination } from "@/components/admin/admin-pagination";
+import { AdminEmptyState, AdminPageHeader, AdminStatusBadge, adminInputClassName, adminSelectClassName, adminTextareaClassName } from "@/components/admin-ui";
 import { Button } from "@/components/ui/button";
 import { FormTabs } from "@/components/ui/form-tabs";
 import { MetricValue } from "@/components/ui/metric-value";
-import {
-  assignGlobalRoleAction,
-  clearAdminUserSessionsAction,
-  createAdminUserAction,
-  createGlobalRoleAction,
-  deleteAdminUserAction,
-  deleteGlobalRoleAction,
-  disableAdminUserPasswordAction,
-  removeCorporatePermissionAction,
-  removePartnerMembershipAction,
-  resendAdminUserSetupVerificationAction,
-  resetAdminUserPasswordAction,
-  revokeGlobalRoleAction,
-  setCorporatePermissionAction,
-  setPartnerMembershipAction,
-  updateAdminUserProfileAction,
-  updateGlobalRoleAction,
-  updatePartnerMembershipAction
-} from "@/lib/admin-user-actions";
-import {
-  adminCreateUserAccessOptions,
-  isSystemGlobalRole,
-  partnerMembershipStatuses,
-  systemGlobalRoleOptions
-} from "@/lib/admin-user-management";
+import { createAdminUserAction, createGlobalRoleAction, deleteGlobalRoleAction, updateGlobalRoleAction } from "@/lib/admin-user-actions";
+import { adminCreateUserAccessOptions, isSystemGlobalRole, systemGlobalRoleOptions } from "@/lib/admin-user-management";
 import { requireRole } from "@/lib/auth";
 import { partnerOrganizationRoles } from "@/lib/partner-permissions";
-import { getAdminUserManagementData } from "@/lib/queries";
+import { getAdminUserManagementOptions, getAdminUsersPage, type AdminUserFilters } from "@/lib/queries";
+import { cn } from "@/lib/utils";
 
 export const metadata = {
   title: "Admin Users"
@@ -60,16 +24,7 @@ export const metadata = {
 
 export const dynamic = "force-dynamic";
 
-type AdminUsersPageProps = {
-  searchParams?: Promise<{
-    error?: string;
-    q?: string;
-    saved?: string;
-  }>;
-};
-
-type AdminUserManagementData = Awaited<ReturnType<typeof getAdminUserManagementData>>;
-type ManagedUser = AdminUserManagementData["users"][number];
+const pathname = "/admin/users";
 
 const savedMessages: Record<string, string> = {
   "corporate-removed": "Corporate access removed.",
@@ -106,20 +61,48 @@ const errorMessages: Record<string, string> = {
   "user-verified": "That user's email is already verified."
 };
 
-function formatDate(value: Date | null | undefined) {
-  return value ? value.toLocaleDateString("id-ID", { dateStyle: "medium" }) : "Not set";
+type AdminUsersPageProps = {
+  searchParams?: Promise<
+    AdminUserFilters & {
+      error?: string;
+      saved?: string;
+    }
+  >;
+};
+
+type AdminUsersData = Awaited<ReturnType<typeof getAdminUsersPage>>;
+type AdminDirectoryUser = AdminUsersData["users"][number];
+
+function adminUsersHref(params: Record<string, string | number | null | undefined>) {
+  const search = new URLSearchParams();
+
+  for (const [key, value] of Object.entries(params)) {
+    if (value !== undefined && value !== null && value !== "" && value !== "all") {
+      search.set(key, String(value));
+    }
+  }
+
+  const query = search.toString();
+
+  return query ? `${pathname}?${query}` : pathname;
 }
 
-function returnToFor(query: string) {
-  return query ? `/admin/users?q=${encodeURIComponent(query)}` : "/admin/users";
+function listParams(data: AdminUsersData) {
+  return {
+    q: data.filters.q || undefined,
+    verification: data.filters.verification === "all" ? undefined : data.filters.verification,
+    access: data.filters.access === "all" ? undefined : data.filters.access,
+    sort: data.filters.sort === "createdAt" ? undefined : data.filters.sort,
+    dir: data.filters.dir === "desc" ? undefined : data.filters.dir
+  };
 }
 
-function defaultUsersTab(query: string, params: { error?: string; saved?: string } | undefined) {
-  if (query) {
+function defaultUsersTab(data: AdminUsersData, params: { error?: string; saved?: string } | undefined) {
+  if (data.filters.q || data.filters.verification !== "all" || data.filters.access !== "all" || data.pagination.page > 1) {
     return "manage";
   }
 
-  if (params?.saved === "role-deleted" || params?.saved === "role-saved") {
+  if (params?.saved === "role-deleted" || params?.saved === "role-saved" || params?.error?.startsWith("role-")) {
     return "roles";
   }
 
@@ -131,22 +114,14 @@ function defaultUsersTab(query: string, params: { error?: string; saved?: string
     return "manage";
   }
 
-  return "create";
+  return "manage";
 }
 
 function HiddenReturn({ value }: { value: string }) {
   return <input type="hidden" name="returnTo" value={value} />;
 }
 
-function Field({
-  children,
-  label,
-  className
-}: {
-  children: ReactNode;
-  label: string;
-  className?: string;
-}) {
+function Field({ children, label, className }: { children: ReactNode; label: string; className?: string }) {
   return (
     <label className={`grid gap-2 text-sm font-bold text-ocean-900 ${className ?? ""}`}>
       {label}
@@ -155,322 +130,134 @@ function Field({
   );
 }
 
-function AccessSummary({ user }: { user: ManagedUser }) {
-  const hasPartnerAccess = user.partnerMemberships.some((membership) => membership.status === "active");
-  const hasCorporateAccess = user.corporatePermissions.length > 0;
+function SortHeader({ label, sort, data }: { label: string; sort: string; data: AdminUsersData }) {
+  const active = data.filters.sort === sort;
+  const nextDir = active && data.filters.dir === "asc" ? "desc" : "asc";
 
   return (
-    <div className="flex flex-wrap gap-2">
-      {user.roles.map((role) => (
-        <AdminStatusBadge key={role.id} value={role.key} />
-      ))}
-      {hasPartnerAccess ? <AdminStatusBadge value="partner" /> : null}
-      {hasCorporateAccess ? <AdminStatusBadge value="corporate" /> : null}
-      {user.roles.length === 0 && !hasPartnerAccess && !hasCorporateAccess ? <AdminStatusBadge value="basic" /> : null}
+    <Link
+      href={adminUsersHref({ ...listParams(data), sort, dir: nextDir, page: 1 })}
+      className="inline-flex items-center gap-1 rounded-md text-ocean-900/70 transition hover:text-coral-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-kelp-500 focus-visible:ring-offset-2"
+    >
+      {label}
+      <ArrowUpDown className={cn("size-3.5", active ? "text-coral-700" : "text-ocean-900/38")} aria-hidden="true" />
+    </Link>
+  );
+}
+
+function UserAccessSummary({ user }: { user: AdminDirectoryUser }) {
+  const showBasic = user.roleKeys.length === 0 && !user.hasPartnerAccess && !user.hasCorporateAccess;
+
+  return (
+    <div className="flex min-w-44 flex-wrap gap-1.5">
+      {user.roleKeys.slice(0, 3).map((role) => <AdminStatusBadge key={role} value={role} />)}
+      {user.roleKeys.length > 3 ? <span className="text-xs font-bold text-ocean-900/48">+{user.roleKeys.length - 3}</span> : null}
+      {user.hasPartnerAccess && !user.roleKeys.includes("partner") ? <AdminStatusBadge value="partner" /> : null}
+      {user.hasCorporateAccess && !user.roleKeys.includes("corporate_admin") ? <AdminStatusBadge value="corporate" /> : null}
+      {showBasic ? <AdminStatusBadge value="basic" /> : null}
     </div>
   );
 }
 
-function UserManagementCard({
-  data,
-  returnTo,
-  user
-}: {
-  data: AdminUserManagementData;
-  returnTo: string;
-  user: ManagedUser;
-}) {
-  const displayName = user.displayName ?? user.name ?? user.email;
-
-  return (
-    <details className="group rounded-lg border border-ocean-900/10 bg-white shadow-soft">
-      <summary className="grid cursor-pointer list-none gap-3 p-4 transition hover:bg-ocean-50/60 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
-        <div className="min-w-0">
-          <div className="flex flex-wrap items-center gap-2">
-            <h3 className="truncate text-lg font-bold tracking-normal text-ocean-900">{displayName}</h3>
-            {user.emailVerifiedAt ? <BadgeCheck className="size-4 text-kelp-700" aria-hidden="true" /> : null}
-            {!user.emailVerifiedAt ? <span className="rounded-full bg-sand-100 px-2 py-1 text-xs font-bold text-ocean-900/62">Email pending</span> : null}
-            {!user.hasPassword ? (
-              <span className="rounded-full bg-coral-100 px-2 py-1 text-xs font-bold text-coral-700">
-                {user.emailVerifiedAt ? "Password disabled" : "Setup pending"}
-              </span>
-            ) : null}
+export default async function AdminUsersPage({ searchParams }: AdminUsersPageProps) {
+  await requireRole(["admin"], pathname);
+  const params = await searchParams;
+  const [data, options] = await Promise.all([getAdminUsersPage(params), getAdminUserManagementOptions()]);
+  const savedMessage = params?.saved ? savedMessages[String(params.saved)] : null;
+  const errorMessage = params?.error ? errorMessages[String(params.error)] : null;
+  const customGlobalRoleOptions = options.roleOptions.filter((role) => !isSystemGlobalRole(role.key));
+  const baseParams = listParams(data);
+  const returnTo = adminUsersHref({ ...baseParams, page: data.pagination.page });
+  const columns: AdminDataTableColumn<AdminDirectoryUser>[] = [
+    {
+      key: "user",
+      header: <SortHeader label="User" sort="name" data={data} />,
+      render: (user) => (
+        <div className="min-w-56">
+          <div className="flex items-center gap-2">
+            <Link
+              href={`/admin/users/${user.id}?returnTo=${encodeURIComponent(returnTo)}`}
+              className="font-bold text-ocean-900 hover:text-coral-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-kelp-500 focus-visible:ring-offset-2"
+            >
+              {user.displayName ?? user.name ?? user.email}
+            </Link>
+            {user.emailVerifiedAt ? <BadgeCheck className="size-4 text-kelp-700" aria-label="Email verified" /> : null}
           </div>
           <p className="mt-1 text-sm font-semibold text-ocean-900/58">{user.email}</p>
-          <p className="mt-1 text-xs font-semibold text-ocean-900/42">
-            Joined {formatDate(user.createdAt)} · Updated {formatDate(user.updatedAt)} · {user.activeSessions} active sessions
-          </p>
+          {user.location ? <p className="mt-1 text-xs font-semibold text-ocean-900/44">{user.location}</p> : null}
         </div>
-        <AccessSummary user={user} />
-      </summary>
-
-      <div className="border-t border-ocean-900/10 p-4">
-        <FormTabs
-          ariaLabel={`Manage ${displayName}`}
-          className="shadow-none"
-          tabs={[
-            { id: "profile", label: "Profile", description: "Identity and public page" },
-            { id: "roles", label: "Roles", description: "Global RBAC", badge: user.roles.length.toLocaleString("id-ID") },
-            { id: "partner", label: "Partner", description: "Organization access", badge: user.partnerMemberships.length.toLocaleString("id-ID") },
-            { id: "corporate", label: "Corporate", description: "Workspace access", badge: user.corporatePermissions.length.toLocaleString("id-ID") },
-            { id: "security", label: "Security", description: "Email, password, sessions" },
-            { id: "danger", label: "Danger", description: "Delete account" }
-          ]}
+      )
+    },
+    {
+      key: "access",
+      header: <SortHeader label="Access" sort="access" data={data} />,
+      render: (user) => <UserAccessSummary user={user} />
+    },
+    {
+      key: "scopes",
+      header: "Scoped access",
+      render: (user) => (
+        <div className="min-w-36 text-sm font-semibold text-ocean-900/68">
+          <p>{user.membershipCount.toLocaleString("id-ID")} partner memberships</p>
+          <p className="mt-1">{user.permissionCount.toLocaleString("id-ID")} corporate accounts</p>
+        </div>
+      )
+    },
+    {
+      key: "security",
+      header: <SortHeader label="Security" sort="sessions" data={data} />,
+      render: (user) => (
+        <div className="min-w-36 space-y-1 text-sm font-semibold">
+          <p className={user.emailVerifiedAt ? "text-kelp-700" : "text-ocean-900/52"}>{user.emailVerifiedAt ? "Verified email" : "Email pending"}</p>
+          <p className={user.hasPassword ? "text-ocean-900/68" : "text-coral-700"}>{user.hasPassword ? "Password enabled" : "No password"}</p>
+          <p className="text-ocean-900/52">{user.activeSessions.toLocaleString("id-ID")} active sessions</p>
+        </div>
+      )
+    },
+    {
+      key: "created",
+      header: <SortHeader label="Joined" sort="createdAt" data={data} />,
+      render: (user) => (
+        <time dateTime={user.createdAt.toISOString()} className="whitespace-nowrap font-semibold text-ocean-900/62">
+          {user.createdAt.toLocaleDateString("id-ID", { day: "2-digit", month: "short", year: "numeric" })}
+        </time>
+      )
+    },
+    {
+      key: "actions",
+      header: <span className="sr-only">Actions</span>,
+      className: "text-right",
+      render: (user) => (
+        <Link
+          href={`/admin/users/${user.id}?returnTo=${encodeURIComponent(returnTo)}`}
+          className="inline-flex min-h-9 items-center justify-center rounded-lg border border-ocean-900/10 bg-white px-3 text-sm font-bold text-ocean-900 transition hover:border-coral-500 hover:text-coral-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-kelp-500 focus-visible:ring-offset-2"
         >
-        <section className="grid gap-4">
-          <h4 className="font-bold text-ocean-900">Profile and account</h4>
-          <form action={updateAdminUserProfileAction} className="mt-4 grid gap-3 lg:grid-cols-3">
-            <HiddenReturn value={returnTo} />
-            <input type="hidden" name="userId" value={user.id} />
-            <Field label="Name">
-              <input name="name" defaultValue={user.name ?? ""} className={adminInputClassName} required />
-            </Field>
-            <Field label="Display name">
-              <input name="displayName" defaultValue={user.displayName ?? user.name ?? ""} className={adminInputClassName} />
-            </Field>
-            <Field label="Email">
-              <input name="email" type="email" defaultValue={user.email} className={adminInputClassName} required />
-            </Field>
-            <Field label="Location">
-              <input name="location" defaultValue={user.location ?? ""} className={adminInputClassName} />
-            </Field>
-            <label className="flex min-h-10 items-center gap-2 rounded-lg border border-ocean-900/10 bg-white px-3 text-sm font-bold text-ocean-900">
-              <input name="isPublic" type="checkbox" defaultChecked={Boolean(user.isPublic)} className="size-4 accent-coral-500" />
-              Public profile
-            </label>
-            <Field label="Bio" className="lg:col-span-3">
-              <textarea name="bio" defaultValue={user.bio ?? ""} className={adminTextareaClassName} />
-            </Field>
-            <Button type="submit" tone="secondary" className="w-fit rounded-lg lg:col-span-3">
-              Save Profile
-            </Button>
-          </form>
-        </section>
-
-        <section className="grid gap-4">
-          <div>
-            <h4 className="font-bold text-ocean-900">Global roles</h4>
-            <p className="mt-1 text-sm font-semibold leading-6 text-ocean-900/58">Assign or revoke platform-wide access roles for this user.</p>
-            <div className="mt-3 grid gap-2">
-              {user.roles.map((role) => (
-                <form key={role.id} action={revokeGlobalRoleAction} className="flex items-center justify-between gap-2 rounded-lg bg-white px-3 py-2">
-                  <HiddenReturn value={returnTo} />
-                  <input type="hidden" name="userRoleId" value={role.id} />
-                  <span className="text-sm font-bold text-ocean-900">{role.name}</span>
-                  <Button type="submit" tone="ghost" className="min-h-9 rounded-lg px-3 text-coral-700 hover:bg-coral-100">
-                    Remove
-                  </Button>
-                </form>
-              ))}
-              {user.roles.length === 0 ? <p className="rounded-lg border border-dashed border-ocean-900/14 p-3 text-sm font-semibold text-ocean-900/58">No global roles assigned.</p> : null}
-            </div>
-            <form action={assignGlobalRoleAction} className="mt-3 grid gap-2 sm:max-w-xl sm:grid-cols-[1fr_auto]">
-              <HiddenReturn value={returnTo} />
-              <input type="hidden" name="userId" value={user.id} />
-              <select name="roleKey" defaultValue="user" className={adminSelectClassName}>
-                {data.roleOptions.map((role) => (
-                  <option key={role.key} value={role.key}>
-                    {role.name} ({role.key})
-                  </option>
-                ))}
-              </select>
-              <Button type="submit" className="min-h-10 rounded-lg px-3">
-                Assign
-              </Button>
-            </form>
-          </div>
-        </section>
-
-        <section className="grid gap-4">
-          <div>
-            <h4 className="font-bold text-ocean-900">Partner access</h4>
-            <p className="mt-1 text-sm font-semibold leading-6 text-ocean-900/58">Manage partner organization membership and partner portal status.</p>
-            <div className="mt-3 grid gap-2">
-              {user.partnerMemberships.map((membership) => (
-                <div key={membership.id} className="rounded-lg border border-ocean-900/10 bg-white p-3">
-                  <p className="font-bold text-ocean-900">{membership.organizationName}</p>
-                  <form action={updatePartnerMembershipAction} className="mt-2 grid gap-2 sm:grid-cols-[1fr_1fr_auto]">
-                    <HiddenReturn value={returnTo} />
-                    <input type="hidden" name="membershipId" value={membership.id} />
-                    <select name="role" defaultValue={membership.role} className={adminSelectClassName}>
-                      {partnerOrganizationRoles.map((role) => (
-                        <option key={role} value={role}>{role}</option>
-                      ))}
-                    </select>
-                    <select name="status" defaultValue={membership.status} className={adminSelectClassName}>
-                      {partnerMembershipStatuses.map((status) => (
-                        <option key={status} value={status}>{status}</option>
-                      ))}
-                    </select>
-                    <Button type="submit" tone="secondary" className="min-h-10 rounded-lg px-3">Save</Button>
-                  </form>
-                  <details className="mt-3 rounded-lg border border-coral-700/20 bg-coral-100/30">
-                    <summary className="cursor-pointer list-none px-3 py-2 text-sm font-bold text-coral-700">Remove partner access</summary>
-                    <form action={removePartnerMembershipAction} className="border-t border-coral-700/20 p-3">
-                      <HiddenReturn value={returnTo} />
-                      <input type="hidden" name="membershipId" value={membership.id} />
-                      <Button type="submit" tone="ghost" className="min-h-9 rounded-lg px-3 text-coral-700 hover:bg-coral-100">Remove partner access</Button>
-                    </form>
-                  </details>
-                </div>
-              ))}
-              {user.partnerMemberships.length === 0 ? <p className="rounded-lg border border-dashed border-ocean-900/14 p-3 text-sm font-semibold text-ocean-900/58">No partner organization membership.</p> : null}
-            </div>
-            <form action={setPartnerMembershipAction} className="mt-3 grid gap-2 sm:max-w-2xl">
-              <HiddenReturn value={returnTo} />
-              <input type="hidden" name="userId" value={user.id} />
-              <select name="organizationId" className={adminSelectClassName} disabled={data.organizations.length === 0}>
-                {data.organizations.map((organization) => (
-                  <option key={organization.id} value={organization.id}>
-                    {organization.name} · {organization.verificationLabel}
-                  </option>
-                ))}
-              </select>
-              <div className="grid gap-2 sm:grid-cols-[1fr_1fr_auto]">
-                <select name="role" defaultValue="manager" className={adminSelectClassName}>
-                  {partnerOrganizationRoles.map((role) => (
-                    <option key={role} value={role}>{role}</option>
-                  ))}
-                </select>
-                <select name="status" defaultValue="active" className={adminSelectClassName}>
-                  {partnerMembershipStatuses.map((status) => (
-                    <option key={status} value={status}>{status}</option>
-                  ))}
-                </select>
-                <Button type="submit" className="min-h-10 rounded-lg px-3" disabled={data.organizations.length === 0}>
-                  Add
-                </Button>
-              </div>
-            </form>
-          </div>
-        </section>
-
-        <section className="grid gap-4">
-          <div>
-            <h4 className="font-bold text-ocean-900">Corporate access</h4>
-            <p className="mt-1 text-sm font-semibold leading-6 text-ocean-900/58">Grant or remove corporate workspace access.</p>
-            <div className="mt-3 grid gap-2">
-              {user.corporatePermissions.map((permission) => (
-                <form key={permission.id} action={removeCorporatePermissionAction} className="rounded-lg border border-ocean-900/10 bg-white p-3">
-                  <HiddenReturn value={returnTo} />
-                  <input type="hidden" name="permissionId" value={permission.id} />
-                  <p className="font-bold text-ocean-900">{permission.accountName}</p>
-                  <p className="mt-1 text-sm font-semibold text-ocean-900/58">Corporate User</p>
-                  <Button type="submit" tone="ghost" className="mt-2 min-h-9 rounded-lg px-3 text-coral-700 hover:bg-coral-100">Remove corporate access</Button>
-                </form>
-              ))}
-              {user.corporatePermissions.length === 0 ? <p className="rounded-lg border border-dashed border-ocean-900/14 p-3 text-sm font-semibold text-ocean-900/58">No corporate account access.</p> : null}
-            </div>
-            <form action={setCorporatePermissionAction} className="mt-3 grid gap-2 sm:max-w-2xl">
-              <HiddenReturn value={returnTo} />
-              <input type="hidden" name="userId" value={user.id} />
-              <select name="corporateAccountId" className={adminSelectClassName} disabled={data.corporateAccounts.length === 0}>
-                {data.corporateAccounts.map((account) => (
-                  <option key={account.id} value={account.id}>
-                    {account.name}
-                  </option>
-                ))}
-              </select>
-              <Button type="submit" className="min-h-10 w-fit rounded-lg px-3" disabled={data.corporateAccounts.length === 0}>
-                Grant Access
-              </Button>
-            </form>
-          </div>
-        </section>
-
-        <section className="grid gap-4">
-          <div>
-            <h4 className="font-bold text-ocean-900">Password and sessions</h4>
-            <p className="mt-1 text-sm font-semibold text-ocean-900/58">Send setup or reset links, force sign-out, or disable password login.</p>
-          </div>
-          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-            <form action={resetAdminUserPasswordAction}>
-              <HiddenReturn value={returnTo} />
-              <input type="hidden" name="userId" value={user.id} />
-              <Button type="submit" tone="secondary" className="min-h-10 w-full rounded-lg px-3">
-                Send Reset Link
-              </Button>
-            </form>
-            {!user.emailVerifiedAt ? (
-              <form action={resendAdminUserSetupVerificationAction}>
-                <HiddenReturn value={returnTo} />
-                <input type="hidden" name="userId" value={user.id} />
-                <Button type="submit" tone="light" className="min-h-10 w-full rounded-lg px-3">
-                  {user.hasPassword ? "Resend Verification" : "Resend Setup"}
-                </Button>
-              </form>
-            ) : null}
-            <form action={clearAdminUserSessionsAction}>
-              <HiddenReturn value={returnTo} />
-              <input type="hidden" name="userId" value={user.id} />
-              <Button type="submit" tone="light" className="min-h-10 w-full rounded-lg px-3">
-                Clear Sessions
-              </Button>
-            </form>
-            <form action={disableAdminUserPasswordAction}>
-              <HiddenReturn value={returnTo} />
-              <input type="hidden" name="userId" value={user.id} />
-              <Button type="submit" tone="ghost" className="min-h-10 w-full rounded-lg px-3 text-coral-700 hover:bg-coral-100">
-                Disable Password
-              </Button>
-            </form>
-          </div>
-        </section>
-
-        <section className="grid gap-4">
-          <div>
-            <h4 className="font-bold text-ocean-900">Delete user</h4>
-            <p className="mt-1 text-sm font-semibold leading-6 text-ocean-900/58">Deleting a user cascades through owned account rows and cannot be undone from this screen.</p>
-          </div>
-          <form action={deleteAdminUserAction} className="grid min-w-48 gap-2">
-            <HiddenReturn value={returnTo} />
-            <input type="hidden" name="userId" value={user.id} />
-            <label className="flex items-start gap-2 text-xs font-bold leading-5 text-ocean-900">
-              <input name="confirmDelete" type="checkbox" value="delete" className="mt-1 size-4 accent-coral-500" required />
-              Confirm delete
-            </label>
-            <Button type="submit" tone="ghost" className="min-h-10 rounded-lg px-3 text-coral-700 hover:bg-coral-100">
-              Delete User
-            </Button>
-          </form>
-        </section>
-        </FormTabs>
-      </div>
-    </details>
-  );
-}
-
-export default async function AdminUsersPage({ searchParams }: AdminUsersPageProps) {
-  await requireRole(["admin"], "/admin/users");
-  const params = await searchParams;
-  const query = String(params?.q ?? "").trim();
-  const returnTo = returnToFor(query);
-  const data = await getAdminUserManagementData(query);
-  const savedMessage = params?.saved ? savedMessages[params.saved] : null;
-  const errorMessage = params?.error ? errorMessages[params.error] : null;
-  const customGlobalRoleOptions = data.roleOptions.filter((role) => !isSystemGlobalRole(role.key));
+          Manage
+        </Link>
+      )
+    }
+  ];
 
   return (
     <div className="space-y-6">
       <AdminPageHeader
         eyebrow="Users"
         title="User and role management"
-        description="Create users, reset credentials, and assign partner or corporate access."
+        description="Search the user directory, then open one focused workspace to manage profile, credentials, roles, partner membership, and corporate access."
         actionHref="/admin/audit"
         actionLabel="Audit Log"
       />
 
-      {savedMessage ? <p className="rounded-lg border border-kelp-700/20 bg-kelp-100 px-4 py-3 text-sm font-bold text-kelp-700">{savedMessage}</p> : null}
-      {errorMessage ? <p className="rounded-lg border border-coral-700/20 bg-coral-100 px-4 py-3 text-sm font-bold text-coral-700">{errorMessage}</p> : null}
+      {savedMessage ? <AdminAlert tone="success">{savedMessage}</AdminAlert> : null}
+      {errorMessage ? <AdminAlert tone="error">{errorMessage}</AdminAlert> : null}
 
-      <section className="grid gap-3 md:grid-cols-3 xl:grid-cols-6" aria-label="User summary">
+      <section className="grid gap-3 md:grid-cols-5" aria-label="User summary">
         {[
-          { label: "Users", value: data.metrics.users.toLocaleString("id-ID"), icon: Users },
-          { label: "Visible", value: data.metrics.visibleUsers.toLocaleString("id-ID"), icon: Search },
-          { label: "Verified", value: data.metrics.verifiedUsers.toLocaleString("id-ID"), icon: BadgeCheck },
-          { label: "Admins", value: data.metrics.admins.toLocaleString("id-ID"), icon: ShieldCheck },
-          { label: "Partners", value: data.metrics.partnerUsers.toLocaleString("id-ID"), icon: Handshake },
-          { label: "Corporate", value: data.metrics.corporateUsers.toLocaleString("id-ID"), icon: Building2 }
+          { label: "Users", value: data.summary.users.toLocaleString("id-ID"), icon: Users },
+          { label: "Verified", value: data.summary.verifiedUsers.toLocaleString("id-ID"), icon: BadgeCheck },
+          { label: "Admins", value: data.summary.admins.toLocaleString("id-ID"), icon: ShieldCheck },
+          { label: "Partners", value: data.summary.partnerUsers.toLocaleString("id-ID"), icon: Handshake },
+          { label: "Corporate", value: data.summary.corporateUsers.toLocaleString("id-ID"), icon: Building2 }
         ].map((item) => {
           const Icon = item.icon;
 
@@ -492,13 +279,49 @@ export default async function AdminUsersPage({ searchParams }: AdminUsersPagePro
 
       <FormTabs
         ariaLabel="Admin user workflows"
-        defaultTabId={defaultUsersTab(query, params)}
+        defaultTabId={defaultUsersTab(data, params)}
         tabs={[
+          { id: "manage", label: "Manage Users", description: "Directory and access", badge: data.pagination.totalItems.toLocaleString("id-ID") },
           { id: "create", label: "Create User", description: "New account setup" },
-          { id: "manage", label: "Manage Users", description: "Profiles and access", badge: data.users.length.toLocaleString("id-ID") },
-          { id: "roles", label: "Role Catalog", description: "Global role names", badge: data.roles.length.toLocaleString("id-ID") }
+          { id: "roles", label: "Role Catalog", description: "Global role names", badge: options.roles.length.toLocaleString("id-ID") }
         ]}
       >
+        <section className="grid gap-4">
+          <AdminListToolbar
+            action={pathname}
+            searchValue={data.filters.q}
+            searchPlaceholder="Search users, roles, organizations"
+            clearHref={pathname}
+            hiddenFields={{
+              sort: data.filters.sort === "createdAt" ? undefined : data.filters.sort,
+              dir: data.filters.dir === "desc" ? undefined : data.filters.dir
+            }}
+          >
+            <select name="verification" defaultValue={data.filters.verification} className={cn(adminSelectClassName, "min-w-40")} aria-label="Filter email verification">
+              <option value="all">All verification</option>
+              <option value="verified">Verified email</option>
+              <option value="pending">Email pending</option>
+            </select>
+            <select name="access" defaultValue={data.filters.access} className={cn(adminSelectClassName, "min-w-40")} aria-label="Filter access type">
+              <option value="all">All access</option>
+              <option value="admin">Admin</option>
+              <option value="partner">Partner</option>
+              <option value="corporate">Corporate</option>
+              <option value="basic">Basic / no scope</option>
+            </select>
+          </AdminListToolbar>
+
+          <AdminDataTable
+            caption="User management directory"
+            rows={data.users}
+            getRowKey={(user) => user.id}
+            columns={columns}
+            emptyState={<AdminEmptyState title="No matching users" description="Adjust the search term or filters, or create a new user account." />}
+          />
+
+          <AdminPagination pathname={pathname} params={baseParams} pagination={data.pagination} />
+        </section>
+
         <form action={createAdminUserAction} className="grid gap-4">
           <HiddenReturn value={returnTo} />
           <div className="flex items-start gap-3">
@@ -511,70 +334,28 @@ export default async function AdminUsersPage({ searchParams }: AdminUsersPagePro
             </div>
           </div>
           <div className="grid gap-3 md:grid-cols-2">
-            <Field label="Name">
-              <input name="name" className={adminInputClassName} required />
-            </Field>
-            <Field label="Display name">
-              <input name="displayName" className={adminInputClassName} />
-            </Field>
-            <Field label="Email">
-              <input name="email" type="email" className={adminInputClassName} required />
-            </Field>
+            <Field label="Name"><input name="name" className={adminInputClassName} required /></Field>
+            <Field label="Display name"><input name="displayName" className={adminInputClassName} /></Field>
+            <Field label="Email"><input name="email" type="email" className={adminInputClassName} required /></Field>
             <AdminCreateUserAccessFields
               accessOptions={adminCreateUserAccessOptions}
-              corporateAccounts={data.corporateAccounts}
-              customGlobalRoleOptions={customGlobalRoleOptions.map((role) => ({
-                label: `${role.name} (${role.key})`,
-                value: `global:${role.key}`
-              }))}
-              partnerOrganizations={data.organizations}
+              corporateAccounts={options.corporateAccounts}
+              customGlobalRoleOptions={customGlobalRoleOptions.map((role) => ({ label: `${role.name} (${role.key})`, value: `global:${role.key}` }))}
+              partnerOrganizations={options.organizations}
               partnerRoleOptions={partnerOrganizationRoles}
             />
             <label className="flex min-h-10 items-center gap-2 rounded-lg border border-ocean-900/10 bg-white px-3 text-sm font-bold text-ocean-900">
               <input name="isPublic" type="checkbox" className="size-4 accent-coral-500" />
               Public profile
             </label>
-            <Field label="Bio" className="md:col-span-2">
-              <textarea name="bio" className={adminTextareaClassName} placeholder="Internal profile note or public bio" />
-            </Field>
+            <Field label="Bio" className="md:col-span-2"><textarea name="bio" className={adminTextareaClassName} placeholder="Internal profile note or public bio" /></Field>
           </div>
-          <Button type="submit" className="w-fit rounded-lg">
-            Create User
-          </Button>
+          <Button type="submit" className="w-fit rounded-lg">Create User</Button>
         </form>
 
         <section className="grid gap-4">
-          <div className="grid gap-4 lg:grid-cols-[1fr_auto] lg:items-end">
-            <div>
-              <h2 className="text-xl font-bold tracking-normal text-ocean-900">Managed users</h2>
-              <p className="mt-1 text-sm font-semibold text-ocean-900/58">Open a user row to manage profile, credentials, global roles, partner membership, and corporate access.</p>
-            </div>
-            <form action="/admin/users" className="flex gap-2">
-              <div className="relative min-w-0 flex-1 sm:min-w-72">
-                <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-ocean-900/42" aria-hidden="true" />
-                <input name="q" defaultValue={query} placeholder="Search users, roles, organizations" className={`${adminInputClassName} w-full pl-9`} />
-              </div>
-              <Button type="submit" tone="secondary" className="min-h-10 rounded-lg px-3">Search</Button>
-            </form>
-          </div>
-          <div className="grid gap-3">
-            {data.users.map((user) => (
-              <UserManagementCard key={user.id} data={data} user={user} returnTo={returnTo} />
-            ))}
-            {data.users.length === 0 ? (
-              <AdminEmptyState
-                title="No matching users"
-                description="Adjust the search term or create a new user account from the form above."
-              />
-            ) : null}
-          </div>
-        </section>
-
-        <section className="grid gap-4">
           <div className="flex items-start gap-3">
-            <span className="grid size-10 place-items-center rounded-lg bg-ocean-50 text-ocean-700">
-              <KeyRound className="size-5" aria-hidden="true" />
-            </span>
+            <span className="grid size-10 place-items-center rounded-lg bg-ocean-50 text-ocean-700"><KeyRound className="size-5" aria-hidden="true" /></span>
             <div>
               <h2 className="text-xl font-bold tracking-normal text-ocean-900">Role catalog</h2>
               <p className="mt-1 text-sm font-semibold leading-6 text-ocean-900/58">Create custom role records and edit role display names.</p>
@@ -587,14 +368,12 @@ export default async function AdminUsersPage({ searchParams }: AdminUsersPagePro
             <Button type="submit" className="min-h-10 rounded-lg px-3">Save Role</Button>
           </form>
           <div className="grid gap-2">
-            {data.roles.map((role) => (
+            {options.roles.map((role) => (
               <div key={role.id} className="rounded-lg border border-ocean-900/10 bg-sand-50 p-3">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div>
                     <p className="font-bold text-ocean-900">{role.key}</p>
-                    <p className="text-xs font-semibold text-ocean-900/52">
-                      {role.assignmentCount} assignments · {role.isSystem ? "system role" : "custom role"}
-                    </p>
+                    <p className="text-xs font-semibold text-ocean-900/52">{role.assignmentCount} assignments · {role.isSystem ? "system role" : "custom role"}</p>
                   </div>
                   {role.isSystem ? <AdminStatusBadge value="active" /> : null}
                 </div>
@@ -611,41 +390,25 @@ export default async function AdminUsersPage({ searchParams }: AdminUsersPagePro
                       <HiddenReturn value={returnTo} />
                       <input type="hidden" name="roleId" value={role.id} />
                       <label className="flex items-center gap-2 text-xs font-bold text-ocean-900">
-                        <input name="confirmDelete" type="checkbox" value="delete" className="size-4 accent-coral-500" required />
-                        Confirm
+                        <input name="confirmDelete" type="checkbox" value="delete" className="size-4 accent-coral-500" required /> Confirm
                       </label>
-                      <Button type="submit" tone="ghost" className="min-h-9 rounded-lg px-3 text-coral-700 hover:bg-coral-100">
-                        <Trash2 className="size-4" aria-hidden="true" />
-                        Delete
-                      </Button>
+                      <Button type="submit" tone="ghost" className="min-h-9 rounded-lg px-3 text-coral-700 hover:bg-coral-100"><Trash2 className="size-4" aria-hidden="true" />Delete</Button>
                     </form>
                   </details>
                 ) : null}
               </div>
             ))}
-            {data.roles.length === 0 ? (
-              <AdminEmptyState
-                title="No role records yet"
-                description={`Create or assign ${systemGlobalRoleOptions.map((role) => role.key).join(", ")} to seed the global role catalog.`}
-              />
+            {options.roles.length === 0 ? (
+              <AdminEmptyState title="No role records yet" description={`Create or assign ${systemGlobalRoleOptions.map((role) => role.key).join(", ")} to seed the global role catalog.`} />
             ) : null}
           </div>
         </section>
       </FormTabs>
 
       <section className="grid gap-3 rounded-lg border border-ocean-900/10 bg-white p-4 shadow-soft md:grid-cols-3">
-        <div className="flex gap-3">
-          <LockKeyhole className="mt-1 size-5 text-coral-700" aria-hidden="true" />
-          <p className="text-sm font-semibold leading-6 text-ocean-900/62">Deleting a user cascades through owned account rows. Use it only when the account must be removed from the platform.</p>
-        </div>
-        <div className="flex gap-3">
-          <ShieldCheck className="mt-1 size-5 text-kelp-700" aria-hidden="true" />
-          <p className="text-sm font-semibold leading-6 text-ocean-900/62">The last platform admin is protected from revoke, password disable, and delete flows.</p>
-        </div>
-        <div className="flex gap-3">
-          <Mail className="mt-1 size-5 text-ocean-700" aria-hidden="true" />
-          <p className="text-sm font-semibold leading-6 text-ocean-900/62">Partner and corporate access are scoped to a specific workspace.</p>
-        </div>
+        <div className="flex gap-3"><LockKeyhole className="mt-1 size-5 text-coral-700" aria-hidden="true" /><p className="text-sm font-semibold leading-6 text-ocean-900/62">Destructive account actions live inside the selected user's workspace, not the directory.</p></div>
+        <div className="flex gap-3"><ShieldCheck className="mt-1 size-5 text-kelp-700" aria-hidden="true" /><p className="text-sm font-semibold leading-6 text-ocean-900/62">The last platform admin remains protected from revoke, password disable, and delete flows.</p></div>
+        <div className="flex gap-3"><Mail className="mt-1 size-5 text-ocean-700" aria-hidden="true" /><p className="text-sm font-semibold leading-6 text-ocean-900/62">Partner and corporate access remain scoped to their specific workspaces.</p></div>
       </section>
     </div>
   );

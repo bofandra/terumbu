@@ -7102,6 +7102,580 @@ export async function getAdminPartnersPage(params: AdminPartnerFilters = {}) {
   };
 }
 
+
+export type AdminExpeditionFilters = {
+  q?: string | string[];
+  page?: string | string[];
+  pageSize?: string | string[];
+  sort?: string | string[];
+  dir?: string | string[];
+  region?: string | string[];
+  campaign?: string | string[];
+};
+
+const adminExpeditionSorts = ["title", "region", "price", "departures", "bookings", "reviews", "createdAt"] as const;
+const adminExpeditionCampaignFilters = ["all", "linked", "unlinked"] as const;
+
+function adminExpeditionCampaignFilter(value: string | string[] | undefined) {
+  const candidate = cleanAdminDirectoryFilter(value, 40);
+
+  return adminExpeditionCampaignFilters.includes(candidate as (typeof adminExpeditionCampaignFilters)[number])
+    ? (candidate as (typeof adminExpeditionCampaignFilters)[number])
+    : "all";
+}
+
+function adminExpeditionWhere(filters: { q: string; region: string; campaign: "all" | "linked" | "unlinked" }) {
+  const conditions = [];
+
+  if (filters.q) {
+    const pattern = `%${filters.q.toLowerCase()}%`;
+
+    conditions.push(
+      or(
+        sql`lower(${expeditions.title}) like ${pattern}`,
+        sql`lower(${expeditions.slug}) like ${pattern}`,
+        sql`lower(${expeditions.region}) like ${pattern}`,
+        sql`lower(${expeditions.summary}) like ${pattern}`,
+        sql`lower(coalesce(${campaigns.title}, '')) like ${pattern}`
+      )
+    );
+  }
+
+  if (filters.region) {
+    conditions.push(eq(expeditions.region, filters.region));
+  }
+
+  if (filters.campaign === "linked") {
+    conditions.push(sql`${expeditions.relatedCampaignId} is not null`);
+  } else if (filters.campaign === "unlinked") {
+    conditions.push(sql`${expeditions.relatedCampaignId} is null`);
+  }
+
+  return conditions.length > 0 ? and(...conditions) : sql`true`;
+}
+
+export async function getAdminExpeditionsPage(params: AdminExpeditionFilters = {}) {
+  const query = parseAdminListQuery(params, {
+    defaultSort: "createdAt",
+    defaultDir: "desc",
+    allowedSorts: adminExpeditionSorts,
+    defaultPageSize: 25,
+    maxPageSize: 100
+  });
+  const filters = {
+    q: query.q,
+    region: cleanAdminDirectoryFilter(params.region, 120),
+    campaign: adminExpeditionCampaignFilter(params.campaign)
+  };
+  const whereClause = adminExpeditionWhere(filters);
+  const departureStats = db
+    .select({
+      expeditionId: expeditionDepartures.expeditionId,
+      departureCount: sql<number>`count(${expeditionDepartures.id})::int`,
+      openDepartureCount: sql<number>`sum(case when ${expeditionDepartures.status} = 'open' then 1 else 0 end)::int`,
+      availableSeats: sql<number>`coalesce(sum(greatest(${expeditionDepartures.capacity} - ${expeditionDepartures.seatsBooked}, 0)), 0)::int`
+    })
+    .from(expeditionDepartures)
+    .groupBy(expeditionDepartures.expeditionId)
+    .as("admin_expedition_departure_stats");
+  const bookingStats = db
+    .select({
+      expeditionId: expeditionBookings.expeditionId,
+      bookingCount: sql<number>`count(${expeditionBookings.id})::int`
+    })
+    .from(expeditionBookings)
+    .groupBy(expeditionBookings.expeditionId)
+    .as("admin_expedition_booking_stats");
+  const reviewStats = db
+    .select({
+      expeditionId: expeditionReviews.expeditionId,
+      pendingReviewCount: sql<number>`sum(case when ${expeditionReviews.status} = 'pending' then 1 else 0 end)::int`
+    })
+    .from(expeditionReviews)
+    .groupBy(expeditionReviews.expeditionId)
+    .as("admin_expedition_review_stats");
+  const departureCountValue = sql<number>`coalesce(${departureStats.departureCount}, 0)`;
+  const openDepartureCountValue = sql<number>`coalesce(${departureStats.openDepartureCount}, 0)`;
+  const availableSeatsValue = sql<number>`coalesce(${departureStats.availableSeats}, 0)`;
+  const bookingCountValue = sql<number>`coalesce(${bookingStats.bookingCount}, 0)`;
+  const pendingReviewCountValue = sql<number>`coalesce(${reviewStats.pendingReviewCount}, 0)`;
+  const sortColumn =
+    query.sort === "title"
+      ? expeditions.title
+      : query.sort === "region"
+        ? expeditions.region
+        : query.sort === "price"
+          ? expeditions.basePrice
+          : query.sort === "departures"
+            ? departureCountValue
+            : query.sort === "bookings"
+              ? bookingCountValue
+              : query.sort === "reviews"
+                ? pendingReviewCountValue
+                : expeditions.createdAt;
+
+  const [summaryRows, regionRows] = await Promise.all([
+    db
+      .select({
+        total: sql<number>`count(${expeditions.id})::int`,
+        departures: sql<number>`coalesce(sum(${departureCountValue}), 0)::int`,
+        openDepartures: sql<number>`coalesce(sum(${openDepartureCountValue}), 0)::int`,
+        availableSeats: sql<number>`coalesce(sum(${availableSeatsValue}), 0)::int`,
+        pendingReviews: sql<number>`coalesce(sum(${pendingReviewCountValue}), 0)::int`
+      })
+      .from(expeditions)
+      .leftJoin(campaigns, eq(expeditions.relatedCampaignId, campaigns.id))
+      .leftJoin(departureStats, eq(departureStats.expeditionId, expeditions.id))
+      .leftJoin(bookingStats, eq(bookingStats.expeditionId, expeditions.id))
+      .leftJoin(reviewStats, eq(reviewStats.expeditionId, expeditions.id))
+      .where(whereClause),
+    db
+      .select({ region: expeditions.region })
+      .from(expeditions)
+      .groupBy(expeditions.region)
+      .orderBy(asc(expeditions.region))
+  ]);
+
+  const totalItems = Number(summaryRows[0]?.total ?? 0);
+  const pagination = adminPaginationMeta(totalItems, query);
+  const expeditionRows = await db
+    .select({
+      id: expeditions.id,
+      title: expeditions.title,
+      slug: expeditions.slug,
+      region: expeditions.region,
+      durationDays: expeditions.durationDays,
+      basePrice: expeditions.basePrice,
+      currency: expeditions.currency,
+      relatedCampaignId: expeditions.relatedCampaignId,
+      relatedCampaignTitle: campaigns.title,
+      createdAt: expeditions.createdAt,
+      departureCount: departureCountValue,
+      openDepartureCount: openDepartureCountValue,
+      availableSeats: availableSeatsValue,
+      bookingCount: bookingCountValue,
+      pendingReviewCount: pendingReviewCountValue
+    })
+    .from(expeditions)
+    .leftJoin(campaigns, eq(expeditions.relatedCampaignId, campaigns.id))
+    .leftJoin(departureStats, eq(departureStats.expeditionId, expeditions.id))
+    .leftJoin(bookingStats, eq(bookingStats.expeditionId, expeditions.id))
+    .leftJoin(reviewStats, eq(reviewStats.expeditionId, expeditions.id))
+    .where(whereClause)
+    .orderBy(query.dir === "desc" ? desc(sortColumn) : asc(sortColumn), asc(expeditions.title))
+    .limit(pagination.pageSize)
+    .offset(adminListOffset(query, totalItems));
+
+  return {
+    filters: {
+      ...filters,
+      sort: query.sort ?? "createdAt",
+      dir: query.dir
+    },
+    expeditions: expeditionRows.map((expedition) => ({
+      ...expedition,
+      basePrice: toNumber(expedition.basePrice),
+      departureCount: Number(expedition.departureCount ?? 0),
+      openDepartureCount: Number(expedition.openDepartureCount ?? 0),
+      availableSeats: Number(expedition.availableSeats ?? 0),
+      bookingCount: Number(expedition.bookingCount ?? 0),
+      pendingReviewCount: Number(expedition.pendingReviewCount ?? 0)
+    })),
+    regionOptions: regionRows.map((row) => row.region),
+    pagination,
+    summary: {
+      expeditions: totalItems,
+      departures: Number(summaryRows[0]?.departures ?? 0),
+      openDepartures: Number(summaryRows[0]?.openDepartures ?? 0),
+      availableSeats: Number(summaryRows[0]?.availableSeats ?? 0),
+      pendingReviews: Number(summaryRows[0]?.pendingReviews ?? 0)
+    }
+  };
+}
+
+export type AdminUserFilters = {
+  q?: string | string[];
+  page?: string | string[];
+  pageSize?: string | string[];
+  sort?: string | string[];
+  dir?: string | string[];
+  verification?: string | string[];
+  access?: string | string[];
+};
+
+const adminUserSorts = ["name", "email", "access", "sessions", "createdAt", "updatedAt"] as const;
+const adminUserVerifications = ["all", "verified", "pending"] as const;
+const adminUserAccessFilters = ["all", "admin", "partner", "corporate", "basic"] as const;
+
+function adminUserVerificationFilter(value: string | string[] | undefined) {
+  const candidate = cleanAdminDirectoryFilter(value, 40);
+
+  return adminUserVerifications.includes(candidate as (typeof adminUserVerifications)[number])
+    ? (candidate as (typeof adminUserVerifications)[number])
+    : "all";
+}
+
+function adminUserAccessFilter(value: string | string[] | undefined) {
+  const candidate = cleanAdminDirectoryFilter(value, 40);
+
+  return adminUserAccessFilters.includes(candidate as (typeof adminUserAccessFilters)[number])
+    ? (candidate as (typeof adminUserAccessFilters)[number])
+    : "all";
+}
+
+function adminUserDirectoryStats() {
+  const roleStats = db
+    .select({
+      userId: userRoles.userId,
+      roleCount: sql<number>`count(${userRoles.id})::int`,
+      adminCount: sql<number>`sum(case when ${roles.key} = 'admin' then 1 else 0 end)::int`,
+      partnerRoleCount: sql<number>`sum(case when ${roles.key} = 'partner' then 1 else 0 end)::int`,
+      corporateRoleCount: sql<number>`sum(case when ${roles.key} = 'corporate_admin' then 1 else 0 end)::int`,
+      roleKeys: sql<string>`string_agg(${roles.key}, ',' order by ${roles.key})`
+    })
+    .from(userRoles)
+    .innerJoin(roles, eq(userRoles.roleId, roles.id))
+    .groupBy(userRoles.userId)
+    .as("admin_user_role_stats");
+  const partnerStats = db
+    .select({
+      userId: organizationUsers.userId,
+      membershipCount: sql<number>`count(${organizationUsers.id})::int`,
+      activeMembershipCount: sql<number>`sum(case when ${organizationUsers.status} = 'active' then 1 else 0 end)::int`,
+      organizationNames: sql<string>`string_agg(distinct ${organizations.name}, ', ')`
+    })
+    .from(organizationUsers)
+    .innerJoin(organizations, eq(organizationUsers.organizationId, organizations.id))
+    .groupBy(organizationUsers.userId)
+    .as("admin_user_partner_stats");
+  const corporateStats = db
+    .select({
+      userId: corporatePermissions.userId,
+      permissionCount: sql<number>`count(${corporatePermissions.id})::int`,
+      accountNames: sql<string>`string_agg(distinct ${corporateAccounts.name}, ', ')`
+    })
+    .from(corporatePermissions)
+    .innerJoin(corporateAccounts, eq(corporatePermissions.corporateAccountId, corporateAccounts.id))
+    .groupBy(corporatePermissions.userId)
+    .as("admin_user_corporate_stats");
+  const sessionStats = db
+    .select({
+      userId: sessions.userId,
+      activeSessions: sql<number>`count(${sessions.id})::int`
+    })
+    .from(sessions)
+    .groupBy(sessions.userId)
+    .as("admin_user_session_stats");
+
+  return { roleStats, partnerStats, corporateStats, sessionStats };
+}
+
+function adminUserWhere(
+  filters: { q: string; verification: "all" | "verified" | "pending"; access: "all" | "admin" | "partner" | "corporate" | "basic" },
+  stats: ReturnType<typeof adminUserDirectoryStats>
+) {
+  const conditions = [];
+  const roleCount = sql<number>`coalesce(${stats.roleStats.roleCount}, 0)`;
+  const adminCount = sql<number>`coalesce(${stats.roleStats.adminCount}, 0)`;
+  const partnerRoleCount = sql<number>`coalesce(${stats.roleStats.partnerRoleCount}, 0)`;
+  const corporateRoleCount = sql<number>`coalesce(${stats.roleStats.corporateRoleCount}, 0)`;
+  const activeMembershipCount = sql<number>`coalesce(${stats.partnerStats.activeMembershipCount}, 0)`;
+  const permissionCount = sql<number>`coalesce(${stats.corporateStats.permissionCount}, 0)`;
+
+  if (filters.q) {
+    const pattern = `%${filters.q.toLowerCase()}%`;
+
+    conditions.push(
+      or(
+        sql`lower(${users.email}) like ${pattern}`,
+        sql`lower(coalesce(${users.name}, '')) like ${pattern}`,
+        sql`lower(coalesce(${profiles.displayName}, '')) like ${pattern}`,
+        sql`lower(coalesce(${profiles.location}, '')) like ${pattern}`,
+        sql`lower(coalesce(${stats.roleStats.roleKeys}, '')) like ${pattern}`,
+        sql`lower(coalesce(${stats.partnerStats.organizationNames}, '')) like ${pattern}`,
+        sql`lower(coalesce(${stats.corporateStats.accountNames}, '')) like ${pattern}`
+      )
+    );
+  }
+
+  if (filters.verification === "verified") {
+    conditions.push(sql`${users.emailVerifiedAt} is not null`);
+  } else if (filters.verification === "pending") {
+    conditions.push(sql`${users.emailVerifiedAt} is null`);
+  }
+
+  if (filters.access === "admin") {
+    conditions.push(sql`${adminCount} > 0`);
+  } else if (filters.access === "partner") {
+    conditions.push(sql`(${partnerRoleCount} > 0 or ${activeMembershipCount} > 0)`);
+  } else if (filters.access === "corporate") {
+    conditions.push(sql`(${corporateRoleCount} > 0 or ${permissionCount} > 0)`);
+  } else if (filters.access === "basic") {
+    conditions.push(sql`(${roleCount} = 0 and ${activeMembershipCount} = 0 and ${permissionCount} = 0)`);
+  }
+
+  return conditions.length > 0 ? and(...conditions) : sql`true`;
+}
+
+export async function getAdminUsersPage(params: AdminUserFilters = {}) {
+  const query = parseAdminListQuery(params, {
+    defaultSort: "createdAt",
+    defaultDir: "desc",
+    allowedSorts: adminUserSorts,
+    defaultPageSize: 25,
+    maxPageSize: 100
+  });
+  const filters = {
+    q: query.q,
+    verification: adminUserVerificationFilter(params.verification),
+    access: adminUserAccessFilter(params.access)
+  };
+  const stats = adminUserDirectoryStats();
+  const whereClause = adminUserWhere(filters, stats);
+  const roleCountValue = sql<number>`coalesce(${stats.roleStats.roleCount}, 0)`;
+  const adminCountValue = sql<number>`coalesce(${stats.roleStats.adminCount}, 0)`;
+  const partnerRoleCountValue = sql<number>`coalesce(${stats.roleStats.partnerRoleCount}, 0)`;
+  const corporateRoleCountValue = sql<number>`coalesce(${stats.roleStats.corporateRoleCount}, 0)`;
+  const membershipCountValue = sql<number>`coalesce(${stats.partnerStats.membershipCount}, 0)`;
+  const activeMembershipCountValue = sql<number>`coalesce(${stats.partnerStats.activeMembershipCount}, 0)`;
+  const permissionCountValue = sql<number>`coalesce(${stats.corporateStats.permissionCount}, 0)`;
+  const activeSessionsValue = sql<number>`coalesce(${stats.sessionStats.activeSessions}, 0)`;
+  const sortColumn =
+    query.sort === "name"
+      ? sql`coalesce(${profiles.displayName}, ${users.name}, ${users.email})`
+      : query.sort === "email"
+        ? users.email
+        : query.sort === "access"
+          ? roleCountValue
+          : query.sort === "sessions"
+            ? activeSessionsValue
+            : query.sort === "updatedAt"
+              ? users.updatedAt
+              : users.createdAt;
+
+  const summaryRows = await db
+    .select({
+      total: sql<number>`count(${users.id})::int`,
+      verified: sql<number>`sum(case when ${users.emailVerifiedAt} is not null then 1 else 0 end)::int`,
+      admins: sql<number>`sum(case when ${adminCountValue} > 0 then 1 else 0 end)::int`,
+      partners: sql<number>`sum(case when ${partnerRoleCountValue} > 0 or ${activeMembershipCountValue} > 0 then 1 else 0 end)::int`,
+      corporate: sql<number>`sum(case when ${corporateRoleCountValue} > 0 or ${permissionCountValue} > 0 then 1 else 0 end)::int`
+    })
+    .from(users)
+    .leftJoin(profiles, eq(profiles.userId, users.id))
+    .leftJoin(stats.roleStats, eq(stats.roleStats.userId, users.id))
+    .leftJoin(stats.partnerStats, eq(stats.partnerStats.userId, users.id))
+    .leftJoin(stats.corporateStats, eq(stats.corporateStats.userId, users.id))
+    .leftJoin(stats.sessionStats, eq(stats.sessionStats.userId, users.id))
+    .where(whereClause);
+
+  const totalItems = Number(summaryRows[0]?.total ?? 0);
+  const pagination = adminPaginationMeta(totalItems, query);
+  const userRows = await db
+    .select({
+      id: users.id,
+      email: users.email,
+      name: users.name,
+      hasPassword: sql<boolean>`${users.passwordHash} is not null`,
+      emailVerifiedAt: users.emailVerifiedAt,
+      createdAt: users.createdAt,
+      updatedAt: users.updatedAt,
+      displayName: profiles.displayName,
+      location: profiles.location,
+      roleCount: roleCountValue,
+      roleKeys: stats.roleStats.roleKeys,
+      adminCount: adminCountValue,
+      partnerRoleCount: partnerRoleCountValue,
+      corporateRoleCount: corporateRoleCountValue,
+      membershipCount: membershipCountValue,
+      activeMembershipCount: activeMembershipCountValue,
+      permissionCount: permissionCountValue,
+      activeSessions: activeSessionsValue
+    })
+    .from(users)
+    .leftJoin(profiles, eq(profiles.userId, users.id))
+    .leftJoin(stats.roleStats, eq(stats.roleStats.userId, users.id))
+    .leftJoin(stats.partnerStats, eq(stats.partnerStats.userId, users.id))
+    .leftJoin(stats.corporateStats, eq(stats.corporateStats.userId, users.id))
+    .leftJoin(stats.sessionStats, eq(stats.sessionStats.userId, users.id))
+    .where(whereClause)
+    .orderBy(query.dir === "desc" ? desc(sortColumn) : asc(sortColumn), asc(users.email))
+    .limit(pagination.pageSize)
+    .offset(adminListOffset(query, totalItems));
+
+  return {
+    filters: {
+      ...filters,
+      sort: query.sort ?? "createdAt",
+      dir: query.dir
+    },
+    users: userRows.map((user) => ({
+      ...user,
+      roleCount: Number(user.roleCount ?? 0),
+      roleKeys: String(user.roleKeys ?? "").split(",").filter(Boolean),
+      isAdmin: Number(user.adminCount ?? 0) > 0,
+      hasPartnerAccess: Number(user.partnerRoleCount ?? 0) > 0 || Number(user.activeMembershipCount ?? 0) > 0,
+      hasCorporateAccess: Number(user.corporateRoleCount ?? 0) > 0 || Number(user.permissionCount ?? 0) > 0,
+      membershipCount: Number(user.membershipCount ?? 0),
+      permissionCount: Number(user.permissionCount ?? 0),
+      activeSessions: Number(user.activeSessions ?? 0)
+    })),
+    pagination,
+    summary: {
+      users: totalItems,
+      verifiedUsers: Number(summaryRows[0]?.verified ?? 0),
+      admins: Number(summaryRows[0]?.admins ?? 0),
+      partnerUsers: Number(summaryRows[0]?.partners ?? 0),
+      corporateUsers: Number(summaryRows[0]?.corporate ?? 0)
+    }
+  };
+}
+
+export async function getAdminUserManagementOptions() {
+  const [roleRows, roleAssignmentRows, organizationRows, corporateAccountRows] = await Promise.all([
+    db
+      .select({ id: roles.id, key: roles.key, name: roles.name })
+      .from(roles)
+      .orderBy(asc(roles.key)),
+    db
+      .select({ roleId: userRoles.roleId, total: sql<number>`count(${userRoles.id})::int` })
+      .from(userRoles)
+      .groupBy(userRoles.roleId),
+    db
+      .select({
+        id: organizations.id,
+        name: organizations.name,
+        slug: organizations.slug,
+        type: organizations.type,
+        verification: organizations.verification
+      })
+      .from(organizations)
+      .orderBy(asc(organizations.name)),
+    db
+      .select({ id: corporateAccounts.id, name: corporateAccounts.name, slug: corporateAccounts.slug })
+      .from(corporateAccounts)
+      .orderBy(asc(corporateAccounts.name))
+  ]);
+  const assignmentCounts = new Map(roleAssignmentRows.map((row) => [row.roleId, Number(row.total)]));
+  const systemRoleKeys = new Set<string>(systemGlobalRoleOptions.map((role) => role.key));
+  const roleOptionMap = new Map<string, { key: string; name: string }>();
+
+  for (const option of systemGlobalRoleOptions) {
+    roleOptionMap.set(option.key, option);
+  }
+
+  for (const role of roleRows) {
+    roleOptionMap.set(role.key, { key: role.key, name: role.name });
+  }
+
+  return {
+    roles: roleRows.map((role) => ({
+      ...role,
+      assignmentCount: assignmentCounts.get(role.id) ?? 0,
+      isSystem: systemRoleKeys.has(role.key)
+    })),
+    roleOptions: Array.from(roleOptionMap.values()).sort((a, b) => a.key.localeCompare(b.key)),
+    organizations: organizationRows.map((organization) => ({
+      ...organization,
+      verificationLabel: verificationLabel(organization.verification)
+    })),
+    corporateAccounts: corporateAccountRows
+  };
+}
+
+export async function getAdminUserWorkspaceData(userId: string) {
+  const safeUserId = adminUuidFilter(userId);
+  const options = await getAdminUserManagementOptions();
+
+  if (!safeUserId) {
+    return { ...options, user: null };
+  }
+
+  const [userRows, userRoleRows, partnerMembershipRows, corporatePermissionRows, sessionRows] = await Promise.all([
+    db
+      .select({
+        id: users.id,
+        email: users.email,
+        name: users.name,
+        imageUrl: users.imageUrl,
+        hasPassword: sql<boolean>`${users.passwordHash} is not null`,
+        emailVerifiedAt: users.emailVerifiedAt,
+        createdAt: users.createdAt,
+        updatedAt: users.updatedAt,
+        displayName: profiles.displayName,
+        location: profiles.location,
+        bio: profiles.bio,
+        isPublic: profiles.isPublic
+      })
+      .from(users)
+      .leftJoin(profiles, eq(profiles.userId, users.id))
+      .where(eq(users.id, safeUserId))
+      .limit(1),
+    db
+      .select({
+        id: userRoles.id,
+        userId: userRoles.userId,
+        roleId: userRoles.roleId,
+        key: roles.key,
+        name: roles.name,
+        createdAt: userRoles.createdAt
+      })
+      .from(userRoles)
+      .innerJoin(roles, eq(userRoles.roleId, roles.id))
+      .where(eq(userRoles.userId, safeUserId))
+      .orderBy(asc(roles.key)),
+    db
+      .select({
+        id: organizationUsers.id,
+        organizationId: organizationUsers.organizationId,
+        organizationName: organizations.name,
+        organizationSlug: organizations.slug,
+        userId: organizationUsers.userId,
+        role: organizationUsers.role,
+        status: organizationUsers.status,
+        createdAt: organizationUsers.createdAt,
+        updatedAt: organizationUsers.updatedAt
+      })
+      .from(organizationUsers)
+      .innerJoin(organizations, eq(organizationUsers.organizationId, organizations.id))
+      .where(eq(organizationUsers.userId, safeUserId))
+      .orderBy(asc(organizations.name)),
+    db
+      .select({
+        id: corporatePermissions.id,
+        corporateAccountId: corporatePermissions.corporateAccountId,
+        accountName: corporateAccounts.name,
+        accountSlug: corporateAccounts.slug,
+        userId: corporatePermissions.userId,
+        permission: corporatePermissions.permission,
+        createdAt: corporatePermissions.createdAt
+      })
+      .from(corporatePermissions)
+      .innerJoin(corporateAccounts, eq(corporatePermissions.corporateAccountId, corporateAccounts.id))
+      .where(eq(corporatePermissions.userId, safeUserId))
+      .orderBy(asc(corporateAccounts.name)),
+    db
+      .select({ total: sql<number>`count(${sessions.id})::int` })
+      .from(sessions)
+      .where(eq(sessions.userId, safeUserId))
+  ]);
+
+  const user = userRows[0];
+
+  return {
+    ...options,
+    user: user
+      ? {
+          ...user,
+          roles: userRoleRows,
+          partnerMemberships: partnerMembershipRows,
+          corporatePermissions: corporatePermissionRows,
+          activeSessions: Number(sessionRows[0]?.total ?? 0)
+        }
+      : null
+  };
+}
+
 export type AdminAuditFilters = {
   action?: string;
   actor?: string;
