@@ -73,7 +73,7 @@ import {
   selectedChoiceIdsFromAssessmentMetadata
 } from "@/lib/academy-assessment";
 import { adminListOffset, adminPaginationMeta, parseAdminListQuery } from "@/lib/admin-list-query";
-import { campaignBudgetUtilization, campaignContentCompleteness, impactSiteVerificationStatuses } from "@/lib/campaign-content";
+import { campaignBudgetUtilization, campaignContentCompleteness, campaignStatuses, impactSiteVerificationStatuses } from "@/lib/campaign-content";
 import { corporateReportArtifactSourceUrl } from "@/lib/corporate-report-artifact-links";
 import {
   getMetadataNumber,
@@ -6777,6 +6777,328 @@ export async function getAdminImpactSiteEditorData(impactSiteId?: string) {
   return {
     campaignOptions: campaignOptionRows,
     site: siteRows[0] ? toAdminImpactSiteListRow(siteRows[0]) : null
+  };
+}
+
+
+export type AdminProjectFilters = {
+  q?: string | string[];
+  page?: string | string[];
+  pageSize?: string | string[];
+  sort?: string | string[];
+  dir?: string | string[];
+  status?: string | string[];
+  partner?: string | string[];
+};
+
+const adminProjectSorts = ["title", "partner", "status", "updatedAt"] as const;
+
+function cleanAdminDirectoryFilter(value: string | string[] | undefined, maxLength = 120) {
+  return String(firstAdminFilterValue(value) ?? "")
+    .trim()
+    .slice(0, maxLength);
+}
+
+function adminUuidFilter(value: string | string[] | undefined) {
+  const candidate = cleanAdminDirectoryFilter(value, 80);
+
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(candidate)
+    ? candidate
+    : "";
+}
+
+function adminProjectStatusFilter(value: string | string[] | undefined) {
+  const candidate = cleanAdminDirectoryFilter(value, 40);
+
+  return campaignStatuses.includes(candidate as (typeof campaignStatuses)[number]) ? candidate : "all";
+}
+
+function adminProjectWhere(filters: { q: string; status: string; partner: string }) {
+  const conditions = [];
+
+  if (filters.q) {
+    const pattern = `%${filters.q.toLowerCase()}%`;
+
+    conditions.push(
+      or(
+        sql`lower(${campaigns.title}) like ${pattern}`,
+        sql`lower(${campaigns.slug}) like ${pattern}`,
+        sql`lower(${campaigns.category}) like ${pattern}`,
+        sql`lower(${campaigns.region}) like ${pattern}`,
+        sql`lower(${organizations.name}) like ${pattern}`
+      )
+    );
+  }
+
+  if (filters.status !== "all") {
+    conditions.push(eq(campaigns.status, filters.status as (typeof campaignStatuses)[number]));
+  }
+
+  if (filters.partner) {
+    conditions.push(eq(campaigns.organizationId, filters.partner));
+  }
+
+  return conditions.length > 0 ? and(...conditions) : sql`true`;
+}
+
+function adminProjectOrderBy(sort: string | undefined, dir: "asc" | "desc") {
+  const sortColumn =
+    sort === "title"
+      ? campaigns.title
+      : sort === "partner"
+        ? organizations.name
+        : sort === "status"
+          ? campaigns.status
+          : campaigns.updatedAt;
+
+  return dir === "desc" ? desc(sortColumn) : asc(sortColumn);
+}
+
+export async function getAdminProjectsPage(params: AdminProjectFilters = {}) {
+  const query = parseAdminListQuery(params, {
+    defaultSort: "updatedAt",
+    defaultDir: "desc",
+    allowedSorts: adminProjectSorts,
+    defaultPageSize: 25,
+    maxPageSize: 100
+  });
+  const filters = {
+    q: query.q,
+    status: adminProjectStatusFilter(params.status),
+    partner: adminUuidFilter(params.partner)
+  };
+  const whereClause = adminProjectWhere(filters);
+
+  const [totalRows, summaryRows, partnerOptionRows] = await Promise.all([
+    db
+      .select({ total: sql<number>`count(*)::int` })
+      .from(campaigns)
+      .innerJoin(organizations, eq(campaigns.organizationId, organizations.id))
+      .where(whereClause),
+    db
+      .select({
+        inReview: sql<number>`sum(case when ${campaigns.status} = 'review' then 1 else 0 end)::int`,
+        published: sql<number>`sum(case when ${campaigns.status} = 'published' then 1 else 0 end)::int`,
+        totalDonors: sql<number>`coalesce(sum(${campaigns.donorCount}), 0)::int`
+      })
+      .from(campaigns)
+      .innerJoin(organizations, eq(campaigns.organizationId, organizations.id))
+      .where(whereClause),
+    db
+      .select({ id: organizations.id, name: organizations.name })
+      .from(organizations)
+      .innerJoin(campaigns, eq(campaigns.organizationId, organizations.id))
+      .groupBy(organizations.id, organizations.name)
+      .orderBy(asc(organizations.name))
+  ]);
+
+  const totalItems = Number(totalRows[0]?.total ?? 0);
+  const pagination = adminPaginationMeta(totalItems, query);
+  const projectRows = await db
+    .select({
+      id: campaigns.id,
+      organizationId: campaigns.organizationId,
+      title: campaigns.title,
+      slug: campaigns.slug,
+      category: campaigns.category,
+      region: campaigns.region,
+      status: campaigns.status,
+      raisedAmount: campaigns.raisedAmount,
+      goalAmount: campaigns.goalAmount,
+      currency: campaigns.currency,
+      donorCount: campaigns.donorCount,
+      impactUnit: campaigns.impactUnit,
+      impactTarget: campaigns.impactTarget,
+      updatedAt: campaigns.updatedAt,
+      partner: organizations.name
+    })
+    .from(campaigns)
+    .innerJoin(organizations, eq(campaigns.organizationId, organizations.id))
+    .where(whereClause)
+    .orderBy(adminProjectOrderBy(query.sort, query.dir), asc(campaigns.title))
+    .limit(pagination.pageSize)
+    .offset(adminListOffset(query, totalItems));
+
+  return {
+    filters: {
+      ...filters,
+      sort: query.sort ?? "updatedAt",
+      dir: query.dir
+    },
+    projects: projectRows.map((project) => ({
+      ...project,
+      raisedAmount: toNumber(project.raisedAmount),
+      goalAmount: toNumber(project.goalAmount)
+    })),
+    partnerOptions: partnerOptionRows,
+    pagination,
+    summary: {
+      projects: totalItems,
+      inReview: Number(summaryRows[0]?.inReview ?? 0),
+      published: Number(summaryRows[0]?.published ?? 0),
+      totalDonors: Number(summaryRows[0]?.totalDonors ?? 0)
+    }
+  };
+}
+
+export type AdminPartnerFilters = {
+  q?: string | string[];
+  page?: string | string[];
+  pageSize?: string | string[];
+  sort?: string | string[];
+  dir?: string | string[];
+  verification?: string | string[];
+  type?: string | string[];
+};
+
+const adminPartnerSorts = ["name", "type", "verification", "campaigns", "users", "createdAt"] as const;
+const adminPartnerVerifications = ["basic", "document", "field"] as const;
+
+function adminPartnerVerificationFilter(value: string | string[] | undefined) {
+  const candidate = cleanAdminDirectoryFilter(value, 40);
+
+  return adminPartnerVerifications.includes(candidate as (typeof adminPartnerVerifications)[number]) ? candidate : "all";
+}
+
+function adminPartnerWhere(filters: { q: string; verification: string; type: string }) {
+  const conditions = [];
+
+  if (filters.q) {
+    const pattern = `%${filters.q.toLowerCase()}%`;
+
+    conditions.push(
+      or(
+        sql`lower(${organizations.name}) like ${pattern}`,
+        sql`lower(${organizations.slug}) like ${pattern}`,
+        sql`lower(${organizations.type}) like ${pattern}`
+      )
+    );
+  }
+
+  if (filters.verification !== "all") {
+    conditions.push(eq(organizations.verification, filters.verification as (typeof adminPartnerVerifications)[number]));
+  }
+
+  if (filters.type) {
+    conditions.push(eq(organizations.type, filters.type));
+  }
+
+  return conditions.length > 0 ? and(...conditions) : sql`true`;
+}
+
+export async function getAdminPartnersPage(params: AdminPartnerFilters = {}) {
+  const query = parseAdminListQuery(params, {
+    defaultSort: "name",
+    allowedSorts: adminPartnerSorts,
+    defaultPageSize: 25,
+    maxPageSize: 100
+  });
+  const filters = {
+    q: query.q,
+    verification: adminPartnerVerificationFilter(params.verification),
+    type: cleanAdminDirectoryFilter(params.type, 80)
+  };
+  const whereClause = adminPartnerWhere(filters);
+  const campaignCounts = db
+    .select({
+      organizationId: campaigns.organizationId,
+      campaignCount: sql<number>`count(${campaigns.id})::int`
+    })
+    .from(campaigns)
+    .groupBy(campaigns.organizationId)
+    .as("admin_partner_campaign_counts");
+  const userCounts = db
+    .select({
+      organizationId: organizationUsers.organizationId,
+      userCount: sql<number>`count(${organizationUsers.id})::int`,
+      activeUserCount: sql<number>`sum(case when ${organizationUsers.status} = 'active' then 1 else 0 end)::int`
+    })
+    .from(organizationUsers)
+    .groupBy(organizationUsers.organizationId)
+    .as("admin_partner_user_counts");
+  const campaignCountValue = sql<number>`coalesce(${campaignCounts.campaignCount}, 0)`;
+  const userCountValue = sql<number>`coalesce(${userCounts.userCount}, 0)`;
+  const activeUserCountValue = sql<number>`coalesce(${userCounts.activeUserCount}, 0)`;
+  const sortColumn =
+    query.sort === "type"
+      ? organizations.type
+      : query.sort === "verification"
+        ? organizations.verification
+        : query.sort === "campaigns"
+          ? campaignCountValue
+          : query.sort === "users"
+            ? userCountValue
+            : query.sort === "createdAt"
+              ? organizations.createdAt
+              : organizations.name;
+
+  const [totalRows, summaryRows, activeUserRows, typeOptionRows] = await Promise.all([
+    db
+      .select({ total: sql<number>`count(*)::int` })
+      .from(organizations)
+      .where(whereClause),
+    db
+      .select({
+        documentVerified: sql<number>`sum(case when ${organizations.verification} = 'document' then 1 else 0 end)::int`,
+        fieldVerified: sql<number>`sum(case when ${organizations.verification} = 'field' then 1 else 0 end)::int`
+      })
+      .from(organizations)
+      .where(whereClause),
+    db
+      .select({ total: sql<number>`count(${organizationUsers.id})::int` })
+      .from(organizationUsers)
+      .innerJoin(organizations, eq(organizationUsers.organizationId, organizations.id))
+      .where(and(whereClause, eq(organizationUsers.status, "active"))),
+    db
+      .select({ type: organizations.type })
+      .from(organizations)
+      .groupBy(organizations.type)
+      .orderBy(asc(organizations.type))
+  ]);
+
+  const totalItems = Number(totalRows[0]?.total ?? 0);
+  const pagination = adminPaginationMeta(totalItems, query);
+  const partnerRows = await db
+    .select({
+      id: organizations.id,
+      name: organizations.name,
+      slug: organizations.slug,
+      type: organizations.type,
+      websiteUrl: organizations.websiteUrl,
+      verification: organizations.verification,
+      createdAt: organizations.createdAt,
+      campaignCount: campaignCountValue,
+      userCount: userCountValue,
+      activeUserCount: activeUserCountValue
+    })
+    .from(organizations)
+    .leftJoin(campaignCounts, eq(campaignCounts.organizationId, organizations.id))
+    .leftJoin(userCounts, eq(userCounts.organizationId, organizations.id))
+    .where(whereClause)
+    .orderBy(query.dir === "desc" ? desc(sortColumn) : asc(sortColumn), asc(organizations.name))
+    .limit(pagination.pageSize)
+    .offset(adminListOffset(query, totalItems));
+
+  return {
+    filters: {
+      ...filters,
+      sort: query.sort ?? "name",
+      dir: query.dir
+    },
+    partners: partnerRows.map((partner) => ({
+      ...partner,
+      campaignCount: Number(partner.campaignCount ?? 0),
+      userCount: Number(partner.userCount ?? 0),
+      activeUserCount: Number(partner.activeUserCount ?? 0)
+    })),
+    typeOptions: typeOptionRows.map((row) => row.type),
+    pagination,
+    summary: {
+      partners: totalItems,
+      documentVerified: Number(summaryRows[0]?.documentVerified ?? 0),
+      fieldVerified: Number(summaryRows[0]?.fieldVerified ?? 0),
+      activeUsers: Number(activeUserRows[0]?.total ?? 0)
+    }
   };
 }
 
