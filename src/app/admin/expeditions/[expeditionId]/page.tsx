@@ -1,8 +1,9 @@
 import Link from "next/link";
-import { ArrowUpRight, CalendarDays, CalendarPlus, CheckCircle2, MessageSquareText, Save, Star, Trash2, XCircle } from "lucide-react";
+import { ArrowUpRight, CalendarDays, CalendarPlus, CheckCircle2, MessageSquareText, Save, Star, XCircle } from "lucide-react";
 import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
 
+import { AdminAlert } from "@/components/admin/admin-alert";
 import {
   AdminPageHeader,
   AdminStatusBadge,
@@ -11,6 +12,7 @@ import {
   adminSelectClassName,
   adminTextareaClassName
 } from "@/components/admin-ui";
+import { AdminConfirmSubmit } from "@/components/admin/admin-confirm-submit";
 import { Button } from "@/components/ui/button";
 import { ExpeditionMarketplaceFields } from "@/components/expedition-marketplace-fields";
 import { FormTabs } from "@/components/ui/form-tabs";
@@ -53,14 +55,14 @@ const statusMessages: Record<string, string> = {
 const errorMessages: Record<string, string> = {
   "campaign-missing": "Choose an existing related campaign or leave the field empty.",
   "departure-capacity": "Capacity cannot be lower than seats already booked.",
-  "departure-delete": "Confirm departure deletion by checking the delete box.",
+  "departure-delete": "Confirm departure deletion before submitting.",
   "departure-duplicate": "That expedition already has a departure with the same start time.",
   "departure-has-bookings": "Departures with bookings cannot be deleted.",
   "departure-invalid": "Enter valid departure dates and capacity.",
   "departure-missing": "Departure record was not found.",
   "booking-cancel": "That booking cannot be cancelled from this workflow.",
   "departure-cancel": "That departure cannot be cancelled.",
-  "expedition-delete": "Confirm expedition deletion by checking the delete box.",
+  "expedition-delete": "Confirm expedition deletion before submitting.",
   "expedition-has-bookings": "Expeditions with bookings cannot be deleted.",
   "expedition-invalid": "Enter a title, slug, region, duration, price, and summary.",
   "expedition-metadata-json": "Trip detail content must be valid JSON object data.",
@@ -177,8 +179,8 @@ export default async function AdminExpeditionDetailPage({ params, searchParams }
         actionLabel="Expedition list"
       />
 
-      {savedMessage ? <p className="rounded-lg border border-kelp-700/20 bg-kelp-100 px-4 py-3 text-sm font-bold text-kelp-700">{savedMessage}</p> : null}
-      {errorMessage ? <p className="rounded-lg border border-coral-700/20 bg-coral-100 px-4 py-3 text-sm font-bold text-coral-700">{errorMessage}</p> : null}
+      {savedMessage ? <AdminAlert tone="success">{savedMessage}</AdminAlert> : null}
+      {errorMessage ? <AdminAlert tone="error">{errorMessage}</AdminAlert> : null}
 
       <section className="grid gap-3 md:grid-cols-6" aria-label="Expedition detail summary">
         {[
@@ -557,26 +559,23 @@ export default async function AdminExpeditionDetailPage({ params, searchParams }
                 </form>
               </details>
 
-              <details className="mt-3 rounded-lg border border-coral-700/20 bg-white">
-                <summary className="cursor-pointer list-none px-3 py-2 text-sm font-bold text-coral-700">Delete departure</summary>
-                <form action={deleteExpeditionDepartureAction} className="grid gap-3 border-t border-coral-700/20 p-3">
+              <div className="mt-3 rounded-lg border border-coral-700/20 bg-white p-3">
+                <form id={`delete-departure-${departure.id}`} action={deleteExpeditionDepartureAction}>
                   <input type="hidden" name="returnTo" value={returnTo} />
                   <input type="hidden" name="departureId" value={departure.id} />
-                  <label className="flex items-start gap-2 text-sm font-bold text-ocean-900">
-                    <input name="confirmDelete" type="checkbox" value="delete" className="mt-1 size-4 accent-coral-500" disabled={departure.bookingCount > 0} required />
-                    Delete this departure. Departures with bookings cannot be deleted.
-                  </label>
-                  <Button
-                    type="submit"
-                    tone="ghost"
-                    className="w-fit rounded-lg text-coral-700 hover:bg-coral-100 disabled:cursor-not-allowed disabled:opacity-45"
-                    disabled={departure.bookingCount > 0}
-                  >
-                    <Trash2 className="size-4" aria-hidden="true" />
-                    Delete Departure
-                  </Button>
                 </form>
-              </details>
+                {departure.bookingCount > 0 ? (
+                  <p className="text-xs font-bold text-ocean-900/52">Delete is locked because this departure has bookings.</p>
+                ) : (
+                  <AdminConfirmSubmit
+                    formId={`delete-departure-${departure.id}`}
+                    title="Delete this departure?"
+                    body="This permanently removes the scheduled departure. Departures with bookings cannot be deleted."
+                    triggerLabel="Delete Departure"
+                    submitLabel="Delete departure"
+                  />
+                )}
+              </div>
             </div>
           ))}
           {expedition.departures.length === 0 ? <p className="rounded-lg border border-dashed border-ocean-900/14 p-3 text-sm font-semibold text-ocean-900/58">No departures scheduled.</p> : null}
@@ -641,22 +640,23 @@ export default async function AdminExpeditionDetailPage({ params, searchParams }
       <section className="rounded-lg border border-coral-700/20 bg-white p-4 shadow-soft">
         <h2 className="text-xl font-bold tracking-normal text-ocean-900">Delete expedition</h2>
         <p className="mt-1 text-sm font-semibold text-ocean-900/58">Expeditions with bookings cannot be deleted.</p>
-        <form action={deleteExpeditionAction} className="mt-4">
+        <form id={`delete-expedition-${expedition.id}`} action={deleteExpeditionAction}>
           <input type="hidden" name="returnTo" value="/admin/expeditions" />
           <input type="hidden" name="expeditionId" value={expedition.id} />
-          <label className="flex items-start gap-2 text-sm font-bold text-ocean-900">
-            <input name="confirmDelete" type="checkbox" value="delete" className="mt-1 size-4 accent-coral-500" disabled={expedition.bookingCount > 0} required />
-            Delete this expedition and its departures.
-          </label>
-          <Button
-            type="submit"
-            className="mt-3 w-fit rounded-lg bg-coral-500 hover:bg-coral-700 disabled:cursor-not-allowed disabled:opacity-45"
-            disabled={expedition.bookingCount > 0}
-          >
-            <Trash2 className="size-4" aria-hidden="true" />
-            Delete Expedition
-          </Button>
         </form>
+        <div className="mt-4">
+          {expedition.bookingCount > 0 ? (
+            <p className="text-xs font-bold text-ocean-900/52">Delete is locked because this expedition has bookings.</p>
+          ) : (
+            <AdminConfirmSubmit
+              formId={`delete-expedition-${expedition.id}`}
+              title={`Delete ${expedition.title}?`}
+              body="This permanently removes the expedition and all of its departures. This action cannot be undone from the admin portal."
+              triggerLabel="Delete Expedition"
+              submitLabel="Delete expedition"
+            />
+          )}
+        </div>
       </section>
       </FormTabs>
     </div>

@@ -77,7 +77,7 @@ export function AdminPageHeader({
       {actionHref && actionLabel ? (
         <Link
           href={actionHref}
-          className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-ocean-900/10 bg-white px-4 text-sm font-bold text-ocean-900 transition hover:border-coral-500 hover:text-coral-700"
+          className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-ocean-900/10 bg-white px-4 text-sm font-bold text-ocean-900 transition hover:border-coral-500 hover:text-coral-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-kelp-500 focus-visible:ring-offset-2"
         >
           {actionLabel}
           <ArrowUpRight className="size-4" aria-hidden="true" />
@@ -115,7 +115,7 @@ export function AdminEmptyState({
         {actionHref && actionLabel ? (
           <Link
             href={actionHref}
-            className="inline-flex min-h-10 shrink-0 items-center justify-center gap-2 rounded-lg border border-ocean-900/10 bg-white px-3 text-sm font-bold text-ocean-900 transition hover:border-coral-500 hover:text-coral-700"
+            className="inline-flex min-h-10 shrink-0 items-center justify-center gap-2 rounded-lg border border-ocean-900/10 bg-white px-3 text-sm font-bold text-ocean-900 transition hover:border-coral-500 hover:text-coral-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-kelp-500 focus-visible:ring-offset-2"
           >
             {actionLabel}
             <ArrowUpRight className="size-4" aria-hidden="true" />

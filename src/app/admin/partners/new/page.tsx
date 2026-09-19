@@ -1,6 +1,7 @@
 import { Plus } from "lucide-react";
 import type { ReactNode } from "react";
 
+import { AdminAlert } from "@/components/admin/admin-alert";
 import { AdminPageHeader, adminInputClassName, adminPanelClassName, adminSelectClassName } from "@/components/admin-ui";
 import { Button } from "@/components/ui/button";
 import { requireRole } from "@/lib/auth";
@@ -64,7 +65,7 @@ export default async function AdminPartnerNewPage({ searchParams }: AdminPartner
         actionLabel="Back to partners"
       />
 
-      {errorMessage ? <p className="rounded-lg border border-coral-700/20 bg-coral-100 px-4 py-3 text-sm font-bold text-coral-700">{errorMessage}</p> : null}
+      {errorMessage ? <AdminAlert tone="error">{errorMessage}</AdminAlert> : null}
 
       <section className={adminPanelClassName}>
         <div className="flex flex-col justify-between gap-3 border-b border-ocean-900/10 p-4 sm:flex-row sm:items-center">

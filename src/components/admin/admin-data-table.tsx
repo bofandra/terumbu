@@ -27,8 +27,13 @@ export function AdminDataTable<Row>({
   }
 
   return (
-    <div className="overflow-x-auto rounded-lg border border-ocean-900/10 bg-white shadow-soft">
-      <table className="min-w-full divide-y divide-ocean-900/10 text-left text-sm">
+    <div
+      role="region"
+      aria-label={`${caption}. Scroll horizontally to view all columns on smaller screens.`}
+      tabIndex={0}
+      className="overflow-x-auto rounded-lg border border-ocean-900/10 bg-white shadow-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-kelp-500 focus-visible:ring-offset-2"
+    >
+      <table className="w-max min-w-full divide-y divide-ocean-900/10 text-left text-sm">
         <caption className="sr-only">{caption}</caption>
         <thead className="bg-sand-50">
           <tr>

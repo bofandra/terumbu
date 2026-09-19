@@ -1,5 +1,6 @@
 import { Eye, ReceiptText } from "lucide-react";
 
+import { AdminAlert } from "@/components/admin/admin-alert";
 import { AdminEmptyState, AdminPageHeader, AdminStatusBadge, adminInputClassName, adminPanelClassName, adminSelectClassName } from "@/components/admin-ui";
 import { Button } from "@/components/ui/button";
 import { FormTabs } from "@/components/ui/form-tabs";
@@ -84,8 +85,8 @@ export default async function AdminPaymentsPage({ searchParams }: AdminPaymentsP
         description="Verify manual donation payment proofs, approve refunds, and settle expedition booking payment records."
       />
 
-      {message ? <p className="rounded-lg border border-kelp-700/20 bg-kelp-100 px-4 py-3 text-sm font-bold text-kelp-700">{message}</p> : null}
-      {params?.error ? <p className="rounded-lg border border-coral-700/20 bg-coral-100 px-4 py-3 text-sm font-bold text-coral-700">{errorMessage}</p> : null}
+      {message ? <AdminAlert tone="success">{message}</AdminAlert> : null}
+      {params?.error ? <AdminAlert tone="error">{errorMessage}</AdminAlert> : null}
 
       <FormTabs
         ariaLabel="Payment reconciliation workflows"

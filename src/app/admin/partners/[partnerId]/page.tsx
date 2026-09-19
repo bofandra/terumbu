@@ -2,6 +2,7 @@ import { BadgeCheck, Globe2, Save, Trash2, UserPlus, UsersRound } from "lucide-r
 import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
 
+import { AdminAlert } from "@/components/admin/admin-alert";
 import {
   AdminPageHeader,
   AdminStatusBadge,
@@ -10,6 +11,7 @@ import {
   adminSelectClassName,
   adminTextareaClassName
 } from "@/components/admin-ui";
+import { AdminConfirmSubmit } from "@/components/admin/admin-confirm-submit";
 import { Button } from "@/components/ui/button";
 import { FormTabs } from "@/components/ui/form-tabs";
 import { requireRole } from "@/lib/auth";
@@ -45,7 +47,7 @@ const statusMessages: Record<string, string> = {
 const errorMessages: Record<string, string> = {
   "image-size": "Uploaded image is too large.",
   "image-type": "Upload a supported image file.",
-  "partner-delete": "Confirm deletion by checking the delete box.",
+  "partner-delete": "Confirm partner deletion before submitting.",
   "partner-has-campaigns": "Partners with campaigns cannot be deleted.",
   "partner-invalid": "Enter a partner name, slug, and type.",
   "partner-slug": "That partner slug is already in use.",
@@ -112,8 +114,8 @@ export default async function AdminPartnerDetailPage({ params, searchParams }: A
         actionLabel="Partner list"
       />
 
-      {savedMessage ? <p className="rounded-lg border border-kelp-700/20 bg-kelp-100 px-4 py-3 text-sm font-bold text-kelp-700">{savedMessage}</p> : null}
-      {errorMessage ? <p className="rounded-lg border border-coral-700/20 bg-coral-100 px-4 py-3 text-sm font-bold text-coral-700">{errorMessage}</p> : null}
+      {savedMessage ? <AdminAlert tone="success">{savedMessage}</AdminAlert> : null}
+      {errorMessage ? <AdminAlert tone="error">{errorMessage}</AdminAlert> : null}
 
       <section className="grid gap-3 md:grid-cols-3" aria-label="Partner detail summary">
         {[
@@ -341,18 +343,23 @@ export default async function AdminPartnerDetailPage({ params, searchParams }: A
       <section className="rounded-lg border border-coral-700/20 bg-white p-4 shadow-soft">
         <h2 className="text-xl font-bold tracking-normal text-ocean-900">Delete partner</h2>
         <p className="mt-1 text-sm font-semibold text-ocean-900/58">Partners with campaigns must be emptied before deletion.</p>
-        <form action={deleteOrganizationAction} className="mt-4">
+        <form id={`delete-admin-partner-${partner.id}`} action={deleteOrganizationAction}>
           <input type="hidden" name="returnTo" value="/admin/partners" />
           <input type="hidden" name="organizationId" value={partner.id} />
-          <label className="flex items-start gap-2 text-sm font-bold text-ocean-900">
-            <input name="confirmDelete" type="checkbox" value="delete" className="mt-1 size-4 accent-coral-500" disabled={partner.campaignCount > 0} required />
-            Delete this partner.
-          </label>
-          <Button type="submit" className="mt-3 w-fit rounded-lg bg-coral-500 hover:bg-coral-700 disabled:cursor-not-allowed disabled:opacity-45" disabled={partner.campaignCount > 0}>
-            <Trash2 className="size-4" aria-hidden="true" />
-            Delete Partner
-          </Button>
         </form>
+        <div className="mt-4">
+          {partner.campaignCount > 0 ? (
+            <p className="text-xs font-bold text-ocean-900/52">Delete is locked while this partner still owns {partner.campaignCount} project{partner.campaignCount === 1 ? "" : "s"}.</p>
+          ) : (
+            <AdminConfirmSubmit
+              formId={`delete-admin-partner-${partner.id}`}
+              title={`Delete ${partner.name}?`}
+              body="This permanently removes the partner workspace and its partner-user assignments. This action cannot be undone from the admin portal."
+              triggerLabel="Delete Partner"
+              submitLabel="Delete partner"
+            />
+          )}
+        </div>
       </section>
       </FormTabs>
     </div>

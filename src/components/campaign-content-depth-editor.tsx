@@ -1,6 +1,7 @@
-import { Save, Trash2 } from "lucide-react";
+import { Save } from "lucide-react";
 import type { ReactNode } from "react";
 
+import { AdminConfirmSubmit } from "@/components/admin/admin-confirm-submit";
 import { FormTabs } from "@/components/ui/form-tabs";
 import { Button } from "@/components/ui/button";
 import { campaignBudgetCategories, campaignMediaTypes, campaignTimelinePhaseStatuses, organizationTeamRoles } from "@/lib/campaign-content";
@@ -86,9 +87,9 @@ type CampaignContentDepthEditorProps = {
 };
 
 const inputClassName =
-  "min-h-11 w-full min-w-0 rounded-lg border border-ocean-900/14 bg-white px-3 text-sm font-semibold text-ocean-900 outline-none transition placeholder:text-ocean-900/36 focus:border-coral-500";
+  "min-h-11 w-full min-w-0 rounded-lg border border-ocean-900/14 bg-white px-3 text-sm font-semibold text-ocean-900 outline-none transition placeholder:text-ocean-900/36 focus:border-coral-500 focus-visible:ring-2 focus-visible:ring-kelp-500 focus-visible:ring-offset-2";
 const textareaClassName =
-  "min-h-24 w-full min-w-0 rounded-lg border border-ocean-900/14 bg-white px-3 py-3 text-sm font-semibold text-ocean-900 outline-none transition placeholder:text-ocean-900/36 focus:border-coral-500";
+  "min-h-24 w-full min-w-0 rounded-lg border border-ocean-900/14 bg-white px-3 py-3 text-sm font-semibold text-ocean-900 outline-none transition placeholder:text-ocean-900/36 focus:border-coral-500 focus-visible:ring-2 focus-visible:ring-kelp-500 focus-visible:ring-offset-2";
 
 function dateValue(value: Date | null) {
   return value ? value.toISOString().slice(0, 10) : "";
@@ -118,19 +119,22 @@ function DeleteButton({
   returnTo: string;
   action: (formData: FormData) => Promise<void>;
 }) {
+  const formId = `delete-campaign-content-${idName}-${idValue}`;
+
   return (
-    <form action={action} className="flex flex-wrap items-center gap-2">
-      <input type="hidden" name="returnTo" value={returnTo} />
-      <input type="hidden" name={idName} value={idValue} />
-      <label className="flex items-center gap-2 text-xs font-bold text-ocean-900/62">
-        <input name="confirmDelete" type="checkbox" value="delete" className="size-4 accent-coral-500" required />
-        Confirm
-      </label>
-      <Button type="submit" className="min-h-9 rounded-lg bg-coral-500 px-3 text-xs hover:bg-coral-700">
-        <Trash2 className="size-4" aria-hidden="true" />
-        Delete
-      </Button>
-    </form>
+    <div className="flex flex-wrap items-center gap-2">
+      <form id={formId} action={action}>
+        <input type="hidden" name="returnTo" value={returnTo} />
+        <input type="hidden" name={idName} value={idValue} />
+      </form>
+      <AdminConfirmSubmit
+        formId={formId}
+        title="Delete campaign content?"
+        body="This permanently removes this content record from the project. This action cannot be undone from the admin portal."
+        triggerLabel="Delete"
+        submitLabel="Delete permanently"
+      />
+    </div>
   );
 }
 

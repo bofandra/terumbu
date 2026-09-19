@@ -1,8 +1,10 @@
 import Link from "next/link";
-import { ArrowUpRight, BarChart3, BookOpenCheck, CheckCircle2, Circle, ClipboardCheck, FileQuestion, Percent, ListPlus, Save, Trash2, TrendingUp } from "lucide-react";
+import { ArrowUpRight, BarChart3, BookOpenCheck, CheckCircle2, Circle, ClipboardCheck, FileQuestion, Percent, ListPlus, Save, TrendingUp } from "lucide-react";
 import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
 
+import { AdminAlert } from "@/components/admin/admin-alert";
+import { AdminConfirmSubmit } from "@/components/admin/admin-confirm-submit";
 import {
   AdminEmptyState,
   AdminPageHeader,
@@ -50,11 +52,13 @@ const savedMessages: Record<string, string> = {
 const errorMessages: Record<string, string> = {
   assessment: "Choose a course and enter assessment details.",
   "assessment-duplicate": "Use a unique assessment slug for this course.",
+  "assessment-delete": "Confirm assessment removal before submitting.",
   course: "Enter a title and summary for the course.",
   "image-size": "Uploaded image is too large.",
   "image-type": "Upload a supported image file.",
   lesson: "Choose a course and enter a lesson title.",
   question: "Enter a question, at least two choices, and a non-empty correct answer.",
+  "question-delete": "Confirm question removal before submitting.",
   "question-position": "Use a unique question position for this assessment."
 };
 
@@ -234,14 +238,17 @@ function AssessmentEditor({ assessment, courseId }: { assessment: AdminAssessmen
           Save
         </Button>
       </form>
-      <form action={deleteAcademyAssessmentAction}>
+      <form id={`remove-assessment-${assessment.id}`} action={deleteAcademyAssessmentAction}>
         <input type="hidden" name="courseId" value={courseId} />
         <input type="hidden" name="assessmentId" value={assessment.id} />
-        <Button type="submit" tone="ghost" className="min-h-10 rounded-lg px-3 text-coral-700 hover:bg-coral-100">
-          <Trash2 className="size-4" aria-hidden="true" />
-          Delete or Archive Assessment
-        </Button>
       </form>
+      <AdminConfirmSubmit
+        formId={`remove-assessment-${assessment.id}`}
+        title={`Remove ${assessment.title}?`}
+        body="If learner attempts already reference this assessment it will be archived; otherwise it will be permanently deleted."
+        triggerLabel="Delete or Archive Assessment"
+        submitLabel="Remove assessment"
+      />
     </div>
   );
 }
@@ -301,15 +308,20 @@ function QuestionEditor({ assessmentId, courseId, question }: { assessmentId: st
 
 function DeleteQuestionForm({ assessmentId, courseId, questionId }: { assessmentId: string; courseId: string; questionId: string }) {
   return (
-    <form action={deleteAcademyQuestionAction} className="border-t border-ocean-900/10 bg-white px-3 py-2">
-      <input type="hidden" name="courseId" value={courseId} />
-      <input type="hidden" name="assessmentId" value={assessmentId} />
-      <input type="hidden" name="questionId" value={questionId} />
-      <Button type="submit" tone="ghost" className="min-h-10 rounded-lg px-3 text-coral-700 hover:bg-coral-100">
-        <Trash2 className="size-4" aria-hidden="true" />
-        Delete or Archive Question
-      </Button>
-    </form>
+    <div className="border-t border-ocean-900/10 bg-white px-3 py-2">
+      <form id={`remove-question-${questionId}`} action={deleteAcademyQuestionAction}>
+        <input type="hidden" name="courseId" value={courseId} />
+        <input type="hidden" name="assessmentId" value={assessmentId} />
+        <input type="hidden" name="questionId" value={questionId} />
+      </form>
+      <AdminConfirmSubmit
+        formId={`remove-question-${questionId}`}
+        title="Remove this question?"
+        body="If learner attempts already reference this question it will be archived; otherwise it will be permanently deleted."
+        triggerLabel="Delete or Archive Question"
+        submitLabel="Remove question"
+      />
+    </div>
   );
 }
 
@@ -339,8 +351,8 @@ export default async function AdminAcademyCoursePage({ params, searchParams }: A
         actionLabel="Academy list"
       />
 
-      {savedMessage ? <p className="rounded-lg border border-kelp-700/20 bg-kelp-100 px-4 py-3 text-sm font-bold text-kelp-700">{savedMessage}</p> : null}
-      {errorMessage ? <p className="rounded-lg border border-coral-700/20 bg-coral-100 px-4 py-3 text-sm font-bold text-coral-700">{errorMessage}</p> : null}
+      {savedMessage ? <AdminAlert tone="success">{savedMessage}</AdminAlert> : null}
+      {errorMessage ? <AdminAlert tone="error">{errorMessage}</AdminAlert> : null}
 
       <section className="grid gap-3 md:grid-cols-3 xl:grid-cols-6" aria-label="Course summary">
         {[

@@ -20,7 +20,7 @@ import {
   X,
   type LucideIcon
 } from "lucide-react";
-import { useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 
 import { logoutAction } from "@/lib/auth-actions";
 import { cn } from "@/lib/utils";
@@ -106,6 +106,62 @@ export function AdminShell({ children, displayName, roleLabel }: { children: Rea
   const pathname = usePathname();
   const currentTask = currentTaskForPath(pathname);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const mobileNavButtonRef = useRef<HTMLButtonElement | null>(null);
+  const mobileNavPanelRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!mobileNavOpen) {
+      return;
+    }
+
+    const panel = mobileNavPanelRef.current;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    const focusableSelector =
+      'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+    const focusables = () => (panel ? Array.from(panel.querySelectorAll<HTMLElement>(focusableSelector)) : []);
+
+    requestAnimationFrame(() => focusables()[0]?.focus());
+
+    function handleKeyDown(event: globalThis.KeyboardEvent) {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        setMobileNavOpen(false);
+        return;
+      }
+
+      if (event.key !== "Tab") {
+        return;
+      }
+
+      const items = focusables();
+      if (items.length === 0) {
+        event.preventDefault();
+        return;
+      }
+
+      const first = items[0];
+      const last = items[items.length - 1];
+      const active = document.activeElement;
+
+      if (event.shiftKey && active === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && active === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    }
+
+    document.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.removeEventListener("keydown", handleKeyDown);
+      requestAnimationFrame(() => mobileNavButtonRef.current?.focus());
+    };
+  }, [mobileNavOpen]);
 
   return (
     <main className="min-h-screen bg-sand-50 text-ocean-900">
@@ -132,6 +188,7 @@ export function AdminShell({ children, displayName, roleLabel }: { children: Rea
           <header className="sticky top-0 z-40 flex min-h-20 items-center justify-between gap-4 border-b border-ocean-900/10 bg-white/94 px-4 backdrop-blur sm:px-6 lg:px-8">
             <div className="flex min-w-0 items-center gap-3">
               <button
+                ref={mobileNavButtonRef}
                 type="button"
                 aria-label="Open admin navigation"
                 aria-expanded={mobileNavOpen}
@@ -176,17 +233,23 @@ export function AdminShell({ children, displayName, roleLabel }: { children: Rea
           </header>
 
           {mobileNavOpen ? (
-            <div className="fixed inset-0 z-50 bg-ocean-950/60 lg:hidden" role="dialog" aria-modal="true" aria-label="Admin navigation">
+            <div className="fixed inset-0 z-50 bg-ocean-950/60 lg:hidden">
               <div className="flex min-h-full">
-                <div className="w-[min(86vw,22rem)] overflow-y-auto bg-white p-4 shadow-soft">
+                <div
+                  ref={mobileNavPanelRef}
+                  role="dialog"
+                  aria-modal="true"
+                  aria-labelledby="admin-mobile-navigation-title"
+                  className="w-[min(86vw,22rem)] overflow-y-auto bg-white p-4 shadow-soft"
+                >
                   <div className="flex items-center justify-between gap-3">
                     <Link href="/" className="inline-flex items-center gap-3" onClick={() => setMobileNavOpen(false)}>
                       <span className="grid size-10 place-items-center rounded-lg bg-ocean-900 text-white">
                         <Waves className="size-5" aria-hidden="true" />
                       </span>
                       <span>
-                        <span className="block text-base font-bold text-ocean-900">Terumbu.eco</span>
-                        <span className="block text-xs font-semibold uppercase tracking-[0.14em] text-ocean-900/54">Admin</span>
+                        <span id="admin-mobile-navigation-title" className="block text-base font-bold text-ocean-900">Terumbu.eco Admin</span>
+                        <span className="block text-xs font-semibold uppercase tracking-[0.14em] text-ocean-900/54">Navigation</span>
                       </span>
                     </Link>
                     <button
@@ -202,7 +265,7 @@ export function AdminShell({ children, displayName, roleLabel }: { children: Rea
                     <AdminNavLinks pathname={pathname} onNavigate={() => setMobileNavOpen(false)} />
                   </div>
                 </div>
-                <button type="button" aria-label="Close admin navigation" className="min-w-0 flex-1" onClick={() => setMobileNavOpen(false)} />
+                <button type="button" tabIndex={-1} aria-label="Close admin navigation" className="min-w-0 flex-1" onClick={() => setMobileNavOpen(false)} />
               </div>
             </div>
           ) : null}

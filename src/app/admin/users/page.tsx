@@ -1,9 +1,10 @@
 import Link from "next/link";
-import { ArrowUpDown, BadgeCheck, Building2, Handshake, KeyRound, LockKeyhole, Mail, ShieldCheck, Trash2, UserPlus, Users } from "lucide-react";
+import { ArrowUpDown, BadgeCheck, Building2, Handshake, KeyRound, LockKeyhole, Mail, ShieldCheck, UserPlus, Users } from "lucide-react";
 import type { ReactNode } from "react";
 
 import { AdminCreateUserAccessFields } from "@/components/admin-create-user-access-fields";
 import { AdminAlert } from "@/components/admin/admin-alert";
+import { AdminConfirmSubmit } from "@/components/admin/admin-confirm-submit";
 import { AdminDataTable, type AdminDataTableColumn } from "@/components/admin/admin-data-table";
 import { AdminListToolbar } from "@/components/admin/admin-list-toolbar";
 import { AdminPagination } from "@/components/admin/admin-pagination";
@@ -384,17 +385,20 @@ export default async function AdminUsersPage({ searchParams }: AdminUsersPagePro
                   <Button type="submit" tone="secondary" className="min-h-10 rounded-lg px-3">Rename</Button>
                 </form>
                 {!role.isSystem ? (
-                  <details className="mt-3 rounded-lg border border-coral-700/20 bg-white">
-                    <summary className="cursor-pointer list-none px-3 py-2 text-sm font-bold text-coral-700">Delete custom role</summary>
-                    <form action={deleteGlobalRoleAction} className="flex flex-wrap items-center gap-2 border-t border-coral-700/20 p-3">
+                  <div className="mt-3 rounded-lg border border-coral-700/20 bg-white p-3">
+                    <p className="text-xs font-bold text-ocean-900/58">Delete is available only when this custom role has no assignments.</p>
+                    <form id={`delete-global-role-${role.id}`} action={deleteGlobalRoleAction}>
                       <HiddenReturn value={returnTo} />
                       <input type="hidden" name="roleId" value={role.id} />
-                      <label className="flex items-center gap-2 text-xs font-bold text-ocean-900">
-                        <input name="confirmDelete" type="checkbox" value="delete" className="size-4 accent-coral-500" required /> Confirm
-                      </label>
-                      <Button type="submit" tone="ghost" className="min-h-9 rounded-lg px-3 text-coral-700 hover:bg-coral-100"><Trash2 className="size-4" aria-hidden="true" />Delete</Button>
                     </form>
-                  </details>
+                    <AdminConfirmSubmit
+                      formId={`delete-global-role-${role.id}`}
+                      title={`Delete ${role.name}?`}
+                      body="This permanently removes the custom role from the catalog. Assigned roles must be cleared first."
+                      triggerLabel="Delete custom role"
+                      submitLabel="Delete role"
+                    />
+                  </div>
                 ) : null}
               </div>
             ))}

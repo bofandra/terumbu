@@ -1,8 +1,9 @@
 import Link from "next/link";
-import { ArrowUpRight, ImagePlus, MapPinned, Save, ShieldCheck, Trash2 } from "lucide-react";
+import { ArrowUpRight, ImagePlus, MapPinned, Save, ShieldCheck } from "lucide-react";
 import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
 
+import { AdminAlert } from "@/components/admin/admin-alert";
 import {
   AdminPageHeader,
   AdminStatusBadge,
@@ -11,6 +12,7 @@ import {
   adminSelectClassName,
   adminTextareaClassName
 } from "@/components/admin-ui";
+import { AdminConfirmSubmit } from "@/components/admin/admin-confirm-submit";
 import { CampaignContentDepthEditor } from "@/components/campaign-content-depth-editor";
 import { Button } from "@/components/ui/button";
 import { FormTabs } from "@/components/ui/form-tabs";
@@ -41,7 +43,7 @@ const errorMessages: Record<string, string> = {
   "campaign-content-delete": "Confirm content deletion by checking the delete box.",
   "campaign-content-invalid": "Enter the required content fields before saving.",
   "campaign-content-missing": "Campaign content record was not found.",
-  "campaign-delete": "Confirm campaign deletion by checking the delete box.",
+  "campaign-delete": "Confirm campaign deletion before submitting.",
   "campaign-has-history": "Projects with donations, sponsorships, corporate portfolio links, or related expeditions cannot be deleted.",
   "campaign-invalid": "Enter project title, slug, organization, goal, impact target, summary, category, and region.",
   "campaign-missing": "Campaign record was not found.",
@@ -163,8 +165,8 @@ export default async function AdminCampaignDetailPage({ params, searchParams }: 
         actionLabel="Project list"
       />
 
-      {savedMessage ? <p className="rounded-lg border border-kelp-700/20 bg-kelp-100 px-4 py-3 text-sm font-bold text-kelp-700">{savedMessage}</p> : null}
-      {errorMessage ? <p className="rounded-lg border border-coral-700/20 bg-coral-100 px-4 py-3 text-sm font-bold text-coral-700">{errorMessage}</p> : null}
+      {savedMessage ? <AdminAlert tone="success">{savedMessage}</AdminAlert> : null}
+      {errorMessage ? <AdminAlert tone="error">{errorMessage}</AdminAlert> : null}
 
       <section className="grid gap-3 md:grid-cols-4" aria-label="Campaign detail summary">
         {[
@@ -399,25 +401,25 @@ export default async function AdminCampaignDetailPage({ params, searchParams }: 
           </div>
           {hasHistory ? <AdminStatusBadge value="archived" /> : null}
         </div>
-        <form action={deleteAdminCampaignAction} className="mt-4">
+        <form id={`delete-admin-campaign-${campaign.id}`} action={deleteAdminCampaignAction}>
           <input type="hidden" name="returnTo" value="/admin/campaigns" />
           <input type="hidden" name="campaignId" value={campaign.id} />
-          <label className="flex items-start gap-2 text-sm font-bold text-ocean-900">
-            <input name="confirmDelete" type="checkbox" value="delete" className="mt-1 size-4 accent-coral-500" disabled={hasHistory} required />
-            Delete this campaign.
-          </label>
-          <div className="mt-3 flex flex-wrap items-center gap-2">
-            <Button type="submit" className="w-fit rounded-lg bg-coral-500 hover:bg-coral-700 disabled:cursor-not-allowed disabled:opacity-45" disabled={hasHistory}>
-              <Trash2 className="size-4" aria-hidden="true" />
-              Delete Campaign
-            </Button>
-            {hasHistory ? (
-              <p className="text-xs font-bold text-ocean-900/52">
-                Locked by {campaign.donationRecordCount} donations, {campaign.sponsorshipRecordCount} sponsorships, {campaign.corporatePortfolioCount} corporate links, {campaign.relatedExpeditionCount} expeditions.
-              </p>
-            ) : null}
-          </div>
         </form>
+        <div className="mt-4 flex flex-wrap items-center gap-2">
+          {hasHistory ? (
+            <p className="text-xs font-bold text-ocean-900/52">
+              Locked by {campaign.donationRecordCount} donations, {campaign.sponsorshipRecordCount} sponsorships, {campaign.corporatePortfolioCount} corporate links, {campaign.relatedExpeditionCount} expeditions.
+            </p>
+          ) : (
+            <AdminConfirmSubmit
+              formId={`delete-admin-campaign-${campaign.id}`}
+              title={`Delete ${campaign.title}?`}
+              body="This permanently removes the project and its remaining unprotected records. This action cannot be undone from the admin portal."
+              triggerLabel="Delete Campaign"
+              submitLabel="Delete campaign"
+            />
+          )}
+        </div>
       </section>
       </FormTabs>
     </div>

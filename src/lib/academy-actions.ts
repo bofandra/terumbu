@@ -683,9 +683,14 @@ export async function deleteAcademyAssessmentAction(formData: FormData) {
   const user = await requireRole(["admin"], "/admin/academy");
   const courseId = formText(formData, "courseId");
   const assessmentId = formText(formData, "assessmentId");
+  const confirmed = formData.get("confirmDelete") === "delete";
 
   if (!courseId || !assessmentId) {
     redirect(`/admin/academy/courses/${courseId}?error=assessment`);
+  }
+
+  if (!confirmed) {
+    redirect(`/admin/academy/courses/${courseId}?error=assessment-delete`);
   }
 
   const [assessment] = await db
@@ -901,9 +906,14 @@ export async function deleteAcademyQuestionAction(formData: FormData) {
   const courseId = formText(formData, "courseId");
   const assessmentId = formText(formData, "assessmentId");
   const questionId = formText(formData, "questionId");
+  const confirmed = formData.get("confirmDelete") === "delete";
 
   if (!courseId || !assessmentId || !questionId) {
     redirect(`/admin/academy/courses/${courseId}?error=question`);
+  }
+
+  if (!confirmed) {
+    redirect(`/admin/academy/courses/${courseId}?error=question-delete`);
   }
 
   const [question] = await db
