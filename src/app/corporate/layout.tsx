@@ -21,7 +21,6 @@ export default async function CorporateLayout({ children }: Readonly<{ children:
       displayName={displayName}
       roleLabel={roleLabel()}
       accountName={data.program.accountName}
-      programName={data.program.programName}
       accountLogoUrl={data.program.accountLogoUrl}
     >
       {children}

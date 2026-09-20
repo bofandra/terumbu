@@ -60,14 +60,12 @@ export function CorporateShell({
   displayName,
   roleLabel,
   accountName,
-  programName,
   accountLogoUrl
 }: {
   children: ReactNode;
   displayName: string;
   roleLabel: string;
   accountName: string;
-  programName: string;
   accountLogoUrl: string | null;
 }) {
   const pathname = usePathname();
@@ -94,7 +92,6 @@ export function CorporateShell({
               </span>
               <div className="min-w-0">
                 <p className="truncate text-sm font-bold text-ocean-900">{accountName}</p>
-                <p className="mt-0.5 truncate text-xs font-semibold text-ocean-900/56">{programName}</p>
               </div>
             </div>
           </div>

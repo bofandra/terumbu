@@ -19,7 +19,6 @@ export const dynamic = "force-dynamic";
 type CorporateDonationsPageProps = {
   searchParams?: Promise<{
     error?: string;
-    programId?: string;
     saved?: string;
   }>;
 };
@@ -38,7 +37,7 @@ function evidenceStatusClass(status: string) {
 export default async function CorporateDonationsPage({ searchParams }: CorporateDonationsPageProps) {
   const params = await searchParams;
   const user = await requireUser("/corporate/donations");
-  const data = await requireCorporateDashboardData(user.id, "/corporate/donations", params?.programId);
+  const data = await requireCorporateDashboardData(user.id, "/corporate/donations");
   const projectOptions = await getCorporateProjectOptions(user.id, data.program.programId);
   const donationReports = data.exports.filter((item) => item.activityScope === "donations");
   const totalDonations = data.contributions.filter((item) => item.status !== "cancelled").reduce((total, item) => total + item.amountValue, 0);
@@ -47,23 +46,8 @@ export default async function CorporateDonationsPage({ searchParams }: Corporate
 
   return (
     <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
-      <header className="flex flex-col justify-between gap-4 border-b border-ocean-900/10 pb-6 lg:flex-row lg:items-end">
-        <div>
-          <p className="text-sm font-bold uppercase tracking-[0.16em] text-coral-700">Donations</p>
-          <h1 className="mt-2 text-3xl font-bold tracking-normal text-ocean-900">{data.program.programName}</h1>
-          <p className="mt-2 text-sm text-ocean-900/62">Record company donations and follow the evidence from supported projects.</p>
-        </div>
-        {data.programOptions.length > 1 ? (
-          <form action="/corporate/donations" className="grid gap-2 sm:min-w-80 sm:grid-cols-[1fr_auto] sm:items-end">
-            <label className="grid gap-2 text-sm font-bold text-ocean-900">
-              Program
-              <select name="programId" defaultValue={data.program.programId} className="min-h-11 rounded-lg border border-ocean-900/12 bg-white px-3 text-sm font-semibold text-ocean-900">
-                {data.programOptions.map((program) => <option key={program.programId} value={program.programId}>{program.programName}</option>)}
-              </select>
-            </label>
-            <Button type="submit" tone="secondary">View</Button>
-          </form>
-        ) : null}
+      <header className="border-b border-ocean-900/10 pb-5">
+        <p className="text-sm text-ocean-900/62">Record company donations and view supporting evidence.</p>
       </header>
 
       {params?.saved === "project" ? <p className="mt-6 rounded-lg border border-kelp-500/20 bg-kelp-100 px-4 py-3 text-sm font-bold text-kelp-700">Donation saved.</p> : null}
@@ -72,7 +56,7 @@ export default async function CorporateDonationsPage({ searchParams }: Corporate
 
       <section className="mt-6 grid gap-3 md:grid-cols-3" aria-label="Donation summary">
         {[
-          { label: "Donations", value: formatCurrency(totalDonations), icon: CircleDollarSign },
+          { label: "Donations", value: formatCurrency(totalDonations, data.program.currency), icon: CircleDollarSign },
           { label: "Projects supported", value: supportedProjects.toLocaleString("id-ID"), icon: FolderHeart },
           { label: "Verified evidence", value: verifiedEvidence.toLocaleString("id-ID"), icon: FileCheck2 }
         ].map((metric) => {
@@ -102,8 +86,8 @@ export default async function CorporateDonationsPage({ searchParams }: Corporate
               </select>
             </label>
             <label className="grid gap-2 text-sm font-bold text-ocean-900">
-              Amount
-              <input name="allocationAmount" type="number" min="1" step="1000000" placeholder="50000000" className="min-h-11 rounded-lg border border-ocean-900/12 px-3 text-sm font-semibold text-ocean-900" required />
+              Amount ({data.program.currency.toUpperCase()})
+              <input name="allocationAmount" type="number" min="1" step="1" inputMode="numeric" placeholder="100000000" className="min-h-11 rounded-lg border border-ocean-900/12 px-3 text-sm font-semibold text-ocean-900" required />
             </label>
             <label className="flex items-start gap-3 rounded-lg bg-sand-50 p-3 text-sm font-semibold text-ocean-900">
               <input type="checkbox" name="countsTowardCampaignGoal" className="mt-1" />

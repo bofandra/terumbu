@@ -111,6 +111,7 @@ async function corporateContext(userId: string, requestedProgramId?: string | nu
       accountSlug: corporateAccounts.slug,
       programId: corporatePrograms.id,
       programName: corporatePrograms.name,
+      currency: corporatePrograms.currency,
       permission: corporatePermissions.permission
     })
     .from(corporatePermissions)
@@ -820,7 +821,7 @@ export async function createCorporateActivityPdfReportAction(formData: FormData)
       programName: context.programName,
       generatedAt,
       metrics: [
-        { label: "Total donations", value: formatCurrency(data.contributions.filter((item) => item.status !== "cancelled").reduce((total, item) => total + item.amountValue, 0)) },
+        { label: "Total donations", value: formatCurrency(data.contributions.filter((item) => item.status !== "cancelled").reduce((total, item) => total + item.amountValue, 0), data.program.currency) },
         { label: "Projects supported", value: new Set(data.contributions.map((item) => item.campaignId)).size.toLocaleString("id-ID") },
         { label: "Verified evidence", value: data.evidence.filter((item) => item.verificationStatus === "verified").length.toLocaleString("id-ID") }
       ],
@@ -1120,7 +1121,7 @@ export async function fundCorporateProjectAction(formData: FormData) {
   const user = await requireUser("/corporate/donations");
   const requestedProgramId = textValue(formData.get("programId"), 80);
   const context = await corporateContext(user.id, requestedProgramId);
-  const returnPath = context ? `/corporate/donations?programId=${encodeURIComponent(context.programId)}` : "/corporate/donations";
+  const returnPath = "/corporate/donations";
 
   if (!context || !corporateCapabilitiesForPermission(context.permission).canManageProjects) {
     redirect("/corporate/donations?error=permission");
@@ -1206,7 +1207,7 @@ export async function fundCorporateProjectAction(formData: FormData) {
       referenceCode: referenceCode ?? `${context.programId}-${campaign.id}-${contributionType}`,
       contributionType,
       amount: allocationAmount.toFixed(2),
-      currency: "USD",
+      currency: (context.currency || "IDR").toUpperCase(),
       status: contributionStatus,
       countsTowardCampaignGoal,
       contributionDate: now,
@@ -1222,6 +1223,7 @@ export async function fundCorporateProjectAction(formData: FormData) {
       target: [corporateContributions.programId, corporateContributions.campaignId, corporateContributions.contributionType],
       set: {
         amount: allocationAmount.toFixed(2),
+        currency: (context.currency || "IDR").toUpperCase(),
         status: contributionStatus,
         countsTowardCampaignGoal,
         contributionDate: now,
