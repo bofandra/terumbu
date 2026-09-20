@@ -11,6 +11,7 @@ import { AdminAlert } from "@/components/admin/admin-alert";
 import { AdminConfirmSubmit } from "@/components/admin/admin-confirm-submit";
 import { AdminPageHeader, AdminStatusBadge, adminPanelClassName } from "@/components/admin-ui";
 import { Button } from "@/components/ui/button";
+import { observeAdminDataLoader } from "@/lib/admin-observability";
 import { requireRole } from "@/lib/auth";
 import { deleteAdminImpactSiteAction, updateAdminImpactSiteAction } from "@/lib/portal-actions";
 import { getAdminImpactSiteEditorData } from "@/lib/queries";
@@ -111,7 +112,7 @@ export default async function AdminImpactSiteDetailPage({
   const pathname = `${directoryPath}/${impactSiteId}`;
   await requireRole(["admin"], pathname);
   const query = await searchParams;
-  const data = await getAdminImpactSiteEditorData(impactSiteId);
+  const data = await observeAdminDataLoader("admin.impact-site.editor", () => getAdminImpactSiteEditorData(impactSiteId));
 
   if (!data.site) notFound();
 

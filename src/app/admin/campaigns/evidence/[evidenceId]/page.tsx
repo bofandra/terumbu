@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 import { AdminAlert } from "@/components/admin/admin-alert";
 import { AdminPageHeader, AdminStatusBadge, adminSelectClassName, adminTextareaClassName } from "@/components/admin-ui";
 import { Button } from "@/components/ui/button";
+import { observeAdminDataLoader } from "@/lib/admin-observability";
 import { evidenceStatusLabel, evidenceVerificationStatuses } from "@/lib/evidence-review-workflow";
 import { requireRole, safeRedirectPath } from "@/lib/auth";
 import { verifyEvidenceAction } from "@/lib/portal-actions";
@@ -46,7 +47,7 @@ function detailReturnPath(evidenceId: string, returnTo: string) {
 export default async function AdminEvidenceDetailPage({ params, searchParams }: AdminEvidenceDetailPageProps) {
   const user = await requireRole(["admin"], directoryPath);
   const [{ evidenceId }, query] = await Promise.all([params, searchParams]);
-  const evidence = await getAdminEvidenceReviewItem(evidenceId);
+  const evidence = await observeAdminDataLoader("admin.evidence.workspace", () => getAdminEvidenceReviewItem(evidenceId));
 
   if (!evidence) {
     notFound();

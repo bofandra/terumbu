@@ -10419,7 +10419,15 @@ export async function getAdminCampaignWorkspaceData(campaignId: string) {
   };
 }
 
-export async function getAdminPartnerWorkspaceData(partnerId: string) {
+export async function getAdminPartnerWorkspaceData(
+  partnerId: string,
+  options: { memberPage?: string | string[] } = {}
+) {
+  const memberQuery = parseAdminListQuery(
+    { page: options.memberPage },
+    { defaultPageSize: 25, maxPageSize: 50, defaultSort: "email", defaultDir: "asc", allowedSorts: ["email"] }
+  );
+
   const partnerRows = await db
     .select({
       id: organizations.id,
@@ -10441,33 +10449,48 @@ export async function getAdminPartnerWorkspaceData(partnerId: string) {
     return null;
   }
 
-  const [campaignCountRows, memberRows] = await Promise.all([
+  const [campaignCountRows, memberSummaryRows] = await Promise.all([
     db.select({ total: sql<number>`count(*)::int` }).from(campaigns).where(eq(campaigns.organizationId, partner.id)),
     db
       .select({
-        id: organizationUsers.id,
-        organizationId: organizationUsers.organizationId,
-        userId: organizationUsers.userId,
-        role: organizationUsers.role,
-        status: organizationUsers.status,
-        createdAt: organizationUsers.createdAt,
-        updatedAt: organizationUsers.updatedAt,
-        email: users.email,
-        name: users.name,
-        displayName: profiles.displayName
+        total: sql<number>`count(*)::int`,
+        active: sql<number>`count(*) filter (where ${organizationUsers.status} = 'active')::int`
       })
       .from(organizationUsers)
-      .innerJoin(users, eq(organizationUsers.userId, users.id))
-      .leftJoin(profiles, eq(profiles.userId, users.id))
       .where(eq(organizationUsers.organizationId, partner.id))
-      .orderBy(asc(users.email))
   ]);
+
+  const memberTotal = Number(memberSummaryRows[0]?.total ?? 0);
+  const membersPagination = adminPaginationMeta(memberTotal, memberQuery);
+  const memberRows = await db
+    .select({
+      id: organizationUsers.id,
+      organizationId: organizationUsers.organizationId,
+      userId: organizationUsers.userId,
+      role: organizationUsers.role,
+      status: organizationUsers.status,
+      createdAt: organizationUsers.createdAt,
+      updatedAt: organizationUsers.updatedAt,
+      email: users.email,
+      name: users.name,
+      displayName: profiles.displayName
+    })
+    .from(organizationUsers)
+    .innerJoin(users, eq(organizationUsers.userId, users.id))
+    .leftJoin(profiles, eq(profiles.userId, users.id))
+    .where(eq(organizationUsers.organizationId, partner.id))
+    .orderBy(asc(users.email))
+    .limit(memberQuery.pageSize)
+    .offset(adminListOffset(memberQuery, memberTotal));
 
   return {
     partner: {
       ...partner,
       campaignCount: Number(campaignCountRows[0]?.total ?? 0),
+      memberCount: memberTotal,
+      activeMemberCount: Number(memberSummaryRows[0]?.active ?? 0),
       members: memberRows,
+      membersPagination,
       verificationLabel: verificationLabel(partner.verification)
     }
   };
@@ -10489,7 +10512,27 @@ export async function getAdminExpeditionCreateOptions() {
   return { campaignOptions: campaignOptionRows };
 }
 
-export async function getAdminExpeditionWorkspaceData(expeditionId: string) {
+export async function getAdminExpeditionWorkspaceData(
+  expeditionId: string,
+  options: {
+    bookingPage?: string | string[];
+    requestPage?: string | string[];
+    reviewPage?: string | string[];
+  } = {}
+) {
+  const bookingQuery = parseAdminListQuery(
+    { page: options.bookingPage },
+    { defaultPageSize: 30, maxPageSize: 50, defaultSort: "bookedAt", defaultDir: "desc", allowedSorts: ["bookedAt"] }
+  );
+  const requestQuery = parseAdminListQuery(
+    { page: options.requestPage },
+    { defaultPageSize: 30, maxPageSize: 50, defaultSort: "createdAt", defaultDir: "desc", allowedSorts: ["createdAt"] }
+  );
+  const reviewQuery = parseAdminListQuery(
+    { page: options.reviewPage },
+    { defaultPageSize: 25, maxPageSize: 50, defaultSort: "updatedAt", defaultDir: "desc", allowedSorts: ["updatedAt"] }
+  );
+
   const expeditionRows = await db
     .select({
       id: expeditions.id,
@@ -10515,7 +10558,7 @@ export async function getAdminExpeditionWorkspaceData(expeditionId: string) {
     return null;
   }
 
-  const [campaignOptionRows, departureRows, departureBookingCountRows, bookingRows, interestRows, reviewRows] = await Promise.all([
+  const [campaignOptionRows, departureRows, departureBookingCountRows, interestSummaryRows, reviewSummaryRows] = await Promise.all([
     db
       .select({
         id: campaigns.id,
@@ -10550,6 +10593,30 @@ export async function getAdminExpeditionWorkspaceData(expeditionId: string) {
       .groupBy(expeditionBookings.departureId),
     db
       .select({
+        total: sql<number>`count(*)::int`,
+        pending: sql<number>`count(*) filter (where ${expeditionInterestRequests.status} = 'pending')::int`
+      })
+      .from(expeditionInterestRequests)
+      .where(eq(expeditionInterestRequests.expeditionId, expeditionId)),
+    db
+      .select({
+        total: sql<number>`count(*)::int`,
+        pending: sql<number>`count(*) filter (where ${expeditionReviews.status} = 'pending')::int`
+      })
+      .from(expeditionReviews)
+      .where(eq(expeditionReviews.expeditionId, expeditionId))
+  ]);
+
+  const bookingTotal = departureBookingCountRows.reduce((total, row) => total + Number(row.total), 0);
+  const interestTotal = Number(interestSummaryRows[0]?.total ?? 0);
+  const reviewTotal = Number(reviewSummaryRows[0]?.total ?? 0);
+  const bookingsPagination = adminPaginationMeta(bookingTotal, bookingQuery);
+  const requestsPagination = adminPaginationMeta(interestTotal, requestQuery);
+  const reviewsPagination = adminPaginationMeta(reviewTotal, reviewQuery);
+
+  const [bookingRows, interestRows, reviewRows] = await Promise.all([
+    db
+      .select({
         id: expeditionBookings.id,
         departureId: expeditionBookings.departureId,
         bookingCode: expeditionBookings.bookingCode,
@@ -10567,7 +10634,8 @@ export async function getAdminExpeditionWorkspaceData(expeditionId: string) {
       .innerJoin(expeditionDepartures, eq(expeditionBookings.departureId, expeditionDepartures.id))
       .where(eq(expeditionBookings.expeditionId, expeditionId))
       .orderBy(desc(expeditionBookings.bookedAt))
-      .limit(500),
+      .limit(bookingQuery.pageSize)
+      .offset(adminListOffset(bookingQuery, bookingTotal)),
     db
       .select({
         id: expeditionInterestRequests.id,
@@ -10588,7 +10656,8 @@ export async function getAdminExpeditionWorkspaceData(expeditionId: string) {
       .leftJoin(users, eq(expeditionInterestRequests.processedByUserId, users.id))
       .where(eq(expeditionInterestRequests.expeditionId, expeditionId))
       .orderBy(desc(expeditionInterestRequests.createdAt))
-      .limit(500),
+      .limit(requestQuery.pageSize)
+      .offset(adminListOffset(requestQuery, interestTotal)),
     db
       .select({
         id: expeditionReviews.id,
@@ -10613,7 +10682,8 @@ export async function getAdminExpeditionWorkspaceData(expeditionId: string) {
       .leftJoin(profiles, eq(profiles.userId, users.id))
       .where(eq(expeditionReviews.expeditionId, expeditionId))
       .orderBy(desc(expeditionReviews.updatedAt))
-      .limit(250)
+      .limit(reviewQuery.pageSize)
+      .offset(adminListOffset(reviewQuery, reviewTotal))
   ]);
 
   const departureBookingCounts = new Map(departureBookingCountRows.map((row) => [row.departureId, Number(row.total)]));
@@ -10622,7 +10692,14 @@ export async function getAdminExpeditionWorkspaceData(expeditionId: string) {
   const baseExpedition = {
     ...expeditionRow,
     basePrice,
-    bookingCount: departureBookingCountRows.reduce((total, row) => total + Number(row.total), 0),
+    bookingCount: bookingTotal,
+    interestRequestCount: interestTotal,
+    pendingInterestRequestCount: Number(interestSummaryRows[0]?.pending ?? 0),
+    reviewCount: reviewTotal,
+    pendingReviewCount: Number(reviewSummaryRows[0]?.pending ?? 0),
+    bookingsPagination,
+    requestsPagination,
+    reviewsPagination,
     departures: departureRows.map((row) => {
       const minParticipants = getMetadataNumber(row.metadata, "minParticipants", 6);
       const availability = expeditionDepartureAvailability({

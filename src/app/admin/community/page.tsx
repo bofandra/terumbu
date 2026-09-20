@@ -10,6 +10,7 @@ import { CommunityStatusBadge } from "@/components/community-ui";
 import { Button } from "@/components/ui/button";
 import { FormTabs } from "@/components/ui/form-tabs";
 import { MetricValue } from "@/components/ui/metric-value";
+import { observeAdminDataLoader } from "@/lib/admin-observability";
 import { requireRole } from "@/lib/auth";
 import { moderateCommunityContentAction, reviewCommunityReportAction } from "@/lib/community-actions";
 import { getAdminCommunityPage, type AdminCommunityFilters } from "@/lib/community-queries";
@@ -96,7 +97,7 @@ function VisibilitySelect({ name, value }: { name: string; value: string }) {
 export default async function AdminCommunityPage({ searchParams }: AdminCommunityPageProps) {
   await requireRole(["admin"], pathname);
   const params = (await searchParams) ?? {};
-  const data = await getAdminCommunityPage(params);
+  const data = await observeAdminDataLoader("admin.community", () => getAdminCommunityPage(params));
   const savedMessage = params.saved ? savedMessages[params.saved] : null;
   const errorMessage = params.error ? errorMessages[params.error] : null;
   const workspace = ["reports", "posts", "events", "challenges", "chapters"].includes(params.workspace ?? "") ? params.workspace! : "reports";

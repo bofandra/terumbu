@@ -6,6 +6,7 @@ import { AdminDataTable, type AdminDataTableColumn } from "@/components/admin/ad
 import { AdminListToolbar } from "@/components/admin/admin-list-toolbar";
 import { AdminPagination } from "@/components/admin/admin-pagination";
 import { AdminEmptyState, AdminPageHeader, AdminStatusBadge, adminSelectClassName } from "@/components/admin-ui";
+import { observeAdminDataLoader } from "@/lib/admin-observability";
 import { requireRole } from "@/lib/auth";
 import { getAdminExpeditionsPage, type AdminExpeditionFilters } from "@/lib/queries";
 import { cn, formatCurrency } from "@/lib/utils";
@@ -112,7 +113,7 @@ function SummaryMetric({ label, value, icon: Icon }: { label: string; value: str
 export default async function AdminExpeditionsPage({ searchParams }: AdminExpeditionsPageProps) {
   await requireRole(["admin"], pathname);
   const params = await searchParams;
-  const data = await getAdminExpeditionsPage(params);
+  const data = await observeAdminDataLoader("admin.expeditions.directory", () => getAdminExpeditionsPage(params));
   const savedMessage = params?.saved ? statusMessages[String(params.saved)] : null;
   const errorMessage = params?.error ? errorMessages[String(params.error)] : null;
   const baseParams = listParams(data);

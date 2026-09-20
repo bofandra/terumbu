@@ -8,6 +8,7 @@ import { AdminEmptyState, AdminPageHeader, AdminStatusBadge, adminInputClassName
 import { Button } from "@/components/ui/button";
 import { FormTabs } from "@/components/ui/form-tabs";
 import { MetricValue } from "@/components/ui/metric-value";
+import { observeAdminDataLoader } from "@/lib/admin-observability";
 import { requireRole } from "@/lib/auth";
 import {
   reconcileDonationAction,
@@ -97,7 +98,7 @@ function RefundDecision({ operationId, label, amount, currency, next }: { operat
 export default async function AdminPaymentsPage({ searchParams }: AdminPaymentsPageProps) {
   await requireRole(["admin"], pathname);
   const params = (await searchParams) ?? {};
-  const data = await getAdminPaymentsPage(params);
+  const data = await observeAdminDataLoader("admin.payments", () => getAdminPaymentsPage(params));
   const workspace = params.workspace === "bookings" ? "bookings" : "donations";
   const donationNext = paymentReturnPath(params, "donations");
   const bookingNext = paymentReturnPath(params, "bookings");

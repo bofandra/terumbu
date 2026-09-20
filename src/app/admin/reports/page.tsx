@@ -9,6 +9,7 @@ import { AdminEmptyState, AdminPageHeader, AdminStatusBadge, adminInputClassName
 import { Button } from "@/components/ui/button";
 import { FormTabs } from "@/components/ui/form-tabs";
 import { MetricValue } from "@/components/ui/metric-value";
+import { observeAdminDataLoader } from "@/lib/admin-observability";
 import { requireRole } from "@/lib/auth";
 import { getAdminReportsPage, type AdminReportFilters } from "@/lib/queries";
 import { runMonthlyImpactReportCycleAction } from "@/lib/retention-actions";
@@ -139,7 +140,7 @@ function defaultWorkspace(data: AdminReportsData, params: { saved?: string; work
 export default async function AdminReportsPage({ searchParams }: AdminReportsPageProps) {
   await requireRole(["admin"], pathname);
   const params = await searchParams;
-  const data = await getAdminReportsPage(params);
+  const data = await observeAdminDataLoader("admin.reports", () => getAdminReportsPage(params));
   const savedMessage =
     params?.saved === "monthly-run"
       ? `Monthly impact run complete: ${cleanFilter(params.generated) || "0"} report(s) generated and ${cleanFilter(params.emailed) || "0"} email(s) queued.`

@@ -8,6 +8,7 @@ import { AdminPagination } from "@/components/admin/admin-pagination";
 import { AdminEmptyState, AdminPageHeader, AdminStatusBadge, adminSelectClassName } from "@/components/admin-ui";
 import { EvidenceKanbanBoard, type EvidenceKanbanCard } from "@/components/evidence-kanban-board";
 import { MetricValue } from "@/components/ui/metric-value";
+import { observeAdminDataLoader } from "@/lib/admin-observability";
 import { requireRole } from "@/lib/auth";
 import { evidenceStatusLabel, evidenceVerificationStatuses } from "@/lib/evidence-review-workflow";
 import { verifyEvidenceAction } from "@/lib/portal-actions";
@@ -143,7 +144,7 @@ export default async function AdminCampaignEvidencePage({ searchParams }: AdminC
     : null;
 
   if (view === "board") {
-    const data = await getAdminEvidenceBoardData();
+    const data = await observeAdminDataLoader("admin.evidence.board", () => getAdminEvidenceBoardData());
     const pendingCount = data.evidence.filter((item) => item.verificationStatus !== "verified").length;
     const clarificationCount = data.evidence.filter((item) => item.verificationStatus === "needs_clarification").length;
     const submittedCount = data.evidence.filter((item) => item.verificationStatus === "submitted").length;
@@ -210,7 +211,7 @@ export default async function AdminCampaignEvidencePage({ searchParams }: AdminC
     );
   }
 
-  const data = await getAdminEvidenceReviewPage(params, user.id);
+  const data = await observeAdminDataLoader("admin.evidence.queue", () => getAdminEvidenceReviewPage(params, user.id));
   const baseParams = listParams(data);
   const returnTo = evidenceHref({ ...baseParams, page: data.pagination.page });
   const columns: AdminDataTableColumn<AdminEvidenceQueueRow>[] = [

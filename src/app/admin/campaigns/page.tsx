@@ -9,6 +9,7 @@ import { AdminEmptyState, AdminPageHeader, AdminStatusBadge, adminInputClassName
 import { Button } from "@/components/ui/button";
 import { ProgressMeter } from "@/components/ui/progress-meter";
 import { campaignStatuses } from "@/lib/campaign-content";
+import { observeAdminDataLoader } from "@/lib/admin-observability";
 import { requireRole } from "@/lib/auth";
 import { updateCampaignStatusAction, updateImpactSettingsAction } from "@/lib/portal-actions";
 import { getCarbonKgPerUsd } from "@/lib/platform-settings";
@@ -130,7 +131,9 @@ function SummaryMetric({ label, value }: { label: string; value: string }) {
 export default async function AdminProjectsPage({ searchParams }: AdminProjectsPageProps) {
   await requireRole(["admin"], pathname);
   const params = await searchParams;
-  const [data, carbonKgPerUsd] = await Promise.all([getAdminProjectsPage(params), getCarbonKgPerUsd()]);
+  const [data, carbonKgPerUsd] = await observeAdminDataLoader("admin.projects.directory", () =>
+    Promise.all([getAdminProjectsPage(params), getCarbonKgPerUsd()])
+  );
   const savedMessage = params?.saved ? statusMessages[String(params.saved)] : null;
   const errorMessage = params?.error ? errorMessages[String(params.error)] : null;
   const baseParams = listParams(data);

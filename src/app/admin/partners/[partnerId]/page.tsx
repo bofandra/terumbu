@@ -12,9 +12,11 @@ import {
   adminTextareaClassName
 } from "@/components/admin-ui";
 import { AdminConfirmSubmit } from "@/components/admin/admin-confirm-submit";
+import { AdminPagination } from "@/components/admin/admin-pagination";
 import { Button } from "@/components/ui/button";
 import { FormTabs } from "@/components/ui/form-tabs";
 import { requireRole } from "@/lib/auth";
+import { observeAdminDataLoader } from "@/lib/admin-observability";
 import { impactSiteVerificationStatuses } from "@/lib/campaign-content";
 import {
   addOrganizationUserAction,
@@ -64,6 +66,8 @@ type AdminPartnerDetailPageProps = {
   searchParams?: Promise<{
     error?: string;
     saved?: string;
+    memberPage?: string;
+    tab?: string;
   }>;
 };
 
@@ -92,7 +96,9 @@ export default async function AdminPartnerDetailPage({ params, searchParams }: A
   const { partnerId } = await params;
   await requireRole(["admin"], `/admin/partners/${partnerId}`);
   const query = await searchParams;
-  const data = await getAdminPartnerWorkspaceData(partnerId);
+  const data = await observeAdminDataLoader("admin.partner.workspace", () =>
+    getAdminPartnerWorkspaceData(partnerId, { memberPage: query?.memberPage })
+  );
 
   if (!data) {
     notFound();
@@ -100,8 +106,12 @@ export default async function AdminPartnerDetailPage({ params, searchParams }: A
 
   const partner = data.partner;
 
-  const returnTo = `/admin/partners/${partner.id}`;
-  const activeUsers = partner.members.filter((member) => member.status === "active").length;
+  const returnParams = new URLSearchParams();
+  if (query?.memberPage) returnParams.set("memberPage", query.memberPage);
+  if (query?.tab === "users") returnParams.set("tab", "users");
+  const returnQuery = returnParams.toString();
+  const returnTo = `/admin/partners/${partner.id}${returnQuery ? `?${returnQuery}` : ""}`;
+  const activeUsers = partner.activeMemberCount;
   const savedMessage = query?.saved ? statusMessages[query.saved] : null;
   const errorMessage = query?.error ? errorMessages[query.error] : null;
 
@@ -110,7 +120,7 @@ export default async function AdminPartnerDetailPage({ params, searchParams }: A
       <AdminPageHeader
         eyebrow="Partners"
         title={partner.name}
-        description={`${labelize(partner.type)} / ${partner.campaignCount.toLocaleString("id-ID")} campaigns / ${partner.members.length.toLocaleString("id-ID")} users`}
+        description={`${labelize(partner.type)} / ${partner.campaignCount.toLocaleString("id-ID")} campaigns / ${partner.memberCount.toLocaleString("id-ID")} users`}
         actionHref="/admin/partners"
         actionLabel="Partner list"
       />
@@ -144,9 +154,10 @@ export default async function AdminPartnerDetailPage({ params, searchParams }: A
 
       <FormTabs
         ariaLabel="Partner management workflows"
+        defaultTabId={query?.tab === "users" ? "users" : undefined}
         tabs={[
           { id: "details", label: "Details", description: "Profile and verification" },
-          { id: "users", label: "Users", description: "Portal access", badge: partner.members.length.toLocaleString("id-ID") },
+          { id: "users", label: "Users", description: "Portal access", badge: partner.memberCount.toLocaleString("id-ID") },
           { id: "danger", label: "Danger", description: "Delete partner" }
         ]}
       >
@@ -270,6 +281,12 @@ export default async function AdminPartnerDetailPage({ params, searchParams }: A
             </div>
           ))}
           {partner.members.length === 0 ? <p className="rounded-lg border border-dashed border-ocean-900/14 p-3 text-sm font-semibold text-ocean-900/58">No partner users assigned.</p> : null}
+          <AdminPagination
+            pathname={`/admin/partners/${partner.id}`}
+            params={{ tab: "users" }}
+            pagination={partner.membersPagination}
+            pageParam="memberPage"
+          />
         </div>
 
         <div className="border-t border-ocean-900/10 p-4">

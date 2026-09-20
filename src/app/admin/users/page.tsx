@@ -14,6 +14,7 @@ import { FormTabs } from "@/components/ui/form-tabs";
 import { MetricValue } from "@/components/ui/metric-value";
 import { createAdminUserAction, createGlobalRoleAction, deleteGlobalRoleAction, updateGlobalRoleAction } from "@/lib/admin-user-actions";
 import { adminCreateUserAccessOptions, isSystemGlobalRole, systemGlobalRoleOptions } from "@/lib/admin-user-management";
+import { observeAdminDataLoader } from "@/lib/admin-observability";
 import { requireRole } from "@/lib/auth";
 import { partnerOrganizationRoles } from "@/lib/partner-permissions";
 import { getAdminUserManagementOptions, getAdminUsersPage, type AdminUserFilters } from "@/lib/queries";
@@ -163,7 +164,7 @@ function UserAccessSummary({ user }: { user: AdminDirectoryUser }) {
 export default async function AdminUsersPage({ searchParams }: AdminUsersPageProps) {
   await requireRole(["admin"], pathname);
   const params = await searchParams;
-  const [data, options] = await Promise.all([getAdminUsersPage(params), getAdminUserManagementOptions()]);
+  const [data, options] = await observeAdminDataLoader("admin.users.directory", () => Promise.all([getAdminUsersPage(params), getAdminUserManagementOptions()]));
   const savedMessage = params?.saved ? savedMessages[String(params.saved)] : null;
   const errorMessage = params?.error ? errorMessages[String(params.error)] : null;
   const customGlobalRoleOptions = options.roleOptions.filter((role) => !isSystemGlobalRole(role.key));

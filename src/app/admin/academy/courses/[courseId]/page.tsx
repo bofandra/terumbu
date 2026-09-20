@@ -27,6 +27,7 @@ import {
   updateAcademyCourseAction,
   updateAcademyQuestionAction
 } from "@/lib/academy-actions";
+import { observeAdminDataLoader } from "@/lib/admin-observability";
 import { requireRole } from "@/lib/auth";
 import { getAdminAcademyCourse } from "@/lib/queries";
 
@@ -329,7 +330,7 @@ export default async function AdminAcademyCoursePage({ params, searchParams }: A
   const { courseId } = await params;
   await requireRole(["admin"], `/admin/academy/courses/${courseId}`);
   const query = await searchParams;
-  const course = await getAdminAcademyCourse(courseId);
+  const course = await observeAdminDataLoader("admin.academy.course", () => getAdminAcademyCourse(courseId));
 
   if (!course) {
     notFound();

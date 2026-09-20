@@ -6,6 +6,7 @@ import { AdminListToolbar } from "@/components/admin/admin-list-toolbar";
 import { AdminPagination } from "@/components/admin/admin-pagination";
 import { AdminEmptyState, AdminPageHeader, adminInputClassName, adminSelectClassName } from "@/components/admin-ui";
 import { MetricValue } from "@/components/ui/metric-value";
+import { observeAdminDataLoader } from "@/lib/admin-observability";
 import { requireRole } from "@/lib/auth";
 import { getAdminAuditData, type AdminAuditFilters } from "@/lib/queries";
 import { cn } from "@/lib/utils";
@@ -86,7 +87,7 @@ function actorLabel(row: AdminAuditRow) {
 export default async function AdminAuditPage({ searchParams }: AdminAuditPageProps) {
   await requireRole(["admin"], pathname);
   const params = await searchParams;
-  const data = await getAdminAuditData(params);
+  const data = await observeAdminDataLoader("admin.audit", () => getAdminAuditData(params));
   const baseParams = listParams(data);
   const returnTo = auditHref({ ...baseParams, page: data.pagination.page });
   const columns: AdminDataTableColumn<AdminAuditRow>[] = [

@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { FormTabs } from "@/components/ui/form-tabs";
 import { MetricValue } from "@/components/ui/metric-value";
 import { assignCorporatePermissionAction, createCorporateWorkspaceAction } from "@/lib/admin-corporate-actions";
+import { observeAdminDataLoader } from "@/lib/admin-observability";
 import { requireRole } from "@/lib/auth";
 import { getAdminCorporatePage, type AdminCorporateFilters } from "@/lib/queries";
 import { cn } from "@/lib/utils";
@@ -84,7 +85,7 @@ function SummaryMetric({ label, value, icon: Icon }: { label: string; value: str
 export default async function AdminCorporatePage({ searchParams }: AdminCorporatePageProps) {
   await requireRole(["admin"], pathname);
   const params = await searchParams;
-  const data = await getAdminCorporatePage(params);
+  const data = await observeAdminDataLoader("admin.corporate", () => getAdminCorporatePage(params));
   const savedMessage = params?.saved ? savedMessages[String(params.saved)] : null;
   const errorMessage = params?.error ? errorMessages[String(params.error)] : null;
   const baseParams = listParams(data);

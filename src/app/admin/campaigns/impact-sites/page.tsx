@@ -7,6 +7,7 @@ import { AdminListToolbar } from "@/components/admin/admin-list-toolbar";
 import { AdminPagination } from "@/components/admin/admin-pagination";
 import { AdminEmptyState, AdminPageHeader, AdminStatusBadge, adminSelectClassName } from "@/components/admin-ui";
 import { ProgressMeter } from "@/components/ui/progress-meter";
+import { observeAdminDataLoader } from "@/lib/admin-observability";
 import { requireRole } from "@/lib/auth";
 import { impactSiteVerificationStatuses } from "@/lib/campaign-content";
 import { getAdminImpactSitesPage, type AdminImpactSiteFilters } from "@/lib/queries";
@@ -104,7 +105,7 @@ function SummaryMetric({ label, value, icon: Icon }: { label: string; value: str
 export default async function AdminCampaignImpactSitesPage({ searchParams }: AdminCampaignImpactSitesPageProps) {
   await requireRole(["admin"], pathname);
   const params = await searchParams;
-  const data = await getAdminImpactSitesPage(params);
+  const data = await observeAdminDataLoader("admin.impact-sites.directory", () => getAdminImpactSitesPage(params));
   const savedMessage = params?.saved ? statusMessages[String(params.saved)] : null;
   const errorMessage = params?.error ? errorMessages[String(params.error)] : null;
   const baseParams = listParams(data);

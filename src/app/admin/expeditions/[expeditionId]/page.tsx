@@ -13,11 +13,13 @@ import {
   adminTextareaClassName
 } from "@/components/admin-ui";
 import { AdminConfirmSubmit } from "@/components/admin/admin-confirm-submit";
+import { AdminPagination } from "@/components/admin/admin-pagination";
 import { Button } from "@/components/ui/button";
 import { ExpeditionMarketplaceFields } from "@/components/expedition-marketplace-fields";
 import { FormTabs } from "@/components/ui/form-tabs";
 import { MetricValue } from "@/components/ui/metric-value";
 import { requireRole } from "@/lib/auth";
+import { observeAdminDataLoader } from "@/lib/admin-observability";
 import { processExpeditionInterestRequestAction } from "@/lib/expedition-interest-actions";
 import { moderateExpeditionReviewAction } from "@/lib/expedition-review-actions";
 import { expeditionReviewStatusLabel, expeditionReviewStatuses, type ExpeditionReviewStatus } from "@/lib/expedition-reviews";
@@ -83,6 +85,10 @@ type AdminExpeditionDetailPageProps = {
   searchParams?: Promise<{
     error?: string;
     saved?: string;
+    bookingPage?: string;
+    requestPage?: string;
+    reviewPage?: string;
+    tab?: string;
   }>;
 };
 
@@ -154,7 +160,13 @@ export default async function AdminExpeditionDetailPage({ params, searchParams }
   const { expeditionId } = await params;
   await requireRole(["admin"], `/admin/expeditions/${expeditionId}`);
   const query = await searchParams;
-  const data = await getAdminExpeditionWorkspaceData(expeditionId);
+  const data = await observeAdminDataLoader("admin.expedition.workspace", () =>
+    getAdminExpeditionWorkspaceData(expeditionId, {
+      bookingPage: query?.bookingPage,
+      requestPage: query?.requestPage,
+      reviewPage: query?.reviewPage
+    })
+  );
 
   if (!data) {
     notFound();
@@ -162,11 +174,22 @@ export default async function AdminExpeditionDetailPage({ params, searchParams }
 
   const expedition = data.expedition;
 
-  const returnTo = `/admin/expeditions/${expedition.id}`;
+  const workspacePaginationParams = {
+    bookingPage: query?.bookingPage,
+    requestPage: query?.requestPage,
+    reviewPage: query?.reviewPage,
+    tab: query?.tab
+  };
+  const returnParams = new URLSearchParams();
+  for (const [key, value] of Object.entries(workspacePaginationParams)) {
+    if (value) returnParams.set(key, value);
+  }
+  const returnQuery = returnParams.toString();
+  const returnTo = `/admin/expeditions/${expedition.id}${returnQuery ? `?${returnQuery}` : ""}`;
   const openDepartures = expedition.departures.filter((departure) => departure.status === "open").length;
   const availableSeats = expedition.departures.reduce((total, departure) => total + departure.availableSeats, 0);
-  const pendingInterestRequests = expedition.interestRequests.filter((request) => request.status === "pending").length;
-  const pendingReviews = expedition.reviews.filter((review) => review.status === "pending").length;
+  const pendingInterestRequests = expedition.pendingInterestRequestCount;
+  const pendingReviews = expedition.pendingReviewCount;
   const savedMessage = query?.saved ? statusMessages[query.saved] : null;
   const errorMessage = query?.error ? errorMessages[query.error] : null;
 
@@ -201,11 +224,12 @@ export default async function AdminExpeditionDetailPage({ params, searchParams }
 
       <FormTabs
         ariaLabel="Expedition management workflows"
+        defaultTabId={["requests", "bookings", "reviews"].includes(query?.tab ?? "") ? query?.tab : undefined}
         tabs={[
-          { id: "requests", label: "Requests", description: "Questions and demand", badge: expedition.interestRequests.length.toLocaleString("id-ID") },
-          { id: "bookings", label: "Bookings", description: "Cancel bookings", badge: expedition.bookings.length.toLocaleString("id-ID") },
+          { id: "requests", label: "Requests", description: "Questions and demand", badge: expedition.interestRequestCount.toLocaleString("id-ID") },
+          { id: "bookings", label: "Bookings", description: "Cancel bookings", badge: expedition.bookingCount.toLocaleString("id-ID") },
           { id: "details", label: "Details", description: "Catalog record" },
-          { id: "reviews", label: "Reviews", description: "Moderation", badge: expedition.reviews.length.toLocaleString("id-ID") },
+          { id: "reviews", label: "Reviews", description: "Moderation", badge: expedition.reviewCount.toLocaleString("id-ID") },
           { id: "departures", label: "Departures", description: "Schedules", badge: expedition.departures.length.toLocaleString("id-ID") },
           { id: "danger", label: "Danger", description: "Delete expedition" }
         ]}
@@ -266,6 +290,13 @@ export default async function AdminExpeditionDetailPage({ params, searchParams }
             <p className="p-4 text-sm font-semibold text-ocean-900/58">No questions, waitlist, or private departure requests yet.</p>
           ) : null}
         </div>
+        <AdminPagination
+          pathname={`/admin/expeditions/${expedition.id}`}
+          params={{ ...workspacePaginationParams, tab: "requests" }}
+          pagination={expedition.requestsPagination}
+          pageParam="requestPage"
+          className="m-4 mt-0"
+        />
       </section>
 
       <section className={adminPanelClassName}>
@@ -309,6 +340,13 @@ export default async function AdminExpeditionDetailPage({ params, searchParams }
             <p className="p-4 text-sm font-semibold text-ocean-900/58">No bookings for this expedition yet.</p>
           ) : null}
         </div>
+        <AdminPagination
+          pathname={`/admin/expeditions/${expedition.id}`}
+          params={{ ...workspacePaginationParams, tab: "bookings" }}
+          pagination={expedition.bookingsPagination}
+          pageParam="bookingPage"
+          className="m-4 mt-0"
+        />
       </section>
 
       <section className={adminPanelClassName}>
@@ -460,6 +498,13 @@ export default async function AdminExpeditionDetailPage({ params, searchParams }
             <p className="p-4 text-sm font-semibold text-ocean-900/58">No participant reviews have been submitted for this expedition.</p>
           ) : null}
         </div>
+        <AdminPagination
+          pathname={`/admin/expeditions/${expedition.id}`}
+          params={{ ...workspacePaginationParams, tab: "reviews" }}
+          pagination={expedition.reviewsPagination}
+          pageParam="reviewPage"
+          className="m-4 mt-0"
+        />
       </section>
 
       <section className={adminPanelClassName}>

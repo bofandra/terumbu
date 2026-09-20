@@ -7,6 +7,7 @@ import { AdminFormErrorSummary, type AdminFormErrorItem } from "@/components/adm
 import { AdminPageHeader, adminInputClassName, adminPanelClassName, adminSelectClassName, adminTextareaClassName } from "@/components/admin-ui";
 import { Button } from "@/components/ui/button";
 import { adminFormFieldNames } from "@/lib/admin-form-state";
+import { observeAdminDataLoader } from "@/lib/admin-observability";
 import { requireRole } from "@/lib/auth";
 import { campaignCurrencies, impactSiteEcosystemTypes } from "@/lib/campaign-content";
 import { createAdminCampaignAction } from "@/lib/portal-actions";
@@ -110,7 +111,9 @@ function OrganizationSelect({
 export default async function AdminCampaignNewPage({ searchParams }: AdminCampaignNewPageProps) {
   await requireRole(["admin"], "/admin/campaigns/new");
   const params = await searchParams;
-  const [data, unassignedImpactSites] = await Promise.all([getAdminCampaignCreateOptions(), getAdminUnassignedImpactSiteOptions()]);
+  const [data, unassignedImpactSites] = await observeAdminDataLoader("admin.campaign.create", () =>
+    Promise.all([getAdminCampaignCreateOptions(), getAdminUnassignedImpactSiteOptions()])
+  );
   const errorCode = first(params?.error);
   const errorMessage = errorCode ? errorMessages[errorCode] : null;
   const invalidFieldNames = adminFormFieldNames(params?.field);

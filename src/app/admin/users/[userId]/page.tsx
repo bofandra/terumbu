@@ -5,6 +5,7 @@ import { AdminAlert } from "@/components/admin/admin-alert";
 import { AdminUserWorkspace } from "@/components/admin/admin-user-workspace";
 import { AdminPageHeader, AdminStatusBadge } from "@/components/admin-ui";
 import { safeAdminUsersReturnPath } from "@/lib/admin-user-management";
+import { observeAdminDataLoader } from "@/lib/admin-observability";
 import { requireRole } from "@/lib/auth";
 import { getAdminUserWorkspaceData } from "@/lib/queries";
 
@@ -56,7 +57,7 @@ type AdminUserDetailPageProps = {
 export default async function AdminUserDetailPage({ params, searchParams }: AdminUserDetailPageProps) {
   await requireRole(["admin"], "/admin/users");
   const [{ userId }, query] = await Promise.all([params, searchParams]);
-  const data = await getAdminUserWorkspaceData(userId);
+  const data = await observeAdminDataLoader("admin.user.workspace", () => getAdminUserWorkspaceData(userId));
 
   if (!data.user) {
     notFound();

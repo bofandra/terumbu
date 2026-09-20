@@ -19,6 +19,7 @@ import { FormTabs } from "@/components/ui/form-tabs";
 import { MetricValue } from "@/components/ui/metric-value";
 import { ProgressMeter } from "@/components/ui/progress-meter";
 import { campaignCategories, campaignCurrencies, campaignImpactUnits, campaignStatuses } from "@/lib/campaign-content";
+import { observeAdminDataLoader } from "@/lib/admin-observability";
 import { requireRole } from "@/lib/auth";
 import { deleteAdminCampaignAction, updateAdminCampaignAction, updateCampaignStatusAction } from "@/lib/portal-actions";
 import { getAdminCampaignWorkspaceData } from "@/lib/queries";
@@ -133,7 +134,7 @@ export default async function AdminCampaignDetailPage({ params, searchParams }: 
   const { campaignId } = await params;
   await requireRole(["admin"], `/admin/campaigns/${campaignId}`);
   const query = await searchParams;
-  const data = await getAdminCampaignWorkspaceData(campaignId);
+  const data = await observeAdminDataLoader("admin.campaign.workspace", () => getAdminCampaignWorkspaceData(campaignId));
 
   if (!data) {
     notFound();

@@ -9,6 +9,7 @@ import {
 import { AdminAlert } from "@/components/admin/admin-alert";
 import { AdminPageHeader, adminPanelClassName } from "@/components/admin-ui";
 import { Button } from "@/components/ui/button";
+import { observeAdminDataLoader } from "@/lib/admin-observability";
 import { requireRole } from "@/lib/auth";
 import { createAdminImpactSiteAction } from "@/lib/portal-actions";
 import { getAdminImpactSiteEditorData } from "@/lib/queries";
@@ -73,7 +74,7 @@ function formValues(params: SearchParams | undefined): AdminImpactSiteFormValues
 export default async function AdminImpactSiteNewPage({ searchParams }: { searchParams?: Promise<SearchParams> }) {
   await requireRole(["admin"], pathname);
   const params = await searchParams;
-  const data = await getAdminImpactSiteEditorData();
+  const data = await observeAdminDataLoader("admin.impact-site.create", () => getAdminImpactSiteEditorData());
   const values = formValues(params);
   const errorCode = first(params?.error);
   const errors = errorCode === "impact-site-invalid" ? validateAdminImpactSiteFormValues(values) : {};

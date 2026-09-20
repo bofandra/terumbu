@@ -10,6 +10,7 @@ import { AdminEmptyState, AdminPageHeader, AdminStatusBadge, adminInputClassName
 import { Button } from "@/components/ui/button";
 import { MetricValue } from "@/components/ui/metric-value";
 import { createAcademyCourseAction } from "@/lib/academy-actions";
+import { observeAdminDataLoader } from "@/lib/admin-observability";
 import { requireRole } from "@/lib/auth";
 import { getAdminAcademyPage, type AdminAcademyFilters } from "@/lib/queries";
 import { cn } from "@/lib/utils";
@@ -54,7 +55,7 @@ function SummaryMetric({ label, value, icon: Icon }: { label: string; value: str
 export default async function AdminAcademyPage({ searchParams }: AdminAcademyPageProps) {
   await requireRole(["admin"], pathname);
   const params = await searchParams;
-  const data = await getAdminAcademyPage(params);
+  const data = await observeAdminDataLoader("admin.academy.directory", () => getAdminAcademyPage(params));
   const savedMessage = params?.saved ? savedMessages[String(params.saved)] : null;
   const errorMessage = params?.error ? errorMessages[String(params.error)] : null;
   const baseParams = listParams(data);

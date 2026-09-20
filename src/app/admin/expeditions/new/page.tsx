@@ -8,6 +8,7 @@ import { AdminPageHeader, adminInputClassName, adminPanelClassName, adminSelectC
 import { ExpeditionMarketplaceFields } from "@/components/expedition-marketplace-fields";
 import { Button } from "@/components/ui/button";
 import { adminFormFieldNames } from "@/lib/admin-form-state";
+import { observeAdminDataLoader } from "@/lib/admin-observability";
 import { requireRole } from "@/lib/auth";
 import type { ExpeditionMarketplaceMetadata } from "@/lib/expedition-marketplace";
 import { createExpeditionAction } from "@/lib/portal-actions";
@@ -125,7 +126,7 @@ function RelatedCampaignSelect({
 export default async function AdminExpeditionNewPage({ searchParams }: AdminExpeditionNewPageProps) {
   await requireRole(["admin"], "/admin/expeditions/new");
   const params = await searchParams;
-  const data = await getAdminExpeditionCreateOptions();
+  const data = await observeAdminDataLoader("admin.expedition.create", () => getAdminExpeditionCreateOptions());
   const errorCode = first(params?.error);
   const errorMessage = errorCode ? errorMessages[errorCode] : null;
   const invalidFieldNames = adminFormFieldNames(params?.field);

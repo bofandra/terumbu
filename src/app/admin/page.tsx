@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ArrowUpRight, BarChart3, Building2, FileCheck2, Handshake, Megaphone, ReceiptText, ScrollText, ShipWheel, Users } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
+import { observeAdminDataLoader } from "@/lib/admin-observability";
 import { requireRole } from "@/lib/auth";
 import { getAdminDashboardData } from "@/lib/queries";
 
@@ -76,7 +77,7 @@ function TaskLink({ task, priority = false }: { task: AdminTask; priority?: bool
 export default async function AdminPortalPage({ searchParams }: AdminPortalPageProps) {
   const params = await searchParams;
   await requireRole(["admin"], "/admin");
-  const dashboard = await getAdminDashboardData();
+  const dashboard = await observeAdminDataLoader("admin.dashboard", () => getAdminDashboardData());
 
   const reviewProjects = dashboard.reviewProjects;
   const pendingEvidence = dashboard.pendingEvidence;
