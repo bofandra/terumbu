@@ -10,7 +10,7 @@ import { adminFormFieldNames } from "@/lib/admin-form-state";
 import { requireRole } from "@/lib/auth";
 import { campaignCurrencies, impactSiteEcosystemTypes } from "@/lib/campaign-content";
 import { createAdminCampaignAction } from "@/lib/portal-actions";
-import { getAdminPortalData, getAdminUnassignedImpactSiteOptions } from "@/lib/queries";
+import { getAdminCampaignCreateOptions, getAdminUnassignedImpactSiteOptions } from "@/lib/queries";
 
 export const metadata = {
   title: "New Project"
@@ -93,7 +93,7 @@ function OrganizationSelect({
   organizations,
   invalid
 }: {
-  organizations: Awaited<ReturnType<typeof getAdminPortalData>>["organizations"];
+  organizations: Awaited<ReturnType<typeof getAdminCampaignCreateOptions>>["organizations"];
   invalid: boolean;
 }) {
   return (
@@ -110,7 +110,7 @@ function OrganizationSelect({
 export default async function AdminCampaignNewPage({ searchParams }: AdminCampaignNewPageProps) {
   await requireRole(["admin"], "/admin/campaigns/new");
   const params = await searchParams;
-  const [data, unassignedImpactSites] = await Promise.all([getAdminPortalData(), getAdminUnassignedImpactSiteOptions()]);
+  const [data, unassignedImpactSites] = await Promise.all([getAdminCampaignCreateOptions(), getAdminUnassignedImpactSiteOptions()]);
   const errorCode = first(params?.error);
   const errorMessage = errorCode ? errorMessages[errorCode] : null;
   const invalidFieldNames = adminFormFieldNames(params?.field);

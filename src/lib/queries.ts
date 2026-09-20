@@ -5627,6 +5627,7 @@ export async function getAdminCorporateData() {
 }
 
 
+/** @deprecated Admin routes should use page-specific query functions instead. */
 export async function getAdminPortalData() {
   const now = new Date();
   const [
@@ -5998,6 +5999,7 @@ export async function getAdminUnassignedImpactSiteOptions() {
   }));
 }
 
+/** @deprecated Admin routes should use page-specific query functions instead. */
 export async function getAdminOperationsData() {
   const [
     partners,
@@ -10178,5 +10180,662 @@ export async function getAdminPaymentsPage(params: AdminPaymentFilters = {}) {
       bookings: bookingTotalItems,
       bookingRefunds: Number(bookingSummaryRows[0]?.refunds ?? 0)
     }
+  };
+}
+
+/**
+ * Lightweight, page-specific admin queries.
+ *
+ * These functions intentionally avoid the legacy getAdminPortalData/getAdminOperationsData
+ * aggregators so an individual admin route only loads the records it renders.
+ */
+export async function getAdminDashboardData() {
+  const [reviewProjectsRows, pendingEvidenceRows, donationCheckRows, bookingCheckRows, expeditionRows, partnerRows, reportRows, userRows] =
+    await Promise.all([
+      db.select({ total: sql<number>`count(*)::int` }).from(campaigns).where(eq(campaigns.status, "review")),
+      db
+        .select({ total: sql<number>`count(*)::int` })
+        .from(projectEvidence)
+        .where(sql`${projectEvidence.verificationStatus} <> 'verified'`),
+      db
+        .select({ total: sql<number>`count(*)::int` })
+        .from(donations)
+        .where(
+          or(
+            sql`${donations.status} <> 'paid'`,
+            sql`exists (select 1 from payment_operations po where po.donation_id = ${donations.id} and po.status = 'pending')`
+          )
+        ),
+      db
+        .select({ total: sql<number>`count(*)::int` })
+        .from(paymentOperations)
+        .where(and(eq(paymentOperations.status, "pending"), eq(paymentOperations.entityType, "expedition_booking"))),
+      db.select({ total: sql<number>`count(*)::int` }).from(expeditions),
+      db.select({ total: sql<number>`count(*)::int` }).from(organizations),
+      db.select({ total: sql<number>`count(*)::int` }).from(corporateReportExports),
+      db.select({ total: sql<number>`count(*)::int` }).from(users)
+    ]);
+
+  return {
+    reviewProjects: Number(reviewProjectsRows[0]?.total ?? 0),
+    pendingEvidence: Number(pendingEvidenceRows[0]?.total ?? 0),
+    paymentChecks: Number(donationCheckRows[0]?.total ?? 0) + Number(bookingCheckRows[0]?.total ?? 0),
+    expeditions: Number(expeditionRows[0]?.total ?? 0),
+    partners: Number(partnerRows[0]?.total ?? 0),
+    reports: Number(reportRows[0]?.total ?? 0),
+    users: Number(userRows[0]?.total ?? 0)
+  };
+}
+
+export async function getAdminCampaignCreateOptions() {
+  const organizationRows = await db
+    .select({
+      id: organizations.id,
+      name: organizations.name,
+      slug: organizations.slug,
+      type: organizations.type,
+      verification: organizations.verification
+    })
+    .from(organizations)
+    .orderBy(asc(organizations.name));
+
+  return { organizations: organizationRows };
+}
+
+export async function getAdminCampaignWorkspaceData(campaignId: string) {
+  const campaignRows = await db
+    .select({
+      id: campaigns.id,
+      organizationId: campaigns.organizationId,
+      title: campaigns.title,
+      slug: campaigns.slug,
+      summary: campaigns.summary,
+      story: campaigns.story,
+      category: campaigns.category,
+      region: campaigns.region,
+      imageUrl: campaigns.imageUrl,
+      status: campaigns.status,
+      raisedAmount: campaigns.raisedAmount,
+      goalAmount: campaigns.goalAmount,
+      currency: campaigns.currency,
+      donorCount: campaigns.donorCount,
+      impactUnit: campaigns.impactUnit,
+      impactTarget: campaigns.impactTarget,
+      impactUnitCost: campaigns.impactUnitCost,
+      publishedAt: campaigns.publishedAt,
+      endsAt: campaigns.endsAt,
+      partner: organizations.name
+    })
+    .from(campaigns)
+    .innerJoin(organizations, eq(campaigns.organizationId, organizations.id))
+    .where(eq(campaigns.id, campaignId))
+    .limit(1);
+
+  const campaign = campaignRows[0];
+  if (!campaign) {
+    return null;
+  }
+
+  const [
+    organizationRows,
+    donationCountRows,
+    sponsorshipCountRows,
+    portfolioCountRows,
+    expeditionCountRows,
+    mediaRows,
+    budgetRows,
+    timelineRows,
+    teamRows,
+    impactSiteRows
+  ] = await Promise.all([
+    db
+      .select({
+        id: organizations.id,
+        name: organizations.name,
+        slug: organizations.slug,
+        type: organizations.type,
+        verification: organizations.verification
+      })
+      .from(organizations)
+      .orderBy(asc(organizations.name)),
+    db.select({ total: sql<number>`count(*)::int` }).from(donations).where(eq(donations.campaignId, campaign.id)),
+    db.select({ total: sql<number>`count(*)::int` }).from(sponsoredEcosystems).where(eq(sponsoredEcosystems.campaignId, campaign.id)),
+    db.select({ total: sql<number>`count(*)::int` }).from(corporateProjectPortfolio).where(eq(corporateProjectPortfolio.campaignId, campaign.id)),
+    db.select({ total: sql<number>`count(*)::int` }).from(expeditions).where(eq(expeditions.relatedCampaignId, campaign.id)),
+    db
+      .select({
+        id: campaignMediaItems.id,
+        campaignId: campaignMediaItems.campaignId,
+        title: campaignMediaItems.title,
+        mediaType: campaignMediaItems.mediaType,
+        fileUrl: campaignMediaItems.fileUrl,
+        thumbnailUrl: campaignMediaItems.thumbnailUrl,
+        altText: campaignMediaItems.altText,
+        caption: campaignMediaItems.caption,
+        provenance: campaignMediaItems.provenance,
+        sortOrder: campaignMediaItems.sortOrder,
+        isFeatured: campaignMediaItems.isFeatured
+      })
+      .from(campaignMediaItems)
+      .where(eq(campaignMediaItems.campaignId, campaign.id))
+      .orderBy(asc(campaignMediaItems.sortOrder), asc(campaignMediaItems.title)),
+    db
+      .select({
+        id: campaignBudgetLineItems.id,
+        campaignId: campaignBudgetLineItems.campaignId,
+        category: campaignBudgetLineItems.category,
+        description: campaignBudgetLineItems.description,
+        amount: campaignBudgetLineItems.amount,
+        spentAmount: campaignBudgetLineItems.spentAmount,
+        sortOrder: campaignBudgetLineItems.sortOrder
+      })
+      .from(campaignBudgetLineItems)
+      .where(eq(campaignBudgetLineItems.campaignId, campaign.id))
+      .orderBy(asc(campaignBudgetLineItems.sortOrder), asc(campaignBudgetLineItems.category)),
+    db
+      .select({
+        id: campaignTimelinePhases.id,
+        campaignId: campaignTimelinePhases.campaignId,
+        title: campaignTimelinePhases.title,
+        description: campaignTimelinePhases.description,
+        status: campaignTimelinePhases.status,
+        startsAt: campaignTimelinePhases.startsAt,
+        endsAt: campaignTimelinePhases.endsAt,
+        deliverable: campaignTimelinePhases.deliverable,
+        evidenceNote: campaignTimelinePhases.evidenceNote,
+        sortOrder: campaignTimelinePhases.sortOrder
+      })
+      .from(campaignTimelinePhases)
+      .where(eq(campaignTimelinePhases.campaignId, campaign.id))
+      .orderBy(asc(campaignTimelinePhases.sortOrder), asc(campaignTimelinePhases.startsAt)),
+    db
+      .select({
+        id: organizationTeamMembers.id,
+        organizationId: organizationTeamMembers.organizationId,
+        name: organizationTeamMembers.name,
+        role: organizationTeamMembers.role,
+        bio: organizationTeamMembers.bio,
+        imageUrl: organizationTeamMembers.imageUrl,
+        profileUrl: organizationTeamMembers.profileUrl,
+        sortOrder: organizationTeamMembers.sortOrder,
+        isPublic: organizationTeamMembers.isPublic
+      })
+      .from(organizationTeamMembers)
+      .where(eq(organizationTeamMembers.organizationId, campaign.organizationId))
+      .orderBy(asc(organizationTeamMembers.sortOrder), asc(organizationTeamMembers.name)),
+    db
+      .select({
+        id: impactSites.id,
+        campaignId: impactSites.campaignId,
+        name: impactSites.name,
+        ecosystemType: impactSites.ecosystemType,
+        region: impactSites.region,
+        latitude: impactSites.latitude,
+        longitude: impactSites.longitude,
+        campaignTitle: campaigns.title,
+        campaignSlug: campaigns.slug,
+        metadata: impactSites.metadata
+      })
+      .from(impactSites)
+      .leftJoin(campaigns, eq(impactSites.campaignId, campaigns.id))
+      .where(eq(impactSites.campaignId, campaign.id))
+      .orderBy(asc(impactSites.name))
+  ]);
+
+  const contentCompleteness = campaignContentCompleteness({
+    media: mediaRows.length,
+    budget: budgetRows.length,
+    timeline: timelineRows.length,
+    team: teamRows.filter((member) => member.isPublic).length
+  });
+
+  return {
+    organizations: organizationRows,
+    campaign: {
+      ...campaign,
+      donationRecordCount: Number(donationCountRows[0]?.total ?? 0),
+      sponsorshipRecordCount: Number(sponsorshipCountRows[0]?.total ?? 0),
+      corporatePortfolioCount: Number(portfolioCountRows[0]?.total ?? 0),
+      relatedExpeditionCount: Number(expeditionCountRows[0]?.total ?? 0),
+      contentCompleteness
+    },
+    mediaItems: mediaRows,
+    budgetLineItems: budgetRows.map((item) => ({
+      ...item,
+      amount: toNumber(item.amount),
+      spentAmount: toNumber(item.spentAmount)
+    })),
+    timelinePhases: timelineRows,
+    teamMembers: teamRows,
+    impactSites: impactSiteRows.map((site) => ({
+      ...site,
+      latitude: toNumber(site.latitude),
+      longitude: toNumber(site.longitude),
+      progress: getMetadataNumber(site.metadata, "progress"),
+      evidenceCount: getMetadataNumber(site.metadata, "evidenceCount"),
+      latestSurvey: getMetadataString(site.metadata, "latestSurvey"),
+      verification: getMetadataString(site.metadata, "verification") ?? "basic"
+    }))
+  };
+}
+
+export async function getAdminPartnerWorkspaceData(partnerId: string) {
+  const partnerRows = await db
+    .select({
+      id: organizations.id,
+      name: organizations.name,
+      slug: organizations.slug,
+      type: organizations.type,
+      logoUrl: organizations.logoUrl,
+      websiteUrl: organizations.websiteUrl,
+      description: organizations.description,
+      verification: organizations.verification,
+      createdAt: organizations.createdAt
+    })
+    .from(organizations)
+    .where(eq(organizations.id, partnerId))
+    .limit(1);
+
+  const partner = partnerRows[0];
+  if (!partner) {
+    return null;
+  }
+
+  const [campaignCountRows, memberRows] = await Promise.all([
+    db.select({ total: sql<number>`count(*)::int` }).from(campaigns).where(eq(campaigns.organizationId, partner.id)),
+    db
+      .select({
+        id: organizationUsers.id,
+        organizationId: organizationUsers.organizationId,
+        userId: organizationUsers.userId,
+        role: organizationUsers.role,
+        status: organizationUsers.status,
+        createdAt: organizationUsers.createdAt,
+        updatedAt: organizationUsers.updatedAt,
+        email: users.email,
+        name: users.name,
+        displayName: profiles.displayName
+      })
+      .from(organizationUsers)
+      .innerJoin(users, eq(organizationUsers.userId, users.id))
+      .leftJoin(profiles, eq(profiles.userId, users.id))
+      .where(eq(organizationUsers.organizationId, partner.id))
+      .orderBy(asc(users.email))
+  ]);
+
+  return {
+    partner: {
+      ...partner,
+      campaignCount: Number(campaignCountRows[0]?.total ?? 0),
+      members: memberRows,
+      verificationLabel: verificationLabel(partner.verification)
+    }
+  };
+}
+
+export async function getAdminExpeditionCreateOptions() {
+  const campaignOptionRows = await db
+    .select({
+      id: campaigns.id,
+      title: campaigns.title,
+      slug: campaigns.slug,
+      status: campaigns.status,
+      organizationName: organizations.name
+    })
+    .from(campaigns)
+    .innerJoin(organizations, eq(campaigns.organizationId, organizations.id))
+    .orderBy(asc(campaigns.title));
+
+  return { campaignOptions: campaignOptionRows };
+}
+
+export async function getAdminExpeditionWorkspaceData(expeditionId: string) {
+  const expeditionRows = await db
+    .select({
+      id: expeditions.id,
+      title: expeditions.title,
+      slug: expeditions.slug,
+      region: expeditions.region,
+      durationDays: expeditions.durationDays,
+      basePrice: expeditions.basePrice,
+      currency: expeditions.currency,
+      summary: expeditions.summary,
+      imageUrl: expeditions.imageUrl,
+      metadata: expeditions.metadata,
+      relatedCampaignId: expeditions.relatedCampaignId,
+      relatedCampaignTitle: campaigns.title
+    })
+    .from(expeditions)
+    .leftJoin(campaigns, eq(expeditions.relatedCampaignId, campaigns.id))
+    .where(eq(expeditions.id, expeditionId))
+    .limit(1);
+
+  const expeditionRow = expeditionRows[0];
+  if (!expeditionRow) {
+    return null;
+  }
+
+  const [campaignOptionRows, departureRows, departureBookingCountRows, bookingRows, interestRows, reviewRows] = await Promise.all([
+    db
+      .select({
+        id: campaigns.id,
+        title: campaigns.title,
+        slug: campaigns.slug,
+        status: campaigns.status,
+        organizationName: organizations.name
+      })
+      .from(campaigns)
+      .innerJoin(organizations, eq(campaigns.organizationId, organizations.id))
+      .orderBy(asc(campaigns.title)),
+    db
+      .select({
+        id: expeditionDepartures.id,
+        startsAt: expeditionDepartures.startsAt,
+        endsAt: expeditionDepartures.endsAt,
+        capacity: expeditionDepartures.capacity,
+        seatsBooked: expeditionDepartures.seatsBooked,
+        status: expeditionDepartures.status,
+        metadata: expeditionDepartures.metadata
+      })
+      .from(expeditionDepartures)
+      .where(eq(expeditionDepartures.expeditionId, expeditionId))
+      .orderBy(asc(expeditionDepartures.startsAt)),
+    db
+      .select({
+        departureId: expeditionBookings.departureId,
+        total: sql<number>`count(*)::int`
+      })
+      .from(expeditionBookings)
+      .where(eq(expeditionBookings.expeditionId, expeditionId))
+      .groupBy(expeditionBookings.departureId),
+    db
+      .select({
+        id: expeditionBookings.id,
+        departureId: expeditionBookings.departureId,
+        bookingCode: expeditionBookings.bookingCode,
+        contactName: expeditionBookings.contactName,
+        contactEmail: expeditionBookings.contactEmail,
+        participantsCount: expeditionBookings.participantsCount,
+        status: expeditionBookings.status,
+        paymentStatus: expeditionBookings.paymentStatus,
+        totalAmount: expeditionBookings.totalAmount,
+        currency: expeditionBookings.currency,
+        bookedAt: expeditionBookings.bookedAt,
+        startsAt: expeditionDepartures.startsAt
+      })
+      .from(expeditionBookings)
+      .innerJoin(expeditionDepartures, eq(expeditionBookings.departureId, expeditionDepartures.id))
+      .where(eq(expeditionBookings.expeditionId, expeditionId))
+      .orderBy(desc(expeditionBookings.bookedAt))
+      .limit(500),
+    db
+      .select({
+        id: expeditionInterestRequests.id,
+        departureId: expeditionInterestRequests.departureId,
+        requestCode: expeditionInterestRequests.requestCode,
+        requestType: expeditionInterestRequests.requestType,
+        status: expeditionInterestRequests.status,
+        contactName: expeditionInterestRequests.contactName,
+        contactEmail: expeditionInterestRequests.contactEmail,
+        participantsCount: expeditionInterestRequests.participantsCount,
+        preferredStartAt: expeditionInterestRequests.preferredStartAt,
+        message: expeditionInterestRequests.message,
+        createdAt: expeditionInterestRequests.createdAt,
+        processedAt: expeditionInterestRequests.processedAt,
+        processedByEmail: users.email
+      })
+      .from(expeditionInterestRequests)
+      .leftJoin(users, eq(expeditionInterestRequests.processedByUserId, users.id))
+      .where(eq(expeditionInterestRequests.expeditionId, expeditionId))
+      .orderBy(desc(expeditionInterestRequests.createdAt))
+      .limit(500),
+    db
+      .select({
+        id: expeditionReviews.id,
+        bookingId: expeditionReviews.bookingId,
+        rating: expeditionReviews.rating,
+        title: expeditionReviews.title,
+        body: expeditionReviews.body,
+        status: expeditionReviews.status,
+        createdAt: expeditionReviews.createdAt,
+        updatedAt: expeditionReviews.updatedAt,
+        bookingCode: expeditionBookings.bookingCode,
+        bookingStatus: expeditionBookings.status,
+        contactName: expeditionBookings.contactName,
+        contactEmail: expeditionBookings.contactEmail,
+        userEmail: users.email,
+        userName: users.name,
+        reviewerDisplayName: profiles.displayName
+      })
+      .from(expeditionReviews)
+      .innerJoin(expeditionBookings, eq(expeditionReviews.bookingId, expeditionBookings.id))
+      .leftJoin(users, eq(expeditionReviews.userId, users.id))
+      .leftJoin(profiles, eq(profiles.userId, users.id))
+      .where(eq(expeditionReviews.expeditionId, expeditionId))
+      .orderBy(desc(expeditionReviews.updatedAt))
+      .limit(250)
+  ]);
+
+  const departureBookingCounts = new Map(departureBookingCountRows.map((row) => [row.departureId, Number(row.total)]));
+  const now = new Date();
+  const basePrice = toNumber(expeditionRow.basePrice);
+  const baseExpedition = {
+    ...expeditionRow,
+    basePrice,
+    bookingCount: departureBookingCountRows.reduce((total, row) => total + Number(row.total), 0),
+    departures: departureRows.map((row) => {
+      const minParticipants = getMetadataNumber(row.metadata, "minParticipants", 6);
+      const availability = expeditionDepartureAvailability({
+        status: row.status,
+        capacity: row.capacity,
+        seatsBooked: row.seatsBooked,
+        minParticipants
+      });
+
+      return {
+        id: row.id,
+        startsAt: row.startsAt,
+        endsAt: row.endsAt,
+        capacity: row.capacity,
+        seatsBooked: row.seatsBooked,
+        availableSeats: availability.availableSeats,
+        status: row.status,
+        bookingCount: departureBookingCounts.get(row.id) ?? 0,
+        meetingPoint: getMetadataString(row.metadata, "meetingPoint"),
+        guide: getMetadataString(row.metadata, "guide"),
+        minParticipants,
+        availabilityCode: availability.code,
+        availabilityLabel: availability.label,
+        availabilityMessage: availability.message,
+        weatherAdvisory: getMetadataString(row.metadata, "weatherAdvisory")
+      };
+    }),
+    bookings: bookingRows.map((row) => ({
+      id: row.id,
+      departureId: row.departureId,
+      bookingCode: row.bookingCode,
+      contactName: row.contactName,
+      contactEmail: row.contactEmail,
+      participantsCount: row.participantsCount,
+      status: row.status,
+      paymentStatus: row.paymentStatus,
+      totalAmount: toNumber(row.totalAmount),
+      currency: row.currency,
+      bookedAt: row.bookedAt,
+      startsAt: row.startsAt,
+      canCancel: canCancelExpeditionBooking({ bookingStatus: row.status, paymentStatus: row.paymentStatus, startsAt: row.startsAt }, now)
+    })),
+    interestRequests: interestRows.map((row) => ({
+      id: row.id,
+      departureId: row.departureId,
+      requestCode: row.requestCode,
+      requestType: normalizeExpeditionInterestRequestType(row.requestType),
+      status: normalizeExpeditionInterestRequestStatus(row.status),
+      contactName: row.contactName,
+      contactEmail: row.contactEmail,
+      participantsCount: row.participantsCount,
+      preferredStartAt: row.preferredStartAt,
+      message: row.message,
+      createdAt: row.createdAt,
+      processedAt: row.processedAt,
+      processedByEmail: row.processedByEmail
+    })),
+    reviews: reviewRows.map((row) => ({
+      id: row.id,
+      bookingId: row.bookingId,
+      bookingCode: row.bookingCode,
+      bookingStatus: row.bookingStatus,
+      reviewerName: row.reviewerDisplayName ?? row.userName ?? row.contactName,
+      reviewerEmail: row.userEmail ?? row.contactEmail,
+      rating: row.rating,
+      title: row.title,
+      body: row.body,
+      status: normalizeExpeditionReviewStatus(row.status),
+      createdAt: row.createdAt,
+      updatedAt: row.updatedAt
+    }))
+  };
+
+  const maxCapacity = baseExpedition.departures.reduce((capacity, departure) => Math.max(capacity, departure.capacity), 0);
+  const detailMetadata = normalizeExpeditionDetailMetadata(
+    expeditionRow.metadata,
+    buildDefaultExpeditionDetailMetadata({
+      title: expeditionRow.title,
+      region: expeditionRow.region,
+      durationLabel: `${expeditionRow.durationDays} days / ${Math.max(0, expeditionRow.durationDays - 1)} nights`,
+      price: basePrice,
+      currency: expeditionRow.currency,
+      maxCapacity,
+      galleryImages: [
+        {
+          src: expeditionRow.imageUrl ?? "https://images.unsplash.com/photo-1582967788606-a171c1080cb0?auto=format&fit=crop&w=1400&q=80",
+          label: "Destination",
+          caption: `${expeditionRow.region} expedition landscape`,
+          provenance: "Partner-managed public detail image"
+        }
+      ],
+      tripUpdates: [
+        {
+          title: "Seasonal weather advisory",
+          date: "2026-06-01T00:00:00.000Z",
+          body: "Boat schedules may shift when sea conditions require safer departure windows."
+        }
+      ]
+    })
+  );
+
+  return {
+    campaignOptions: campaignOptionRows,
+    expedition: {
+      ...baseExpedition,
+      metadataJson: expeditionMetadataEditorJson(detailMetadata),
+      detailMetadata,
+      marketplaceMetadata: normalizeExpeditionMarketplaceMetadata(
+        expeditionRow.metadata,
+        buildDefaultExpeditionMarketplaceMetadata({
+          title: expeditionRow.title,
+          region: expeditionRow.region,
+          summary: expeditionRow.summary,
+          durationDays: expeditionRow.durationDays
+        })
+      )
+    }
+  };
+}
+
+export async function getAdminEvidenceBoardData() {
+  const [campaignRows, evidenceRows, mediaCountRows, budgetCountRows, timelineCountRows, teamCountRows] = await Promise.all([
+    db
+      .select({
+        id: campaigns.id,
+        organizationId: campaigns.organizationId,
+        title: campaigns.title,
+        slug: campaigns.slug,
+        category: campaigns.category,
+        region: campaigns.region,
+        status: campaigns.status,
+        raisedAmount: campaigns.raisedAmount,
+        goalAmount: campaigns.goalAmount,
+        partner: organizations.name
+      })
+      .from(campaigns)
+      .innerJoin(organizations, eq(campaigns.organizationId, organizations.id))
+      .orderBy(desc(campaigns.updatedAt)),
+    db
+      .select({
+        id: projectEvidence.id,
+        campaignId: projectEvidence.campaignId,
+        title: projectEvidence.title,
+        evidenceCode: projectEvidence.evidenceCode,
+        verificationStatus: projectEvidence.verificationStatus,
+        fileUrl: projectEvidence.fileUrl,
+        evidenceType: projectEvidence.evidenceType,
+        metadata: projectEvidence.metadata,
+        rejectionReason: projectEvidence.rejectionReason,
+        assignedReviewerUserId: projectEvidence.assignedReviewerUserId,
+        clarificationNote: projectEvidence.clarificationNote,
+        campaignSlug: campaigns.slug
+      })
+      .from(projectEvidence)
+      .innerJoin(campaigns, eq(projectEvidence.campaignId, campaigns.id))
+      .orderBy(desc(projectEvidence.createdAt)),
+    db
+      .select({ campaignId: campaignMediaItems.campaignId, total: sql<number>`count(*)::int` })
+      .from(campaignMediaItems)
+      .groupBy(campaignMediaItems.campaignId),
+    db
+      .select({ campaignId: campaignBudgetLineItems.campaignId, total: sql<number>`count(*)::int` })
+      .from(campaignBudgetLineItems)
+      .groupBy(campaignBudgetLineItems.campaignId),
+    db
+      .select({ campaignId: campaignTimelinePhases.campaignId, total: sql<number>`count(*)::int` })
+      .from(campaignTimelinePhases)
+      .groupBy(campaignTimelinePhases.campaignId),
+    db
+      .select({ organizationId: organizationTeamMembers.organizationId, total: sql<number>`count(*)::int` })
+      .from(organizationTeamMembers)
+      .where(eq(organizationTeamMembers.isPublic, true))
+      .groupBy(organizationTeamMembers.organizationId)
+  ]);
+
+  const reviewEventsById = await getEvidenceReviewEventsByEvidenceIds(evidenceRows.map((item) => item.id));
+  const mediaCounts = new Map(mediaCountRows.map((row) => [row.campaignId, Number(row.total)]));
+  const budgetCounts = new Map(budgetCountRows.map((row) => [row.campaignId, Number(row.total)]));
+  const timelineCounts = new Map(timelineCountRows.map((row) => [row.campaignId, Number(row.total)]));
+  const teamCounts = new Map(teamCountRows.map((row) => [row.organizationId, Number(row.total)]));
+
+  return {
+    campaigns: campaignRows.map((campaign) => ({
+      ...campaign,
+      contentCompleteness: campaignContentCompleteness({
+        media: mediaCounts.get(campaign.id) ?? 0,
+        budget: budgetCounts.get(campaign.id) ?? 0,
+        timeline: timelineCounts.get(campaign.id) ?? 0,
+        team: teamCounts.get(campaign.organizationId) ?? 0
+      })
+    })),
+    evidence: evidenceRows.map((item) => {
+      const reviewEvents = reviewEventsById.get(item.id) ?? [];
+      const stage = evidenceStage(item.metadata, item.evidenceType);
+      const survivalRate = getMetadataNumberOrString(item.metadata, "survivalRate");
+      const sortedWaste = getMetadataNumberOrString(item.metadata, "sortedWasteKg");
+      const seedlingsReady = getMetadataNumberOrString(item.metadata, "seedlingsReady");
+      const explicitMetricValue = getMetadataNumberOrString(item.metadata, "metricValue");
+      const metricLabel =
+        getMetadataString(item.metadata, "metricLabel") ??
+        (survivalRate ? "Survival rate" : sortedWaste ? "Waste sorted" : seedlingsReady ? "Seedlings ready" : null);
+      const derivedMetricValue = survivalRate ? `${survivalRate}%` : sortedWaste ? `${sortedWaste} kg` : seedlingsReady;
+
+      return {
+        ...item,
+        stageLabel: evidenceStageLabel(stage),
+        statusLabel: evidenceStatusLabel(item.verificationStatus),
+        latestReviewNote: latestEvidenceReviewNote(reviewEvents, item.clarificationNote ?? item.rejectionReason),
+        reviewEvents,
+        metricLabel,
+        metricValue: explicitMetricValue ?? derivedMetricValue,
+        sourceHref: evidenceSourceHref(item.campaignSlug, item.evidenceCode) ?? item.fileUrl
+      };
+    })
   };
 }

@@ -3,7 +3,7 @@ import { ArrowUpRight, BarChart3, Building2, FileCheck2, Handshake, Megaphone, R
 import type { LucideIcon } from "lucide-react";
 
 import { requireRole } from "@/lib/auth";
-import { getAdminOperationsData, getAdminPortalData } from "@/lib/queries";
+import { getAdminDashboardData } from "@/lib/queries";
 
 export const metadata = {
   title: "Admin Portal"
@@ -76,13 +76,12 @@ function TaskLink({ task, priority = false }: { task: AdminTask; priority?: bool
 export default async function AdminPortalPage({ searchParams }: AdminPortalPageProps) {
   const params = await searchParams;
   await requireRole(["admin"], "/admin");
-  const [data, operations] = await Promise.all([getAdminPortalData(), getAdminOperationsData()]);
+  const dashboard = await getAdminDashboardData();
 
-  const reviewProjects = data.campaigns.filter((campaign) => campaign.status === "review").length;
-  const pendingEvidence = data.evidence.filter((item) => item.verificationStatus !== "verified").length;
-  const paymentChecks =
-    data.donations.filter((donation) => donation.status !== "paid" || donation.pendingOperation).length + data.bookingPaymentOperations.length;
-  const recentUsers = operations.users.length;
+  const reviewProjects = dashboard.reviewProjects;
+  const pendingEvidence = dashboard.pendingEvidence;
+  const paymentChecks = dashboard.paymentChecks;
+  const recentUsers = dashboard.users;
 
   const priorityTasks: AdminTask[] = [
     {
@@ -112,11 +111,11 @@ export default async function AdminPortalPage({ searchParams }: AdminPortalPageP
   ];
 
   const managementTasks: AdminTask[] = [
-    { title: "Expeditions", description: "Manage trip content, schedules, bookings, and moderation.", href: "/admin/expeditions", icon: ShipWheel, count: operations.expeditionCatalog.length, countLabel: "records" },
+    { title: "Expeditions", description: "Manage trip content, schedules, bookings, and moderation.", href: "/admin/expeditions", icon: ShipWheel, count: dashboard.expeditions, countLabel: "records" },
     { title: "Corporate", description: "Review accounts, programs, portfolio links, and lifecycle status.", href: "/admin/corporate", icon: Building2 },
-    { title: "Partners", description: "Maintain partner organizations, verification levels, and ownership.", href: "/admin/partners", icon: Handshake, count: operations.partners.length, countLabel: "partners" },
-    { title: "Reports", description: "Inspect exports, report artifacts, and scheduled admin outputs.", href: "/admin/reports", icon: BarChart3, count: operations.reports.length, countLabel: "exports" },
-    { title: "Users", description: "Create accounts, assign roles, and resolve access gaps.", href: "/admin/users", icon: Users, count: recentUsers, countLabel: "recent" },
+    { title: "Partners", description: "Maintain partner organizations, verification levels, and ownership.", href: "/admin/partners", icon: Handshake, count: dashboard.partners, countLabel: "partners" },
+    { title: "Reports", description: "Inspect exports, report artifacts, and scheduled admin outputs.", href: "/admin/reports", icon: BarChart3, count: dashboard.reports, countLabel: "exports" },
+    { title: "Users", description: "Create accounts, assign roles, and resolve access gaps.", href: "/admin/users", icon: Users, count: recentUsers, countLabel: "users" },
     { title: "Audit", description: "Search operational events and account activity.", href: "/admin/audit", icon: ScrollText }
   ];
 

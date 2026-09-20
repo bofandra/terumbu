@@ -21,7 +21,7 @@ import { ProgressMeter } from "@/components/ui/progress-meter";
 import { campaignCategories, campaignCurrencies, campaignImpactUnits, campaignStatuses } from "@/lib/campaign-content";
 import { requireRole } from "@/lib/auth";
 import { deleteAdminCampaignAction, updateAdminCampaignAction, updateCampaignStatusAction } from "@/lib/portal-actions";
-import { getAdminOperationsData, getAdminPortalData } from "@/lib/queries";
+import { getAdminCampaignWorkspaceData } from "@/lib/queries";
 import { formatCurrency } from "@/lib/utils";
 
 export const metadata = {
@@ -103,7 +103,7 @@ function OrganizationSelect({
   organizations,
   defaultValue
 }: {
-  organizations: Awaited<ReturnType<typeof getAdminPortalData>>["organizations"];
+  organizations: NonNullable<Awaited<ReturnType<typeof getAdminCampaignWorkspaceData>>>["organizations"];
   defaultValue?: string;
 }) {
   return (
@@ -133,12 +133,13 @@ export default async function AdminCampaignDetailPage({ params, searchParams }: 
   const { campaignId } = await params;
   await requireRole(["admin"], `/admin/campaigns/${campaignId}`);
   const query = await searchParams;
-  const [data, operations] = await Promise.all([getAdminPortalData(), getAdminOperationsData()]);
-  const campaign = data.campaigns.find((item) => item.id === campaignId);
+  const data = await getAdminCampaignWorkspaceData(campaignId);
 
-  if (!campaign) {
+  if (!data) {
     notFound();
   }
+
+  const campaign = data.campaign;
 
   const returnTo = `/admin/campaigns/${campaign.id}`;
   const progress = fundingProgress(campaign.raisedAmount, campaign.goalAmount);
@@ -149,11 +150,11 @@ export default async function AdminCampaignDetailPage({ params, searchParams }: 
     campaign.relatedExpeditionCount > 0;
   const savedMessage = query?.saved ? statusMessages[query.saved] : null;
   const errorMessage = query?.error ? errorMessages[query.error] : null;
-  const campaignMedia = data.campaignMediaItems.filter((item) => item.campaignId === campaign.id);
-  const campaignBudget = data.campaignBudgetLineItems.filter((item) => item.campaignId === campaign.id);
-  const campaignTimeline = data.campaignTimelinePhases.filter((item) => item.campaignId === campaign.id);
-  const campaignTeam = data.organizationTeamMembers.filter((item) => item.organizationId === campaign.organizationId);
-  const campaignImpactSites = operations.impactSites.filter((site) => site.campaignId === campaign.id);
+  const campaignMedia = data.mediaItems;
+  const campaignBudget = data.budgetLineItems;
+  const campaignTimeline = data.timelinePhases;
+  const campaignTeam = data.teamMembers;
+  const campaignImpactSites = data.impactSites;
 
   return (
     <div className="space-y-6">

@@ -24,7 +24,7 @@ import {
   updateOrganizationAction,
   updateOrganizationUserAction
 } from "@/lib/portal-actions";
-import { getAdminOperationsData } from "@/lib/queries";
+import { getAdminPartnerWorkspaceData } from "@/lib/queries";
 
 export const metadata = {
   title: "Manage Admin Partner"
@@ -92,12 +92,13 @@ export default async function AdminPartnerDetailPage({ params, searchParams }: A
   const { partnerId } = await params;
   await requireRole(["admin"], `/admin/partners/${partnerId}`);
   const query = await searchParams;
-  const data = await getAdminOperationsData();
-  const partner = data.partners.find((item) => item.id === partnerId);
+  const data = await getAdminPartnerWorkspaceData(partnerId);
 
-  if (!partner) {
+  if (!data) {
     notFound();
   }
+
+  const partner = data.partner;
 
   const returnTo = `/admin/partners/${partner.id}`;
   const activeUsers = partner.members.filter((member) => member.status === "active").length;

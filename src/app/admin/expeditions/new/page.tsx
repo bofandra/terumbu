@@ -11,7 +11,7 @@ import { adminFormFieldNames } from "@/lib/admin-form-state";
 import { requireRole } from "@/lib/auth";
 import type { ExpeditionMarketplaceMetadata } from "@/lib/expedition-marketplace";
 import { createExpeditionAction } from "@/lib/portal-actions";
-import { getAdminOperationsData } from "@/lib/queries";
+import { getAdminExpeditionCreateOptions } from "@/lib/queries";
 import { MAX_DATABASE_IMAGE_BYTES } from "@/lib/storage";
 
 export const metadata = {
@@ -107,7 +107,7 @@ function RelatedCampaignSelect({
   campaigns,
   invalid
 }: {
-  campaigns: Awaited<ReturnType<typeof getAdminOperationsData>>["campaignOptions"];
+  campaigns: Awaited<ReturnType<typeof getAdminExpeditionCreateOptions>>["campaignOptions"];
   invalid: boolean;
 }) {
   return (
@@ -125,7 +125,7 @@ function RelatedCampaignSelect({
 export default async function AdminExpeditionNewPage({ searchParams }: AdminExpeditionNewPageProps) {
   await requireRole(["admin"], "/admin/expeditions/new");
   const params = await searchParams;
-  const data = await getAdminOperationsData();
+  const data = await getAdminExpeditionCreateOptions();
   const errorCode = first(params?.error);
   const errorMessage = errorCode ? errorMessages[errorCode] : null;
   const invalidFieldNames = adminFormFieldNames(params?.field);

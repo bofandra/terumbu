@@ -11,7 +11,7 @@ import { MetricValue } from "@/components/ui/metric-value";
 import { requireRole } from "@/lib/auth";
 import { evidenceStatusLabel, evidenceVerificationStatuses } from "@/lib/evidence-review-workflow";
 import { verifyEvidenceAction } from "@/lib/portal-actions";
-import { getAdminEvidenceReviewPage, getAdminPortalData, type AdminEvidenceReviewFilters } from "@/lib/queries";
+import { getAdminEvidenceBoardData, getAdminEvidenceReviewPage, type AdminEvidenceReviewFilters } from "@/lib/queries";
 import { cn, formatCurrency } from "@/lib/utils";
 
 export const metadata = {
@@ -143,7 +143,7 @@ export default async function AdminCampaignEvidencePage({ searchParams }: AdminC
     : null;
 
   if (view === "board") {
-    const data = await getAdminPortalData();
+    const data = await getAdminEvidenceBoardData();
     const pendingCount = data.evidence.filter((item) => item.verificationStatus !== "verified").length;
     const clarificationCount = data.evidence.filter((item) => item.verificationStatus === "needs_clarification").length;
     const submittedCount = data.evidence.filter((item) => item.verificationStatus === "submitted").length;
@@ -167,7 +167,7 @@ export default async function AdminCampaignEvidencePage({ searchParams }: AdminC
         code: campaign.slug,
         href: `/campaigns/${campaign.slug}`,
         tag: labelize(campaign.status),
-        chips: [campaign.category, `${campaign.contentCompleteness}% content`],
+        chips: [campaign.category, `${campaign.contentCompleteness.score}% content`],
         details: [
           { label: "Raised", value: formatCurrency(Number(campaign.raisedAmount)) },
           { label: "Goal", value: formatCurrency(Number(campaign.goalAmount)) },

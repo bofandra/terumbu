@@ -30,7 +30,7 @@ import {
   updateExpeditionAction,
   updateExpeditionDepartureAction
 } from "@/lib/portal-actions";
-import { getAdminOperationsData } from "@/lib/queries";
+import { getAdminExpeditionWorkspaceData } from "@/lib/queries";
 import { formatCurrency } from "@/lib/utils";
 
 export const metadata = {
@@ -135,7 +135,7 @@ function RelatedCampaignSelect({
   campaigns,
   defaultValue = ""
 }: {
-  campaigns: Awaited<ReturnType<typeof getAdminOperationsData>>["campaignOptions"];
+  campaigns: NonNullable<Awaited<ReturnType<typeof getAdminExpeditionWorkspaceData>>>["campaignOptions"];
   defaultValue?: string | null;
 }) {
   return (
@@ -154,12 +154,13 @@ export default async function AdminExpeditionDetailPage({ params, searchParams }
   const { expeditionId } = await params;
   await requireRole(["admin"], `/admin/expeditions/${expeditionId}`);
   const query = await searchParams;
-  const data = await getAdminOperationsData();
-  const expedition = data.expeditionCatalog.find((item) => item.id === expeditionId);
+  const data = await getAdminExpeditionWorkspaceData(expeditionId);
 
-  if (!expedition) {
+  if (!data) {
     notFound();
   }
+
+  const expedition = data.expedition;
 
   const returnTo = `/admin/expeditions/${expedition.id}`;
   const openDepartures = expedition.departures.filter((departure) => departure.status === "open").length;
