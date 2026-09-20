@@ -112,6 +112,15 @@ function formText(formData: FormData, key: string) {
   return String(formData.get(key) ?? "").trim();
 }
 
+function adminPaymentReturnPath(formData: FormData) {
+  const path = safeRedirectPath(formData.get("next"), "/admin/payments");
+  return path === "/admin/payments" || path.startsWith("/admin/payments?") ? path : "/admin/payments";
+}
+
+function redirectAdminPayment(formData: FormData, outcome: "saved" | "error", code: string): never {
+  redirect(withAdminFormOutcome(adminPaymentReturnPath(formData), outcome, code));
+}
+
 function formEmail(formData: FormData, key: string) {
   return formText(formData, key).toLowerCase();
 }
@@ -4334,7 +4343,7 @@ export async function reconcileDonationAction(formData: FormData) {
     .limit(1);
 
   if (!donation) {
-    redirect("/admin?error=donation");
+    redirectAdminPayment(formData, "error", "donation");
   }
 
   let operationMetadata: Record<string, unknown> = {};
@@ -4352,7 +4361,7 @@ export async function reconcileDonationAction(formData: FormData) {
       .limit(1);
 
     if (!operation || operation.status !== "pending" || operation.donationId !== donation.id) {
-      redirect("/admin?error=operation");
+      redirectAdminPayment(formData, "error", "operation");
     }
 
     operationMetadata = metadataObject(operation.metadata);
@@ -4396,7 +4405,7 @@ export async function reconcileDonationAction(formData: FormData) {
   });
 
   if (!result) {
-    redirect("/admin?error=donation");
+    redirectAdminPayment(formData, "error", "donation");
   }
 
   if (result.receiptCreated) {
@@ -4430,7 +4439,7 @@ export async function reconcileDonationAction(formData: FormData) {
     }
   });
 
-  redirect("/admin?saved=donation");
+  redirectAdminPayment(formData, "saved", "donation");
 }
 
 export async function runMonthlyBillingAction(formData: FormData) {
@@ -4483,7 +4492,7 @@ export async function settlePaymentOperationAction(formData: FormData) {
     .limit(1);
 
   if (!operation || operation.status !== "pending" || operation.operationType !== "refund") {
-    redirect("/admin?error=operation");
+    redirectAdminPayment(formData, "error", "operation");
   }
 
   if (decision === "reject") {
@@ -4553,11 +4562,15 @@ export async function settlePaymentOperationAction(formData: FormData) {
       }
     });
 
-    redirect("/admin?saved=operation-rejected");
+    redirectAdminPayment(formData, "saved", "operation-rejected");
   }
 
   if (decision !== "approve") {
-    redirect("/admin?error=operation");
+    redirectAdminPayment(formData, "error", "operation");
+  }
+
+  if (formText(formData, "confirmPayment") !== "approve") {
+    redirectAdminPayment(formData, "error", "payment-confirmation");
   }
 
   if (operation.entityType === "donation" && operation.donationId) {
@@ -4576,7 +4589,7 @@ export async function settlePaymentOperationAction(formData: FormData) {
       .limit(1);
 
     if (!donation || donation.status !== "paid") {
-      redirect("/admin?error=operation");
+      redirectAdminPayment(formData, "error", "operation");
     }
 
     const providerResult = demoGatewaySettleRefund({
@@ -4651,7 +4664,7 @@ export async function settlePaymentOperationAction(formData: FormData) {
       }
     });
 
-    redirect("/admin?saved=refund-processed");
+    redirectAdminPayment(formData, "saved", "refund-processed");
   }
 
   if (operation.entityType === "expedition_booking" && operation.bookingId) {
@@ -4671,7 +4684,7 @@ export async function settlePaymentOperationAction(formData: FormData) {
       .limit(1);
 
     if (!booking || booking.paymentStatus !== "paid") {
-      redirect("/admin?error=operation");
+      redirectAdminPayment(formData, "error", "operation");
     }
 
     const providerResult = demoGatewaySettleRefund({
@@ -4745,10 +4758,10 @@ export async function settlePaymentOperationAction(formData: FormData) {
       }
     });
 
-    redirect("/admin?saved=refund-processed");
+    redirectAdminPayment(formData, "saved", "refund-processed");
   }
 
-  redirect("/admin?error=operation");
+  redirectAdminPayment(formData, "error", "operation");
 }
 
 export async function reconcileExpeditionBookingAction(formData: FormData) {
@@ -4769,7 +4782,7 @@ export async function reconcileExpeditionBookingAction(formData: FormData) {
     .limit(1);
 
   if (!booking) {
-    redirect("/admin?error=booking");
+    redirectAdminPayment(formData, "error", "booking");
   }
 
   const result = await db.transaction(async (tx) => {
@@ -4800,7 +4813,7 @@ export async function reconcileExpeditionBookingAction(formData: FormData) {
   });
 
   if (!result) {
-    redirect("/admin?error=booking");
+    redirectAdminPayment(formData, "error", "booking");
   }
 
   await db.insert(adminAuditLogs).values({
@@ -4815,5 +4828,5 @@ export async function reconcileExpeditionBookingAction(formData: FormData) {
     }
   });
 
-  redirect("/admin?saved=booking");
+  redirectAdminPayment(formData, "saved", "booking");
 }

@@ -1,6 +1,7 @@
-import { and, asc, desc, eq, inArray, isNull, sql } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, isNull, or, sql } from "drizzle-orm";
 
 import { db } from "@/db/client";
+import { adminListOffset, adminPaginationMeta, parseAdminListQuery } from "@/lib/admin-list-query";
 import {
   communityChallengeParticipations,
   communityChallengeProgress,
@@ -1186,5 +1187,363 @@ export async function getAdminCommunityData() {
       ...report,
       reporterName: communityAuthorName(report)
     }))
+  };
+}
+
+export type AdminCommunityFilters = {
+  reportQ?: string | string[];
+  reportPage?: string | string[];
+  reportPageSize?: string | string[];
+  reportStatus?: string | string[];
+  postQ?: string | string[];
+  postPage?: string | string[];
+  postPageSize?: string | string[];
+  postStatus?: string | string[];
+  postVisibility?: string | string[];
+  eventQ?: string | string[];
+  eventPage?: string | string[];
+  eventPageSize?: string | string[];
+  eventStatus?: string | string[];
+  eventVisibility?: string | string[];
+  challengeQ?: string | string[];
+  challengePage?: string | string[];
+  challengePageSize?: string | string[];
+  challengeStatus?: string | string[];
+  challengeVisibility?: string | string[];
+  chapterQ?: string | string[];
+  chapterPage?: string | string[];
+  chapterPageSize?: string | string[];
+  chapterStatus?: string | string[];
+};
+
+function firstAdminCommunityValue(value: string | string[] | undefined) {
+  return Array.isArray(value) ? value[0] : value;
+}
+
+function cleanAdminCommunityFilter(value: string | string[] | undefined, maxLength = 80) {
+  return String(firstAdminCommunityValue(value) ?? "").trim().slice(0, maxLength);
+}
+
+function adminCommunityVisibilityWhere(table: typeof communityPosts | typeof communityEvents | typeof communityChallenges, visibility: string) {
+  if (visibility === "hidden") {
+    return sql`${table.hiddenAt} is not null and ${table.deletedAt} is null`;
+  }
+  if (visibility === "deleted") {
+    return sql`${table.deletedAt} is not null`;
+  }
+  if (visibility === "active") {
+    return and(isNull(table.hiddenAt), isNull(table.deletedAt));
+  }
+  return sql`true`;
+}
+
+export async function getAdminCommunityPage(params: AdminCommunityFilters = {}) {
+  const reportQuery = parseAdminListQuery({ q: params.reportQ, page: params.reportPage, pageSize: params.reportPageSize }, { defaultPageSize: 20, maxPageSize: 100 });
+  const postQuery = parseAdminListQuery({ q: params.postQ, page: params.postPage, pageSize: params.postPageSize }, { defaultPageSize: 20, maxPageSize: 100 });
+  const eventQuery = parseAdminListQuery({ q: params.eventQ, page: params.eventPage, pageSize: params.eventPageSize }, { defaultPageSize: 20, maxPageSize: 100 });
+  const challengeQuery = parseAdminListQuery({ q: params.challengeQ, page: params.challengePage, pageSize: params.challengePageSize }, { defaultPageSize: 20, maxPageSize: 100 });
+  const chapterQuery = parseAdminListQuery({ q: params.chapterQ, page: params.chapterPage, pageSize: params.chapterPageSize }, { defaultPageSize: 20, maxPageSize: 100 });
+  const reportStatus = cleanAdminCommunityFilter(params.reportStatus) || "all";
+  const postStatus = cleanAdminCommunityFilter(params.postStatus) || "all";
+  const eventStatus = cleanAdminCommunityFilter(params.eventStatus) || "all";
+  const challengeStatus = cleanAdminCommunityFilter(params.challengeStatus) || "all";
+  const chapterStatus = cleanAdminCommunityFilter(params.chapterStatus) || "all";
+  const postVisibility = ["active", "hidden", "deleted"].includes(cleanAdminCommunityFilter(params.postVisibility)) ? cleanAdminCommunityFilter(params.postVisibility) : "all";
+  const eventVisibility = ["active", "hidden", "deleted"].includes(cleanAdminCommunityFilter(params.eventVisibility)) ? cleanAdminCommunityFilter(params.eventVisibility) : "all";
+  const challengeVisibility = ["active", "hidden", "deleted"].includes(cleanAdminCommunityFilter(params.challengeVisibility)) ? cleanAdminCommunityFilter(params.challengeVisibility) : "all";
+
+  const reportConditions = [];
+  if (reportQuery.q) {
+    const pattern = `%${reportQuery.q.toLowerCase()}%`;
+    reportConditions.push(or(
+      sql`lower(${communityReports.reason}) like ${pattern}`,
+      sql`lower(coalesce(${communityReports.detail}, '')) like ${pattern}`,
+      sql`lower(${communityReports.targetType}) like ${pattern}`,
+      sql`lower(coalesce(${profiles.displayName}, ${users.name}, ${users.email})) like ${pattern}`
+    ));
+  }
+  if (reportStatus !== "all") reportConditions.push(eq(communityReports.status, reportStatus));
+  const reportWhere = reportConditions.length ? and(...reportConditions) : sql`true`;
+
+  const postConditions = [adminCommunityVisibilityWhere(communityPosts, postVisibility)];
+  if (postQuery.q) {
+    const pattern = `%${postQuery.q.toLowerCase()}%`;
+    postConditions.push(or(
+      sql`lower(${communityPosts.title}) like ${pattern}`,
+      sql`lower(${communityPosts.slug}) like ${pattern}`,
+      sql`lower(coalesce(${profiles.displayName}, ${users.name}, ${users.email})) like ${pattern}`
+    )!);
+  }
+  if (postStatus !== "all") postConditions.push(eq(communityPosts.status, postStatus));
+  const postWhere = and(...postConditions);
+
+  const eventConditions = [adminCommunityVisibilityWhere(communityEvents, eventVisibility)];
+  if (eventQuery.q) {
+    const pattern = `%${eventQuery.q.toLowerCase()}%`;
+    eventConditions.push(or(
+      sql`lower(${communityEvents.title}) like ${pattern}`,
+      sql`lower(${communityEvents.slug}) like ${pattern}`,
+      sql`lower(${communityEvents.location}) like ${pattern}`,
+      sql`lower(coalesce(${profiles.displayName}, ${users.name}, ${users.email})) like ${pattern}`
+    )!);
+  }
+  if (eventStatus !== "all") eventConditions.push(eq(communityEvents.status, eventStatus));
+  const eventWhere = and(...eventConditions);
+
+  const challengeConditions = [adminCommunityVisibilityWhere(communityChallenges, challengeVisibility)];
+  if (challengeQuery.q) {
+    const pattern = `%${challengeQuery.q.toLowerCase()}%`;
+    challengeConditions.push(or(
+      sql`lower(${communityChallenges.title}) like ${pattern}`,
+      sql`lower(${communityChallenges.slug}) like ${pattern}`,
+      sql`lower(coalesce(${profiles.displayName}, ${users.name}, ${users.email})) like ${pattern}`
+    )!);
+  }
+  if (challengeStatus !== "all") challengeConditions.push(eq(communityChallenges.status, challengeStatus));
+  const challengeWhere = and(...challengeConditions);
+
+  const chapterConditions = [];
+  if (chapterQuery.q) {
+    const pattern = `%${chapterQuery.q.toLowerCase()}%`;
+    chapterConditions.push(or(
+      sql`lower(${communityChapters.name}) like ${pattern}`,
+      sql`lower(${communityChapters.slug}) like ${pattern}`,
+      sql`lower(${communityChapters.region}) like ${pattern}`
+    ));
+  }
+  if (chapterStatus !== "all") chapterConditions.push(eq(communityChapters.status, chapterStatus));
+  const chapterWhere = chapterConditions.length ? and(...chapterConditions) : sql`true`;
+
+  const [
+    reportTotalRows,
+    postTotalRows,
+    eventTotalRows,
+    challengeTotalRows,
+    chapterTotalRows,
+    scoreRows,
+    postCountRows,
+    eventCountRows,
+    challengeCountRows,
+    chapterCountRows,
+    openReportRows,
+    reportStatusRows,
+    postStatusRows,
+    eventStatusRows,
+    challengeStatusRows,
+    chapterStatusRows
+  ] = await Promise.all([
+    db.select({ total: sql<number>`count(*)::int` }).from(communityReports).innerJoin(users, eq(communityReports.reporterUserId, users.id)).leftJoin(profiles, eq(profiles.userId, users.id)).where(reportWhere),
+    db.select({ total: sql<number>`count(*)::int` }).from(communityPosts).leftJoin(users, eq(communityPosts.authorUserId, users.id)).leftJoin(profiles, eq(profiles.userId, users.id)).where(postWhere),
+    db.select({ total: sql<number>`count(*)::int` }).from(communityEvents).leftJoin(users, eq(communityEvents.authorUserId, users.id)).leftJoin(profiles, eq(profiles.userId, users.id)).where(eventWhere),
+    db.select({ total: sql<number>`count(*)::int` }).from(communityChallenges).leftJoin(users, eq(communityChallenges.authorUserId, users.id)).leftJoin(profiles, eq(profiles.userId, users.id)).where(challengeWhere),
+    db.select({ total: sql<number>`count(*)::int` }).from(communityChapters).where(chapterWhere),
+    db.select({ total: sql<number>`coalesce(sum(${communityScoreEvents.score}), 0)::int` }).from(communityScoreEvents),
+    db.select({ total: sql<number>`count(*)::int` }).from(communityPosts),
+    db.select({ total: sql<number>`count(*)::int` }).from(communityEvents),
+    db.select({ total: sql<number>`count(*)::int` }).from(communityChallenges),
+    db.select({ total: sql<number>`count(*)::int` }).from(communityChapters),
+    db.select({ total: sql<number>`count(*)::int` }).from(communityReports).where(eq(communityReports.status, "open")),
+    db.select({ value: communityReports.status }).from(communityReports).groupBy(communityReports.status).orderBy(asc(communityReports.status)),
+    db.select({ value: communityPosts.status }).from(communityPosts).groupBy(communityPosts.status).orderBy(asc(communityPosts.status)),
+    db.select({ value: communityEvents.status }).from(communityEvents).groupBy(communityEvents.status).orderBy(asc(communityEvents.status)),
+    db.select({ value: communityChallenges.status }).from(communityChallenges).groupBy(communityChallenges.status).orderBy(asc(communityChallenges.status)),
+    db.select({ value: communityChapters.status }).from(communityChapters).groupBy(communityChapters.status).orderBy(asc(communityChapters.status))
+  ]);
+
+  const reportTotal = Number(reportTotalRows[0]?.total ?? 0);
+  const postTotal = Number(postTotalRows[0]?.total ?? 0);
+  const eventTotal = Number(eventTotalRows[0]?.total ?? 0);
+  const challengeTotal = Number(challengeTotalRows[0]?.total ?? 0);
+  const chapterTotal = Number(chapterTotalRows[0]?.total ?? 0);
+  const reportPagination = adminPaginationMeta(reportTotal, reportQuery);
+  const postPagination = adminPaginationMeta(postTotal, postQuery);
+  const eventPagination = adminPaginationMeta(eventTotal, eventQuery);
+  const challengePagination = adminPaginationMeta(challengeTotal, challengeQuery);
+  const chapterPagination = adminPaginationMeta(chapterTotal, chapterQuery);
+
+  const [reports, posts, events, challenges, chapters] = await Promise.all([
+    db
+      .select({
+        id: communityReports.id,
+        targetType: communityReports.targetType,
+        targetId: communityReports.targetId,
+        reason: communityReports.reason,
+        detail: communityReports.detail,
+        status: communityReports.status,
+        actionTaken: communityReports.actionTaken,
+        createdAt: communityReports.createdAt,
+        reviewedAt: communityReports.reviewedAt,
+        displayName: profiles.displayName,
+        name: users.name,
+        email: users.email
+      })
+      .from(communityReports)
+      .innerJoin(users, eq(communityReports.reporterUserId, users.id))
+      .leftJoin(profiles, eq(profiles.userId, users.id))
+      .where(reportWhere)
+      .orderBy(desc(communityReports.createdAt))
+      .limit(reportPagination.pageSize)
+      .offset(adminListOffset(reportQuery, reportTotal)),
+    db
+      .select({
+        id: communityPosts.id,
+        title: communityPosts.title,
+        slug: communityPosts.slug,
+        body: communityPosts.body,
+        postType: communityPosts.postType,
+        status: communityPosts.status,
+        mediaUrl: communityPosts.mediaUrl,
+        authorUserId: communityPosts.authorUserId,
+        displayName: profiles.displayName,
+        name: users.name,
+        email: users.email,
+        chapterName: communityChapters.name,
+        chapterSlug: communityChapters.slug,
+        reactionCount: reactionCountSql("post", communityPosts.id),
+        commentCount: commentCountSql("post", communityPosts.id),
+        reportCount: reportCountSql("post", communityPosts.id),
+        createdAt: communityPosts.createdAt,
+        publishedAt: communityPosts.publishedAt,
+        hiddenAt: communityPosts.hiddenAt,
+        deletedAt: communityPosts.deletedAt
+      })
+      .from(communityPosts)
+      .leftJoin(users, eq(communityPosts.authorUserId, users.id))
+      .leftJoin(profiles, eq(profiles.userId, users.id))
+      .leftJoin(communityChapters, eq(communityPosts.chapterId, communityChapters.id))
+      .where(postWhere)
+      .orderBy(desc(communityPosts.createdAt))
+      .limit(postPagination.pageSize)
+      .offset(adminListOffset(postQuery, postTotal)),
+    db
+      .select({
+        id: communityEvents.id,
+        title: communityEvents.title,
+        slug: communityEvents.slug,
+        summary: communityEvents.summary,
+        eventType: communityEvents.eventType,
+        status: communityEvents.status,
+        startsAt: communityEvents.startsAt,
+        endsAt: communityEvents.endsAt,
+        location: communityEvents.location,
+        capacity: communityEvents.capacity,
+        waitlistEnabled: communityEvents.waitlistEnabled,
+        imageUrl: communityEvents.imageUrl,
+        authorUserId: communityEvents.authorUserId,
+        displayName: profiles.displayName,
+        name: users.name,
+        email: users.email,
+        chapterName: communityChapters.name,
+        chapterSlug: communityChapters.slug,
+        registeredCount: sql<number>`coalesce((select count(*)::int from ${communityEventRegistrations} where ${communityEventRegistrations.eventId} = ${communityEvents.id} and ${communityEventRegistrations.status} in ('registered','attended')), 0)`,
+        waitlistCount: sql<number>`coalesce((select count(*)::int from ${communityEventRegistrations} where ${communityEventRegistrations.eventId} = ${communityEvents.id} and ${communityEventRegistrations.status} = 'waitlisted'), 0)`,
+        attendedCount: sql<number>`coalesce((select count(*)::int from ${communityEventRegistrations} where ${communityEventRegistrations.eventId} = ${communityEvents.id} and ${communityEventRegistrations.status} = 'attended'), 0)`,
+        currentRegistrationStatus: sql<string | null>`null`,
+        reportCount: reportCountSql("event", communityEvents.id),
+        hiddenAt: communityEvents.hiddenAt,
+        deletedAt: communityEvents.deletedAt
+      })
+      .from(communityEvents)
+      .leftJoin(users, eq(communityEvents.authorUserId, users.id))
+      .leftJoin(profiles, eq(profiles.userId, users.id))
+      .leftJoin(communityChapters, eq(communityEvents.chapterId, communityChapters.id))
+      .where(eventWhere)
+      .orderBy(desc(communityEvents.createdAt))
+      .limit(eventPagination.pageSize)
+      .offset(adminListOffset(eventQuery, eventTotal)),
+    db
+      .select({
+        id: communityChallenges.id,
+        title: communityChallenges.title,
+        slug: communityChallenges.slug,
+        summary: communityChallenges.summary,
+        challengeType: communityChallenges.challengeType,
+        status: communityChallenges.status,
+        startsAt: communityChallenges.startsAt,
+        endsAt: communityChallenges.endsAt,
+        goalMetric: communityChallenges.goalMetric,
+        goalTarget: communityChallenges.goalTarget,
+        unit: communityChallenges.unit,
+        imageUrl: communityChallenges.imageUrl,
+        authorUserId: communityChallenges.authorUserId,
+        displayName: profiles.displayName,
+        name: users.name,
+        email: users.email,
+        chapterName: communityChapters.name,
+        chapterSlug: communityChapters.slug,
+        participantCount: sql<number>`coalesce((select count(*)::int from ${communityChallengeParticipations} where ${communityChallengeParticipations.challengeId} = ${communityChallenges.id} and ${communityChallengeParticipations.status} in ('active','completed')), 0)`,
+        completedCount: sql<number>`coalesce((select count(*)::int from ${communityChallengeParticipations} where ${communityChallengeParticipations.challengeId} = ${communityChallenges.id} and ${communityChallengeParticipations.status} = 'completed'), 0)`,
+        participationId: sql<string | null>`null`,
+        participationStatus: sql<string | null>`null`,
+        progressTotal: sql<number | null>`null`,
+        completedAt: sql<Date | null>`null`,
+        reportCount: reportCountSql("challenge", communityChallenges.id),
+        hiddenAt: communityChallenges.hiddenAt,
+        deletedAt: communityChallenges.deletedAt
+      })
+      .from(communityChallenges)
+      .leftJoin(users, eq(communityChallenges.authorUserId, users.id))
+      .leftJoin(profiles, eq(profiles.userId, users.id))
+      .leftJoin(communityChapters, eq(communityChallenges.chapterId, communityChapters.id))
+      .where(challengeWhere)
+      .orderBy(desc(communityChallenges.createdAt))
+      .limit(challengePagination.pageSize)
+      .offset(adminListOffset(challengeQuery, challengeTotal)),
+    db
+      .select({
+        id: communityChapters.id,
+        name: communityChapters.name,
+        slug: communityChapters.slug,
+        region: communityChapters.region,
+        description: communityChapters.description,
+        status: communityChapters.status,
+        imageUrl: communityChapters.imageUrl,
+        memberCount: sql<number>`coalesce((select count(*)::int from ${communityChapterMemberships} where ${communityChapterMemberships.chapterId} = ${communityChapters.id} and ${communityChapterMemberships.status} = 'active'), 0)`,
+        postCount: sql<number>`coalesce((select count(*)::int from ${communityPosts} where ${communityPosts.chapterId} = ${communityChapters.id} and ${communityPosts.deletedAt} is null), 0)`,
+        eventCount: sql<number>`coalesce((select count(*)::int from ${communityEvents} where ${communityEvents.chapterId} = ${communityChapters.id} and ${communityEvents.deletedAt} is null), 0)`,
+        challengeCount: sql<number>`coalesce((select count(*)::int from ${communityChallenges} where ${communityChallenges.chapterId} = ${communityChapters.id} and ${communityChallenges.deletedAt} is null), 0)`
+      })
+      .from(communityChapters)
+      .where(chapterWhere)
+      .orderBy(asc(communityChapters.name))
+      .limit(chapterPagination.pageSize)
+      .offset(adminListOffset(chapterQuery, chapterTotal))
+  ]);
+
+  return {
+    stats: {
+      posts: Number(postCountRows[0]?.total ?? 0),
+      events: Number(eventCountRows[0]?.total ?? 0),
+      challenges: Number(challengeCountRows[0]?.total ?? 0),
+      chapters: Number(chapterCountRows[0]?.total ?? 0),
+      openReports: Number(openReportRows[0]?.total ?? 0),
+      score: Number(scoreRows[0]?.total ?? 0)
+    },
+    reports: reports.map((report) => ({ ...report, reporterName: communityAuthorName(report) })),
+    posts: posts.map(mapPost),
+    events: events.map(mapEvent),
+    challenges: challenges.map(mapChallenge),
+    chapters: chapters.map((chapter) => ({ ...chapter, currentMembershipStatus: null })),
+    filters: {
+      reports: { q: reportQuery.q, status: reportStatus },
+      posts: { q: postQuery.q, status: postStatus, visibility: postVisibility },
+      events: { q: eventQuery.q, status: eventStatus, visibility: eventVisibility },
+      challenges: { q: challengeQuery.q, status: challengeStatus, visibility: challengeVisibility },
+      chapters: { q: chapterQuery.q, status: chapterStatus }
+    },
+    options: {
+      reportStatuses: reportStatusRows.map((row) => row.value),
+      postStatuses: postStatusRows.map((row) => row.value),
+      eventStatuses: eventStatusRows.map((row) => row.value),
+      challengeStatuses: challengeStatusRows.map((row) => row.value),
+      chapterStatuses: chapterStatusRows.map((row) => row.value)
+    },
+    pagination: {
+      reports: reportPagination,
+      posts: postPagination,
+      events: eventPagination,
+      challenges: challengePagination,
+      chapters: chapterPagination
+    }
   };
 }

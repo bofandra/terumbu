@@ -9859,3 +9859,324 @@ export async function getAdminAcademyPage(params: AdminAcademyFilters = {}) {
     }
   };
 }
+
+export type AdminPaymentFilters = {
+  donationQ?: string | string[];
+  donationPage?: string | string[];
+  donationPageSize?: string | string[];
+  donationSort?: string | string[];
+  donationDir?: string | string[];
+  donationStatus?: string | string[];
+  bookingQ?: string | string[];
+  bookingPage?: string | string[];
+  bookingPageSize?: string | string[];
+  bookingSort?: string | string[];
+  bookingDir?: string | string[];
+  bookingType?: string | string[];
+};
+
+const adminDonationPaymentSorts = ["priority", "createdAt", "amount", "campaign", "status"] as const;
+const adminBookingPaymentSorts = ["createdAt", "amount", "expedition", "bookingCode", "operationType"] as const;
+const adminPaymentStatuses = ["created", "pending", "paid", "failed", "expired", "refunded"] as const;
+
+function adminDonationPaymentWhere(filters: { q: string; status: string }) {
+  const conditions = [
+    or(
+      sql`${donations.status} <> 'paid'`,
+      sql`exists (select 1 from payment_operations po where po.donation_id = ${donations.id} and po.status = 'pending')`
+    )
+  ];
+
+  if (filters.q) {
+    const pattern = `%${filters.q.toLowerCase()}%`;
+    conditions.push(
+      or(
+        sql`lower(${campaigns.title}) like ${pattern}`,
+        sql`lower(coalesce(${donations.donorName}, '')) like ${pattern}`,
+        sql`lower(coalesce(${donations.donorEmail}, '')) like ${pattern}`,
+        sql`cast(${donations.id} as text) like ${pattern}`,
+        sql`exists (select 1 from payment_operations po where po.donation_id = ${donations.id} and lower(po.operation_code) like ${pattern})`
+      )!
+    );
+  }
+
+  if (filters.status === "refund") {
+    conditions.push(sql`exists (select 1 from payment_operations po where po.donation_id = ${donations.id} and po.status = 'pending' and po.operation_type = 'refund')`);
+  } else if (adminPaymentStatuses.includes(filters.status as (typeof adminPaymentStatuses)[number])) {
+    conditions.push(eq(donations.status, filters.status as (typeof adminPaymentStatuses)[number]));
+  }
+
+  return and(...conditions);
+}
+
+function adminBookingPaymentWhere(filters: { q: string; operationType: string }) {
+  const conditions = [eq(paymentOperations.status, "pending"), eq(paymentOperations.entityType, "expedition_booking")];
+
+  if (filters.q) {
+    const pattern = `%${filters.q.toLowerCase()}%`;
+    conditions.push(
+      or(
+        sql`lower(${expeditions.title}) like ${pattern}`,
+        sql`lower(${expeditionBookings.bookingCode}) like ${pattern}`,
+        sql`lower(${expeditionBookings.contactName}) like ${pattern}`,
+        sql`lower(${expeditionBookings.contactEmail}) like ${pattern}`,
+        sql`lower(${paymentOperations.operationCode}) like ${pattern}`
+      )!
+    );
+  }
+
+  if (filters.operationType !== "all") {
+    conditions.push(eq(paymentOperations.operationType, filters.operationType));
+  }
+
+  return and(...conditions);
+}
+
+export async function getAdminPaymentsPage(params: AdminPaymentFilters = {}) {
+  const donationQuery = parseAdminListQuery(
+    {
+      q: params.donationQ,
+      page: params.donationPage,
+      pageSize: params.donationPageSize,
+      sort: params.donationSort,
+      dir: params.donationDir
+    },
+    {
+      defaultSort: "priority",
+      defaultDir: "asc",
+      allowedSorts: adminDonationPaymentSorts,
+      defaultPageSize: 20,
+      maxPageSize: 100
+    }
+  );
+  const bookingQuery = parseAdminListQuery(
+    {
+      q: params.bookingQ,
+      page: params.bookingPage,
+      pageSize: params.bookingPageSize,
+      sort: params.bookingSort,
+      dir: params.bookingDir
+    },
+    {
+      defaultSort: "createdAt",
+      defaultDir: "desc",
+      allowedSorts: adminBookingPaymentSorts,
+      defaultPageSize: 20,
+      maxPageSize: 100
+    }
+  );
+  const donationStatusCandidate = cleanAdminDirectoryFilter(params.donationStatus, 40);
+  const donationFilters = {
+    q: donationQuery.q,
+    status: donationStatusCandidate === "refund" || adminPaymentStatuses.includes(donationStatusCandidate as (typeof adminPaymentStatuses)[number]) ? donationStatusCandidate : "all"
+  };
+  const bookingTypeCandidate = cleanAdminDirectoryFilter(params.bookingType, 80);
+  const bookingFilters = {
+    q: bookingQuery.q,
+    operationType: bookingTypeCandidate || "all"
+  };
+  const donationWhere = adminDonationPaymentWhere(donationFilters);
+  const bookingWhere = adminBookingPaymentWhere(bookingFilters);
+  const donationPriority = sql<number>`case
+    when exists (select 1 from payment_operations po where po.donation_id = ${donations.id} and po.status = 'pending' and po.operation_type = 'refund') then 0
+    when ${donations.status} = 'created' then 1
+    when ${donations.status} = 'pending' then 2
+    when ${donations.status} = 'failed' then 3
+    when ${donations.status} = 'expired' then 4
+    when ${donations.status} = 'refunded' then 5
+    else 6 end`;
+  const donationSortColumn =
+    donationQuery.sort === "createdAt"
+      ? donations.createdAt
+      : donationQuery.sort === "amount"
+        ? donations.amount
+        : donationQuery.sort === "campaign"
+          ? campaigns.title
+          : donationQuery.sort === "status"
+            ? donations.status
+            : donationPriority;
+  const bookingSortColumn =
+    bookingQuery.sort === "amount"
+      ? paymentOperations.amount
+      : bookingQuery.sort === "expedition"
+        ? expeditions.title
+        : bookingQuery.sort === "bookingCode"
+          ? expeditionBookings.bookingCode
+          : bookingQuery.sort === "operationType"
+            ? paymentOperations.operationType
+            : paymentOperations.createdAt;
+
+  const [donationTotalRows, donationSummaryRows, bookingTotalRows, bookingSummaryRows, bookingTypeRows] = await Promise.all([
+    db
+      .select({ total: sql<number>`count(*)::int` })
+      .from(donations)
+      .innerJoin(campaigns, eq(donations.campaignId, campaigns.id))
+      .where(donationWhere),
+    db
+      .select({
+        refunds: sql<number>`sum(case when exists (select 1 from payment_operations po where po.donation_id = ${donations.id} and po.status = 'pending' and po.operation_type = 'refund') then 1 else 0 end)::int`,
+        failed: sql<number>`sum(case when ${donations.status} = 'failed' then 1 else 0 end)::int`
+      })
+      .from(donations)
+      .innerJoin(campaigns, eq(donations.campaignId, campaigns.id))
+      .where(donationWhere),
+    db
+      .select({ total: sql<number>`count(*)::int` })
+      .from(paymentOperations)
+      .innerJoin(expeditionBookings, eq(paymentOperations.bookingId, expeditionBookings.id))
+      .innerJoin(expeditions, eq(expeditionBookings.expeditionId, expeditions.id))
+      .where(bookingWhere),
+    db
+      .select({
+        refunds: sql<number>`sum(case when ${paymentOperations.operationType} = 'refund' then 1 else 0 end)::int`
+      })
+      .from(paymentOperations)
+      .innerJoin(expeditionBookings, eq(paymentOperations.bookingId, expeditionBookings.id))
+      .innerJoin(expeditions, eq(expeditionBookings.expeditionId, expeditions.id))
+      .where(bookingWhere),
+    db
+      .select({ operationType: paymentOperations.operationType })
+      .from(paymentOperations)
+      .where(and(eq(paymentOperations.status, "pending"), eq(paymentOperations.entityType, "expedition_booking")))
+      .groupBy(paymentOperations.operationType)
+      .orderBy(asc(paymentOperations.operationType))
+  ]);
+
+  const donationTotalItems = Number(donationTotalRows[0]?.total ?? 0);
+  const bookingTotalItems = Number(bookingTotalRows[0]?.total ?? 0);
+  const donationPagination = adminPaginationMeta(donationTotalItems, donationQuery);
+  const bookingPagination = adminPaginationMeta(bookingTotalItems, bookingQuery);
+
+  const [donationRows, bookingRows] = await Promise.all([
+    db
+      .select({
+        id: donations.id,
+        donorName: donations.donorName,
+        donorEmail: donations.donorEmail,
+        amount: donations.amount,
+        currency: donations.currency,
+        status: donations.status,
+        createdAt: donations.createdAt,
+        campaignTitle: campaigns.title
+      })
+      .from(donations)
+      .innerJoin(campaigns, eq(donations.campaignId, campaigns.id))
+      .where(donationWhere)
+      .orderBy(donationQuery.dir === "desc" ? desc(donationSortColumn) : asc(donationSortColumn), desc(donations.createdAt))
+      .limit(donationPagination.pageSize)
+      .offset(adminListOffset(donationQuery, donationTotalItems)),
+    db
+      .select({
+        id: paymentOperations.id,
+        operationCode: paymentOperations.operationCode,
+        operationType: paymentOperations.operationType,
+        status: paymentOperations.status,
+        reason: paymentOperations.reason,
+        amount: paymentOperations.amount,
+        currency: paymentOperations.currency,
+        providerReference: paymentOperations.providerReference,
+        metadata: paymentOperations.metadata,
+        bookingId: expeditionBookings.id,
+        bookingCode: expeditionBookings.bookingCode,
+        paymentStatus: expeditionBookings.paymentStatus,
+        contactName: expeditionBookings.contactName,
+        contactEmail: expeditionBookings.contactEmail,
+        expeditionTitle: expeditions.title,
+        createdAt: paymentOperations.createdAt
+      })
+      .from(paymentOperations)
+      .innerJoin(expeditionBookings, eq(paymentOperations.bookingId, expeditionBookings.id))
+      .innerJoin(expeditions, eq(expeditionBookings.expeditionId, expeditions.id))
+      .where(bookingWhere)
+      .orderBy(bookingQuery.dir === "desc" ? desc(bookingSortColumn) : asc(bookingSortColumn), desc(paymentOperations.createdAt))
+      .limit(bookingPagination.pageSize)
+      .offset(adminListOffset(bookingQuery, bookingTotalItems))
+  ]);
+
+  const donationIds = donationRows.map((row) => row.id);
+  const [transactionRows, operationRows] = donationIds.length > 0
+    ? await Promise.all([
+        db
+          .select({
+            donationId: paymentTransactions.donationId,
+            providerReference: paymentTransactions.providerReference,
+            payload: paymentTransactions.payload,
+            createdAt: paymentTransactions.createdAt
+          })
+          .from(paymentTransactions)
+          .where(inArray(paymentTransactions.donationId, donationIds))
+          .orderBy(desc(paymentTransactions.createdAt)),
+        db
+          .select({
+            id: paymentOperations.id,
+            donationId: paymentOperations.donationId,
+            operationCode: paymentOperations.operationCode,
+            operationType: paymentOperations.operationType,
+            status: paymentOperations.status,
+            reason: paymentOperations.reason,
+            amount: paymentOperations.amount,
+            currency: paymentOperations.currency,
+            providerReference: paymentOperations.providerReference,
+            metadata: paymentOperations.metadata,
+            createdAt: paymentOperations.createdAt
+          })
+          .from(paymentOperations)
+          .where(and(inArray(paymentOperations.donationId, donationIds), eq(paymentOperations.status, "pending")))
+          .orderBy(desc(paymentOperations.createdAt))
+      ])
+    : [[], []];
+  const transactionsByDonation = new Map<string, (typeof transactionRows)[number]>();
+  const operationsByDonation = new Map<string, (typeof operationRows)[number]>();
+
+  for (const transaction of transactionRows) {
+    if (transaction.donationId && !transactionsByDonation.has(transaction.donationId)) {
+      transactionsByDonation.set(transaction.donationId, transaction);
+    }
+  }
+  for (const operation of operationRows) {
+    if (operation.donationId && !operationsByDonation.has(operation.donationId)) {
+      operationsByDonation.set(operation.donationId, operation);
+    }
+  }
+
+  return {
+    donations: donationRows.map((donation) => ({
+      ...donation,
+      amount: toNumber(donation.amount),
+      pendingOperation: operationsByDonation.get(donation.id) ?? null,
+      latestTransaction: transactionsByDonation.get(donation.id) ?? null
+    })),
+    bookingOperations: bookingRows.map((operation) => ({
+      ...operation,
+      amount: operation.amount === null ? null : toNumber(operation.amount)
+    })),
+    filters: {
+      donations: {
+        q: donationFilters.q,
+        status: donationFilters.status,
+        sort: donationQuery.sort ?? "priority",
+        dir: donationQuery.dir
+      },
+      bookings: {
+        q: bookingFilters.q,
+        operationType: bookingFilters.operationType,
+        sort: bookingQuery.sort ?? "createdAt",
+        dir: bookingQuery.dir
+      }
+    },
+    options: {
+      bookingOperationTypes: bookingTypeRows.map((row) => row.operationType)
+    },
+    pagination: {
+      donations: donationPagination,
+      bookings: bookingPagination
+    },
+    summary: {
+      donations: donationTotalItems,
+      donationRefunds: Number(donationSummaryRows[0]?.refunds ?? 0),
+      donationFailures: Number(donationSummaryRows[0]?.failed ?? 0),
+      bookings: bookingTotalItems,
+      bookingRefunds: Number(bookingSummaryRows[0]?.refunds ?? 0)
+    }
+  };
+}

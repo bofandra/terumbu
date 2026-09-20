@@ -1,33 +1,40 @@
 "use client";
 
 import { useId, useRef } from "react";
-import { Trash2 } from "lucide-react";
+import { ShieldCheck, Trash2 } from "lucide-react";
 
 export function AdminConfirmSubmit({
   formId,
   title,
   body,
   triggerLabel,
-  submitLabel
+  submitLabel,
+  confirmationName = "confirmDelete",
+  confirmationValue = "delete",
+  destructive = true
 }: {
   formId: string;
   title: string;
   body: string;
   triggerLabel: string;
   submitLabel: string;
+  confirmationName?: string;
+  confirmationValue?: string;
+  destructive?: boolean;
 }) {
   const dialogRef = useRef<HTMLDialogElement | null>(null);
   const titleId = useId();
   const descriptionId = useId();
+  const Icon = destructive ? Trash2 : ShieldCheck;
 
   return (
     <>
       <button
         type="button"
         onClick={() => dialogRef.current?.showModal()}
-        className="inline-flex min-h-10 w-fit items-center justify-center gap-2 rounded-lg bg-coral-500 px-3 text-sm font-bold text-white transition hover:bg-coral-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-coral-500 focus-visible:ring-offset-2"
+        className={destructive ? "inline-flex min-h-10 w-fit items-center justify-center gap-2 rounded-lg bg-coral-500 px-3 text-sm font-bold text-white transition hover:bg-coral-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-coral-500 focus-visible:ring-offset-2" : "inline-flex min-h-10 w-fit items-center justify-center gap-2 rounded-lg bg-ocean-900 px-3 text-sm font-bold text-white transition hover:bg-ocean-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-kelp-500 focus-visible:ring-offset-2"}
       >
-        <Trash2 className="size-4" aria-hidden="true" />
+        <Icon className="size-4" aria-hidden="true" />
         {triggerLabel}
       </button>
       <dialog
@@ -50,9 +57,9 @@ export function AdminConfirmSubmit({
             <button
               type="submit"
               form={formId}
-              name="confirmDelete"
-              value="delete"
-              className="inline-flex min-h-10 items-center justify-center rounded-lg bg-coral-500 px-3 text-sm font-bold text-white transition hover:bg-coral-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-coral-500 focus-visible:ring-offset-2"
+              name={confirmationName}
+              value={confirmationValue}
+              className={destructive ? "inline-flex min-h-10 items-center justify-center rounded-lg bg-coral-500 px-3 text-sm font-bold text-white transition hover:bg-coral-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-coral-500 focus-visible:ring-offset-2" : "inline-flex min-h-10 items-center justify-center rounded-lg bg-ocean-900 px-3 text-sm font-bold text-white transition hover:bg-ocean-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-kelp-500 focus-visible:ring-offset-2"}
             >
               {submitLabel}
             </button>
