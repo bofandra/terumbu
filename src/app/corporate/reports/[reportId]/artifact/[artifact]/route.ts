@@ -24,7 +24,7 @@ type CorporateReportArtifactRouteProps = {
 };
 
 export async function GET(_request: Request, { params }: CorporateReportArtifactRouteProps) {
-  const user = await requireUser("/corporate/reports");
+  const user = await requireUser("/corporate");
   const { reportId, artifact } = await params;
   const artifactKey = normalizeCorporateReportArtifactKey(artifact);
 

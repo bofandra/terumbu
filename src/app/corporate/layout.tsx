@@ -15,7 +15,6 @@ export default async function CorporateLayout({ children }: Readonly<{ children:
   }
 
   const displayName = user.displayName ?? user.name ?? user.email;
-  const nextReportDue = data.reporting.nextReportingDeadline.toLocaleDateString("id-ID", { dateStyle: "medium" });
 
   return (
     <CorporateShell
@@ -24,8 +23,6 @@ export default async function CorporateLayout({ children }: Readonly<{ children:
       accountName={data.program.accountName}
       programName={data.program.programName}
       accountLogoUrl={data.program.accountLogoUrl}
-      activeProjects={data.portfolio.length}
-      nextReportDue={nextReportDue}
     >
       {children}
     </CorporateShell>

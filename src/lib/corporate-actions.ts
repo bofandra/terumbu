@@ -46,10 +46,12 @@ import {
   normalizeCorporateProgramStatus
 } from "@/lib/corporate-lifecycle";
 import {
+  buildCorporateActivityReportPdf,
   buildCorporateReportPdf,
   buildCorporateReportWorkbookXlsx,
   corporateReportEvidenceCsv,
   corporateReportPortfolioCsv,
+  type CorporateActivityReportInput,
   type CorporateReportArtifactInput
 } from "@/lib/corporate-report-artifacts";
 import {
@@ -65,7 +67,7 @@ import {
   normalizeCorporateContributionStatus,
   normalizeCorporateContributionType
 } from "@/lib/corporate-contributions";
-import { getCorporateDashboardData } from "@/lib/queries";
+import { getCorporateDashboardData, getCorporateExpeditionActivities } from "@/lib/queries";
 import { formatCurrency } from "@/lib/utils";
 
 function exportCode() {
@@ -775,6 +777,131 @@ export async function updateCorporateProgramAction(formData: FormData) {
   redirect("/corporate/programs?saved=program");
 }
 
+
+export async function createCorporateActivityPdfReportAction(formData: FormData) {
+  const activityScope = textValue(formData.get("activityScope"), 40);
+  const returnPath = activityScope === "expeditions" ? "/corporate/expeditions" : "/corporate/donations";
+  const user = await requireUser(returnPath);
+  const requestedProgramId = textValue(formData.get("programId"), 80) || null;
+  const context = await corporateContext(user.id, requestedProgramId);
+
+  if (!context || !corporateCapabilitiesForPermission(context.permission).canGenerateReport) {
+    redirect(`${returnPath}?error=report`);
+  }
+
+  if (activityScope !== "donations" && activityScope !== "expeditions") {
+    redirect(`${returnPath}?error=report`);
+  }
+
+  const data = await getCorporateDashboardData(user.id, context.programId);
+
+  if (!data) {
+    redirect(`${returnPath}?error=report`);
+  }
+
+  const generatedAt = new Date();
+  const [{ count: existingCount }] = await db
+    .select({ count: sql<number>`count(${corporateReportExports.id})` })
+    .from(corporateReportExports)
+    .where(and(eq(corporateReportExports.programId, context.programId), eq(corporateReportExports.reportType, activityScope)));
+  const artifactVersion = nextArtifactVersion(Number(existingCount ?? 0));
+  const code = `TRB-${activityScope === "donations" ? "DON" : "EXP"}-${generatedAt.getUTCFullYear()}-${randomBytes(4).toString("hex").toUpperCase()}`;
+  const folder = path.join(process.cwd(), "public", "generated", "corporate-reports");
+  const baseName = code.toLowerCase();
+  const pdfUrl = `/generated/corporate-reports/${baseName}.pdf`;
+
+  let finalReportInput: CorporateActivityReportInput | null = null;
+
+  if (activityScope === "donations") {
+    finalReportInput = {
+      exportCode: code,
+      title: "Donation activity report",
+      accountName: context.accountName,
+      programName: context.programName,
+      generatedAt,
+      metrics: [
+        { label: "Total donations", value: formatCurrency(data.contributions.filter((item) => item.status !== "cancelled").reduce((total, item) => total + item.amountValue, 0)) },
+        { label: "Projects supported", value: new Set(data.contributions.map((item) => item.campaignId)).size.toLocaleString("id-ID") },
+        { label: "Verified evidence", value: data.evidence.filter((item) => item.verificationStatus === "verified").length.toLocaleString("id-ID") }
+      ],
+      rows: data.contributions.map((item) => ({
+        title: item.campaignTitle,
+        detail: item.referenceCode,
+        amount: formatCurrency(item.amountValue, item.currency),
+        status: item.statusLabel,
+        occurredAt: item.contributionDate
+      }))
+    };
+  } else {
+    const expeditions = await getCorporateExpeditionActivities(user.id, context.programId);
+    finalReportInput = {
+      exportCode: code,
+      title: "Expedition activity report",
+      accountName: context.accountName,
+      programName: context.programName,
+      generatedAt,
+      metrics: [
+        { label: "Bookings", value: expeditions.length.toLocaleString("id-ID") },
+        { label: "Participants", value: expeditions.reduce((total, item) => total + item.participantsCount, 0).toLocaleString("id-ID") },
+        { label: "Booking value", value: formatCurrency(expeditions.reduce((total, item) => total + item.totalAmountValue, 0)) }
+      ],
+      rows: expeditions.map((item) => ({
+        title: item.expeditionTitle,
+        detail: `${item.bookingCode} · ${item.contactName}`,
+        amount: formatCurrency(item.totalAmountValue, item.currency),
+        status: item.statusLabel,
+        occurredAt: item.startsAt
+      }))
+    };
+  }
+
+  if (!finalReportInput) {
+    redirect(`${returnPath}?error=report`);
+  }
+
+  await mkdir(folder, { recursive: true });
+  await writeFile(path.join(folder, `${baseName}.pdf`), buildCorporateActivityReportPdf(finalReportInput));
+
+  const [report] = await db
+    .insert(corporateReportExports)
+    .values({
+      programId: context.programId,
+      requestedByUserId: user.id,
+      exportCode: code,
+      reportType: activityScope,
+      exportFormat: "pdf",
+      artifactVersion,
+      status: "generated",
+      generatedAt,
+      metadata: {
+        activityScope,
+        pdfUrl,
+        recordCount: finalReportInput.rows.length,
+        generatedBy: "corporate_activity_pdf"
+      },
+      createdAt: generatedAt,
+      updatedAt: generatedAt
+    })
+    .returning({ id: corporateReportExports.id });
+
+  await writeAuditLog({
+    actorUserId: user.id,
+    action: "corporate.activity_report.generated",
+    entityType: "corporate_report_exports",
+    entityId: report?.id,
+    metadata: {
+      accountId: context.accountId,
+      programId: context.programId,
+      activityScope,
+      exportCode: code,
+      artifactVersion,
+      recordCount: finalReportInput.rows.length
+    }
+  });
+
+  redirect(`${returnPath}?saved=report`);
+}
+
 export async function createCorporateReportExportAction(formData: FormData) {
   const user = await requireUser("/corporate");
   const context = await corporateContext(user.id);
@@ -990,13 +1117,13 @@ export async function runDueCorporateReportExportsAction(_formData: FormData) {
 }
 
 export async function fundCorporateProjectAction(formData: FormData) {
-  const user = await requireUser("/corporate/projects");
+  const user = await requireUser("/corporate/donations");
   const requestedProgramId = textValue(formData.get("programId"), 80);
   const context = await corporateContext(user.id, requestedProgramId);
-  const returnPath = context ? `/corporate/projects?programId=${encodeURIComponent(context.programId)}` : "/corporate/projects";
+  const returnPath = context ? `/corporate/donations?programId=${encodeURIComponent(context.programId)}` : "/corporate/donations";
 
   if (!context || !corporateCapabilitiesForPermission(context.permission).canManageProjects) {
-    redirect("/corporate/projects?error=permission");
+    redirect("/corporate/donations?error=permission");
   }
 
   const campaignId = textValue(formData.get("campaignId"), 80);
@@ -1085,7 +1212,7 @@ export async function fundCorporateProjectAction(formData: FormData) {
       contributionDate: now,
       notes,
       metadata: {
-        source: "corporate_projects_form",
+        source: "corporate_donations_form",
         portfolioStatus
       },
       updatedAt: now,
@@ -1100,7 +1227,7 @@ export async function fundCorporateProjectAction(formData: FormData) {
         contributionDate: now,
         notes,
         metadata: {
-          source: "corporate_projects_form",
+          source: "corporate_donations_form",
           portfolioStatus
         },
         updatedAt: now

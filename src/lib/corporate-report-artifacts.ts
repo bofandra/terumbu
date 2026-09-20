@@ -35,6 +35,25 @@ export type CorporateReportArtifactInput = {
   evidence: CorporateReportArtifactEvidenceRow[];
 };
 
+
+export type CorporateActivityReportRow = {
+  title: string;
+  detail?: string | null;
+  amount?: string | null;
+  status?: string | null;
+  occurredAt?: Date | null;
+};
+
+export type CorporateActivityReportInput = {
+  exportCode: string;
+  title: string;
+  accountName: string;
+  programName: string;
+  generatedAt: Date;
+  metrics: Array<{ label: string; value: string }>;
+  rows: CorporateActivityReportRow[];
+};
+
 type SheetDefinition = {
   name: string;
   rows: Array<Array<string | number | null>>;
@@ -322,6 +341,55 @@ export function buildCorporateReportPdf(input: CorporateReportArtifactInput) {
     "/F1 10 Tf",
     "50 790 Td",
     ...pageLines.map((line, index) => `${index === 0 ? "" : "0 -13 Td "}${index === 0 ? "" : ""}(${pdfSafe(line)}) Tj`),
+    "ET"
+  ].join("\n");
+  const objects = [
+    "1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n",
+    "2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n",
+    "3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 842] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >>\nendobj\n",
+    "4 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>\nendobj\n",
+    `5 0 obj\n<< /Length ${Buffer.byteLength(content)} >>\nstream\n${content}\nendstream\nendobj\n`
+  ];
+  let pdf = "%PDF-1.4\n";
+  const offsets = [0];
+
+  for (const object of objects) {
+    offsets.push(Buffer.byteLength(pdf));
+    pdf += object;
+  }
+
+  const xrefOffset = Buffer.byteLength(pdf);
+  pdf += `xref\n0 ${objects.length + 1}\n0000000000 65535 f \n`;
+  for (const offset of offsets.slice(1)) {
+    pdf += `${String(offset).padStart(10, "0")} 00000 n \n`;
+  }
+  pdf += `trailer\n<< /Size ${objects.length + 1} /Root 1 0 R >>\nstartxref\n${xrefOffset}\n%%EOF\n`;
+
+  return Buffer.from(pdf, "ascii");
+}
+
+export function buildCorporateActivityReportPdf(input: CorporateActivityReportInput) {
+  const lines = [
+    `${input.title} - ${input.exportCode}`,
+    `${input.accountName} / ${input.programName}`,
+    `Generated ${input.generatedAt.toISOString()}`,
+    "",
+    "Summary",
+    ...input.metrics.flatMap((metric) => wrapLine(`${metric.label}: ${metric.value}`)),
+    "",
+    "Activity",
+    ...input.rows.slice(0, 40).flatMap((row) => {
+      const date = row.occurredAt ? row.occurredAt.toISOString().slice(0, 10) : "";
+      const details = [date, row.detail, row.amount, row.status].filter(Boolean).join(" - ");
+      return wrapLine(`${row.title}${details ? ` - ${details}` : ""}`);
+    })
+  ];
+  const pageLines = lines.slice(0, 58);
+  const content = [
+    "BT",
+    "/F1 10 Tf",
+    "50 790 Td",
+    ...pageLines.map((line, index) => `${index === 0 ? "" : "0 -13 Td "}(${pdfSafe(line)}) Tj`),
     "ET"
   ].join("\n");
   const objects = [

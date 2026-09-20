@@ -1,7 +1,7 @@
-export const corporateReportTypes = ["esg", "csr", "evidence"] as const;
+export const corporateReportTypes = ["esg", "csr", "evidence", "donations", "expeditions"] as const;
 export type CorporateReportType = (typeof corporateReportTypes)[number];
 
-export const corporateReportFormats = ["html_json", "evidence_json", "full_archive"] as const;
+export const corporateReportFormats = ["html_json", "evidence_json", "full_archive", "pdf"] as const;
 export type CorporateReportFormat = (typeof corporateReportFormats)[number];
 
 export const corporateReportStatuses = ["scheduled", "generated", "review", "approved", "published", "archived"] as const;
@@ -30,7 +30,9 @@ export function corporateReportTypeLabel(type: string | null | undefined) {
   return {
     esg: "ESG Report",
     csr: "CSR Impact Report",
-    evidence: "Evidence Bundle"
+    evidence: "Evidence Bundle",
+    donations: "Donation Activity Report",
+    expeditions: "Expedition Activity Report"
   }[normalizeCorporateReportType(type)];
 }
 
@@ -38,7 +40,8 @@ export function corporateReportFormatLabel(format: string | null | undefined) {
   return {
     html_json: "HTML + JSON",
     evidence_json: "Evidence JSON",
-    full_archive: "Full archive"
+    full_archive: "Full archive",
+    pdf: "PDF"
   }[normalizeCorporateReportFormat(format)];
 }
 

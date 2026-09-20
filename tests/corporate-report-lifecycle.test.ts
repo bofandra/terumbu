@@ -2,10 +2,12 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  buildCorporateActivityReportPdf,
   buildCorporateReportPdf,
   buildCorporateReportWorkbookXlsx,
   corporateReportEvidenceCsv,
   corporateReportPortfolioCsv,
+  type CorporateActivityReportInput,
   type CorporateReportArtifactInput
 } from "../src/lib/corporate-report-artifacts";
 import {
@@ -60,13 +62,18 @@ const artifactInput: CorporateReportArtifactInput = {
 
 test("corporate report lifecycle values normalize defensively", () => {
   assert.equal(normalizeCorporateReportType("csr"), "csr");
+  assert.equal(normalizeCorporateReportType("donations"), "donations");
+  assert.equal(normalizeCorporateReportType("expeditions"), "expeditions");
   assert.equal(normalizeCorporateReportType("unexpected"), "esg");
   assert.equal(normalizeCorporateReportFormat("full_archive"), "full_archive");
-  assert.equal(normalizeCorporateReportFormat("pdf"), "html_json");
+  assert.equal(normalizeCorporateReportFormat("pdf"), "pdf");
   assert.equal(normalizeCorporateReportStatus("published"), "published");
   assert.equal(normalizeCorporateReportStatus("queued"), "generated");
   assert.equal(corporateReportTypeLabel("evidence"), "Evidence Bundle");
+  assert.equal(corporateReportTypeLabel("donations"), "Donation Activity Report");
+  assert.equal(corporateReportTypeLabel("expeditions"), "Expedition Activity Report");
   assert.equal(corporateReportFormatLabel("evidence_json"), "Evidence JSON");
+  assert.equal(corporateReportFormatLabel("pdf"), "PDF");
 });
 
 test("scheduled corporate reports are due only at or after their scheduled time", () => {
@@ -112,4 +119,34 @@ test("corporate report binary artifacts produce portable PDF, XLSX, and CSV file
   assert.match(xlsx.toString("utf8"), /Field survey &lt;verified&gt;/);
   assert.match(portfolioCsv, /"Restore Reef \(North\)","Marine Partner","Raja Ampat"/);
   assert.match(evidenceCsv, /"EV-001","Field survey <verified>"/);
+});
+
+
+test("corporate activity report PDF is a simple portable activity report", () => {
+  const input: CorporateActivityReportInput = {
+    exportCode: "TRB-DON-2026-ABCD",
+    title: "Donation Activity Report",
+    accountName: "Blue Carbon Co",
+    programName: "Ocean Restoration 2026",
+    generatedAt: new Date("2026-07-12T00:00:00Z"),
+    metrics: [
+      { label: "Donations", value: "USD 1,000" },
+      { label: "Projects", value: "2" }
+    ],
+    rows: [
+      {
+        title: "Restore Reef North",
+        detail: "Donation reference",
+        amount: "USD 500",
+        status: "Committed",
+        occurredAt: new Date("2026-07-12T00:00:00Z")
+      }
+    ]
+  };
+
+  const pdf = buildCorporateActivityReportPdf(input);
+
+  assert.equal(pdf.subarray(0, 8).toString("ascii"), "%PDF-1.4");
+  assert.match(pdf.toString("ascii"), /Donation Activity Report/);
+  assert.match(pdf.toString("ascii"), /Restore Reef North/);
 });

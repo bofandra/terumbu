@@ -2,12 +2,11 @@
 
 import {
   Building2,
-  FileBadge,
-  FileText,
+  CircleDollarSign,
+  Compass,
   Home,
   LogOut,
   Settings,
-  ShieldCheck,
   Users,
   Waves,
   type LucideIcon
@@ -27,11 +26,9 @@ type CorporateNavItem = {
 
 const corporateNavItems: CorporateNavItem[] = [
   { label: "Overview", href: "/corporate", icon: Home },
-  { label: "Projects", href: "/corporate/projects", icon: ShieldCheck },
-  { label: "Contributions", href: "/corporate/funding", icon: FileBadge },
+  { label: "Donations", href: "/corporate/donations", icon: CircleDollarSign },
+  { label: "Expeditions", href: "/corporate/expeditions", icon: Compass },
   { label: "Employees", href: "/corporate/employees", icon: Users },
-  { label: "Evidence", href: "/corporate/evidence", icon: FileText },
-  { label: "Reports", href: "/corporate/reports", icon: FileBadge },
   { label: "Settings", href: "/corporate/settings", icon: Settings }
 ];
 
@@ -64,9 +61,7 @@ export function CorporateShell({
   roleLabel,
   accountName,
   programName,
-  accountLogoUrl,
-  activeProjects,
-  nextReportDue
+  accountLogoUrl
 }: {
   children: ReactNode;
   displayName: string;
@@ -74,8 +69,6 @@ export function CorporateShell({
   accountName: string;
   programName: string;
   accountLogoUrl: string | null;
-  activeProjects: number;
-  nextReportDue: string;
 }) {
   const pathname = usePathname();
   const currentTask = currentTaskForPath(pathname);
@@ -141,12 +134,6 @@ export function CorporateShell({
               </div>
             </div>
 
-            <div className="hidden items-center gap-4 text-sm font-semibold text-ocean-900/58 md:flex">
-              <span>{activeProjects.toLocaleString("id-ID")} projects</span>
-              <span className="h-4 w-px bg-ocean-900/14" />
-              <span>Report due {nextReportDue}</span>
-            </div>
-
             <details className="group relative">
               <summary aria-label="Corporate account menu" className="flex cursor-pointer list-none items-center gap-3 rounded-full hover:bg-ocean-50 sm:py-1 sm:pl-1 sm:pr-3">
                 <span className="flex size-11 items-center justify-center rounded-full bg-ocean-900 text-sm font-bold text-white">
@@ -159,13 +146,10 @@ export function CorporateShell({
               </summary>
               <div className="absolute right-0 z-50 mt-3 w-64 rounded-lg border border-ocean-900/10 bg-white p-2 shadow-soft">
                 <Link href="/corporate" className="block rounded-lg px-3 py-2 text-sm font-bold text-ocean-900 hover:bg-ocean-50">
-                  Corporate overview
+                  Overview
                 </Link>
                 <Link href="/corporate/settings" className="block rounded-lg px-3 py-2 text-sm font-bold text-ocean-900 hover:bg-ocean-50">
                   Settings
-                </Link>
-                <Link href="/corporate/reports" className="block rounded-lg px-3 py-2 text-sm font-bold text-ocean-900 hover:bg-ocean-50">
-                  Report workflow
                 </Link>
                 <form action={logoutAction}>
                   <button type="submit" className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm font-bold text-coral-700 hover:bg-coral-100">

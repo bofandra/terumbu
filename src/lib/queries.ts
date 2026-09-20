@@ -4677,7 +4677,7 @@ export async function getCorporateDashboardData(userId: string, requestedProgram
                 : "Final activities and reporting are being closed.",
       nextMilestone: statusLabel === "Awaiting Verification" ? "Evidence review" : statusLabel === "Needs Attention" ? "Partner clarification" : "Next monitoring report",
       nextMilestoneDate,
-      detailHref: `/corporate/projects?project=${project.campaignSlug}`,
+      detailHref: `/corporate/donations?project=${project.campaignSlug}`,
       partnerScore,
       invoiceStatus: utilization >= 85 ? "Matched to evidence" : utilization >= 65 ? "Partially matched" : "Needs invoice review",
       disbursementStatus: utilization >= 90 ? "Final tranche eligible" : utilization >= 65 ? "Next tranche pending review" : "Hold pending clarification",
@@ -4794,6 +4794,7 @@ export async function getCorporateDashboardData(userId: string, requestedProgram
       workbookUrl: corporateReportArtifactSourceUrl(artifactSource, "workbook"),
       portfolioCsvUrl: corporateReportArtifactSourceUrl(artifactSource, "portfolio-csv"),
       evidenceCsvUrl: corporateReportArtifactSourceUrl(artifactSource, "evidence-csv"),
+      activityScope: getMetadataString(item.metadata, "activityScope"),
       isScheduledDue: item.status === "scheduled" && scheduledReportIsDue(item.scheduledFor, now),
       generatedAt: item.generatedAt ?? (item.status === "scheduled" ? null : item.createdAt),
       verifiedMetrics: verifiedOutputs,
@@ -4989,7 +4990,7 @@ export async function getCorporateDashboardData(userId: string, requestedProgram
         title: project.campaignTitle,
         description: project.statusExplanation,
         status: project.statusLabel,
-        href: "/corporate/projects"
+        href: "/corporate/donations"
       })),
     ...budgetVariance
       .filter((item) => item.status === "Requires explanation")
@@ -4997,14 +4998,14 @@ export async function getCorporateDashboardData(userId: string, requestedProgram
         title: `${item.category} budget variance`,
         description: `Actual spending is ${Math.abs(item.variance)}% ${item.variance > 0 ? "above" : "below"} the approved allocation.`,
         status: "Review",
-        href: "/corporate/funding"
+        href: "/corporate/donations"
       })),
     corporateEvidence.some((item) => item.verificationStatus !== "verified")
       ? {
           title: "Evidence awaiting review",
           description: `${corporateEvidence.filter((item) => item.verificationStatus !== "verified").length} evidence records need reviewer attention.`,
           status: "Under Review",
-          href: "/corporate/evidence"
+          href: "/corporate/donations"
         }
       : null
   ].filter(isDefined).slice(0, 4);
@@ -5042,7 +5043,7 @@ export async function getCorporateDashboardData(userId: string, requestedProgram
     status: verifiedOutputs > 0 ? "Verified Organization Impact Passport" : "Draft Organization Impact Passport",
     score: Math.min(100, Math.max(25, Math.round((verifiedOutputs * 18 + portfolioRows.length * 12 + participationRate) / 2))),
     lastVerifiedAt: corporateEvidence.find((item) => item.verificationStatus === "verified")?.verifiedAt ?? latestReport.approvedAt ?? null,
-    href: publicImpactPreview.href ?? "/corporate/reports",
+    href: publicImpactPreview.href ?? "/corporate/donations",
     highlights: [
       `${portfolioRows.length.toLocaleString("id-ID")} supported projects`,
       `${verifiedOutputs.toLocaleString("id-ID")} verified evidence records`,
@@ -5058,13 +5059,13 @@ export async function getCorporateDashboardData(userId: string, requestedProgram
   };
   const benchmarks: Array<{ label: string; current: number; previous: number; benchmark: number; unit: string; insight: string }> = [];
   const quickActions = [
-    { label: "Add Project", href: "/corporate/projects" },
-    { label: "Review Evidence", href: "/corporate/evidence" },
-    { label: "Review Contributions", href: "/corporate/funding" },
+    { label: "Add Project", href: "/corporate/donations" },
+    { label: "Review Evidence", href: "/corporate/donations" },
+    { label: "Review Contributions", href: "/corporate/donations" },
     { label: "Invite Employee", href: "/corporate/employees" },
-    { label: "Generate Report", href: "/corporate/reports" },
+    { label: "Donation Report", href: "/corporate/donations" },
     { label: "Invite Team Member", href: "/corporate/settings" },
-    { label: "Export Data", href: "/corporate/reports" }
+    { label: "Expedition Report", href: "/corporate/expeditions" }
   ];
   const executiveMetrics = [
     {
@@ -5385,6 +5386,65 @@ export async function getCorporateProjectOptions(userId: string, requestedProgra
       alreadyFunded: Boolean(portfolio)
     };
   });
+}
+
+
+export async function getCorporateExpeditionActivities(userId: string, requestedProgramId?: string | null) {
+  const contextRows = await db
+    .select({
+      accountId: corporateAccounts.id,
+      programId: corporatePrograms.id,
+      programName: corporatePrograms.name,
+      startsAt: corporatePrograms.startsAt,
+      endsAt: corporatePrograms.endsAt
+    })
+    .from(corporatePermissions)
+    .innerJoin(corporateAccounts, eq(corporatePermissions.corporateAccountId, corporateAccounts.id))
+    .innerJoin(corporatePrograms, eq(corporatePrograms.corporateAccountId, corporateAccounts.id))
+    .where(eq(corporatePermissions.userId, userId))
+    .orderBy(desc(corporatePrograms.startsAt), desc(corporatePrograms.createdAt));
+  const context = requestedProgramId ? contextRows.find((item) => item.programId === requestedProgramId) : contextRows[0];
+
+  if (!context) {
+    return [];
+  }
+
+  const rows = await db
+    .select({
+      id: expeditionBookings.id,
+      bookingCode: expeditionBookings.bookingCode,
+      contactName: expeditionBookings.contactName,
+      contactEmail: expeditionBookings.contactEmail,
+      participantsCount: expeditionBookings.participantsCount,
+      totalAmount: expeditionBookings.totalAmount,
+      currency: expeditionBookings.currency,
+      status: expeditionBookings.status,
+      paymentStatus: expeditionBookings.paymentStatus,
+      bookedAt: expeditionBookings.bookedAt,
+      expeditionTitle: expeditions.title,
+      expeditionSlug: expeditions.slug,
+      startsAt: expeditionDepartures.startsAt,
+      endsAt: expeditionDepartures.endsAt
+    })
+    .from(expeditionBookings)
+    .innerJoin(expeditions, eq(expeditionBookings.expeditionId, expeditions.id))
+    .innerJoin(expeditionDepartures, eq(expeditionBookings.departureId, expeditionDepartures.id))
+    .where(
+      and(
+        sql`${expeditionBookings.metadata}->'attribution'->>'type' = 'corporate'`,
+        sql`${expeditionBookings.metadata}->'attribution'->>'corporateAccountId' = ${context.accountId}`,
+        gte(expeditionDepartures.startsAt, context.startsAt),
+        lte(expeditionDepartures.startsAt, context.endsAt)
+      )
+    )
+    .orderBy(desc(expeditionDepartures.startsAt), desc(expeditionBookings.bookedAt));
+
+  return rows.map((row) => ({
+    ...row,
+    totalAmountValue: toNumber(row.totalAmount),
+    statusLabel: row.status.replaceAll("_", " "),
+    paymentStatusLabel: row.paymentStatus.replaceAll("_", " ")
+  }));
 }
 
 export async function getPublicCorporateImpactReport(publicSlug: string) {

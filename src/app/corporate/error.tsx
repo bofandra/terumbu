@@ -19,7 +19,7 @@ export default function CorporateError({ reset }: { error: Error & { digest?: st
             <RotateCcw size={17} aria-hidden="true" />
             Retry
           </Button>
-          <Link href="/corporate/reports" className="inline-flex min-h-11 items-center rounded-full bg-ocean-900 px-5 text-sm font-semibold text-white">
+          <Link href="/corporate/donations" className="inline-flex min-h-11 items-center rounded-full bg-ocean-900 px-5 text-sm font-semibold text-white">
             Report center
           </Link>
         </div>
