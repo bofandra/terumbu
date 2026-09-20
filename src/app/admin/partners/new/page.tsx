@@ -2,8 +2,11 @@ import { Plus } from "lucide-react";
 import type { ReactNode } from "react";
 
 import { AdminAlert } from "@/components/admin/admin-alert";
+import { AdminFormDraftPersistence } from "@/components/admin/admin-form-draft-persistence";
+import { AdminFormErrorSummary, type AdminFormErrorItem } from "@/components/admin/admin-form-error-summary";
 import { AdminPageHeader, adminInputClassName, adminPanelClassName, adminSelectClassName } from "@/components/admin-ui";
 import { Button } from "@/components/ui/button";
+import { adminFormFieldNames } from "@/lib/admin-form-state";
 import { requireRole } from "@/lib/auth";
 import { impactSiteVerificationStatuses } from "@/lib/campaign-content";
 import { createOrganizationAction } from "@/lib/portal-actions";
@@ -17,17 +20,29 @@ export const dynamic = "force-dynamic";
 const organizationTypes = ["ngo", "community_cooperative", "community_group", "corporate_partner", "government", "research"];
 
 const errorMessages: Record<string, string> = {
-  "image-size": "Uploaded image is too large.",
-  "image-type": "Upload a supported image file.",
-  "partner-invalid": "Enter a partner name and type.",
-  "partner-slug": "That partner name is already in use."
+  "image-size": "Uploaded image is too large. Choose a smaller file and submit again.",
+  "image-type": "Upload a supported image file and submit again.",
+  "partner-invalid": "Some required partner fields need attention. Your input has been preserved.",
+  "partner-slug": "That partner name is already in use. Your input has been preserved."
 };
 
+type SearchValue = string | string[] | undefined;
 type AdminPartnerNewPageProps = {
   searchParams?: Promise<{
-    error?: string;
+    error?: SearchValue;
+    field?: SearchValue;
   }>;
 };
+
+const partnerFieldDefinitions: Record<string, AdminFormErrorItem> = {
+  name: { fieldId: "partner-name", label: "Partner name", message: "Enter a unique partner name." },
+  type: { fieldId: "partner-type", label: "Partner type", message: "Choose a partner type." },
+  logoFile: { fieldId: "partner-logoFile", label: "Partner logo", message: "Choose a supported image file again." }
+};
+
+function first(value: SearchValue) {
+  return Array.isArray(value) ? value[0] : value ?? "";
+}
 
 function labelize(value: string) {
   return value.replace(/_/g, " ");
@@ -53,7 +68,11 @@ function Field({
 export default async function AdminPartnerNewPage({ searchParams }: AdminPartnerNewPageProps) {
   await requireRole(["admin"], "/admin/partners/new");
   const params = await searchParams;
-  const errorMessage = params?.error ? errorMessages[params.error] : null;
+  const errorCode = first(params?.error);
+  const errorMessage = errorCode ? errorMessages[errorCode] : null;
+  const invalidFieldNames = adminFormFieldNames(params?.field);
+  const invalidFields = new Set(invalidFieldNames);
+  const fieldErrors = invalidFieldNames.flatMap((field) => partnerFieldDefinitions[field] ? [partnerFieldDefinitions[field]] : []);
 
   return (
     <div className="space-y-6">
@@ -65,7 +84,8 @@ export default async function AdminPartnerNewPage({ searchParams }: AdminPartner
         actionLabel="Back to partners"
       />
 
-      {errorMessage ? <AdminAlert tone="error">{errorMessage}</AdminAlert> : null}
+      {errorMessage ? <AdminAlert tone="error" title="Partner was not created">{errorMessage}</AdminAlert> : null}
+      <AdminFormErrorSummary errors={fieldErrors} />
 
       <section className={adminPanelClassName}>
         <div className="flex flex-col justify-between gap-3 border-b border-ocean-900/10 p-4 sm:flex-row sm:items-center">
@@ -75,15 +95,21 @@ export default async function AdminPartnerNewPage({ searchParams }: AdminPartner
           </div>
           <Plus className="size-5 text-coral-700" aria-hidden="true" />
         </div>
-        <form action={createOrganizationAction} encType="multipart/form-data" className="grid gap-4 p-4">
+        <form id="admin-partner-create-form" action={createOrganizationAction} encType="multipart/form-data" className="grid gap-4 p-4">
+          <AdminFormDraftPersistence
+            formId="admin-partner-create-form"
+            storageKey="terumbu:admin:create-partner"
+            restore={Boolean(errorCode)}
+            focusFieldId={fieldErrors[0]?.fieldId}
+          />
           <input type="hidden" name="errorReturnTo" value="/admin/partners/new" />
           <input type="hidden" name="savedReturnTo" value="/admin/partners" />
           <div className="grid gap-3 lg:grid-cols-3">
             <Field label="Partner name">
-              <input name="name" placeholder="Yayasan Laut Baru" className={adminInputClassName} required />
+              <input id="partner-name" name="name" placeholder="Yayasan Laut Baru" className={adminInputClassName} required aria-invalid={invalidFields.has("name") || undefined} />
             </Field>
             <Field label="Partner type">
-              <select name="type" defaultValue="ngo" className={adminSelectClassName}>
+              <select id="partner-type" name="type" defaultValue="ngo" className={adminSelectClassName} aria-invalid={invalidFields.has("type") || undefined}>
                 {organizationTypes.map((type) => (
                   <option key={type} value={type}>
                     {labelize(type)}
@@ -92,7 +118,7 @@ export default async function AdminPartnerNewPage({ searchParams }: AdminPartner
               </select>
             </Field>
             <Field label="Verification level">
-              <select name="verification" defaultValue="basic" className={adminSelectClassName}>
+              <select id="partner-verification" name="verification" defaultValue="basic" className={adminSelectClassName}>
                 {impactSiteVerificationStatuses.map((verification) => (
                   <option key={verification} value={verification}>
                     {verification}

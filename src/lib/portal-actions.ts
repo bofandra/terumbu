@@ -53,6 +53,7 @@ import {
   partnerCampaignStatuses
 } from "@/lib/campaign-content";
 import { requireRole, safeRedirectPath } from "@/lib/auth";
+import { withAdminFormOutcome } from "@/lib/admin-form-state";
 import { sendAccountSetupEmail } from "@/lib/auth-tokens";
 import { corporateEvidenceVisibilityForStatus, shouldLinkEvidenceToCorporateProgram } from "@/lib/corporate-lifecycle";
 import { sendTransactionalEmail } from "@/lib/email";
@@ -387,7 +388,7 @@ function initialAdminCampaignImpactLinkFromForm(formData: FormData):
     const impactSiteId = formText(formData, "existingImpactSiteId");
 
     if (!impactSiteId) {
-      redirectAdminCampaignError("impact-site-missing", formData);
+      redirectAdminCampaignError("impact-site-missing", formData, ["existingImpactSiteId"]);
     }
 
     return {
@@ -407,7 +408,14 @@ function initialAdminCampaignImpactLinkFromForm(formData: FormData):
   const verification = verificationFromForm(formData.get("impactSiteVerification"));
 
   if (!name || !region || !latitude || !longitude || progress === null || evidenceCount === null) {
-    redirectAdminCampaignError("impact-site-invalid", formData);
+    const invalidFields = [
+      !name ? "impactSiteName" : null,
+      !region ? "impactSiteRegion" : null,
+      !latitude ? "impactSiteLatitude" : null,
+      !longitude ? "impactSiteLongitude" : null
+    ].filter((field): field is string => Boolean(field));
+
+    redirectAdminCampaignError("impact-site-invalid", formData, invalidFields);
   }
 
   return {
@@ -570,22 +578,20 @@ function adminReturnPath(formData: FormData | undefined, fallbackPath: string, o
   return fallbackPath;
 }
 
-function redirectAdminForm(path: string, key: "error" | "saved", code: string): never {
-  const separator = path.includes("?") ? "&" : "?";
-
-  redirect(`${path}${separator}${key}=${encodeURIComponent(code)}`);
+function redirectAdminForm(path: string, key: "error" | "saved", code: string, fields: readonly string[] = []): never {
+  redirect(withAdminFormOutcome(path, key, code, fields));
 }
 
-function redirectAdminPartnerError(code: string, formData?: FormData): never {
-  redirectAdminForm(adminReturnPath(formData, "/admin/partners", "error"), "error", code);
+function redirectAdminPartnerError(code: string, formData?: FormData, fields: readonly string[] = []): never {
+  redirectAdminForm(adminReturnPath(formData, "/admin/partners", "error"), "error", code, fields);
 }
 
 function redirectAdminPartnerSaved(code: string, formData?: FormData): never {
   redirectAdminForm(adminReturnPath(formData, "/admin/partners", "saved"), "saved", code);
 }
 
-function redirectAdminCampaignError(code: string, formData?: FormData): never {
-  redirectAdminForm(adminReturnPath(formData, "/admin/campaigns", "error"), "error", code);
+function redirectAdminCampaignError(code: string, formData?: FormData, fields: readonly string[] = []): never {
+  redirectAdminForm(adminReturnPath(formData, "/admin/campaigns", "error"), "error", code, fields);
 }
 
 function redirectAdminCampaignSaved(code: string, formData?: FormData): never {
@@ -650,8 +656,8 @@ function redirectCampaignContentSaved(formData: FormData, fallbackPath: string, 
   redirect(`${campaignContentReturnPath(formData, fallbackPath)}?saved=${encodeURIComponent(code)}`);
 }
 
-function redirectAdminExpeditionError(code: string, formData?: FormData): never {
-  redirectAdminForm(adminReturnPath(formData, "/admin/expeditions", "error"), "error", code);
+function redirectAdminExpeditionError(code: string, formData?: FormData, fields: readonly string[] = []): never {
+  redirectAdminForm(adminReturnPath(formData, "/admin/expeditions", "error"), "error", code, fields);
 }
 
 function redirectAdminExpeditionSaved(code: string, formData?: FormData): never {
@@ -1168,7 +1174,7 @@ async function imageFromAdminCampaignForm(formData: FormData) {
   const upload = await readUploadedImageAsDataUrl(formData.get("imageFile"));
 
   if (upload.error) {
-    redirectAdminCampaignError(`image-${upload.error}`, formData);
+    redirectAdminCampaignError(`image-${upload.error}`, formData, ["imageFile"]);
   }
 
   return upload.dataUrl;
@@ -1198,7 +1204,7 @@ async function imageFromAdminExpeditionForm(formData: FormData) {
   const upload = await readUploadedImageAsDataUrl(formData.get("imageFile"));
 
   if (upload.error) {
-    redirectAdminExpeditionError(`image-${upload.error}`, formData);
+    redirectAdminExpeditionError(`image-${upload.error}`, formData, ["imageFile"]);
   }
 
   return upload.dataUrl;
@@ -1208,7 +1214,7 @@ async function logoFromAdminPartnerForm(formData: FormData) {
   const upload = await readUploadedImageAsDataUrl(formData.get("logoFile"));
 
   if (upload.error) {
-    redirectAdminPartnerError(`image-${upload.error}`, formData);
+    redirectAdminPartnerError(`image-${upload.error}`, formData, ["logoFile"]);
   }
 
   return upload.dataUrl;
@@ -1497,13 +1503,14 @@ export async function createOrganizationAction(formData: FormData) {
   const logoUrl = await logoFromAdminPartnerForm(formData);
 
   if (!name || !slug || !type) {
-    redirectAdminPartnerError("partner-invalid", formData);
+    const invalidFields = [!name || !slug ? "name" : null, !type ? "type" : null].filter((field): field is string => Boolean(field));
+    redirectAdminPartnerError("partner-invalid", formData, invalidFields);
   }
 
   const [existing] = await db.select({ id: organizations.id }).from(organizations).where(eq(organizations.slug, slug)).limit(1);
 
   if (existing) {
-    redirectAdminPartnerError("partner-slug", formData);
+    redirectAdminPartnerError("partner-slug", formData, ["name"]);
   }
 
   const [organization] = await db
@@ -2651,20 +2658,29 @@ export async function createExpeditionAction(formData: FormData) {
   const imageUrl = await imageFromAdminExpeditionForm(formData);
 
   if (!title || !slug || !region || !durationDays || !basePrice || !summary) {
-    redirectAdminExpeditionError("expedition-invalid", formData);
+    const invalidFields = [
+      !title ? "title" : null,
+      !slug ? "slug" : null,
+      !region ? "region" : null,
+      !durationDays ? "durationDays" : null,
+      !basePrice ? "basePrice" : null,
+      !summary ? "summary" : null
+    ].filter((field): field is string => Boolean(field));
+
+    redirectAdminExpeditionError("expedition-invalid", formData, invalidFields);
   }
 
   const [existing] = await db.select({ id: expeditions.id }).from(expeditions).where(eq(expeditions.slug, slug)).limit(1);
 
   if (existing) {
-    redirectAdminExpeditionError("expedition-slug", formData);
+    redirectAdminExpeditionError("expedition-slug", formData, [formText(formData, "slug") ? "slug" : "title"]);
   }
 
   if (relatedCampaignId) {
     const [campaign] = await db.select({ id: campaigns.id }).from(campaigns).where(eq(campaigns.id, relatedCampaignId)).limit(1);
 
     if (!campaign) {
-      redirectAdminExpeditionError("campaign-missing", formData);
+      redirectAdminExpeditionError("campaign-missing", formData, ["relatedCampaignId"]);
     }
   }
 
@@ -3406,19 +3422,26 @@ export async function createAdminCampaignAction(formData: FormData) {
       : null;
 
   if (!organizationId || !title || !slug || !summary || !goalAmount) {
-    redirectAdminCampaignError("campaign-invalid", formData);
+    const invalidFields = [
+      !organizationId ? "organizationId" : null,
+      !title || !slug ? "title" : null,
+      !goalAmount ? "goalAmount" : null,
+      !summary ? "summary" : null
+    ].filter((field): field is string => Boolean(field));
+
+    redirectAdminCampaignError("campaign-invalid", formData, invalidFields);
   }
 
   const [organization] = await db.select({ id: organizations.id }).from(organizations).where(eq(organizations.id, organizationId)).limit(1);
 
   if (!organization) {
-    redirectAdminCampaignError("organization-missing", formData);
+    redirectAdminCampaignError("organization-missing", formData, ["organizationId"]);
   }
 
   const [existingSlug] = await db.select({ id: campaigns.id }).from(campaigns).where(eq(campaigns.slug, slug)).limit(1);
 
   if (existingSlug) {
-    redirectAdminCampaignError("campaign-slug", formData);
+    redirectAdminCampaignError("campaign-slug", formData, ["title"]);
   }
 
   if (impactLink.mode === "existing") {
@@ -3434,11 +3457,11 @@ export async function createAdminCampaignAction(formData: FormData) {
       .limit(1);
 
     if (!site) {
-      redirectAdminCampaignError("impact-site-missing", formData);
+      redirectAdminCampaignError("impact-site-missing", formData, ["existingImpactSiteId"]);
     }
 
     if (site.campaignId) {
-      redirectAdminCampaignError("impact-site-assigned", formData);
+      redirectAdminCampaignError("impact-site-assigned", formData, ["existingImpactSiteId"]);
     }
 
     linkedImpactSiteDefaults = {
