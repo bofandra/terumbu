@@ -1137,7 +1137,7 @@ export async function fundCorporateProjectAction(formData: FormData) {
   const notes = textValue(formData.get("notes"), 500) || null;
 
   if (!campaignId || !isUuid(campaignId) || !allocationAmount) {
-    redirect(`${returnPath}&error=project`);
+    redirectWithResult(returnPath, "error", "project");
   }
 
   const [campaign] = await db
@@ -1151,7 +1151,7 @@ export async function fundCorporateProjectAction(formData: FormData) {
     .limit(1);
 
   if (!campaign) {
-    redirect(`${returnPath}&error=project`);
+    redirectWithResult(returnPath, "error", "project");
   }
 
   const [previousContribution] = await db
@@ -1304,7 +1304,7 @@ export async function fundCorporateProjectAction(formData: FormData) {
     }
   });
 
-  redirect(`${returnPath}&saved=project`);
+  redirectWithResult(returnPath, "saved", "project");
 }
 
 export async function createCorporateEmployeeEventAction(formData: FormData) {
@@ -1840,7 +1840,7 @@ export async function updateCorporateBudgetAction(formData: FormData) {
   const allocatedAmount = parsePositiveAmount(formData.get("allocatedAmount"));
 
   if (!category || !allocatedAmount) {
-    redirect(`${returnPath}&error=budget`);
+    redirectWithResult(returnPath, "error", "budget");
   }
 
   const [budget] = await db
@@ -1877,7 +1877,7 @@ export async function updateCorporateBudgetAction(formData: FormData) {
       }
     });
 
-  redirect(`${returnPath}&saved=budget`);
+  redirectWithResult(returnPath, "saved", "budget");
 }
 
 export async function updateCorporateEvidenceSpendAction(formData: FormData) {
