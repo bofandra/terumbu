@@ -68,9 +68,9 @@ export default async function AdminEvidenceDetailPage({ params, searchParams }: 
   return (
     <div className="space-y-6">
       <AdminPageHeader
-        eyebrow="Projects / Evidence / Review"
+        eyebrow="Donations / Evidence"
         title={evidence.title}
-        description={`${evidence.evidenceCode} · ${evidence.campaignTitle} · ${evidence.partnerName}`}
+        description={`${evidence.evidenceCode} · ${evidence.evidenceType.replaceAll("_", " ")}`}
         actionHref={directoryReturnTo}
         actionLabel="Back to review queue"
       />
@@ -112,8 +112,8 @@ export default async function AdminEvidenceDetailPage({ params, searchParams }: 
           <section className="rounded-lg border border-ocean-900/10 bg-white p-5 shadow-soft" aria-labelledby="evidence-context-title">
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div>
-                <h2 id="evidence-context-title" className="text-lg font-bold text-ocean-900">Submission context</h2>
-                <p className="mt-1 text-sm font-semibold leading-6 text-ocean-900/58">Review the evidence source and project context before recording a decision.</p>
+                <h2 id="evidence-context-title" className="text-lg font-bold text-ocean-900">Evidence details</h2>
+                <p className="mt-1 text-sm font-semibold leading-6 text-ocean-900/58">Review the submitted file and observation before recording a decision.</p>
               </div>
               <div className="flex flex-wrap gap-2">
                 <Link href={`/campaigns/${evidence.campaignSlug}`} className="inline-flex min-h-10 items-center gap-2 rounded-lg border border-ocean-900/10 bg-white px-3 text-sm font-bold text-ocean-900 hover:border-coral-500 hover:text-coral-700">

@@ -7054,7 +7054,7 @@ export async function getAdminPartnersPage(params: AdminPartnerFilters = {}) {
   const campaignCounts = db
     .select({
       organizationId: campaigns.organizationId,
-      campaignCount: sql<number>`count(${campaigns.id})::int`
+      campaignCount: sql<number>`count(${campaigns.id})::int`.as("campaign_count")
     })
     .from(campaigns)
     .groupBy(campaigns.organizationId)
@@ -7062,8 +7062,8 @@ export async function getAdminPartnersPage(params: AdminPartnerFilters = {}) {
   const userCounts = db
     .select({
       organizationId: organizationUsers.organizationId,
-      userCount: sql<number>`count(${organizationUsers.id})::int`,
-      activeUserCount: sql<number>`sum(case when ${organizationUsers.status} = 'active' then 1 else 0 end)::int`
+      userCount: sql<number>`count(${organizationUsers.id})::int`.as("user_count"),
+      activeUserCount: sql<number>`sum(case when ${organizationUsers.status} = 'active' then 1 else 0 end)::int`.as("active_user_count")
     })
     .from(organizationUsers)
     .groupBy(organizationUsers.organizationId)
@@ -7223,9 +7223,9 @@ export async function getAdminExpeditionsPage(params: AdminExpeditionFilters = {
   const departureStats = db
     .select({
       expeditionId: expeditionDepartures.expeditionId,
-      departureCount: sql<number>`count(${expeditionDepartures.id})::int`,
-      openDepartureCount: sql<number>`sum(case when ${expeditionDepartures.status} = 'open' then 1 else 0 end)::int`,
-      availableSeats: sql<number>`coalesce(sum(greatest(${expeditionDepartures.capacity} - ${expeditionDepartures.seatsBooked}, 0)), 0)::int`
+      departureCount: sql<number>`count(${expeditionDepartures.id})::int`.as("departure_count"),
+      openDepartureCount: sql<number>`sum(case when ${expeditionDepartures.status} = 'open' then 1 else 0 end)::int`.as("open_departure_count"),
+      availableSeats: sql<number>`coalesce(sum(greatest(${expeditionDepartures.capacity} - ${expeditionDepartures.seatsBooked}, 0)), 0)::int`.as("available_seats")
     })
     .from(expeditionDepartures)
     .groupBy(expeditionDepartures.expeditionId)
@@ -7233,7 +7233,7 @@ export async function getAdminExpeditionsPage(params: AdminExpeditionFilters = {
   const bookingStats = db
     .select({
       expeditionId: expeditionBookings.expeditionId,
-      bookingCount: sql<number>`count(${expeditionBookings.id})::int`
+      bookingCount: sql<number>`count(${expeditionBookings.id})::int`.as("booking_count")
     })
     .from(expeditionBookings)
     .groupBy(expeditionBookings.expeditionId)
@@ -7241,7 +7241,7 @@ export async function getAdminExpeditionsPage(params: AdminExpeditionFilters = {
   const reviewStats = db
     .select({
       expeditionId: expeditionReviews.expeditionId,
-      pendingReviewCount: sql<number>`sum(case when ${expeditionReviews.status} = 'pending' then 1 else 0 end)::int`
+      pendingReviewCount: sql<number>`sum(case when ${expeditionReviews.status} = 'pending' then 1 else 0 end)::int`.as("pending_review_count")
     })
     .from(expeditionReviews)
     .groupBy(expeditionReviews.expeditionId)
@@ -7379,11 +7379,11 @@ function adminUserDirectoryStats() {
   const roleStats = db
     .select({
       userId: userRoles.userId,
-      roleCount: sql<number>`count(${userRoles.id})::int`,
-      adminCount: sql<number>`sum(case when ${roles.key} = 'admin' then 1 else 0 end)::int`,
-      partnerRoleCount: sql<number>`sum(case when ${roles.key} = 'partner' then 1 else 0 end)::int`,
-      corporateRoleCount: sql<number>`sum(case when ${roles.key} = 'corporate_admin' then 1 else 0 end)::int`,
-      roleKeys: sql<string>`string_agg(${roles.key}, ',' order by ${roles.key})`
+      roleCount: sql<number>`count(${userRoles.id})::int`.as("role_count"),
+      adminCount: sql<number>`sum(case when ${roles.key} = 'admin' then 1 else 0 end)::int`.as("admin_count"),
+      partnerRoleCount: sql<number>`sum(case when ${roles.key} = 'partner' then 1 else 0 end)::int`.as("partner_role_count"),
+      corporateRoleCount: sql<number>`sum(case when ${roles.key} = 'corporate_admin' then 1 else 0 end)::int`.as("corporate_role_count"),
+      roleKeys: sql<string>`string_agg(${roles.key}, ',' order by ${roles.key})`.as("role_keys")
     })
     .from(userRoles)
     .innerJoin(roles, eq(userRoles.roleId, roles.id))
@@ -7392,9 +7392,9 @@ function adminUserDirectoryStats() {
   const partnerStats = db
     .select({
       userId: organizationUsers.userId,
-      membershipCount: sql<number>`count(${organizationUsers.id})::int`,
-      activeMembershipCount: sql<number>`sum(case when ${organizationUsers.status} = 'active' then 1 else 0 end)::int`,
-      organizationNames: sql<string>`string_agg(distinct ${organizations.name}, ', ')`
+      membershipCount: sql<number>`count(${organizationUsers.id})::int`.as("membership_count"),
+      activeMembershipCount: sql<number>`sum(case when ${organizationUsers.status} = 'active' then 1 else 0 end)::int`.as("active_membership_count"),
+      organizationNames: sql<string>`string_agg(distinct ${organizations.name}, ', ')`.as("organization_names")
     })
     .from(organizationUsers)
     .innerJoin(organizations, eq(organizationUsers.organizationId, organizations.id))
@@ -7403,8 +7403,8 @@ function adminUserDirectoryStats() {
   const corporateStats = db
     .select({
       userId: corporatePermissions.userId,
-      permissionCount: sql<number>`count(${corporatePermissions.id})::int`,
-      accountNames: sql<string>`string_agg(distinct ${corporateAccounts.name}, ', ')`
+      permissionCount: sql<number>`count(${corporatePermissions.id})::int`.as("permission_count"),
+      accountNames: sql<string>`string_agg(distinct ${corporateAccounts.name}, ', ')`.as("account_names")
     })
     .from(corporatePermissions)
     .innerJoin(corporateAccounts, eq(corporatePermissions.corporateAccountId, corporateAccounts.id))
@@ -7413,7 +7413,7 @@ function adminUserDirectoryStats() {
   const sessionStats = db
     .select({
       userId: sessions.userId,
-      activeSessions: sql<number>`count(${sessions.id})::int`
+      activeSessions: sql<number>`count(${sessions.id})::int`.as("active_sessions")
     })
     .from(sessions)
     .groupBy(sessions.userId)

@@ -3,6 +3,7 @@ import { ArrowUpDown, ArrowUpRight, CalendarDays, CalendarPlus, MessageSquareTex
 
 import { AdminAlert } from "@/components/admin/admin-alert";
 import { AdminDataTable, type AdminDataTableColumn } from "@/components/admin/admin-data-table";
+import { AdminDomainNav, adminExpeditionNavItems } from "@/components/admin/admin-domain-nav";
 import { AdminListToolbar } from "@/components/admin/admin-list-toolbar";
 import { AdminPagination } from "@/components/admin/admin-pagination";
 import { AdminEmptyState, AdminPageHeader, AdminStatusBadge, adminSelectClassName } from "@/components/admin-ui";
@@ -217,11 +218,12 @@ export default async function AdminExpeditionsPage({ searchParams }: AdminExpedi
     <div className="space-y-6">
       <AdminPageHeader
         eyebrow="Expeditions"
-        title="Expedition management"
-        description="Search and compare the trip catalog, schedule footprint, booking load, and review queue before opening a focused expedition workspace."
+        title="Expeditions"
+        description="Manage expedition listings, departures, bookings, and reviews."
         actionHref="/admin/expeditions/new"
         actionLabel="New expedition"
       />
+      <AdminDomainNav items={adminExpeditionNavItems} active={pathname} />
 
       {savedMessage ? <AdminAlert tone="success">{savedMessage}</AdminAlert> : null}
       {errorMessage ? <AdminAlert tone="error">{errorMessage}</AdminAlert> : null}

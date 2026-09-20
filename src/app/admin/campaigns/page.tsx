@@ -1,8 +1,9 @@
 import Link from "next/link";
-import { ArrowUpDown, FileCheck2, MapPinned, Pencil, ShieldCheck } from "lucide-react";
+import { ArrowUpDown, Pencil, ShieldCheck } from "lucide-react";
 
 import { AdminAlert } from "@/components/admin/admin-alert";
 import { AdminDataTable, type AdminDataTableColumn } from "@/components/admin/admin-data-table";
+import { AdminDomainNav, adminDonationNavItems } from "@/components/admin/admin-domain-nav";
 import { AdminListToolbar } from "@/components/admin/admin-list-toolbar";
 import { AdminPagination } from "@/components/admin/admin-pagination";
 import { AdminEmptyState, AdminPageHeader, AdminStatusBadge, adminInputClassName, adminSelectClassName } from "@/components/admin-ui";
@@ -17,7 +18,7 @@ import { getAdminProjectsPage, type AdminProjectFilters } from "@/lib/queries";
 import { cn, formatCurrency } from "@/lib/utils";
 
 export const metadata = {
-  title: "Admin Projects"
+  title: "Admin Donations"
 };
 
 export const dynamic = "force-dynamic";
@@ -109,7 +110,7 @@ function SortHeader({ label, sort, data }: { label: string; sort: string; data: 
 
 function StatusSelect({ defaultValue }: { defaultValue: string }) {
   return (
-    <select name="status" defaultValue={defaultValue} className={cn(adminSelectClassName, "min-w-36")} aria-label="Project status">
+    <select name="status" defaultValue={defaultValue} className={cn(adminSelectClassName, "min-w-36")} aria-label="Donation status">
       {campaignStatuses.map((status) => (
         <option key={status} value={status}>
           {labelize(status)}
@@ -141,7 +142,7 @@ export default async function AdminProjectsPage({ searchParams }: AdminProjectsP
   const columns: AdminDataTableColumn<AdminProject>[] = [
     {
       key: "project",
-      header: <SortHeader label="Project" sort="title" data={data} />,
+      header: <SortHeader label="Donation" sort="title" data={data} />,
       render: (project) => (
         <div className="min-w-64">
           <Link
@@ -236,12 +237,13 @@ export default async function AdminProjectsPage({ searchParams }: AdminProjectsP
   return (
     <div className="space-y-6">
       <AdminPageHeader
-        eyebrow="Projects"
-        title="Campaign management"
-        description="Search, filter, sort, and review the campaign portfolio. Open a project for detailed content, evidence, and lifecycle management."
+        eyebrow="Donations"
+        title="Donations"
+        description="Manage donation pages and the projects they support."
         actionHref="/admin/campaigns/new"
-        actionLabel="New campaign"
+        actionLabel="New donation"
       />
+      <AdminDomainNav items={adminDonationNavItems} active={pathname} />
 
       {savedMessage ? <AdminAlert tone="success">{savedMessage}</AdminAlert> : null}
       {errorMessage ? <AdminAlert tone="error">{errorMessage}</AdminAlert> : null}
@@ -259,32 +261,19 @@ export default async function AdminProjectsPage({ searchParams }: AdminProjectsP
       </form>
 
       <section className="grid gap-3 md:grid-cols-4" aria-label="Project summary">
-        <SummaryMetric label="Filtered projects" value={data.summary.projects.toLocaleString("id-ID")} />
+        <SummaryMetric label="Donation pages" value={data.summary.projects.toLocaleString("id-ID")} />
         <SummaryMetric label="In review" value={data.summary.inReview.toLocaleString("id-ID")} />
         <SummaryMetric label="Published" value={data.summary.published.toLocaleString("id-ID")} />
         <SummaryMetric label="Donors" value={data.summary.totalDonors.toLocaleString("id-ID")} />
       </section>
 
-      <section className="grid gap-3 sm:grid-cols-2" aria-label="Project workspace shortcuts">
-        <Link href="/admin/campaigns/impact-sites" className="group rounded-lg border border-ocean-900/10 bg-white p-4 shadow-soft transition hover:-translate-y-0.5 hover:border-coral-500">
-          <span className="grid size-10 place-items-center rounded-lg bg-ocean-50 text-ocean-700 group-hover:bg-coral-100 group-hover:text-coral-700"><MapPinned className="size-5" aria-hidden="true" /></span>
-          <h2 className="mt-4 font-bold text-ocean-900">Impact sites</h2>
-          <p className="mt-1 text-sm font-semibold text-ocean-900/58">Manage field locations, verification, progress, and campaign assignment.</p>
-        </Link>
-        <Link href="/admin/campaigns/evidence" className="group rounded-lg border border-ocean-900/10 bg-white p-4 shadow-soft transition hover:-translate-y-0.5 hover:border-coral-500">
-          <span className="grid size-10 place-items-center rounded-lg bg-ocean-50 text-ocean-700 group-hover:bg-coral-100 group-hover:text-coral-700"><FileCheck2 className="size-5" aria-hidden="true" /></span>
-          <h2 className="mt-4 font-bold text-ocean-900">Evidence review</h2>
-          <p className="mt-1 text-sm font-semibold text-ocean-900/58">Review evidence submissions and verification workflow.</p>
-        </Link>
-      </section>
-
       <AdminListToolbar
         action={pathname}
         searchValue={data.filters.q}
-        searchPlaceholder="Search project, partner, category, or region"
+        searchPlaceholder="Search donation, partner, category, or region"
         clearHref={pathname}
         createHref="/admin/campaigns/new"
-        createLabel="New campaign"
+        createLabel="New donation"
         hiddenFields={{
           sort: data.filters.sort === "updatedAt" ? undefined : data.filters.sort,
           dir: data.filters.dir === "desc" ? undefined : data.filters.dir
@@ -303,16 +292,16 @@ export default async function AdminProjectsPage({ searchParams }: AdminProjectsP
       </AdminListToolbar>
 
       <AdminDataTable
-        caption="Campaign directory"
+        caption="Donation directory"
         columns={columns}
         rows={data.projects}
         getRowKey={(project) => project.id}
         emptyState={
           <AdminEmptyState
-            title="No campaigns match these filters"
-            description="Clear the filters or create a campaign to publish fundraising pages and begin impact tracking."
+            title="No donations match these filters"
+            description="Clear the filters or create a donation page."
             actionHref="/admin/campaigns/new"
-            actionLabel="Create project"
+            actionLabel="Create donation"
           />
         }
       />

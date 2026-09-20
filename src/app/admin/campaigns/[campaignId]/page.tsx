@@ -26,7 +26,7 @@ import { getAdminCampaignWorkspaceData } from "@/lib/queries";
 import { formatCurrency } from "@/lib/utils";
 
 export const metadata = {
-  title: "Manage Admin Campaign"
+  title: "Manage Donation"
 };
 
 export const dynamic = "force-dynamic";
@@ -160,17 +160,17 @@ export default async function AdminCampaignDetailPage({ params, searchParams }: 
   return (
     <div className="space-y-6">
       <AdminPageHeader
-        eyebrow="Projects"
+        eyebrow="Donations"
         title={campaign.title}
         description={`${campaign.partner} / ${campaign.region}`}
         actionHref="/admin/campaigns"
-        actionLabel="Project list"
+        actionLabel="Donations"
       />
 
       {savedMessage ? <AdminAlert tone="success">{savedMessage}</AdminAlert> : null}
       {errorMessage ? <AdminAlert tone="error">{errorMessage}</AdminAlert> : null}
 
-      <section className="grid gap-3 md:grid-cols-4" aria-label="Campaign detail summary">
+      <section className="grid gap-3 md:grid-cols-4" aria-label="Donation detail summary">
         {[
           { label: "Status", value: labelize(campaign.status) },
           { label: "Funding", value: `${progress}%` },
@@ -185,13 +185,13 @@ export default async function AdminCampaignDetailPage({ params, searchParams }: 
       </section>
 
       <FormTabs
-        ariaLabel="Campaign management workflows"
+        ariaLabel="Donation management workflows"
         tabs={[
           { id: "publishing", label: "Publishing", description: "Status and funding" },
           { id: "details", label: "Details", description: "Content and ownership" },
           { id: "impact-sites", label: "Impact Sites", description: "Linked locations", badge: campaignImpactSites.length.toLocaleString("id-ID") },
           { id: "content", label: "Content", description: "Media, budget, timeline" },
-          { id: "danger", label: "Danger", description: "Delete campaign" }
+          { id: "danger", label: "Danger", description: "Delete donation" }
         ]}
       >
       <section className={adminPanelClassName}>
@@ -226,7 +226,7 @@ export default async function AdminCampaignDetailPage({ params, searchParams }: 
       <section className={adminPanelClassName}>
         <div className="flex flex-col justify-between gap-3 border-b border-ocean-900/10 p-4 sm:flex-row sm:items-center">
           <div>
-            <h2 className="text-xl font-bold tracking-normal text-ocean-900">Project details</h2>
+            <h2 className="text-xl font-bold tracking-normal text-ocean-900">Donation details</h2>
             <p className="mt-1 text-sm font-semibold text-ocean-900/58">Edit content, target numbers, media, and ownership.</p>
           </div>
           <Link href={`/campaigns/${campaign.slug}`} className="inline-flex items-center gap-2 text-sm font-bold text-coral-700 hover:text-coral-500">
@@ -335,7 +335,7 @@ export default async function AdminCampaignDetailPage({ params, searchParams }: 
           </details>
           <Button type="submit" tone="secondary" className="w-fit rounded-lg">
             <Save className="size-4" aria-hidden="true" />
-            Save Campaign
+            Save donation
           </Button>
         </form>
       </section>
@@ -396,7 +396,7 @@ export default async function AdminCampaignDetailPage({ params, searchParams }: 
       <section className="rounded-lg border border-coral-700/20 bg-white p-4 shadow-soft">
         <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-start">
           <div>
-            <h2 className="text-xl font-bold tracking-normal text-ocean-900">Delete campaign</h2>
+            <h2 className="text-xl font-bold tracking-normal text-ocean-900">Delete donation</h2>
             <p className="mt-1 text-sm font-semibold text-ocean-900/58">
               Projects with donations, sponsorships, corporate portfolio links, or related expeditions are locked.
             </p>
@@ -418,7 +418,7 @@ export default async function AdminCampaignDetailPage({ params, searchParams }: 
               title={`Delete ${campaign.title}?`}
               body="This permanently removes the project and its remaining unprotected records. This action cannot be undone from the admin portal."
               triggerLabel="Delete Campaign"
-              submitLabel="Delete campaign"
+              submitLabel="Delete donation"
             />
           )}
         </div>

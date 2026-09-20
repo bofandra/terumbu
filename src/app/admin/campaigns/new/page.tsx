@@ -14,7 +14,7 @@ import { createAdminCampaignAction } from "@/lib/portal-actions";
 import { getAdminCampaignCreateOptions, getAdminUnassignedImpactSiteOptions } from "@/lib/queries";
 
 export const metadata = {
-  title: "New Project"
+  title: "New Donation"
 };
 
 export const dynamic = "force-dynamic";
@@ -123,20 +123,20 @@ export default async function AdminCampaignNewPage({ searchParams }: AdminCampai
   return (
     <div className="space-y-6">
       <AdminPageHeader
-        eyebrow="Projects"
-        title="Create project"
+        eyebrow="Donations"
+        title="Create donation"
         description="Start with the basics. Add story, media, and impact site details after creation."
         actionHref="/admin/campaigns"
-        actionLabel="Back to projects"
+        actionLabel="Back to donations"
       />
 
-      {errorMessage ? <AdminAlert tone="error" title="Project was not created">{errorMessage}</AdminAlert> : null}
+      {errorMessage ? <AdminAlert tone="error" title="Donation was not created">{errorMessage}</AdminAlert> : null}
       <AdminFormErrorSummary errors={fieldErrors} />
 
       <section className={adminPanelClassName}>
         <div className="flex flex-col justify-between gap-3 border-b border-ocean-900/10 p-4 sm:flex-row sm:items-center">
           <div>
-            <h2 className="text-xl font-bold tracking-normal text-ocean-900">Project</h2>
+            <h2 className="text-xl font-bold tracking-normal text-ocean-900">Donation</h2>
             <p className="mt-1 text-sm font-semibold text-ocean-900/58">Only the required setup fields are shown.</p>
           </div>
           <Plus className="size-5 text-coral-700" aria-hidden="true" />
@@ -153,7 +153,7 @@ export default async function AdminCampaignNewPage({ searchParams }: AdminCampai
           <input type="hidden" name="status" value="draft" />
 
           <div className="grid gap-3 lg:grid-cols-2">
-            <Field label="Project title">
+            <Field label="Donation title">
               <input id="campaign-title" name="title" placeholder="Restore Raja Ampat Reefs" className={adminInputClassName} required {...fieldA11y(invalidFields, "title")} />
             </Field>
             <Field label="Partner">
@@ -230,7 +230,7 @@ export default async function AdminCampaignNewPage({ searchParams }: AdminCampai
           </details>
           <Button type="submit" tone="secondary" className="w-fit rounded-lg" disabled={data.organizations.length === 0}>
             <Plus className="size-4" aria-hidden="true" />
-            Create project
+            Create donation
           </Button>
         </form>
       </section>

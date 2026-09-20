@@ -86,24 +86,24 @@ export default async function AdminPortalPage({ searchParams }: AdminPortalPageP
 
   const priorityTasks: AdminTask[] = [
     {
-      title: "Verify field evidence",
-      description: "Review partner submissions and record the verification decision.",
+      title: "Review donation evidence",
+      description: "Review partner evidence submitted for donation projects.",
       href: "/admin/campaigns/evidence",
       icon: FileCheck2,
       count: pendingEvidence,
       countLabel: "pending"
     },
     {
-      title: "Reconcile payments",
-      description: "Verify manual payment proofs, approve refunds, and settle donation or booking payment records.",
-      href: "/admin/payments",
+      title: "Review donation payments",
+      description: "Resolve donation payment checks and refund requests.",
+      href: "/admin/campaigns/payments",
       icon: ReceiptText,
       count: paymentChecks,
-      countLabel: "checks"
+      countLabel: "payment checks"
     },
     {
-      title: "Approve project status",
-      description: "Move reviewed campaigns toward publishing, funding, completion, or archival.",
+      title: "Approve donation setup",
+      description: "Review donation pages before publishing them.",
       href: "/admin/campaigns",
       icon: Megaphone,
       count: reviewProjects,
@@ -112,10 +112,10 @@ export default async function AdminPortalPage({ searchParams }: AdminPortalPageP
   ];
 
   const managementTasks: AdminTask[] = [
-    { title: "Expeditions", description: "Manage trip content, schedules, bookings, and moderation.", href: "/admin/expeditions", icon: ShipWheel, count: dashboard.expeditions, countLabel: "records" },
+    { title: "Expeditions", description: "Manage expedition content, schedules, bookings, reviews, and booking payments.", href: "/admin/expeditions", icon: ShipWheel, count: dashboard.expeditions, countLabel: "records" },
     { title: "Corporate", description: "Review accounts, programs, portfolio links, and lifecycle status.", href: "/admin/corporate", icon: Building2 },
     { title: "Partners", description: "Maintain partner organizations, verification levels, and ownership.", href: "/admin/partners", icon: Handshake, count: dashboard.partners, countLabel: "partners" },
-    { title: "Reports", description: "Inspect exports, report artifacts, and scheduled admin outputs.", href: "/admin/reports", icon: BarChart3, count: dashboard.reports, countLabel: "exports" },
+    { title: "Reports", description: "Configure and run the monthly user impact report.", href: "/admin/reports", icon: BarChart3 },
     { title: "Users", description: "Create accounts, assign roles, and resolve access gaps.", href: "/admin/users", icon: Users, count: recentUsers, countLabel: "users" },
     { title: "Audit", description: "Search operational events and account activity.", href: "/admin/audit", icon: ScrollText }
   ];

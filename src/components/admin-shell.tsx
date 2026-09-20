@@ -11,8 +11,6 @@ import {
   LayoutDashboard,
   LogOut,
   Menu,
-  MessageCircle,
-  ReceiptText,
   ScrollText,
   ShipWheel,
   Users,
@@ -33,15 +31,12 @@ type AdminNavItem = {
 
 const adminNavItems: AdminNavItem[] = [
   { href: "/admin", label: "Overview", icon: LayoutDashboard },
-  { href: "/admin/campaigns", label: "Projects", icon: FileCheck2 },
+  { href: "/admin/campaigns", label: "Donations", icon: FileCheck2 },
   { href: "/admin/expeditions", label: "Expeditions", icon: ShipWheel },
-  { href: "/admin/campaigns/evidence", label: "Evidence", icon: FileCheck2 },
   { href: "/admin/partners", label: "Partners", icon: Handshake },
   { href: "/admin/corporate", label: "Corporate", icon: Building2 },
   { href: "/admin/users", label: "Users", icon: Users },
-  { href: "/admin/payments", label: "Payments", icon: ReceiptText },
   { href: "/admin/academy", label: "Academy", icon: GraduationCap },
-  { href: "/admin/community", label: "Community", icon: MessageCircle },
   { href: "/admin/reports", label: "Reports", icon: BarChart3 },
   { href: "/admin/audit", label: "Audit", icon: ScrollText }
 ];
@@ -61,7 +56,7 @@ function navItemIsActive(pathname: string, href: string) {
   }
 
   if (href === "/admin/campaigns") {
-    return pathname === href || (pathname.startsWith("/admin/campaigns/") && !pathname.startsWith("/admin/campaigns/evidence"));
+    return pathname === href || pathname.startsWith("/admin/campaigns/");
   }
 
   return pathname === href || pathname.startsWith(`${href}/`);
