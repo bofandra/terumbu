@@ -12,8 +12,7 @@ import {
   Search,
   Settings,
   ShieldQuestion,
-  UserCircle,
-  Waves
+  UserCircle
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
@@ -25,7 +24,6 @@ import { cn } from "@/lib/utils";
 const dashboardNav = [
   { label: "Overview", href: "/dashboard", icon: Home },
   { label: "My Impact", href: "/dashboard/impact", icon: MapPinned },
-  { label: "My Corals", href: "/dashboard/corals", icon: Waves },
   { label: "Donations", href: "/dashboard/donations", icon: Heart },
   { label: "Expeditions", href: "/dashboard/expeditions", icon: ShieldQuestion },
   { label: "Academy", href: "/dashboard/academy", icon: BookOpen }
@@ -40,7 +38,7 @@ const accountNav = [
 const mobileNav = [
   { label: "Home", href: "/dashboard", icon: Home },
   { label: "Impact", href: "/dashboard/impact", icon: MapPinned },
-  { label: "Corals", href: "/dashboard/corals", icon: Waves },
+  { label: "Expeditions", href: "/dashboard/expeditions", icon: ShieldQuestion },
   { label: "Explore", href: "/campaigns", icon: Search },
   { label: "Profile", href: "/dashboard/impact", icon: UserCircle }
 ];

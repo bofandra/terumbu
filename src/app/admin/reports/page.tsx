@@ -12,7 +12,7 @@ import { MetricValue } from "@/components/ui/metric-value";
 import { observeAdminDataLoader } from "@/lib/admin-observability";
 import { requireRole } from "@/lib/auth";
 import { getAdminReportsPage, type AdminReportFilters } from "@/lib/queries";
-import { runMonthlyImpactReportCycleAction } from "@/lib/retention-actions";
+import { runMonthlyImpactReportCycleAction, updatePlatformDeliverySettingsAction } from "@/lib/retention-actions";
 import { cn, formatCurrency } from "@/lib/utils";
 
 export const metadata = {
@@ -120,7 +120,7 @@ function defaultWorkspace(data: AdminReportsData, params: { saved?: string; work
     return params.workspace;
   }
 
-  if (params?.saved === "monthly-run") {
+  if (params?.saved === "monthly-run" || params?.saved === "delivery-settings") {
     return "monthly";
   }
 
@@ -144,7 +144,9 @@ export default async function AdminReportsPage({ searchParams }: AdminReportsPag
   const savedMessage =
     params?.saved === "monthly-run"
       ? `Monthly impact run complete: ${cleanFilter(params.generated) || "0"} report(s) generated and ${cleanFilter(params.emailed) || "0"} email(s) queued.`
-      : null;
+      : params?.saved === "delivery-settings"
+        ? "Notification and monthly report settings updated."
+        : null;
   const exportBaseParams = exportListParams(data);
   const monthlyBaseParams = monthlyListParams(data);
   const exportColumns: AdminDataTableColumn<AdminReportRow>[] = [
@@ -312,15 +314,38 @@ export default async function AdminReportsPage({ searchParams }: AdminReportsPag
         ]}
       >
         <section id="monthly-impact-reports" className="grid gap-4">
+          <form action={updatePlatformDeliverySettingsAction} className="rounded-lg border border-ocean-900/10 bg-white p-4">
+            <div>
+              <h2 className="text-xl font-bold tracking-normal text-ocean-900">User notifications and reports</h2>
+              <p className="mt-1 text-sm font-semibold text-ocean-900/58">Platform-wide settings managed by Terumbu admins.</p>
+            </div>
+            <div className="mt-4 grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+              {[
+                ["campaignUpdates", "Project updates", data.platformDeliverySettings.campaignUpdates],
+                ["evidenceAlerts", "Evidence alerts", data.platformDeliverySettings.evidenceAlerts],
+                ["expeditionReminders", "Expedition reminders", data.platformDeliverySettings.expeditionReminders],
+                ["academyUpdates", "Academy updates", data.platformDeliverySettings.academyUpdates],
+                ["monthlyImpactReport", "Monthly reports", data.platformDeliverySettings.monthlyImpactReport],
+                ["monthlyImpactEmail", "Email monthly reports", data.platformDeliverySettings.monthlyImpactEmail]
+              ].map(([name, label, enabled]) => (
+                <label key={name as string} className="flex items-center justify-between gap-3 rounded-lg border border-ocean-900/10 bg-sand-50 px-3 py-3 text-sm font-bold text-ocean-900">
+                  <span>{label as string}</span>
+                  <input name={name as string} type="checkbox" defaultChecked={Boolean(enabled)} className="size-4 accent-coral-500" />
+                </label>
+              ))}
+            </div>
+            <Button type="submit" className="mt-4 rounded-lg">Save settings</Button>
+          </form>
+
           <div className="grid gap-4 rounded-lg border border-ocean-900/10 bg-white p-4 lg:grid-cols-[1fr_auto] lg:items-start">
             <div>
               <h2 className="text-xl font-bold tracking-normal text-ocean-900">Monthly impact report cycle</h2>
-              <p className="mt-1 text-sm font-semibold text-ocean-900/58">Generate saved monthly reports for opted-in users and optionally queue the email digest.</p>
+              <p className="mt-1 text-sm font-semibold text-ocean-900/58">Generate monthly reports using the platform settings above.</p>
             </div>
             <form action={runMonthlyImpactReportCycleAction} className="grid gap-3 rounded-lg border border-ocean-900/10 bg-sand-50 p-3">
               <label className="flex items-center gap-2 text-sm font-bold text-ocean-900">
                 <input name="sendEmail" type="checkbox" className="size-4 rounded border-ocean-900/20 text-coral-500" />
-                Queue emails for opted-in users
+                Queue report emails
               </label>
               <Button type="submit" className="rounded-lg"><RefreshCw className="size-4" aria-hidden="true" />Run Cycle</Button>
             </form>

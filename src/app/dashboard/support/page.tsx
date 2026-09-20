@@ -1,5 +1,4 @@
-import { BookOpen, HelpCircle, Mail, MapPinned, MessageCircle, ReceiptText, Send, Settings } from "lucide-react";
-import Link from "next/link";
+import { HelpCircle, Mail, MessageCircle, Send } from "lucide-react";
 
 import { Button, ButtonLink } from "@/components/ui/button";
 import { requireUser } from "@/lib/auth";
@@ -54,32 +53,6 @@ export default async function DashboardSupportPage({ searchParams }: DashboardSu
   const supportHref = `mailto:${supportEmail}?subject=${encodeURIComponent("Help with my Terumbu account")}&body=${encodeURIComponent(
     `Account email: ${user.email}\n\nHow can we help?`
   )}`;
-  const topics = [
-    {
-      label: "Account settings",
-      description: "Profile details, password changes, and notification preferences.",
-      href: "/dashboard/settings",
-      icon: Settings
-    },
-    {
-      label: "Payments",
-      description: "Donation receipts, pending gateway payments, and payment records.",
-      href: "/dashboard/donations",
-      icon: ReceiptText
-    },
-    {
-      label: "Expeditions",
-      description: "Bookings, participant names, departure details, and documentation links.",
-      href: "/dashboard/expeditions",
-      icon: MapPinned
-    },
-    {
-      label: "Academy",
-      description: "Course progress, transcripts, certificates, and learning records.",
-      href: "/dashboard/academy",
-      icon: BookOpen
-    }
-  ];
 
   return (
     <main className="mx-auto max-w-5xl px-4 py-8 sm:px-6 lg:px-8">
@@ -113,20 +86,6 @@ export default async function DashboardSupportPage({ searchParams }: DashboardSu
           Add a subject and a clear message before sending.
         </p>
       ) : null}
-
-      <section className="mt-6 grid gap-4 md:grid-cols-2">
-        {topics.map((topic) => {
-          const Icon = topic.icon;
-
-          return (
-            <Link key={topic.label} href={topic.href} className="rounded-2xl border border-ocean-900/10 bg-white p-5 shadow-soft hover:border-coral-500">
-              <Icon size={24} aria-hidden="true" className="text-coral-500" />
-              <h2 className="mt-4 text-xl font-bold tracking-normal text-ocean-900">{topic.label}</h2>
-              <p className="mt-2 text-sm leading-6 text-ocean-900/62">{topic.description}</p>
-            </Link>
-          );
-        })}
-      </section>
 
       <section className="mt-6 grid gap-6 lg:grid-cols-[0.9fr_1.1fr]">
         <article className="rounded-2xl border border-ocean-900/10 bg-white p-5 shadow-soft">

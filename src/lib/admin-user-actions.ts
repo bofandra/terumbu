@@ -12,7 +12,6 @@ import {
   corporateAccounts,
   corporatePermissions,
   impactPassports,
-  notificationPreferences,
   organizationUsers,
   organizations,
   profiles,
@@ -285,10 +284,6 @@ export async function createAdminUserAction(formData: FormData) {
     updatedAt: now
   });
 
-  await db.insert(notificationPreferences).values({
-    userId: createdUser.id,
-    updatedAt: now
-  });
 
   if (initialAccess.roleKey) {
     const roleId = await ensureGlobalRole(initialAccess.roleKey);

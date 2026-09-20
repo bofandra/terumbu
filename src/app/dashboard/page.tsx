@@ -30,8 +30,6 @@ import { requireUser } from "@/lib/auth";
 import { publicPassportShareUrl } from "@/lib/passport-sharing";
 import { getDashboardData } from "@/lib/queries";
 import {
-  emailMonthlyImpactReportAction,
-  generateMonthlyImpactReportAction,
   markAllNotificationsReadAction,
   markNotificationReadAction
 } from "@/lib/retention-actions";
@@ -58,9 +56,6 @@ function levelTarget(heroLevel: number) {
   return Math.max(1000, heroLevel * 2500);
 }
 
-function metricDelta(value: number, label: string) {
-  return value > 0 ? `${value.toLocaleString("id-ID")} ${label}` : "Ready for your next update";
-}
 
 function achievementIcon(name: string) {
   if (name.includes("Coral")) {
@@ -127,8 +122,8 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
     {
       label: "Coral Fragments Sponsored",
       value: data.summary.coralFragments.toLocaleString("id-ID"),
-      support: `${data.summary.healthyCorals.toLocaleString("id-ID")} healthy · ${data.summary.monitoringCorals.toLocaleString("id-ID")} monitoring`,
-      delta: metricDelta(data.monthlyReport.coralsMonitored, "monitored this month"),
+      support: `${data.coralCards.length.toLocaleString("id-ID")} sponsored ecosystem record${data.coralCards.length === 1 ? "" : "s"}`,
+      delta: data.coralCards.length > 0 ? "See records in My Impact" : "No sponsored ecosystem yet",
       icon: Waves,
       tone: "bg-kelp-500 text-white"
     },
@@ -154,28 +149,8 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
     { label: "Sponsor a Coral", href: "/campaigns", icon: Waves },
     { label: "Start a Free Course", href: "/academy", icon: BookOpen }
   ];
-  const savedMessage = params?.saved === "monthly-report"
-    ? "Monthly report summary saved."
-    : params?.saved === "monthly-email"
-      ? "Monthly report email sent."
-      : params?.saved
-        ? "Dashboard update saved."
-        : null;
-  const errorMessage = params?.error === "monthly-report"
-    ? "We could not save the monthly report summary. Try again."
-    : params?.error === "monthly-email"
-      ? "The monthly report summary was saved, but the email could not be sent."
-      : params?.error
-        ? "We could not complete that dashboard action."
-        : null;
-  const monthlyReportMessage = params?.saved === "monthly-report" || params?.saved === "monthly-email"
-    ? savedMessage
-    : params?.error === "monthly-report" || params?.error === "monthly-email"
-      ? errorMessage
-      : null;
-  const monthlyReportMessageClassName = params?.error === "monthly-report" || params?.error === "monthly-email"
-    ? "border-coral-500/20 bg-coral-100 text-coral-700"
-    : "border-kelp-500/20 bg-kelp-100 text-kelp-700";
+  const savedMessage = params?.saved ? "Dashboard updated." : null;
+  const errorMessage = params?.error ? "We could not complete that dashboard action." : null;
 
   return (
     <main className="mx-auto max-w-[1440px] px-4 py-6 sm:px-6 lg:px-8">
@@ -383,43 +358,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
         </article>
       </section>
 
-      <section className="mt-6 grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
-        <article className="rounded-2xl border border-ocean-900/10 bg-white p-5 shadow-soft">
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <p className="text-sm font-bold uppercase tracking-[0.16em] text-coral-700">My sponsored corals</p>
-              <h2 className="mt-2 text-2xl font-bold tracking-normal text-ocean-900">
-                {data.summary.coralFragments.toLocaleString("id-ID")} coral fragments across {data.coralCards.length.toLocaleString("id-ID")} records
-              </h2>
-            </div>
-            <Link href="/dashboard/corals" className="text-sm font-bold text-coral-700 hover:text-coral-500">View all</Link>
-          </div>
-          <div className="mt-5 grid gap-4 md:grid-cols-3">
-            {data.coralCards.length > 0 ? (
-              data.coralCards.slice(0, 3).map((coral) => (
-                <Link key={coral.code} href={`/dashboard/corals/${coral.code}`} className="overflow-hidden rounded-2xl border border-ocean-900/10 bg-sand-50 hover:border-coral-500">
-                  <div className="relative h-32 bg-ocean-900">
-                    {coral.imageUrl ? <Image src={coral.imageUrl} alt={`${coral.label} campaign site`} fill className="object-cover" sizes="(min-width: 1024px) 240px, 100vw" /> : null}
-                    <span className="absolute bottom-3 left-3 rounded-full bg-kelp-500 px-3 py-1 text-xs font-bold text-white">{coral.statusLabel}</span>
-                  </div>
-                  <div className="p-4">
-                    <p className="font-bold text-ocean-900">{coral.code}</p>
-                    <p className="mt-1 text-sm text-ocean-900/58">{coral.location}</p>
-                    <p className="mt-3 text-xs font-semibold text-ocean-900/58">Last update: {formatShortDate(coral.lastUpdatedAt)}</p>
-                    <p className="mt-1 text-xs font-semibold text-ocean-900/58">Next update: {coral.nextUpdateLabel}</p>
-                  </div>
-                </Link>
-              ))
-            ) : (
-              <div className="md:col-span-3 rounded-2xl border border-dashed border-ocean-900/14 bg-sand-50 p-6">
-                <p className="font-bold text-ocean-900">You have not sponsored a coral yet.</p>
-                <p className="mt-2 text-sm text-ocean-900/62">Sponsor a coral and follow its restoration journey through field updates.</p>
-                <Link href="/campaigns" className="mt-4 inline-flex text-sm font-bold text-coral-700">Explore coral sponsorship</Link>
-              </div>
-            )}
-          </div>
-        </article>
-
+      <section className="mt-6">
         <article className="rounded-2xl border border-ocean-900/10 bg-white p-5 shadow-soft">
           <div className="flex items-start justify-between gap-3">
             <div>
@@ -660,60 +599,34 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
         {data.passportPreview ? <PassportPreview passport={data.passportPreview} /> : null}
 
         <div className="grid gap-6">
-          <article id="monthly-report" className="scroll-mt-24 rounded-2xl border border-ocean-900/10 bg-white p-5 shadow-soft">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <p className="text-sm font-bold uppercase tracking-[0.16em] text-coral-700">Monthly report</p>
-                <h2 className="mt-2 text-2xl font-bold tracking-normal text-ocean-900">{data.monthlyReport.label}</h2>
+          {data.monthlyReport.persisted ? (
+            <article id="monthly-report" className="scroll-mt-24 rounded-2xl border border-ocean-900/10 bg-white p-5 shadow-soft">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-sm font-bold uppercase tracking-[0.16em] text-coral-700">Monthly report</p>
+                  <h2 className="mt-2 text-2xl font-bold tracking-normal text-ocean-900">{data.monthlyReport.label}</h2>
+                </div>
+                <span className="rounded-full bg-kelp-100 px-3 py-1 text-xs font-bold text-kelp-700">Generated</span>
               </div>
-              <span className={cn("rounded-full px-3 py-1 text-xs font-bold", data.monthlyReport.ready ? "bg-kelp-100 text-kelp-700" : "bg-sand-100 text-ocean-900/62")}>
-                {data.monthlyReport.persisted ? "Saved" : data.monthlyReport.ready ? "Ready" : "Pending"}
-              </span>
-            </div>
-            {monthlyReportMessage ? (
-              <p className={cn("mt-4 rounded-xl border px-4 py-3 text-sm font-semibold", monthlyReportMessageClassName)}>
-                {monthlyReportMessage}
-              </p>
-            ) : null}
-            <div className="mt-5 grid gap-3 sm:grid-cols-2">
-              <ReportItem label="Contributions" value={formatCurrency(data.monthlyReport.contributions)} />
-              <ReportItem label="Campaign updates" value={String(data.monthlyReport.campaignUpdates)} />
-              <ReportItem label="New evidence" value={String(data.monthlyReport.newEvidence)} />
-              <ReportItem label="Corals monitored" value={String(data.monthlyReport.coralsMonitored)} />
-            </div>
-            <p className="mt-4 text-xs font-semibold text-ocean-900/54">
-              {data.monthlyReport.emailedAt
-                ? `Last emailed ${formatShortDate(data.monthlyReport.emailedAt)}`
-                : data.monthlyReport.generatedAt
-                  ? `Generated ${formatShortDate(data.monthlyReport.generatedAt)}`
-                  : "Generate a saved report record before sending summaries."}
-            </p>
-            <div className="mt-5 flex flex-wrap gap-2">
+              <div className="mt-5 grid gap-3 sm:grid-cols-2">
+                <ReportItem label="Contributions" value={formatCurrency(data.monthlyReport.contributions)} />
+                <ReportItem label="Project updates" value={String(data.monthlyReport.campaignUpdates)} />
+                <ReportItem label="New evidence" value={String(data.monthlyReport.newEvidence)} />
+                <ReportItem label="Corals monitored" value={String(data.monthlyReport.coralsMonitored)} />
+              </div>
+              {data.monthlyReport.generatedAt ? (
+                <p className="mt-4 text-xs font-semibold text-ocean-900/54">Generated {formatShortDate(data.monthlyReport.generatedAt)}</p>
+              ) : null}
               {data.monthlyReport.downloadHref ? (
-                <ButtonLink href={data.monthlyReport.downloadHref} tone="secondary">
-                  <Download size={17} aria-hidden="true" />
-                  Download PDF
-                </ButtonLink>
-              ) : (
-                <ButtonLink href="/dashboard/impact" tone="secondary">Review Impact</ButtonLink>
-              )}
-              {data.monthlyReport.preferenceEnabled ? (
-                <form action={generateMonthlyImpactReportAction}>
-                  <Button type="submit" tone="light">
+                <div className="mt-5">
+                  <ButtonLink href={data.monthlyReport.downloadHref} tone="secondary">
                     <Download size={17} aria-hidden="true" />
-                    Save Summary
-                  </Button>
-                </form>
+                    Download PDF
+                  </ButtonLink>
+                </div>
               ) : null}
-              {data.monthlyReport.emailEnabled ? (
-                <form action={emailMonthlyImpactReportAction}>
-                  <Button type="submit" tone="light">
-                    Email Summary
-                  </Button>
-                </form>
-              ) : null}
-            </div>
-          </article>
+            </article>
+          ) : null}
 
           <article className="rounded-2xl border border-ocean-900/10 bg-white p-5 shadow-soft">
             <p className="text-sm font-bold uppercase tracking-[0.16em] text-coral-700">Profile and passport</p>

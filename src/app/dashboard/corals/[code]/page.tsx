@@ -70,8 +70,8 @@ export default async function SponsoredEcosystemDetailPage({ params }: { params:
 
   return (
     <main className="mx-auto max-w-[1440px] px-4 py-8 sm:px-6 lg:px-8">
-      <Link href="/dashboard/corals" className="text-sm font-bold text-coral-700 hover:text-coral-500">
-        Back to corals
+      <Link href="/dashboard/impact#corals" className="text-sm font-bold text-coral-700 hover:text-coral-500">
+        Back to My Impact
       </Link>
 
       <header className="mt-4 overflow-hidden rounded-2xl bg-ocean-900 shadow-soft">

@@ -114,7 +114,7 @@ import {
 } from "@/lib/corporate-lifecycle";
 import { verifyPassword } from "@/lib/password";
 import { formatImpactQuantity } from "@/lib/impact-calculations";
-import { getCarbonKgPerUsd } from "@/lib/platform-settings";
+import { getCarbonKgPerUsd, getPlatformDeliverySettings } from "@/lib/platform-settings";
 import {
   normalizePassportCategoryVisibility,
   normalizePassportEvidenceConsent,
@@ -2796,7 +2796,7 @@ export async function getDashboardData(userId: string) {
     savedCourseRows,
     savedExpeditionRows,
     followedUpdateRows,
-    notificationPreferenceRows,
+    deliverySettings,
     monthlyImpactReportRows
   ] = await Promise.all([
     db
@@ -3127,18 +3127,7 @@ export async function getDashboardData(userId: string) {
       .where(and(eq(campaignFollowSubscriptions.userId, userId), eq(campaignFollowSubscriptions.status, "active")))
       .orderBy(desc(campaignUpdates.publishedAt), desc(campaignUpdates.createdAt))
       .limit(6),
-    db
-      .select({
-        campaignUpdates: notificationPreferences.campaignUpdates,
-        evidenceAlerts: notificationPreferences.evidenceAlerts,
-        expeditionReminders: notificationPreferences.expeditionReminders,
-        academyUpdates: notificationPreferences.academyUpdates,
-        monthlyImpactEmail: notificationPreferences.monthlyImpactEmail,
-        monthlyImpactReport: notificationPreferences.monthlyImpactReport
-      })
-      .from(notificationPreferences)
-      .where(eq(notificationPreferences.userId, userId))
-      .limit(1),
+    getPlatformDeliverySettings(),
     db
       .select({
         id: monthlyImpactReports.id,
@@ -3602,7 +3591,7 @@ export async function getDashboardData(userId: string) {
     .sort((a, b) => b.occurredAt.getTime() - a.occurredAt.getTime())
     .slice(0, 8);
 
-  const preferences = notificationPreferenceRows[0] ?? defaultNotificationPreferences();
+  const preferences = deliverySettings;
   const notificationCandidates = [
     ...followedUpdateRows.slice(0, 4).map((update) => ({
       notificationCode: `follow-update-${update.id}`,
@@ -8060,6 +8049,7 @@ function adminMonthlyReportWhere(filters: { q: string; status: string; email: st
 }
 
 export async function getAdminReportsPage(params: AdminReportFilters = {}) {
+  const platformDeliverySettings = await getPlatformDeliverySettings();
   const exportQuery = parseAdminListQuery(params, {
     defaultSort: "createdAt",
     defaultDir: "desc",
@@ -8191,12 +8181,8 @@ export async function getAdminReportsPage(params: AdminReportFilters = {}) {
       .groupBy(monthlyImpactReports.reportMonth)
       .orderBy(desc(monthlyImpactReports.reportMonth)),
     db
-      .select({
-        total: sql<number>`count(${notificationPreferences.userId})::int`,
-        emailEnabled: sql<number>`sum(case when ${notificationPreferences.monthlyImpactEmail} then 1 else 0 end)::int`
-      })
-      .from(notificationPreferences)
-      .where(eq(notificationPreferences.monthlyImpactReport, true))
+      .select({ total: sql<number>`count(${users.id})::int` })
+      .from(users)
   ]);
 
   const exportTotalItems = Number(exportTotalRows[0]?.total ?? 0);
@@ -8298,9 +8284,13 @@ export async function getAdminReportsPage(params: AdminReportFilters = {}) {
       withArtifacts: Number(exportSummaryRows[0]?.withArtifacts ?? 0),
       accounts: Number(exportSummaryRows[0]?.accountCount ?? 0)
     },
+    platformDeliverySettings,
     monthlyImpactSummary: {
-      eligibleUsers: Number(monthlyEligibleRows[0]?.total ?? 0),
-      emailEnabledUsers: Number(monthlyEligibleRows[0]?.emailEnabled ?? 0),
+      eligibleUsers: platformDeliverySettings.monthlyImpactReport ? Number(monthlyEligibleRows[0]?.total ?? 0) : 0,
+      emailEnabledUsers:
+        platformDeliverySettings.monthlyImpactReport && platformDeliverySettings.monthlyImpactEmail
+          ? Number(monthlyEligibleRows[0]?.total ?? 0)
+          : 0,
       filteredReports: monthlyTotalItems,
       readyReports: Number(monthlySummaryRows[0]?.ready ?? 0),
       emailedReports: Number(monthlySummaryRows[0]?.emailed ?? 0),

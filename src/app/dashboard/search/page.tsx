@@ -50,10 +50,10 @@ const dashboardDestinations: SearchResult[] = [
   {
     id: "destination-corals",
     section: "Dashboard",
-    title: "My Corals",
-    description: "Sponsored coral records, map view, and health summaries.",
-    href: "/dashboard/corals",
-    meta: "Corals",
+    title: "Sponsored ecosystems",
+    description: "Coral and mangrove records within My Impact.",
+    href: "/dashboard/impact#corals",
+    meta: "My Impact",
     icon: Waves
   },
   {

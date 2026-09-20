@@ -13,7 +13,6 @@ import {
   donations,
   expeditions,
   monthlyImpactReports,
-  notificationPreferences,
   projectEvidence,
   sponsoredEcosystems,
   userNotifications,
@@ -24,6 +23,7 @@ import {
 import { requireRole, requireUser, safeRedirectPath } from "@/lib/auth";
 import { getMetadataNumber, toNumber } from "@/lib/domain";
 import { sendTransactionalEmail } from "@/lib/email";
+import { getPlatformDeliverySettings, upsertPlatformDeliverySettings } from "@/lib/platform-settings";
 
 function returnPath(formData: FormData, fallback: string) {
   return safeRedirectPath(formData.get("next") ?? fallback);
@@ -295,34 +295,31 @@ export async function unfollowCampaignAction(formData: FormData) {
   redirect(`${next}?saved=follow`);
 }
 
-export async function updateNotificationPreferencesAction(formData: FormData) {
-  const user = await requireUser("/dashboard/settings");
+
+export async function updatePlatformDeliverySettingsAction(formData: FormData) {
+  const admin = await requireRole(["admin"], "/admin/reports");
   const now = new Date();
-  const values = {
+  const settings = {
     campaignUpdates: formData.get("campaignUpdates") === "on",
     evidenceAlerts: formData.get("evidenceAlerts") === "on",
     expeditionReminders: formData.get("expeditionReminders") === "on",
     academyUpdates: formData.get("academyUpdates") === "on",
-    monthlyImpactEmail: formData.get("monthlyImpactEmail") === "on",
-    monthlyImpactReport: formData.get("monthlyImpactReport") === "on"
+    monthlyImpactReport: formData.get("monthlyImpactReport") === "on",
+    monthlyImpactEmail: formData.get("monthlyImpactEmail") === "on"
   };
 
-  await db
-    .insert(notificationPreferences)
-    .values({
-      userId: user.id,
-      ...values,
-      updatedAt: now
-    })
-    .onConflictDoUpdate({
-      target: notificationPreferences.userId,
-      set: {
-        ...values,
-        updatedAt: now
-      }
-    });
+  await upsertPlatformDeliverySettings({ settings, updatedByUserId: admin.id, now });
 
-  redirect("/dashboard/settings?saved=notifications#notifications");
+  await db.insert(adminAuditLogs).values({
+    actorUserId: admin.id,
+    action: "platform.delivery_settings.updated",
+    entityType: "platform_setting",
+    entityId: null,
+    metadata: settings,
+    createdAt: now
+  });
+
+  redirect("/admin/reports?workspace=monthly&saved=delivery-settings");
 }
 
 export async function markNotificationReadAction(formData: FormData) {
@@ -589,100 +586,14 @@ async function upsertMonthlyImpactReport(
   return { ...report, id: savedReport.id };
 }
 
-export async function generateMonthlyImpactReportAction() {
-  const user = await requireUser("/dashboard");
-
-  try {
-    await upsertMonthlyImpactReport(user.id);
-  } catch (error) {
-    console.error("Monthly impact report dashboard save failed.", {
-      userId: user.id,
-      error
-    });
-    redirect("/dashboard?error=monthly-report#monthly-report");
-  }
-
-  redirect("/dashboard?saved=monthly-report#monthly-report");
-}
-
-export async function emailMonthlyImpactReportAction() {
-  const user = await requireUser("/dashboard");
-  let report: Awaited<ReturnType<typeof upsertMonthlyImpactReport>>;
-
-  try {
-    report = await upsertMonthlyImpactReport(user.id, { source: "email_action" });
-  } catch (error) {
-    console.error("Monthly impact report email save failed.", {
-      userId: user.id,
-      error
-    });
-    redirect("/dashboard?error=monthly-report#monthly-report");
-  }
-
-  const now = new Date();
-
-  let emailResult: Awaited<ReturnType<typeof sendTransactionalEmail>>;
-
-  try {
-    emailResult = await sendTransactionalEmail({
-      userId: user.id,
-      recipientEmail: report.userEmail || user.email,
-      subject: `${report.label} from Terumbu.eco`,
-      template: "monthly_impact_report",
-      payload: {
-        name: report.userName,
-        reportMonth: report.reportMonth,
-        contributions: report.contributions,
-        campaignUpdates: report.campaignUpdates,
-        newEvidence: report.newEvidence,
-        coralsMonitored: report.coralsMonitored,
-        academyProgress: report.academyProgress
-      }
-    });
-  } catch (error) {
-    console.error("Monthly impact report email send failed.", {
-      userId: user.id,
-      reportId: report.id,
-      reportMonth: report.reportMonth,
-      error
-    });
-    redirect("/dashboard?error=monthly-email#monthly-report");
-  }
-
-  if (emailResult.status !== "sent") {
-    console.error("Monthly impact report email was not sent.", {
-      userId: user.id,
-      reportId: report.id,
-      reportMonth: report.reportMonth,
-      status: emailResult.status
-    });
-    redirect("/dashboard?error=monthly-email#monthly-report");
-  }
-
-  await db
-    .update(monthlyImpactReports)
-    .set({
-      emailedAt: now,
-      updatedAt: now
-    })
-    .where(and(eq(monthlyImpactReports.id, report.id), eq(monthlyImpactReports.userId, user.id)));
-
-  redirect("/dashboard?saved=monthly-email#monthly-report");
-}
-
 export async function runMonthlyImpactReportCycleAction(formData: FormData) {
   const admin = await requireRole(["admin"], "/admin/reports");
   const sendEmail = formData.get("sendEmail") === "on";
   const now = new Date();
-  const eligibleUsers = await db
-    .select({
-      userId: users.id,
-      email: users.email,
-      monthlyImpactEmail: notificationPreferences.monthlyImpactEmail
-    })
-    .from(notificationPreferences)
-    .innerJoin(users, eq(notificationPreferences.userId, users.id))
-    .where(eq(notificationPreferences.monthlyImpactReport, true));
+  const deliverySettings = await getPlatformDeliverySettings();
+  const eligibleUsers = deliverySettings.monthlyImpactReport
+    ? await db.select({ userId: users.id, email: users.email }).from(users)
+    : [];
   let generatedCount = 0;
   let emailedCount = 0;
 
@@ -693,7 +604,7 @@ export async function runMonthlyImpactReportCycleAction(formData: FormData) {
     });
     generatedCount += 1;
 
-    if (sendEmail && eligibleUser.monthlyImpactEmail) {
+    if (sendEmail && deliverySettings.monthlyImpactEmail) {
       await sendTransactionalEmail({
         userId: eligibleUser.userId,
         recipientEmail: report.userEmail || eligibleUser.email,
