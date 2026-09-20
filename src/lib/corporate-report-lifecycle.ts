@@ -1,7 +1,7 @@
 export const corporateReportTypes = ["esg", "csr", "evidence", "donations", "expeditions"] as const;
 export type CorporateReportType = (typeof corporateReportTypes)[number];
 
-export const corporateReportFormats = ["html_json", "evidence_json", "full_archive", "pdf"] as const;
+export const corporateReportFormats = ["pdf"] as const;
 export type CorporateReportFormat = (typeof corporateReportFormats)[number];
 
 export const corporateReportStatuses = ["scheduled", "generated", "review", "approved", "published", "archived"] as const;
@@ -18,8 +18,8 @@ export function normalizeCorporateReportType(value: string | null | undefined, f
   return corporateReportTypes.includes(value as CorporateReportType) ? (value as CorporateReportType) : fallback;
 }
 
-export function normalizeCorporateReportFormat(value: string | null | undefined, fallback: CorporateReportFormat = "html_json"): CorporateReportFormat {
-  return corporateReportFormats.includes(value as CorporateReportFormat) ? (value as CorporateReportFormat) : fallback;
+export function normalizeCorporateReportFormat(_value: string | null | undefined, fallback: CorporateReportFormat = "pdf"): CorporateReportFormat {
+  return fallback;
 }
 
 export function normalizeCorporateReportStatus(value: string | null | undefined, fallback: CorporateReportStatus = "generated"): CorporateReportStatus {
@@ -36,13 +36,9 @@ export function corporateReportTypeLabel(type: string | null | undefined) {
   }[normalizeCorporateReportType(type)];
 }
 
-export function corporateReportFormatLabel(format: string | null | undefined) {
-  return {
-    html_json: "HTML + JSON",
-    evidence_json: "Evidence JSON",
-    full_archive: "Full archive",
-    pdf: "PDF"
-  }[normalizeCorporateReportFormat(format)];
+export function corporateReportFormatLabel(_format: string | null | undefined) {
+  void _format;
+  return "PDF";
 }
 
 export function scheduledReportIsDue(scheduledFor: Date | null | undefined, now = new Date()) {

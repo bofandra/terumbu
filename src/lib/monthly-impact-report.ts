@@ -1,4 +1,5 @@
-import { buildPdfDocument, PDF_COLORS, PDF_PAGE_HEIGHT, PDF_PAGE_WIDTH, pdfRectangleCommand, pdfTextCommand, wrapPdfText } from "@/lib/pdf-document";
+import { buildPdfDocumentPages, PDF_COLORS, pdfRectangleCommand, pdfTextCommand, wrapPdfText } from "@/lib/pdf-document";
+import { REPORT_CONTENT_WIDTH, REPORT_CONTENT_X, brandedReportPage, reportMetricCard, reportNoteBox, reportSectionTitle } from "@/lib/terumbu-report-pdf";
 
 export type MonthlyImpactReportRecord = {
   id?: string | null;
@@ -93,118 +94,125 @@ function formatCurrency(value: number) {
   }).format(value);
 }
 
-function formatDate(value: Date) {
-  return value.toLocaleDateString("id-ID", { dateStyle: "medium" });
-}
 
 function formatNumber(value: number) {
   return new Intl.NumberFormat("id-ID").format(value);
 }
 
-function metricCard(label: string, value: string, x: number, y: number, width: number) {
-  return [
-    pdfRectangleCommand(x, y, width, 78, PDF_COLORS.wash, PDF_COLORS.border),
-    pdfTextCommand({ text: label, x: x + 12, y: y + 51, size: 8.5, font: "bold", color: PDF_COLORS.muted }),
-    pdfTextCommand({ text: value, x: x + 12, y: y + 25, size: 14, font: "bold", color: PDF_COLORS.ocean })
-  ];
-}
+function projectDigestPage(
+  report: MonthlyImpactReportRecord,
+  digest: ReturnType<typeof monthlyImpactReportDigest>,
+  campaigns: MonthlyImpactCampaignDigestItem[],
+  origin: string,
+  pageNumber: number,
+  totalPages: number
+) {
+  const holderName = monthlyImpactReportHolderName(report);
+  const commands = brandedReportPage({
+    section: "Personal impact report",
+    title: "Project activity",
+    subtitle: `${holderName} / ${report.label}`,
+    reportId: `TRB-${report.reportMonth}`,
+    generatedAt: report.generatedAt,
+    pageNumber,
+    totalPages,
+    compactHeader: true
+  });
+  let y = 660;
+  y = reportSectionTitle(commands, "Projects in this report", y, `${digest.followedCampaignCount} followed project(s); activity is included only when recorded for this reporting month.`) - 8;
 
-function addWrappedText(commands: string[], text: string, x: number, y: number, maxWidth: number, size: number, options: { font?: "regular" | "bold"; color?: string; lineHeight?: number } = {}) {
-  const lineHeight = options.lineHeight ?? size + 4;
-  const lines = wrapPdfText(text, maxWidth, size);
+  commands.push(pdfRectangleCommand(REPORT_CONTENT_X, y - 24, REPORT_CONTENT_WIDTH, 28, PDF_COLORS.wash, PDF_COLORS.border));
+  commands.push(pdfTextCommand({ text: "PROJECT", x: 72, y: y - 7, size: 7.8, font: "bold", color: PDF_COLORS.muted }));
+  commands.push(pdfTextCommand({ text: "CONTRIBUTION", x: 322, y: y - 7, size: 7.8, font: "bold", color: PDF_COLORS.muted }));
+  commands.push(pdfTextCommand({ text: "UPDATES", x: 420, y: y - 7, size: 7.8, font: "bold", color: PDF_COLORS.muted }));
+  commands.push(pdfTextCommand({ text: "EVIDENCE", x: 490, y: y - 7, size: 7.8, font: "bold", color: PDF_COLORS.muted }));
+  y -= 40;
 
-  lines.forEach((line, index) => {
-    commands.push(pdfTextCommand({ text: line, x, y: y - index * lineHeight, size, font: options.font, color: options.color }));
+  campaigns.forEach((campaign, index) => {
+    const rowY = y - index * 46;
+    const titleLines = wrapPdfText(campaign.title, 230, 8.7).slice(0, 2);
+    commands.push(pdfRectangleCommand(REPORT_CONTENT_X, rowY - 30, REPORT_CONTENT_WIDTH, 42, index % 2 === 0 ? PDF_COLORS.white : PDF_COLORS.wash));
+    titleLines.forEach((line, lineIndex) => commands.push(pdfTextCommand({ text: line, x: 72, y: rowY - 3 - lineIndex * 11, size: 8.5, font: "bold" })));
+    commands.push(pdfTextCommand({ text: formatCurrency(campaign.contribution), x: 322, y: rowY - 6, size: 8.1, font: "bold" }));
+    commands.push(pdfTextCommand({ text: formatNumber(campaign.updateCount), x: 438, y: rowY - 6, size: 8.1, font: "bold" }));
+    commands.push(pdfTextCommand({ text: formatNumber(campaign.evidenceCount), x: 510, y: rowY - 6, size: 8.1, font: "bold" }));
   });
 
-  return y - lines.length * lineHeight;
+  if (campaigns.length === 0) {
+    commands.push(pdfTextCommand({ text: "No supported or followed project activity was recorded for this period.", x: REPORT_CONTENT_X, y: y - 24, size: 9.5, color: PDF_COLORS.muted }));
+  }
+
+  reportNoteBox(
+    commands,
+    "Traceability",
+    `This report summarizes activity stored in Terumbu.eco. The live account remains the source of record. Dashboard: ${origin}/dashboard`,
+    150
+  );
+  return commands.join("\n");
 }
 
 export function buildMonthlyImpactReportDownloadPdf(report: MonthlyImpactReportRecord, origin = "https://terumbu.eco") {
   const holderName = monthlyImpactReportHolderName(report);
   const digest = monthlyImpactReportDigest(report.metadata);
-  const generatedAt = formatDate(report.generatedAt);
-  const reportHref = `${origin}/dashboard#monthly-report`;
-  const activityTotal = report.campaignUpdates + report.newEvidence + report.academyProgress;
+  const campaignChunks: MonthlyImpactCampaignDigestItem[][] = [];
+  for (let index = 0; index < digest.campaignDigest.length; index += 10) {
+    campaignChunks.push(digest.campaignDigest.slice(index, index + 10));
+  }
+  if (campaignChunks.length === 0) {
+    campaignChunks.push([]);
+  }
+
+  const totalPages = 1 + campaignChunks.length;
+  const reportId = `TRB-${report.reportMonth}`;
+  const cover = brandedReportPage({
+    section: "Personal impact report",
+    title: report.label,
+    subtitle: holderName,
+    reportId,
+    generatedAt: report.generatedAt,
+    pageNumber: 1,
+    totalPages
+  });
+  cover.push(pdfTextCommand({ text: holderName, x: REPORT_CONTENT_X, y: 592, size: 13, font: "bold" }));
+  cover.push(pdfTextCommand({ text: `Reporting month: ${report.reportMonth}`, x: REPORT_CONTENT_X, y: 570, size: 9.2, font: "bold", color: PDF_COLORS.muted }));
+
   const metrics = [
     ["Contributions", formatCurrency(report.contributions)],
-    ["Campaign updates", formatNumber(report.campaignUpdates)],
+    ["Project updates", formatNumber(report.campaignUpdates)],
     ["Evidence records", formatNumber(report.newEvidence)],
     ["Corals monitored", formatNumber(report.coralsMonitored)]
   ];
-  const commands = [
-    pdfRectangleCommand(0, 0, PDF_PAGE_WIDTH, PDF_PAGE_HEIGHT, PDF_COLORS.sand),
-    pdfRectangleCommand(48, 72, 499, 700, PDF_COLORS.white, PDF_COLORS.border),
-    pdfRectangleCommand(48, 628, 499, 144, PDF_COLORS.ocean),
-    pdfTextCommand({ text: "Terumbu.eco Monthly Impact Report", x: 76, y: 730, size: 10, font: "bold", color: PDF_COLORS.coral }),
-    pdfTextCommand({ text: report.label, x: 76, y: 694, size: 24, font: "bold", color: PDF_COLORS.white }),
-    pdfTextCommand({ text: holderName, x: 76, y: 665, size: 14, font: "bold", color: PDF_COLORS.white }),
-    pdfTextCommand({ text: `Generated ${generatedAt} / Reporting month ${report.reportMonth}`, x: 76, y: 642, size: 9.5, font: "bold", color: "0.820 0.902 0.898" })
-  ];
-
   metrics.forEach(([label, value], index) => {
-    const x = 76 + index * 111;
-    commands.push(...metricCard(label, value, x, 520, 101));
+    const row = Math.floor(index / 2);
+    const column = index % 2;
+    cover.push(...reportMetricCard(label, value, REPORT_CONTENT_X + column * 238, 455 - row * 84, 226));
   });
 
-  commands.push(pdfTextCommand({ text: "Impact narrative", x: 76, y: 474, size: 13, font: "bold" }));
-  addWrappedText(
-    commands,
-    `${formatNumber(activityTotal)} activity signals were recorded this month, including ${formatNumber(report.academyProgress)} Academy course completion(s) and ${formatNumber(digest.campaignCount)} campaign(s) in this report.`,
-    76,
-    450,
-    443,
-    10.5,
-    { color: PDF_COLORS.muted, lineHeight: 15 }
+  const activityTotal = report.campaignUpdates + report.newEvidence + report.academyProgress;
+  let y = 350;
+  y = reportSectionTitle(
+    cover,
+    "Monthly summary",
+    y,
+    `${formatNumber(activityTotal)} recorded activity signal(s), ${formatNumber(report.academyProgress)} Academy completion(s), and ${formatNumber(digest.campaignCount)} project(s) represented in this report.`
+  ) - 8;
+  y = reportSectionTitle(
+    cover,
+    "Report scope",
+    y,
+    "Includes paid contributions, project updates, evidence records linked to supported or followed projects, coral monitoring updates, and Academy completions recorded during the month."
+  ) - 8;
+  reportNoteBox(
+    cover,
+    "Terumbu reporting note",
+    "This PDF is an account activity summary generated from Terumbu.eco records. It does not introduce estimated impact values and is not an independent assurance statement.",
+    Math.min(y, 185)
   );
 
-  commands.push(pdfRectangleCommand(76, 390, 443, 1, PDF_COLORS.border));
-  commands.push(pdfTextCommand({ text: "Campaign digest", x: 76, y: 362, size: 13, font: "bold" }));
-  commands.push(pdfTextCommand({ text: `${digest.generatedBy} / ${formatNumber(digest.followedCampaignCount)} followed campaign(s)`, x: 76, y: 342, size: 9, font: "bold", color: PDF_COLORS.muted }));
+  const pages = [cover.join("\n")];
+  campaignChunks.forEach((campaigns) => {
+    pages.push(projectDigestPage(report, digest, campaigns, origin, pages.length + 1, totalPages));
+  });
 
-  let y = 312;
-  const campaignRows = digest.campaignDigest.slice(0, 8);
-
-  if (campaignRows.length === 0) {
-    addWrappedText(commands, "No followed or supported campaign activity was recorded for this period.", 76, y, 443, 10.5, { color: PDF_COLORS.muted });
-  } else {
-    for (const [index, campaign] of campaignRows.entries()) {
-      const campaignUrl = `${origin}/campaigns/${campaign.slug}`;
-      const titleLines = wrapPdfText(campaign.title, 210, 10.5);
-      const urlLines = wrapPdfText(campaignUrl, 384, 8.5);
-      const rowHeight = titleLines.length * 13 + urlLines.length * 11 + 24;
-
-      if (y - rowHeight < 190) {
-        addWrappedText(commands, `${campaignRows.length - index} additional campaign(s) are available in the dashboard.`, 76, y, 443, 9.5, { color: PDF_COLORS.muted });
-        break;
-      }
-
-      titleLines.forEach((line, lineIndex) => {
-        commands.push(pdfTextCommand({ text: line, x: 76, y: y - lineIndex * 13, size: 10.5, font: "bold" }));
-      });
-      commands.push(pdfTextCommand({ text: formatCurrency(campaign.contribution), x: 312, y, size: 9.5, font: "bold", color: PDF_COLORS.ocean }));
-      commands.push(pdfTextCommand({ text: `${formatNumber(campaign.updateCount)} updates / ${formatNumber(campaign.evidenceCount)} evidence`, x: 410, y, size: 8.5, font: "bold", color: PDF_COLORS.muted }));
-      y -= titleLines.length * 13 + 2;
-      urlLines.forEach((line, lineIndex) => {
-        commands.push(pdfTextCommand({ text: line, x: 76, y: y - lineIndex * 11, size: 8.5, color: PDF_COLORS.kelp }));
-      });
-      y -= urlLines.length * 11;
-      commands.push(pdfRectangleCommand(76, y - 5, 443, 0.7, PDF_COLORS.border));
-      y -= 22;
-    }
-  }
-
-  commands.push(pdfRectangleCommand(76, 112, 443, 64, PDF_COLORS.seal));
-  addWrappedText(
-    commands,
-    `This report is generated from Terumbu.eco account activity, followed campaigns, verified evidence, and Academy progress. View the live dashboard at ${reportHref}.`,
-    100,
-    151,
-    393,
-    9.5,
-    { font: "bold", lineHeight: 13 }
-  );
-  commands.push(pdfTextCommand({ text: `Terumbu.eco personal impact report / ${report.reportMonth}`, x: 76, y: 90, size: 8.5, color: PDF_COLORS.muted }));
-
-  return buildPdfDocument(commands.join("\n"));
+  return buildPdfDocumentPages(pages);
 }

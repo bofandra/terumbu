@@ -3,8 +3,6 @@ import {
   CheckCircle2,
   Download,
   ExternalLink,
-  FileArchive,
-  FileText,
   Globe2,
   Leaf,
   ShieldCheck,
@@ -137,16 +135,10 @@ export default async function PublicCorporateImpactPage({ params }: { params: Pr
               A public, evidence-linked summary of conservation funding, portfolio progress, and verified field records published through Terumbu.eco.
             </p>
             <div className="mt-7 flex flex-wrap gap-2">
-              {data.report.previewUrl ? (
-                <ButtonLink href={data.report.previewUrl} tone="light">
-                  <FileText size={17} aria-hidden="true" />
-                  View Report Preview
-                </ButtonLink>
-              ) : null}
-              {data.report.fileUrl ? (
-                <ButtonLink href={data.report.fileUrl} tone="primary">
+              {data.report.pdfUrl ? (
+                <ButtonLink href={data.report.pdfUrl} tone="primary">
                   <Download size={17} aria-hidden="true" />
-                  Download Data
+                  Download PDF Report
                 </ButtonLink>
               ) : null}
             </div>
@@ -178,17 +170,8 @@ export default async function PublicCorporateImpactPage({ params }: { params: Pr
                 </dd>
               </div>
               <div>
-                <dt className="text-white/52">Evidence bundle</dt>
-                <dd>
-                  {data.report.evidenceBundleUrl ? (
-                    <Link href={data.report.evidenceBundleUrl} className="mt-1 inline-flex items-center gap-2 font-bold text-kelp-200 hover:text-white">
-                      <FileArchive size={15} aria-hidden="true" />
-                      Open bundle
-                    </Link>
-                  ) : (
-                    <span className="font-bold">Pending</span>
-                  )}
-                </dd>
+                <dt className="text-white/52">Report format</dt>
+                <dd className="font-bold">PDF</dd>
               </div>
             </dl>
           </aside>
@@ -257,12 +240,7 @@ export default async function PublicCorporateImpactPage({ params }: { params: Pr
               <p className="text-sm font-bold uppercase text-coral-700">Evidence center</p>
               <h2 className="mt-2 text-2xl font-bold tracking-normal text-ocean-900">Reportable source records</h2>
             </div>
-            {data.report.evidenceBundleUrl ? (
-              <Link href={data.report.evidenceBundleUrl} className="inline-flex items-center gap-2 text-sm font-bold text-coral-700 hover:text-coral-500">
-                Bundle
-                <ExternalLink size={15} aria-hidden="true" />
-              </Link>
-            ) : null}
+
           </div>
           <div className="mt-5 grid gap-3">
             {data.evidence.map((item) => (

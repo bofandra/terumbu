@@ -1,3 +1,14 @@
+import { buildPdfDocumentPages, PDF_COLORS, pdfRectangleCommand, pdfTextCommand, wrapPdfText } from "@/lib/pdf-document";
+import {
+  REPORT_CONTENT_WIDTH,
+  REPORT_CONTENT_X,
+  brandedReportPage,
+  reportMetricCard,
+  reportNoteBox,
+  reportPeriod,
+  reportSectionTitle
+} from "@/lib/terumbu-report-pdf";
+
 export type CorporateReportArtifactMetric = {
   label: string;
   value: string;
@@ -28,6 +39,8 @@ export type CorporateReportArtifactInput = {
   accountName: string;
   programName: string;
   generatedAt: Date;
+  periodStart?: Date | null;
+  periodEnd?: Date | null;
   executiveMetrics: CorporateReportArtifactMetric[];
   financials: Record<string, number>;
   impactOutputs: Record<string, number>;
@@ -50,8 +63,11 @@ export type CorporateActivityReportInput = {
   accountName: string;
   programName: string;
   generatedAt: Date;
+  periodStart?: Date | null;
+  periodEnd?: Date | null;
   metrics: Array<{ label: string; value: string }>;
   rows: CorporateActivityReportRow[];
+  evidence?: CorporateReportArtifactEvidenceRow[];
 };
 
 type SheetDefinition = {
@@ -292,127 +308,176 @@ export function buildCorporateReportWorkbookXlsx(input: CorporateReportArtifactI
   ]);
 }
 
-function pdfSafe(value: string) {
-  return value
-    .normalize("NFKD")
-    .replace(/[^\x20-\x7E]/g, "")
-    .replace(/[\\()]/g, (match) => `\\${match}`);
+function activityTablePage(input: CorporateActivityReportInput, rows: CorporateActivityReportRow[], pageNumber: number, totalPages: number, rowOffset: number) {
+  const commands = brandedReportPage({
+    section: "Corporate impact report",
+    title: input.title,
+    subtitle: `${input.accountName} / ${input.programName}`,
+    reportId: input.exportCode,
+    generatedAt: input.generatedAt,
+    pageNumber,
+    totalPages,
+    compactHeader: true
+  });
+  let y = 660;
+  y = reportSectionTitle(commands, "Activity details", y, "Records included in this report are limited to activity attributed to this corporate program.") - 8;
+
+  commands.push(pdfRectangleCommand(REPORT_CONTENT_X, y - 24, REPORT_CONTENT_WIDTH, 28, PDF_COLORS.wash, PDF_COLORS.border));
+  commands.push(pdfTextCommand({ text: "DATE", x: 72, y: y - 7, size: 7.8, font: "bold", color: PDF_COLORS.muted }));
+  commands.push(pdfTextCommand({ text: "ACTIVITY", x: 133, y: y - 7, size: 7.8, font: "bold", color: PDF_COLORS.muted }));
+  commands.push(pdfTextCommand({ text: "DETAIL", x: 286, y: y - 7, size: 7.8, font: "bold", color: PDF_COLORS.muted }));
+  commands.push(pdfTextCommand({ text: "AMOUNT", x: 414, y: y - 7, size: 7.8, font: "bold", color: PDF_COLORS.muted }));
+  commands.push(pdfTextCommand({ text: "STATUS", x: 493, y: y - 7, size: 7.8, font: "bold", color: PDF_COLORS.muted }));
+  y -= 38;
+
+  rows.forEach((row, index) => {
+    const rowY = y - index * 38;
+    const title = wrapPdfText(row.title, 140, 8.5).slice(0, 2);
+    const detail = wrapPdfText(row.detail ?? "-", 116, 7.8).slice(0, 2);
+    const date = row.occurredAt ? row.occurredAt.toLocaleDateString("id-ID", { day: "2-digit", month: "short", year: "2-digit" }) : "-";
+    const bg = (rowOffset + index) % 2 === 0 ? PDF_COLORS.white : PDF_COLORS.wash;
+    commands.push(pdfRectangleCommand(REPORT_CONTENT_X, rowY - 25, REPORT_CONTENT_WIDTH, 36, bg));
+    commands.push(pdfTextCommand({ text: date, x: 72, y: rowY - 6, size: 7.6, color: PDF_COLORS.muted }));
+    title.forEach((line, lineIndex) => commands.push(pdfTextCommand({ text: line, x: 133, y: rowY - 3 - lineIndex * 10, size: 8.3, font: "bold" })));
+    detail.forEach((line, lineIndex) => commands.push(pdfTextCommand({ text: line, x: 286, y: rowY - 3 - lineIndex * 10, size: 7.7, color: PDF_COLORS.muted })));
+    commands.push(pdfTextCommand({ text: row.amount ?? "-", x: 414, y: rowY - 6, size: 7.7, font: "bold" }));
+    commands.push(pdfTextCommand({ text: row.status ?? "-", x: 493, y: rowY - 6, size: 7.4, font: "bold", color: PDF_COLORS.kelp }));
+  });
+
+  if (rows.length === 0) {
+    commands.push(pdfTextCommand({ text: "No activity records were available for this reporting period.", x: REPORT_CONTENT_X, y: y - 24, size: 9.5, color: PDF_COLORS.muted }));
+  }
+
+  return commands.join("\n");
 }
 
-function wrapLine(value: string, width = 92) {
-  const words = value.split(/\s+/).filter(Boolean);
-  const lines: string[] = [];
-  let current = "";
+function evidenceTablePage(input: CorporateActivityReportInput, evidence: CorporateReportArtifactEvidenceRow[], pageNumber: number, totalPages: number) {
+  const commands = brandedReportPage({
+    section: "Corporate impact report",
+    title: "Evidence and verification",
+    subtitle: `${input.accountName} / ${input.programName}`,
+    reportId: input.exportCode,
+    generatedAt: input.generatedAt,
+    pageNumber,
+    totalPages,
+    compactHeader: true
+  });
+  let y = 660;
+  y = reportSectionTitle(commands, "Evidence summary", y, "Evidence status reflects the latest Terumbu review workflow state for records linked to supported projects.") - 8;
 
-  for (const word of words) {
-    if (`${current} ${word}`.trim().length > width) {
-      lines.push(current);
-      current = word;
-    } else {
-      current = `${current} ${word}`.trim();
-    }
+  commands.push(pdfRectangleCommand(REPORT_CONTENT_X, y - 24, REPORT_CONTENT_WIDTH, 28, PDF_COLORS.wash, PDF_COLORS.border));
+  commands.push(pdfTextCommand({ text: "EVIDENCE", x: 72, y: y - 7, size: 7.8, font: "bold", color: PDF_COLORS.muted }));
+  commands.push(pdfTextCommand({ text: "TITLE", x: 160, y: y - 7, size: 7.8, font: "bold", color: PDF_COLORS.muted }));
+  commands.push(pdfTextCommand({ text: "PROJECT", x: 334, y: y - 7, size: 7.8, font: "bold", color: PDF_COLORS.muted }));
+  commands.push(pdfTextCommand({ text: "STATUS", x: 488, y: y - 7, size: 7.8, font: "bold", color: PDF_COLORS.muted }));
+  y -= 38;
+
+  evidence.forEach((row, index) => {
+    const rowY = y - index * 42;
+    const title = wrapPdfText(row.title, 160, 8.3).slice(0, 2);
+    const project = wrapPdfText(row.campaignTitle, 140, 7.8).slice(0, 2);
+    commands.push(pdfRectangleCommand(REPORT_CONTENT_X, rowY - 27, REPORT_CONTENT_WIDTH, 40, index % 2 === 0 ? PDF_COLORS.white : PDF_COLORS.wash));
+    commands.push(pdfTextCommand({ text: row.evidenceCode, x: 72, y: rowY - 6, size: 7.6, font: "bold" }));
+    title.forEach((line, lineIndex) => commands.push(pdfTextCommand({ text: line, x: 160, y: rowY - 3 - lineIndex * 10, size: 8.1, font: "bold" })));
+    project.forEach((line, lineIndex) => commands.push(pdfTextCommand({ text: line, x: 334, y: rowY - 3 - lineIndex * 10, size: 7.6, color: PDF_COLORS.muted })));
+    commands.push(pdfTextCommand({ text: row.verificationStatus.replaceAll("_", " "), x: 488, y: rowY - 6, size: 7.3, font: "bold", color: row.verificationStatus === "verified" ? PDF_COLORS.kelp : PDF_COLORS.coral }));
+  });
+
+  if (evidence.length === 0) {
+    commands.push(pdfTextCommand({ text: "No linked evidence records were available for this report.", x: REPORT_CONTENT_X, y: y - 24, size: 9.5, color: PDF_COLORS.muted }));
   }
 
-  if (current) {
-    lines.push(current);
-  }
-
-  return lines.length > 0 ? lines : [""];
-}
-
-export function buildCorporateReportPdf(input: CorporateReportArtifactInput) {
-  const lines = [
-    `${input.reportTypeLabel} - ${input.exportCode}`,
-    `${input.accountName} / ${input.programName}`,
-    `Generated ${input.generatedAt.toISOString()}`,
-    "",
-    "Executive metrics",
-    ...input.executiveMetrics.flatMap((metric) => wrapLine(`${metric.label}: ${metric.value}${metric.support ? ` (${metric.support})` : ""}`)),
-    "",
-    "Funded campaign portfolio",
-    ...input.portfolio.slice(0, 20).flatMap((project) => wrapLine(`${project.campaignTitle} - ${project.region} - ${project.statusLabel} - allocation ${project.allocationValue}`)),
-    "",
-    "Evidence bundle",
-    ...input.evidence.slice(0, 30).flatMap((evidence) => wrapLine(`${evidence.evidenceCode}: ${evidence.title} - ${evidence.verificationStatus}`))
-  ];
-  const pageLines = lines.slice(0, 58);
-  const content = [
-    "BT",
-    "/F1 10 Tf",
-    "50 790 Td",
-    ...pageLines.map((line, index) => `${index === 0 ? "" : "0 -13 Td "}${index === 0 ? "" : ""}(${pdfSafe(line)}) Tj`),
-    "ET"
-  ].join("\n");
-  const objects = [
-    "1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n",
-    "2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n",
-    "3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 842] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >>\nendobj\n",
-    "4 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>\nendobj\n",
-    `5 0 obj\n<< /Length ${Buffer.byteLength(content)} >>\nstream\n${content}\nendstream\nendobj\n`
-  ];
-  let pdf = "%PDF-1.4\n";
-  const offsets = [0];
-
-  for (const object of objects) {
-    offsets.push(Buffer.byteLength(pdf));
-    pdf += object;
-  }
-
-  const xrefOffset = Buffer.byteLength(pdf);
-  pdf += `xref\n0 ${objects.length + 1}\n0000000000 65535 f \n`;
-  for (const offset of offsets.slice(1)) {
-    pdf += `${String(offset).padStart(10, "0")} 00000 n \n`;
-  }
-  pdf += `trailer\n<< /Size ${objects.length + 1} /Root 1 0 R >>\nstartxref\n${xrefOffset}\n%%EOF\n`;
-
-  return Buffer.from(pdf, "ascii");
+  reportNoteBox(
+    commands,
+    "Data assurance",
+    "This PDF is generated from Terumbu.eco operational records. Evidence labels reflect workflow status, not an external audit opinion. Source records remain available in the platform for traceability.",
+    150
+  );
+  return commands.join("\n");
 }
 
 export function buildCorporateActivityReportPdf(input: CorporateActivityReportInput) {
-  const lines = [
-    `${input.title} - ${input.exportCode}`,
-    `${input.accountName} / ${input.programName}`,
-    `Generated ${input.generatedAt.toISOString()}`,
-    "",
-    "Summary",
-    ...input.metrics.flatMap((metric) => wrapLine(`${metric.label}: ${metric.value}`)),
-    "",
-    "Activity",
-    ...input.rows.slice(0, 40).flatMap((row) => {
-      const date = row.occurredAt ? row.occurredAt.toISOString().slice(0, 10) : "";
-      const details = [date, row.detail, row.amount, row.status].filter(Boolean).join(" - ");
-      return wrapLine(`${row.title}${details ? ` - ${details}` : ""}`);
-    })
-  ];
-  const pageLines = lines.slice(0, 58);
-  const content = [
-    "BT",
-    "/F1 10 Tf",
-    "50 790 Td",
-    ...pageLines.map((line, index) => `${index === 0 ? "" : "0 -13 Td "}(${pdfSafe(line)}) Tj`),
-    "ET"
-  ].join("\n");
-  const objects = [
-    "1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n",
-    "2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n",
-    "3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 842] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >>\nendobj\n",
-    "4 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>\nendobj\n",
-    `5 0 obj\n<< /Length ${Buffer.byteLength(content)} >>\nstream\n${content}\nendstream\nendobj\n`
-  ];
-  let pdf = "%PDF-1.4\n";
-  const offsets = [0];
-
-  for (const object of objects) {
-    offsets.push(Buffer.byteLength(pdf));
-    pdf += object;
+  const activityChunks: CorporateActivityReportRow[][] = [];
+  for (let index = 0; index < input.rows.length; index += 13) {
+    activityChunks.push(input.rows.slice(index, index + 13));
+  }
+  if (activityChunks.length === 0) {
+    activityChunks.push([]);
   }
 
-  const xrefOffset = Buffer.byteLength(pdf);
-  pdf += `xref\n0 ${objects.length + 1}\n0000000000 65535 f \n`;
-  for (const offset of offsets.slice(1)) {
-    pdf += `${String(offset).padStart(10, "0")} 00000 n \n`;
+  const evidenceRows = input.evidence ?? [];
+  const evidenceChunks: CorporateReportArtifactEvidenceRow[][] = [];
+  for (let index = 0; index < evidenceRows.length; index += 11) {
+    evidenceChunks.push(evidenceRows.slice(index, index + 11));
   }
-  pdf += `trailer\n<< /Size ${objects.length + 1} /Root 1 0 R >>\nstartxref\n${xrefOffset}\n%%EOF\n`;
+  const includeEvidencePages = evidenceRows.length > 0;
+  const totalPages = 1 + activityChunks.length + (includeEvidencePages ? evidenceChunks.length : 0);
+  const period = reportPeriod(input.periodStart, input.periodEnd);
+  const cover = brandedReportPage({
+    section: "Corporate impact report",
+    title: input.title,
+    subtitle: `${input.accountName} / ${input.programName}`,
+    reportId: input.exportCode,
+    generatedAt: input.generatedAt,
+    pageNumber: 1,
+    totalPages
+  });
 
-  return Buffer.from(pdf, "ascii");
+  cover.push(pdfTextCommand({ text: input.accountName, x: REPORT_CONTENT_X, y: 592, size: 13, font: "bold", color: PDF_COLORS.ocean }));
+  cover.push(pdfTextCommand({ text: input.programName, x: REPORT_CONTENT_X, y: 572, size: 9.2, color: PDF_COLORS.muted }));
+  cover.push(pdfTextCommand({ text: period, x: REPORT_CONTENT_X, y: 553, size: 8.8, font: "bold", color: PDF_COLORS.muted }));
+
+  const metricWidth = Math.floor((REPORT_CONTENT_WIDTH - 20) / Math.max(1, Math.min(3, input.metrics.length)));
+  input.metrics.slice(0, 3).forEach((metric, index) => {
+    cover.push(...reportMetricCard(metric.label, metric.value, REPORT_CONTENT_X + index * (metricWidth + 10), 445, metricWidth));
+  });
+
+  let y = 410;
+  y = reportSectionTitle(
+    cover,
+    "Report scope",
+    y,
+    input.title.toLowerCase().includes("donation")
+      ? "Summarizes corporate donations recorded in Terumbu, the projects they support, and linked evidence available at generation time."
+      : "Summarizes expedition bookings explicitly attributed to this corporate account and the participation recorded in Terumbu."
+  ) - 8;
+  y = reportSectionTitle(cover, "Reporting basis", y, "The report is generated from platform records for the selected corporate program. Values are shown as recorded; no estimates are introduced by the report generator.") - 10;
+  reportNoteBox(
+    cover,
+    "Terumbu reporting note",
+    "The structure prioritizes reporting scope, measurable activity, supporting evidence, and traceability. It is an operational impact report and does not claim compliance with GRI, IFRS Sustainability Disclosure Standards, or independent assurance unless explicitly stated.",
+    Math.min(y, 225)
+  );
+
+  const pages = [cover.join("\n")];
+  activityChunks.forEach((rows, index) => {
+    pages.push(activityTablePage(input, rows, pages.length + 1, totalPages, index * 13));
+  });
+  if (includeEvidencePages) {
+    evidenceChunks.forEach((rows) => {
+      pages.push(evidenceTablePage(input, rows, pages.length + 1, totalPages));
+    });
+  }
+
+  return Buffer.from(buildPdfDocumentPages(pages));
+}
+
+export function buildCorporateReportPdf(input: CorporateReportArtifactInput) {
+  return buildCorporateActivityReportPdf({
+    exportCode: input.exportCode,
+    title: input.reportTypeLabel,
+    accountName: input.accountName,
+    programName: input.programName,
+    generatedAt: input.generatedAt,
+    periodStart: input.periodStart,
+    periodEnd: input.periodEnd,
+    metrics: input.executiveMetrics.slice(0, 3).map((metric) => ({ label: metric.label, value: metric.value })),
+    rows: input.portfolio.map((project) => ({
+      title: project.campaignTitle,
+      detail: `${project.organizationName ?? "Partner"} / ${project.region}`,
+      amount: String(project.allocationValue),
+      status: project.statusLabel
+    })),
+    evidence: input.evidence
+  });
 }

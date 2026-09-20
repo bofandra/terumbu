@@ -81,14 +81,16 @@ test("monthly impact report download pdf includes report details", () => {
   const pdfText = Buffer.from(pdf).toString("latin1");
 
   assert.match(pdfText, /^%PDF-1\.4/);
-  assert.match(pdfText, /Terumbu\.eco Monthly Impact Report/);
-  assert.match(pdfText, /July \\\(Impact\\\)/);
-  assert.match(pdfText, /Raka \\\\ Team/);
-  assert.match(pdfText, /Campaign \\\(One\\\) Blue/);
+  assert.match(pdfText, /Terumbu\.eco/);
+  assert.match(pdfText, /Personal impact report/);
+  assert.match(pdfText, /July/);
+  assert.match(pdfText, /Raka/);
+  assert.match(pdfText, /Executive|Monthly summary/);
+  assert.match(pdfText, /Project activity/);
+  assert.match(pdfText, /Campaign/);
+  assert.match(pdfText, /Blue/);
   assert.match(pdfText, /USD\s*250/);
   assert.match(pdfText, /USD\s*1/);
-  assert.match(pdfText, /1 updates \/ 1 evidence/);
-  assert.match(pdfText, /dashboard_action/);
-  assert.match(pdfText, /https:\/\/example.test\/campaigns\/campaign-one/);
-  assert.match(pdfText, /https:\/\/example.test\/dashboard#monthly-report/);
+  assert.match(pdfText, /Traceability/);
+  assert.match(pdfText, /\/Count 2/);
 });

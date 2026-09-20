@@ -73,7 +73,7 @@ export default async function CorporateExpeditionsPage({ searchParams }: Corpora
 
       <section className="mt-6 rounded-lg border border-ocean-900/10 bg-white p-5 shadow-soft">
         <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
-          <div><h2 className="text-xl font-bold tracking-normal text-ocean-900">Expedition report</h2><p className="mt-1 text-sm text-ocean-900/58">One PDF containing corporate expedition bookings for this program period.</p></div>
+          <div><h2 className="text-xl font-bold tracking-normal text-ocean-900">Expedition report</h2><p className="mt-1 text-sm text-ocean-900/58">Branded PDF with report scope, booking and participant summary, expedition activity detail, and traceability note.</p></div>
           <form action={createCorporateActivityPdfReportAction}>
             <input type="hidden" name="activityScope" value="expeditions" />
             <input type="hidden" name="programId" value={data.program.programId} />

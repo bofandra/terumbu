@@ -65,14 +65,14 @@ test("corporate report lifecycle values normalize defensively", () => {
   assert.equal(normalizeCorporateReportType("donations"), "donations");
   assert.equal(normalizeCorporateReportType("expeditions"), "expeditions");
   assert.equal(normalizeCorporateReportType("unexpected"), "esg");
-  assert.equal(normalizeCorporateReportFormat("full_archive"), "full_archive");
+  assert.equal(normalizeCorporateReportFormat("full_archive"), "pdf");
   assert.equal(normalizeCorporateReportFormat("pdf"), "pdf");
   assert.equal(normalizeCorporateReportStatus("published"), "published");
   assert.equal(normalizeCorporateReportStatus("queued"), "generated");
   assert.equal(corporateReportTypeLabel("evidence"), "Evidence Bundle");
   assert.equal(corporateReportTypeLabel("donations"), "Donation Activity Report");
   assert.equal(corporateReportTypeLabel("expeditions"), "Expedition Activity Report");
-  assert.equal(corporateReportFormatLabel("evidence_json"), "Evidence JSON");
+  assert.equal(corporateReportFormatLabel("evidence_json"), "PDF");
   assert.equal(corporateReportFormatLabel("pdf"), "PDF");
 });
 
@@ -88,32 +88,29 @@ test("corporate report artifact manifest tracks readiness and files", () => {
   const manifest = buildCorporateReportArtifactManifest({
     exportCode: "TRB-ESG-2026-ABCD",
     reportType: "esg",
-    exportFormat: "full_archive",
+    exportFormat: "pdf",
     artifactVersion: 2,
     generatedAt: new Date("2026-07-12T00:00:00Z"),
-    files: [
-      { label: "Preview", format: "html", url: "/report.html", required: true },
-      { label: "Data", format: "json", url: "/report.json", required: true },
-      { label: "Evidence", format: "json", url: "/evidence.json", required: true },
-      { label: "PDF snapshot", format: "pdf", url: "/report.pdf", required: true },
-      { label: "Excel workbook", format: "xlsx", url: "/report.xlsx", required: true }
-    ]
+    files: [{ label: "Terumbu PDF report", format: "pdf", url: "/report.pdf", required: true }]
   });
 
   assert.equal(manifest.readiness, "ready");
-  assert.equal(manifest.fileCount, 5);
+  assert.equal(manifest.fileCount, 1);
   assert.equal(manifest.artifactVersion, 2);
   assert.equal(manifest.reportTypeLabel, "ESG Report");
 });
 
-test("corporate report binary artifacts produce portable PDF, XLSX, and CSV files", () => {
+test("corporate report generator produces a branded PDF while legacy helper exports remain readable", () => {
   const pdf = buildCorporateReportPdf(artifactInput);
   const xlsx = buildCorporateReportWorkbookXlsx(artifactInput);
   const portfolioCsv = corporateReportPortfolioCsv(artifactInput);
   const evidenceCsv = corporateReportEvidenceCsv(artifactInput);
 
   assert.equal(pdf.subarray(0, 8).toString("ascii"), "%PDF-1.4");
-  assert.match(pdf.toString("ascii"), /Restore Reef \\\(North\\\)/);
+  assert.match(pdf.toString("ascii"), /Terumbu\.eco/);
+  assert.match(pdf.toString("ascii"), /Restore Reef/);
+  assert.match(pdf.toString("ascii"), /Data assurance/);
+  assert.match(pdf.toString("ascii"), /\/Count 3/);
   assert.equal(xlsx.subarray(0, 2).toString("ascii"), "PK");
   assert.match(xlsx.toString("utf8"), /xl\/worksheets\/sheet1\.xml/);
   assert.match(xlsx.toString("utf8"), /Field survey &lt;verified&gt;/);
@@ -147,6 +144,11 @@ test("corporate activity report PDF is a simple portable activity report", () =>
   const pdf = buildCorporateActivityReportPdf(input);
 
   assert.equal(pdf.subarray(0, 8).toString("ascii"), "%PDF-1.4");
+  assert.match(pdf.toString("ascii"), /Terumbu\.eco/);
   assert.match(pdf.toString("ascii"), /Donation Activity Report/);
-  assert.match(pdf.toString("ascii"), /Restore Reef North/);
+  assert.match(pdf.toString("ascii"), /Report scope/);
+  assert.match(pdf.toString("ascii"), /Terumbu\.eco/);
+  assert.match(pdf.toString("ascii"), /Restore Reef/);
+  assert.match(pdf.toString("ascii"), /Data assurance/);
+  assert.match(pdf.toString("ascii"), /\/Count 2/);
 });

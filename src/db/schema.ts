@@ -1409,7 +1409,7 @@ export const corporateReportExports = pgTable("corporate_report_exports", {
   approvedByUserId: uuid("approved_by_user_id").references(() => users.id, { onDelete: "set null" }),
   exportCode: varchar("export_code", { length: 120 }).notNull(),
   reportType: varchar("report_type", { length: 80 }).default("esg").notNull(),
-  exportFormat: varchar("export_format", { length: 80 }).default("html_json").notNull(),
+  exportFormat: varchar("export_format", { length: 80 }).default("pdf").notNull(),
   artifactVersion: integer("artifact_version").default(1).notNull(),
   status: varchar("status", { length: 80 }).default("queued").notNull(),
   fileUrl: text("file_url"),

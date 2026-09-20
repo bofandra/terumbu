@@ -4810,8 +4810,8 @@ export async function getCorporateDashboardData(userId: string, requestedProgram
     generatedAt: null,
     reportType: "none",
     reportTypeLabel: "No report generated",
-    exportFormat: "html_json",
-    exportFormatLabel: "HTML + JSON",
+    exportFormat: "pdf",
+    exportFormatLabel: "PDF",
     artifactVersion: 0,
     artifactVersionLabel: "v0",
     artifactReadiness: "empty",
@@ -5017,15 +5017,10 @@ export async function getCorporateDashboardData(userId: string, requestedProgram
       { label: "Approved corporate report", complete: reportExports.some((item) => ["approved", "published"].includes(item.status)) },
       { label: "Verified evidence bundle", complete: verifiedOutputs > 0 && verifiedOutputs >= Math.max(1, Math.round(corporateEvidence.length * 0.6)) },
       { label: "Public metrics reviewed", complete: latestPublishedReport !== undefined },
-      { label: "Download links prepared", complete: Boolean(latestPublishedReport?.fileUrl && latestPublishedReport.evidenceBundleUrl && latestPublishedReport.pdfUrl && latestPublishedReport.workbookUrl) }
+      { label: "PDF report prepared", complete: Boolean(latestPublishedReport?.pdfUrl) }
     ],
     downloads: [
-      latestReport.fileUrl ? { label: "Report data", href: latestReport.fileUrl } : null,
-      latestReport.evidenceBundleUrl ? { label: "Evidence bundle", href: latestReport.evidenceBundleUrl } : null,
-      latestReport.previewUrl ? { label: "Executive preview", href: latestReport.previewUrl } : null,
-      latestReport.pdfUrl ? { label: "PDF snapshot", href: latestReport.pdfUrl } : null,
-      latestReport.workbookUrl ? { label: "Excel workbook", href: latestReport.workbookUrl } : null,
-      latestReport.portfolioCsvUrl ? { label: "Portfolio CSV", href: latestReport.portfolioCsvUrl } : null
+      latestReport.pdfUrl ? { label: "PDF report", href: latestReport.pdfUrl } : null
     ].filter(isDefined)
   };
   const organizationPassport = {
@@ -5452,6 +5447,7 @@ export async function getPublicCorporateImpactReport(publicSlug: string) {
       publishedAt: corporateReportExports.publishedAt,
       createdAt: corporateReportExports.createdAt,
       metadata: corporateReportExports.metadata,
+      artifactManifest: corporateReportExports.artifactManifest,
       accountName: corporateAccounts.name,
       accountSlug: corporateAccounts.slug,
       accountLogoUrl: corporateAccounts.logoUrl,
@@ -5536,8 +5532,20 @@ export async function getPublicCorporateImpactReport(publicSlug: string) {
     sourceHref: evidenceSourceHref(item.campaignSlug, item.evidenceCode) ?? item.fileUrl
   }));
 
+  const reportArtifactSource = {
+    fileUrl: report.fileUrl,
+    previewUrl: report.previewUrl,
+    evidenceBundleUrl: report.evidenceBundleUrl,
+    artifactManifest: report.artifactManifest,
+    metadata: report.metadata,
+    exportCode: report.exportCode
+  };
+
   return {
-    report,
+    report: {
+      ...report,
+      pdfUrl: corporateReportArtifactSourceUrl(reportArtifactSource, "pdf")
+    },
     portfolio,
     evidence,
     metrics: {

@@ -48,9 +48,6 @@ import {
 import {
   buildCorporateActivityReportPdf,
   buildCorporateReportPdf,
-  buildCorporateReportWorkbookXlsx,
-  corporateReportEvidenceCsv,
-  corporateReportPortfolioCsv,
   type CorporateActivityReportInput,
   type CorporateReportArtifactInput
 } from "@/lib/corporate-report-artifacts";
@@ -253,6 +250,7 @@ function corporateReportPresentation(reportType: string) {
   };
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars -- retained while report exports are PDF-only.
 function reportHtml(input: {
   exportCode: string;
   reportType: string;
@@ -552,44 +550,15 @@ async function writeReportArtifacts(input: {
   const generatedAt = new Date();
   const folder = path.join(process.cwd(), "public", "generated", "corporate-reports");
   const baseName = input.exportCode.toLowerCase();
-  const reportPayload = {
-    exportCode: input.exportCode,
-    reportType: input.reportType,
-    exportFormat: input.exportFormat,
-    artifactVersion: input.artifactVersion,
-    generatedAt: generatedAt.toISOString(),
-    account: input.accountName,
-    program: input.programName,
-    executiveMetrics: input.data.executiveMetrics,
-    financials: input.data.financials,
-    impactOutputs: input.data.impactOutputs,
-    contributions: input.data.contributions,
-    portfolio: input.data.portfolio,
-    evidence: input.data.evidence,
-    reporting: input.data.reporting
-  };
-  const evidencePayload = {
-    exportCode: input.exportCode,
-    reportType: input.reportType,
-    exportFormat: input.exportFormat,
-    artifactVersion: input.artifactVersion,
-    generatedAt: generatedAt.toISOString(),
-    evidence: input.data.evidence.map((item) => ({
-      evidenceCode: item.evidenceCode,
-      title: item.title,
-      evidenceType: item.evidenceType,
-      verificationStatus: item.verificationStatus,
-      campaignTitle: item.campaignTitle,
-      sourceHref: item.sourceHref,
-      fileUrl: item.fileUrl
-    }))
-  };
+  const pdfUrl = `/generated/corporate-reports/${baseName}.pdf`;
   const artifactInput: CorporateReportArtifactInput = {
     exportCode: input.exportCode,
     reportTypeLabel: corporateReportTypeLabel(input.reportType),
     accountName: input.accountName,
     programName: input.programName,
     generatedAt,
+    periodStart: input.data.program.startsAt,
+    periodEnd: input.data.program.endsAt,
     executiveMetrics: input.data.executiveMetrics,
     financials: input.data.financials,
     impactOutputs: input.data.impactOutputs,
@@ -610,63 +579,33 @@ async function writeReportArtifacts(input: {
       sourceHref: item.sourceHref
     }))
   };
-  const fileUrl = `/generated/corporate-reports/${baseName}.json`;
-  const previewUrl = `/generated/corporate-reports/${baseName}.html`;
-  const evidenceBundleUrl = `/generated/corporate-reports/${baseName}-evidence.json`;
-  const pdfUrl = `/generated/corporate-reports/${baseName}.pdf`;
-  const workbookUrl = `/generated/corporate-reports/${baseName}.xlsx`;
-  const portfolioCsvUrl = `/generated/corporate-reports/${baseName}-portfolio.csv`;
-  const evidenceCsvUrl = `/generated/corporate-reports/${baseName}-evidence.csv`;
   const manifest = buildCorporateReportArtifactManifest({
     exportCode: input.exportCode,
     reportType: input.reportType,
-    exportFormat: input.exportFormat,
+    exportFormat: "pdf",
     artifactVersion: input.artifactVersion,
     generatedAt,
-    files: [
-      { label: "Report data", format: "json", url: fileUrl, required: true },
-      { label: "HTML preview", format: "html", url: previewUrl, required: input.exportFormat !== "evidence_json" },
-      { label: "Evidence bundle", format: "json", url: evidenceBundleUrl, required: input.exportFormat !== "html_json" },
-      { label: "PDF snapshot", format: "pdf", url: pdfUrl, required: input.exportFormat !== "evidence_json" },
-      { label: "Excel workbook", format: "xlsx", url: workbookUrl, required: input.exportFormat === "full_archive" },
-      { label: "Portfolio CSV", format: "csv", url: portfolioCsvUrl, required: input.exportFormat === "full_archive" },
-      { label: "Evidence CSV", format: "csv", url: evidenceCsvUrl, required: input.exportFormat !== "html_json" }
-    ]
+    files: [{ label: "Terumbu PDF report", format: "pdf", url: pdfUrl, required: true }]
   });
 
   await mkdir(folder, { recursive: true });
-  await Promise.all([
-    writeFile(path.join(folder, `${baseName}.json`), `${JSON.stringify(reportPayload, null, 2)}\n`, "utf8"),
-    writeFile(path.join(folder, `${baseName}.html`), reportHtml({ ...input, generatedAt }), "utf8"),
-    writeFile(path.join(folder, `${baseName}-evidence.json`), `${JSON.stringify(evidencePayload, null, 2)}\n`, "utf8"),
-    writeFile(path.join(folder, `${baseName}.pdf`), buildCorporateReportPdf(artifactInput)),
-    writeFile(path.join(folder, `${baseName}.xlsx`), buildCorporateReportWorkbookXlsx(artifactInput)),
-    writeFile(path.join(folder, `${baseName}-portfolio.csv`), corporateReportPortfolioCsv(artifactInput), "utf8"),
-    writeFile(path.join(folder, `${baseName}-evidence.csv`), corporateReportEvidenceCsv(artifactInput), "utf8"),
-    writeFile(path.join(folder, `${baseName}-manifest.json`), `${JSON.stringify(manifest, null, 2)}\n`, "utf8")
-  ]);
+  await writeFile(path.join(folder, `${baseName}.pdf`), buildCorporateReportPdf(artifactInput));
 
   return {
-    fileUrl,
-    previewUrl,
-    evidenceBundleUrl,
+    fileUrl: pdfUrl,
+    previewUrl: null,
+    evidenceBundleUrl: null,
     generatedAt,
-    artifactManifest: {
-      ...manifest,
-      manifestUrl: `/generated/corporate-reports/${baseName}-manifest.json`
-    },
+    artifactManifest: manifest,
     metadata: {
       portfolioCount: input.data.portfolio.length,
       evidenceCount: input.data.evidence.length,
       verifiedOutputs: input.data.impactOutputs.verifiedOutputs,
       committedFunding: input.data.financials.committedFunding,
       generatedBy: "corporate_report_generator",
-      exportFormat: input.exportFormat,
+      exportFormat: "pdf",
       artifactVersion: input.artifactVersion,
-      pdfUrl,
-      workbookUrl,
-      portfolioCsvUrl,
-      evidenceCsvUrl
+      pdfUrl
     }
   };
 }
@@ -820,6 +759,8 @@ export async function createCorporateActivityPdfReportAction(formData: FormData)
       accountName: context.accountName,
       programName: context.programName,
       generatedAt,
+      periodStart: data.program.startsAt,
+      periodEnd: data.program.endsAt,
       metrics: [
         { label: "Total donations", value: formatCurrency(data.contributions.filter((item) => item.status !== "cancelled").reduce((total, item) => total + item.amountValue, 0), data.program.currency) },
         { label: "Projects supported", value: new Set(data.contributions.map((item) => item.campaignId)).size.toLocaleString("id-ID") },
@@ -831,6 +772,14 @@ export async function createCorporateActivityPdfReportAction(formData: FormData)
         amount: formatCurrency(item.amountValue, item.currency),
         status: item.statusLabel,
         occurredAt: item.contributionDate
+      })),
+      evidence: data.evidence.map((item) => ({
+        evidenceCode: item.evidenceCode,
+        title: item.title,
+        evidenceType: item.evidenceType,
+        verificationStatus: item.verificationStatus,
+        campaignTitle: item.campaignTitle,
+        sourceHref: item.sourceHref
       }))
     };
   } else {
@@ -841,6 +790,8 @@ export async function createCorporateActivityPdfReportAction(formData: FormData)
       accountName: context.accountName,
       programName: context.programName,
       generatedAt,
+      periodStart: data.program.startsAt,
+      periodEnd: data.program.endsAt,
       metrics: [
         { label: "Bookings", value: expeditions.length.toLocaleString("id-ID") },
         { label: "Participants", value: expeditions.reduce((total, item) => total + item.participantsCount, 0).toLocaleString("id-ID") },
@@ -918,7 +869,7 @@ export async function createCorporateReportExportAction(formData: FormData) {
   }
 
   const reportType = normalizeCorporateReportType(String(formData.get("reportType") ?? "esg").toLowerCase());
-  const exportFormat = normalizeCorporateReportFormat(String(formData.get("exportFormat") ?? "html_json").toLowerCase());
+  const exportFormat = normalizeCorporateReportFormat("pdf");
   const scheduledFor = dateValue(formData.get("scheduledFor"));
   const now = new Date();
   const data = await getCorporateDashboardData(user.id);

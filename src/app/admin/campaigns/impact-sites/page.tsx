@@ -3,6 +3,7 @@ import { ArrowUpDown, FileCheck2, MapPinned, Pencil, Target } from "lucide-react
 
 import { AdminAlert } from "@/components/admin/admin-alert";
 import { AdminDataTable, type AdminDataTableColumn } from "@/components/admin/admin-data-table";
+import { AdminDomainNav, adminDonationNavItems } from "@/components/admin/admin-domain-nav";
 import { AdminListToolbar } from "@/components/admin/admin-list-toolbar";
 import { AdminPagination } from "@/components/admin/admin-pagination";
 import { AdminEmptyState, AdminPageHeader, AdminStatusBadge, adminSelectClassName } from "@/components/admin-ui";
@@ -190,6 +191,7 @@ export default async function AdminCampaignImpactSitesPage({ searchParams }: Adm
         actionHref="/admin/campaigns"
         actionLabel="Projects"
       />
+      <AdminDomainNav items={adminDonationNavItems} active={pathname} />
 
       {savedMessage ? <AdminAlert tone="success">{savedMessage}</AdminAlert> : null}
       {errorMessage ? <AdminAlert tone="error">{errorMessage}</AdminAlert> : null}

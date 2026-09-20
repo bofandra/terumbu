@@ -90,15 +90,15 @@ export default async function AdminReportsPage({ searchParams }: PageProps) {
             <span className="grid size-10 shrink-0 place-items-center rounded-lg bg-ocean-50 text-ocean-700"><FileText className="size-5" aria-hidden="true" /></span>
             <div>
               <h2 className="text-xl font-bold tracking-normal text-ocean-900">What the user receives</h2>
-              <p className="mt-1 text-sm font-semibold text-ocean-900/58">A PDF available from the user dashboard, with an optional email summary.</p>
+              <p className="mt-1 text-sm font-semibold text-ocean-900/58">A branded, multi-page PDF available from the user dashboard, with an optional email summary.</p>
             </div>
           </div>
           <div className="mt-5 grid gap-3 sm:grid-cols-2">
             {[
-              ["Donation activity", "Total contribution and project updates"],
-              ["Verified impact", "New evidence and monitored ecosystem activity"],
-              ["Learning", "Academy progress for the reporting month"],
-              ["Delivery", "Dashboard PDF; optional email summary"]
+              ["1. Cover & scope", "Terumbu branding, reporting month, user, report ID, and reporting basis."],
+              ["2. Executive summary", "Contributions, project updates, evidence records, coral monitoring, and Academy progress."],
+              ["3. Project activity", "Project-by-project contribution, update, and evidence summary from recorded platform activity."],
+              ["4. Traceability note", "Clear source-of-record and assurance note. Delivery is always PDF; email is an optional summary only."]
             ].map(([title, detail]) => (
               <div key={title} className="rounded-lg border border-ocean-900/10 bg-sand-50 p-3">
                 <p className="font-bold text-ocean-900">{title}</p>

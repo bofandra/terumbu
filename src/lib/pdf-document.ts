@@ -80,24 +80,41 @@ export function pdfRectangleCommand(x: number, y: number, width: number, height:
   return [fillCommand, strokeCommand].filter(Boolean).join("\n");
 }
 
-export function buildPdfDocument(contentStream: string) {
-  const objects = [
+export function buildPdfDocumentPages(contentStreams: string[]) {
+  const streams = contentStreams.length > 0 ? contentStreams : [""];
+  const pageObjectStart = 3;
+  const regularFontObject = pageObjectStart + streams.length;
+  const boldFontObject = regularFontObject + 1;
+  const contentObjectStart = boldFontObject + 1;
+  const pageRefs = streams.map((_, index) => `${pageObjectStart + index} 0 R`).join(" ");
+  const objects: string[] = [
     "<< /Type /Catalog /Pages 2 0 R >>",
-    "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
-    `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${PDF_PAGE_WIDTH} ${PDF_PAGE_HEIGHT}] /Resources << /Font << /F1 4 0 R /F2 5 0 R >> >> /Contents 6 0 R >>`,
-    "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>",
-    "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>",
-    `<< /Length ${contentStream.length} >>\nstream\n${contentStream}\nendstream`
+    `<< /Type /Pages /Kids [${pageRefs}] /Count ${streams.length} >>`
   ];
+
+  streams.forEach((_, index) => {
+    objects.push(
+      `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${PDF_PAGE_WIDTH} ${PDF_PAGE_HEIGHT}] /Resources << /Font << /F1 ${regularFontObject} 0 R /F2 ${boldFontObject} 0 R >> >> /Contents ${contentObjectStart + index} 0 R >>`
+    );
+  });
+
+  objects.push("<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>");
+  objects.push("<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>");
+
+  streams.forEach((contentStream) => {
+    const length = new TextEncoder().encode(contentStream).length;
+    objects.push(`<< /Length ${length} >>\nstream\n${contentStream}\nendstream`);
+  });
+
   const parts = ["%PDF-1.4\n"];
   const offsets = [0];
 
   objects.forEach((object, index) => {
-    offsets.push(parts.join("").length);
+    offsets.push(new TextEncoder().encode(parts.join("")).length);
     parts.push(`${index + 1} 0 obj\n${object}\nendobj\n`);
   });
 
-  const xrefOffset = parts.join("").length;
+  const xrefOffset = new TextEncoder().encode(parts.join("")).length;
   parts.push(`xref\n0 ${objects.length + 1}\n`);
   parts.push("0000000000 65535 f \n");
 
@@ -108,4 +125,8 @@ export function buildPdfDocument(contentStream: string) {
   parts.push(`trailer\n<< /Size ${objects.length + 1} /Root 1 0 R >>\nstartxref\n${xrefOffset}\n%%EOF\n`);
 
   return new TextEncoder().encode(parts.join(""));
+}
+
+export function buildPdfDocument(contentStream: string) {
+  return buildPdfDocumentPages([contentStream]);
 }
