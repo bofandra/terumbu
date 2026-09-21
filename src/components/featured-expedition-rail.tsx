@@ -1,4 +1,4 @@
-import { Heart, Star, Users } from "lucide-react";
+import { CalendarDays, Heart, Users } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 
@@ -8,8 +8,6 @@ import { formatCurrency } from "@/lib/utils";
 type FeaturedExpeditionRailProps = {
   expeditions: ExpeditionCardData[];
 };
-
-const ratingByIndex = ["4.9", "4.8", "4.7", "4.9"];
 
 function activityLabel(summary: string) {
   if (summary.toLowerCase().includes("survey")) {
@@ -37,7 +35,7 @@ export function FeaturedExpeditionRail({ expeditions }: FeaturedExpeditionRailPr
 
   return (
     <div className="flex snap-x gap-5 overflow-x-auto pb-3">
-      {expeditions.map((expedition, index) => (
+      {expeditions.map((expedition) => (
         <Link
           key={expedition.slug}
           href={`/expeditions/${expedition.slug}`}
@@ -63,8 +61,8 @@ export function FeaturedExpeditionRail({ expeditions }: FeaturedExpeditionRailPr
             <p className="mt-2 text-sm leading-6 text-white/76">{activityLabel(expedition.summary)}</p>
             <div className="mt-5 flex flex-wrap items-center justify-between gap-3 text-sm font-semibold">
               <span className="inline-flex items-center gap-1 text-coral-100">
-                <Star size={16} fill="currentColor" aria-hidden="true" />
-                {ratingByIndex[index % ratingByIndex.length]}
+                <CalendarDays size={16} aria-hidden="true" />
+                {expedition.duration}
               </span>
               <span className="inline-flex items-center gap-1 text-white/74">
                 <Users size={16} aria-hidden="true" />

@@ -899,6 +899,91 @@ type PartnerExpeditionMetadataContext = {
   maxCapacity: number;
 };
 
+function hasPartnerExpeditionDetailFields(formData: FormData) {
+  return (
+    hasMarketplaceFields(formData) ||
+    [
+      "categoryLabel",
+      "difficulty",
+      "minimumAge",
+      "swimmingAbility",
+      "activitySummary",
+      "documentationUrl",
+      "languages",
+      "skillRequirements",
+      "tags",
+      "galleryLabel",
+      "galleryImageFile",
+      "galleryExistingSrc",
+      "galleryCaption",
+      "galleryProvenance",
+      "overviewTitle",
+      "overviewParagraphs",
+      "pillarTitle",
+      "pillarBody",
+      "passportNote",
+      "highlightTitle",
+      "highlightStatus",
+      "impactTitle",
+      "impactSummary",
+      "contributionPercent",
+      "conservationContribution",
+      "impactTargetValue",
+      "impactTargetLabel",
+      "allocationLabel",
+      "allocationPercent",
+      "equipmentRental",
+      "platformFeePercent",
+      "platformFee",
+      "itineraryTitle",
+      "itineraryDisclaimer",
+      "itineraryDay",
+      "itineraryDayTitle",
+      "itineraryMeals",
+      "itineraryPhysicalLevel",
+      "itineraryActivities",
+      "included",
+      "notIncluded",
+      "requirements",
+      "safety",
+      "emergencyPlanSummary",
+      "sustainability",
+      "routeTitle",
+      "mapEmbedUrl",
+      "routeSteps",
+      "routeTravelTimes",
+      "accommodationName",
+      "accommodationType",
+      "accommodationDetails",
+      "mealNote",
+      "teamName",
+      "teamRole",
+      "teamDetail",
+      "preparationCourseTitle",
+      "preparationCourseSummary",
+      "preparationCourseHref",
+      "preparationCourseCtaLabel",
+      "preparationCourseExistingImageUrl",
+      "preparationCourseImageFile",
+      "tripUpdateTitle",
+      "tripUpdateDate",
+      "tripUpdateBody",
+      "cancellationLabel",
+      "cancellationRefund",
+      "faqQuestion",
+      "faqAnswer",
+      "finalCtaEyebrow",
+      "finalCtaTitle",
+      "finalCtaBody",
+      "finalCtaPrimaryLabel",
+      "finalCtaSecondaryLabel",
+      "weatherAdvisoryTitle",
+      "weatherAdvisoryBody",
+      "bookingTrustIndicators"
+    ].some((key) => formData.has(key))
+  );
+}
+
 async function partnerExpeditionMetadataFromForm(
   formData: FormData,
   context: PartnerExpeditionMetadataContext
@@ -960,6 +1045,7 @@ async function partnerExpeditionMetadataFromForm(
     formData.has("preparationCourseExistingImageUrl") ||
     formData.has("preparationCourseImageFile");
   const hasFinalCtaFields = formData.has("finalCtaEyebrow") || formData.has("finalCtaTitle") || formData.has("finalCtaBody") || formData.has("finalCtaPrimaryLabel") || formData.has("finalCtaSecondaryLabel");
+  const normalizedMinimumAge = formData.has("minimumAge") ? minimumAge : context.currentMetadata.minimumAge;
 
   const detailMetadata: ExpeditionDetailMetadata = {
     categoryLabel: optionFromForm(formData, "categoryLabel", partnerExpeditionCategoryLabels, context.currentMetadata.categoryLabel || "Coral Restoration Expedition"),
@@ -969,7 +1055,7 @@ async function partnerExpeditionMetadataFromForm(
     reviewCount: context.currentMetadata.reviewCount,
     participantCount: context.currentMetadata.participantCount,
     difficulty,
-    minimumAge,
+    minimumAge: normalizedMinimumAge,
     languages: formLinesOrFallback(formData, "languages", context.currentMetadata.languages),
     skillRequirements: formLinesOrFallback(formData, "skillRequirements", context.currentMetadata.skillRequirements),
     tags: formLinesOrFallback(formData, "tags", context.currentMetadata.tags),
@@ -979,7 +1065,7 @@ async function partnerExpeditionMetadataFromForm(
       basePrice: context.basePrice,
       currency: context.currency,
       difficulty,
-      minimumAge,
+      minimumAge: normalizedMinimumAge,
       swimmingAbility
     }),
     galleryImages: hasGalleryFields
@@ -3261,13 +3347,15 @@ export async function createPartnerExpeditionAction(formData: FormData) {
     0,
     imageUrl
   );
-  const metadata = await partnerExpeditionMetadataFromForm(formData, {
-    currentMetadata,
-    durationDays,
-    basePrice: Number(basePrice),
-    currency,
-    maxCapacity: 0
-  });
+  const metadata = hasPartnerExpeditionDetailFields(formData)
+    ? await partnerExpeditionMetadataFromForm(formData, {
+        currentMetadata,
+        durationDays,
+        basePrice: Number(basePrice),
+        currency,
+        maxCapacity: 0
+      })
+    : null;
 
   const [expedition] = await db
     .insert(expeditions)

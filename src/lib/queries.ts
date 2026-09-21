@@ -236,6 +236,70 @@ function latestEvidenceReviewNote(events: EvidenceReviewEventSummary[], fallback
   return event?.note ?? fallback ?? null;
 }
 
+function plantedEcosystemUnits(rows: { metadata: unknown; plantedAt: Date | null }[], key: string) {
+  return rows.reduce((total, row) => (row.plantedAt ? total + getMetadataNumber(row.metadata, key) : total), 0);
+}
+
+function sameImpactTargets(left: { value: string; label: string }[], right: { value: string; label: string }[]) {
+  return left.length === right.length && left.every((item, index) => item.value === right[index]?.value && item.label === right[index]?.label);
+}
+
+function isLegacyDefaultExpeditionImpactTargets(targets: { value: string; label: string }[]) {
+  return sameImpactTargets(targets, [
+    { value: "500", label: "Coral fragments supported" },
+    { value: "3", label: "Monitoring visits funded" },
+    { value: "12", label: "Local workdays supported" },
+    { value: "1", label: "Community education session" }
+  ]);
+}
+
+function campaignBackedExpeditionImpactTargets({
+  impactTarget,
+  impactUnit,
+  siteCount,
+  evidenceCount,
+  contributionPercent
+}: {
+  impactTarget: number | null | undefined;
+  impactUnit: string | null | undefined;
+  siteCount: number;
+  evidenceCount: number;
+  contributionPercent: number;
+}) {
+  const targets: { value: string; label: string }[] = [];
+  const hasCampaignBackedSource = Boolean((impactTarget && impactTarget > 0 && impactUnit) || siteCount > 0 || evidenceCount > 0);
+
+  if (impactTarget && impactTarget > 0 && impactUnit) {
+    targets.push({
+      value: impactTarget.toLocaleString("id-ID"),
+      label: `${impactUnit} campaign target`
+    });
+  }
+
+  if (siteCount > 0) {
+    targets.push({
+      value: siteCount.toLocaleString("id-ID"),
+      label: siteCount === 1 ? "linked impact site" : "linked impact sites"
+    });
+  }
+
+  if (evidenceCount > 0) {
+    targets.push({
+      value: evidenceCount.toLocaleString("id-ID"),
+      label: evidenceCount === 1 ? "verified evidence record" : "verified evidence records"
+    });
+  }
+
+  if (hasCampaignBackedSource && contributionPercent > 0) {
+    targets.push({
+      value: `${contributionPercent}%`,
+      label: "booking contribution allocation"
+    });
+  }
+
+  return targets;
+}
+
 export async function getImpactStats(): Promise<ImpactStatData[]> {
   const [donationSummary] = await db
     .select({
@@ -247,7 +311,8 @@ export async function getImpactStats(): Promise<ImpactStatData[]> {
 
   const ecosystemRows = await db
     .select({
-      metadata: sponsoredEcosystems.metadata
+      metadata: sponsoredEcosystems.metadata,
+      plantedAt: sponsoredEcosystems.plantedAt
     })
     .from(sponsoredEcosystems);
 
@@ -257,8 +322,8 @@ export async function getImpactStats(): Promise<ImpactStatData[]> {
     })
     .from(users);
 
-  const corals = ecosystemRows.reduce((total, row) => total + getMetadataNumber(row.metadata, "fragments"), 0);
-  const mangroves = ecosystemRows.reduce((total, row) => total + getMetadataNumber(row.metadata, "seedlings"), 0);
+  const corals = plantedEcosystemUnits(ecosystemRows, "fragments");
+  const mangroves = plantedEcosystemUnits(ecosystemRows, "seedlings");
 
   return [
     { label: "Corals restored", value: formatCompact(corals), tone: "coral" },
@@ -266,6 +331,30 @@ export async function getImpactStats(): Promise<ImpactStatData[]> {
     { label: "Ocean heroes", value: formatCompact(heroSummary?.total ?? 0), tone: "ocean" },
     { label: "Raised for conservation", value: formatCurrency(toNumber(donationSummary?.total)), tone: "sand" }
   ];
+}
+
+export async function getHomepageReviewSummary() {
+  const [row] = await db
+    .select({
+      averageRating: sql<string>`coalesce(avg(${expeditionReviews.rating}), 0)`,
+      reviewCount: sql<number>`count(${expeditionReviews.id})::int`
+    })
+    .from(expeditionReviews)
+    .where(eq(expeditionReviews.status, "published"));
+
+  const reviewCount = Number(row?.reviewCount ?? 0);
+
+  if (reviewCount === 0) {
+    return null;
+  }
+
+  const rating = Number(row?.averageRating ?? 0);
+
+  return {
+    rating,
+    reviewCount,
+    label: `${rating.toFixed(1)}/5 from ${reviewCount.toLocaleString("id-ID")} verified reviews`
+  };
 }
 
 export async function getCampaignCards(limit?: number, category?: string): Promise<CampaignCardData[]> {
@@ -689,6 +778,7 @@ export async function getPartnerProfile(slug: string) {
 export async function getFeaturedFieldUpdate() {
   const [row] = await db
     .select({
+      id: campaigns.id,
       campaignTitle: campaigns.title,
       imageUrl: campaigns.imageUrl,
       raisedAmount: campaigns.raisedAmount,
@@ -709,7 +799,16 @@ export async function getFeaturedFieldUpdate() {
     return null;
   }
 
-  const raised = toNumber(row.raisedAmount);
+  const [paidDonationSummary] = await db
+    .select({
+      raisedAmount: sql<string>`coalesce(sum(${donations.amount}), 0)`,
+      donorCount: sql<number>`count(${donations.id})::int`
+    })
+    .from(donations)
+    .where(and(eq(donations.campaignId, row.id), eq(donations.status, "paid")));
+  const transactionDonorCount = Number(paidDonationSummary?.donorCount ?? 0);
+  const raised = transactionDonorCount > 0 ? toNumber(paidDonationSummary?.raisedAmount) : toNumber(row.raisedAmount);
+  const donorCount = transactionDonorCount > 0 ? transactionDonorCount : row.donorCount;
   const goal = toNumber(row.goalAmount);
   const progress = goal > 0 ? Math.min(100, Math.round((raised / goal) * 100)) : 0;
   const focus = row.siteName ?? row.campaignTitle;
@@ -718,7 +817,7 @@ export async function getFeaturedFieldUpdate() {
     imageUrl: row.imageUrl,
     progress,
     title: `${focus} is ${progress}% funded.`,
-    description: `${row.donorCount.toLocaleString("id-ID")} supporters have raised ${formatCurrency(raised, row.currency)} toward ${formatCurrency(goal, row.currency)} for ${row.impactTarget.toLocaleString("id-ID")} ${row.impactUnit}.`
+    description: `${donorCount.toLocaleString("id-ID")} supporters have raised ${formatCurrency(raised, row.currency)} toward ${formatCurrency(goal, row.currency)} for ${row.impactTarget.toLocaleString("id-ID")} ${row.impactUnit}.`
   };
 }
 
@@ -1301,34 +1400,32 @@ export async function getExpeditionDetail(slug: string) {
     courseRows.find((course) => course.title.toLowerCase().includes("ocean")) ??
     courseRows[0] ??
     null;
-  const expeditionMetadata = normalizeExpeditionDetailMetadata(
-    row.metadata,
-    buildDefaultExpeditionDetailMetadata({
-      title: row.title,
-      region: row.region,
-      durationLabel,
-      price,
-      currency: row.currency,
-      maxCapacity,
-      galleryImages: defaultGalleryImages,
-      tripUpdates: defaultTripUpdates,
-      hostedBy: {
-        title: `Hosted by Terumbu.eco${row.partner ? ` and ${row.partner}` : ""}`,
-        verificationLabel: `${verificationLabel(row.verification)} Expedition Partner`,
-        profileHref: row.partnerSlug ? `/partners/${row.partnerSlug}` : "",
-        profileLabel: "View partner profile"
-      },
-      preparationCourse: selectedPreparationCourse
-        ? {
-            title: selectedPreparationCourse.title,
-            summary: selectedPreparationCourse.summary,
-            imageUrl: selectedPreparationCourse.imageUrl,
-            href: `/academy/courses/${selectedPreparationCourse.slug}`,
-            ctaLabel: "Preview Course"
-          }
-        : undefined
-    })
-  );
+  const defaultExpeditionMetadata = buildDefaultExpeditionDetailMetadata({
+    title: row.title,
+    region: row.region,
+    durationLabel,
+    price,
+    currency: row.currency,
+    maxCapacity,
+    galleryImages: defaultGalleryImages,
+    tripUpdates: defaultTripUpdates,
+    hostedBy: {
+      title: `Hosted by Terumbu.eco${row.partner ? ` and ${row.partner}` : ""}`,
+      verificationLabel: `${verificationLabel(row.verification)} Expedition Partner`,
+      profileHref: row.partnerSlug ? `/partners/${row.partnerSlug}` : "",
+      profileLabel: "View partner profile"
+    },
+    preparationCourse: selectedPreparationCourse
+      ? {
+          title: selectedPreparationCourse.title,
+          summary: selectedPreparationCourse.summary,
+          imageUrl: selectedPreparationCourse.imageUrl,
+          href: `/academy/courses/${selectedPreparationCourse.slug}`,
+          ctaLabel: "Preview Course"
+        }
+      : undefined
+  });
+  const expeditionMetadata = normalizeExpeditionDetailMetadata(row.metadata, defaultExpeditionMetadata);
   const reviewCount = reviewRows.length;
   const averageRating = reviewCount > 0 ? Number((reviewRows.reduce((total, review) => total + review.rating, 0) / reviewCount).toFixed(1)) : 0;
   const participantSummary = participantSummaryRows[0] ?? { participantCount: 0, bookingCount: 0 };
@@ -1352,6 +1449,18 @@ export async function getExpeditionDetail(slug: string) {
   const conservationContribution = expeditionMetadata.impact.conservationContribution ?? Math.round((price * expeditionMetadata.impact.contributionPercent) / 100);
   const platformFee = expeditionMetadata.priceBreakdown.platformFee ?? Math.round((price * expeditionMetadata.priceBreakdown.platformFeePercent) / 100);
   const equipmentRental = expeditionMetadata.priceBreakdown.equipmentRental;
+  const customImpactTargets =
+    expeditionMetadata.impact.targets.length > 0 &&
+    !sameImpactTargets(expeditionMetadata.impact.targets, defaultExpeditionMetadata.impact.targets) &&
+    !isLegacyDefaultExpeditionImpactTargets(expeditionMetadata.impact.targets);
+  const campaignImpactTargets = campaignBackedExpeditionImpactTargets({
+    impactTarget: row.relatedCampaignImpactTarget,
+    impactUnit: row.relatedCampaignImpactUnit,
+    siteCount: relatedSites.length,
+    evidenceCount: evidenceRows.length,
+    contributionPercent: expeditionMetadata.impact.contributionPercent
+  });
+  const publicImpactTargets = customImpactTargets || campaignImpactTargets.length === 0 ? expeditionMetadata.impact.targets : campaignImpactTargets;
 
   return {
     ...toExpeditionCard(row),
@@ -1388,7 +1497,7 @@ export async function getExpeditionDetail(slug: string) {
       summary: expeditionMetadata.impact.summary,
       methodologyUpdatedAt: expeditionMetadata.impact.methodologyUpdatedAt,
       methodologyNote: expeditionMetadata.impact.methodologyNote,
-      targets: expeditionMetadata.impact.targets,
+      targets: publicImpactTargets,
       allocation: expeditionMetadata.impact.allocation
     },
     priceBreakdown: {

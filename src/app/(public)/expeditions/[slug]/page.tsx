@@ -235,7 +235,9 @@ export default async function ExpeditionDetailPage({
                 {expedition.marketplace.typeLabel} &bull; {expedition.region}, Indonesia
               </p>
               <div className="mt-4 flex flex-wrap items-center gap-2 text-sm font-semibold text-ocean-900/58">
-                <span className="flex items-center gap-1">{stars(expedition.reviewCount > 0 ? expedition.rating : 4)}</span>
+                <span className="flex items-center gap-1">
+                  {expedition.reviewCount > 0 ? stars(expedition.rating) : <Users size={18} aria-hidden="true" className="text-ocean-900/46" />}
+                </span>
                 <span>{ratingLabel}</span>
                 <span className="inline-flex size-6 items-center justify-center rounded-full border border-ocean-900/20 text-xs font-bold">?</span>
               </div>
@@ -738,4 +740,3 @@ export default async function ExpeditionDetailPage({
     </>
   );
 }
-

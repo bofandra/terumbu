@@ -15,6 +15,7 @@ import {
   getExpeditionCards,
   getFeaturedFieldUpdate,
   getFeaturedPublicPassport,
+  getHomepageReviewSummary,
   getHomepagePartners,
   getImpactMapSites,
   getImpactStats
@@ -69,13 +70,14 @@ const fallbackPassport: PassportPreviewData = {
 };
 
 export default async function HomePage() {
-  const [stats, campaigns, expeditions, impactSites, passport, fieldUpdate, partners] = await Promise.all([
+  const [stats, campaigns, expeditions, impactSites, passport, fieldUpdate, reviewSummary, partners] = await Promise.all([
     getImpactStats(),
     getCampaignCards(3),
     getExpeditionCards(3),
     getImpactMapSites(),
     getFeaturedPublicPassport(),
     getFeaturedFieldUpdate(),
+    getHomepageReviewSummary(),
     getHomepagePartners()
   ]);
   const heroImageUrl = fieldUpdate?.imageUrl ?? fallbackHeroImageUrl;
@@ -117,17 +119,19 @@ export default async function HomePage() {
               </ButtonLink>
             </div>
             <div className="mt-7 flex flex-wrap items-center gap-4 text-sm font-semibold text-white/82">
-              <span className="inline-flex items-center gap-2">
-                <span className="flex -space-x-2">
-                  {["RA", "WK", "LB"].map((label) => (
-                    <span key={label} className="flex size-8 items-center justify-center rounded-full border border-white/40 bg-white/18 text-[11px] font-black backdrop-blur">
-                      {label}
-                    </span>
-                  ))}
+              {reviewSummary ? (
+                <span className="inline-flex items-center gap-2">
+                  <span className="flex -space-x-2">
+                    {["RA", "WK", "LB"].map((label) => (
+                      <span key={label} className="flex size-8 items-center justify-center rounded-full border border-white/40 bg-white/18 text-[11px] font-black backdrop-blur">
+                        {label}
+                      </span>
+                    ))}
+                  </span>
+                  <Star size={16} fill="currentColor" className="text-coral-300" aria-hidden="true" />
+                  {reviewSummary.label}
                 </span>
-                <Star size={16} fill="currentColor" className="text-coral-300" aria-hidden="true" />
-                4.9/5 from Ocean Heroes
-              </span>
+              ) : null}
               <span className="inline-flex items-center gap-2">
                 <Users size={16} aria-hidden="true" />
                 Donors, travelers, volunteers, and learners

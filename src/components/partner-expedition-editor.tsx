@@ -29,22 +29,6 @@ const physicalLevelOptions = ["Light", "Moderate", "Active", "Challenging"];
 const accommodationTypeOptions = ["Shared twin room included", "Private room upgrade", "Homestay", "Eco-lodge", "Liveaboard", "Hotel partner stay"];
 const quickFactLabels = ["Duration", "Small group", "Difficulty", "Min. age", "Swimming ability", "Per person"];
 const requestStatuses = ["contacted", "resolved", "converted", "declined", "cancelled"];
-const createMarketplaceDefaults: ExpeditionMarketplaceMetadata = {
-  typeLabel: "Eco Program",
-  programTypes: ["Eco Program"],
-  highlights: ["Higher chance of approval"],
-  purposes: ["Connect with nature", "Learn about sustainability"],
-  helpActivities: ["Coral Restoration", "Reef Monitoring", "Community Work"],
-  styles: ["Contact with nature", "Rural"],
-  collaborationHoursPerWeek: 20,
-  travelLengthLabel: "Short Term Stay",
-  accommodations: ["Shared Dorm"],
-  mealsIncluded: "2 meals",
-  digitalNomadAmenities: ["Basic Internet Access"],
-  benefits: ["Use our equipped kitchen", "Free Events"],
-  badges: ["Sustainable project", "Higher approval"],
-  additionalFee: null
-};
 const fileInputClassName =
   "min-h-11 w-full min-w-0 rounded-lg border border-ocean-900/14 bg-white px-3 py-2 text-sm font-semibold text-ocean-900 outline-none transition file:mr-3 file:rounded-full file:border-0 file:bg-ocean-50 file:px-3 file:py-1.5 file:text-sm file:font-bold file:text-ocean-700 focus:border-coral-500";
 
@@ -130,48 +114,6 @@ function CreateExpeditionForm({ campaigns, canManageExpeditions }: { campaigns: 
         <Field label="Summary">
           <textarea name="summary" placeholder="Short public trip summary." className={textareaClassName} required />
         </Field>
-        <details className="rounded-lg border border-ocean-900/10 bg-white">
-          <summary className="cursor-pointer px-4 py-3 text-sm font-bold text-ocean-900">Public trip facts</summary>
-          <div className="grid gap-3 border-t border-ocean-900/10 p-4 md:grid-cols-3">
-            <Field label="Category">
-              <select name="categoryLabel" defaultValue="Coral Restoration Expedition" className={inputClassName}>
-                {categoryLabelOptions.map((option) => (
-                  <option key={option} value={option}>
-                    {option}
-                  </option>
-                ))}
-              </select>
-            </Field>
-            <Field label="Difficulty">
-              <select name="difficulty" defaultValue="Moderate" className={inputClassName}>
-                {difficultyOptions.map((option) => (
-                  <option key={option} value={option}>
-                    {option}
-                  </option>
-                ))}
-              </select>
-            </Field>
-            <Field label="Min. age">
-              <input name="minimumAge" type="number" min={0} defaultValue={16} className={inputClassName} />
-            </Field>
-            <Field label="Swimming ability">
-              <select name="swimmingAbility" defaultValue="Snorkeling required" className={inputClassName}>
-                {swimmingAbilityOptions.map((option) => (
-                  <option key={option} value={option}>
-                    {option}
-                  </option>
-                ))}
-              </select>
-            </Field>
-            <Field label="Languages">
-              <textarea name="languages" defaultValue={"English\nBahasa Indonesia"} className={textareaClassName} />
-            </Field>
-            <Field label="Skill requirements">
-              <textarea name="skillRequirements" defaultValue={"Snorkeling ability required\nDiving certification optional"} className={textareaClassName} />
-            </Field>
-          </div>
-        </details>
-        <ExpeditionMarketplaceFields marketplace={createMarketplaceDefaults} inputClassName={inputClassName} textareaClassName={textareaClassName} />
         <Button type="submit" className="w-fit" disabled={!canSubmit}>
           <Plus className="size-4" aria-hidden="true" />
           Create Expedition
@@ -206,7 +148,7 @@ function DetailFields({ detail, marketplace }: { detail: ExpeditionDetailMetadat
     <div className="grid gap-4">
       <ExpeditionMarketplaceFields marketplace={marketplace} inputClassName={inputClassName} textareaClassName={textareaClassName} />
 
-      <details open className="rounded-lg border border-ocean-900/10 bg-white">
+      <details className="rounded-lg border border-ocean-900/10 bg-white">
         <summary className="cursor-pointer px-4 py-3 text-sm font-bold text-ocean-900">Public summary</summary>
         <div className="grid gap-4 border-t border-ocean-900/10 p-4">
           <div className="grid gap-3 md:grid-cols-3">
@@ -244,12 +186,6 @@ function DetailFields({ detail, marketplace }: { detail: ExpeditionDetailMetadat
               className={inputClassName}
             />
           </Field>
-          <div className="rounded-lg border border-ocean-900/10 bg-sand-50 p-3">
-            <p className="text-sm font-bold text-ocean-900">Participant reviews</p>
-            <p className="mt-2 text-sm font-semibold text-ocean-900/62">
-              {detail.rating.toFixed(1)} rating / {detail.reviewCount.toLocaleString("id-ID")} reviews / {detail.participantCount.toLocaleString("id-ID")} participants
-            </p>
-          </div>
           <div className="grid gap-3 md:grid-cols-3">
             <Field label="Languages">
               <textarea name="languages" defaultValue={listValue(detail.languages)} className={textareaClassName} />

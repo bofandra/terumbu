@@ -218,9 +218,9 @@ export function buildDefaultExpeditionDetailMetadata(input: DefaultExpeditionMet
     categoryLabel: "Coral Restoration Expedition",
     activitySummary: "Boat travel, snorkeling, and outdoor field conditions.",
     documentationUrl: "",
-    rating: 4.9,
-    reviewCount: 128,
-    participantCount: 340,
+    rating: 0,
+    reviewCount: 0,
+    participantCount: 0,
     difficulty: "Moderate",
     minimumAge: 16,
     languages: ["English", "Bahasa Indonesia"],
@@ -269,12 +269,7 @@ export function buildDefaultExpeditionDetailMetadata(input: DefaultExpeditionMet
       methodologyUpdatedAt: "2026-06-01",
       methodologyNote:
         "Estimates use booking allocation, unit-cost assumptions from the related campaign, a monitoring period of one field cycle, and partner evidence records.",
-      targets: [
-        { value: "500", label: "Coral fragments supported" },
-        { value: "3", label: "Monitoring visits funded" },
-        { value: "12", label: "Local workdays supported" },
-        { value: "1", label: "Community education session" }
-      ],
+      targets: [],
       allocation: [
         { label: "Field conservation activities", percent: 35 },
         { label: "Local guides and community services", percent: 25 },

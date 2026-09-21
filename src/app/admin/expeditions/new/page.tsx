@@ -5,12 +5,10 @@ import { AdminAlert } from "@/components/admin/admin-alert";
 import { AdminFormDraftPersistence } from "@/components/admin/admin-form-draft-persistence";
 import { AdminFormErrorSummary, type AdminFormErrorItem } from "@/components/admin/admin-form-error-summary";
 import { AdminPageHeader, adminInputClassName, adminPanelClassName, adminSelectClassName, adminTextareaClassName } from "@/components/admin-ui";
-import { ExpeditionMarketplaceFields } from "@/components/expedition-marketplace-fields";
 import { Button } from "@/components/ui/button";
 import { adminFormFieldNames } from "@/lib/admin-form-state";
 import { observeAdminDataLoader } from "@/lib/admin-observability";
 import { requireRole } from "@/lib/auth";
-import type { ExpeditionMarketplaceMetadata } from "@/lib/expedition-marketplace";
 import { createExpeditionAction } from "@/lib/portal-actions";
 import { getAdminExpeditionCreateOptions } from "@/lib/queries";
 import { MAX_DATABASE_IMAGE_BYTES } from "@/lib/storage";
@@ -22,23 +20,6 @@ export const metadata = {
 export const dynamic = "force-dynamic";
 
 const imageUploadHelp = `PNG, JPG, WebP, or GIF up to ${(MAX_DATABASE_IMAGE_BYTES / 1_000_000).toFixed(1)} MB.`;
-const marketplaceDefaults: ExpeditionMarketplaceMetadata = {
-  typeLabel: "Eco Program",
-  programTypes: ["Eco Program"],
-  highlights: ["Higher chance of approval"],
-  purposes: ["Connect with nature", "Learn about sustainability"],
-  helpActivities: ["Coral Restoration", "Reef Monitoring", "Community Work"],
-  styles: ["Contact with nature", "Rural"],
-  collaborationHoursPerWeek: 20,
-  travelLengthLabel: "Short Term Stay",
-  accommodations: ["Shared Dorm"],
-  mealsIncluded: "2 meals",
-  digitalNomadAmenities: ["Basic Internet Access"],
-  benefits: ["Use our equipped kitchen", "Free Events"],
-  badges: ["Sustainable project", "Higher approval"],
-  additionalFee: null
-};
-
 const errorMessages: Record<string, string> = {
   "campaign-missing": "Choose an existing related campaign or leave the field empty.",
   "expedition-invalid": "Some required expedition fields need attention. Your input has been preserved.",
@@ -199,11 +180,6 @@ export default async function AdminExpeditionNewPage({ searchParams }: AdminExpe
           <Field label="Summary" required>
             <textarea id="expedition-summary" name="summary" placeholder="Trip summary shown on public expedition cards and detail pages." className={adminTextareaClassName} required aria-invalid={invalidFields.has("summary") || undefined} />
           </Field>
-          <ExpeditionMarketplaceFields
-            marketplace={marketplaceDefaults}
-            inputClassName={adminInputClassName}
-            textareaClassName={adminTextareaClassName}
-          />
           <Button type="submit" tone="secondary" className="w-fit rounded-lg">
             <Plus className="size-4" aria-hidden="true" />
             Create Expedition

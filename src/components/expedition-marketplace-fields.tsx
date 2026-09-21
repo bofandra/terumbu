@@ -6,6 +6,8 @@ type ExpeditionMarketplaceFieldsProps = {
   inputClassName?: string;
   textareaClassName?: string;
   panelClassName?: string;
+  defaultOpen?: boolean;
+  summaryLabel?: string;
 };
 
 function listValue(items: string[]) {
@@ -16,11 +18,13 @@ export function ExpeditionMarketplaceFields({
   marketplace,
   inputClassName = "min-h-11 w-full min-w-0 rounded-lg border border-ocean-900/14 bg-white px-3 text-sm font-semibold text-ocean-900 outline-none transition placeholder:text-ocean-900/36 focus:border-kelp-500",
   textareaClassName = "min-h-28 w-full min-w-0 rounded-lg border border-ocean-900/14 bg-white px-3 py-3 text-sm font-semibold leading-6 text-ocean-900 outline-none transition placeholder:text-ocean-900/36 focus:border-kelp-500",
-  panelClassName = "rounded-lg border border-ocean-900/10 bg-white"
+  panelClassName = "rounded-lg border border-ocean-900/10 bg-white",
+  defaultOpen = false,
+  summaryLabel = "Advanced marketplace fields"
 }: ExpeditionMarketplaceFieldsProps) {
   return (
-    <details open className={panelClassName}>
-      <summary className="cursor-pointer px-4 py-3 text-sm font-bold text-ocean-900">Marketplace search fields</summary>
+    <details open={defaultOpen} className={panelClassName}>
+      <summary className="cursor-pointer px-4 py-3 text-sm font-bold text-ocean-900">{summaryLabel}</summary>
       <div className="grid gap-4 border-t border-ocean-900/10 p-4">
         <div className="grid gap-3 md:grid-cols-3">
           <label className="grid gap-1.5 text-sm font-bold text-ocean-900">
