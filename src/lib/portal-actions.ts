@@ -703,8 +703,11 @@ function objectMetadata(value: unknown) {
   return value && typeof value === "object" && !Array.isArray(value) ? (value as Record<string, unknown>) : {};
 }
 
-function expeditionMetadataFromForm(formData: FormData, onError: (code: string, formData?: FormData) => never) {
-  const result = parseExpeditionMetadataJson(formText(formData, "metadataJson"));
+function expeditionMetadataFromForm(formData: FormData, onError: (code: string, formData?: FormData) => never, existingMetadata?: unknown) {
+  const hasMetadataJson = formData.has("metadataJson");
+  const result = hasMetadataJson
+    ? parseExpeditionMetadataJson(formText(formData, "metadataJson"))
+    : { metadata: objectMetadata(existingMetadata), error: null as string | null };
   const documentationUrl = formText(formData, "documentationUrl");
 
   if (result.error) {
@@ -740,8 +743,10 @@ function formOptionalNumber(formData: FormData, key: string) {
 }
 
 function formLines(formData: FormData, key: string) {
-  return formText(formData, key)
-    .split(/\r?\n/)
+  const values = formData.getAll(key).map((value) => String(value ?? ""));
+  const source = values.length > 1 ? values : values[0]?.split(/\r?\n/) ?? [];
+
+  return source
     .map((line) => line.trim())
     .filter(Boolean);
 }
@@ -2817,7 +2822,6 @@ export async function updateExpeditionAction(formData: FormData) {
   const currency = normalizeCurrency(formData.get("currency"));
   const summary = formText(formData, "summary");
   const relatedCampaignId = nullableText(formData, "relatedCampaignId");
-  const metadata = expeditionMetadataFromForm(formData, redirectAdminExpeditionError);
   const uploadedImageUrl = await imageFromAdminExpeditionForm(formData);
 
   if (!expeditionId || !title || !slug || !region || !durationDays || !basePrice || !summary) {
@@ -2838,11 +2842,17 @@ export async function updateExpeditionAction(formData: FormData) {
     }
   }
 
-  const [currentExpedition] = await db.select({ id: expeditions.id, imageUrl: expeditions.imageUrl }).from(expeditions).where(eq(expeditions.id, expeditionId)).limit(1);
+  const [currentExpedition] = await db
+    .select({ id: expeditions.id, imageUrl: expeditions.imageUrl, metadata: expeditions.metadata })
+    .from(expeditions)
+    .where(eq(expeditions.id, expeditionId))
+    .limit(1);
 
   if (!currentExpedition) {
     redirectAdminExpeditionError("expedition-missing", formData);
   }
+
+  const metadata = expeditionMetadataFromForm(formData, redirectAdminExpeditionError, currentExpedition.metadata);
 
   const [expedition] = await db
     .update(expeditions)

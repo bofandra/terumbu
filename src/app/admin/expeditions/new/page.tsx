@@ -144,28 +144,21 @@ export default async function AdminExpeditionNewPage({ searchParams }: AdminExpe
           />
           <input type="hidden" name="errorReturnTo" value="/admin/expeditions/new" />
           <input type="hidden" name="savedReturnTo" value="/admin/expeditions" />
-          <div className="grid gap-3 lg:grid-cols-4">
+          <input type="hidden" name="currency" value="USD" />
+          <div className="grid gap-3 lg:grid-cols-3">
             <Field label="Title" className="lg:col-span-2" required>
               <input id="expedition-title" name="title" placeholder="Raja Ampat Coral Restoration Expedition" className={adminInputClassName} required aria-invalid={invalidFields.has("title") || undefined} />
-            </Field>
-            <Field label="Slug">
-              <input id="expedition-slug" name="slug" placeholder="raja-ampat-coral-restoration" className={adminInputClassName} aria-invalid={invalidFields.has("slug") || undefined} />
             </Field>
             <Field label="Region" required>
               <input id="expedition-region" name="region" placeholder="Raja Ampat" className={adminInputClassName} required aria-invalid={invalidFields.has("region") || undefined} />
             </Field>
           </div>
-          <div className="grid gap-3 lg:grid-cols-4">
+          <div className="grid gap-3 lg:grid-cols-3">
             <Field label="Duration days" required>
               <input id="expedition-durationDays" name="durationDays" type="number" min={1} defaultValue={4} className={adminInputClassName} required aria-invalid={invalidFields.has("durationDays") || undefined} />
             </Field>
             <Field label="Base price" required>
               <input id="expedition-basePrice" name="basePrice" type="number" min={1} step={0.01} placeholder="250.00" className={adminInputClassName} required aria-invalid={invalidFields.has("basePrice") || undefined} />
-            </Field>
-            <Field label="Currency" required>
-              <select id="expedition-currency" name="currency" defaultValue="USD" className={adminSelectClassName} required>
-                <option value="USD">USD</option>
-              </select>
             </Field>
             <Field label="Related campaign">
               <RelatedCampaignSelect campaigns={data.campaignOptions} invalid={invalidFields.has("relatedCampaignId")} />
@@ -174,12 +167,20 @@ export default async function AdminExpeditionNewPage({ searchParams }: AdminExpe
           <Field label="Upload image" help={`${imageUploadHelp} File inputs cannot be restored after a validation redirect.`}>
             <input id="expedition-imageFile" name="imageFile" type="file" accept="image/png,image/jpeg,image/webp,image/gif" className={adminInputClassName} aria-invalid={invalidFields.has("imageFile") || undefined} />
           </Field>
-          <Field label="Documentation link">
-            <input id="expedition-documentationUrl" name="documentationUrl" type="url" placeholder="https://drive.google.com/..." className={adminInputClassName} />
-          </Field>
           <Field label="Summary" required>
             <textarea id="expedition-summary" name="summary" placeholder="Trip summary shown on public expedition cards and detail pages." className={adminTextareaClassName} required aria-invalid={invalidFields.has("summary") || undefined} />
           </Field>
+          <details className="rounded-lg border border-ocean-900/10 bg-sand-50">
+            <summary className="cursor-pointer px-4 py-3 text-sm font-bold text-ocean-900">Advanced publishing settings</summary>
+            <div className="grid gap-3 border-t border-ocean-900/10 p-4 md:grid-cols-2">
+              <Field label="Slug">
+                <input id="expedition-slug" name="slug" placeholder="raja-ampat-coral-restoration" className={adminInputClassName} aria-invalid={invalidFields.has("slug") || undefined} />
+              </Field>
+              <Field label="Documentation link">
+                <input id="expedition-documentationUrl" name="documentationUrl" type="url" placeholder="https://drive.google.com/..." className={adminInputClassName} />
+              </Field>
+            </div>
+          </details>
           <Button type="submit" tone="secondary" className="w-fit rounded-lg">
             <Plus className="size-4" aria-hidden="true" />
             Create Expedition

@@ -363,15 +363,13 @@ export default async function AdminExpeditionDetailPage({ params, searchParams }
         <form action={updateExpeditionAction} encType="multipart/form-data" className="grid gap-4 p-4">
           <input type="hidden" name="returnTo" value={returnTo} />
           <input type="hidden" name="expeditionId" value={expedition.id} />
-          <div className="grid gap-3 lg:grid-cols-2">
+          <input type="hidden" name="currency" value={expedition.currency} />
+          <div className="grid gap-3">
             <Field label="Title">
               <input name="title" defaultValue={expedition.title} className={adminInputClassName} required />
             </Field>
-            <Field label="Slug">
-              <input name="slug" defaultValue={expedition.slug} className={adminInputClassName} required />
-            </Field>
           </div>
-          <div className="grid gap-3 lg:grid-cols-4">
+          <div className="grid gap-3 lg:grid-cols-3">
             <Field label="Region">
               <input name="region" defaultValue={expedition.region} className={adminInputClassName} required />
             </Field>
@@ -380,11 +378,6 @@ export default async function AdminExpeditionDetailPage({ params, searchParams }
             </Field>
             <Field label="Base price">
               <input name="basePrice" type="number" min={1} step={0.01} defaultValue={expedition.basePrice} className={adminInputClassName} required />
-            </Field>
-            <Field label="Currency">
-              <select name="currency" defaultValue={expedition.currency} className={adminSelectClassName} required>
-                <option value="USD">USD</option>
-              </select>
             </Field>
           </div>
           <div className="grid gap-3 lg:grid-cols-2">
@@ -398,22 +391,23 @@ export default async function AdminExpeditionDetailPage({ params, searchParams }
           <Field label="Summary">
             <textarea name="summary" defaultValue={expedition.summary} className={adminTextareaClassName} required />
           </Field>
-          <Field label="Documentation link">
-            <input name="documentationUrl" type="url" defaultValue={expedition.detailMetadata?.documentationUrl ?? ""} placeholder="https://drive.google.com/..." className={adminInputClassName} />
-          </Field>
+          <details className="rounded-lg border border-ocean-900/10 bg-sand-50">
+            <summary className="cursor-pointer px-4 py-3 text-sm font-bold text-ocean-900">Advanced publishing settings</summary>
+            <div className="grid gap-3 border-t border-ocean-900/10 p-4 md:grid-cols-2">
+              <Field label="Slug">
+                <input name="slug" defaultValue={expedition.slug} className={adminInputClassName} required />
+              </Field>
+              <Field label="Documentation link">
+                <input name="documentationUrl" type="url" defaultValue={expedition.detailMetadata?.documentationUrl ?? ""} placeholder="https://drive.google.com/..." className={adminInputClassName} />
+              </Field>
+            </div>
+          </details>
           <ExpeditionMarketplaceFields
             marketplace={expedition.marketplaceMetadata!}
             inputClassName={adminInputClassName}
             textareaClassName={adminTextareaClassName}
+            summaryLabel="Discovery fields"
           />
-          <details className="rounded-lg border border-ocean-900/10 bg-sand-50">
-            <summary className="cursor-pointer px-4 py-3 text-sm font-bold text-ocean-900">Advanced trip detail JSON</summary>
-            <div className="border-t border-ocean-900/10 p-4">
-              <Field label="Trip detail content JSON">
-                <textarea name="metadataJson" defaultValue={expedition.metadataJson} className={`${adminTextareaClassName} min-h-96 font-mono text-xs`} spellCheck={false} />
-              </Field>
-            </div>
-          </details>
           <Button type="submit" tone="secondary" className="w-fit rounded-lg">
             <Save className="size-4" aria-hidden="true" />
             Save Expedition
@@ -570,14 +564,17 @@ export default async function AdminExpeditionDetailPage({ params, searchParams }
                     <input name="guide" defaultValue={departure.guide ?? ""} className={adminInputClassName} />
                   </Field>
                 </div>
-                <div className="grid gap-2 sm:grid-cols-[160px_1fr]">
-                  <Field label="Minimum">
-                    <input name="minParticipants" type="number" min={1} defaultValue={departure.minParticipants} className={adminInputClassName} />
-                  </Field>
-                  <Field label="Weather advisory">
-                    <input name="weatherAdvisory" defaultValue={departure.weatherAdvisory ?? ""} className={adminInputClassName} />
-                  </Field>
-                </div>
+                <details className="rounded-lg border border-ocean-900/10 bg-white">
+                  <summary className="cursor-pointer px-3 py-2 text-sm font-bold text-ocean-900">Advanced confirmation settings</summary>
+                  <div className="grid gap-2 border-t border-ocean-900/10 p-3 sm:grid-cols-[160px_1fr]">
+                    <Field label="Minimum">
+                      <input name="minParticipants" type="number" min={1} defaultValue={departure.minParticipants} className={adminInputClassName} />
+                    </Field>
+                    <Field label="Weather advisory">
+                      <input name="weatherAdvisory" defaultValue={departure.weatherAdvisory ?? ""} className={adminInputClassName} />
+                    </Field>
+                  </div>
+                </details>
                 <Button type="submit" tone="secondary" className="w-fit rounded-lg">
                   <Save className="size-4" aria-hidden="true" />
                   Save Departure
@@ -641,12 +638,9 @@ export default async function AdminExpeditionDetailPage({ params, searchParams }
                   <input name="endsAt" type="datetime-local" className={adminInputClassName} required />
                 </Field>
               </div>
-              <div className="grid gap-2 sm:grid-cols-3">
+              <div className="grid gap-2 sm:grid-cols-2">
                 <Field label="Capacity">
                   <input name="capacity" type="number" min={1} defaultValue={12} className={adminInputClassName} required />
-                </Field>
-                <Field label="Booked seats">
-                  <input name="seatsBooked" type="number" min={0} defaultValue={0} className={adminInputClassName} />
                 </Field>
                 <Field label="Status">
                   <select name="status" defaultValue="open" className={adminSelectClassName}>
@@ -666,14 +660,17 @@ export default async function AdminExpeditionDetailPage({ params, searchParams }
                   <input name="guide" placeholder="Field team leader" className={adminInputClassName} />
                 </Field>
               </div>
-              <div className="grid gap-2 sm:grid-cols-[160px_1fr]">
-                <Field label="Minimum">
-                  <input name="minParticipants" type="number" min={1} defaultValue={6} className={adminInputClassName} />
-                </Field>
-                <Field label="Weather advisory">
-                  <input name="weatherAdvisory" className={adminInputClassName} />
-                </Field>
-              </div>
+              <details className="rounded-lg border border-ocean-900/10 bg-white">
+                <summary className="cursor-pointer px-3 py-2 text-sm font-bold text-ocean-900">Advanced confirmation settings</summary>
+                <div className="grid gap-2 border-t border-ocean-900/10 p-3 sm:grid-cols-[160px_1fr]">
+                  <Field label="Minimum">
+                    <input name="minParticipants" type="number" min={1} defaultValue={6} className={adminInputClassName} />
+                  </Field>
+                  <Field label="Weather advisory">
+                    <input name="weatherAdvisory" className={adminInputClassName} />
+                  </Field>
+                </div>
+              </details>
               <Button type="submit" className="w-fit rounded-lg">
                 <CalendarPlus className="size-4" aria-hidden="true" />
                 Add Departure
