@@ -178,7 +178,7 @@ export default async function DashboardSearchPage({ searchParams }: DashboardSea
         title: coral.code,
         description: `${coral.quantity.toLocaleString("id-ID")} ${coral.unit} at ${coral.location}.`,
         href: `/dashboard/corals/${coral.code}`,
-        meta: `${coral.statusLabel} / ${coral.verifiedEvidenceCount} verified evidence`,
+        meta: `${coral.statusLabel} / ${coral.verifiedEvidenceCount} verified activity records`,
         icon: Waves
       },
       [coral.code, coral.label, coral.location, coral.status, coral.statusLabel, coral.campaignTitle],

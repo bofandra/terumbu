@@ -48,7 +48,7 @@ export async function generateMetadata({ params }: { params: Promise<{ publicSlu
   return {
     title: passport ? `${passport.displayName} Impact Passport` : "Impact Passport",
     description: passport
-      ? `${passport.displayName}'s verified Terumbu.eco conservation profile with impact activities, certificates, and supporting evidence.`
+      ? `${passport.displayName}'s verified Terumbu.eco conservation profile with impact activities, certificates, and supporting field activity.`
       : "Verified Terumbu.eco Impact Passport"
   };
 }
@@ -417,7 +417,7 @@ export default async function PublicPassportPage({ params, searchParams }: Publi
                       <span className="rounded-full bg-kelp-100 px-2 py-1 text-kelp-700">{metadataString(item.metadata, "verificationStatus") ?? "Verified by Terumbu.eco"}</span>
                       {passport.evidenceConsent !== "hide_evidence" && passportItemSourceHref(item) ? (
                         <Link href={passportItemSourceHref(item)!} className="inline-flex items-center gap-1 rounded-full bg-ocean-50 px-2 py-1 text-ocean-900 hover:text-coral-700">
-                          Evidence source
+                          Activity source
                           <ExternalLink size={13} aria-hidden="true" />
                         </Link>
                       ) : null}

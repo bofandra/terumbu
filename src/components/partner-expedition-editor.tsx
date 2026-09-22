@@ -398,17 +398,17 @@ function DetailFields({ detail, marketplace }: { detail: ExpeditionDetailMetadat
       </details>
 
       <details className="rounded-lg border border-ocean-900/10 bg-white">
-        <summary className="cursor-pointer px-4 py-3 text-sm font-bold text-ocean-900">Updates, policy, and FAQ</summary>
+        <summary className="cursor-pointer px-4 py-3 text-sm font-bold text-ocean-900">Activity, policy, and FAQ</summary>
         <div className="grid gap-4 border-t border-ocean-900/10 p-4">
           <RepeatableFields
             rows={updateRows}
             emptyRow={{ title: "", date: "", body: "" }}
-            addLabel="Add trip update"
+            addLabel="Add trip activity"
             gridClassName="grid gap-2 rounded-lg bg-sand-50 p-3 md:grid-cols-[1fr_180px]"
             fields={[
-              { name: "tripUpdateTitle", valueKey: "title", placeholder: "Update title" },
+              { name: "tripUpdateTitle", valueKey: "title", placeholder: "Activity title" },
               { name: "tripUpdateDate", valueKey: "date", placeholder: "Date" },
-              { name: "tripUpdateBody", valueKey: "body", kind: "textarea", placeholder: "Update body", className: "md:col-span-2" }
+              { name: "tripUpdateBody", valueKey: "body", kind: "textarea", placeholder: "Activity body", className: "md:col-span-2" }
             ]}
           />
           <RepeatableFields

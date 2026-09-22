@@ -286,7 +286,7 @@ function campaignBackedExpeditionImpactTargets({
   if (evidenceCount > 0) {
     targets.push({
       value: evidenceCount.toLocaleString("id-ID"),
-      label: evidenceCount === 1 ? "verified evidence record" : "verified evidence records"
+      label: evidenceCount === 1 ? "verified activity record" : "verified activity records"
     });
   }
 
@@ -1332,7 +1332,7 @@ export async function getExpeditionDetail(slug: string) {
 
   const siteActivities = relatedSites.map((site) => ({
     title: `${site.type} milestone: ${site.name}`,
-    description: `${site.progress}% progress with ${site.evidenceCount} evidence records in ${site.region}.`
+    description: `${site.progress}% progress with ${site.evidenceCount} activity records in ${site.region}.`
   }));
 
   const departureActivities = mappedDepartures.map((departure) => ({
@@ -1360,7 +1360,7 @@ export async function getExpeditionDetail(slug: string) {
       src: evidenceRows.find((item) => item.fileUrl)?.fileUrl ?? "https://images.unsplash.com/photo-1544551763-46a013bb70d5?auto=format&fit=crop&w=1200&q=80",
       label: "Conservation activity",
       caption: "Field team conservation activity",
-      provenance: evidenceRows[0]?.verifiedAt ? `Evidence verified ${evidenceRows[0].verifiedAt.toLocaleDateString("id-ID", { dateStyle: "medium" })}` : "Reference field visual"
+      provenance: evidenceRows[0]?.verifiedAt ? `Activity verified ${evidenceRows[0].verifiedAt.toLocaleDateString("id-ID", { dateStyle: "medium" })}` : "Reference field visual"
     },
     {
       src: updateRows.find((item) => item.imageUrl)?.imageUrl ?? "https://images.unsplash.com/photo-1546026423-cc4642628d2b?auto=format&fit=crop&w=1200&q=80",
@@ -3570,22 +3570,22 @@ export async function getDashboardData(userId: string) {
   const latestImpactUpdate =
     updateRows[0]
       ? {
-          type: "Campaign update",
+          type: "Campaign activity",
           title: updateRows[0].title,
           campaignTitle: updateRows[0].campaignTitle,
           body: updateRows[0].body,
           imageUrl: updateRows[0].imageUrl,
           date: updateRows[0].publishedAt ?? updateRows[0].createdAt,
           status: evidenceRows[0]?.verificationStatus === "verified" ? "Verified" : "Published",
-          metricLabel: evidenceRows[0]?.siteName ? `Latest evidence: ${evidenceRows[0].siteName}` : "New field update",
+          metricLabel: evidenceRows[0]?.siteName ? `Latest activity: ${evidenceRows[0].siteName}` : "New field activity",
           href: `/campaigns/${updateRows[0].campaignSlug}#updates`
         }
       : evidenceRows[0]
         ? {
-            type: "Evidence",
+            type: "Activity",
             title: evidenceRows[0].title,
             campaignTitle: evidenceRows[0].campaignTitle,
-            body: `${evidenceRows[0].evidenceType} evidence is ${evidenceRows[0].verificationStatus}.`,
+            body: `${evidenceRows[0].evidenceType} activity is ${evidenceRows[0].verificationStatus}.`,
             imageUrl: evidenceRows[0].fileUrl,
             date: evidenceRows[0].verifiedAt ?? evidenceRows[0].createdAt,
             status: evidenceRows[0].verificationStatus,
@@ -3682,7 +3682,7 @@ export async function getDashboardData(userId: string) {
     })),
     ...updateRows.slice(0, 4).map((update) => ({
       id: `update-${update.id}`,
-      category: "Updates",
+      category: "Activity",
       title: update.title,
       description: update.campaignTitle,
       occurredAt: update.publishedAt ?? update.createdAt,
@@ -3706,7 +3706,7 @@ export async function getDashboardData(userId: string) {
       notificationCode: `follow-update-${update.id}`,
       category: "Followed campaigns",
       title: update.title,
-      message: `${update.campaignTitle} published a new update.`,
+      message: `${update.campaignTitle} published new activity.`,
       href: `/campaigns/${update.campaignSlug}/updates/${update.id}`,
       sourceType: "campaign_update",
       sourceId: update.id,
@@ -3716,7 +3716,7 @@ export async function getDashboardData(userId: string) {
     latestImpactUpdate
       ? {
           notificationCode: "latest-impact",
-          category: "Impact updates",
+          category: "Impact activity",
           title: latestImpactUpdate.title,
           message: `${latestImpactUpdate.title} is ready to review.`,
           href: latestImpactUpdate.href,
@@ -3729,7 +3729,7 @@ export async function getDashboardData(userId: string) {
     evidenceRows[0]
       ? {
           notificationCode: `evidence-${evidenceRows[0].id}`,
-          category: "Evidence",
+          category: "Activity",
           title: evidenceRows[0].title,
           message: `${evidenceRows[0].title} is ${evidenceRows[0].verificationStatus}.`,
           href: `/campaigns/${evidenceRows[0].campaignSlug}#evidence`,
@@ -4176,7 +4176,7 @@ export async function getSponsoredEcosystemDetail(userId: string, code: string) 
             progress: getMetadataNumber(ecosystem.siteMetadata, "progress") || getMetadataNumber(ecosystem.metadata, "progress"),
             latitude,
             longitude,
-            verification: evidenceStream.verifiedEvidenceCount > 0 ? "Verified evidence linked" : "Linked site",
+            verification: evidenceStream.verifiedEvidenceCount > 0 ? "Verified activity linked" : "Linked site",
             evidenceCount: evidenceStream.evidence.length,
             verifiedEvidenceCount: evidenceStream.verifiedEvidenceCount,
             pendingEvidenceCount: evidenceStream.pendingEvidenceCount,
@@ -4748,7 +4748,7 @@ export async function getCorporateDashboardData(userId: string, requestedProgram
     const utilizationStatus = utilization >= 85 ? "Complete" : utilization >= 65 ? "In Progress" : "Needs Review";
     const evidenceStatus =
       projectEvidenceRows.length === 0
-        ? "Evidence due"
+        ? "Activity due"
         : verifiedProjectEvidence === projectEvidenceRows.length
           ? "Verified"
           : "Reviewer action";
@@ -4767,23 +4767,23 @@ export async function getCorporateDashboardData(userId: string, requestedProgram
         statusLabel === "On Track"
           ? "Work and reporting are progressing against the current plan."
           : statusLabel === "Needs Attention"
-            ? "A schedule, evidence, or utilization checkpoint needs review."
+            ? "A schedule, activity, or utilization checkpoint needs review."
             : statusLabel === "Awaiting Verification"
-              ? "Partner evidence is submitted and awaiting review."
+              ? "Partner activity is submitted and awaiting review."
               : statusLabel === "At Risk"
                 ? "A material delivery or financial issue needs escalation."
                 : "Final activities and reporting are being closed.",
-      nextMilestone: statusLabel === "Awaiting Verification" ? "Evidence review" : statusLabel === "Needs Attention" ? "Partner clarification" : "Next monitoring report",
+      nextMilestone: statusLabel === "Awaiting Verification" ? "Activity review" : statusLabel === "Needs Attention" ? "Partner clarification" : "Next monitoring report",
       nextMilestoneDate,
       detailHref: `/corporate/donations?project=${project.campaignSlug}`,
       partnerScore,
-      invoiceStatus: utilization >= 85 ? "Matched to evidence" : utilization >= 65 ? "Partially matched" : "Needs invoice review",
+      invoiceStatus: utilization >= 85 ? "Matched to activity" : utilization >= 65 ? "Partially matched" : "Needs invoice review",
       disbursementStatus: utilization >= 90 ? "Final tranche eligible" : utilization >= 65 ? "Next tranche pending review" : "Hold pending clarification",
       evidenceSummary: {
         total: projectEvidenceRows.length,
         verified: verifiedProjectEvidence,
         pending: Math.max(0, projectEvidenceRows.length - verifiedProjectEvidence),
-        latestTitle: projectEvidenceRows[0]?.title ?? "No evidence submitted",
+        latestTitle: projectEvidenceRows[0]?.title ?? "No activity submitted",
         status: evidenceStatus
       },
       milestones: [
@@ -4800,7 +4800,7 @@ export async function getCorporateDashboardData(userId: string, requestedProgram
           owner: "Finance reviewer"
         },
         {
-          label: "Evidence verification",
+          label: "Activity review",
           status: evidenceStatus,
           dueDate: addMonths(project.createdAt, 2),
           owner: "Terumbu verification"
@@ -4815,7 +4815,7 @@ export async function getCorporateDashboardData(userId: string, requestedProgram
       nextActions: [
         statusLabel === "Needs Attention" ? "Request partner clarification" : null,
         utilization < 75 ? "Review invoices before next disbursement" : "Confirm next tranche readiness",
-        projectEvidenceRows.some((item) => item.verificationStatus !== "verified") ? "Assign evidence reviewer" : "Prepare report excerpt"
+        projectEvidenceRows.some((item) => item.verificationStatus !== "verified") ? "Assign activity reviewer" : "Prepare report excerpt"
       ].filter(isDefined)
     };
   });
@@ -5049,23 +5049,23 @@ export async function getCorporateDashboardData(userId: string, requestedProgram
     return {
       ...item,
       reviewStage,
-      reviewer: latestEvent?.actor ?? (verified ? "Terumbu verifier" : needsClarification ? item.organizationName : "Corporate evidence reviewer"),
+      reviewer: latestEvent?.actor ?? (verified ? "Terumbu verifier" : needsClarification ? item.organizationName : "Corporate activity reviewer"),
       nextAction:
         verified
           ? "Add to next report"
           : item.verificationStatus === "needs_clarification"
             ? "Await partner clarification"
             : item.verificationStatus === "rejected"
-              ? "Review rejected evidence"
+              ? "Review rejected activity"
               : item.assignedReviewerUserId
                 ? "Complete verification checklist"
-                : "Assign evidence reviewer",
+                : "Assign activity reviewer",
       internalNote:
         verified
-          ? "Evidence can be used in approved corporate reporting."
+          ? "Activity can be used in approved corporate reporting."
           : needsClarification
             ? item.latestReviewNote ?? "Reviewer should capture the missing source detail before approval."
-            : "Evidence is eligible for reviewer assignment this period.",
+            : "Activity is eligible for reviewer assignment this period.",
       auditTrail:
         item.reviewEvents.length > 0
           ? item.reviewEvents.map((event) => ({
@@ -5076,7 +5076,7 @@ export async function getCorporateDashboardData(userId: string, requestedProgram
             }))
           : [
               { label: "Submitted by partner", actor: item.organizationName, occurredAt: item.addedAt, note: null },
-              { label: "Added to corporate evidence center", actor: "Terumbu platform", occurredAt: item.addedAt, note: null },
+              { label: "Added to corporate activity records", actor: "Terumbu platform", occurredAt: item.addedAt, note: null },
               verified && item.verifiedAt ? { label: "Verified", actor: "Terumbu verifier", occurredAt: item.verifiedAt, note: null } : null
             ].filter(isDefined)
     };
@@ -5100,8 +5100,8 @@ export async function getCorporateDashboardData(userId: string, requestedProgram
       })),
     corporateEvidence.some((item) => item.verificationStatus !== "verified")
       ? {
-          title: "Evidence awaiting review",
-          description: `${corporateEvidence.filter((item) => item.verificationStatus !== "verified").length} evidence records need reviewer attention.`,
+          title: "Activity awaiting review",
+          description: `${corporateEvidence.filter((item) => item.verificationStatus !== "verified").length} activity records need reviewer attention.`,
           status: "Under Review",
           href: "/corporate/donations"
         }
@@ -5124,7 +5124,7 @@ export async function getCorporateDashboardData(userId: string, requestedProgram
     ],
     publishChecklist: [
       { label: "Approved corporate report", complete: reportExports.some((item) => ["approved", "published"].includes(item.status)) },
-      { label: "Verified evidence bundle", complete: verifiedOutputs > 0 && verifiedOutputs >= Math.max(1, Math.round(corporateEvidence.length * 0.6)) },
+      { label: "Verified activity bundle", complete: verifiedOutputs > 0 && verifiedOutputs >= Math.max(1, Math.round(corporateEvidence.length * 0.6)) },
       { label: "Public metrics reviewed", complete: latestPublishedReport !== undefined },
       { label: "PDF report prepared", complete: Boolean(latestPublishedReport?.pdfUrl) }
     ],
@@ -5139,21 +5139,21 @@ export async function getCorporateDashboardData(userId: string, requestedProgram
     href: publicImpactPreview.href ?? "/corporate/donations",
     highlights: [
       `${portfolioRows.length.toLocaleString("id-ID")} supported projects`,
-      `${verifiedOutputs.toLocaleString("id-ID")} verified evidence records`,
+      `${verifiedOutputs.toLocaleString("id-ID")} verified activity records`,
       `${employeesEngaged.toLocaleString("id-ID")} employees engaged`,
       `${formatCurrency(verifiedUtilization)} verified utilization`
     ],
     verificationItems: [
       { label: "Corporate account", status: "Verified" },
       { label: "Finance utilization", status: verifiedUtilizationRate >= 70 ? "Verified" : "In review" },
-      { label: "Project evidence", status: verifiedOutputs > 0 ? "Verified" : "Needs evidence" },
+      { label: "Project activity", status: verifiedOutputs > 0 ? "Verified" : "Needs activity" },
       { label: "Public report", status: latestPublishedReport ? "Published" : "Draft" }
     ]
   };
   const benchmarks: Array<{ label: string; current: number; previous: number; benchmark: number; unit: string; insight: string }> = [];
   const quickActions = [
     { label: "Add Project", href: "/corporate/donations" },
-    { label: "Review Evidence", href: "/corporate/donations" },
+    { label: "Review Activity", href: "/corporate/donations" },
     { label: "Review Contributions", href: "/corporate/donations" },
     { label: "Invite Employee", href: "/corporate/employees" },
     { label: "Donation Report", href: "/corporate/donations" },
@@ -5198,7 +5198,7 @@ export async function getCorporateDashboardData(userId: string, requestedProgram
     {
       role: "Corporate User",
       permission: "corporate_user",
-      access: "Manage the company workspace, projects, contributions, employees, evidence, reports, and settings.",
+      access: "Manage the company workspace, projects, contributions, employees, activity records, reports, and settings.",
       allowedActions: ["Manage projects", "Invite employees", "Generate reports"],
       active: true
     }

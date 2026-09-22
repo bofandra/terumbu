@@ -13,7 +13,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   const update = await getCampaignUpdateDetail(slug, updateId);
 
   return {
-    title: update?.title ?? "Project Update"
+    title: update?.title ?? "Project Activity"
   };
 }
 
@@ -51,7 +51,7 @@ export default async function CampaignUpdatePage({ params }: { params: Promise<{
       </div>
 
       <ButtonLink href={`/campaigns/${slug}`} tone="secondary" className="mt-8">
-        View Campaign Evidence
+        View Campaign Activity
       </ButtonLink>
     </article>
   );

@@ -26,9 +26,9 @@ export default async function DashboardNotificationsPage() {
       <header className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
         <div>
           <p className="text-sm font-bold uppercase tracking-[0.16em] text-coral-700">Notifications</p>
-          <h1 className="mt-2 text-3xl font-bold tracking-normal text-ocean-900">Updates</h1>
+          <h1 className="mt-2 text-3xl font-bold tracking-normal text-ocean-900">Activity</h1>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-ocean-900/62">
-            Updates from your donations, expeditions, Academy, and account activity.
+            Activity from your donations, expeditions, Academy, and account.
           </p>
         </div>
         {unreadCount > 0 ? (

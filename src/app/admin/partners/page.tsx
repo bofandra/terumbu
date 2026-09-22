@@ -239,7 +239,7 @@ export default async function AdminPartnersPage({ searchParams }: AdminPartnersP
         emptyState={
           <AdminEmptyState
             title="No partners match these filters"
-            description="Clear the filters or create the first implementation partner before assigning users, campaigns, or evidence workflows."
+            description="Clear the filters or create the first implementation partner before assigning users, campaigns, or activity workflows."
             actionHref="/admin/partners/new"
             actionLabel="Create partner"
           />

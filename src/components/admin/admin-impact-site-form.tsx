@@ -92,7 +92,7 @@ export function validateAdminImpactSiteFormValues(values: AdminImpactSiteFormVal
   if (!Number.isFinite(latitude) || latitude < -90 || latitude > 90) errors.latitude = "Enter a latitude from -90 to 90.";
   if (!Number.isFinite(longitude) || longitude < -180 || longitude > 180) errors.longitude = "Enter a longitude from -180 to 180.";
   if (!Number.isInteger(progress) || progress < 0 || progress > 100) errors.progress = "Enter progress from 0 to 100.";
-  if (!Number.isInteger(evidenceCount) || evidenceCount < 0) errors.evidenceCount = "Enter a whole-number evidence count of 0 or more.";
+  if (!Number.isInteger(evidenceCount) || evidenceCount < 0) errors.evidenceCount = "Enter a whole-number activity count of 0 or more.";
 
   return errors;
 }
@@ -108,7 +108,7 @@ export function AdminImpactSiteErrorSummary({ errors }: { errors: AdminImpactSit
     latitude: "Latitude",
     longitude: "Longitude",
     progress: "Progress",
-    evidenceCount: "Evidence records"
+    evidenceCount: "Activity records"
   };
 
   return (
@@ -244,7 +244,7 @@ export function AdminImpactSiteFields({
               {...fieldA11y(errors.progress, "impact-site-progress")}
             />
           </Field>
-          <Field id="impact-site-evidenceCount" label="Evidence records" error={errors.evidenceCount}>
+          <Field id="impact-site-evidenceCount" label="Activity records" error={errors.evidenceCount}>
             <input
               id="impact-site-evidenceCount"
               name="evidenceCount"

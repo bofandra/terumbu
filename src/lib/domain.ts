@@ -225,7 +225,7 @@ export function evidenceStageLabel(stage: string) {
     monitoring: "Monitoring",
     survey: "Survey",
     report: "Report",
-    evidence: "Evidence"
+    evidence: "Activity"
   };
 
   return labels[stage] ?? stage.replaceAll("_", " ");

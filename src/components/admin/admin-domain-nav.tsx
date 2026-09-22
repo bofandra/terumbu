@@ -11,7 +11,7 @@ export type AdminDomainNavItem = {
 
 export const adminDonationNavItems: AdminDomainNavItem[] = [
   { href: "/admin/campaigns", label: "Donations", icon: FileCheck2 },
-  { href: "/admin/campaigns/evidence", label: "Evidence", icon: ShieldCheck },
+  { href: "/admin/campaigns/evidence", label: "Activity", icon: ShieldCheck },
   { href: "/admin/campaigns/impact-sites", label: "Impact sites", icon: MapPinned }
 ];
 

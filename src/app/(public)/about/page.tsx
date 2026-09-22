@@ -23,7 +23,7 @@ export default async function AboutPage() {
             A trusted operating layer for coastal conservation action.
           </h1>
           <p className="mt-6 max-w-3xl text-lg leading-8 text-white/74">
-            Terumbu connects public funding, field expeditions, academy learning, partner evidence, and impact records so every claim can be traced back to real project data.
+            Terumbu connects public funding, field expeditions, academy learning, partner activity, and impact records so every claim can be traced back to real project data.
           </p>
           <div className="mt-8 flex flex-col gap-3 sm:flex-row">
             <ButtonLink href="/campaigns">Fund a Campaign</ButtonLink>
@@ -35,13 +35,13 @@ export default async function AboutPage() {
       <StatStrip stats={stats} />
 
       <section className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
-        <SectionHeading eyebrow="Trust model" title="Evidence, partners, and records move together">
-          Campaign progress, site updates, evidence files, donations, expedition bookings, course certificates, and Impact Passport entries stay connected across the platform.
+        <SectionHeading eyebrow="Trust model" title="Activity, partners, and records move together">
+          Campaign progress, site activity, review files, donations, expedition bookings, course certificates, and Impact Passport entries stay connected across the platform.
         </SectionHeading>
         <div className="mt-10 grid gap-4 md:grid-cols-3">
           {[
-            ["Partner verification", "Organizations carry verification levels that are shown beside campaign and evidence claims."],
-            ["Project evidence", "Evidence records attach to campaigns and impact sites so updates can be reviewed before they become public trust signals."],
+            ["Partner verification", "Organizations carry verification levels that are shown beside campaign and activity claims."],
+            ["Field activity", "Activity records attach to campaigns and impact sites so partner submissions can be reviewed before they become public trust signals."],
             ["Personal records", "User donations, sponsored ecosystems, expeditions, and certificates can become private or public Impact Passport milestones."]
           ].map(([title, body]) => (
             <article key={title} className="rounded-2xl border border-ocean-900/10 bg-white p-6 shadow-soft">

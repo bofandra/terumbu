@@ -14,15 +14,15 @@ import { evidenceStatusLabel, evidenceVerificationStatuses } from "@/lib/evidenc
 import { getAdminEvidenceReviewPage, type AdminEvidenceReviewFilters } from "@/lib/queries";
 import { cn } from "@/lib/utils";
 
-export const metadata = { title: "Admin Donation Evidence" };
+export const metadata = { title: "Admin Donation Activity" };
 export const dynamic = "force-dynamic";
 
 const pathname = "/admin/campaigns/evidence";
 
 const statusMessages: Record<string, string> = {
-  evidence: "Evidence review status updated.",
+  evidence: "Activity review status updated.",
   "review-note": "Add a review note for clarification or rejection.",
-  "evidence-missing": "Evidence record was not found."
+  "evidence-missing": "Activity record was not found."
 };
 
 type PageProps = {
@@ -77,15 +77,15 @@ export default async function AdminDonationEvidencePage({ searchParams }: PagePr
   const params = (await searchParams) ?? {};
   const user = await requireRole(["admin"], pathname);
   const data = await observeAdminDataLoader("admin.donations.evidence", () => getAdminEvidenceReviewPage(params, user.id));
-  const savedMessage = params.saved ? statusMessages[String(params.saved)] ?? "Evidence review saved." : null;
-  const errorMessage = params.error ? statusMessages[String(params.error)] ?? "Evidence review could not be saved." : null;
+  const savedMessage = params.saved ? statusMessages[String(params.saved)] ?? "Activity review saved." : null;
+  const errorMessage = params.error ? statusMessages[String(params.error)] ?? "Activity review could not be saved." : null;
   const baseParams = listParams(data);
   const returnTo = evidenceHref({ ...baseParams, page: data.pagination.page });
 
   const columns: AdminDataTableColumn<EvidenceRow>[] = [
     {
       key: "evidence",
-      header: <SortHeader label="Evidence" sort="title" data={data} />,
+      header: <SortHeader label="Activity" sort="title" data={data} />,
       render: (evidence) => (
         <div className="min-w-64">
           <Link href={`/admin/campaigns/evidence/${evidence.id}?returnTo=${encodeURIComponent(returnTo)}`} className="font-bold text-ocean-900 hover:text-coral-700">
@@ -135,15 +135,15 @@ export default async function AdminDonationEvidencePage({ searchParams }: PagePr
     <div className="space-y-6">
       <AdminPageHeader
         eyebrow="Donations"
-        title="Evidence"
-        description="Review the evidence itself. Donation setup and fundraising details stay in the Donations page."
+        title="Activity review"
+        description="Review partner field activity, attachments, and verification status. Donation setup and fundraising details stay in the Donations page."
       />
       <AdminDomainNav items={adminDonationNavItems} active={pathname} />
 
       {savedMessage ? <AdminAlert tone="success">{savedMessage}</AdminAlert> : null}
       {errorMessage ? <AdminAlert tone="error">{errorMessage}</AdminAlert> : null}
 
-      <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5" aria-label="Evidence summary">
+      <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5" aria-label="Activity review summary">
         <SummaryMetric label="Submitted" value={data.summary.submitted} icon={FileCheck2} />
         <SummaryMetric label="In review" value={data.summary.inReview} icon={UserCheck} />
         <SummaryMetric label="Needs clarification" value={data.summary.clarification} icon={MessageSquare} />
@@ -151,8 +151,8 @@ export default async function AdminDonationEvidencePage({ searchParams }: PagePr
         <SummaryMetric label="Rejected" value={data.summary.rejected} icon={FileCheck2} />
       </section>
 
-      <AdminListToolbar action={pathname} searchValue={data.filters.q} searchPlaceholder="Search evidence or code" clearHref={pathname}>
-        <select name="status" defaultValue={data.filters.status} className={cn(adminSelectClassName, "min-w-40")} aria-label="Evidence status">
+      <AdminListToolbar action={pathname} searchValue={data.filters.q} searchPlaceholder="Search activity or code" clearHref={pathname}>
+        <select name="status" defaultValue={data.filters.status} className={cn(adminSelectClassName, "min-w-40")} aria-label="Activity status">
           <option value="all">All statuses</option>
           {evidenceVerificationStatuses.map((status) => <option key={status} value={status}>{evidenceStatusLabel(status)}</option>)}
         </select>
@@ -166,11 +166,11 @@ export default async function AdminDonationEvidencePage({ searchParams }: PagePr
       </AdminListToolbar>
 
       <AdminDataTable
-        caption="Donation evidence review queue"
+        caption="Donation activity review queue"
         columns={columns}
         rows={data.evidence}
         getRowKey={(evidence) => evidence.id}
-        emptyState={<AdminEmptyState title="No evidence needs review" description="New partner submissions will appear here." />}
+        emptyState={<AdminEmptyState title="No activity needs review" description="New partner submissions will appear here." />}
       />
       <AdminPagination pathname={pathname} params={baseParams} pagination={data.pagination} />
     </div>

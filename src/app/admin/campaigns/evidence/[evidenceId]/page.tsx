@@ -12,7 +12,7 @@ import { verifyEvidenceAction } from "@/lib/portal-actions";
 import { getAdminEvidenceReviewItem } from "@/lib/queries";
 
 export const metadata = {
-  title: "Review Evidence"
+  title: "Review Activity"
 };
 
 export const dynamic = "force-dynamic";
@@ -20,9 +20,9 @@ export const dynamic = "force-dynamic";
 const directoryPath = "/admin/campaigns/evidence";
 
 const statusMessages: Record<string, string> = {
-  evidence: "Evidence review status updated.",
-  "review-note": "Add a review note before requesting clarification or rejecting evidence.",
-  "evidence-missing": "Evidence record was not found."
+  evidence: "Activity review status updated.",
+  "review-note": "Add a review note before requesting clarification or rejecting activity.",
+  "evidence-missing": "Activity record was not found."
 };
 
 type AdminEvidenceDetailPageProps = {
@@ -55,9 +55,9 @@ export default async function AdminEvidenceDetailPage({ params, searchParams }: 
 
   const directoryReturnTo = safeRedirectPath(query?.returnTo, directoryPath);
   const redirectTo = detailReturnPath(evidence.id, directoryReturnTo);
-  const savedMessage = query?.saved ? statusMessages[query.saved] ?? "Evidence review saved." : null;
+  const savedMessage = query?.saved ? statusMessages[query.saved] ?? "Activity review saved." : null;
   const errorMessage = query?.error
-    ? statusMessages[query.error] ?? "Evidence status could not be saved with the current input or permission."
+    ? statusMessages[query.error] ?? "Activity status could not be saved with the current input or permission."
     : null;
   const assignmentLabel = evidence.assignedReviewerUserId === user.id
     ? "Assigned to you"
@@ -68,7 +68,7 @@ export default async function AdminEvidenceDetailPage({ params, searchParams }: 
   return (
     <div className="space-y-6">
       <AdminPageHeader
-        eyebrow="Donations / Evidence"
+        eyebrow="Donations / Activity"
         title={evidence.title}
         description={`${evidence.evidenceCode} · ${evidence.evidenceType.replaceAll("_", " ")}`}
         actionHref={directoryReturnTo}
@@ -78,7 +78,7 @@ export default async function AdminEvidenceDetailPage({ params, searchParams }: 
       {savedMessage ? <AdminAlert tone="success">{savedMessage}</AdminAlert> : null}
       {errorMessage ? <AdminAlert tone="error">{errorMessage}</AdminAlert> : null}
 
-      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5" aria-label="Evidence summary">
+      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5" aria-label="Activity summary">
         <article className="rounded-lg border border-ocean-900/10 bg-white p-4 shadow-soft">
           <ShieldCheck className="size-5 text-coral-500" aria-hidden="true" />
           <p className="mt-3 text-sm font-bold text-ocean-900/58">Status</p>
@@ -91,7 +91,7 @@ export default async function AdminEvidenceDetailPage({ params, searchParams }: 
         </article>
         <article className="rounded-lg border border-ocean-900/10 bg-white p-4 shadow-soft">
           <FileCheck2 className="size-5 text-kelp-700" aria-hidden="true" />
-          <p className="mt-3 text-sm font-bold text-ocean-900/58">Evidence type</p>
+          <p className="mt-3 text-sm font-bold text-ocean-900/58">Attachment type</p>
           <p className="mt-2 font-bold capitalize text-ocean-900">{evidence.evidenceType.replaceAll("_", " ")}</p>
         </article>
         <article className="rounded-lg border border-ocean-900/10 bg-white p-4 shadow-soft">
@@ -109,11 +109,11 @@ export default async function AdminEvidenceDetailPage({ params, searchParams }: 
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1.35fr)_minmax(320px,0.65fr)]">
         <div className="space-y-6">
-          <section className="rounded-lg border border-ocean-900/10 bg-white p-5 shadow-soft" aria-labelledby="evidence-context-title">
+          <section className="rounded-lg border border-ocean-900/10 bg-white p-5 shadow-soft" aria-labelledby="activity-context-title">
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div>
-                <h2 id="evidence-context-title" className="text-lg font-bold text-ocean-900">Evidence details</h2>
-                <p className="mt-1 text-sm font-semibold leading-6 text-ocean-900/58">Review the submitted file and observation before recording a decision.</p>
+                <h2 id="activity-context-title" className="text-lg font-bold text-ocean-900">Activity details</h2>
+                <p className="mt-1 text-sm font-semibold leading-6 text-ocean-900/58">Review the submitted note and attachment before recording a decision.</p>
               </div>
               <div className="flex flex-wrap gap-2">
                 <Link href={`/campaigns/${evidence.campaignSlug}`} className="inline-flex min-h-10 items-center gap-2 rounded-lg border border-ocean-900/10 bg-white px-3 text-sm font-bold text-ocean-900 hover:border-coral-500 hover:text-coral-700">
@@ -168,7 +168,7 @@ export default async function AdminEvidenceDetailPage({ params, searchParams }: 
           <section className="rounded-lg border border-ocean-900/10 bg-white p-5 shadow-soft" aria-labelledby="audit-title">
             <div>
               <h2 id="audit-title" className="text-lg font-bold text-ocean-900">Review history</h2>
-              <p className="mt-1 text-sm font-semibold leading-6 text-ocean-900/58">Status transitions, assignments, notes, and reviewer actions for this evidence record.</p>
+              <p className="mt-1 text-sm font-semibold leading-6 text-ocean-900/58">Status transitions, assignments, notes, and reviewer actions for this activity record.</p>
             </div>
 
             <div className="mt-5 grid gap-3">
@@ -227,7 +227,7 @@ export default async function AdminEvidenceDetailPage({ params, searchParams }: 
               <textarea
                 name="reviewNote"
                 defaultValue={evidence.latestReviewNote ?? ""}
-                placeholder="Required when requesting clarification or rejecting evidence"
+                placeholder="Required when requesting clarification or rejecting activity"
                 className={adminTextareaClassName}
               />
             </label>

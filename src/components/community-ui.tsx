@@ -450,7 +450,7 @@ export function CommunityComposer({ chapters, mode }: { chapters: CommunityChapt
           </ComposerField>
         </div>
         <ComposerField label="Description" required>
-          <textarea name="description" placeholder="Rules, tracking guidance, and evidence expectations." className={communityTextareaClassName} required />
+          <textarea name="description" placeholder="Rules, tracking guidance, and activity expectations." className={communityTextareaClassName} required />
         </ComposerField>
         <ComposerField label="Image" help={communityImageUploadHelp}>
           <input name="imageFile" type="file" accept="image/png,image/jpeg,image/webp,image/gif" className={communityInputClassName} />

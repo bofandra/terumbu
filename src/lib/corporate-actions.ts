@@ -233,11 +233,11 @@ function corporateReportPresentation(reportType: string) {
 
   if (normalizedType === "evidence") {
     return {
-      label: "Evidence Assurance Bundle",
-      eyebrow: "Evidence and verification",
+      label: "Activity Assurance Bundle",
+      eyebrow: "Activity and verification",
       headline: "Reportable field records and source traceability",
       summary:
-        "A source-led package for reviewers, auditors, and finance teams that need to trace claims back to verified campaign evidence."
+        "A source-led package for reviewers, auditors, and finance teams that need to trace claims back to verified campaign activity."
     };
   }
 
@@ -246,7 +246,7 @@ function corporateReportPresentation(reportType: string) {
     eyebrow: "Environmental, social, and governance",
     headline: "Verified blue-carbon and coastal conservation performance",
     summary:
-      "A professional ESG package covering committed funding, utilization, field evidence, risk posture, and reportable restoration outputs."
+      "A professional ESG package covering committed funding, utilization, field activity, risk posture, and reportable restoration outputs."
   };
 }
 
@@ -275,7 +275,7 @@ function reportHtml(input: {
     {
       label: "Verified utilization",
       value: formatCurrency(data.financials.verifiedUtilization),
-      support: `${clampPercent(data.financials.verifiedUtilizationRate)}% matched to verified evidence`
+      support: `${clampPercent(data.financials.verifiedUtilizationRate)}% matched to verified activity`
     },
     {
       label: "Restoration units",
@@ -283,7 +283,7 @@ function reportHtml(input: {
       support: "Coral, mangrove, and ecosystem units supported"
     },
     {
-      label: "Evidence readiness",
+      label: "Activity readiness",
       value: `${evidenceRate}%`,
       support: `${formatReportNumber(verifiedEvidenceCount)} of ${formatReportNumber(data.evidence.length)} records verified`
     }
@@ -326,7 +326,7 @@ function reportHtml(input: {
     ["Committed funding", formatCurrency(data.financials.committedFunding), "Approved program ceiling"],
     ["Funds disbursed", formatCurrency(data.financials.fundsDisbursed), `${clampPercent(data.financials.disbursementRate)}% of commitment`],
     ["Verified utilization", formatCurrency(data.financials.verifiedUtilization), `${clampPercent(data.financials.verifiedUtilizationRate)}% of disbursed funds`],
-    ["Pending verification", formatCurrency(data.financials.pendingVerification), "Awaiting evidence or reviewer closure"],
+    ["Pending verification", formatCurrency(data.financials.pendingVerification), "Awaiting activity or reviewer closure"],
     ["Remaining commitment", formatCurrency(data.financials.remainingCommitment), "Available for future project allocation"]
   ];
   const impactRows = [
@@ -334,7 +334,7 @@ function reportHtml(input: {
     ["Coral units", formatReportNumber(data.impactOutputs.coralUnits), "Coral-focused restoration activity"],
     ["Mangrove units", formatReportNumber(data.impactOutputs.mangroveUnits), "Mangrove-focused restoration activity"],
     ["Volunteer hours", formatReportNumber(data.impactOutputs.volunteerHours), "Recorded employee or community participation"],
-    ["Activity records", formatReportNumber(data.impactOutputs.activityCount), "Combined portfolio, evidence, and engagement records"]
+    ["Activity records", formatReportNumber(data.impactOutputs.activityCount), "Combined portfolio, field activity, and engagement records"]
   ];
   const sdgRows = data.sdgAlignment
     .map(
@@ -457,7 +457,7 @@ function reportHtml(input: {
       <div class="section-head">
         <div>
           <h2>${escapeHtml(presentation.headline)}</h2>
-          <p>Generated from Terumbu.eco corporate program data, funding ledgers, partner project status, and verified evidence records.</p>
+          <p>Generated from Terumbu.eco corporate program data, funding ledgers, partner project status, and verified activity records.</p>
         </div>
         <span class="badge">ready artifact</span>
       </div>
@@ -472,7 +472,7 @@ function reportHtml(input: {
           <h2>Executive summary</h2>
           <p>Core report metrics for finance, sustainability, and program governance review.</p>
         </div>
-        <span class="badge">${formatReportNumber(data.portfolio.length)} projects / ${formatReportNumber(data.evidence.length)} evidence records</span>
+        <span class="badge">${formatReportNumber(data.portfolio.length)} projects / ${formatReportNumber(data.evidence.length)} activity records</span>
       </div>
       <div class="two-col">
         <table class="summary-table">
@@ -503,14 +503,14 @@ function reportHtml(input: {
     <section class="section">
       <div class="section-head">
         <div>
-          <h2>Evidence register</h2>
+          <h2>Activity register</h2>
           <p>Source records used to support reportable claims, finance utilization, and campaign progress.</p>
         </div>
         <span class="badge">${formatReportNumber(verifiedEvidenceCount)} verified</span>
       </div>
       <table>
-        <thead><tr><th>Code</th><th>Evidence</th><th>Campaign</th><th>Metric</th><th>Status</th></tr></thead>
-        <tbody>${evidenceRows || `<tr><td class="empty" colspan="5">No evidence records are linked to this report period yet.</td></tr>`}</tbody>
+        <thead><tr><th>Code</th><th>Activity</th><th>Campaign</th><th>Metric</th><th>Status</th></tr></thead>
+        <tbody>${evidenceRows || `<tr><td class="empty" colspan="5">No activity records are linked to this report period yet.</td></tr>`}</tbody>
       </table>
     </section>
 
@@ -529,8 +529,8 @@ function reportHtml(input: {
     </section>
 
     <section class="section">
-      <h2>Evidence bundle</h2>
-      <p>This package is designed for audit review. The JSON data file contains the full report payload, the evidence bundle contains source evidence records, and CSV/XLSX artifacts provide analysis-ready extracts for finance and sustainability teams.</p>
+      <h2>Activity bundle</h2>
+      <p>This package is designed for audit review. The JSON data file contains the full report payload, the activity bundle contains source activity records, and CSV/XLSX artifacts provide analysis-ready extracts for finance and sustainability teams.</p>
     </section>
     <footer>Terumbu.eco generated report / ${escapeHtml(input.exportCode)} / ${escapeHtml(formatReportDate(input.generatedAt))}</footer>
   </main>
@@ -764,7 +764,7 @@ export async function createCorporateActivityPdfReportAction(formData: FormData)
       metrics: [
         { label: "Total donations", value: formatCurrency(data.contributions.filter((item) => item.status !== "cancelled").reduce((total, item) => total + item.amountValue, 0), data.program.currency) },
         { label: "Projects supported", value: new Set(data.contributions.map((item) => item.campaignId)).size.toLocaleString("id-ID") },
-        { label: "Verified evidence", value: data.evidence.filter((item) => item.verificationStatus === "verified").length.toLocaleString("id-ID") }
+        { label: "Verified activity", value: data.evidence.filter((item) => item.verificationStatus === "verified").length.toLocaleString("id-ID") }
       ],
       rows: data.contributions.map((item) => ({
         title: item.campaignTitle,

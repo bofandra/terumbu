@@ -36,7 +36,7 @@ export default async function PartnerProfilePage({ params }: { params: Promise<{
           </p>
           <h1 className="mt-4 max-w-4xl text-4xl font-bold tracking-normal sm:text-6xl">{partner.name}</h1>
           <p className="mt-5 max-w-3xl text-lg leading-8 text-white/74">
-            {partner.description ?? `${partner.name} is connected to Terumbu campaigns, evidence records, and public impact reporting.`}
+            {partner.description ?? `${partner.name} is connected to Terumbu campaigns, field activity, and public impact reporting.`}
           </p>
           <div className="mt-8 flex flex-col gap-3 sm:flex-row">
             <ButtonLink href="/campaigns">View Campaigns</ButtonLink>
@@ -67,8 +67,8 @@ export default async function PartnerProfilePage({ params }: { params: Promise<{
 
       <section className="bg-white py-16">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <SectionHeading title="Evidence linked to this partner">
-            Evidence records are attached through campaigns so donors and reviewers can trace project claims.
+          <SectionHeading title="Activity linked to this partner">
+            Activity records are attached through campaigns so donors and reviewers can trace project claims.
           </SectionHeading>
           {partner.evidence.length > 0 ? (
             <div className="mt-8 grid gap-4 md:grid-cols-3">
@@ -87,7 +87,7 @@ export default async function PartnerProfilePage({ params }: { params: Promise<{
             </div>
           ) : (
             <p className="mt-6 rounded-2xl border border-ocean-900/10 bg-sand-50 p-5 text-sm font-semibold text-ocean-900/62">
-              No evidence records are currently linked to this partner.
+              No activity records are currently linked to this partner.
             </p>
           )}
         </div>

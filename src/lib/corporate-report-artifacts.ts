@@ -123,9 +123,9 @@ export function corporateReportSheets(input: CorporateReportArtifactInput): Shee
       ]
     },
     {
-      name: "Evidence",
+      name: "Activity",
       rows: [
-        ["Evidence code", "Title", "Type", "Status", "Campaign", "Source"],
+        ["Activity code", "Title", "Type", "Status", "Campaign", "Source"],
         ...input.evidence.map((evidence) => [
           evidence.evidenceCode,
           evidence.title,
@@ -144,7 +144,7 @@ export function corporateReportPortfolioCsv(input: CorporateReportArtifactInput)
 }
 
 export function corporateReportEvidenceCsv(input: CorporateReportArtifactInput) {
-  return corporateReportCsv(corporateReportSheets(input).find((sheet) => sheet.name === "Evidence")?.rows ?? []);
+  return corporateReportCsv(corporateReportSheets(input).find((sheet) => sheet.name === "Activity")?.rows ?? []);
 }
 
 function escapeXml(value: string) {
@@ -354,7 +354,7 @@ function activityTablePage(input: CorporateActivityReportInput, rows: CorporateA
 function evidenceTablePage(input: CorporateActivityReportInput, evidence: CorporateReportArtifactEvidenceRow[], pageNumber: number, totalPages: number) {
   const commands = brandedReportPage({
     section: "Corporate impact report",
-    title: "Evidence and verification",
+    title: "Activity and verification",
     subtitle: `${input.accountName} / ${input.programName}`,
     reportId: input.exportCode,
     generatedAt: input.generatedAt,
@@ -363,10 +363,10 @@ function evidenceTablePage(input: CorporateActivityReportInput, evidence: Corpor
     compactHeader: true
   });
   let y = 660;
-  y = reportSectionTitle(commands, "Evidence summary", y, "Evidence status reflects the latest Terumbu review workflow state for records linked to supported projects.") - 8;
+  y = reportSectionTitle(commands, "Activity summary", y, "Activity status reflects the latest Terumbu review workflow state for records linked to supported projects.") - 8;
 
   commands.push(pdfRectangleCommand(REPORT_CONTENT_X, y - 24, REPORT_CONTENT_WIDTH, 28, PDF_COLORS.wash, PDF_COLORS.border));
-  commands.push(pdfTextCommand({ text: "EVIDENCE", x: 72, y: y - 7, size: 7.8, font: "bold", color: PDF_COLORS.muted }));
+  commands.push(pdfTextCommand({ text: "ACTIVITY", x: 72, y: y - 7, size: 7.8, font: "bold", color: PDF_COLORS.muted }));
   commands.push(pdfTextCommand({ text: "TITLE", x: 160, y: y - 7, size: 7.8, font: "bold", color: PDF_COLORS.muted }));
   commands.push(pdfTextCommand({ text: "PROJECT", x: 334, y: y - 7, size: 7.8, font: "bold", color: PDF_COLORS.muted }));
   commands.push(pdfTextCommand({ text: "STATUS", x: 488, y: y - 7, size: 7.8, font: "bold", color: PDF_COLORS.muted }));
@@ -384,13 +384,13 @@ function evidenceTablePage(input: CorporateActivityReportInput, evidence: Corpor
   });
 
   if (evidence.length === 0) {
-    commands.push(pdfTextCommand({ text: "No linked evidence records were available for this report.", x: REPORT_CONTENT_X, y: y - 24, size: 9.5, color: PDF_COLORS.muted }));
+    commands.push(pdfTextCommand({ text: "No linked activity records were available for this report.", x: REPORT_CONTENT_X, y: y - 24, size: 9.5, color: PDF_COLORS.muted }));
   }
 
   reportNoteBox(
     commands,
     "Data assurance",
-    "This PDF is generated from Terumbu.eco operational records. Evidence labels reflect workflow status, not an external audit opinion. Source records remain available in the platform for traceability.",
+    "This PDF is generated from Terumbu.eco operational records. Activity labels reflect workflow status, not an external audit opinion. Source records remain available in the platform for traceability.",
     150
   );
   return commands.join("\n");
@@ -438,14 +438,14 @@ export function buildCorporateActivityReportPdf(input: CorporateActivityReportIn
     "Report scope",
     y,
     input.title.toLowerCase().includes("donation")
-      ? "Summarizes corporate donations recorded in Terumbu, the projects they support, and linked evidence available at generation time."
+      ? "Summarizes corporate donations recorded in Terumbu, the projects they support, and linked activity available at generation time."
       : "Summarizes expedition bookings explicitly attributed to this corporate account and the participation recorded in Terumbu."
   ) - 8;
   y = reportSectionTitle(cover, "Reporting basis", y, "The report is generated from platform records for the selected corporate program. Values are shown as recorded; no estimates are introduced by the report generator.") - 10;
   reportNoteBox(
     cover,
     "Terumbu reporting note",
-    "The structure prioritizes reporting scope, measurable activity, supporting evidence, and traceability. It is an operational impact report and does not claim compliance with GRI, IFRS Sustainability Disclosure Standards, or independent assurance unless explicitly stated.",
+    "The structure prioritizes reporting scope, measurable activity, linked source records, and traceability. It is an operational impact report and does not claim compliance with GRI, IFRS Sustainability Disclosure Standards, or independent assurance unless explicitly stated.",
     Math.min(y, 225)
   );
 

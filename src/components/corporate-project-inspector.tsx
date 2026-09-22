@@ -44,7 +44,7 @@ export type CorporateProjectInspectorProject = {
 };
 
 function statusClass(status: string) {
-  if (["Complete", "Completed", "On Track", "Verified", "Matched to evidence"].includes(status)) {
+  if (["Complete", "Completed", "On Track", "Verified", "Matched to activity"].includes(status)) {
     return "bg-kelp-100 text-kelp-700";
   }
 
@@ -145,8 +145,8 @@ export function CorporateProjectInspector({
         <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
           <MetricBlock icon={Landmark} label="Funding" value={formatCurrency(selectedProject.allocationValue)} detail={selectedProject.disbursementStatus} />
           <MetricBlock icon={ShieldCheck} label="Partner score" value={`${selectedProject.partnerScore}%`} detail={selectedProject.organizationVerification} />
-          <MetricBlock icon={ClipboardCheck} label="Invoices" value={selectedProject.invoiceStatus} detail="Matched against utilization and evidence." />
-          <MetricBlock icon={CheckCircle2} label="Evidence" value={`${selectedProject.evidenceSummary.verified}/${selectedProject.evidenceSummary.total} verified`} detail={selectedProject.evidenceSummary.latestTitle} />
+          <MetricBlock icon={ClipboardCheck} label="Invoices" value={selectedProject.invoiceStatus} detail="Matched against utilization and field activity." />
+          <MetricBlock icon={CheckCircle2} label="Activity" value={`${selectedProject.evidenceSummary.verified}/${selectedProject.evidenceSummary.total} verified`} detail={selectedProject.evidenceSummary.latestTitle} />
         </div>
 
         <div className="mt-6">

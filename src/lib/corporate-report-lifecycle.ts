@@ -30,7 +30,7 @@ export function corporateReportTypeLabel(type: string | null | undefined) {
   return {
     esg: "ESG Report",
     csr: "CSR Impact Report",
-    evidence: "Evidence Bundle",
+    evidence: "Activity Bundle",
     donations: "Donation Activity Report",
     expeditions: "Expedition Activity Report"
   }[normalizeCorporateReportType(type)];

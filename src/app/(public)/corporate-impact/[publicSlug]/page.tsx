@@ -46,7 +46,7 @@ function reportTypeLabel(value: string) {
   }
 
   if (value === "evidence") {
-    return "Evidence Bundle";
+    return "Activity Bundle";
   }
 
   return "ESG Report";
@@ -73,9 +73,9 @@ function metricCards(data: PublicCorporateReport) {
       icon: Waves
     },
     {
-      label: "Verified evidence",
+      label: "Verified activity",
       value: data.metrics.verifiedEvidence.toLocaleString("id-ID"),
-      support: "Reportable evidence records",
+      support: "Reportable activity records",
       icon: CheckCircle2
     },
     {
@@ -132,7 +132,7 @@ export default async function PublicCorporateImpactPage({ params }: { params: Pr
               </div>
             </div>
             <p className="mt-6 max-w-3xl text-lg leading-8 text-white/76">
-              A public, evidence-linked summary of conservation funding, portfolio progress, and verified field records published through Terumbu.eco.
+              A public, activity-linked summary of conservation funding, portfolio progress, and verified field records published through Terumbu.eco.
             </p>
             <div className="mt-7 flex flex-wrap gap-2">
               {data.report.pdfUrl ? (
@@ -237,7 +237,7 @@ export default async function PublicCorporateImpactPage({ params }: { params: Pr
         <article className="rounded-2xl border border-ocean-900/10 bg-white p-5 shadow-soft">
           <div className="flex items-start justify-between gap-3">
             <div>
-              <p className="text-sm font-bold uppercase text-coral-700">Evidence center</p>
+              <p className="text-sm font-bold uppercase text-coral-700">Activity records</p>
               <h2 className="mt-2 text-2xl font-bold tracking-normal text-ocean-900">Reportable source records</h2>
             </div>
 
@@ -263,7 +263,7 @@ export default async function PublicCorporateImpactPage({ params }: { params: Pr
             ))}
             {data.evidence.length === 0 ? (
               <p className="rounded-xl border border-dashed border-ocean-900/14 bg-sand-50 p-5 text-sm font-semibold text-ocean-900/62">
-                Evidence records will appear here after corporate report publication.
+                Activity records will appear here after corporate report publication.
               </p>
             ) : null}
           </div>

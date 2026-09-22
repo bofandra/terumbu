@@ -9,7 +9,7 @@ const stories = [
     detail: "Expedition participant"
   },
   {
-    quote: "Our coastal cleanup became evidence that students, parents, and donors could all follow.",
+    quote: "Our coastal cleanup became activity records that students, parents, and donors could all follow.",
     name: "Komodo Ocean Watch",
     detail: "Community partner"
   },
@@ -34,8 +34,8 @@ const communityActions = [
     href: "/academy"
   },
   {
-    title: "Follow verified updates",
-    description: "Track evidence, campaign milestones, and expedition records as partner reports arrive.",
+    title: "Follow field activity",
+    description: "Track campaign milestones, review attachments, and expedition records as partner reports arrive.",
     icon: MapPinned,
     href: "/impact-map"
   }

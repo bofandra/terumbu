@@ -48,7 +48,7 @@ export default async function CorporateDashboardPage() {
 
       <section className="mt-6 grid gap-4 lg:grid-cols-2">
         <article className="rounded-lg border border-ocean-900/10 bg-white p-5 shadow-soft">
-          <div className="flex items-center justify-between gap-3"><div><h2 className="text-xl font-bold tracking-normal text-ocean-900">Donations</h2><p className="mt-1 text-sm text-ocean-900/58">{verifiedEvidence.toLocaleString("id-ID")} verified evidence record{verifiedEvidence === 1 ? "" : "s"}</p></div><Link href="/corporate/donations" className="text-sm font-bold text-coral-700">Open</Link></div>
+          <div className="flex items-center justify-between gap-3"><div><h2 className="text-xl font-bold tracking-normal text-ocean-900">Donations</h2><p className="mt-1 text-sm text-ocean-900/58">{verifiedEvidence.toLocaleString("id-ID")} verified activity record{verifiedEvidence === 1 ? "" : "s"}</p></div><Link href="/corporate/donations" className="text-sm font-bold text-coral-700">Open</Link></div>
           <div className="mt-4 divide-y divide-ocean-900/10">
             {data.contributions.slice(0, 4).map((item) => <div key={item.id} className="flex items-center justify-between gap-4 py-3"><div><p className="font-bold text-ocean-900">{item.campaignTitle}</p><p className="mt-1 text-xs text-ocean-900/52">{formatDate(item.contributionDate)}</p></div><p className="font-bold text-ocean-900">{formatCurrency(item.amountValue, item.currency)}</p></div>)}
             {data.contributions.length === 0 ? <p className="py-4 text-sm font-semibold text-ocean-900/58">No donations yet.</p> : null}

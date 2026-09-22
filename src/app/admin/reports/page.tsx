@@ -52,7 +52,7 @@ export default async function AdminReportsPage({ searchParams }: PageProps) {
       render: (report) => (
         <div className="min-w-56 text-sm font-semibold text-ocean-900/62">
           <p>{formatCurrency(report.contributions)} contributions</p>
-          <p className="mt-1">{report.campaignUpdates} project update(s) / {report.newEvidence} new evidence</p>
+          <p className="mt-1">{report.campaignUpdates + report.newEvidence} field activity record(s)</p>
           <p className="mt-1">{report.coralsMonitored} monitored ecosystem item(s) / {report.academyProgress} Academy progress</p>
         </div>
       )
@@ -96,8 +96,8 @@ export default async function AdminReportsPage({ searchParams }: PageProps) {
           <div className="mt-5 grid gap-3 sm:grid-cols-2">
             {[
               ["1. Cover & scope", "Terumbu branding, reporting month, user, report ID, and reporting basis."],
-              ["2. Executive summary", "Contributions, project updates, evidence records, coral monitoring, and Academy progress."],
-              ["3. Project activity", "Project-by-project contribution, update, and evidence summary from recorded platform activity."],
+              ["2. Executive summary", "Contributions, field activity, coral monitoring, and Academy progress."],
+              ["3. Project activity", "Project-by-project contribution and activity summary from recorded platform activity."],
               ["4. Traceability note", "Clear source-of-record and assurance note. Delivery is always PDF; email is an optional summary only."]
             ].map(([title, detail]) => (
               <div key={title} className="rounded-lg border border-ocean-900/10 bg-sand-50 p-3">
@@ -113,8 +113,8 @@ export default async function AdminReportsPage({ searchParams }: PageProps) {
           <p className="mt-1 text-sm font-semibold text-ocean-900/58">These settings apply to all users.</p>
           <div className="mt-4 grid gap-2">
             {[
-              ["campaignUpdates", "Project updates", data.platformDeliverySettings.campaignUpdates],
-              ["evidenceAlerts", "Evidence alerts", data.platformDeliverySettings.evidenceAlerts],
+              ["campaignUpdates", "Project activity notes", data.platformDeliverySettings.campaignUpdates],
+              ["evidenceAlerts", "Activity review alerts", data.platformDeliverySettings.evidenceAlerts],
               ["expeditionReminders", "Expedition reminders", data.platformDeliverySettings.expeditionReminders],
               ["academyUpdates", "Academy updates", data.platformDeliverySettings.academyUpdates],
               ["monthlyImpactReport", "Generate monthly PDF reports", data.platformDeliverySettings.monthlyImpactReport],

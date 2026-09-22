@@ -11,9 +11,9 @@ type VerificationExplainerProps = {
 
 const definitions = [
   ["Organization verification", "Legal profile, responsible contacts, and partner operating details are reviewed before campaign publication."],
-  ["Field verification", "Project sites, evidence obligations, and field reporting plans are checked against partner submissions."],
+  ["Field verification", "Project sites, activity requirements, and field reporting plans are checked against partner submissions."],
   ["Financial validation", "Funding goals and budget categories are reviewed for campaign-level transparency before checkout."],
-  ["Reporting obligations", "Partners are expected to publish milestone updates, evidence records, and completion reporting."]
+  ["Reporting obligations", "Partners are expected to publish milestone activity, review attachments, and completion reporting."]
 ];
 
 export function VerificationExplainer({ verificationLabel }: VerificationExplainerProps) {

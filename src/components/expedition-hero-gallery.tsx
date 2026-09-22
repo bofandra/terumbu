@@ -42,7 +42,7 @@ export function ExpeditionHeroGallery({ images, region }: ExpeditionHeroGalleryP
             <div className="flex items-center justify-between gap-4">
               <div>
                 <p className="text-sm font-bold uppercase tracking-[0.16em] text-coral-700">Expedition gallery</p>
-                <p className="mt-1 text-sm text-ocean-900/62">Promotional and evidence-linked imagery is labeled with provenance.</p>
+                <p className="mt-1 text-sm text-ocean-900/62">Promotional and activity-linked imagery is labeled with provenance.</p>
               </div>
               <button type="button" className="flex size-10 items-center justify-center rounded-full bg-ocean-50" aria-label="Close gallery" onClick={() => setOpen(false)}>
                 <X size={18} aria-hidden="true" />

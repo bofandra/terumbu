@@ -176,7 +176,7 @@ export default async function AdminImpactSiteDetailPage({
       <section className="rounded-lg border border-coral-700/20 bg-coral-100 p-4">
         <h2 className="text-lg font-bold text-coral-700">Danger zone</h2>
         <p className="mt-1 max-w-2xl text-sm font-semibold leading-6 text-coral-700/80">
-          Delete this site and detach linked evidence, activity, and sponsorship records from the site.
+          Delete this site and detach linked activity and sponsorship records from the site.
         </p>
         <form id={`delete-impact-site-${data.site.id}`} action={deleteAdminImpactSiteAction}>
           <input type="hidden" name="impactSiteId" value={data.site.id} />
@@ -187,7 +187,7 @@ export default async function AdminImpactSiteDetailPage({
           <AdminConfirmSubmit
             formId={`delete-impact-site-${data.site.id}`}
             title={`Delete ${data.site.name}?`}
-            body="This removes the impact site record and unlinks related campaign evidence from this location. This action cannot be undone from the admin portal."
+            body="This removes the impact site record and unlinks related campaign activity from this location. This action cannot be undone from the admin portal."
             triggerLabel="Delete impact site"
             submitLabel="Delete impact site"
           />

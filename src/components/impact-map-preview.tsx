@@ -54,12 +54,12 @@ export function ImpactMapPreview({ sites }: ImpactMapPreviewProps) {
   const [statusFilter, setStatusFilter] = useState("All");
   const [selectedName, setSelectedName] = useState<string | null>(sites[0]?.name ?? null);
   const filters = useMemo(() => ["All", ...Array.from(new Set(sites.map((site) => site.type)))], [sites]);
-  const statusFilters = ["All", "Verified evidence", "Needs review"];
+  const statusFilters = ["All", "Verified activity", "Needs review"];
   const visibleSites = sites.filter((site) => {
     const typeMatches = activeFilter === "All" || site.type === activeFilter;
     const statusMatches =
       statusFilter === "All" ||
-      (statusFilter === "Verified evidence" && site.verifiedEvidenceCount > 0) ||
+      (statusFilter === "Verified activity" && site.verifiedEvidenceCount > 0) ||
       (statusFilter === "Needs review" && site.pendingEvidenceCount > 0);
 
     return typeMatches && statusMatches;
@@ -72,7 +72,7 @@ export function ImpactMapPreview({ sites }: ImpactMapPreviewProps) {
         <MapPin className="mx-auto text-coral-500" size={28} aria-hidden="true" />
         <h3 className="mt-4 text-xl font-bold tracking-normal text-ocean-900">Impact sites are being verified</h3>
         <p className="mt-2 text-sm leading-6 text-ocean-900/64">
-          Once partner field records are approved, restoration sites and evidence will appear here.
+          Once partner field records are approved, restoration sites and activity will appear here.
         </p>
       </div>
     );
@@ -118,10 +118,10 @@ export function ImpactMapPreview({ sites }: ImpactMapPreviewProps) {
             className="absolute z-20 max-w-[250px] -translate-x-1/2 translate-y-8 rounded-xl bg-white/95 p-3 text-left shadow-soft ring-1 ring-ocean-900/10 backdrop-blur"
             style={pinPosition(selectedSite)}
           >
-            <p className="text-xs font-bold uppercase tracking-[0.12em] text-coral-700">Evidence popover</p>
+            <p className="text-xs font-bold uppercase tracking-[0.12em] text-coral-700">Activity popover</p>
             <p className="mt-1 text-sm font-bold text-ocean-900">{selectedSite.name}</p>
             <p className="mt-1 text-xs text-ocean-900/58">
-              {selectedSite.latestEvidence ? `${selectedSite.latestEvidence.stageLabel} / ${selectedSite.latestEvidence.verificationStatus}` : "Evidence pending"}
+              {selectedSite.latestEvidence ? `${selectedSite.latestEvidence.stageLabel} / ${selectedSite.latestEvidence.verificationStatus}` : "Activity pending"}
             </p>
           </div>
         ) : null}
@@ -129,7 +129,7 @@ export function ImpactMapPreview({ sites }: ImpactMapPreviewProps) {
         <div className="absolute bottom-5 left-5 right-5 rounded-2xl bg-white/92 p-5 backdrop-blur">
           <p className="text-sm font-bold uppercase tracking-[0.16em] text-coral-700">Live impact map</p>
           <p className="mt-2 max-w-xl text-2xl font-bold tracking-normal text-ocean-900">
-            {selectedSite ? selectedSite.name : "Verified restoration sites"}, field updates, and evidence in one national view.
+            {selectedSite ? selectedSite.name : "Verified restoration sites"}, field activity in one national view.
           </p>
         </div>
       </div>
@@ -198,9 +198,9 @@ export function ImpactMapPreview({ sites }: ImpactMapPreviewProps) {
               </div>
               <div className="rounded-xl bg-white p-4">
                 <Camera className="text-coral-500" size={20} aria-hidden="true" />
-                <p className="mt-3 text-sm font-bold text-ocean-900">{selectedSite.evidenceCount} evidence records</p>
+                <p className="mt-3 text-sm font-bold text-ocean-900">{selectedSite.evidenceCount} activity records</p>
                 <p className="mt-1 text-xs leading-5 text-ocean-900/60">
-                  {selectedSite.latestSurvey ? `Latest survey: ${selectedSite.latestSurvey}` : "Monitoring evidence pending"}
+                  {selectedSite.latestSurvey ? `Latest survey: ${selectedSite.latestSurvey}` : "Monitoring activity pending"}
                 </p>
               </div>
             </div>
@@ -215,7 +215,7 @@ export function ImpactMapPreview({ sites }: ImpactMapPreviewProps) {
                     {evidence && isVisualEvidenceUrl(evidence.fileUrl) ? (
                       <Image
                         src={evidence.fileUrl}
-                        alt={`${label} evidence for ${selectedSite.name}`}
+                        alt={`${label} activity for ${selectedSite.name}`}
                         width={360}
                         height={220}
                         unoptimized
@@ -228,7 +228,7 @@ export function ImpactMapPreview({ sites }: ImpactMapPreviewProps) {
                     <div className="p-3">
                       <p className="text-xs font-bold uppercase tracking-[0.12em] text-coral-700">{label}</p>
                       <p className="mt-1 line-clamp-2 text-xs font-semibold text-ocean-900/62">
-                        {evidence ? evidence.title : "Evidence pending"}
+                        {evidence ? evidence.title : "Activity pending"}
                       </p>
                     </div>
                   </div>
@@ -238,7 +238,7 @@ export function ImpactMapPreview({ sites }: ImpactMapPreviewProps) {
 
             {selectedSite.latestEvidence ? (
               <div className="mt-5 rounded-xl bg-white p-4">
-                <p className="text-xs font-bold uppercase tracking-[0.12em] text-coral-700">Latest evidence</p>
+                <p className="text-xs font-bold uppercase tracking-[0.12em] text-coral-700">Latest activity</p>
                 <h3 className="mt-2 font-bold text-ocean-900">{selectedSite.latestEvidence.title}</h3>
                 <p className="mt-2 text-xs leading-5 text-ocean-900/60">
                   {selectedSite.latestEvidence.stageLabel} / {selectedSite.latestEvidence.verificationStatus}

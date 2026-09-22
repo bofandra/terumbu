@@ -17,7 +17,7 @@ export function CampaignBeforeAfterSlider({
   afterImage,
   beforeLabel,
   afterLabel,
-  caption = "Illustrative recovery projection based on the project plan. Completed phases should use actual dated field evidence.",
+  caption = "Illustrative recovery projection based on the project plan. Completed phases should use actual dated field activity.",
   controlLabel = "Compare restoration projection"
 }: CampaignBeforeAfterSliderProps) {
   const [position, setPosition] = useState(52);

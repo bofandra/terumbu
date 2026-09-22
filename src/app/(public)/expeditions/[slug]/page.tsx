@@ -538,7 +538,7 @@ export default async function ExpeditionDetailPage({
               </div>
               <div className="overflow-hidden rounded-md bg-sky-700 p-8 text-white">
                 <h3 className="text-2xl font-bold tracking-normal">Want to know more about this host?</h3>
-                <p className="mt-4 max-w-xl text-lg leading-8 text-white/82">Terumbu shows verified partner information, expedition evidence, and conservation context before you reserve.</p>
+                <p className="mt-4 max-w-xl text-lg leading-8 text-white/82">Terumbu shows verified partner information, expedition activity, and conservation context before you reserve.</p>
                 {expedition.hostedBy.profileHref ? (
                   <Link href={expedition.hostedBy.profileHref} className="mt-7 inline-flex min-h-12 items-center rounded-full bg-kelp-500 px-7 text-base font-bold text-white hover:bg-kelp-700">
                     {expedition.hostedBy.profileLabel}
@@ -700,7 +700,7 @@ export default async function ExpeditionDetailPage({
             <>
               <DetailDivider />
               <section className="py-14">
-                <SectionHeader title="Trip updates" />
+                <SectionHeader title="Trip activity" />
                 <div className="mt-7 grid gap-5 md:grid-cols-2">
                   {expedition.tripUpdates.map((update) => (
                     <article key={update.title} className="border-l-2 border-sky-700 pl-4">

@@ -73,7 +73,7 @@ export function DashboardPersonalImpactMap({
           Your impact map is waiting
         </h2>
         <p className="mx-auto mt-2 max-w-xl text-sm leading-6 text-ocean-900/62">
-          Campaigns you support, sponsored corals, expeditions, and verified field evidence will appear here as approximate zones.
+          Campaigns you support, sponsored corals, expeditions, and verified field activity will appear here as approximate zones.
         </p>
         <Link href="/campaigns" className="mt-5 inline-flex min-h-11 items-center rounded-full bg-coral-500 px-5 text-sm font-bold text-white">
           Explore projects
@@ -152,7 +152,7 @@ export function DashboardPersonalImpactMap({
                 <div className="flex items-start gap-3">
                   <Camera className="mt-0.5 text-coral-500" size={20} aria-hidden="true" />
                   <div>
-                    <p className="text-sm font-bold text-ocean-900">{selectedSite.evidenceCount} evidence records</p>
+                    <p className="text-sm font-bold text-ocean-900">{selectedSite.evidenceCount} activity records</p>
                     <p className="text-xs text-ocean-900/58">
                       {selectedSite.latestSurvey ? `Latest survey: ${selectedSite.latestSurvey}` : "Survey pending"} · {selectedSite.verifiedEvidenceCount} verified
                     </p>
@@ -169,7 +169,7 @@ export function DashboardPersonalImpactMap({
                       {evidence && isImageUrl(evidence.fileUrl) ? (
                         <Image
                           src={evidence.fileUrl}
-                          alt={`${label} evidence for ${selectedSite.name}`}
+                          alt={`${label} activity for ${selectedSite.name}`}
                           width={420}
                           height={240}
                           unoptimized
@@ -180,7 +180,7 @@ export function DashboardPersonalImpactMap({
                       <div className="p-3">
                         <p className="text-xs font-bold uppercase tracking-[0.12em] text-coral-700">{label}</p>
                         <p className="mt-1 text-xs font-semibold text-ocean-900/62">
-                          {evidence ? evidence.title : "Evidence pending"}
+                          {evidence ? evidence.title : "Activity pending"}
                         </p>
                       </div>
                     </div>
@@ -203,7 +203,7 @@ export function DashboardPersonalImpactMap({
               </Link>
               {selectedSite.latestEvidence ? (
                 <Link href={selectedSite.latestEvidence.sourceHref} className="mt-3 flex items-center gap-1 text-sm font-bold text-ocean-900/62 hover:text-coral-500">
-                  Latest evidence source
+                  Latest activity source
                   <ExternalLink size={14} aria-hidden="true" />
                 </Link>
               ) : null}

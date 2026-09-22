@@ -87,7 +87,7 @@ export default async function AdminImpactSiteNewPage({ searchParams }: { searchP
       <AdminPageHeader
         eyebrow="Projects / Impact sites"
         title="Create impact site"
-        description="Create the location record first. Progress, evidence count, survey date, and verification can be refined later."
+        description="Create the location record first. Progress, activity count, survey date, and verification can be refined later."
         actionHref={returnTo}
         actionLabel="Back to impact sites"
       />

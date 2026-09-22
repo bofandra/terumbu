@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
+  ClipboardList,
   FileCheck2,
   LayoutDashboard,
   LogOut,
@@ -25,8 +26,7 @@ const partnerNavItems: PartnerNavItem[] = [
   { href: "/partner", label: "Overview", icon: LayoutDashboard },
   { href: "/partner/campaigns", label: "Projects", icon: FileCheck2 },
   { href: "/partner/expeditions", label: "Expeditions", icon: ShipWheel },
-  { href: "/partner/evidence", label: "Evidence", icon: FileCheck2 },
-  { href: "/partner/updates", label: "Updates", icon: FileCheck2 }
+  { href: "/partner/activity", label: "Activity", icon: ClipboardList }
 ];
 
 function initialsForName(value: string) {
@@ -116,8 +116,8 @@ export function PartnerShell({ children, displayName, roleLabel }: { children: R
                   <Link href="/partner" className="block rounded-lg px-3 py-2 text-sm font-bold text-ocean-900 hover:bg-ocean-50">
                     Partner overview
                   </Link>
-                  <Link href="/partner/evidence" className="block rounded-lg px-3 py-2 text-sm font-bold text-ocean-900 hover:bg-ocean-50">
-                    Evidence
+                  <Link href="/partner/activity" className="block rounded-lg px-3 py-2 text-sm font-bold text-ocean-900 hover:bg-ocean-50">
+                    Activity
                   </Link>
                   <form action={logoutAction}>
                     <button type="submit" className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm font-bold text-coral-700 hover:bg-coral-100">

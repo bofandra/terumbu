@@ -40,7 +40,7 @@ export function CampaignMediaGallery({
         <ImageOff className="mx-auto text-coral-500" size={30} aria-hidden="true" />
         <h2 className="mt-4 text-xl font-bold tracking-normal text-ocean-900">{title}</h2>
         <p className="mt-2 text-sm leading-6 text-ocean-900/62">
-          Campaign, update, and evidence images will appear here after partners publish media for {category} in {region}.
+          Campaign and activity images will appear here after partners publish media for {category} in {region}.
         </p>
       </div>
     );

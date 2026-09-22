@@ -69,7 +69,7 @@ test("corporate report lifecycle values normalize defensively", () => {
   assert.equal(normalizeCorporateReportFormat("pdf"), "pdf");
   assert.equal(normalizeCorporateReportStatus("published"), "published");
   assert.equal(normalizeCorporateReportStatus("queued"), "generated");
-  assert.equal(corporateReportTypeLabel("evidence"), "Evidence Bundle");
+  assert.equal(corporateReportTypeLabel("evidence"), "Activity Bundle");
   assert.equal(corporateReportTypeLabel("donations"), "Donation Activity Report");
   assert.equal(corporateReportTypeLabel("expeditions"), "Expedition Activity Report");
   assert.equal(corporateReportFormatLabel("evidence_json"), "PDF");

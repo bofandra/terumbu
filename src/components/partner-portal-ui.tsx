@@ -234,12 +234,12 @@ export function PartnerPageHeader({
 
 export function PartnerMetricCards({ data }: { data: PartnerPortalData }) {
   const totalRaised = data.campaigns.reduce((total, campaign) => total + Number(campaign.raisedAmount), 0);
-  const pendingEvidence = data.evidence.filter((item) => item.verificationStatus !== "verified").length;
+  const pendingActivityReviews = data.evidence.filter((item) => item.verificationStatus !== "verified").length;
   const metrics: Array<{ label: string; value: string; detail: string; icon: LucideIcon }> = [
     { label: "Campaigns", value: data.campaigns.length.toLocaleString("id-ID"), detail: `${formatCurrency(totalRaised)} raised`, icon: Megaphone },
     { label: "Expeditions", value: data.expeditions.length.toLocaleString("id-ID"), detail: `${data.expeditions.reduce((total, expedition) => total + expedition.departures.length, 0)} departures`, icon: ShipWheel },
-    { label: "Evidence pending", value: pendingEvidence.toLocaleString("id-ID"), detail: `${data.evidence.length} evidence records`, icon: FileCheck2 },
-    { label: "Activity", value: data.activities.length.toLocaleString("id-ID"), detail: `${data.updates.length} public / ${data.evidence.length} evidence`, icon: ClipboardList }
+    { label: "Activity pending", value: pendingActivityReviews.toLocaleString("id-ID"), detail: `${data.evidence.length} review records`, icon: FileCheck2 },
+    { label: "Field activity", value: data.activities.length.toLocaleString("id-ID"), detail: `${data.updates.length} public notes / ${data.evidence.length} review attachments`, icon: ClipboardList }
   ];
 
   return (
@@ -671,7 +671,7 @@ function ImpactSiteFields({
           <Field label="Progress">
             <input name="progress" type="number" min="0" max="100" step="1" defaultValue={site?.progress ?? 0} className={inputClassName} disabled={disabled} />
           </Field>
-          <Field label="Evidence records">
+          <Field label="Review records">
             <input name="evidenceCount" type="number" min="0" step="1" defaultValue={site?.evidenceCount ?? 0} className={inputClassName} disabled={disabled} />
           </Field>
           <Field label="Latest survey">
@@ -745,7 +745,7 @@ export function PartnerImpactSiteManagement({
                   <ProgressMeter value={site.progress} label={`${site.name} progress`} className="mt-2 h-2" indicatorClassName="bg-kelp-500" trackClassName="bg-white" />
                 </div>
                 <div className="mt-4 grid gap-2 text-sm font-bold text-ocean-900/58">
-                  <p>{site.evidenceCount.toLocaleString("id-ID")} evidence records</p>
+                  <p>{site.evidenceCount.toLocaleString("id-ID")} activity records</p>
                   <p>{site.latestSurvey ? `Latest survey ${site.latestSurvey}` : "Survey date pending"}</p>
                   <p>{site.latitude.toFixed(6)}, {site.longitude.toFixed(6)}</p>
                 </div>
@@ -828,7 +828,7 @@ function CampaignPublicDataPanel({
       .filter((update) => isImageRecord(update.imageUrl))
       .map((update) => ({
         key: update.id,
-        label: "Update image",
+        label: "Activity image",
         detail: update.title,
         imageUrl: update.imageUrl
       })),
@@ -836,13 +836,25 @@ function CampaignPublicDataPanel({
       .filter((item) => isImageRecord(item.fileUrl))
       .map((item) => ({
         key: item.evidenceCode,
-        label: "Evidence image",
+        label: "Activity attachment",
         detail: item.title,
         imageUrl: item.fileUrl
       }))
   ].filter((item): item is { key: string; label: string; detail: string; imageUrl: string } => Boolean(item));
 
   const verifiedEvidence = evidence.filter((item) => item.verificationStatus === "verified").length;
+  const latestUpdate = updates[0]
+    ? { title: updates[0].title, date: updates[0].publishedAt }
+    : null;
+  const latestAttachment = evidence[0]
+    ? { title: evidence[0].title, date: evidence[0].createdAt }
+    : null;
+  const latestActivity =
+    latestUpdate && latestAttachment
+      ? (latestUpdate.date?.getTime() ?? 0) >= latestAttachment.date.getTime()
+        ? latestUpdate
+        : latestAttachment
+      : latestUpdate ?? latestAttachment;
 
   return (
     <details className="mt-3 rounded-lg border border-ocean-900/10 bg-white">
@@ -915,7 +927,7 @@ function CampaignPublicDataPanel({
             </div>
           ) : (
             <div className="mt-3">
-              <EmptyRecord>No campaign, update, or evidence images attached yet.</EmptyRecord>
+              <EmptyRecord>No campaign or activity images attached yet.</EmptyRecord>
             </div>
           )}
         </section>
@@ -932,7 +944,7 @@ function CampaignPublicDataPanel({
                       {site.type} / {site.region}
                     </p>
                     <p className="mt-2 text-xs font-bold text-ocean-900/50">
-                      {site.progress}% progress / {site.evidenceCount} evidence records / {site.latestSurvey || "Survey date pending"}
+                      {site.progress}% progress / {site.evidenceCount} review records / {site.latestSurvey || "Survey date pending"}
                     </p>
                   </div>
                 ))
@@ -946,14 +958,12 @@ function CampaignPublicDataPanel({
             <h4 className="text-sm font-bold uppercase tracking-[0.12em] text-coral-700">Activity</h4>
             <div className="mt-3 grid gap-2 text-sm">
               <div className="rounded-lg bg-sand-50 p-3">
-                <p className="font-bold text-ocean-900">{updates.length.toLocaleString("id-ID")} public updates</p>
-                <p className="mt-1 text-ocean-900/62">{updates[0] ? `Latest: ${updates[0].title} / ${dateLabel(updates[0].publishedAt)}` : "Updates will appear after publication."}</p>
-              </div>
-              <div className="rounded-lg bg-sand-50 p-3">
                 <p className="font-bold text-ocean-900">
-                  {evidence.length.toLocaleString("id-ID")} evidence records / {verifiedEvidence.toLocaleString("id-ID")} verified
+                  {(updates.length + evidence.length).toLocaleString("id-ID")} activity records / {verifiedEvidence.toLocaleString("id-ID")} verified
                 </p>
-                <p className="mt-1 text-ocean-900/62">{evidence[0] ? `Latest: ${evidence[0].title} / ${dateLabel(evidence[0].createdAt)}` : "Evidence will appear after field submission."}</p>
+                <p className="mt-1 text-ocean-900/62">
+                  {latestActivity ? `Latest: ${latestActivity.title} / ${dateLabel(latestActivity.date)}` : "Field activity will appear after partner submission."}
+                </p>
               </div>
             </div>
           </section>
@@ -1206,7 +1216,7 @@ export function CampaignActivityForm({
           <h2 className="text-xl font-bold tracking-normal text-ocean-900">Add activity</h2>
           <p className="mt-1 text-sm font-semibold text-ocean-900/58">
             {canCreateActivity
-              ? "Create one campaign activity for public progress, verification evidence, or both."
+              ? "Create one campaign activity record. Attachments are included in the same review workflow."
               : "Your partner role can review activity, but cannot submit new field activity."}
           </p>
         </div>
@@ -1234,15 +1244,6 @@ export function CampaignActivityForm({
             </select>
           </Field>
         </div>
-        <div className="grid gap-3 md:grid-cols-2">
-          <Field label="Activity use">
-            <select name="activityUse" defaultValue="public_update" className={inputClassName} disabled={!canSubmit}>
-              <option value="public_update">Public update</option>
-              <option value="evidence">Evidence only</option>
-              <option value="update_and_evidence">Public update + evidence</option>
-            </select>
-          </Field>
-        </div>
         <Field label="Activity title" required>
           <input name="title" placeholder="Activity title" className={inputClassName} disabled={!canSubmit} required />
         </Field>
@@ -1250,14 +1251,14 @@ export function CampaignActivityForm({
           <textarea name="body" placeholder="Progress note or reviewer context" className={textareaClassName} disabled={!canSubmit} required />
         </Field>
         <div className="grid gap-3 md:grid-cols-2">
-          <Field label="Evidence type">
+          <Field label="Attachment type">
             <select name="evidenceType" defaultValue="field_photo" className={inputClassName} disabled={!canSubmit}>
               <option value="field_photo">Field photo</option>
               <option value="document">Document</option>
               <option value="field_report">Field report</option>
             </select>
           </Field>
-          <Field label="Upload attachment" help={`${partnerImageUploadHelp} Required when Activity use includes evidence.`}>
+          <Field label="Upload attachment" help={`${partnerImageUploadHelp} Optional; uploaded files enter review with this activity.`}>
             <input name="imageFile" type="file" accept="image/png,image/jpeg,image/webp,image/gif" className={inputClassName} disabled={!canSubmit} />
           </Field>
         </div>
@@ -1301,12 +1302,12 @@ export function CampaignActivityList({ activities }: { activities: CampaignActiv
                 <div className="mt-3 flex flex-wrap gap-3">
                   {updateHref ? (
                     <Link href={updateHref} className="inline-flex text-sm font-bold text-coral-700 hover:text-coral-500">
-                      Public update
+                      Public note
                     </Link>
                   ) : null}
                   {evidenceHref ? (
                     <Link href={evidenceHref} className="inline-flex text-sm font-bold text-ocean-900/62 hover:text-coral-500">
-                      Evidence source
+                      Review source
                     </Link>
                   ) : null}
                 </div>

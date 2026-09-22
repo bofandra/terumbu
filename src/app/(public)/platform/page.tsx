@@ -62,13 +62,13 @@ const platformHighlights = [
     icon: Users
   },
   {
-    label: "Evidence operations",
-    value: "Partner submissions, admin verification, audit logs, campaign updates, and impact-site evidence history.",
+    label: "Activity operations",
+    value: "Partner field activity, admin verification, audit logs, public notes, and impact-site history.",
     icon: ShieldCheck
   },
   {
     label: "Corporate reporting",
-    value: "Program budgets, project portfolios, contribution ledgers, evidence bundles, exports, and public impact pages.",
+    value: "Program budgets, project portfolios, contribution ledgers, activity bundles, exports, and public impact pages.",
     icon: Building2
   }
 ];
@@ -80,7 +80,7 @@ const workflows: Workflow[] = [
     routes: "/campaigns, /campaigns/[slug], /checkout/donation, /dashboard",
     icon: HeartHandshake,
     steps: [
-      "Visitor reviews a published campaign with partner verification, progress, updates, impact targets, and evidence.",
+      "Visitor reviews a published campaign with partner verification, progress, field activity, and impact targets.",
       "Supporter chooses a donation or ecosystem sponsorship intent and completes checkout with contact details and amount.",
       "Payment state is recorded through the transaction layer, then paid or reconciled records update campaign totals.",
       "Receipts and email logs are created for successful donations.",
@@ -117,40 +117,40 @@ const workflows: Workflow[] = [
     outcome: "Learning records become durable credentials rather than isolated course activity."
   },
   {
-    title: "Partner update to verified public evidence",
-    summary: "Field partners can submit updates and evidence, while admins control verification before claims become stronger trust signals.",
+    title: "Partner activity to verified public records",
+    summary: "Field partners can submit one activity record, while admins control verification before claims become stronger trust signals.",
     routes: "/partner, /partner/activity, /admin/evidence, /campaigns/[slug]",
     icon: ClipboardCheck,
     steps: [
-      "Partner opens the portal to review campaign summaries, evidence status, recent updates, and submission forms.",
-      "Partner creates a public update, an evidence-only record, or a combined activity record linked to a campaign.",
-      "New evidence starts in a submitted or review state.",
-      "Admin verifies or rejects the evidence from the admin evidence workflow and records an audit event.",
-      "Verified evidence can appear on campaign pages, impact-site histories, and corporate evidence centers when relevant."
+      "Partner opens the portal to review campaign summaries, activity status, recent records, and submission forms.",
+      "Partner creates one activity record linked to a campaign, with a public note, a review attachment, or both.",
+      "New review attachments start in a submitted or review state.",
+      "Admin verifies or rejects the activity from the admin review workflow and records an audit event.",
+      "Verified activity can appear on campaign pages, impact-site histories, and corporate reporting when relevant."
     ],
     outcome: "Partner field activity is useful quickly, but verification stays under platform governance."
   },
   {
     title: "Corporate program to report export",
-    summary: "Corporate ESG and CSR teams manage programs separately from individual donations, then report against funded projects and evidence.",
-    routes: "/corporate, /corporate/projects, /corporate/evidence, /corporate/reports",
+    summary: "Corporate ESG and CSR teams manage programs separately from individual donations, then report against funded projects and field activity.",
+    routes: "/corporate, /corporate/projects, /corporate/donations, /corporate/reports",
     icon: Building2,
     steps: [
       "Admin creates a corporate account and program, then assigns a user or grants corporate permissions.",
       "Corporate user manages programs, project portfolio allocations, contribution status, budgets, and employee engagement.",
       "Contribution ledger records can count toward public campaign progress only when eligible and configured to do so.",
-      "Verified campaign evidence is linked into the corporate evidence center for funded projects.",
-      "Reports bundle portfolio, contribution, financial, and evidence data into export records."
+      "Verified campaign activity is linked into corporate reporting for funded projects.",
+      "Reports bundle portfolio, contribution, financial, and activity data into export records."
     ],
     outcome: "Corporate impact is auditable without mixing organization support into personal donation records."
   },
   {
     title: "Admin operations and audit control",
-    summary: "Platform admins keep campaign, partner, evidence, user, report, and payment workflows coherent across the system.",
+    summary: "Platform admins keep campaign, partner activity, user, report, and payment workflows coherent across the system.",
     routes: "/admin, /admin/campaigns, /admin/partners, /admin/reports, /admin/audit",
     icon: ClipboardList,
     steps: [
-      "Admin manages campaigns, expeditions, partners, impact sites, Academy content, reports, users, and evidence.",
+      "Admin manages campaigns, expeditions, partners, impact sites, Academy content, reports, users, and activity review.",
       "Admin reconciles payment status when operational review is required.",
       "Admin changes partner verification levels and campaign status while preserving public-page stability.",
       "Important admin actions write or preserve audit log records.",
@@ -182,27 +182,27 @@ const roles: RoleGuide[] = [
   {
     role: "Corporate Admin",
     label: "ESG or CSR workspace",
-    purpose: "Manage a company program, funded projects, employees, evidence, budgets, and report exports.",
+    purpose: "Manage a company program, funded projects, employees, field activity, budgets, and report exports.",
     entry: "/corporate",
-    allowed: ["Corporate dashboard, programs, projects, funding, employees, evidence, reports, and settings", "Program-scoped evidence and export records", "Public supporter journeys when needed"],
+    allowed: ["Corporate dashboard, programs, projects, funding, employees, activity, reports, and settings", "Program-scoped activity and export records", "Public supporter journeys when needed"],
     restricted: "No platform admin or partner portal access by default.",
     icon: Building2
   },
   {
     role: "Partner",
     label: "Conservation operator",
-    purpose: "Maintain field updates, campaign activity, expeditions, and evidence submissions for assigned organizations.",
+    purpose: "Maintain campaign field activity and expeditions for assigned organizations.",
     entry: "/partner",
-    allowed: ["Partner overview, campaign activity, evidence submission, updates, and expedition operations", "Activity timelines and verification status", "Public pages for checking published output"],
+    allowed: ["Partner overview, campaign activity, review attachments, and expedition operations", "Activity timelines and verification status", "Public pages for checking published output"],
     restricted: "Cannot access admin pages or corporate workspace by default.",
     icon: Sprout
   },
   {
     role: "Admin",
     label: "Platform operator",
-    purpose: "Run the platform, verify evidence, manage content, reconcile payments, inspect reports, and review audit logs.",
+    purpose: "Run the platform, verify activity, manage content, reconcile payments, inspect reports, and review audit logs.",
     entry: "/admin",
-    allowed: ["Admin dashboard, campaigns, expeditions, partners, impact sites, evidence, reports, users, Academy, corporate setup, and audit", "Partner portal inspection for operational support", "Own supporter dashboard"],
+    allowed: ["Admin dashboard, campaigns, expeditions, partners, impact sites, activity review, reports, users, Academy, corporate setup, and audit", "Partner portal inspection for operational support", "Own supporter dashboard"],
     restricted: "Corporate workspace data is available only when the admin also has corporate program permission.",
     icon: ShieldCheck
   }
@@ -250,7 +250,7 @@ const faqs = [
   {
     question: "How does the platform keep impact claims trustworthy?",
     answer:
-      "Campaigns are connected to partner organizations, impact sites, updates, and project evidence. Partner submissions move through an admin verification workflow before they become stronger public trust signals, and operational changes can be audited."
+      "Campaigns are connected to partner organizations, impact sites, and field activity. Partner submissions move through an admin verification workflow before they become stronger public trust signals, and operational changes can be audited."
   },
   {
     question: "What happens after someone donates?",
@@ -270,12 +270,12 @@ const faqs = [
   {
     question: "How is corporate funding handled?",
     answer:
-      "Corporate support is modeled through corporate accounts, programs, project portfolios, contribution ledger rows, evidence centers, employees, governance settings, and report exports. It stays separate from individual donation records."
+      "Corporate support is modeled through corporate accounts, programs, project portfolios, contribution ledger rows, field activity, employees, governance settings, and report exports. It stays separate from individual donation records."
   },
   {
-    question: "Who can submit and verify evidence?",
+    question: "Who can submit and verify field activity?",
     answer:
-      "Partners submit activity and evidence for their conservation work. Admins review the submitted evidence and mark it verified or rejected. Verified evidence can support public campaign pages and corporate reporting."
+      "Partners submit field activity for their conservation work. Admins review submitted activity attachments and mark them verified or rejected. Verified activity can support public campaign pages and corporate reporting."
   },
   {
     question: "What public data is exposed?",
@@ -295,7 +295,7 @@ export default function PlatformPage() {
         <div className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8">
           <div className="flex flex-wrap gap-2">
             <Pill>Fundraising</Pill>
-            <Pill>Field evidence</Pill>
+            <Pill>Field activity</Pill>
             <Pill>Academy</Pill>
             <Pill>Impact Passport</Pill>
             <Pill>Corporate ESG</Pill>
@@ -473,14 +473,14 @@ export default function PlatformPage() {
       <section className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8">
         <div className="grid gap-8 lg:grid-cols-[0.85fr_1.15fr] lg:items-start">
           <SectionHeading eyebrow="Data relationships" title="The platform is designed around traceable records">
-            Public trust depends on knowing which action created which record. Terumbu links funding, learning, travel, evidence, and reporting back to campaigns, sites, partners, users, or corporate programs.
+            Public trust depends on knowing which action created which record. Terumbu links funding, learning, travel, field activity, and reporting back to campaigns, sites, partners, users, or corporate programs.
           </SectionHeading>
           <div className="grid gap-4 md:grid-cols-2">
             {[
-              ["Campaign records", "Goals, raised amounts, donors, field updates, impact sites, partner verification, and evidence."],
+              ["Campaign records", "Goals, raised amounts, donors, field activity, impact sites, and partner verification."],
               ["User records", "Sessions, profile, donations, corals, bookings, lesson progress, certificates, and passport visibility."],
-              ["Partner records", "Organization profile, member access, campaign activity, updates, evidence submissions, and verification status."],
-              ["Corporate records", "Accounts, programs, budgets, employees, project portfolios, contribution ledgers, evidence center, and report exports."]
+              ["Partner records", "Organization profile, member access, campaign activity, review attachments, and verification status."],
+              ["Corporate records", "Accounts, programs, budgets, employees, project portfolios, contribution ledgers, activity records, and report exports."]
             ].map(([title, body]) => (
               <article key={title} className="rounded-2xl border border-ocean-900/10 bg-white p-5 shadow-sm">
                 <div className="flex items-center gap-3">
@@ -523,7 +523,7 @@ export default function PlatformPage() {
             <p className="text-sm font-bold uppercase tracking-[0.16em] text-coral-300">Next step</p>
             <h2 className="mt-3 text-3xl font-bold tracking-normal sm:text-4xl">Explore the live conservation surface.</h2>
             <p className="mt-4 max-w-2xl text-base leading-7 text-white/72">
-              Start from public campaigns and follow the evidence, updates, partners, and impact records behind each conservation claim.
+              Start from public campaigns and follow the field activity, partners, and impact records behind each conservation claim.
             </p>
           </div>
           <div className="flex flex-col gap-3 sm:flex-row">

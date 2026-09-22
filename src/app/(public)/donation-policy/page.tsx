@@ -10,7 +10,7 @@ export default function DonationPolicyPage() {
         <p>Donations are recorded against a published campaign, donor details, and payment proof uploaded during checkout.</p>
         <p>Payments are completed outside the website. Uploaded proof remains pending until an admin manually verifies it.</p>
         <p>Paid donations update campaign totals only after admin verification. Receipts are generated from verified transaction data and queued for email delivery.</p>
-        <p>Campaign impact claims are supported by partner updates, impact sites, evidence records, and visible verification status.</p>
+        <p>Campaign impact claims are supported by partner activity, impact sites, and visible verification status.</p>
       </div>
     </main>
   );

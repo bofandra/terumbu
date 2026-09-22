@@ -80,7 +80,7 @@ export default async function SponsoredEcosystemDetailPage({ params }: { params:
             {heroImage ? (
               <Image
                 src={heroImage}
-                alt={`${ecosystem.label} latest field evidence`}
+                alt={`${ecosystem.label} latest field activity`}
                 fill
                 priority
                 unoptimized
@@ -122,7 +122,7 @@ export default async function SponsoredEcosystemDetailPage({ params }: { params:
 
       <section className="mt-6 grid gap-4 md:grid-cols-4">
         {[
-          ["Evidence records", ecosystem.evidenceCount.toLocaleString("id-ID"), Camera],
+          ["Activity records", ecosystem.evidenceCount.toLocaleString("id-ID"), Camera],
           ["Verified", ecosystem.verifiedEvidenceCount.toLocaleString("id-ID"), CheckCircle2],
           ["In review", ecosystem.pendingEvidenceCount.toLocaleString("id-ID"), Clock3],
           ["Milestone progress", `${ecosystem.progress}%`, Activity]
@@ -167,8 +167,8 @@ export default async function SponsoredEcosystemDetailPage({ params }: { params:
             </ol>
           ) : (
             <div className="mt-5 rounded-2xl border border-dashed border-ocean-900/16 bg-sand-50 p-6">
-              <p className="font-bold text-ocean-900">Monitoring evidence is pending.</p>
-              <p className="mt-2 text-sm leading-6 text-ocean-900/62">Approved field survey records will appear here once partner evidence is verified.</p>
+              <p className="font-bold text-ocean-900">Monitoring activity is pending.</p>
+              <p className="mt-2 text-sm leading-6 text-ocean-900/62">Approved field survey records will appear here once partner activity is verified.</p>
             </div>
           )}
         </section>
@@ -177,7 +177,7 @@ export default async function SponsoredEcosystemDetailPage({ params }: { params:
           <div className="flex items-start justify-between gap-3">
             <div>
               <p className="text-sm font-bold uppercase tracking-[0.16em] text-coral-700">Media gallery</p>
-              <h2 className="mt-2 text-xl font-bold tracking-normal text-ocean-900">Latest visual evidence</h2>
+              <h2 className="mt-2 text-xl font-bold tracking-normal text-ocean-900">Latest visual activity</h2>
             </div>
             <Camera className="size-5 text-coral-500" aria-hidden="true" />
           </div>
@@ -202,8 +202,8 @@ export default async function SponsoredEcosystemDetailPage({ params }: { params:
             </div>
           ) : (
             <div className="mt-5 rounded-2xl border border-dashed border-ocean-900/16 bg-sand-50 p-6">
-              <p className="font-bold text-ocean-900">No visual evidence yet.</p>
-              <p className="mt-2 text-sm leading-6 text-ocean-900/62">Document-only records are still listed in the evidence stream below.</p>
+              <p className="font-bold text-ocean-900">No visual activity yet.</p>
+              <p className="mt-2 text-sm leading-6 text-ocean-900/62">Document-only records are still listed in the activity stream below.</p>
             </div>
           )}
         </section>
@@ -212,11 +212,11 @@ export default async function SponsoredEcosystemDetailPage({ params }: { params:
       <section className="mt-6 rounded-2xl border border-ocean-900/10 bg-white p-5 shadow-soft">
         <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
           <div>
-            <p className="text-sm font-bold uppercase tracking-[0.16em] text-coral-700">Evidence stream</p>
+            <p className="text-sm font-bold uppercase tracking-[0.16em] text-coral-700">Activity stream</p>
             <h2 className="mt-2 text-xl font-bold tracking-normal text-ocean-900">Source records and verification state</h2>
           </div>
           <Link href={`/campaigns/${ecosystem.campaignSlug}#evidence`} className="inline-flex items-center gap-2 text-sm font-bold text-coral-700 hover:text-coral-500">
-            Campaign evidence
+            Campaign activity
             <ExternalLink size={15} aria-hidden="true" />
           </Link>
         </div>
@@ -252,7 +252,7 @@ export default async function SponsoredEcosystemDetailPage({ params }: { params:
                     ) : null}
                   </dl>
                   <Link href={item.sourceHref} className="mt-4 inline-flex items-center gap-2 text-sm font-bold text-coral-700 hover:text-coral-500">
-                    Open evidence
+                    Open activity
                     <ExternalLink size={15} aria-hidden="true" />
                   </Link>
                 </div>
@@ -262,7 +262,7 @@ export default async function SponsoredEcosystemDetailPage({ params }: { params:
         ) : (
           <div className="mt-5 rounded-2xl border border-dashed border-ocean-900/16 bg-sand-50 p-8">
             <MapPin size={28} aria-hidden="true" className="text-coral-500" />
-            <p className="mt-4 text-xl font-bold text-ocean-900">No evidence records have been linked yet.</p>
+            <p className="mt-4 text-xl font-bold text-ocean-900">No activity records have been linked yet.</p>
             <p className="mt-2 max-w-xl text-sm leading-6 text-ocean-900/62">When partner field records are verified for this restoration site, the complete monitoring stream will appear here.</p>
           </div>
         )}

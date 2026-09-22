@@ -47,8 +47,8 @@ export const corporateReportArtifactDefinitions: Record<CorporateReportArtifactK
     topLevelUrl: "fileUrl"
   },
   evidence: {
-    label: "Evidence JSON",
-    suffix: "evidence-bundle",
+    label: "Activity JSON",
+    suffix: "activity-bundle",
     extension: "json",
     contentType: "application/json; charset=utf-8",
     disposition: "attachment",
@@ -85,8 +85,8 @@ export const corporateReportArtifactDefinitions: Record<CorporateReportArtifactK
     metadataUrl: "portfolioCsvUrl"
   },
   "evidence-csv": {
-    label: "Evidence CSV",
-    suffix: "evidence",
+    label: "Activity CSV",
+    suffix: "activity",
     extension: "csv",
     contentType: "text/csv; charset=utf-8",
     disposition: "attachment",

@@ -370,7 +370,7 @@ export default async function AdminCampaignDetailPage({ params, searchParams }: 
                 <ProgressMeter value={site.progress} label={`${site.name} progress`} className="mt-2 h-2" indicatorClassName="bg-kelp-500" trackClassName="bg-white" />
               </div>
               <p className="mt-3 text-xs font-bold text-ocean-900/52">
-                {site.evidenceCount.toLocaleString("id-ID")} evidence records / {site.latestSurvey ?? "Survey date pending"}
+                {site.evidenceCount.toLocaleString("id-ID")} activity records / {site.latestSurvey ?? "Survey date pending"}
               </p>
             </article>
           ))}

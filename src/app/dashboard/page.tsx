@@ -158,7 +158,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
         <div>
           <p className="text-sm font-bold uppercase tracking-[0.16em] text-coral-700">Good morning, {firstName}</p>
           <h1 className="mt-2 text-3xl font-bold tracking-normal text-ocean-900">Your impact overview</h1>
-          <p className="mt-2 max-w-2xl text-sm leading-6 text-ocean-900/62">Your actions are restoring our ocean through verified contributions, field evidence, learning, and expedition activity.</p>
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-ocean-900/62">Your actions are restoring our ocean through verified contributions, field activity, learning, and expedition activity.</p>
         </div>
         <div className="flex flex-wrap gap-2">
           <ButtonLink href={passportHref} tone="secondary">
@@ -270,7 +270,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
           <div className="flex items-start justify-between gap-3">
             <div>
               <p className="text-sm font-bold uppercase tracking-[0.16em] text-coral-700">Latest impact update</p>
-              <h2 className="mt-2 text-2xl font-bold tracking-normal text-ocean-900">{data.latestImpactUpdate?.title ?? "No new field updates yet"}</h2>
+              <h2 className="mt-2 text-2xl font-bold tracking-normal text-ocean-900">{data.latestImpactUpdate?.title ?? "No new field activity yet"}</h2>
             </div>
             {data.latestImpactUpdate ? <span className="rounded-full bg-kelp-100 px-3 py-1 text-xs font-bold text-kelp-700">New</span> : null}
           </div>
@@ -610,8 +610,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
               </div>
               <div className="mt-5 grid gap-3 sm:grid-cols-2">
                 <ReportItem label="Contributions" value={formatCurrency(data.monthlyReport.contributions)} />
-                <ReportItem label="Project updates" value={String(data.monthlyReport.campaignUpdates)} />
-                <ReportItem label="New evidence" value={String(data.monthlyReport.newEvidence)} />
+                <ReportItem label="Field activity" value={String(data.monthlyReport.campaignUpdates + data.monthlyReport.newEvidence)} />
                 <ReportItem label="Corals monitored" value={String(data.monthlyReport.coralsMonitored)} />
               </div>
               {data.monthlyReport.generatedAt ? (

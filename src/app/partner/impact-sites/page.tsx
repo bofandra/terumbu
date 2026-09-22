@@ -17,7 +17,7 @@ const statusMessages: Record<string, string> = {
 const errorMessages: Record<string, string> = {
   "campaign-missing": "Choose an existing campaign.",
   "impact-site-delete": "Confirm impact-site deletion by checking the delete box.",
-  "impact-site-invalid": "Enter site name, ecosystem type, region, valid coordinates, progress between 0 and 100, and evidence count.",
+  "impact-site-invalid": "Enter site name, ecosystem type, region, valid coordinates, progress between 0 and 100, and activity count.",
   "impact-site-missing": "Impact site record was not found.",
   "partner-permission": "Your partner role cannot manage impact sites."
 };
@@ -40,7 +40,7 @@ export default async function PartnerImpactSitesPage({ searchParams }: PartnerIm
     <div className="space-y-8">
       <PartnerPageHeader
         title="Impact sites"
-        description="Manage the field locations that connect campaigns, evidence, activity, and sponsorship records."
+        description="Manage the field locations that connect campaigns, activity, and sponsorship records."
       />
       {savedMessage ? <p className="rounded-lg border border-kelp-700/20 bg-kelp-100 px-4 py-3 text-sm font-bold text-kelp-700">{savedMessage}</p> : null}
       {errorMessage ? <p className="rounded-lg border border-coral-700/20 bg-coral-100 px-4 py-3 text-sm font-bold text-coral-700">{errorMessage}</p> : null}

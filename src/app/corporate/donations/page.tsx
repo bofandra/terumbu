@@ -47,7 +47,7 @@ export default async function CorporateDonationsPage({ searchParams }: Corporate
   return (
     <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
       <header className="border-b border-ocean-900/10 pb-5">
-        <p className="text-sm text-ocean-900/62">Record company donations and view supporting evidence.</p>
+        <p className="text-sm text-ocean-900/62">Record company donations and view linked field activity.</p>
       </header>
 
       {params?.saved === "project" ? <p className="mt-6 rounded-lg border border-kelp-500/20 bg-kelp-100 px-4 py-3 text-sm font-bold text-kelp-700">Donation saved.</p> : null}
@@ -58,7 +58,7 @@ export default async function CorporateDonationsPage({ searchParams }: Corporate
         {[
           { label: "Donations", value: formatCurrency(totalDonations, data.program.currency), icon: CircleDollarSign },
           { label: "Projects supported", value: supportedProjects.toLocaleString("id-ID"), icon: FolderHeart },
-          { label: "Verified evidence", value: verifiedEvidence.toLocaleString("id-ID"), icon: FileCheck2 }
+          { label: "Verified activity", value: verifiedEvidence.toLocaleString("id-ID"), icon: FileCheck2 }
         ].map((metric) => {
           const Icon = metric.icon;
           return (
@@ -119,8 +119,8 @@ export default async function CorporateDonationsPage({ searchParams }: Corporate
       </section>
 
       <section className="mt-6 rounded-lg border border-ocean-900/10 bg-white p-5 shadow-soft">
-        <h2 className="text-xl font-bold tracking-normal text-ocean-900">Evidence</h2>
-        <p className="mt-1 text-sm text-ocean-900/58">Evidence status follows the same review workflow shown to partners.</p>
+        <h2 className="text-xl font-bold tracking-normal text-ocean-900">Field activity</h2>
+        <p className="mt-1 text-sm text-ocean-900/58">Activity status follows the same review workflow shown to partners.</p>
         <div className="mt-4 divide-y divide-ocean-900/10">
           {data.evidence.map((item) => (
             <div key={item.id} className="grid gap-2 py-4 sm:grid-cols-[1fr_auto] sm:items-center">
@@ -134,13 +134,13 @@ export default async function CorporateDonationsPage({ searchParams }: Corporate
               <span className={cn("w-fit rounded-full px-3 py-1 text-xs font-bold", evidenceStatusClass(item.verificationStatus))}>{item.statusLabel}</span>
             </div>
           ))}
-          {data.evidence.length === 0 ? <p className="py-4 text-sm font-semibold text-ocean-900/58">No evidence linked to donations yet.</p> : null}
+          {data.evidence.length === 0 ? <p className="py-4 text-sm font-semibold text-ocean-900/58">No field activity linked to donations yet.</p> : null}
         </div>
       </section>
 
       <section className="mt-6 rounded-lg border border-ocean-900/10 bg-white p-5 shadow-soft">
         <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
-          <div><h2 className="text-xl font-bold tracking-normal text-ocean-900">Donation report</h2><p className="mt-1 text-sm text-ocean-900/58">Branded PDF with report scope, donation summary, activity detail, linked evidence, and traceability note.</p></div>
+          <div><h2 className="text-xl font-bold tracking-normal text-ocean-900">Donation report</h2><p className="mt-1 text-sm text-ocean-900/58">Branded PDF with report scope, donation summary, field activity, and traceability note.</p></div>
           <form action={createCorporateActivityPdfReportAction}>
             <input type="hidden" name="activityScope" value="donations" />
             <input type="hidden" name="programId" value={data.program.programId} />

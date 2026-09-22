@@ -264,7 +264,7 @@ export async function followCampaignAction(formData: FormData) {
     notificationCode: `follow-${campaign.id}`,
     category: "Followed campaigns",
     title: campaign.title,
-    message: `You will receive ${safeFrequency} updates for ${campaign.title}.`,
+    message: `You will receive ${safeFrequency} activity alerts for ${campaign.title}.`,
     href: "/dashboard/saved",
     sourceType: "campaign",
     sourceId: campaign.id,

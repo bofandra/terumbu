@@ -51,7 +51,7 @@ export function SiteFooter() {
             <h2 className="text-sm font-semibold text-ocean-900">Trust</h2>
             <ul className="mt-4 space-y-3 text-sm text-ocean-900/68">
               <li>Verified partners</li>
-              <li>Evidence library</li>
+              <li>Activity library</li>
               <li>Financial transparency</li>
             </ul>
           </div>

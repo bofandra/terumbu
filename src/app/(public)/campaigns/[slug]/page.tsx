@@ -40,7 +40,7 @@ const tabs = [
   { label: "Overview", href: "#overview" },
   { label: "Impact", href: "#impact" },
   { label: "Records", href: "#records" },
-  { label: "Updates", href: "#updates" },
+  { label: "Activity", href: "#updates" },
   { label: "Transparency", href: "#transparency" }
 ];
 
@@ -147,9 +147,9 @@ export default async function CampaignDetailPage({ params }: { params: Promise<{
   const campaignState = progress >= 100 ? "fully-funded" : campaign.daysLeft === 0 ? "ended" : "active";
   const disabledReason =
     campaignState === "fully-funded"
-      ? "Funding goal reached. Follow implementation updates or support a related campaign."
+      ? "Funding goal reached. Follow implementation activity or support a related campaign."
       : campaignState === "ended"
-        ? "This campaign has ended. Latest reports and evidence remain available."
+        ? "This campaign has ended. Latest reports and activity records remain available."
         : null;
   const fallbackMediaItems = [
     ...campaign.updates
@@ -225,7 +225,7 @@ export default async function CampaignDetailPage({ params }: { params: Promise<{
       title: item.title,
       detail: `${item.evidenceType} / ${item.verificationStatus}`,
       date: item.createdAt,
-      label: "Evidence"
+      label: "Activity"
     }))
   ]
     .sort((first, second) => (second.date?.getTime() ?? 0) - (first.date?.getTime() ?? 0))
@@ -260,7 +260,7 @@ export default async function CampaignDetailPage({ params }: { params: Promise<{
                   category={campaign.category}
                   region={campaign.region}
                   imageUrl={campaign.imageUrl}
-                  updatedLabel={`${campaign.updates.length.toLocaleString("id-ID")} updates / ${campaign.evidence.length.toLocaleString("id-ID")} evidence records`}
+                  updatedLabel={`${(campaign.updates.length + campaign.evidence.length).toLocaleString("id-ID")} activity records`}
                   verificationLabel={campaign.verification}
                   mediaItems={mediaItems}
                 />
@@ -339,7 +339,7 @@ export default async function CampaignDetailPage({ params }: { params: Promise<{
               <div className="rounded-2xl border border-ocean-900/10 bg-white p-5 shadow-soft">
                 <p className="text-sm font-bold uppercase tracking-[0.16em] text-coral-700">Keep this project close</p>
                 <p className="mt-3 text-sm leading-6 text-ocean-900/62">
-                  Save the campaign to your dashboard or follow partner updates as they are published.
+                  Save the campaign to your dashboard or follow partner field activity as it is published.
                 </p>
                 <div className="mt-5 grid gap-3">
                   {sessionUser ? (
@@ -356,7 +356,7 @@ export default async function CampaignDetailPage({ params }: { params: Promise<{
                         <input type="hidden" name="next" value={campaignPath} />
                         <input type="hidden" name="frequency" value="weekly" />
                         <Button type="submit" tone={retentionState?.isFollowing ? "light" : "primary"} className="w-full">
-                          {retentionState?.isFollowing ? "Unfollow Updates" : "Follow Updates"}
+                          {retentionState?.isFollowing ? "Unfollow Activity" : "Follow Activity"}
                         </Button>
                       </form>
                     </>
@@ -378,7 +378,7 @@ export default async function CampaignDetailPage({ params }: { params: Promise<{
                 <div className="mt-5 grid gap-4">
                   {[
                     [Waves, campaign.impactTarget.toLocaleString("id-ID"), `${campaign.impactUnit} target`],
-                    [ClipboardCheck, campaign.evidence.length.toLocaleString("id-ID"), "Evidence records"],
+                    [ClipboardCheck, (campaign.updates.length + campaign.evidence.length).toLocaleString("id-ID"), "Activity records"],
                     [Users, campaign.donors.toLocaleString("id-ID"), "Paid supporters"]
                   ].map(([Icon, value, label]) => (
                     <div key={label as string} className="flex min-w-0 items-center gap-3 border-b border-ocean-900/10 pb-4 last:border-b-0 last:pb-0">
@@ -437,7 +437,7 @@ export default async function CampaignDetailPage({ params }: { params: Promise<{
                           {site.type} / {site.region}
                         </p>
                         <p className="mt-3 text-xs font-bold text-ocean-900/48">
-                          {site.progress}% progress / {site.evidenceCount} evidence records
+                          {site.progress}% progress / {site.evidenceCount} activity records
                         </p>
                       </div>
                     ))}
@@ -467,8 +467,7 @@ export default async function CampaignDetailPage({ params }: { params: Promise<{
                     {[
                       `${campaign.impactTarget.toLocaleString("id-ID")} ${campaign.impactUnit}`,
                       `${campaign.sites.length.toLocaleString("id-ID")} linked impact sites`,
-                      `${campaign.evidence.length.toLocaleString("id-ID")} evidence records`,
-                      `${campaign.updates.length.toLocaleString("id-ID")} campaign updates`
+                      `${(campaign.updates.length + campaign.evidence.length).toLocaleString("id-ID")} activity records`
                     ].map((item) => (
                       <span key={item} className="inline-flex items-center gap-2">
                         <CheckCircle2 className="text-kelp-500" size={17} aria-hidden="true" />
@@ -481,8 +480,8 @@ export default async function CampaignDetailPage({ params }: { params: Promise<{
                   <p className="text-sm font-bold uppercase tracking-[0.16em] text-coral-300">Public verification records</p>
                   <div className="mt-5 grid gap-3 text-sm font-semibold text-white/74">
                     {[
-                      `${verifiedEvidenceCount.toLocaleString("id-ID")} verified evidence records`,
-                      `${campaign.evidence.length.toLocaleString("id-ID")} total evidence records`,
+                      `${verifiedEvidenceCount.toLocaleString("id-ID")} verified activity records`,
+                      `${(campaign.updates.length + campaign.evidence.length).toLocaleString("id-ID")} total activity records`,
                       `${campaign.sponsoredEcosystems.length.toLocaleString("id-ID")} sponsorship records`,
                       `${campaign.donorActivity.length.toLocaleString("id-ID")} recent paid donor records`
                     ].map((item) => (
@@ -501,8 +500,8 @@ export default async function CampaignDetailPage({ params }: { params: Promise<{
                   afterImage={beforeAfterSite.beforeAfter.after.fileUrl}
                   beforeLabel={`${beforeAfterSite.name} / ${beforeAfterSite.beforeAfter.before.stageLabel}`}
                   afterLabel={`${beforeAfterSite.name} / ${beforeAfterSite.beforeAfter.after.stageLabel}`}
-                  controlLabel="Compare actual field evidence"
-                  caption={`Actual site evidence from ${beforeAfterSite.name}. Before record: ${beforeAfterSite.beforeAfter.before.surveyDate ?? "date pending"}. Latest record: ${beforeAfterSite.beforeAfter.after.surveyDate ?? "date pending"}.`}
+                  controlLabel="Compare actual field activity"
+                  caption={`Actual site activity from ${beforeAfterSite.name}. Before record: ${beforeAfterSite.beforeAfter.before.surveyDate ?? "date pending"}. Latest record: ${beforeAfterSite.beforeAfter.after.surveyDate ?? "date pending"}.`}
                 />
               ) : null}
 
@@ -564,7 +563,7 @@ export default async function CampaignDetailPage({ params }: { params: Promise<{
                         {phase.deliverable || phase.evidenceNote ? (
                           <div className="mt-4 grid gap-3 text-sm font-semibold text-ocean-900/62 sm:grid-cols-2">
                             {phase.deliverable ? <span className="rounded-xl bg-sand-50 p-3">Deliverable: {phase.deliverable}</span> : null}
-                            {phase.evidenceNote ? <span className="rounded-xl bg-ocean-50 p-3">Evidence: {phase.evidenceNote}</span> : null}
+                            {phase.evidenceNote ? <span className="rounded-xl bg-ocean-50 p-3">Activity note: {phase.evidenceNote}</span> : null}
                           </div>
                         ) : null}
                       </div>
@@ -588,14 +587,14 @@ export default async function CampaignDetailPage({ params }: { params: Promise<{
                 ))
               ) : (
                 <article className="rounded-2xl border border-ocean-900/10 bg-white p-6 text-ocean-900/68 shadow-soft">
-                  No campaign updates or evidence records have been published yet.
+                  No campaign activity records have been published yet.
                 </article>
               )}
             </div>
 
             <div className="mt-10">
               <SectionHeading title="Impact location map">
-                Restoration zones, monitoring points, and evidence records are shown with approximate public coordinates where sensitive ecological locations require privacy.
+                Restoration zones, monitoring points, and activity records are shown with approximate public coordinates where sensitive ecological locations require privacy.
               </SectionHeading>
               <div className="mt-8">
                 <ImpactMapPreview sites={campaign.sites} />
@@ -604,8 +603,8 @@ export default async function CampaignDetailPage({ params }: { params: Promise<{
           </section>
 
           <section id="updates" className="scroll-mt-40">
-            <SectionHeading eyebrow="Updates" title="Project updates and evidence gallery">
-              Follow field activities, monitoring notes, community stories, and evidence uploads as the campaign moves through milestones.
+            <SectionHeading eyebrow="Activity" title="Field activity stream">
+              Follow field activities, monitoring notes, community stories, and review attachments as the campaign moves through milestones.
             </SectionHeading>
             <div id="evidence" className="mt-8 scroll-mt-40">
               <CampaignUpdatesEvidence updates={updateItems} evidence={evidenceItems} />
@@ -666,8 +665,8 @@ export default async function CampaignDetailPage({ params }: { params: Promise<{
                 <div className="mt-5 grid gap-3 text-sm font-semibold text-ocean-900/68">
                   {[
                     [`Partner verification: ${campaign.verification}`, "Organization verification level"],
-                    [`${campaign.evidence.length.toLocaleString("id-ID")} evidence records`, "Campaign evidence submitted"],
-                    [`${verifiedEvidenceCount.toLocaleString("id-ID")} verified evidence records`, "Evidence approved by admin review"],
+                    [`${(campaign.updates.length + campaign.evidence.length).toLocaleString("id-ID")} activity records`, "Campaign activity submitted"],
+                    [`${verifiedEvidenceCount.toLocaleString("id-ID")} verified activity records`, "Activity approved by admin review"],
                     [`${campaign.sites.length.toLocaleString("id-ID")} impact sites`, "Campaign-linked field locations"]
                   ].map(([value, label]) => (
                     <span key={label} className="inline-flex items-center gap-2">
@@ -757,12 +756,12 @@ export default async function CampaignDetailPage({ params }: { params: Promise<{
                   <input type="hidden" name="next" value={campaignPath} />
                   <input type="hidden" name="frequency" value="weekly" />
                   <Button type="submit" tone="ghost" className="border border-white/24 text-white hover:bg-white/10">
-                    {retentionState?.isFollowing ? "Unfollow Updates" : "Follow Updates"}
+                    {retentionState?.isFollowing ? "Unfollow Activity" : "Follow Activity"}
                   </Button>
                 </form>
               ) : (
                 <ButtonLink href={`/login?next=${encodeURIComponent(campaignPath)}`} tone="ghost" className="border border-white/24 text-white hover:bg-white/10">
-                  Follow Updates
+                  Follow Activity
                 </ButtonLink>
               )}
             </div>

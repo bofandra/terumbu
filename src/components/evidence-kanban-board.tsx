@@ -51,12 +51,12 @@ export type EvidenceKanbanCard = {
 };
 
 const evidenceColumns = [
-  { id: "no_evidence", label: "No evidence", description: "Campaign evidence not submitted" },
+  { id: "no_evidence", label: "No activity", description: "No review attachment submitted" },
   { id: "submitted", label: "Submitted", description: "Ready for admin review" },
   { id: "in_review", label: "In review", description: "Admin review in progress" },
   { id: "needs_clarification", label: "Needs clarification", description: "Partner action required" },
-  { id: "verified", label: "Verified", description: "Evidence accepted" },
-  { id: "rejected", label: "Rejected", description: "Evidence not accepted" }
+  { id: "verified", label: "Verified", description: "Activity accepted" },
+  { id: "rejected", label: "Rejected", description: "Activity not accepted" }
 ];
 
 function evidenceColumnId(evidence: { verificationStatus: string }[]) {
@@ -123,7 +123,7 @@ export function EvidenceKanbanBoard({
   emptyMessage?: string;
 }) {
   return (
-    <section className="overflow-x-auto pb-3" aria-label="Evidence review kanban columns">
+    <section className="overflow-x-auto pb-3" aria-label="Activity review kanban columns">
       <div className="grid min-w-[1584px] grid-cols-6 gap-4">
         {evidenceColumns.map((column) => {
           const columnCards = cards.filter((card) => evidenceColumnId(card.evidence) === column.id);
@@ -187,14 +187,14 @@ export function EvidenceKanbanBoard({
 
                       <div className="mt-4 border-t border-ocean-900/10 pt-4">
                         <div className="flex items-center justify-between gap-3">
-                          <p className="text-sm font-bold text-ocean-900">Campaign evidence</p>
+                          <p className="text-sm font-bold text-ocean-900">Campaign activity</p>
                           <span
                             className={cn(
                               "rounded-full px-2 py-1 text-xs font-bold",
                               card.evidence.length === 0 ? "bg-sand-100 text-ocean-900/62" : pendingEvidence > 0 ? "bg-coral-100 text-coral-700" : "bg-kelp-100 text-kelp-700"
                             )}
                           >
-                            {card.evidence.length === 0 ? "No evidence" : pendingEvidence > 0 ? `${pendingEvidence} pending` : "Clear"}
+                            {card.evidence.length === 0 ? "No activity" : pendingEvidence > 0 ? `${pendingEvidence} pending` : "Clear"}
                           </span>
                         </div>
 
@@ -292,7 +292,7 @@ export function EvidenceKanbanBoard({
                                   </label>
                                   <Button type="submit" className="min-h-10 px-4 py-2 text-xs">
                                     <RotateCcw size={15} aria-hidden="true" />
-                                    {evidence.verificationStatus === "needs_clarification" ? "Submit clarification" : "Resubmit evidence"}
+                                    {evidence.verificationStatus === "needs_clarification" ? "Submit clarification" : "Resubmit activity"}
                                   </Button>
                                 </form>
                               ) : null}
@@ -323,7 +323,7 @@ export function EvidenceKanbanBoard({
                           ))}
                           {card.evidence.length === 0 ? (
                             <p className="py-3 text-xs font-semibold leading-5 text-ocean-900/56">
-                              No evidence has been submitted for this campaign yet.
+                              No review attachment has been submitted for this campaign yet.
                             </p>
                           ) : null}
                         </div>

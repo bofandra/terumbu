@@ -1837,7 +1837,7 @@ export async function createOrganizationUserAction(formData: FormData) {
     passportNumber: buildPassportNumber(createdUser.id, now),
     publicSlug: `${slugifyPartner(name)}-${randomBytes(3).toString("hex")}`,
     visibility: "private",
-    story: "A partner team account for managing campaign updates and evidence.",
+    story: "A partner team account for managing campaign field activity.",
     updatedAt: now
   });
 
@@ -3996,11 +3996,13 @@ export async function createCampaignActivityAction(formData: FormData) {
   const impactSiteId = nullableText(formData, "impactSiteId");
   const title = formText(formData, "title");
   const body = formText(formData, "body");
-  const activityUse = activityUseFromForm(formData.get("activityUse"));
+  const rawActivityUse = formData.get("activityUse");
+  const activityUse = activityUseFromForm(rawActivityUse);
   const evidenceType = evidenceTypeFromForm(formData.get("evidenceType"));
   const attachmentUrl = await imageFromForm(formData, "imageFile", "/partner/activity");
-  const shouldPublish = activityUse === "public_update" || activityUse === "update_and_evidence";
-  const shouldSubmitEvidence = activityUse === "evidence" || activityUse === "update_and_evidence";
+  const hasLegacyActivityUse = rawActivityUse !== null;
+  const shouldPublish = hasLegacyActivityUse ? activityUse === "public_update" || activityUse === "update_and_evidence" : true;
+  const shouldSubmitEvidence = hasLegacyActivityUse ? activityUse === "evidence" || activityUse === "update_and_evidence" : Boolean(attachmentUrl);
 
   if (!campaignId || !title || !body || (shouldSubmitEvidence && !attachmentUrl)) {
     redirectPartnerError(formData, "/partner/activity", "activity");
@@ -4097,7 +4099,7 @@ export async function createCampaignActivityAction(formData: FormData) {
       storageProvider,
       publishedAt: shouldPublish ? now : null,
       metadata: {
-        activityUse,
+        activityUse: hasLegacyActivityUse ? activityUse : shouldSubmitEvidence ? "field_activity_with_attachment" : "field_activity",
         evidenceCode: generatedEvidenceCode,
         submittedFrom: "partner_portal"
       }
@@ -4115,7 +4117,7 @@ export async function createCampaignUpdateAction(formData: FormData) {
 }
 
 export async function submitEvidenceAction(formData: FormData) {
-  formData.set("activityUse", "evidence");
+  formData.set("activityUse", "update_and_evidence");
   formData.set("redirectTo", "/partner/activity");
 
   if (!formText(formData, "body")) {
@@ -4126,14 +4128,14 @@ export async function submitEvidenceAction(formData: FormData) {
 }
 
 export async function reviseEvidenceAction(formData: FormData) {
-  const user = await requireRole(["partner", "admin"], "/partner/evidence");
+  const user = await requireRole(["partner", "admin"], "/partner/activity");
   const evidenceId = formText(formData, "evidenceId");
   const title = formText(formData, "title");
   const body = formText(formData, "body");
-  const attachmentUrl = await imageFromForm(formData, "imageFile", "/partner/evidence");
+  const attachmentUrl = await imageFromForm(formData, "imageFile", "/partner/activity");
 
   if (!evidenceId || !title || !attachmentUrl) {
-    redirectPartnerError(formData, "/partner/evidence", "evidence-revision");
+    redirectPartnerError(formData, "/partner/activity", "evidence-revision");
   }
 
   const [evidence] = await db
@@ -4150,13 +4152,13 @@ export async function reviseEvidenceAction(formData: FormData) {
     .limit(1);
 
   if (!evidence) {
-    redirectPartnerError(formData, "/partner/evidence", "evidence-missing");
+    redirectPartnerError(formData, "/partner/activity", "evidence-missing");
   }
 
-  await requireCampaignAccess(user.id, evidence.campaignId, formData, "/partner/evidence", "evidence:revise");
+  await requireCampaignAccess(user.id, evidence.campaignId, formData, "/partner/activity", "evidence:revise");
 
   if (!evidenceCanBeRevisedByPartner(evidence.verificationStatus)) {
-    redirectPartnerError(formData, "/partner/evidence", "evidence-state");
+    redirectPartnerError(formData, "/partner/activity", "evidence-state");
   }
 
   const now = new Date();
@@ -4217,7 +4219,7 @@ export async function reviseEvidenceAction(formData: FormData) {
     });
   });
 
-  redirectPartnerSaved(formData, "/partner/evidence", "evidence-resubmitted");
+  redirectPartnerSaved(formData, "/partner/activity", "evidence-resubmitted");
 }
 
 async function linkEvidenceToCorporatePrograms(evidenceId: string, status: string) {

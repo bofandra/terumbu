@@ -26,7 +26,7 @@ export const dynamic = "force-dynamic";
 const journey = [
   {
     title: "Fund verified work",
-    description: "Choose campaigns backed by partner checks, field evidence, and transparent funding goals.",
+    description: "Choose campaigns backed by partner checks, field activity, and transparent funding goals.",
     icon: HeartHandshake
   },
   {
@@ -191,8 +191,8 @@ export default async function HomePage() {
       </section>
 
       <section className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8">
-        <SectionHeading eyebrow="Impact map" title="Evidence should be visible, not hidden in reports">
-          Browse restoration sites, cleanup routes, learning hubs, project updates, and the progress behind every claim.
+        <SectionHeading eyebrow="Impact map" title="Field activity should be visible, not hidden in reports">
+          Browse restoration sites, cleanup routes, learning hubs, activity records, and the progress behind every claim.
         </SectionHeading>
         <div className="mt-10">
           <ImpactMapPreview sites={impactSites} />

@@ -178,8 +178,7 @@ export function buildMonthlyImpactReportDownloadPdf(report: MonthlyImpactReportR
 
   const metrics = [
     ["Contributions", formatCurrency(report.contributions)],
-    ["Project updates", formatNumber(report.campaignUpdates)],
-    ["Evidence records", formatNumber(report.newEvidence)],
+    ["Field activity", formatNumber(report.campaignUpdates + report.newEvidence)],
     ["Corals monitored", formatNumber(report.coralsMonitored)]
   ];
   metrics.forEach(([label, value], index) => {
@@ -200,7 +199,7 @@ export function buildMonthlyImpactReportDownloadPdf(report: MonthlyImpactReportR
     cover,
     "Report scope",
     y,
-    "Includes paid contributions, project updates, evidence records linked to supported or followed projects, coral monitoring updates, and Academy completions recorded during the month."
+    "Includes paid contributions, field activity linked to supported or followed projects, coral monitoring updates, and Academy completions recorded during the month."
   ) - 8;
   reportNoteBox(
     cover,

@@ -268,7 +268,7 @@ export function buildDefaultExpeditionDetailMetadata(input: DefaultExpeditionMet
       contributionPercent: 16,
       methodologyUpdatedAt: "2026-06-01",
       methodologyNote:
-        "Estimates use booking allocation, unit-cost assumptions from the related campaign, a monitoring period of one field cycle, and partner evidence records.",
+        "Estimates use booking allocation, unit-cost assumptions from the related campaign, a monitoring period of one field cycle, and partner activity records.",
       targets: [],
       allocation: [
         { label: "Field conservation activities", percent: 35 },
@@ -410,7 +410,7 @@ export function buildDefaultExpeditionDetailMetadata(input: DefaultExpeditionMet
         joinedAs: "Student participant",
         rating: 5,
         date: "May 2026",
-        body: "The best part was reviewing monitoring photos and understanding how evidence becomes part of the campaign record."
+        body: "The best part was reviewing monitoring photos and understanding how activity becomes part of the campaign record."
       }
     ],
     tripUpdates: input.tripUpdates,
@@ -436,7 +436,7 @@ export function buildDefaultExpeditionDetailMetadata(input: DefaultExpeditionMet
     },
     weatherAdvisory: {
       title: "Weather advisory",
-      body: "Boat schedules may shift for sea conditions. Confirmed participants receive operational updates before departure."
+      body: "Boat schedules may shift for sea conditions. Confirmed participants receive operational activity notes before departure."
     },
     bookingTrustIndicators: ["Secure payment", "Verified partner", "Insurance included", "Transparent pricing"]
   };

@@ -159,7 +159,7 @@ export default async function AdminCampaignImpactSitesPage({ searchParams }: Adm
         <div className="min-w-44">
           <div className="flex items-center justify-between gap-3 text-sm font-bold">
             <span>{site.progress}%</span>
-            <span className="text-ocean-900/58">{site.evidenceCount.toLocaleString("id-ID")} evidence</span>
+            <span className="text-ocean-900/58">{site.evidenceCount.toLocaleString("id-ID")} activity records</span>
           </div>
           <ProgressMeter value={site.progress} label={`${site.name} progress`} className="mt-2 h-2" indicatorClassName="bg-kelp-500" trackClassName="bg-sand-100" />
           <p className="mt-2 text-xs font-bold text-ocean-900/50">{site.latestSurvey ? `Latest survey ${site.latestSurvey}` : "Survey date pending"}</p>
@@ -199,7 +199,7 @@ export default async function AdminCampaignImpactSitesPage({ searchParams }: Adm
       <section className="grid gap-3 md:grid-cols-3" aria-label="Impact site summary">
         <SummaryMetric label="Filtered sites" value={data.summary.sites.toLocaleString("id-ID")} icon={MapPinned} />
         <SummaryMetric label="Average progress" value={`${data.summary.averageProgress}%`} icon={Target} />
-        <SummaryMetric label="Evidence records" value={data.summary.totalEvidence.toLocaleString("id-ID")} icon={FileCheck2} />
+        <SummaryMetric label="Activity records" value={data.summary.totalEvidence.toLocaleString("id-ID")} icon={FileCheck2} />
       </section>
 
       <AdminListToolbar

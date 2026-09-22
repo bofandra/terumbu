@@ -48,7 +48,7 @@ export default async function DashboardImpactPage() {
           <p className="text-sm font-bold uppercase tracking-[0.16em] text-coral-700">My Impact</p>
           <h1 className="mt-2 text-3xl font-bold tracking-normal text-ocean-900">Your conservation footprint</h1>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-ocean-900/62">
-            Personal locations, evidence, learning, and contribution history are shown as approximate zones.
+            Personal locations, field activity, learning, and contribution history are shown as approximate zones.
           </p>
           {data.profile?.passportNumber ? (
             <p className="mt-3 text-sm font-bold text-ocean-900">Passport ID: {data.profile.passportNumber}</p>
@@ -95,7 +95,7 @@ export default async function DashboardImpactPage() {
                   {ecosystem.location ? <span>{ecosystem.location}</span> : null}
                   {ecosystem.plantedAt ? <span>Planted {formatShortDate(ecosystem.plantedAt)}</span> : null}
                   {ecosystem.lastUpdatedAt ? <span>Updated {formatShortDate(ecosystem.lastUpdatedAt)}</span> : null}
-                  <span>{ecosystem.verifiedEvidenceCount.toLocaleString("id-ID")} verified evidence</span>
+                  <span>{ecosystem.verifiedEvidenceCount.toLocaleString("id-ID")} verified activity</span>
                 </div>
               </Link>
             ))}

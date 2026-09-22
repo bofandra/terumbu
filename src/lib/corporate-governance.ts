@@ -60,7 +60,7 @@ export function buildCorporateSecurityChecklist(settings: CorporateSecuritySetti
       key: "retention_policy",
       label: "Retention policy",
       status: settings.retentionPolicyDays ? "configured" : "ready_to_configure",
-      description: settings.retentionPolicyDays ? `${settings.retentionPolicyDays} day retention policy configured.` : "Set a retention period for reports and evidence artifacts."
+      description: settings.retentionPolicyDays ? `${settings.retentionPolicyDays} day retention policy configured.` : "Set a retention period for reports and activity artifacts."
     },
     {
       key: "domain_restrictions",

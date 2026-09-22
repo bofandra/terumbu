@@ -86,8 +86,8 @@ export default async function AdminPortalPage({ searchParams }: AdminPortalPageP
 
   const priorityTasks: AdminTask[] = [
     {
-      title: "Review donation evidence",
-      description: "Review partner evidence submitted for donation projects.",
+      title: "Review donation activity",
+      description: "Review partner field activity submitted for donation projects.",
       href: "/admin/campaigns/evidence",
       icon: FileCheck2,
       count: pendingEvidence,
