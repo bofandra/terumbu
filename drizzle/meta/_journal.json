@@ -204,6 +204,13 @@
       "when": 1790148180000,
       "tag": "0028_campaign_impact_targets",
       "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "7",
+      "when": 1790190000000,
+      "tag": "0029_reconcile_campaign_goal_from_impact",
+      "breakpoints": true
     }
   ]
 }
