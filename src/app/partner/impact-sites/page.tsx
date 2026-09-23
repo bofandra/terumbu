@@ -19,6 +19,8 @@ const errorMessages: Record<string, string> = {
   "impact-site-delete": "Confirm impact-site deletion by checking the delete box.",
   "impact-site-invalid": "Enter site name, ecosystem type, region, valid coordinates, progress between 0 and 100, and activity count.",
   "impact-site-missing": "Impact site record was not found.",
+  "impact-site-exists": "This campaign already has an impact site. Manage the existing site instead of adding another.",
+  "impact-site-required": "A campaign must keep one impact site, so the last linked site cannot be deleted.",
   "partner-permission": "Your partner role cannot manage impact sites."
 };
 
