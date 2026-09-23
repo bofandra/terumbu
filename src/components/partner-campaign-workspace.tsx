@@ -384,7 +384,7 @@ export function PartnerCampaignWorkspace({
               <form action={updatePartnerCampaignAction} encType="multipart/form-data" className="mt-5 grid gap-4">
                 <input type="hidden" name="campaignId" value={campaign.id} />
                 <input type="hidden" name="redirectTo" value={settingsReturnTo} />
-                <CampaignFields campaign={campaign} organizations={data.organizations} impactSites={campaignImpactSites} />
+                <CampaignFields campaign={campaign} organizations={data.organizations} impactSites={data.impactSites} />
                 {campaign.imageUrl ? (
                   <label className="flex items-center gap-2 text-sm font-bold text-ocean-900">
                     <input name="removeImage" type="checkbox" className="size-4 accent-coral-500" />
