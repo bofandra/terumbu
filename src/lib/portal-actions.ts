@@ -2202,7 +2202,7 @@ export async function createPartnerCampaignAction(formData: FormData) {
     redirectPartnerError(formData, "/partner/campaigns/new", "impact-site-invalid");
   }
 
-  if (impactLinkMode === "existing" && !existingImpactSite) {
+  if (impactLinkMode === "existing" && (!existingImpactSite || !existingImpactSite.campaignId)) {
     redirectPartnerError(formData, "/partner/campaigns/new", "impact-site-missing");
   }
 
@@ -2431,7 +2431,7 @@ export async function updatePartnerCampaignAction(formData: FormData) {
     redirectPartnerError(formData, "/partner/campaigns", "impact-site-invalid");
   }
 
-  if (!linkedImpactSite && impactLinkMode === "existing" && !existingImpactSite) {
+  if (!linkedImpactSite && impactLinkMode === "existing" && (!existingImpactSite || !existingImpactSite.campaignId)) {
     redirectPartnerError(formData, "/partner/campaigns", "impact-site-missing");
   }
 
