@@ -187,6 +187,12 @@ export default async function AdminUsersPage({ searchParams }: AdminUsersPagePro
           </div>
           <p className="mt-1 text-sm font-semibold text-ocean-900/58">{user.email}</p>
           {user.location ? <p className="mt-1 text-xs font-semibold text-ocean-900/44">{user.location}</p> : null}
+          <Link
+            href={`/admin/users/${user.id}?returnTo=${encodeURIComponent(returnTo)}`}
+            className="mt-2 inline-flex text-xs font-bold text-coral-700 hover:text-coral-500"
+          >
+            Manage account →
+          </Link>
         </div>
       )
     },
