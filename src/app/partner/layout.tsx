@@ -2,7 +2,7 @@ import { PartnerShell } from "@/components/partner-shell";
 import { getUserRoles, requireRole } from "@/lib/auth";
 
 export default async function PartnerLayout({ children }: Readonly<{ children: React.ReactNode }>) {
-  const user = await requireRole(["partner", "admin"], "/partner");
+  const user = await requireRole(["partner"], "/partner");
   const roleKeys = await getUserRoles(user.id);
   const displayName = user.displayName ?? user.name ?? user.email;
   const roleLabel = roleKeys.includes("admin") ? "Admin reviewer" : "Partner Admin";
