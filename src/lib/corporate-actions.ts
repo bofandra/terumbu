@@ -100,6 +100,22 @@ function redirectWithResult(path: string, key: "error" | "saved", value: string)
   redirect(`${path}${separator}${key}=${encodeURIComponent(value)}`);
 }
 
+async function corporateAccountContext(userId: string) {
+  const [context] = await db
+    .select({
+      accountId: corporateAccounts.id,
+      accountName: corporateAccounts.name,
+      accountSlug: corporateAccounts.slug,
+      permission: corporatePermissions.permission
+    })
+    .from(corporatePermissions)
+    .innerJoin(corporateAccounts, eq(corporatePermissions.corporateAccountId, corporateAccounts.id))
+    .where(eq(corporatePermissions.userId, userId))
+    .limit(1);
+
+  return context ?? null;
+}
+
 async function corporateContext(userId: string, requestedProgramId?: string | null) {
   const contextRows = await db
     .select({
@@ -612,7 +628,7 @@ async function writeReportArtifacts(input: {
 
 export async function createCorporateProgramAction(formData: FormData) {
   const user = await requireCorporateAdminRole("/corporate/programs");
-  const context = await corporateContext(user.id);
+  const context = await corporateAccountContext(user.id);
 
   if (!context || !corporateCapabilitiesForPermission(context.permission).canManagePrograms) {
     redirect("/corporate/programs?error=permission");
