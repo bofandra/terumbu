@@ -8,7 +8,6 @@ import {
   adminAuditLogs,
   corporateAccounts,
   corporatePermissions,
-  corporatePrograms,
   users
 } from "@/db/schema";
 import { requireRole } from "@/lib/auth";
@@ -26,18 +25,6 @@ function toSlug(value: string) {
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "")
     .slice(0, 96);
-}
-
-function parseAmount(value: FormDataEntryValue | null) {
-  const amount = Number(String(value ?? "").replace(/[^\d.]/g, ""));
-
-  return Number.isFinite(amount) && amount > 0 ? amount : null;
-}
-
-function parseDate(value: FormDataEntryValue | null) {
-  const parsed = new Date(String(value ?? ""));
-
-  return Number.isNaN(parsed.getTime()) ? null : parsed;
 }
 
 async function writeAdminAuditLog(input: {
