@@ -1,6 +1,6 @@
 import Link from "next/link";
 import Image from "next/image";
-import { ArrowUpRight, CalendarPlus, Edit3, MessageSquareText, Plus, Save } from "lucide-react";
+import { ArrowUpRight, CalendarPlus, Plus, Save } from "lucide-react";
 
 import { Field, StatusBadge, inputClassName, labelize, textareaClassName, type PartnerPortalData } from "@/components/partner-portal-ui";
 import { RepeatableFields } from "@/components/partner-expedition-repeatable-fields";
