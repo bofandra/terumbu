@@ -61,7 +61,7 @@ function optionsWithCurrentValues(options: string[], values: string[]) {
   return values.reduce((choices, value) => optionsWithCurrent(choices, value), options);
 }
 
-function CreateExpeditionForm({ campaigns, canManageExpeditions }: { campaigns: Campaign[]; canManageExpeditions: boolean }) {
+export function PartnerExpeditionCreateForm({ campaigns, canManageExpeditions }: { campaigns: Campaign[]; canManageExpeditions: boolean }) {
   const hasCampaigns = campaigns.length > 0;
   const canSubmit = hasCampaigns && canManageExpeditions;
 
@@ -696,13 +696,11 @@ export function PartnerExpeditionWorkspace({
 }) {
   return (
     <section className="grid gap-4">
-      {canManageExpeditions ? (
-        <CreateExpeditionForm campaigns={campaigns} canManageExpeditions={canManageExpeditions} />
-      ) : (
+      {!canManageExpeditions ? (
         <div className="rounded-lg border border-ocean-900/10 bg-white p-5 text-sm font-semibold text-ocean-900/62 shadow-soft">
           Your partner role can view expedition records, but cannot change trip details or departures.
         </div>
-      )}
+      ) : null}
 
       <div className="grid gap-4">
         {expeditions.map((expedition) => (
