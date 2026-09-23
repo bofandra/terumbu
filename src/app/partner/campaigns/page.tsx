@@ -1,5 +1,5 @@
 import { CampaignList, PartnerPageHeader } from "@/components/partner-portal-ui";
-import { requireRole } from "@/lib/auth";
+import { requirePartnerRole } from "@/lib/auth";
 import { getPartnerPortalData } from "@/lib/queries";
 
 export const metadata = {
@@ -30,7 +30,7 @@ type PartnerCampaignsPageProps = {
 };
 
 export default async function PartnerCampaignsPage({ searchParams }: PartnerCampaignsPageProps) {
-  const user = await requireRole(["partner"], "/partner");
+  const user = await requirePartnerRole("/partner");
   const params = await searchParams;
   const data = await getPartnerPortalData(user.id);
   const savedMessage = params?.saved ? statusMessages[params.saved] : null;
