@@ -77,7 +77,6 @@ export function PartnerCampaignWorkspace({
   const timelineReturnTo = `${returnTo}?tab=timeline`;
   const activityReturnTo = `${returnTo}?tab=activity`;
   const settingsReturnTo = `${returnTo}?tab=settings`;
-  const campaignUpdates = data.updates.filter((item) => item.campaignId === campaign.id);
   const campaignEvidence = data.evidence.filter((item) => item.campaignId === campaign.id);
   const campaignActivities = data.activities.filter((item) => item.campaignId === campaign.id);
   const campaignImpactSites = data.impactSites.filter((item) => item.campaignId === campaign.id);
