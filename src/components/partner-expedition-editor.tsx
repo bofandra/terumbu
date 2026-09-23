@@ -127,7 +127,6 @@ function DetailFields({ detail, marketplace }: { detail: ExpeditionDetailMetadat
   const pillarRows = withRows(detail.overview.pillars, 3, { title: "", body: "" });
   const highlightRows = withRows(detail.highlights, 6, { title: "", status: "" });
   const targetRows = withRows(detail.impact.targets, 4, { value: "", label: "" });
-  const allocationRows = withRows(detail.impact.allocation, 6, { label: "", percent: 0 });
   const itineraryRows = withRows(detail.itinerary, 4, { day: "", title: "", meals: "", physicalLevel: "", activities: [] });
   const teamRows = withRows(detail.team, 4, { name: "", role: "", detail: "" });
   const updateRows = withRows(detail.tripUpdates, 2, { title: "", date: "", body: "" });
@@ -255,17 +254,17 @@ function DetailFields({ detail, marketplace }: { detail: ExpeditionDetailMetadat
       </details>
 
       <details className="rounded-lg border border-ocean-900/10 bg-white">
-        <summary className="cursor-pointer px-4 py-3 text-sm font-bold text-ocean-900">Impact and pricing</summary>
+        <summary className="cursor-pointer px-4 py-3 text-sm font-bold text-ocean-900">Conservation contribution</summary>
         <div className="grid gap-4 border-t border-ocean-900/10 p-4">
-          <Field label="Impact title">
-            <input name="impactTitle" defaultValue={detail.impact.title} className={inputClassName} />
-          </Field>
           <Field label="Impact summary">
             <input name="impactSummary" defaultValue={detail.impact.summary} className={inputClassName} />
           </Field>
-          <Field label="Contribution percent">
+          <Field label="Contribution percent" help="Public contribution amount is calculated from Base price x this percentage.">
             <input name="contributionPercent" type="number" min={0} max={100} defaultValue={detail.impact.contributionPercent} className={inputClassName} />
           </Field>
+          <p className="text-xs font-semibold leading-5 text-ocean-900/54">
+            Custom impact targets appear in the public impact section. Leave them blank to use campaign-backed impact targets when available.
+          </p>
           <RepeatableFields
             rows={targetRows}
             emptyRow={{ value: "", label: "" }}
@@ -274,16 +273,6 @@ function DetailFields({ detail, marketplace }: { detail: ExpeditionDetailMetadat
             fields={[
               { name: "impactTargetValue", valueKey: "value", placeholder: "Value" },
               { name: "impactTargetLabel", valueKey: "label", placeholder: "Impact target" }
-            ]}
-          />
-          <RepeatableFields
-            rows={allocationRows}
-            emptyRow={{ label: "", percent: 0 }}
-            addLabel="Add allocation"
-            gridClassName="grid gap-2 rounded-lg bg-sand-50 p-3 sm:grid-cols-[1fr_120px]"
-            fields={[
-              { name: "allocationLabel", valueKey: "label", placeholder: "Allocation label" },
-              { name: "allocationPercent", valueKey: "percent", type: "number", min: 0, max: 100, placeholder: "%" }
             ]}
           />
         </div>
