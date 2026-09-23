@@ -9321,6 +9321,8 @@ export async function getPartnerPortalData(userId?: string) {
         (survivalRate ? "Survival rate" : sortedWaste ? "Waste sorted" : seedlingsReady ? "Seedlings ready" : null);
       const derivedMetricValue = survivalRate ? `${survivalRate}%` : sortedWaste ? `${sortedWaste} kg` : seedlingsReady;
       const metricValue = explicitMetricValue ?? derivedMetricValue;
+      const financeCategory = evidenceFinanceCategory(item.metadata);
+      const financeSpendAmount = evidenceFinanceSpendAmount(item.metadata);
 
       return {
         ...item,
@@ -9332,6 +9334,9 @@ export async function getPartnerPortalData(userId?: string) {
         observation: getMetadataString(item.metadata, "observation") ?? getMetadataString(item.metadata, "summary"),
         metricLabel,
         metricValue,
+        financeCategory,
+        financeSpendAmount,
+        financeSpendCurrency: getMetadataString(item.metadata, "financeSpendCurrency") ?? "USD",
         sourceHref: evidenceSourceHref(item.campaignSlug, item.evidenceCode) ?? item.fileUrl
       };
     }),
