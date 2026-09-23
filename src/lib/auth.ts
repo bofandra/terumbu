@@ -134,6 +134,17 @@ export async function requirePartnerRole(nextPath = "/partner") {
   return user;
 }
 
+export async function requireCorporateAdminRole(nextPath = "/corporate") {
+  const user = await requireUser(nextPath);
+  const roleKeys = await getUserRoles(user.id);
+
+  if (!roleKeys.includes("corporate_admin") || roleKeys.includes("admin")) {
+    redirect(forbiddenRedirectPath(nextPath));
+  }
+
+  return user;
+}
+
 export async function destroyCurrentSession() {
   const cookieStore = await cookies();
   const token = cookieStore.get(SESSION_COOKIE)?.value;
