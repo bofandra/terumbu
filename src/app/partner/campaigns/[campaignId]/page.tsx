@@ -37,6 +37,7 @@ type PartnerCampaignDetailPageProps = {
   searchParams?: Promise<{
     error?: string;
     saved?: string;
+    tab?: string;
   }>;
 };
 
@@ -56,6 +57,7 @@ export default async function PartnerCampaignDetailPage({ params, searchParams }
       campaignId={campaign.id}
       savedMessage={query?.saved ? statusMessages[query.saved] ?? "Campaign changes saved." : null}
       errorMessage={query?.error ? errorMessages[query.error] ?? "Campaign changes could not be saved." : null}
+      defaultTabId={query?.tab}
     />
   );
 }
