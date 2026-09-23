@@ -361,7 +361,7 @@ export function PartnerCampaignWorkspace({
 
           <CampaignActivityForm
             campaigns={[campaign]}
-            impactSites={campaignImpactSites}
+            impactSite={campaignImpactSites[0] ?? null}
             canCreateActivity={data.capabilities.canCreateActivity}
             lockedCampaignId={campaign.id}
             redirectTo={activityReturnTo}
