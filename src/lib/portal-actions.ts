@@ -4298,12 +4298,24 @@ export async function createCampaignActivityAction(formData: FormData) {
   const rawActivityUse = formData.get("activityUse");
   const activityUse = activityUseFromForm(rawActivityUse);
   const evidenceType = evidenceTypeFromForm(formData.get("evidenceType"));
+  const financeCategoryInput = nullableText(formData, "financeCategory");
+  const financeCategory = financeCategoryInput ? normalizeCampaignBudgetCategory(financeCategoryInput) : null;
+  const financeSpendAmount = parseOptionalAmount(formData.get("financeSpendAmount"));
+  const financeSpendCurrency = normalizeCampaignCurrency(formData.get("financeSpendCurrency"), "USD");
   const attachmentUrl = await imageFromForm(formData, "imageFile", "/partner/activity");
   const hasLegacyActivityUse = rawActivityUse !== null;
   const shouldPublish = hasLegacyActivityUse ? activityUse === "public_update" || activityUse === "update_and_evidence" : true;
   const shouldSubmitEvidence = hasLegacyActivityUse ? activityUse === "evidence" || activityUse === "update_and_evidence" : Boolean(attachmentUrl);
 
-  if (!campaignId || !title || !body || (shouldSubmitEvidence && !attachmentUrl)) {
+  const hasFinanceInput = Boolean(financeCategoryInput || financeSpendAmount);
+
+  if (
+    !campaignId ||
+    !title ||
+    !body ||
+    (shouldSubmitEvidence && !attachmentUrl) ||
+    (hasFinanceInput && (!attachmentUrl || !financeCategory || !financeSpendAmount))
+  ) {
     redirectPartnerError(formData, "/partner/activity", "activity");
   }
 
@@ -4359,7 +4371,14 @@ export async function createCampaignActivityAction(formData: FormData) {
           metadata: {
             activityCode: generatedActivityCode,
             observation: body || null,
-            submittedFrom: "partner_activity"
+            submittedFrom: "partner_activity",
+            ...(financeCategory && financeSpendAmount
+              ? {
+                  financeCategory,
+                  financeSpendAmount: Number(financeSpendAmount),
+                  financeSpendCurrency
+                }
+              : {})
           }
         })
         .returning({ id: projectEvidence.id });
@@ -4400,7 +4419,14 @@ export async function createCampaignActivityAction(formData: FormData) {
       metadata: {
         activityUse: hasLegacyActivityUse ? activityUse : shouldSubmitEvidence ? "field_activity_with_attachment" : "field_activity",
         evidenceCode: generatedEvidenceCode,
-        submittedFrom: "partner_portal"
+        submittedFrom: "partner_portal",
+        ...(financeCategory && financeSpendAmount
+          ? {
+              financeCategory,
+              financeSpendAmount: Number(financeSpendAmount),
+              financeSpendCurrency
+            }
+          : {})
       }
     });
   });
