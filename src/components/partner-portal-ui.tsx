@@ -1,11 +1,8 @@
 import Link from "next/link";
 import {
   ArrowUpRight,
-  BadgeCheck,
-  Camera,
   ClipboardList,
   FileCheck2,
-  Globe2,
   MapPinned,
   Megaphone,
   Pencil,
@@ -17,7 +14,6 @@ import {
 } from "lucide-react";
 import type { ReactNode } from "react";
 
-import { CampaignContentDepthEditor } from "@/components/campaign-content-depth-editor";
 import { CampaignImpactTargetFields } from "@/components/campaign-impact-target-fields";
 import { PartnerCampaignImpactPlanningFields } from "@/components/partner-campaign-impact-planning-fields";
 import { PartnerCampaignImpactSiteSelector } from "@/components/partner-campaign-impact-site-selector";
