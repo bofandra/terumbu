@@ -2,7 +2,7 @@
 
 import { randomBytes } from "node:crypto";
 
-import { and, desc, eq, sql } from "drizzle-orm";
+import { and, asc, desc, eq, sql } from "drizzle-orm";
 import { redirect } from "next/navigation";
 
 import { db } from "@/db/client";
@@ -1927,6 +1927,10 @@ export async function addOrganizationUserAction(formData: FormData) {
     redirectAdminPartnerError("partner-user-missing", formData);
   }
 
+  if (!impactLinkMode) {
+    redirectPartnerError(formData, "/partner/campaigns/new", "impact-site-required");
+  }
+
   const [organization] = await db.select({ id: organizations.id }).from(organizations).where(eq(organizations.id, organizationId)).limit(1);
 
   if (!organization) {
@@ -2136,7 +2140,7 @@ export async function createPartnerCampaignAction(formData: FormData) {
   const imageUrl = await imageFromForm(formData, "imageFile", "/partner/campaigns/new");
   const endsAt = parseOptionalDate(formData.get("endsAt"));
   const requestedImpactLinkMode = formText(formData, "impactLinkMode");
-  const impactLinkMode = requestedImpactLinkMode === "new" || requestedImpactLinkMode === "existing" ? requestedImpactLinkMode : "none";
+  const impactLinkMode = requestedImpactLinkMode === "new" || requestedImpactLinkMode === "existing" ? requestedImpactLinkMode : null;
   const existingImpactSiteId = formText(formData, "existingImpactSiteId");
 
   if (!organizationId || !title || !summary || !goalAmount) {
@@ -2188,11 +2192,17 @@ export async function createPartnerCampaignAction(formData: FormData) {
           .then((rows) => rows[0] ?? null)
       : null;
 
-  if (newImpactSiteValues && (!newImpactSiteValues.name || !newImpactSiteValues.region || !newImpactSiteValues.latitude || !newImpactSiteValues.longitude)) {
+  if (
+    newImpactSiteValues &&
+    (!newImpactSiteValues.name ||
+      !newImpactSiteValues.region ||
+      newImpactSiteValues.latitude === null ||
+      newImpactSiteValues.longitude === null)
+  ) {
     redirectPartnerError(formData, "/partner/campaigns/new", "impact-site-invalid");
   }
 
-  if (impactLinkMode === "existing" && (!existingImpactSite || !existingImpactSite.campaignId)) {
+  if (impactLinkMode === "existing" && !existingImpactSite) {
     redirectPartnerError(formData, "/partner/campaigns/new", "impact-site-missing");
   }
 
