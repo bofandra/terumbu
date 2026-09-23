@@ -178,7 +178,7 @@ function partnerRedirectPath(formData: FormData, fallbackPath: string) {
     return requestedPath;
   }
 
-  if (/^\/partner\/campaigns\/[A-Za-z0-9-]+(?:\?[^#]*)?$/.test(requestedPath)) {
+  if (/^\/partner\/(?:campaigns|expeditions)\/[A-Za-z0-9-]+(?:\?[^#]*)?$/.test(requestedPath)) {
     return requestedPath;
   }
 
