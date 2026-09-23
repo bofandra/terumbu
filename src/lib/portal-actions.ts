@@ -2,7 +2,7 @@
 
 import { randomBytes } from "node:crypto";
 
-import { and, asc, desc, eq, sql } from "drizzle-orm";
+import { and, asc, desc, eq, ne, sql } from "drizzle-orm";
 import { redirect } from "next/navigation";
 
 import { db } from "@/db/client";
@@ -2578,6 +2578,16 @@ export async function createPartnerImpactSiteAction(formData: FormData) {
 
   await requireCampaignAccess(user.id, campaignId, formData, "/partner/impact-sites", "impact-site:manage");
 
+  const [existingSite] = await db
+    .select({ id: impactSites.id })
+    .from(impactSites)
+    .where(eq(impactSites.campaignId, campaignId))
+    .limit(1);
+
+  if (existingSite) {
+    redirectPartnerError(formData, "/partner/impact-sites", "impact-site-exists");
+  }
+
   const [site] = await db
     .insert(impactSites)
     .values(values)
@@ -2607,6 +2617,16 @@ export async function updatePartnerImpactSiteAction(formData: FormData) {
   await requirePartnerImpactSiteAccess(user.id, impactSiteId, formData, "/partner/impact-sites", "impact-site:manage");
   await requireCampaignAccess(user.id, campaignId, formData, "/partner/impact-sites", "impact-site:manage");
 
+  const [conflictingSite] = await db
+    .select({ id: impactSites.id })
+    .from(impactSites)
+    .where(and(eq(impactSites.campaignId, campaignId), ne(impactSites.id, impactSiteId)))
+    .limit(1);
+
+  if (conflictingSite) {
+    redirectPartnerError(formData, "/partner/impact-sites", "impact-site-exists");
+  }
+
   await db
     .update(impactSites)
     .set(values)
@@ -2633,6 +2653,16 @@ export async function deletePartnerImpactSiteAction(formData: FormData) {
   }
 
   const site = await requirePartnerImpactSiteAccess(user.id, impactSiteId, formData, "/partner/impact-sites", "impact-site:manage");
+
+  const [replacementSite] = await db
+    .select({ id: impactSites.id })
+    .from(impactSites)
+    .where(and(eq(impactSites.campaignId, site.campaignId), ne(impactSites.id, impactSiteId)))
+    .limit(1);
+
+  if (!replacementSite) {
+    redirectPartnerError(formData, "/partner/impact-sites", "impact-site-required");
+  }
 
   await db.delete(impactSites).where(eq(impactSites.id, impactSiteId));
 
