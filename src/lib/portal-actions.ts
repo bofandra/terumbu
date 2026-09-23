@@ -2118,7 +2118,9 @@ export async function createPartnerCampaignAction(formData: FormData) {
   const status = isAdmin ? campaignStatusFromForm(formData.get("status")) : partnerCampaignStatusFromForm(formData.get("status"));
   const imageUrl = await imageFromForm(formData, "imageFile", "/partner/campaigns/new");
   const endsAt = parseOptionalDate(formData.get("endsAt"));
-  const impactLinkMode = formText(formData, "impactLinkMode") === "new" ? "new" : "none";
+  const requestedImpactLinkMode = formText(formData, "impactLinkMode");
+  const impactLinkMode = requestedImpactLinkMode === "new" || requestedImpactLinkMode === "existing" ? requestedImpactLinkMode : "none";
+  const existingImpactSiteId = formText(formData, "existingImpactSiteId");
 
   if (!organizationId || !title || !summary || !goalAmount) {
     redirectPartnerError(formData, "/partner/campaigns/new", "campaign");
@@ -2134,7 +2136,7 @@ export async function createPartnerCampaignAction(formData: FormData) {
 
   const now = new Date();
   const slug = `${slugifyTitle(title)}-${randomBytes(3).toString("hex")}`;
-  const impactSiteValues =
+  const newImpactSiteValues =
     impactLinkMode === "new"
       ? {
           name: formText(formData, "impactSiteName"),
@@ -2148,17 +2150,48 @@ export async function createPartnerCampaignAction(formData: FormData) {
             latestSurvey: nullableText(formData, "impactSiteLatestSurvey"),
             verification: verificationFromForm(formData.get("impactSiteVerification"))
           }
-        }
+      }
+      : null;
+  const existingImpactSite =
+    impactLinkMode === "existing"
+      ? await db
+          .select({
+            id: impactSites.id,
+            campaignId: impactSites.campaignId,
+            name: impactSites.name,
+            ecosystemType: impactSites.ecosystemType,
+            region: impactSites.region,
+            latitude: impactSites.latitude,
+            longitude: impactSites.longitude,
+            metadata: impactSites.metadata
+          })
+          .from(impactSites)
+          .where(eq(impactSites.id, existingImpactSiteId))
+          .limit(1)
+          .then((rows) => rows[0] ?? null)
       : null;
 
-  if (impactSiteValues && (!impactSiteValues.name || !impactSiteValues.region || !impactSiteValues.latitude || !impactSiteValues.longitude)) {
+  if (newImpactSiteValues && (!newImpactSiteValues.name || !newImpactSiteValues.region || !newImpactSiteValues.latitude || !newImpactSiteValues.longitude)) {
     redirectPartnerError(formData, "/partner/campaigns/new", "impact-site-invalid");
   }
 
-  const linkedImpactSiteDefaults = impactSiteValues
+  if (impactLinkMode === "existing" && (!existingImpactSite || !existingImpactSite.campaignId)) {
+    redirectPartnerError(formData, "/partner/campaigns/new", "impact-site-missing");
+  }
+
+  if (impactLinkMode === "existing" && existingImpactSite?.campaignId) {
+    await requireCampaignAccess(user.id, existingImpactSite.campaignId, formData, "/partner/campaigns/new");
+  }
+
+  const linkedImpactSiteDefaults = newImpactSiteValues
     ? {
-        region: impactSiteValues.region,
-        ecosystemType: impactSiteValues.ecosystemType
+        region: newImpactSiteValues.region,
+        ecosystemType: newImpactSiteValues.ecosystemType
+      }
+    : existingImpactSite
+      ? {
+        region: existingImpactSite.region,
+        ecosystemType: existingImpactSite.ecosystemType
       }
     : null;
   const category = campaignCategoryValue(formText(formData, "category"), linkedImpactSiteDefaults);
@@ -2202,17 +2235,17 @@ export async function createPartnerCampaignAction(formData: FormData) {
 
     let linkedImpactSiteId: string | null = null;
 
-    if (impactSiteValues) {
+    if (newImpactSiteValues) {
       const [site] = await tx
         .insert(impactSites)
         .values({
           campaignId: campaign.id,
-          name: impactSiteValues.name,
-          ecosystemType: impactSiteValues.ecosystemType,
-          region: impactSiteValues.region,
-          latitude: impactSiteValues.latitude!,
-          longitude: impactSiteValues.longitude!,
-          metadata: impactSiteValues.metadata
+          name: newImpactSiteValues.name,
+          ecosystemType: newImpactSiteValues.ecosystemType,
+          region: newImpactSiteValues.region,
+          latitude: newImpactSiteValues.latitude!,
+          longitude: newImpactSiteValues.longitude!,
+          metadata: newImpactSiteValues.metadata
         })
         .returning({ id: impactSites.id });
 
@@ -2223,7 +2256,30 @@ export async function createPartnerCampaignAction(formData: FormData) {
         action: "impact_site.created",
         entityType: "impact_site",
         entityId: site.id,
-        metadata: { source: "partner_campaign_create", campaignId: campaign.id, name: impactSiteValues.name }
+        metadata: { source: "partner_campaign_create", campaignId: campaign.id, name: newImpactSiteValues.name }
+      });
+    } else if (existingImpactSite) {
+      const [site] = await tx
+        .insert(impactSites)
+        .values({
+          campaignId: campaign.id,
+          name: existingImpactSite.name,
+          ecosystemType: existingImpactSite.ecosystemType,
+          region: existingImpactSite.region,
+          latitude: existingImpactSite.latitude,
+          longitude: existingImpactSite.longitude,
+          metadata: existingImpactSite.metadata
+        })
+        .returning({ id: impactSites.id });
+
+      linkedImpactSiteId = site.id;
+
+      await tx.insert(adminAuditLogs).values({
+        actorUserId: user.id,
+        action: "impact_site.linked",
+        entityType: "impact_site",
+        entityId: site.id,
+        metadata: { source: "partner_campaign_create", campaignId: campaign.id, copiedFromImpactSiteId: existingImpactSite.id, name: existingImpactSite.name }
       });
     }
 

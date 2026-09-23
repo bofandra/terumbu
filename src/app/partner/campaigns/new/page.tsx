@@ -15,6 +15,7 @@ const statusMessages: Record<string, string> = {
 const errorMessages: Record<string, string> = {
   campaign: "Enter campaign title, goal amount, and summary.",
   "impact-site-invalid": "Enter the linked impact site name, region, and valid coordinates.",
+  "impact-site-missing": "Choose an existing impact site or create a new location.",
   organization: "Choose an active partner organization.",
   "partner-permission": "Your partner role cannot create campaigns."
 };
@@ -43,7 +44,7 @@ export default async function PartnerCreateCampaignPage({ searchParams }: Partne
       />
       {savedMessage ? <p className="rounded-lg border border-kelp-700/20 bg-kelp-100 px-4 py-3 text-sm font-bold text-kelp-700">{savedMessage}</p> : null}
       {errorMessage ? <p className="rounded-lg border border-coral-700/20 bg-coral-100 px-4 py-3 text-sm font-bold text-coral-700">{errorMessage}</p> : null}
-      <CampaignCreateForm organizations={data.organizations} canCreateCampaign={data.capabilities.canCreateCampaign} />
+      <CampaignCreateForm organizations={data.organizations} impactSites={data.impactSites} canCreateCampaign={data.capabilities.canCreateCampaign} />
     </div>
   );
 }

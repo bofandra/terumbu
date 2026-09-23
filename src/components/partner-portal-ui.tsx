@@ -19,6 +19,7 @@ import type { ReactNode } from "react";
 
 import { CampaignContentDepthEditor } from "@/components/campaign-content-depth-editor";
 import { CampaignImpactTargetFields } from "@/components/campaign-impact-target-fields";
+import { PartnerCampaignImpactSiteSelector } from "@/components/partner-campaign-impact-site-selector";
 import { Button } from "@/components/ui/button";
 import { MetricValue } from "@/components/ui/metric-value";
 import { ProgressMeter } from "@/components/ui/progress-meter";
@@ -304,7 +305,7 @@ export function CampaignFields({
   const singleOrganization = organizations.length === 1;
   const organizationValue = campaign?.organizationId ?? organizations[0]?.id ?? "";
   const selectedOrganization = organizations.find((organization) => organization.id === organizationValue);
-  const linkedSite = impactSites[0];
+  const linkedSite = campaign ? impactSites[0] : null;
   const categoryOptions = campaign?.category && !campaignCategories.includes(campaign.category as (typeof campaignCategories)[number])
     ? [campaign.category, ...campaignCategories]
     : campaignCategories;
@@ -377,41 +378,7 @@ export function CampaignFields({
             <Field label="Story">
               <textarea name="story" placeholder="Long-form public campaign story." className={textareaClassName} />
             </Field>
-            <div className="rounded-lg border border-ocean-900/10 bg-white p-4">
-              <div className="grid gap-3 md:grid-cols-2">
-                <Field label="Impact site">
-                  <select name="impactLinkMode" defaultValue="none" className={inputClassName}>
-                    <option value="none">No impact site yet</option>
-                    <option value="new">Create linked impact site</option>
-                  </select>
-                </Field>
-                <Field label="New site ecosystem">
-                  <select name="impactSiteEcosystemType" defaultValue="Coral" className={inputClassName}>
-                    {impactSiteEcosystemTypes.map((type) => (
-                      <option key={type} value={type}>
-                        {type}
-                      </option>
-                    ))}
-                  </select>
-                </Field>
-              </div>
-              <div className="mt-3 grid gap-3 md:grid-cols-2">
-                <Field label="New site name">
-                  <input name="impactSiteName" placeholder="Raja Ampat Reef Garden" className={inputClassName} />
-                </Field>
-                <Field label="New site region">
-                  <input name="impactSiteRegion" placeholder="Southwest Papua" className={inputClassName} />
-                </Field>
-              </div>
-              <div className="mt-3 grid gap-3 md:grid-cols-2">
-                <Field label="Latitude">
-                  <input name="impactSiteLatitude" type="number" min="-90" max="90" step="0.000001" placeholder="-0.234900" className={inputClassName} />
-                </Field>
-                <Field label="Longitude">
-                  <input name="impactSiteLongitude" type="number" min="-180" max="180" step="0.000001" placeholder="130.516600" className={inputClassName} />
-                </Field>
-              </div>
-            </div>
+            <PartnerCampaignImpactSiteSelector impactSites={impactSites} inputClassName={inputClassName} />
             <Field label="Upload image" help={partnerImageUploadHelp}>
               <input name="imageFile" type="file" accept="image/png,image/jpeg,image/webp,image/gif" className={inputClassName} />
             </Field>
@@ -525,7 +492,15 @@ export function CampaignFields({
   );
 }
 
-export function CampaignCreateForm({ organizations, canCreateCampaign }: { organizations: Organization[]; canCreateCampaign: boolean }) {
+export function CampaignCreateForm({
+  organizations,
+  impactSites,
+  canCreateCampaign
+}: {
+  organizations: Organization[];
+  impactSites: CampaignImpactSite[];
+  canCreateCampaign: boolean;
+}) {
   const hasOrganizations = organizations.length > 0;
   const canSubmit = hasOrganizations && canCreateCampaign;
 
@@ -544,7 +519,7 @@ export function CampaignCreateForm({ organizations, canCreateCampaign }: { organ
         <Plus className="size-5 text-coral-700" aria-hidden="true" />
       </div>
       <div className="mt-5 grid gap-4">
-        <CampaignFields organizations={organizations} />
+        <CampaignFields organizations={organizations} impactSites={impactSites} />
       </div>
       <Button type="submit" className="mt-5" disabled={!canSubmit}>
         <Plus className="size-4" aria-hidden="true" />
