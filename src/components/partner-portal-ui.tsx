@@ -411,8 +411,17 @@ export function CampaignFields({
         <Field label="Campaign title" required>
           <input name="title" defaultValue={campaign?.title} placeholder="Campaign title" className={inputClassName} required />
         </Field>
-        <Field label="Goal amount" required>
-          <input name="goalAmount" type="number" min="1" step="0.01" defaultValue={Number(campaign.goalAmount)} className={inputClassName} required />
+        <Field label="Funding goal" help="Managed from the Budget Plan after budget lines are added." required>
+          <input
+            name="goalAmount"
+            type="number"
+            min="1"
+            step="0.01"
+            defaultValue={Number(campaign.goalAmount)}
+            className={`${inputClassName} bg-ocean-50`}
+            readOnly
+            required
+          />
         </Field>
       </div>
 
@@ -729,241 +738,11 @@ function EmptyRecord({ children }: { children: ReactNode }) {
   return <p className="rounded-lg border border-dashed border-ocean-900/14 p-3 text-sm font-semibold text-ocean-900/54">{children}</p>;
 }
 
-function CampaignPublicDataPanel({
-  campaign,
-  updates,
-  evidence,
-  impactSites,
-  sponsoredEcosystems,
-  donorActivity
-}: {
-  campaign: Campaign;
-  updates: CampaignUpdate[];
-  evidence: CampaignEvidence[];
-  impactSites: CampaignImpactSite[];
-  sponsoredEcosystems: CampaignSponsorship[];
-  donorActivity: CampaignDonation[];
-}) {
-  const mediaRecords = [
-    campaign.imageUrl
-      ? {
-          key: `${campaign.id}-hero`,
-          label: "Campaign hero",
-          detail: campaign.title,
-          imageUrl: campaign.imageUrl
-        }
-      : null,
-    ...updates
-      .filter((update) => isImageRecord(update.imageUrl))
-      .map((update) => ({
-        key: update.id,
-        label: "Activity image",
-        detail: update.title,
-        imageUrl: update.imageUrl
-      })),
-    ...evidence
-      .filter((item) => isImageRecord(item.fileUrl))
-      .map((item) => ({
-        key: item.evidenceCode,
-        label: "Activity attachment",
-        detail: item.title,
-        imageUrl: item.fileUrl
-      }))
-  ].filter((item): item is { key: string; label: string; detail: string; imageUrl: string } => Boolean(item));
-
-  const verifiedEvidence = evidence.filter((item) => item.verificationStatus === "verified").length;
-  const latestUpdate = updates[0]
-    ? { title: updates[0].title, date: updates[0].publishedAt }
-    : null;
-  const latestAttachment = evidence[0]
-    ? { title: evidence[0].title, date: evidence[0].createdAt }
-    : null;
-  const latestActivity =
-    latestUpdate && latestAttachment
-      ? (latestUpdate.date?.getTime() ?? 0) >= latestAttachment.date.getTime()
-        ? latestUpdate
-        : latestAttachment
-      : latestUpdate ?? latestAttachment;
-
-  return (
-    <details className="mt-3 rounded-lg border border-ocean-900/10 bg-white">
-      <summary className="flex cursor-pointer items-center gap-2 px-4 py-3 text-sm font-bold text-ocean-900">
-        <BadgeCheck className="size-4" aria-hidden="true" />
-        Public page data
-      </summary>
-      <div className="grid gap-5 border-t border-ocean-900/10 p-4">
-        <div className="grid gap-4 lg:grid-cols-2">
-          <section>
-            <h4 className="text-sm font-bold uppercase tracking-[0.12em] text-coral-700">Campaign copy</h4>
-            <dl className="mt-3 grid gap-2 text-sm">
-              <div>
-                <dt className="font-bold text-ocean-900">Summary</dt>
-                <dd className="mt-1 leading-6 text-ocean-900/64">{campaign.summary}</dd>
-              </div>
-              <div>
-                <dt className="font-bold text-ocean-900">Story</dt>
-                <dd className="mt-1 leading-6 text-ocean-900/64">{campaign.story || "Story content will appear after the campaign narrative is completed."}</dd>
-              </div>
-              <div className="grid gap-2 sm:grid-cols-2">
-                <div>
-                  <dt className="font-bold text-ocean-900">Category</dt>
-                  <dd className="mt-1 text-ocean-900/64">{campaign.category}</dd>
-                </div>
-                <div>
-                  <dt className="font-bold text-ocean-900">Region</dt>
-                  <dd className="mt-1 text-ocean-900/64">{campaign.region}</dd>
-                </div>
-              </div>
-            </dl>
-          </section>
-
-          <section>
-            <h4 className="text-sm font-bold uppercase tracking-[0.12em] text-coral-700">Partner profile</h4>
-            <div className="mt-3 flex items-start gap-3">
-              <span className="grid size-14 shrink-0 place-items-center overflow-hidden rounded-lg bg-sand-50 bg-cover bg-center text-sm font-black text-ocean-900 ring-1 ring-ocean-900/10" style={imageBackground(campaign.partnerLogoUrl)}>
-                {campaign.partnerLogoUrl ? null : initialsForName(campaign.partner)}
-              </span>
-              <div className="min-w-0">
-                <p className="font-bold text-ocean-900">{campaign.partner}</p>
-                <p className="mt-1 text-sm font-semibold text-ocean-900/58">
-                  {labelize(campaign.partnerType)} / {campaign.verificationLabel}
-                </p>
-                {campaign.partnerWebsiteUrl ? (
-                  <Link href={campaign.partnerWebsiteUrl} className="mt-2 inline-flex items-center gap-1 text-sm font-bold text-coral-700 hover:text-coral-500">
-                    <Globe2 className="size-4" aria-hidden="true" />
-                    Website
-                  </Link>
-                ) : null}
-              </div>
-            </div>
-            <p className="mt-3 text-sm leading-6 text-ocean-900/64">{campaign.partnerDescription || "Partner details will appear after the organization profile is completed."}</p>
-          </section>
-        </div>
-
-        <section>
-          <h4 className="text-sm font-bold uppercase tracking-[0.12em] text-coral-700">Public media</h4>
-          {mediaRecords.length > 0 ? (
-            <div className="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-              {mediaRecords.map((item) => (
-                <figure key={item.key} className="overflow-hidden rounded-lg border border-ocean-900/10 bg-sand-50">
-                  <div className="min-h-32 bg-ocean-900/10 bg-cover bg-center" style={imageBackground(item.imageUrl)} />
-                  <figcaption className="p-3">
-                    <p className="text-xs font-bold uppercase tracking-[0.12em] text-ocean-900/48">{item.label}</p>
-                    <p className="mt-1 text-sm font-bold text-ocean-900">{item.detail}</p>
-                  </figcaption>
-                </figure>
-              ))}
-            </div>
-          ) : (
-            <div className="mt-3">
-              <EmptyRecord>No campaign or activity images attached yet.</EmptyRecord>
-            </div>
-          )}
-        </section>
-
-        <div className="grid gap-4 lg:grid-cols-2">
-          <section>
-            <h4 className="text-sm font-bold uppercase tracking-[0.12em] text-coral-700">Impact sites</h4>
-            <div className="mt-3 grid gap-2">
-              {impactSites.length > 0 ? (
-                impactSites.map((site) => (
-                  <div key={`${site.name}-${site.latitude}-${site.longitude}`} className="rounded-lg bg-sand-50 p-3 text-sm">
-                    <p className="font-bold text-ocean-900">{site.name}</p>
-                    <p className="mt-1 text-ocean-900/62">
-                      {site.type} / {site.region}
-                    </p>
-                    <p className="mt-2 text-xs font-bold text-ocean-900/50">
-                      {site.progress}% progress / {site.evidenceCount} review records / {site.latestSurvey || "Survey date pending"}
-                    </p>
-                  </div>
-                ))
-              ) : (
-                <EmptyRecord>No impact sites linked to this campaign.</EmptyRecord>
-              )}
-            </div>
-          </section>
-
-          <section>
-            <h4 className="text-sm font-bold uppercase tracking-[0.12em] text-coral-700">Project proof</h4>
-            <div className="mt-3 grid gap-2 text-sm">
-              <div className="rounded-lg bg-sand-50 p-3">
-                <p className="font-bold text-ocean-900">
-                  {(updates.length + evidence.length).toLocaleString("id-ID")} activity records / {verifiedEvidence.toLocaleString("id-ID")} verified
-                </p>
-                <p className="mt-1 text-ocean-900/62">
-                  {latestActivity ? `Latest: ${latestActivity.title} / ${dateLabel(latestActivity.date)}` : "Project proof will appear after partner submission."}
-                </p>
-              </div>
-            </div>
-          </section>
-        </div>
-
-        <div className="grid gap-4 lg:grid-cols-2">
-          <section>
-            <h4 className="text-sm font-bold uppercase tracking-[0.12em] text-coral-700">Donor activity</h4>
-            <div className="mt-3 grid gap-2">
-              {donorActivity.length > 0 ? (
-                donorActivity.slice(0, 4).map((donation) => (
-                  <div key={`${donation.createdAt.toISOString()}-${donation.amount}`} className="rounded-lg bg-sand-50 p-3 text-sm">
-                    <p className="font-bold text-ocean-900">{donation.donorName || "Anonymous supporter"} / {formatCurrency(donation.amount)}</p>
-                    <p className="mt-1 text-ocean-900/62">{dateLabel(donation.createdAt)}{donation.message ? ` / ${donation.message}` : ""}</p>
-                  </div>
-                ))
-              ) : (
-                <EmptyRecord>Paid donor activity will appear after checkout confirmations.</EmptyRecord>
-              )}
-            </div>
-          </section>
-
-          <section>
-            <h4 className="text-sm font-bold uppercase tracking-[0.12em] text-coral-700">Sponsorship records</h4>
-            <div className="mt-3 grid gap-2">
-              {sponsoredEcosystems.length > 0 ? (
-                sponsoredEcosystems.slice(0, 4).map((item) => (
-                  <div key={item.code} className="rounded-lg bg-sand-50 p-3 text-sm">
-                    <p className="font-bold text-ocean-900">{item.code} / {item.label}</p>
-                    <p className="mt-1 text-ocean-900/62">
-                      {item.status} / {item.fragments.toLocaleString("id-ID")} fragments / {item.siteName || item.region || "Site pending"}
-                    </p>
-                  </div>
-                ))
-              ) : (
-                <EmptyRecord>No sponsorship records linked to this campaign.</EmptyRecord>
-              )}
-            </div>
-          </section>
-        </div>
-
-        <div className="flex flex-wrap gap-3">
-          <Link href={`/campaigns/${campaign.slug}`} className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg bg-ocean-900 px-3 text-sm font-bold text-white hover:bg-ocean-700">
-            <ArrowUpRight className="size-4" aria-hidden="true" />
-            View public page
-          </Link>
-          <Link href="/partner/activity" className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border border-ocean-900/10 px-3 text-sm font-bold text-ocean-900 hover:border-coral-500 hover:text-coral-700">
-            <Camera className="size-4" aria-hidden="true" />
-            Add proof
-          </Link>
-        </div>
-      </div>
-    </details>
-  );
-}
-
 export function CampaignList({
   campaigns,
-  organizations,
   updates,
   evidence,
-  impactSites,
-  sponsoredEcosystems,
-  donorActivity,
-  campaignMediaItems,
-  campaignBudgetLineItems,
-  campaignTimelinePhases,
-  organizationTeamMembers,
-  canCreateCampaign,
-  canDeleteCampaign,
-  canUpdateCampaign
+  canCreateCampaign
 }: {
   campaigns: Campaign[];
   organizations: Organization[];
@@ -985,7 +764,9 @@ export function CampaignList({
       <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
         <div>
           <h2 className="text-xl font-bold tracking-normal text-ocean-900">Campaigns</h2>
-          <p className="mt-1 text-sm font-semibold text-ocean-900/58">Edit campaign essentials, public details, and content depth.</p>
+          <p className="mt-1 text-sm font-semibold text-ocean-900/58">
+            Choose a campaign to manage funding, public content, delivery timeline, updates, and evidence in one workspace.
+          </p>
         </div>
         {canCreateCampaign ? (
           <Link href="/partner/campaigns/new" className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border border-ocean-900/10 px-3 text-sm font-bold text-ocean-900 hover:border-coral-500 hover:text-coral-700">
@@ -1002,28 +783,23 @@ export function CampaignList({
           const progress = fundingProgress(campaign.raisedAmount, campaign.goalAmount);
           const campaignUpdates = updates.filter((update) => update.campaignId === campaign.id);
           const campaignEvidence = evidence.filter((item) => item.campaignId === campaign.id);
-          const campaignImpactSites = impactSites.filter((site) => site.campaignId === campaign.id);
-          const campaignSponsorships = sponsoredEcosystems.filter((item) => item.campaignId === campaign.id);
-          const campaignDonations = donorActivity.filter((donation) => donation.campaignId === campaign.id);
-          const campaignMedia = campaignMediaItems.filter((item) => item.campaignId === campaign.id);
-          const campaignBudget = campaignBudgetLineItems.filter((item) => item.campaignId === campaign.id);
-          const campaignTimeline = campaignTimelinePhases.filter((item) => item.campaignId === campaign.id);
-          const campaignTeam = organizationTeamMembers.filter((item) => item.organizationId === campaign.organizationId);
+          const verifiedEvidence = campaignEvidence.filter((item) => item.verificationStatus === "verified").length;
 
           return (
-            <article key={campaign.id} className="overflow-hidden rounded-lg border border-ocean-900/10 bg-sand-50">
-              <div className="min-h-44 bg-ocean-900 bg-cover bg-center p-4 text-white" style={imageBackground(campaign.imageUrl)}>
+            <article key={campaign.id} className="grid overflow-hidden rounded-lg border border-ocean-900/10 bg-sand-50 md:grid-cols-[220px_1fr]">
+              <div className="min-h-44 bg-ocean-900 bg-cover bg-center p-4 text-white md:min-h-full" style={imageBackground(campaign.imageUrl)}>
                 <div className="flex flex-wrap items-center gap-2">
                   <StatusBadge value={campaign.status} />
                   <span className="rounded-full bg-white/14 px-2.5 py-1 text-xs font-bold">{campaign.category}</span>
                 </div>
               </div>
-              <div className="p-4">
-                <div className="flex flex-col justify-between gap-3 md:flex-row md:items-start">
+
+              <div className="p-4 sm:p-5">
+                <div className="flex flex-col justify-between gap-3 lg:flex-row lg:items-start">
                   <div>
-                    <h3 className="text-lg font-bold tracking-normal text-ocean-900">{campaign.title}</h3>
+                    <h3 className="text-xl font-bold tracking-normal text-ocean-900">{campaign.title}</h3>
                     <p className="mt-1 text-sm font-semibold text-ocean-900/58">
-                      {campaign.partner} / {campaign.region}
+                      {campaign.partner} · {campaign.region}
                     </p>
                   </div>
                   <Link href={`/campaigns/${campaign.slug}`} className="inline-flex items-center gap-2 text-sm font-bold text-coral-700 hover:text-coral-500">
@@ -1037,78 +813,28 @@ export function CampaignList({
                   <p className="mt-2 text-sm font-bold text-ocean-900">
                     {formatCurrency(Number(campaign.raisedAmount), campaign.currency)} / {formatCurrency(Number(campaign.goalAmount), campaign.currency)}
                   </p>
-                  <p className="mt-1 text-xs font-semibold text-ocean-900/58">{campaign.donorCount.toLocaleString("id-ID")} donors</p>
                 </div>
 
-                {canUpdateCampaign ? (
-                  <details className="mt-4 rounded-lg border border-ocean-900/10 bg-white">
-                    <summary className="flex cursor-pointer items-center gap-2 px-4 py-3 text-sm font-bold text-ocean-900">
-                      <Pencil className="size-4" aria-hidden="true" />
-                      Edit campaign
-                    </summary>
-                    <form action={updatePartnerCampaignAction} encType="multipart/form-data" className="grid gap-4 border-t border-ocean-900/10 p-4">
-                      <input type="hidden" name="campaignId" value={campaign.id} />
-                      <input type="hidden" name="redirectTo" value="/partner/campaigns" />
-                      <CampaignFields campaign={campaign} organizations={organizations} impactSites={campaignImpactSites} />
-                      {campaign.imageUrl ? (
-                        <label className="flex items-center gap-2 text-sm font-bold text-ocean-900">
-                          <input name="removeImage" type="checkbox" className="size-4 accent-coral-500" />
-                          Remove current image
-                        </label>
-                      ) : null}
-                      <Button type="submit" tone="secondary" className="w-fit">
-                        <Save className="size-4" aria-hidden="true" />
-                        Save Campaign
-                      </Button>
-                    </form>
-                  </details>
-                ) : null}
-
-                <CampaignPublicDataPanel
-                  campaign={campaign}
-                  updates={campaignUpdates}
-                  evidence={campaignEvidence}
-                  impactSites={campaignImpactSites}
-                  sponsoredEcosystems={campaignSponsorships}
-                  donorActivity={campaignDonations}
-                />
-
-                <div className="mt-4">
-                  <CampaignContentDepthEditor
-                    campaign={campaign}
-                    mediaItems={campaignMedia}
-                    budgetLineItems={campaignBudget}
-                    timelinePhases={campaignTimeline}
-                    teamMembers={campaignTeam}
-                    returnTo="/partner/campaigns"
-                    canManage={canUpdateCampaign}
-                  />
+                <div className="mt-4 flex flex-wrap gap-x-5 gap-y-2 text-xs font-bold text-ocean-900/52">
+                  <span>{campaign.donorCount.toLocaleString("id-ID")} donors</span>
+                  <span>{campaignUpdates.length.toLocaleString("id-ID")} updates</span>
+                  <span>{verifiedEvidence.toLocaleString("id-ID")} verified evidence</span>
                 </div>
 
-                {canDeleteCampaign ? (
-                  <details className="mt-3 rounded-lg border border-coral-700/20 bg-white">
-                    <summary className="flex cursor-pointer items-center gap-2 px-4 py-3 text-sm font-bold text-coral-700">
-                      <Trash2 className="size-4" aria-hidden="true" />
-                      Delete campaign
-                    </summary>
-                    <form action={deletePartnerCampaignAction} className="grid gap-3 border-t border-coral-700/20 p-4">
-                      <input type="hidden" name="campaignId" value={campaign.id} />
-                      <input type="hidden" name="redirectTo" value="/partner/campaigns" />
-                      <label className="flex items-start gap-2 text-sm font-bold text-ocean-900">
-                        <input name="confirmDelete" type="checkbox" value="delete" className="mt-1 size-4 accent-coral-500" required />
-                        Delete this campaign only if it has no donations, sponsorships, corporate portfolio links, or related expeditions.
-                      </label>
-                      <Button type="submit" className="w-fit bg-coral-500 hover:bg-coral-700">
-                        <Trash2 className="size-4" aria-hidden="true" />
-                        Delete Campaign
-                      </Button>
-                    </form>
-                  </details>
-                ) : null}
+                <div className="mt-5 flex flex-wrap gap-3">
+                  <Link
+                    href={`/partner/campaigns/${campaign.id}`}
+                    className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg bg-ocean-900 px-4 text-sm font-bold text-white hover:bg-ocean-700"
+                  >
+                    Manage campaign
+                    <ArrowUpRight className="size-4" aria-hidden="true" />
+                  </Link>
+                </div>
               </div>
             </article>
           );
         })}
+
         {campaigns.length === 0 ? (
           <div className="rounded-lg border border-dashed border-ocean-900/14 p-4">
             <p className="font-bold text-ocean-900">No partner campaigns yet.</p>
@@ -1128,24 +854,32 @@ export function CampaignList({
 export function CampaignActivityForm({
   campaigns,
   impactSites,
-  canCreateActivity
+  canCreateActivity,
+  lockedCampaignId,
+  redirectTo = "/partner/activity"
 }: {
   campaigns: Campaign[];
   impactSites: CampaignImpactSite[];
   canCreateActivity: boolean;
+  lockedCampaignId?: string;
+  redirectTo?: string;
 }) {
   const hasCampaigns = campaigns.length > 0;
   const canSubmit = hasCampaigns && canCreateActivity;
+  const lockedCampaign = lockedCampaignId ? campaigns.find((campaign) => campaign.id === lockedCampaignId) : null;
+  const visibleImpactSites = lockedCampaignId ? impactSites.filter((site) => site.campaignId === lockedCampaignId) : impactSites;
 
   return (
     <form action={createCampaignActivityAction} encType="multipart/form-data" data-testid="partner-activity-form" className="rounded-lg border border-ocean-900/10 bg-white p-5 shadow-soft">
-      <input type="hidden" name="redirectTo" value="/partner/activity" />
+      <input type="hidden" name="redirectTo" value={redirectTo} />
       <div className="flex items-center justify-between gap-3">
         <div>
-          <h2 className="text-xl font-bold tracking-normal text-ocean-900">Add project proof</h2>
+          <h2 className="text-xl font-bold tracking-normal text-ocean-900">{lockedCampaign ? "Add campaign update or proof" : "Add project proof"}</h2>
           <p className="mt-1 text-sm font-semibold text-ocean-900/58">
             {canCreateActivity
-              ? "Submit one donation project update with optional proof for admin verification."
+              ? lockedCampaign
+                ? "This activity is automatically attached to the campaign you are managing."
+                : "Submit one donation project update with optional proof for admin verification."
               : "Your partner role can review project activity, but cannot submit new proof."}
           </p>
         </div>
@@ -1153,31 +887,40 @@ export function CampaignActivityForm({
       </div>
       <div className="mt-5 grid gap-4">
         <div className="grid gap-3 md:grid-cols-2">
-          <Field label="Donation project" required>
-            <select name="campaignId" className={inputClassName} disabled={!canSubmit} required>
-              {campaigns.map((campaign) => (
-                <option key={campaign.id} value={campaign.id}>
-                  {campaign.title}
-                </option>
-              ))}
-            </select>
+          <Field label="Campaign" required>
+            {lockedCampaign ? (
+              <>
+                <input type="hidden" name="campaignId" value={lockedCampaign.id} />
+                <span className="flex min-h-11 items-center rounded-lg border border-ocean-900/10 bg-ocean-50 px-3 text-sm font-bold text-ocean-900">
+                  {lockedCampaign.title}
+                </span>
+              </>
+            ) : (
+              <select name="campaignId" className={inputClassName} disabled={!canSubmit} required>
+                {campaigns.map((campaign) => (
+                  <option key={campaign.id} value={campaign.id}>
+                    {campaign.title}
+                  </option>
+                ))}
+              </select>
+            )}
           </Field>
           <Field label="Impact site">
-            <select name="impactSiteId" className={inputClassName} disabled={!canSubmit || impactSites.length === 0}>
+            <select name="impactSiteId" className={inputClassName} disabled={!canSubmit || visibleImpactSites.length === 0}>
               <option value="">No site selected</option>
-              {impactSites.map((site) => (
+              {visibleImpactSites.map((site) => (
                 <option key={site.id} value={site.id}>
-                  {site.name} / {site.campaignTitle}
+                  {site.name}{lockedCampaign ? "" : ` / ${site.campaignTitle}`}
                 </option>
               ))}
             </select>
           </Field>
         </div>
-        <Field label="Proof title" required>
-          <input name="title" placeholder="Field photo, monitoring report, or milestone update" className={inputClassName} disabled={!canSubmit} required />
+        <Field label="Update / proof title" required>
+          <input name="title" placeholder="Field progress, monitoring report, or milestone update" className={inputClassName} disabled={!canSubmit} required />
         </Field>
-        <Field label="Reviewer note" required>
-          <textarea name="body" placeholder="Explain what this proof verifies." className={textareaClassName} disabled={!canSubmit} required />
+        <Field label="Update note" required>
+          <textarea name="body" placeholder="Explain what changed and, when evidence is attached, what it verifies." className={textareaClassName} disabled={!canSubmit} required />
         </Field>
         <div className="grid gap-3 md:grid-cols-2">
           <Field label="Attachment type">
@@ -1187,14 +930,14 @@ export function CampaignActivityForm({
               <option value="field_report">Field report</option>
             </select>
           </Field>
-          <Field label="Upload proof" help={`${partnerImageUploadHelp} Optional; uploaded files enter project verification review.`}>
+          <Field label="Upload evidence" help={`${partnerImageUploadHelp} Optional; an uploaded file enters project verification review.`}>
             <input name="imageFile" type="file" accept="image/png,image/jpeg,image/webp,image/gif" className={inputClassName} disabled={!canSubmit} />
           </Field>
         </div>
       </div>
       <Button type="submit" className="mt-5" disabled={!canSubmit}>
         <ClipboardList className="size-4" aria-hidden="true" />
-        Submit Proof
+        Save update
       </Button>
     </form>
   );
