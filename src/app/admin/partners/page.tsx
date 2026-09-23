@@ -132,6 +132,10 @@ export default async function AdminPartnersPage({ searchParams }: AdminPartnersP
           </Link>
           <p className="mt-1 text-sm font-semibold text-ocean-900/58">/{partner.slug}</p>
           {partner.websiteUrl ? <p className="mt-1 max-w-64 truncate text-xs font-semibold text-ocean-900/44">{partner.websiteUrl}</p> : null}
+          <Link href={`/admin/partners/${partner.id}`} className="mt-2 inline-flex items-center gap-1 text-xs font-bold text-coral-700 hover:text-coral-500">
+            <Pencil className="size-3.5" aria-hidden="true" />
+            Manage partner
+          </Link>
         </div>
       )
     },
