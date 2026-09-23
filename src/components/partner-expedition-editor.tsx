@@ -788,9 +788,7 @@ export function PartnerExpeditionDetailWorkspace({
   const contentReturnTo = `${basePath}?tab=content`;
   const departuresReturnTo = `${basePath}?tab=departures`;
   const requestsReturnTo = `${basePath}?tab=requests`;
-  const nextDeparture = [...expedition.departures]
-    .filter((departure) => departure.startsAt.getTime() >= Date.now())
-    .sort((a, b) => a.startsAt.getTime() - b.startsAt.getTime())[0];
+  const nextDeparture = [...expedition.departures].sort((a, b) => a.startsAt.getTime() - b.startsAt.getTime())[0];
 
   return (
     <div className="space-y-6">
