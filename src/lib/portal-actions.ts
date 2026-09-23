@@ -4570,15 +4570,19 @@ export async function createCampaignActivityAction(formData: FormData) {
 }
 
 export async function createCampaignUpdateAction(formData: FormData) {
+  const campaignId = formText(formData, "campaignId");
+
   formData.set("activityUse", "public_update");
-  formData.set("redirectTo", "/partner/activity");
+  formData.set("redirectTo", campaignId ? `/partner/campaigns/${campaignId}?tab=activity` : "/partner/campaigns");
 
   return createCampaignActivityAction(formData);
 }
 
 export async function submitEvidenceAction(formData: FormData) {
+  const campaignId = formText(formData, "campaignId");
+
   formData.set("activityUse", "update_and_evidence");
-  formData.set("redirectTo", "/partner/activity");
+  formData.set("redirectTo", campaignId ? `/partner/campaigns/${campaignId}?tab=activity` : "/partner/campaigns");
 
   if (!formText(formData, "body")) {
     formData.set("body", formText(formData, "title"));
