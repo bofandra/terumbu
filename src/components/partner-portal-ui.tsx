@@ -21,6 +21,7 @@ import { Button } from "@/components/ui/button";
 import { MetricValue } from "@/components/ui/metric-value";
 import { ProgressMeter } from "@/components/ui/progress-meter";
 import {
+  campaignBudgetCategories,
   campaignCategories,
   campaignCurrencies,
   impactSiteEcosystemTypes,
@@ -929,6 +930,33 @@ export function CampaignActivityForm({
           <Field label="Upload evidence" help={`${partnerImageUploadHelp} Optional; an uploaded file enters project verification review.`}>
             <input name="imageFile" type="file" accept="image/png,image/jpeg,image/webp,image/gif" className={inputClassName} disabled={!canSubmit} />
           </Field>
+        </div>
+
+        <div className="rounded-lg border border-ocean-900/10 bg-sand-50 p-4">
+          <p className="text-sm font-bold text-ocean-900">Evidence-backed expense <span className="font-semibold text-ocean-900/48">(optional)</span></p>
+          <p className="mt-1 text-xs font-semibold leading-5 text-ocean-900/54">
+            Use this only when the uploaded evidence proves a campaign expense. It counts as actual spend after admin verification.
+          </p>
+          <div className="mt-3 grid gap-3 md:grid-cols-3">
+            <Field label="Budget category">
+              <select name="financeCategory" defaultValue="" className={inputClassName} disabled={!canSubmit}>
+                <option value="">No expense attached</option>
+                {campaignBudgetCategories.map((category) => (
+                  <option key={category} value={category}>{category}</option>
+                ))}
+              </select>
+            </Field>
+            <Field label="Expense amount">
+              <input name="financeSpendAmount" type="number" min="0" step="0.01" placeholder="0.00" className={inputClassName} disabled={!canSubmit} />
+            </Field>
+            <Field label="Currency">
+              <select name="financeSpendCurrency" defaultValue={lockedCampaign?.currency ?? "USD"} className={inputClassName} disabled={!canSubmit}>
+                {campaignCurrencies.map((currency) => (
+                  <option key={currency} value={currency}>{currency}</option>
+                ))}
+              </select>
+            </Field>
+          </div>
         </div>
       </div>
       <Button type="submit" className="mt-5" disabled={!canSubmit}>
