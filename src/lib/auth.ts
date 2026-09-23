@@ -123,6 +123,17 @@ export async function requireRole(allowedRoles: string[], nextPath = "/dashboard
   return user;
 }
 
+export async function requirePartnerRole(nextPath = "/partner") {
+  const user = await requireUser(nextPath);
+  const roleKeys = await getUserRoles(user.id);
+
+  if (!roleKeys.includes("partner") || roleKeys.includes("admin")) {
+    redirect(forbiddenRedirectPath(nextPath));
+  }
+
+  return user;
+}
+
 export async function destroyCurrentSession() {
   const cookieStore = await cookies();
   const token = cookieStore.get(SESSION_COOKIE)?.value;
