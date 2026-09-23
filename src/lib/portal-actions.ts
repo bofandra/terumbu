@@ -178,19 +178,28 @@ function partnerRedirectPath(formData: FormData, fallbackPath: string) {
     return requestedPath;
   }
 
-  if (/^\/partner\/campaigns\/[A-Za-z0-9-]+$/.test(requestedPath)) {
+  if (/^\/partner\/campaigns\/[A-Za-z0-9-]+(?:\?[^#]*)?$/.test(requestedPath)) {
     return requestedPath;
   }
 
   return fallbackPath;
 }
 
+function withRedirectParam(path: string, key: string, value: string) {
+  const [pathname, query = ""] = path.split("?", 2);
+  const params = new URLSearchParams(query);
+
+  params.set(key, value);
+
+  return `${pathname}?${params.toString()}`;
+}
+
 function redirectPartnerError(formData: FormData, fallbackPath: string, code: string): never {
-  redirect(`${partnerRedirectPath(formData, fallbackPath)}?error=${encodeURIComponent(code)}`);
+  redirect(withRedirectParam(partnerRedirectPath(formData, fallbackPath), "error", code));
 }
 
 function redirectPartnerSaved(formData: FormData, fallbackPath: string, code: string): never {
-  redirect(`${partnerRedirectPath(formData, fallbackPath)}?saved=${encodeURIComponent(code)}`);
+  redirect(withRedirectParam(partnerRedirectPath(formData, fallbackPath), "saved", code));
 }
 
 function parseIdrAmount(value: FormDataEntryValue | null) {
@@ -834,11 +843,11 @@ function campaignContentReturnPath(formData: FormData, fallbackPath: string) {
 }
 
 function redirectCampaignContentError(formData: FormData, fallbackPath: string, code: string): never {
-  redirect(`${campaignContentReturnPath(formData, fallbackPath)}?error=${encodeURIComponent(code)}`);
+  redirect(withRedirectParam(campaignContentReturnPath(formData, fallbackPath), "error", code));
 }
 
 function redirectCampaignContentSaved(formData: FormData, fallbackPath: string, code: string): never {
-  redirect(`${campaignContentReturnPath(formData, fallbackPath)}?saved=${encodeURIComponent(code)}`);
+  redirect(withRedirectParam(campaignContentReturnPath(formData, fallbackPath), "saved", code));
 }
 
 function redirectAdminExpeditionError(code: string, formData?: FormData, fields: readonly string[] = []): never {
@@ -2648,40 +2657,6 @@ export async function deleteCampaignMediaItemAction(formData: FormData) {
   redirectCampaignContentSaved(formData, fallbackPath, "campaign-content-deleted");
 }
 
-async function syncCampaignGoalToBudgetPlan(campaignId: string, now = new Date()) {
-  const [budgetSummary] = await db
-    .select({
-      total: sql<string>`coalesce(sum(${campaignBudgetLineItems.amount}), 0)`
-    })
-    .from(campaignBudgetLineItems)
-    .where(eq(campaignBudgetLineItems.campaignId, campaignId));
-
-  let goalAmount = Number(budgetSummary?.total ?? 0);
-
-  if (!Number.isFinite(goalAmount) || goalAmount <= 0) {
-    const [impactSummary] = await db
-      .select({
-        total: sql<string>`coalesce(sum(${campaignImpactTargets.target} * coalesce(${campaignImpactTargets.unitCost}, 0)), 0)`
-      })
-      .from(campaignImpactTargets)
-      .where(eq(campaignImpactTargets.campaignId, campaignId));
-
-    goalAmount = Number(impactSummary?.total ?? 0);
-  }
-
-  if (!Number.isFinite(goalAmount) || goalAmount <= 0) {
-    return;
-  }
-
-  await db
-    .update(campaigns)
-    .set({
-      goalAmount: goalAmount.toFixed(2),
-      updatedAt: now
-    })
-    .where(eq(campaigns.id, campaignId));
-}
-
 export async function upsertCampaignBudgetLineItemAction(formData: FormData) {
   const fallbackPath = campaignContentReturnPath(formData, "/partner/campaigns");
   const user = await requireRole(["partner", "admin"], fallbackPath);
@@ -2750,7 +2725,6 @@ export async function upsertCampaignBudgetLineItemAction(formData: FormData) {
     });
   }
 
-  await syncCampaignGoalToBudgetPlan(campaignId, now);
 
   await db.insert(adminAuditLogs).values({
     actorUserId: user.id,
@@ -2785,7 +2759,6 @@ export async function deleteCampaignBudgetLineItemAction(formData: FormData) {
 
   await requireCampaignAccess(user.id, item.campaignId, formData, fallbackPath, "campaign:update");
   await db.delete(campaignBudgetLineItems).where(eq(campaignBudgetLineItems.id, budgetLineItemId));
-  await syncCampaignGoalToBudgetPlan(item.campaignId);
   await db.insert(adminAuditLogs).values({
     actorUserId: user.id,
     action: "campaign_budget.deleted",

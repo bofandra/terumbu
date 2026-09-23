@@ -34,6 +34,7 @@ type PartnerCampaignWorkspaceProps = {
   campaignId: string;
   savedMessage?: string | null;
   errorMessage?: string | null;
+  defaultTabId?: string;
 };
 
 function fundingProgress(raisedAmount: string | number, goalAmount: string | number) {
@@ -61,7 +62,8 @@ export function PartnerCampaignWorkspace({
   data,
   campaignId,
   savedMessage,
-  errorMessage
+  errorMessage,
+  defaultTabId
 }: PartnerCampaignWorkspaceProps) {
   const campaign = data.campaigns.find((item) => item.id === campaignId);
 
@@ -70,7 +72,11 @@ export function PartnerCampaignWorkspace({
   }
 
   const returnTo = `/partner/campaigns/${campaign.id}`;
-  const campaignUpdates = data.updates.filter((item) => item.campaignId === campaign.id);
+  const fundingReturnTo = `${returnTo}?tab=funding`;
+  const publicReturnTo = `${returnTo}?tab=public`;
+  const timelineReturnTo = `${returnTo}?tab=timeline`;
+  const activityReturnTo = `${returnTo}?tab=activity`;
+  const settingsReturnTo = `${returnTo}?tab=settings`;
   const campaignEvidence = data.evidence.filter((item) => item.campaignId === campaign.id);
   const campaignActivities = data.activities.filter((item) => item.campaignId === campaign.id);
   const campaignImpactSites = data.impactSites.filter((item) => item.campaignId === campaign.id);
@@ -153,6 +159,8 @@ export function PartnerCampaignWorkspace({
 
       <FormTabs
         ariaLabel={`${campaign.title} campaign workspace`}
+        defaultTabId={defaultTabId}
+        syncQueryParam="tab"
         tabs={[
           { id: "overview", label: "Overview", description: "Campaign health" },
           { id: "funding", label: "Funding & impact", description: "Goal, budget, outcomes" },
@@ -216,32 +224,35 @@ export function PartnerCampaignWorkspace({
         </div>
 
         <div className="grid gap-5">
-          <section className="grid gap-3 md:grid-cols-3">
+          <section className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
             <article className="rounded-lg border border-ocean-900/10 bg-sand-50 p-4">
               <div className="flex items-center gap-2 text-ocean-900/52">
                 <BadgeDollarSign className="size-4" aria-hidden="true" />
                 <p className="text-xs font-bold uppercase tracking-[0.1em]">Funding goal</p>
               </div>
               <p className="mt-3 text-xl font-bold text-ocean-900">{formatCurrency(Number(campaign.goalAmount), campaign.currency)}</p>
-              <p className="mt-1 text-xs font-semibold text-ocean-900/54">
-                {plannedBudget > 0 ? "Synced from the campaign budget plan." : "Uses the impact estimate until a budget plan is added."}
-              </p>
+              <p className="mt-1 text-xs font-semibold text-ocean-900/54">Derived from impact target × estimated unit cost.</p>
+            </article>
+            <article className="rounded-lg border border-ocean-900/10 bg-sand-50 p-4">
+              <p className="text-xs font-bold uppercase tracking-[0.1em] text-ocean-900/52">Raised</p>
+              <p className="mt-3 text-xl font-bold text-ocean-900">{formatCurrency(Number(campaign.raisedAmount), campaign.currency)}</p>
+              <p className="mt-1 text-xs font-semibold text-ocean-900/54">{campaign.donorCount.toLocaleString("id-ID")} donors</p>
             </article>
             <article className="rounded-lg border border-ocean-900/10 bg-sand-50 p-4">
               <div className="flex items-center gap-2 text-ocean-900/52">
                 <Target className="size-4" aria-hidden="true" />
-                <p className="text-xs font-bold uppercase tracking-[0.1em]">Planned budget</p>
+                <p className="text-xs font-bold uppercase tracking-[0.1em]">Allocated</p>
               </div>
               <p className="mt-3 text-xl font-bold text-ocean-900">{formatCurrency(plannedBudget, campaign.currency)}</p>
-              <p className="mt-1 text-xs font-semibold text-ocean-900/54">Sum of campaign budget categories.</p>
+              <p className="mt-1 text-xs font-semibold text-ocean-900/54">Budget allocation against the funding goal.</p>
             </article>
             <article className="rounded-lg border border-ocean-900/10 bg-sand-50 p-4">
               <div className="flex items-center gap-2 text-ocean-900/52">
                 <CheckCircle2 className="size-4" aria-hidden="true" />
-                <p className="text-xs font-bold uppercase tracking-[0.1em]">Verified actual spend</p>
+                <p className="text-xs font-bold uppercase tracking-[0.1em]">Verified spend</p>
               </div>
               <p className="mt-3 text-xl font-bold text-ocean-900">{formatCurrency(verifiedSpend, campaign.currency)}</p>
-              <p className="mt-1 text-xs font-semibold text-ocean-900/54">Calculated only from verified evidence-backed expenses.</p>
+              <p className="mt-1 text-xs font-semibold text-ocean-900/54">Evidence-backed expenses accepted by verification.</p>
             </article>
           </section>
 
@@ -277,7 +288,7 @@ export function PartnerCampaignWorkspace({
               verificationStatus: item.verificationStatus
             }))}
             section="budget"
-            returnTo={returnTo}
+            returnTo={fundingReturnTo}
             canManage={data.capabilities.canUpdateCampaign}
           />
         </div>
@@ -313,7 +324,7 @@ export function PartnerCampaignWorkspace({
             timelinePhases={campaignTimeline}
             teamMembers={campaignTeam}
             section="media"
-            returnTo={returnTo}
+            returnTo={publicReturnTo}
             canManage={data.capabilities.canUpdateCampaign}
           />
         </div>
@@ -325,7 +336,7 @@ export function PartnerCampaignWorkspace({
           timelinePhases={campaignTimeline}
           teamMembers={campaignTeam}
           section="timeline"
-          returnTo={returnTo}
+          returnTo={timelineReturnTo}
           canManage={data.capabilities.canUpdateCampaign}
         />
 
@@ -353,7 +364,7 @@ export function PartnerCampaignWorkspace({
             impactSites={campaignImpactSites}
             canCreateActivity={data.capabilities.canCreateActivity}
             lockedCampaignId={campaign.id}
-            redirectTo={returnTo}
+            redirectTo={activityReturnTo}
           />
           <CampaignActivityList activities={campaignActivities} />
         </div>
@@ -366,13 +377,13 @@ export function PartnerCampaignWorkspace({
                 <div>
                   <h2 className="text-xl font-bold text-ocean-900">Campaign settings</h2>
                   <p className="mt-1 text-sm font-semibold text-ocean-900/58">
-                    Edit core campaign details. Funding goal is managed from the Budget Plan after budget lines exist.
+                    Edit core campaign details. Funding goal is calculated from the impact plan; budget lines only allocate that goal.
                   </p>
                 </div>
               </div>
               <form action={updatePartnerCampaignAction} encType="multipart/form-data" className="mt-5 grid gap-4">
                 <input type="hidden" name="campaignId" value={campaign.id} />
-                <input type="hidden" name="redirectTo" value={returnTo} />
+                <input type="hidden" name="redirectTo" value={settingsReturnTo} />
                 <CampaignFields campaign={campaign} organizations={data.organizations} impactSites={campaignImpactSites} />
                 {campaign.imageUrl ? (
                   <label className="flex items-center gap-2 text-sm font-bold text-ocean-900">

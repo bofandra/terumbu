@@ -1,4 +1,4 @@
-import { Save } from "lucide-react";
+import { Plus, Save } from "lucide-react";
 import type { ReactNode } from "react";
 
 import { AdminConfirmSubmit } from "@/components/admin/admin-confirm-submit";
@@ -22,6 +22,7 @@ type CampaignContentCampaign = {
   organizationId: string;
   title: string;
   currency?: string;
+  goalAmount?: string | number;
   contentCompleteness?: {
     score: number;
     missingLabels: string[];
@@ -241,7 +242,7 @@ function BudgetForm({
           </select>
         </Field>
         <Field label="Planned amount">
-          <input name="amount" type="number" min="1" step="1000" defaultValue={item?.amount} className={inputClassName} required />
+          <input name="amount" type="number" min="0.01" step="0.01" defaultValue={item?.amount} className={inputClassName} required />
         </Field>
       </div>
       <p className="text-xs font-semibold leading-5 text-ocean-900/54">
@@ -362,7 +363,11 @@ export function CampaignContentDepthEditor({
   canManage
 }: CampaignContentDepthEditorProps) {
   const currency = campaign.currency ?? "USD";
+  const fundingGoal = Number(campaign.goalAmount ?? 0);
   const plannedBudget = budgetLineItems.reduce((total, item) => total + item.amount, 0);
+  const allocationDifference = fundingGoal - plannedBudget;
+  const allocationPercent = fundingGoal > 0 ? Math.max(0, (plannedBudget / fundingGoal) * 100) : 0;
+  const allocationBalanced = fundingGoal > 0 && Math.abs(allocationDifference) < 0.01;
   const verifiedEvidenceSpends = evidenceSpends.filter((item) => item.verificationStatus === "verified" && item.amount > 0);
   const spentBudget = verifiedEvidenceSpends.reduce((total, item) => total + item.amount, 0);
   const spendForCategory = (category: string) =>
@@ -372,50 +377,148 @@ export function CampaignContentDepthEditor({
 
   const mediaContent = (
     <div className="grid gap-3">
-      {mediaItems.map((item) => (
-        <details key={item.id} className="rounded-lg border border-ocean-900/10 bg-white">
-          <summary className="cursor-pointer px-4 py-3 text-sm font-bold text-ocean-900">{item.title}</summary>
-          <div className="grid gap-3 border-t border-ocean-900/10 p-4">
-            {canManage ? <MediaForm campaign={campaign} item={item} returnTo={returnTo} /> : null}
-            {canManage ? <DeleteButton idName="mediaItemId" idValue={item.id} returnTo={returnTo} action={deleteCampaignMediaItemAction} /> : null}
+      {mediaItems.length === 0 ? (
+        <div className="rounded-lg border border-dashed border-ocean-900/14 bg-sand-50 p-5">
+          <p className="font-bold text-ocean-900">No campaign media yet.</p>
+          <p className="mt-1 text-sm font-semibold leading-6 text-ocean-900/54">
+            Add gallery images only when you are ready to enrich the public campaign page.
+          </p>
+        </div>
+      ) : (
+        <div className="grid gap-3 sm:grid-cols-2">
+          {mediaItems.map((item) => (
+            <details key={item.id} className="overflow-hidden rounded-lg border border-ocean-900/10 bg-white">
+              <summary className="cursor-pointer list-none">
+                <div className="grid grid-cols-[88px_1fr] items-center gap-3 p-3">
+                  <div
+                    className="h-16 rounded-lg bg-ocean-900/10 bg-cover bg-center"
+                    style={{ backgroundImage: `url("${item.thumbnailUrl ?? item.fileUrl}")` }}
+                  />
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-bold text-ocean-900">{item.title}</p>
+                    <p className="mt-1 text-xs font-semibold capitalize text-ocean-900/48">
+                      {labelize(item.mediaType)}{item.isFeatured ? " · Featured" : ""}
+                    </p>
+                  </div>
+                </div>
+              </summary>
+              <div className="grid gap-3 border-t border-ocean-900/10 p-4">
+                {canManage ? <MediaForm campaign={campaign} item={item} returnTo={returnTo} /> : null}
+                {canManage ? <DeleteButton idName="mediaItemId" idValue={item.id} returnTo={returnTo} action={deleteCampaignMediaItemAction} /> : null}
+              </div>
+            </details>
+          ))}
+        </div>
+      )}
+
+      {canManage ? (
+        <details className="rounded-lg border border-ocean-900/10 bg-white">
+          <summary className="flex min-h-11 cursor-pointer list-none items-center gap-2 px-4 py-3 text-sm font-bold text-coral-700">
+            <Plus className="size-4" aria-hidden="true" />
+            Add media
+          </summary>
+          <div className="border-t border-ocean-900/10 p-4">
+            <MediaForm campaign={campaign} returnTo={returnTo} />
           </div>
         </details>
-      ))}
-      {canManage ? <MediaForm campaign={campaign} returnTo={returnTo} /> : null}
+      ) : null}
     </div>
   );
 
   const budgetContent = (
     <div className="grid gap-4">
-      <div className="grid gap-3 sm:grid-cols-2">
-        <div className="rounded-lg bg-sand-50 p-4">
-          <p className="text-xs font-bold uppercase tracking-[0.1em] text-ocean-900/48">Planned budget</p>
-          <p className="mt-2 text-xl font-bold text-ocean-900">{formatCurrency(plannedBudget, currency)}</p>
-          <p className="mt-1 text-xs font-semibold text-ocean-900/54">This total becomes the campaign funding goal once budget lines exist.</p>
+      <div
+        className={`rounded-lg border p-4 ${
+          allocationBalanced
+            ? "border-kelp-700/20 bg-kelp-100/60"
+            : plannedBudget > fundingGoal && fundingGoal > 0
+              ? "border-coral-700/20 bg-coral-100/55"
+              : "border-ocean-900/10 bg-sand-50"
+        }`}
+      >
+        <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-start">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-[0.1em] text-ocean-900/48">Budget allocation</p>
+            <p className="mt-2 text-lg font-bold text-ocean-900">
+              {formatCurrency(plannedBudget, currency)} of {formatCurrency(fundingGoal, currency)} allocated
+            </p>
+            <p className="mt-1 text-xs font-semibold text-ocean-900/54">
+              Funding goal stays tied to the impact plan. Budget lines explain how that requirement will be used.
+            </p>
+          </div>
+          <span className="inline-flex min-h-9 items-center rounded-full bg-white px-3 text-xs font-bold text-ocean-900">
+            {allocationPercent.toLocaleString("id-ID", { maximumFractionDigits: 1 })}%
+          </span>
         </div>
-        <div className="rounded-lg bg-sand-50 p-4">
-          <p className="text-xs font-bold uppercase tracking-[0.1em] text-ocean-900/48">Verified actual spend</p>
-          <p className="mt-2 text-xl font-bold text-ocean-900">{formatCurrency(spentBudget, currency)}</p>
-          <p className="mt-1 text-xs font-semibold text-ocean-900/54">Derived from verified evidence-backed expenses, not a manual field.</p>
+
+        <div className="mt-4 h-2 overflow-hidden rounded-full bg-white">
+          <div className="h-full rounded-full bg-ocean-900" style={{ width: `${Math.min(100, allocationPercent)}%` }} />
         </div>
+
+        <p className="mt-3 text-xs font-bold text-ocean-900/62">
+          {allocationBalanced
+            ? "Allocation matches the funding goal."
+            : allocationDifference > 0
+              ? `${formatCurrency(allocationDifference, currency)} still needs allocation.`
+              : fundingGoal > 0
+                ? `${formatCurrency(Math.abs(allocationDifference), currency)} is over-allocated.`
+                : "Set the impact plan before reconciling the budget."}
+        </p>
       </div>
 
-      {budgetLineItems.map((item) => {
-        const verifiedSpend = spendForCategory(item.category);
+      {budgetLineItems.length === 0 ? (
+        <div className="rounded-lg border border-dashed border-ocean-900/14 bg-white p-5">
+          <p className="font-bold text-ocean-900">No budget allocation yet.</p>
+          <p className="mt-1 text-sm font-semibold leading-6 text-ocean-900/54">
+            Funding requirement: {formatCurrency(fundingGoal, currency)}. Add categories to show how the campaign plans to use those funds.
+          </p>
+        </div>
+      ) : (
+        <div className="grid gap-2">
+          {budgetLineItems.map((item) => {
+            const verifiedSpend = spendForCategory(item.category);
+            const spendPercent = item.amount > 0 ? Math.min(100, (verifiedSpend / item.amount) * 100) : 0;
 
-        return (
-          <details key={item.id} className="rounded-lg border border-ocean-900/10 bg-white">
-            <summary className="cursor-pointer px-4 py-3 text-sm font-bold text-ocean-900">
-              {item.category} / {formatCurrency(verifiedSpend, currency)} verified spend of {formatCurrency(item.amount, currency)} planned
-            </summary>
-            <div className="grid gap-3 border-t border-ocean-900/10 p-4">
-              {canManage ? <BudgetForm campaign={campaign} item={item} returnTo={returnTo} /> : null}
-              {canManage ? <DeleteButton idName="budgetLineItemId" idValue={item.id} returnTo={returnTo} action={deleteCampaignBudgetLineItemAction} /> : null}
-            </div>
-          </details>
-        );
-      })}
-      {canManage ? <BudgetForm campaign={campaign} returnTo={returnTo} /> : null}
+            return (
+              <details key={item.id} className="rounded-lg border border-ocean-900/10 bg-white">
+                <summary className="cursor-pointer list-none px-4 py-3">
+                  <div className="grid gap-2 sm:grid-cols-[1fr_auto_auto] sm:items-center sm:gap-5">
+                    <div>
+                      <p className="text-sm font-bold text-ocean-900">{item.category}</p>
+                      <p className="mt-1 text-xs font-semibold text-ocean-900/48">{item.description || "Budget allocation"}</p>
+                    </div>
+                    <div className="text-left sm:text-right">
+                      <p className="text-xs font-bold uppercase tracking-[0.08em] text-ocean-900/42">Planned</p>
+                      <p className="mt-1 text-sm font-bold text-ocean-900">{formatCurrency(item.amount, currency)}</p>
+                    </div>
+                    <div className="text-left sm:min-w-32 sm:text-right">
+                      <p className="text-xs font-bold uppercase tracking-[0.08em] text-ocean-900/42">Verified spent</p>
+                      <p className="mt-1 text-sm font-bold text-ocean-900">{formatCurrency(verifiedSpend, currency)}</p>
+                      <p className="mt-1 text-xs font-semibold text-ocean-900/44">{spendPercent.toLocaleString("id-ID", { maximumFractionDigits: 0 })}% spent</p>
+                    </div>
+                  </div>
+                </summary>
+                <div className="grid gap-3 border-t border-ocean-900/10 p-4">
+                  {canManage ? <BudgetForm campaign={campaign} item={item} returnTo={returnTo} /> : null}
+                  {canManage ? <DeleteButton idName="budgetLineItemId" idValue={item.id} returnTo={returnTo} action={deleteCampaignBudgetLineItemAction} /> : null}
+                </div>
+              </details>
+            );
+          })}
+        </div>
+      )}
+
+      {canManage ? (
+        <details className="rounded-lg border border-ocean-900/10 bg-white">
+          <summary className="flex min-h-11 cursor-pointer list-none items-center gap-2 px-4 py-3 text-sm font-bold text-coral-700">
+            <Plus className="size-4" aria-hidden="true" />
+            Add budget item
+          </summary>
+          <div className="border-t border-ocean-900/10 p-4">
+            <BudgetForm campaign={campaign} returnTo={returnTo} />
+          </div>
+        </details>
+      ) : null}
 
       {verifiedEvidenceSpends.length > 0 ? (
         <div className="rounded-lg border border-ocean-900/10 bg-white p-4">
@@ -478,7 +581,7 @@ export function CampaignContentDepthEditor({
       },
       budget: {
         title: "Budget plan",
-        description: "Plan how the funding goal is allocated. Actual spend comes from verified evidence."
+        description: "Allocate the impact-based funding goal and reconcile verified spend."
       },
       timeline: {
         title: "Delivery timeline",
