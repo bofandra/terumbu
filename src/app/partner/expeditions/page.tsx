@@ -43,7 +43,7 @@ type PartnerExpeditionsPageProps = {
 };
 
 export default async function PartnerExpeditionsPage({ searchParams }: PartnerExpeditionsPageProps) {
-  const user = await requireRole(["partner", "admin"], "/partner");
+  const user = await requireRole(["partner"], "/partner");
   const query = await searchParams;
   const data = await getPartnerPortalData(user.id);
   const savedMessage = query?.saved ? statusMessages[query.saved] : null;
