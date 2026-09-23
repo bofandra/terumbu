@@ -2649,23 +2649,34 @@ export async function deleteCampaignMediaItemAction(formData: FormData) {
 }
 
 async function syncCampaignGoalToBudgetPlan(campaignId: string, now = new Date()) {
-  const [summary] = await db
+  const [budgetSummary] = await db
     .select({
       total: sql<string>`coalesce(sum(${campaignBudgetLineItems.amount}), 0)`
     })
     .from(campaignBudgetLineItems)
     .where(eq(campaignBudgetLineItems.campaignId, campaignId));
 
-  const total = Number(summary?.total ?? 0);
+  let goalAmount = Number(budgetSummary?.total ?? 0);
 
-  if (!Number.isFinite(total) || total <= 0) {
+  if (!Number.isFinite(goalAmount) || goalAmount <= 0) {
+    const [impactSummary] = await db
+      .select({
+        total: sql<string>`coalesce(sum(${campaignImpactTargets.target} * coalesce(${campaignImpactTargets.unitCost}, 0)), 0)`
+      })
+      .from(campaignImpactTargets)
+      .where(eq(campaignImpactTargets.campaignId, campaignId));
+
+    goalAmount = Number(impactSummary?.total ?? 0);
+  }
+
+  if (!Number.isFinite(goalAmount) || goalAmount <= 0) {
     return;
   }
 
   await db
     .update(campaigns)
     .set({
-      goalAmount: total.toFixed(2),
+      goalAmount: goalAmount.toFixed(2),
       updatedAt: now
     })
     .where(eq(campaigns.id, campaignId));
