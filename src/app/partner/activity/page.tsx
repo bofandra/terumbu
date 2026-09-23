@@ -1,13 +1,12 @@
-import { Camera, FileCheck2, Kanban, MessageSquare, RotateCcw } from "lucide-react";
+import { CheckCircle2, Clock3, RotateCcw } from "lucide-react";
 
-import { EvidenceKanbanBoard, type EvidenceKanbanCard } from "@/components/evidence-kanban-board";
+import { EvidenceKanbanBoard, type EvidenceKanbanCard, type EvidenceKanbanLane } from "@/components/evidence-kanban-board";
 import { CampaignActivityForm, CampaignActivityList, PartnerPageHeader } from "@/components/partner-portal-ui";
 import { FormTabs } from "@/components/ui/form-tabs";
 import { MetricValue } from "@/components/ui/metric-value";
 import { requireRole } from "@/lib/auth";
 import { reviseEvidenceAction } from "@/lib/portal-actions";
 import { getPartnerPortalData } from "@/lib/queries";
-import { formatCurrency } from "@/lib/utils";
 
 export const metadata = {
   title: "Partner Activity"
@@ -16,20 +15,20 @@ export const metadata = {
 export const dynamic = "force-dynamic";
 
 const statusMessages: Record<string, string> = {
-  activity: "Activity saved.",
+  activity: "Project proof saved.",
   "evidence-resubmitted": "Activity revision submitted for admin review."
 };
 
 const errorMessages: Record<string, string> = {
-  activity: "Enter an activity title and field note. Activity submissions with attachments also need a file.",
+  activity: "Enter a proof title and reviewer note. Proof submissions with attachments also need a file.",
   "evidence-revision": "Complete the title and replacement activity file.",
   "evidence-missing": "Activity record was not found.",
-  "evidence-state": "This activity is not waiting for partner revision.",
-  "campaign-missing": "Choose an existing campaign.",
+  "evidence-state": "This proof is not waiting for partner revision.",
+  "campaign-missing": "Choose an existing donation project.",
   "image-size": "Uploaded image is too large.",
   "image-type": "Upload a supported image file.",
   "impact-site": "Choose an impact site linked to the selected campaign.",
-  "partner-permission": "Your partner role cannot submit activity."
+  "partner-permission": "Your partner role cannot submit project proof."
 };
 
 type PartnerActivityPageProps = {
@@ -43,6 +42,58 @@ const reviewCodes = new Set(["evidence-resubmitted", "evidence-revision", "evide
 
 function labelize(value: string) {
   return value.replaceAll("_", " ");
+}
+
+function laneForEvidenceStatus(status: string): EvidenceKanbanLane {
+  if (status === "needs_clarification" || status === "rejected") {
+    return "needs_action";
+  }
+
+  if (status === "verified") {
+    return "verified";
+  }
+
+  return "awaiting_review";
+}
+
+function evidenceCardTitle(status: string) {
+  if (status === "needs_clarification") {
+    return "Answer admin clarification";
+  }
+
+  if (status === "rejected") {
+    return "Replace rejected proof";
+  }
+
+  if (status === "in_review") {
+    return "Admin review in progress";
+  }
+
+  if (status === "verified") {
+    return "Verified proof";
+  }
+
+  return "Waiting for admin review";
+}
+
+function evidenceCardNote(item: { verificationStatus: string; latestReviewNote?: string | null }) {
+  if (item.verificationStatus === "needs_clarification") {
+    return item.latestReviewNote ?? "Admin needs more detail before this proof can be accepted.";
+  }
+
+  if (item.verificationStatus === "rejected") {
+    return item.latestReviewNote ?? "This proof was rejected. Upload a corrected replacement.";
+  }
+
+  if (item.verificationStatus === "in_review") {
+    return "No partner action needed while admin reviews this proof.";
+  }
+
+  if (item.verificationStatus === "verified") {
+    return "This proof has been accepted and can support public project reporting.";
+  }
+
+  return "Submitted to admin. No partner action needed yet.";
 }
 
 export default async function PartnerActivityPage({ searchParams }: PartnerActivityPageProps) {
@@ -63,32 +114,50 @@ export default async function PartnerActivityPage({ searchParams }: PartnerActiv
     evidenceByCampaign.set(evidence.campaignId, rows);
   }
 
-  const campaignCards: EvidenceKanbanCard[] = data.campaigns.map((campaign) => {
-    const evidence = evidenceByCampaign.get(campaign.id) ?? [];
-    const verifiedEvidence = evidence.filter((item) => item.verificationStatus === "verified").length;
+  const missingProofCards: EvidenceKanbanCard[] = data.campaigns
+    .filter((campaign) => !evidenceByCampaign.has(campaign.id))
+    .map((campaign) => ({
+      id: `${campaign.id}-missing-proof`,
+      title: "Submit first verification proof",
+      subtitle: "No field proof has been sent for admin review yet.",
+      code: campaign.slug,
+      tag: "Needs proof",
+      chips: [campaign.category],
+      note: "Add a field photo, document, or report from the Submit tab.",
+      evidence: [],
+      lane: "needs_action",
+      campaignTitle: campaign.title,
+      campaignHref: `/campaigns/${campaign.slug}`,
+      context: campaign.region
+    }));
+  const evidenceCards: EvidenceKanbanCard[] = data.evidence.map((evidence) => {
+    const metricChip = evidence.metricLabel && evidence.metricValue ? `${evidence.metricLabel}: ${evidence.metricValue}` : null;
+    const location = evidence.siteName ? `${evidence.siteName}${evidence.siteRegion ? ` / ${evidence.siteRegion}` : ""}` : evidence.organizationName;
+    const chips = [labelize(evidence.evidenceType), evidence.stageLabel, metricChip].filter((chip): chip is string => Boolean(chip));
 
     return {
-      id: campaign.id,
-      title: campaign.title,
-      subtitle: `${campaign.partner} / ${campaign.region}`,
-      code: campaign.slug,
-      href: `/campaigns/${campaign.slug}`,
-      tag: labelize(campaign.status),
-      chips: [campaign.category, `${campaign.contentCompleteness}% content`],
-      details: [
-        { label: "Raised", value: formatCurrency(Number(campaign.raisedAmount)) },
-        { label: "Goal", value: formatCurrency(Number(campaign.goalAmount)) },
-        { label: "Reviewed activity", value: `${verifiedEvidence}/${evidence.length} verified` }
-      ],
-      evidence
+      id: evidence.id,
+      title: evidenceCardTitle(evidence.verificationStatus),
+      subtitle: evidence.title,
+      code: evidence.evidenceCode,
+      tag: evidence.statusLabel,
+      chips,
+      note: evidenceCardNote(evidence),
+      evidence: [evidence],
+      lane: laneForEvidenceStatus(evidence.verificationStatus),
+      campaignTitle: evidence.campaignTitle,
+      campaignHref: `/campaigns/${evidence.campaignSlug}`,
+      context: location
     };
   });
+  const reviewCards = [...missingProofCards, ...evidenceCards];
+  const needsActionCount = missingProofCards.length + needsResponse.length;
 
   return (
     <div className="space-y-8">
       <PartnerPageHeader
-        title="Field activity"
-        description="Use one workflow for partner progress notes, verification attachments, review status, and revisions."
+        title="Project verification activity"
+        description="Submit and track evidence for donation-backed projects. Expedition schedules and participant requests stay in Expeditions."
       />
       {savedMessage ? <p className="rounded-lg border border-kelp-700/20 bg-kelp-100 px-4 py-3 text-sm font-bold text-kelp-700">{savedMessage}</p> : null}
       {errorMessage ? <p className="rounded-lg border border-coral-700/20 bg-coral-100 px-4 py-3 text-sm font-bold text-coral-700">{errorMessage}</p> : null}
@@ -96,21 +165,19 @@ export default async function PartnerActivityPage({ searchParams }: PartnerActiv
         ariaLabel="Partner activity workspace"
         defaultTabId={defaultTabId}
         tabs={[
-          { id: "submit", label: "Submit", description: "Post field activity" },
-          { id: "timeline", label: "Timeline", description: "Submitted activity", badge: data.activities.length.toLocaleString("id-ID") },
-          { id: "review", label: "Review", description: "Status and revisions", badge: data.evidence.length.toLocaleString("id-ID") }
+          { id: "submit", label: "Submit proof", description: "Project evidence" },
+          { id: "timeline", label: "Timeline", description: "Submitted project activity", badge: data.activities.length.toLocaleString("id-ID") },
+          { id: "review", label: "Verification queue", description: "Action status", badge: reviewCards.length.toLocaleString("id-ID") }
         ]}
       >
         <CampaignActivityForm campaigns={data.campaigns} impactSites={data.impactSites} canCreateActivity={data.capabilities.canCreateActivity} />
         <CampaignActivityList activities={data.activities} />
         <div className="grid gap-5">
-          <section className="grid gap-3 md:grid-cols-5" aria-label="Activity review summary">
+          <section className="grid gap-3 md:grid-cols-3" aria-label="Project verification summary">
             {[
-              { label: "Campaign cards", value: campaignCards.length, icon: Kanban },
-              { label: "Review records", value: data.evidence.length, icon: FileCheck2 },
-              { label: "Pending review", value: pending.length, icon: MessageSquare },
-              { label: "Needs response", value: needsResponse.length, icon: RotateCcw },
-              { label: "Verified", value: verified.length, icon: Camera }
+              { label: "Needs action", value: needsActionCount, icon: RotateCcw },
+              { label: "Awaiting admin", value: pending.length, icon: Clock3 },
+              { label: "Verified proof", value: verified.length, icon: CheckCircle2 }
             ].map((item) => {
               const Icon = item.icon;
               return (
@@ -128,11 +195,11 @@ export default async function PartnerActivityPage({ searchParams }: PartnerActiv
           </section>
 
           <EvidenceKanbanBoard
-            cards={campaignCards}
+            cards={reviewCards}
             revisionAction={data.capabilities.canReviseEvidence ? reviseEvidenceAction : undefined}
             returnTo="/partner/activity"
-            readOnlyNote="Activity review status is managed in the Admin platform. Partner users can inspect review state here and revise only when admin asks for clarification or rejects a record."
-            emptyMessage="No campaign activity cards are available yet. Use the Submit tab to post field photos, reports, or progress notes."
+            readOnlyNote="This board tracks project donation evidence only. Use Expeditions for trips, departures, and participant requests."
+            emptyMessage="No project verification items are available yet. Use Submit proof to post field photos, reports, or progress notes."
           />
         </div>
       </FormTabs>

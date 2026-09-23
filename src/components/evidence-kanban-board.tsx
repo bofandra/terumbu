@@ -12,6 +12,8 @@ type KanbanDetail = {
   value: string;
 };
 
+export type EvidenceKanbanLane = "needs_action" | "awaiting_review" | "verified";
+
 export type EvidenceKanbanEvent = {
   id?: string;
   label: string;
@@ -34,6 +36,7 @@ export type EvidenceKanbanEvidence = {
   metricLabel?: string | null;
   metricValue?: string | number | null;
   latestReviewNote?: string | null;
+  observation?: string | null;
   reviewEvents?: EvidenceKanbanEvent[];
 };
 
@@ -42,45 +45,41 @@ export type EvidenceKanbanCard = {
   title: string;
   subtitle: string;
   code: string;
-  href?: string;
   tag?: string;
   chips?: string[];
   note?: string | null;
-  details: KanbanDetail[];
+  details?: KanbanDetail[];
   evidence: EvidenceKanbanEvidence[];
+  lane?: EvidenceKanbanLane;
+  campaignTitle?: string;
+  campaignHref?: string;
+  context?: string | null;
 };
 
-const evidenceColumns = [
-  { id: "no_evidence", label: "No activity", description: "No review attachment submitted" },
-  { id: "submitted", label: "Submitted", description: "Ready for admin review" },
-  { id: "in_review", label: "In review", description: "Admin review in progress" },
-  { id: "needs_clarification", label: "Needs clarification", description: "Partner action required" },
-  { id: "verified", label: "Verified", description: "Activity accepted" },
-  { id: "rejected", label: "Rejected", description: "Activity not accepted" }
+const evidenceColumns: { id: EvidenceKanbanLane; label: string; description: string }[] = [
+  { id: "needs_action", label: "Needs action", description: "Submit or revise proof" },
+  { id: "awaiting_review", label: "Awaiting admin review", description: "Already sent to admin" },
+  { id: "verified", label: "Verified", description: "Accepted evidence" }
 ];
 
-function evidenceColumnId(evidence: { verificationStatus: string }[]) {
+function evidenceLaneId(evidence: { verificationStatus: string }[]): EvidenceKanbanLane {
   if (evidence.length === 0) {
-    return "no_evidence";
+    return "needs_action";
   }
 
-  if (evidence.some((item) => item.verificationStatus === "rejected")) {
-    return "rejected";
+  if (evidence.some((item) => item.verificationStatus === "needs_clarification" || item.verificationStatus === "rejected")) {
+    return "needs_action";
   }
 
-  if (evidence.some((item) => item.verificationStatus === "needs_clarification")) {
-    return "needs_clarification";
-  }
-
-  if (evidence.some((item) => item.verificationStatus === "submitted")) {
-    return "submitted";
-  }
-
-  if (evidence.some((item) => item.verificationStatus === "in_review")) {
-    return "in_review";
+  if (evidence.some((item) => item.verificationStatus === "submitted" || item.verificationStatus === "in_review")) {
+    return "awaiting_review";
   }
 
   return "verified";
+}
+
+function cardLaneId(card: EvidenceKanbanCard) {
+  return card.lane ?? evidenceLaneId(card.evidence);
 }
 
 function evidenceStatusClass(status: string) {
@@ -99,6 +98,18 @@ function evidenceStatusClass(status: string) {
   return "bg-sand-100 text-ocean-900/62";
 }
 
+function cardNoteClass(lane: EvidenceKanbanLane) {
+  if (lane === "needs_action") {
+    return "bg-coral-100 text-coral-700";
+  }
+
+  if (lane === "verified") {
+    return "bg-kelp-100 text-kelp-700";
+  }
+
+  return "bg-ocean-50 text-ocean-700";
+}
+
 function formatDate(value: Date | null | undefined) {
   return value ? value.toLocaleDateString("id-ID", { dateStyle: "medium" }) : "Pending";
 }
@@ -113,7 +124,7 @@ export function EvidenceKanbanBoard({
   revisionAction,
   returnTo,
   readOnlyNote,
-  emptyMessage = "No campaign cards available for this board."
+  emptyMessage = "No project verification items are available for this board."
 }: {
   cards: EvidenceKanbanCard[];
   reviewAction?: FormAction;
@@ -123,10 +134,16 @@ export function EvidenceKanbanBoard({
   emptyMessage?: string;
 }) {
   return (
-    <section className="overflow-x-auto pb-3" aria-label="Activity review kanban columns">
-      <div className="grid min-w-[1584px] grid-cols-6 gap-4">
+    <section className="overflow-x-auto pb-3" aria-label="Project verification swimlane">
+      {readOnlyNote ? (
+        <p className="mb-4 rounded-lg bg-ocean-50 px-4 py-3 text-sm font-semibold leading-6 text-ocean-900/68">
+          {readOnlyNote}
+        </p>
+      ) : null}
+
+      <div className="grid min-w-[960px] grid-cols-3 gap-4">
         {evidenceColumns.map((column) => {
-          const columnCards = cards.filter((card) => evidenceColumnId(card.evidence) === column.id);
+          const columnCards = cards.filter((card) => cardLaneId(card) === column.id);
 
           return (
             <section key={column.id} className="rounded-lg border border-ocean-900/10 bg-sand-50 p-3" aria-labelledby={`column-${column.id}`}>
@@ -142,199 +159,201 @@ export function EvidenceKanbanBoard({
 
               <div className="mt-3 grid gap-3">
                 {columnCards.map((card) => {
-                  const verifiedEvidence = card.evidence.filter((item) => item.verificationStatus === "verified").length;
-                  const pendingEvidence = card.evidence.length - verifiedEvidence;
+                  const lane = cardLaneId(card);
+                  const primaryEvidence = card.evidence[0];
 
                   return (
                     <article key={card.id} className="rounded-lg border border-ocean-900/10 bg-white p-4 shadow-soft">
                       <div className="flex flex-wrap items-start justify-between gap-3">
-                        <div>
+                        <div className="min-w-0">
                           <p className="text-xs font-bold uppercase tracking-normal text-ocean-900/46">{card.code}</p>
                           <h3 className="mt-2 text-base font-bold leading-6 text-ocean-900">{card.title}</h3>
                           <p className="mt-1 text-xs font-semibold leading-5 text-ocean-900/54">{card.subtitle}</p>
                         </div>
                         {card.tag ? (
-                          <span className="rounded-full bg-ocean-50 px-3 py-1 text-xs font-bold capitalize text-ocean-700">
+                          <span className={cn("rounded-full px-3 py-1 text-xs font-bold capitalize", evidenceStatusClass(primaryEvidence?.verificationStatus ?? lane))}>
                             {card.tag}
                           </span>
                         ) : null}
                       </div>
 
-                      <div className="mt-3 flex flex-wrap gap-2">
-                        {card.href ? (
-                          <Link href={card.href} className="inline-flex min-h-8 items-center gap-1 rounded-full bg-coral-100 px-3 text-xs font-bold text-coral-700 hover:bg-coral-500 hover:text-white">
-                            Campaign
-                            <ExternalLink size={13} aria-hidden="true" />
-                          </Link>
-                        ) : null}
-                        {card.chips?.map((chip) => (
-                          <span key={chip} className="inline-flex min-h-8 items-center rounded-full bg-sand-100 px-3 text-xs font-bold text-ocean-900">
-                            {chip}
-                          </span>
-                        ))}
-                      </div>
+                      {card.note ? (
+                        <p className={cn("mt-3 rounded-lg px-3 py-2 text-xs font-semibold leading-5", cardNoteClass(lane))}>
+                          {card.note}
+                        </p>
+                      ) : null}
 
-                      <dl className="mt-4 grid gap-2 text-sm">
-                        {card.details.map((detail) => (
-                          <div key={detail.label} className="flex justify-between gap-3">
-                            <dt className="font-semibold text-ocean-900/58">{detail.label}</dt>
-                            <dd className="text-right font-bold text-ocean-900">{detail.value}</dd>
-                          </div>
-                        ))}
-                      </dl>
-
-                      {card.note ? <p className="mt-3 text-xs font-semibold leading-5 text-ocean-900/58">{card.note}</p> : null}
-
-                      <div className="mt-4 border-t border-ocean-900/10 pt-4">
-                        <div className="flex items-center justify-between gap-3">
-                          <p className="text-sm font-bold text-ocean-900">Campaign activity</p>
-                          <span
-                            className={cn(
-                              "rounded-full px-2 py-1 text-xs font-bold",
-                              card.evidence.length === 0 ? "bg-sand-100 text-ocean-900/62" : pendingEvidence > 0 ? "bg-coral-100 text-coral-700" : "bg-kelp-100 text-kelp-700"
-                            )}
-                          >
-                            {card.evidence.length === 0 ? "No activity" : pendingEvidence > 0 ? `${pendingEvidence} pending` : "Clear"}
-                          </span>
+                      {card.chips?.length ? (
+                        <div className="mt-3 flex flex-wrap gap-2">
+                          {card.chips.map((chip) => (
+                            <span key={chip} className="inline-flex min-h-8 items-center rounded-full bg-sand-100 px-3 text-xs font-bold text-ocean-900">
+                              {chip}
+                            </span>
+                          ))}
                         </div>
+                      ) : null}
 
-                        <div className="mt-3 divide-y divide-ocean-900/10">
-                          {card.evidence.map((evidence) => (
-                            <div key={`${card.id}-${evidence.id}`} className="py-3 first:pt-0 last:pb-0">
-                              <div className="flex flex-wrap items-start justify-between gap-2">
-                                <div>
-                                  <p className="font-bold leading-5 text-ocean-900">{evidence.title}</p>
-                                  <p className="mt-1 text-xs font-semibold leading-5 text-ocean-900/54">
-                                    {evidence.evidenceCode} / {evidence.evidenceType}
-                                    {evidence.stageLabel ? ` / ${evidence.stageLabel}` : ""}
-                                  </p>
-                                </div>
-                                <span className={cn("rounded-full px-2 py-1 text-xs font-bold", evidenceStatusClass(evidence.verificationStatus))}>
-                                  {evidence.statusLabel}
-                                </span>
-                              </div>
-
-                              {evidence.metricLabel && evidence.metricValue ? (
-                                <p className="mt-2 inline-flex rounded-lg bg-sand-100 px-2 py-1 text-xs font-bold text-ocean-900">
-                                  {evidence.metricLabel}: {evidence.metricValue}
-                                </p>
-                              ) : null}
-
-                              {evidence.latestReviewNote ? (
-                                <p className="mt-2 rounded-lg bg-coral-100 px-2 py-1.5 text-xs font-semibold leading-5 text-coral-700">
-                                  Latest note: {evidence.latestReviewNote}
-                                </p>
-                              ) : null}
-
-                              <div className="mt-2 flex flex-wrap gap-2">
-                                {evidence.sourceHref ? (
-                                  <Link href={evidence.sourceHref} className="inline-flex min-h-8 items-center gap-1 rounded-full bg-ocean-50 px-3 text-xs font-bold text-ocean-900 hover:bg-sand-100">
-                                    Source
-                                    <ExternalLink size={13} aria-hidden="true" />
-                                  </Link>
-                                ) : null}
-                                {evidence.fileUrl ? (
-                                  <Link href={evidence.fileUrl} className="inline-flex min-h-8 items-center gap-1 rounded-full bg-ocean-50 px-3 text-xs font-bold text-ocean-900 hover:bg-sand-100">
-                                    File
-                                    <ExternalLink size={13} aria-hidden="true" />
-                                  </Link>
-                                ) : null}
-                              </div>
-
-                              {reviewAction ? (
-                                <form action={reviewAction} className="mt-3 grid min-w-0 gap-2">
-                                  <input type="hidden" name="evidenceId" value={evidence.id} />
-                                  <input type="hidden" name="redirectTo" value={returnTo} />
-                                  <label className="grid min-w-0 gap-1 text-xs font-bold uppercase tracking-normal text-ocean-900/50">
-                                    Review status
-                                    <select name="status" defaultValue={evidence.verificationStatus} className="min-h-10 w-full min-w-0 rounded-lg border border-ocean-900/12 bg-white px-3 text-sm font-semibold normal-case text-ocean-900 outline-none">
-                                      {evidenceVerificationStatuses.map((status) => (
-                                        <option key={status} value={status}>{evidenceStatusLabel(status)}</option>
-                                      ))}
-                                    </select>
-                                  </label>
-                                  <label className="grid min-w-0 gap-1 text-xs font-bold uppercase tracking-normal text-ocean-900/50">
-                                    Reviewer
-                                    <select name="reviewerAssignment" defaultValue={evidence.assignedReviewerUserId ? "keep" : "assign_me"} className="min-h-10 w-full min-w-0 rounded-lg border border-ocean-900/12 bg-white px-3 text-sm font-semibold normal-case text-ocean-900 outline-none">
-                                      <option value="assign_me">Assign to me</option>
-                                      <option value="keep">Keep current</option>
-                                      <option value="clear">Clear assignment</option>
-                                    </select>
-                                  </label>
-                                  <textarea
-                                    name="reviewNote"
-                                    defaultValue={evidence.latestReviewNote ?? ""}
-                                    placeholder="Note required for clarification or rejection"
-                                    className="min-h-20 w-full min-w-0 rounded-lg border border-ocean-900/12 bg-white px-3 py-2 text-sm font-semibold leading-6 text-ocean-900 outline-none"
-                                  />
-                                  <Button type="submit" tone="secondary" className="min-h-10 px-4 py-2 text-xs">
-                                    <ShieldCheck size={15} aria-hidden="true" />
-                                    Save review
-                                  </Button>
-                                </form>
-                              ) : null}
-
-                              {!reviewAction && revisionAction && evidenceCanBeRevised(evidence.verificationStatus) ? (
-                                <form action={revisionAction} encType="multipart/form-data" className="mt-3 grid min-w-0 gap-2 rounded-lg bg-sand-50 p-3">
-                                  <input type="hidden" name="evidenceId" value={evidence.id} />
-                                  <input type="hidden" name="redirectTo" value={returnTo} />
-                                  <label className="grid min-w-0 gap-1 text-xs font-bold uppercase tracking-normal text-ocean-900/50">
-                                    Title
-                                    <input name="title" defaultValue={evidence.title} className="min-h-10 w-full min-w-0 rounded-lg border border-ocean-900/12 bg-white px-3 text-sm font-semibold normal-case text-ocean-900 outline-none" required />
-                                  </label>
-                                  <label className="grid min-w-0 gap-1 text-xs font-bold uppercase tracking-normal text-ocean-900/50">
-                                    Response note
-                                    <textarea name="body" placeholder="Explain what changed in this revision." className="min-h-20 w-full min-w-0 rounded-lg border border-ocean-900/12 bg-white px-3 py-2 text-sm font-semibold leading-6 normal-case text-ocean-900 outline-none" />
-                                  </label>
-                                  <label className="grid min-w-0 gap-1 text-xs font-bold uppercase tracking-normal text-ocean-900/50">
-                                    Replace file
-                                    <input name="imageFile" type="file" accept="image/png,image/jpeg,image/webp,image/gif" className="min-h-10 w-full min-w-0 rounded-lg border border-ocean-900/12 bg-white px-3 py-2 text-sm font-semibold normal-case text-ocean-900 outline-none" required />
-                                  </label>
-                                  <Button type="submit" className="min-h-10 px-4 py-2 text-xs">
-                                    <RotateCcw size={15} aria-hidden="true" />
-                                    {evidence.verificationStatus === "needs_clarification" ? "Submit clarification" : "Resubmit activity"}
-                                  </Button>
-                                </form>
-                              ) : null}
-
-                              {readOnlyNote && !reviewAction ? (
-                                <p className="mt-3 rounded-lg bg-ocean-50 px-3 py-2 text-xs font-semibold leading-5 text-ocean-900/62">
-                                  {readOnlyNote}
-                                </p>
-                              ) : null}
-
-                              {evidence.reviewEvents?.length ? (
-                                <details className="mt-3 rounded-lg bg-sand-50 px-3 py-2">
-                                  <summary className="cursor-pointer text-xs font-bold uppercase tracking-normal text-ocean-900/50">
-                                    Audit trail
-                                  </summary>
-                                  <div className="mt-2 grid gap-2">
-                                    {evidence.reviewEvents.slice(-4).map((event, index) => (
-                                      <div key={event.id ?? `${evidence.id}-${index}`} className="rounded-lg bg-white px-3 py-2">
-                                        <p className="text-xs font-bold text-ocean-900">{event.label}</p>
-                                        <p className="mt-1 text-xs text-ocean-900/52">{event.actor} / {formatDate(event.occurredAt)}</p>
-                                        {event.note ? <p className="mt-1 text-xs font-semibold leading-5 text-ocean-900/62">{event.note}</p> : null}
-                                      </div>
-                                    ))}
-                                  </div>
-                                </details>
-                              ) : null}
+                      {card.details?.length ? (
+                        <dl className="mt-4 grid gap-2 text-sm">
+                          {card.details.map((detail) => (
+                            <div key={detail.label} className="flex justify-between gap-3">
+                              <dt className="font-semibold text-ocean-900/58">{detail.label}</dt>
+                              <dd className="text-right font-bold text-ocean-900">{detail.value}</dd>
                             </div>
                           ))}
-                          {card.evidence.length === 0 ? (
-                            <p className="py-3 text-xs font-semibold leading-5 text-ocean-900/56">
-                              No review attachment has been submitted for this campaign yet.
+                        </dl>
+                      ) : null}
+
+                      {primaryEvidence ? (
+                        <div className="mt-4 rounded-lg bg-sand-50 p-3">
+                          <div className="flex flex-wrap items-start justify-between gap-2">
+                            <div className="min-w-0">
+                              <p className="text-xs font-bold uppercase tracking-normal text-ocean-900/46">Evidence item</p>
+                              <p className="mt-1 font-bold leading-5 text-ocean-900">{primaryEvidence.title}</p>
+                              <p className="mt-1 text-xs font-semibold leading-5 text-ocean-900/54">
+                                {primaryEvidence.evidenceType}
+                                {primaryEvidence.stageLabel ? ` / ${primaryEvidence.stageLabel}` : ""}
+                              </p>
+                            </div>
+                            <span className={cn("rounded-full px-2 py-1 text-xs font-bold", evidenceStatusClass(primaryEvidence.verificationStatus))}>
+                              {primaryEvidence.statusLabel}
+                            </span>
+                          </div>
+
+                          {primaryEvidence.metricLabel && primaryEvidence.metricValue ? (
+                            <p className="mt-2 inline-flex rounded-lg bg-white px-2 py-1 text-xs font-bold text-ocean-900">
+                              {primaryEvidence.metricLabel}: {primaryEvidence.metricValue}
                             </p>
                           ) : null}
+
+                          {primaryEvidence.latestReviewNote && primaryEvidence.latestReviewNote !== card.note ? (
+                            <p className="mt-2 rounded-lg bg-coral-100 px-2 py-1.5 text-xs font-semibold leading-5 text-coral-700">
+                              Latest note: {primaryEvidence.latestReviewNote}
+                            </p>
+                          ) : null}
+
+                          {primaryEvidence.observation ? (
+                            <p className="mt-2 line-clamp-2 text-xs font-semibold leading-5 text-ocean-900/62">
+                              {primaryEvidence.observation}
+                            </p>
+                          ) : null}
+
+                          <div className="mt-3 flex flex-wrap gap-2">
+                            {primaryEvidence.sourceHref ? (
+                              <Link href={primaryEvidence.sourceHref} className="inline-flex min-h-8 items-center gap-1 rounded-full bg-white px-3 text-xs font-bold text-ocean-900 hover:bg-ocean-50">
+                                Source
+                                <ExternalLink size={13} aria-hidden="true" />
+                              </Link>
+                            ) : null}
+                            {primaryEvidence.fileUrl ? (
+                              <Link href={primaryEvidence.fileUrl} className="inline-flex min-h-8 items-center gap-1 rounded-full bg-white px-3 text-xs font-bold text-ocean-900 hover:bg-ocean-50">
+                                File
+                                <ExternalLink size={13} aria-hidden="true" />
+                              </Link>
+                            ) : null}
+                          </div>
+
+                          {reviewAction ? (
+                            <form action={reviewAction} className="mt-3 grid min-w-0 gap-2">
+                              <input type="hidden" name="evidenceId" value={primaryEvidence.id} />
+                              <input type="hidden" name="redirectTo" value={returnTo} />
+                              <label className="grid min-w-0 gap-1 text-xs font-bold uppercase tracking-normal text-ocean-900/50">
+                                Review status
+                                <select name="status" defaultValue={primaryEvidence.verificationStatus} className="min-h-10 w-full min-w-0 rounded-lg border border-ocean-900/12 bg-white px-3 text-sm font-semibold normal-case text-ocean-900 outline-none">
+                                  {evidenceVerificationStatuses.map((status) => (
+                                    <option key={status} value={status}>{evidenceStatusLabel(status)}</option>
+                                  ))}
+                                </select>
+                              </label>
+                              <label className="grid min-w-0 gap-1 text-xs font-bold uppercase tracking-normal text-ocean-900/50">
+                                Reviewer
+                                <select name="reviewerAssignment" defaultValue={primaryEvidence.assignedReviewerUserId ? "keep" : "assign_me"} className="min-h-10 w-full min-w-0 rounded-lg border border-ocean-900/12 bg-white px-3 text-sm font-semibold normal-case text-ocean-900 outline-none">
+                                  <option value="assign_me">Assign to me</option>
+                                  <option value="keep">Keep current</option>
+                                  <option value="clear">Clear assignment</option>
+                                </select>
+                              </label>
+                              <textarea
+                                name="reviewNote"
+                                defaultValue={primaryEvidence.latestReviewNote ?? ""}
+                                placeholder="Note required for clarification or rejection"
+                                className="min-h-20 w-full min-w-0 rounded-lg border border-ocean-900/12 bg-white px-3 py-2 text-sm font-semibold leading-6 text-ocean-900 outline-none"
+                              />
+                              <Button type="submit" tone="secondary" className="min-h-10 px-4 py-2 text-xs">
+                                <ShieldCheck size={15} aria-hidden="true" />
+                                Save review
+                              </Button>
+                            </form>
+                          ) : null}
+
+                          {!reviewAction && revisionAction && evidenceCanBeRevised(primaryEvidence.verificationStatus) ? (
+                            <form action={revisionAction} encType="multipart/form-data" className="mt-3 grid min-w-0 gap-2 rounded-lg bg-white p-3">
+                              <input type="hidden" name="evidenceId" value={primaryEvidence.id} />
+                              <input type="hidden" name="redirectTo" value={returnTo} />
+                              <label className="grid min-w-0 gap-1 text-xs font-bold uppercase tracking-normal text-ocean-900/50">
+                                Title
+                                <input name="title" defaultValue={primaryEvidence.title} className="min-h-10 w-full min-w-0 rounded-lg border border-ocean-900/12 bg-white px-3 text-sm font-semibold normal-case text-ocean-900 outline-none" required />
+                              </label>
+                              <label className="grid min-w-0 gap-1 text-xs font-bold uppercase tracking-normal text-ocean-900/50">
+                                Response note
+                                <textarea name="body" placeholder="Explain what changed in this revision." className="min-h-20 w-full min-w-0 rounded-lg border border-ocean-900/12 bg-white px-3 py-2 text-sm font-semibold leading-6 normal-case text-ocean-900 outline-none" />
+                              </label>
+                              <label className="grid min-w-0 gap-1 text-xs font-bold uppercase tracking-normal text-ocean-900/50">
+                                Replace file
+                                <input name="imageFile" type="file" accept="image/png,image/jpeg,image/webp,image/gif" className="min-h-10 w-full min-w-0 rounded-lg border border-ocean-900/12 bg-white px-3 py-2 text-sm font-semibold normal-case text-ocean-900 outline-none" required />
+                              </label>
+                              <Button type="submit" className="min-h-10 px-4 py-2 text-xs">
+                                <RotateCcw size={15} aria-hidden="true" />
+                                {primaryEvidence.verificationStatus === "needs_clarification" ? "Submit clarification" : "Resubmit activity"}
+                              </Button>
+                            </form>
+                          ) : null}
+
+                          {primaryEvidence.reviewEvents?.length ? (
+                            <details className="mt-3 rounded-lg bg-white px-3 py-2">
+                              <summary className="cursor-pointer text-xs font-bold uppercase tracking-normal text-ocean-900/50">
+                                Audit trail
+                              </summary>
+                              <div className="mt-2 grid gap-2">
+                                {primaryEvidence.reviewEvents.slice(-4).map((event, index) => (
+                                  <div key={event.id ?? `${primaryEvidence.id}-${index}`} className="rounded-lg bg-sand-50 px-3 py-2">
+                                    <p className="text-xs font-bold text-ocean-900">{event.label}</p>
+                                    <p className="mt-1 text-xs text-ocean-900/52">{event.actor} / {formatDate(event.occurredAt)}</p>
+                                    {event.note ? <p className="mt-1 text-xs font-semibold leading-5 text-ocean-900/62">{event.note}</p> : null}
+                                  </div>
+                                ))}
+                              </div>
+                            </details>
+                          ) : null}
                         </div>
-                      </div>
+                      ) : (
+                        <div className="mt-4 rounded-lg border border-dashed border-ocean-900/14 bg-sand-50 p-3">
+                          <p className="text-sm font-bold text-ocean-900">No verification proof yet.</p>
+                          <p className="mt-1 text-xs font-semibold leading-5 text-ocean-900/58">
+                            Use the Submit tab to add a field photo, report, or progress proof for admin review.
+                          </p>
+                        </div>
+                      )}
+
+                      {card.campaignTitle || card.context || card.campaignHref ? (
+                        <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-ocean-900/10 pt-3 text-xs font-bold text-ocean-900/54">
+                          {card.campaignTitle ? <span>Project: {card.campaignTitle}</span> : null}
+                          {card.context ? <span>{card.context}</span> : null}
+                          {card.campaignHref ? (
+                            <Link href={card.campaignHref} className="inline-flex items-center gap-1 text-coral-700 hover:text-coral-500">
+                              Project detail
+                              <ExternalLink size={13} aria-hidden="true" />
+                            </Link>
+                          ) : null}
+                        </div>
+                      ) : null}
                     </article>
                   );
                 })}
 
                 {columnCards.length === 0 ? (
                   <div className="rounded-lg border border-dashed border-ocean-900/14 bg-white/70 p-4 text-sm font-semibold leading-6 text-ocean-900/58">
-                    No campaign cards in this column.
+                    No verification items in this lane.
                   </div>
                 ) : null}
               </div>

@@ -240,8 +240,8 @@ export function PartnerMetricCards({ data }: { data: PartnerPortalData }) {
   const metrics: Array<{ label: string; value: string; detail: string; icon: LucideIcon }> = [
     { label: "Campaigns", value: data.campaigns.length.toLocaleString("id-ID"), detail: `${formatCurrency(totalRaised)} raised`, icon: Megaphone },
     { label: "Expeditions", value: data.expeditions.length.toLocaleString("id-ID"), detail: `${data.expeditions.reduce((total, expedition) => total + expedition.departures.length, 0)} departures`, icon: ShipWheel },
-    { label: "Activity pending", value: pendingActivityReviews.toLocaleString("id-ID"), detail: `${data.evidence.length} review records`, icon: FileCheck2 },
-    { label: "Field activity", value: data.activities.length.toLocaleString("id-ID"), detail: `${data.updates.length} public notes / ${data.evidence.length} review attachments`, icon: ClipboardList }
+    { label: "Proof pending", value: pendingActivityReviews.toLocaleString("id-ID"), detail: `${data.evidence.length} review records`, icon: FileCheck2 },
+    { label: "Project proof", value: data.activities.length.toLocaleString("id-ID"), detail: `${data.updates.length} public notes / ${data.evidence.length} review proofs`, icon: ClipboardList }
   ];
 
   return (
@@ -884,14 +884,14 @@ function CampaignPublicDataPanel({
           </section>
 
           <section>
-            <h4 className="text-sm font-bold uppercase tracking-[0.12em] text-coral-700">Activity</h4>
+            <h4 className="text-sm font-bold uppercase tracking-[0.12em] text-coral-700">Project proof</h4>
             <div className="mt-3 grid gap-2 text-sm">
               <div className="rounded-lg bg-sand-50 p-3">
                 <p className="font-bold text-ocean-900">
                   {(updates.length + evidence.length).toLocaleString("id-ID")} activity records / {verifiedEvidence.toLocaleString("id-ID")} verified
                 </p>
                 <p className="mt-1 text-ocean-900/62">
-                  {latestActivity ? `Latest: ${latestActivity.title} / ${dateLabel(latestActivity.date)}` : "Field activity will appear after partner submission."}
+                  {latestActivity ? `Latest: ${latestActivity.title} / ${dateLabel(latestActivity.date)}` : "Project proof will appear after partner submission."}
                 </p>
               </div>
             </div>
@@ -941,7 +941,7 @@ function CampaignPublicDataPanel({
           </Link>
           <Link href="/partner/activity" className="inline-flex min-h-10 items-center justify-center gap-2 rounded-lg border border-ocean-900/10 px-3 text-sm font-bold text-ocean-900 hover:border-coral-500 hover:text-coral-700">
             <Camera className="size-4" aria-hidden="true" />
-            Add activity
+            Add proof
           </Link>
         </div>
       </div>
@@ -1142,18 +1142,18 @@ export function CampaignActivityForm({
       <input type="hidden" name="redirectTo" value="/partner/activity" />
       <div className="flex items-center justify-between gap-3">
         <div>
-          <h2 className="text-xl font-bold tracking-normal text-ocean-900">Add activity</h2>
+          <h2 className="text-xl font-bold tracking-normal text-ocean-900">Add project proof</h2>
           <p className="mt-1 text-sm font-semibold text-ocean-900/58">
             {canCreateActivity
-              ? "Create one campaign activity record. Attachments are included in the same review workflow."
-              : "Your partner role can review activity, but cannot submit new field activity."}
+              ? "Submit one donation project update with optional proof for admin verification."
+              : "Your partner role can review project activity, but cannot submit new proof."}
           </p>
         </div>
         <ClipboardList className="size-5 text-kelp-700" aria-hidden="true" />
       </div>
       <div className="mt-5 grid gap-4">
         <div className="grid gap-3 md:grid-cols-2">
-          <Field label="Campaign" required>
+          <Field label="Donation project" required>
             <select name="campaignId" className={inputClassName} disabled={!canSubmit} required>
               {campaigns.map((campaign) => (
                 <option key={campaign.id} value={campaign.id}>
@@ -1173,11 +1173,11 @@ export function CampaignActivityForm({
             </select>
           </Field>
         </div>
-        <Field label="Activity title" required>
-          <input name="title" placeholder="Activity title" className={inputClassName} disabled={!canSubmit} required />
+        <Field label="Proof title" required>
+          <input name="title" placeholder="Field photo, monitoring report, or milestone update" className={inputClassName} disabled={!canSubmit} required />
         </Field>
-        <Field label="Field note" required>
-          <textarea name="body" placeholder="Progress note or reviewer context" className={textareaClassName} disabled={!canSubmit} required />
+        <Field label="Reviewer note" required>
+          <textarea name="body" placeholder="Explain what this proof verifies." className={textareaClassName} disabled={!canSubmit} required />
         </Field>
         <div className="grid gap-3 md:grid-cols-2">
           <Field label="Attachment type">
@@ -1187,14 +1187,14 @@ export function CampaignActivityForm({
               <option value="field_report">Field report</option>
             </select>
           </Field>
-          <Field label="Upload attachment" help={`${partnerImageUploadHelp} Optional; uploaded files enter review with this activity.`}>
+          <Field label="Upload proof" help={`${partnerImageUploadHelp} Optional; uploaded files enter project verification review.`}>
             <input name="imageFile" type="file" accept="image/png,image/jpeg,image/webp,image/gif" className={inputClassName} disabled={!canSubmit} />
           </Field>
         </div>
       </div>
       <Button type="submit" className="mt-5" disabled={!canSubmit}>
         <ClipboardList className="size-4" aria-hidden="true" />
-        Save Activity
+        Submit Proof
       </Button>
     </form>
   );
@@ -1203,7 +1203,7 @@ export function CampaignActivityForm({
 export function CampaignActivityList({ activities }: { activities: CampaignActivity[] }) {
   return (
     <section className="rounded-lg border border-ocean-900/10 bg-white p-5 shadow-soft">
-      <h2 className="text-xl font-bold tracking-normal text-ocean-900">Activity timeline</h2>
+      <h2 className="text-xl font-bold tracking-normal text-ocean-900">Project proof timeline</h2>
       <div className="mt-5 grid gap-3">
         {activities.map((item) => {
           const updateHref = item.sourceUpdateId ? `/campaigns/${item.campaignSlug}/updates/${item.sourceUpdateId}` : null;
@@ -1246,8 +1246,8 @@ export function CampaignActivityList({ activities }: { activities: CampaignActiv
         })}
         {activities.length === 0 ? (
           <div className="rounded-lg border border-dashed border-ocean-900/14 p-4">
-            <p className="font-bold text-ocean-900">No activity yet.</p>
-            <p className="mt-2 text-sm leading-6 text-ocean-900/58">Add campaign activity when field teams have progress or proof to record.</p>
+            <p className="font-bold text-ocean-900">No project proof yet.</p>
+            <p className="mt-2 text-sm leading-6 text-ocean-900/58">Submit proof when field teams have progress, reports, or photos to verify.</p>
           </div>
         ) : null}
       </div>
