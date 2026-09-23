@@ -686,11 +686,9 @@ function RequestList({ expedition, returnTo }: { expedition: Expedition; returnT
 }
 
 export function PartnerExpeditionWorkspace({
-  campaigns,
   expeditions,
   canManageExpeditions
 }: {
-  campaigns: Campaign[];
   expeditions: Expedition[];
   canManageExpeditions: boolean;
 }) {
