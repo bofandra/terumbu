@@ -1927,10 +1927,6 @@ export async function addOrganizationUserAction(formData: FormData) {
     redirectAdminPartnerError("partner-user-missing", formData);
   }
 
-  if (!impactLinkMode) {
-    redirectPartnerError(formData, "/partner/campaigns/new", "impact-site-required");
-  }
-
   const [organization] = await db.select({ id: organizations.id }).from(organizations).where(eq(organizations.id, organizationId)).limit(1);
 
   if (!organization) {
@@ -2145,6 +2141,10 @@ export async function createPartnerCampaignAction(formData: FormData) {
 
   if (!organizationId || !title || !summary || !goalAmount) {
     redirectPartnerError(formData, "/partner/campaigns/new", "campaign");
+  }
+
+  if (!impactLinkMode) {
+    redirectPartnerError(formData, "/partner/campaigns/new", "impact-site-required");
   }
 
   const [organization] = await db.select({ id: organizations.id }).from(organizations).where(eq(organizations.id, organizationId)).limit(1);
