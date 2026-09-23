@@ -16,6 +16,7 @@ const errorMessages: Record<string, string> = {
   campaign: "Enter campaign title, summary, and at least one impact target with cost per unit.",
   "impact-site-invalid": "Enter the linked impact site name, region, and valid coordinates.",
   "impact-site-missing": "Choose an existing impact site or create a new location.",
+  "impact-site-required": "Every campaign must have an impact site. Choose an existing field location or create a new one.",
   organization: "Choose an active partner organization.",
   "partner-permission": "Your partner role cannot create campaigns."
 };
