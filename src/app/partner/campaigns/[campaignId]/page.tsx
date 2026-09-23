@@ -48,7 +48,7 @@ type PartnerCampaignDetailPageProps = {
 };
 
 export default async function PartnerCampaignDetailPage({ params, searchParams }: PartnerCampaignDetailPageProps) {
-  const user = await requireRole(["partner", "admin"], "/partner");
+  const user = await requireRole(["partner"], "/partner");
   const [{ campaignId }, query] = await Promise.all([params, searchParams]);
   const data = await getPartnerPortalData(user.id);
   const campaign = data.campaigns.find((item) => item.id === campaignId);
