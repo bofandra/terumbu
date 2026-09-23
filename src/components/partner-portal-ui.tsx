@@ -844,10 +844,9 @@ export function CampaignActivityForm({
   lockedCampaignId?: string;
   redirectTo?: string;
 }) {
-  const hasCampaigns = campaigns.length > 0;
-  const lockedCampaign = lockedCampaignId ? campaigns.find((campaign) => campaign.id === lockedCampaignId) : campaigns[0] ?? null;
+  const lockedCampaign = lockedCampaignId ? campaigns.find((campaign) => campaign.id === lockedCampaignId) ?? null : campaigns[0] ?? null;
   const hasImpactSite = Boolean(impactSite);
-  const canSubmit = hasCampaigns && canCreateActivity && hasImpactSite;
+  const canSubmit = Boolean(lockedCampaign) && canCreateActivity && hasImpactSite;
 
   return (
     <form action={createCampaignActivityAction} encType="multipart/form-data" data-testid="partner-activity-form" className="rounded-lg border border-ocean-900/10 bg-white p-5 shadow-soft">
