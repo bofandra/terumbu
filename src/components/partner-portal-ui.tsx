@@ -287,7 +287,7 @@ export function CampaignFields({
   const singleOrganization = organizations.length === 1;
   const organizationValue = campaign?.organizationId ?? organizations[0]?.id ?? "";
   const selectedOrganization = organizations.find((organization) => organization.id === organizationValue);
-  const linkedSite = campaign ? impactSites[0] : null;
+  const linkedSite = campaign ? impactSites.find((site) => site.campaignId === campaign.id) ?? null : null;
   const categoryOptions = campaign?.category && !campaignCategories.includes(campaign.category as (typeof campaignCategories)[number])
     ? [campaign.category, ...campaignCategories]
     : campaignCategories;
@@ -398,15 +398,15 @@ export function CampaignFields({
 
       <div className="grid gap-3 md:grid-cols-2">
         {linkedSite ? (
-          <Field label="Linked impact site region">
+          <Field label="Impact site">
             <input type="hidden" name="region" value={linkedSite.region} />
             <span className="flex min-h-11 items-center rounded-lg border border-ocean-900/10 bg-ocean-50 px-3 text-sm font-bold text-ocean-900">
-              {linkedSite.name} / {linkedSite.region}
+              {linkedSite.name} / {linkedSite.type} / {linkedSite.region}
             </span>
           </Field>
         ) : (
-          <Field label="Region" required>
-            <input name="region" defaultValue={campaign.region} placeholder="Raja Ampat, Southwest Papua" className={inputClassName} required />
+          <Field label="Region">
+            <input name="region" defaultValue={campaign.region} className={`${inputClassName} bg-ocean-50`} readOnly />
           </Field>
         )}
         <Field label="Category" required>
@@ -419,6 +419,18 @@ export function CampaignFields({
           </select>
         </Field>
       </div>
+
+      {!linkedSite ? (
+        <div className="rounded-lg border border-coral-700/20 bg-coral-100/45 p-4">
+          <p className="text-sm font-bold text-coral-700">Impact site required</p>
+          <p className="mt-1 text-xs font-semibold leading-5 text-ocean-900/60">
+            This campaign predates the required impact-site rule. Choose an existing field location or create a new one before saving.
+          </p>
+          <div className="mt-3">
+            <PartnerCampaignImpactSiteSelector impactSites={impactSites.filter((site) => site.campaignId !== campaign.id)} inputClassName={inputClassName} />
+          </div>
+        </div>
+      ) : null}
 
       <PartnerCampaignImpactPlanningFields
         inputClassName={inputClassName}
@@ -821,38 +833,48 @@ export function CampaignList({
 
 export function CampaignActivityForm({
   campaigns,
-  impactSites,
+  impactSite,
   canCreateActivity,
   lockedCampaignId,
-  redirectTo = "/partner/activity"
+  redirectTo = "/partner/campaigns"
 }: {
   campaigns: Campaign[];
-  impactSites: CampaignImpactSite[];
+  impactSite?: CampaignImpactSite | null;
   canCreateActivity: boolean;
   lockedCampaignId?: string;
   redirectTo?: string;
 }) {
-  const hasCampaigns = campaigns.length > 0;
-  const canSubmit = hasCampaigns && canCreateActivity;
-  const lockedCampaign = lockedCampaignId ? campaigns.find((campaign) => campaign.id === lockedCampaignId) : null;
-  const visibleImpactSites = lockedCampaignId ? impactSites.filter((site) => site.campaignId === lockedCampaignId) : impactSites;
+  const lockedCampaign = lockedCampaignId ? campaigns.find((campaign) => campaign.id === lockedCampaignId) ?? null : campaigns[0] ?? null;
+  const hasImpactSite = Boolean(impactSite);
+  const canSubmit = Boolean(lockedCampaign) && canCreateActivity && hasImpactSite;
 
   return (
     <form action={createCampaignActivityAction} encType="multipart/form-data" data-testid="partner-activity-form" className="rounded-lg border border-ocean-900/10 bg-white p-5 shadow-soft">
       <input type="hidden" name="redirectTo" value={redirectTo} />
       <div className="flex items-center justify-between gap-3">
         <div>
-          <h2 className="text-xl font-bold tracking-normal text-ocean-900">{lockedCampaign ? "Add campaign update or proof" : "Add project proof"}</h2>
+          <h2 className="text-xl font-bold tracking-normal text-ocean-900">Add campaign update or proof</h2>
           <p className="mt-1 text-sm font-semibold text-ocean-900/58">
             {canCreateActivity
-              ? lockedCampaign
-                ? "This activity is automatically attached to the campaign you are managing."
-                : "Submit one donation project update with optional proof for admin verification."
+              ? "This activity is attached automatically to this campaign and its impact site."
               : "Your partner role can review project activity, but cannot submit new proof."}
           </p>
         </div>
         <ClipboardList className="size-5 text-kelp-700" aria-hidden="true" />
       </div>
+
+      {!hasImpactSite && lockedCampaign ? (
+        <div className="mt-4 rounded-lg border border-coral-700/20 bg-coral-100/50 p-4">
+          <p className="text-sm font-bold text-coral-700">Impact site required before activity can be submitted.</p>
+          <p className="mt-1 text-xs font-semibold leading-5 text-ocean-900/58">
+            Add an impact site in Campaign Settings. Updates and evidence will then use that site automatically.
+          </p>
+          <Link href={`/partner/campaigns/${lockedCampaign.id}?tab=settings`} className="mt-3 inline-flex text-sm font-bold text-coral-700">
+            Open campaign settings
+          </Link>
+        </div>
+      ) : null}
+
       <div className="mt-5 grid gap-4">
         <div className="grid gap-3 md:grid-cols-2">
           <Field label="Campaign" required>
@@ -864,26 +886,20 @@ export function CampaignActivityForm({
                 </span>
               </>
             ) : (
-              <select name="campaignId" className={inputClassName} disabled={!canSubmit} required>
-                {campaigns.map((campaign) => (
-                  <option key={campaign.id} value={campaign.id}>
-                    {campaign.title}
-                  </option>
-                ))}
-              </select>
+              <span className="flex min-h-11 items-center rounded-lg border border-coral-700/20 bg-coral-100/40 px-3 text-sm font-bold text-coral-700">
+                Open a campaign first
+              </span>
             )}
           </Field>
           <Field label="Impact site">
-            <select name="impactSiteId" className={inputClassName} disabled={!canSubmit || visibleImpactSites.length === 0}>
-              <option value="">No site selected</option>
-              {visibleImpactSites.map((site) => (
-                <option key={site.id} value={site.id}>
-                  {site.name}{lockedCampaign ? "" : ` / ${site.campaignTitle}`}
-                </option>
-              ))}
-            </select>
+            <span className={`flex min-h-11 items-center rounded-lg border px-3 text-sm font-bold ${
+              impactSite ? "border-ocean-900/10 bg-ocean-50 text-ocean-900" : "border-coral-700/20 bg-coral-100/40 text-coral-700"
+            }`}>
+              {impactSite ? `${impactSite.name} / ${impactSite.region}` : "No impact site linked"}
+            </span>
           </Field>
         </div>
+
         <Field label="Update / proof title" required>
           <input name="title" placeholder="Field progress, monitoring report, or milestone update" className={inputClassName} disabled={!canSubmit} required />
         </Field>

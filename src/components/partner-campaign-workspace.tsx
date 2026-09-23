@@ -24,7 +24,7 @@ import { Button } from "@/components/ui/button";
 import { FormTabs } from "@/components/ui/form-tabs";
 import { MetricValue } from "@/components/ui/metric-value";
 import { ProgressMeter } from "@/components/ui/progress-meter";
-import { deletePartnerCampaignAction, updatePartnerCampaignAction } from "@/lib/portal-actions";
+import { deletePartnerCampaignAction, reviseEvidenceAction, updatePartnerCampaignAction } from "@/lib/portal-actions";
 import { formatCurrency } from "@/lib/utils";
 
 type Campaign = PartnerPortalData["campaigns"][number];
@@ -359,9 +359,78 @@ export function PartnerCampaignWorkspace({
             </article>
           </section>
 
+          {campaignEvidence.some((item) => item.verificationStatus === "needs_clarification" || item.verificationStatus === "rejected") ? (
+            <section className="rounded-lg border border-coral-700/20 bg-coral-100/35 p-5">
+              <h2 className="text-lg font-bold text-coral-700">Evidence needs action</h2>
+              <p className="mt-1 text-sm font-semibold leading-6 text-ocean-900/58">
+                Respond here; there is no separate Activity workspace.
+              </p>
+              <div className="mt-4 grid gap-3">
+                {campaignEvidence
+                  .filter((item) => item.verificationStatus === "needs_clarification" || item.verificationStatus === "rejected")
+                  .map((item) => (
+                    <details key={item.id} className="rounded-lg border border-coral-700/15 bg-white">
+                      <summary className="cursor-pointer list-none px-4 py-3">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <div>
+                            <p className="text-sm font-bold text-ocean-900">{item.title}</p>
+                            <p className="mt-1 text-xs font-semibold text-ocean-900/52">
+                              {item.statusLabel} · {item.evidenceCode}
+                            </p>
+                          </div>
+                          <span className="rounded-full bg-coral-100 px-2.5 py-1 text-xs font-bold text-coral-700">
+                            Action required
+                          </span>
+                        </div>
+                      </summary>
+                      <div className="border-t border-coral-700/10 p-4">
+                        <p className="text-sm font-semibold leading-6 text-ocean-900/68">
+                          {item.latestReviewNote || "Admin requested a corrected or clarified proof."}
+                        </p>
+                        <form action={reviseEvidenceAction} encType="multipart/form-data" className="mt-4 grid gap-3">
+                          <input type="hidden" name="evidenceId" value={item.id} />
+                          <input type="hidden" name="redirectTo" value={activityReturnTo} />
+                          <label className="grid gap-1.5 text-sm font-bold text-ocean-900">
+                            Proof title
+                            <input
+                              name="title"
+                              defaultValue={item.title}
+                              className="min-h-11 rounded-lg border border-ocean-900/14 bg-white px-3 text-sm font-semibold text-ocean-900 outline-none focus:border-coral-500"
+                              required
+                            />
+                          </label>
+                          <label className="grid gap-1.5 text-sm font-bold text-ocean-900">
+                            Response / clarification
+                            <textarea
+                              name="body"
+                              defaultValue={item.observation ?? ""}
+                              className="min-h-24 rounded-lg border border-ocean-900/14 bg-white px-3 py-3 text-sm font-semibold text-ocean-900 outline-none focus:border-coral-500"
+                            />
+                          </label>
+                          <label className="grid gap-1.5 text-sm font-bold text-ocean-900">
+                            Replacement evidence
+                            <input
+                              name="imageFile"
+                              type="file"
+                              accept="image/png,image/jpeg,image/webp,image/gif"
+                              className="min-h-11 rounded-lg border border-ocean-900/14 bg-white px-3 py-2 text-sm font-semibold text-ocean-900"
+                              required
+                            />
+                          </label>
+                          <Button type="submit" tone="secondary" className="w-fit">
+                            Resubmit evidence
+                          </Button>
+                        </form>
+                      </div>
+                    </details>
+                  ))}
+              </div>
+            </section>
+          ) : null}
+
           <CampaignActivityForm
             campaigns={[campaign]}
-            impactSites={campaignImpactSites}
+            impactSite={campaignImpactSites[0] ?? null}
             canCreateActivity={data.capabilities.canCreateActivity}
             lockedCampaignId={campaign.id}
             redirectTo={activityReturnTo}
@@ -384,7 +453,7 @@ export function PartnerCampaignWorkspace({
               <form action={updatePartnerCampaignAction} encType="multipart/form-data" className="mt-5 grid gap-4">
                 <input type="hidden" name="campaignId" value={campaign.id} />
                 <input type="hidden" name="redirectTo" value={settingsReturnTo} />
-                <CampaignFields campaign={campaign} organizations={data.organizations} impactSites={campaignImpactSites} />
+                <CampaignFields campaign={campaign} organizations={data.organizations} impactSites={data.impactSites} />
                 {campaign.imageUrl ? (
                   <label className="flex items-center gap-2 text-sm font-bold text-ocean-900">
                     <input name="removeImage" type="checkbox" className="size-4 accent-coral-500" />
