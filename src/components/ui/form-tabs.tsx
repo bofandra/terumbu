@@ -1,6 +1,6 @@
 "use client";
 
-import { Children, type KeyboardEvent, type ReactNode, useId, useRef, useState } from "react";
+import { Children, type KeyboardEvent, type ReactNode, useEffect, useId, useRef, useState } from "react";
 
 import { cn } from "@/lib/utils";
 
@@ -17,9 +17,10 @@ type FormTabsProps = {
   children: ReactNode;
   className?: string;
   defaultTabId?: string;
+  syncQueryParam?: string;
 };
 
-export function FormTabs({ ariaLabel, tabs, children, className, defaultTabId }: FormTabsProps) {
+export function FormTabs({ ariaLabel, tabs, children, className, defaultTabId, syncQueryParam }: FormTabsProps) {
   const generatedId = useId();
   const panels = Children.toArray(children);
   const firstTab = tabs[0]?.id ?? "";
@@ -28,6 +29,38 @@ export function FormTabs({ ariaLabel, tabs, children, className, defaultTabId }:
   const tabRefs = useRef<Array<HTMLButtonElement | null>>([]);
   const selectedTab = tabs.some((tab) => tab.id === activeTab) ? activeTab : firstTab;
 
+  function selectTab(tabId: string) {
+    if (!tabs.some((tab) => tab.id === tabId)) {
+      return;
+    }
+
+    setActiveTab(tabId);
+
+    if (syncQueryParam && typeof window !== "undefined") {
+      const url = new URL(window.location.href);
+      url.searchParams.set(syncQueryParam, tabId);
+      window.history.replaceState(window.history.state, "", `${url.pathname}${url.search}${url.hash}`);
+    }
+  }
+
+  useEffect(() => {
+    if (!syncQueryParam || typeof window === "undefined") {
+      return;
+    }
+
+    const syncFromLocation = () => {
+      const requestedTab = new URL(window.location.href).searchParams.get(syncQueryParam);
+
+      if (requestedTab && tabs.some((tab) => tab.id === requestedTab)) {
+        setActiveTab(requestedTab);
+      }
+    };
+
+    window.addEventListener("popstate", syncFromLocation);
+
+    return () => window.removeEventListener("popstate", syncFromLocation);
+  }, [syncQueryParam, tabs]);
+
   function focusTab(index: number) {
     const tab = tabs[index];
 
@@ -35,7 +68,7 @@ export function FormTabs({ ariaLabel, tabs, children, className, defaultTabId }:
       return;
     }
 
-    setActiveTab(tab.id);
+    selectTab(tab.id);
     tabRefs.current[index]?.focus();
   }
 
@@ -82,7 +115,7 @@ export function FormTabs({ ariaLabel, tabs, children, className, defaultTabId }:
                 ref={(element) => {
                   tabRefs.current[index] = element;
                 }}
-                onClick={() => setActiveTab(tab.id)}
+                onClick={() => selectTab(tab.id)}
                 onKeyDown={(event) => handleTabKeyDown(event, index)}
                 className={cn(
                   "min-h-12 shrink-0 rounded-lg px-3 py-2 text-left text-sm font-bold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-kelp-500 focus-visible:ring-offset-2 sm:px-4",
