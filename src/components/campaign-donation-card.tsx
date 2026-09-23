@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
-import { calculateDonationImpact, currencyMinorStep, formatImpactQuantity, minimumDonationAmount } from "@/lib/impact-calculations";
+import { calculateDonationImpact, currencyMinorStep, formatImpactQuantity, minimumDonationAmount, type CampaignImpactLineInput } from "@/lib/impact-calculations";
 import { removeSavedCampaignAction, saveCampaignAction } from "@/lib/retention-actions";
 import { formatCurrency } from "@/lib/utils";
 
@@ -19,6 +19,7 @@ type CampaignDonationCardProps = {
   impactUnit: string;
   impactTarget: number;
   impactUnitCost?: string | number | null;
+  impactTargets?: CampaignImpactLineInput[] | null;
   goal: number;
   currency: string;
   carbonKgPerUsd?: number | null;
@@ -43,6 +44,7 @@ function impactText(
   impactTarget: number,
   impactUnit: string,
   impactUnitCost: string | number | null | undefined,
+  impactTargets: CampaignImpactLineInput[] | null | undefined,
   carbonKgPerUsd: number | null | undefined
 ) {
   const impact = calculateDonationImpact({
@@ -52,21 +54,33 @@ function impactText(
       goalAmount: goal,
       impactTarget,
       impactUnit,
-      impactUnitCost
+      impactUnitCost,
+      impactTargets
     },
     carbonKgPerUsd
   });
+  const activeBreakdown = impact.impactBreakdown.filter((line) => line.unitCount > 0);
   const impactLabel =
-    impact.impactUnitCount > 0
-      ? `${formatImpactQuantity(impact.impactUnitCount)} ${impactUnit}`
-      : `this ${impactUnit} target`;
-  const carbonLabel = impact.carbonKg == null ? "Carbon calculation is pending admin setup." : `${formatImpactQuantity(impact.carbonKg)} kg CO2e calculated.`;
+    activeBreakdown.length > 1
+      ? activeBreakdown
+          .slice(0, 3)
+          .map((line) => `${formatImpactQuantity(line.unitCount)} ${line.unit}`)
+          .join(" + ")
+      : impact.impactUnitCount > 0
+        ? `${formatImpactQuantity(impact.impactUnitCount)} ${impact.impactUnit}`
+        : `this ${impactUnit} target`;
+  const hasCarbonLine = activeBreakdown.some((line) => line.impactType === "carbon");
+  const carbonLabel = hasCarbonLine
+    ? ""
+    : impact.carbonKg == null
+      ? "Carbon calculation is pending admin setup."
+      : `${formatImpactQuantity(impact.carbonKg)} kg CO2e calculated.`;
 
   if (mode === "coral") {
-    return `${formatCurrency(amount, currency)} sponsors approximately ${impactLabel}. ${carbonLabel}`;
+    return `${formatCurrency(amount, currency)} sponsors approximately ${impactLabel}.${carbonLabel ? ` ${carbonLabel}` : ""}`;
   }
 
-  return `${formatCurrency(amount, currency)} can support approximately ${impactLabel}. ${carbonLabel}`;
+  return `${formatCurrency(amount, currency)} can support approximately ${impactLabel}.${carbonLabel ? ` ${carbonLabel}` : ""}`;
 }
 
 function checkoutHref(campaignSlug: string, mode: DonationMode, amount: number) {
@@ -118,6 +132,7 @@ export function CampaignDonationCard({
   impactUnit,
   impactTarget,
   impactUnitCost,
+  impactTargets = null,
   goal,
   currency,
   carbonKgPerUsd = null,
@@ -140,19 +155,20 @@ export function CampaignDonationCard({
   const amount = isCustomAmountSelected ? customValue : selectedAmount;
   const hasValidDonationAmount = amount >= minimumAmount;
   const href = checkoutHref(campaignSlug, mode, amount);
-  const costPerUnit =
-    calculateDonationImpact({
-      amount: selectedAmount,
-      currency,
-      campaign: { goalAmount: goal, impactTarget, impactUnit, impactUnitCost }
-    }).unitCost || selectedAmount;
+  const previewImpact = calculateDonationImpact({
+    amount: selectedAmount,
+    currency,
+    campaign: { goalAmount: goal, impactTarget, impactUnit, impactUnitCost, impactTargets }
+  });
+  const costPerUnit = previewImpact.unitCost || selectedAmount;
+  const packageUnit = previewImpact.impactUnit || impactUnit;
   const impactPackages = useMemo(
     () =>
       [1, 5, 10].map((units) => ({
-        label: `${units.toLocaleString("id-ID")} ${impactUnit}`,
+        label: `${units.toLocaleString("id-ID")} ${packageUnit}`,
         amount: roundedCurrency(costPerUnit * units, currency)
       })),
-    [costPerUnit, currency, impactUnit]
+    [costPerUnit, currency, packageUnit]
   );
 
   const options = useMemo(() => {
@@ -325,7 +341,7 @@ export function CampaignDonationCard({
           <HeartHandshake className="mt-0.5 shrink-0 text-coral-500" size={22} aria-hidden="true" />
           <p className="text-sm leading-6 text-ocean-900/76">
             {hasValidDonationAmount
-              ? impactText(mode, amount, currency, goal, impactTarget, impactUnit, impactUnitCost, carbonKgPerUsd)
+              ? impactText(mode, amount, currency, goal, impactTarget, impactUnit, impactUnitCost, impactTargets, carbonKgPerUsd)
               : "Enter an amount to preview your impact."}
           </p>
         </div>

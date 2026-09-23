@@ -11,6 +11,7 @@ import {
   adminAuditLogs,
   campaignActivities,
   campaignBudgetLineItems,
+  campaignImpactTargets,
   campaignMediaItems,
   campaignTimelinePhases,
   campaignUpdates,
@@ -37,12 +38,16 @@ import {
 } from "@/db/schema";
 import {
   campaignCategoryFromEcosystemType,
+  defaultImpactUnitForImpactType,
+  impactTargetTypeFromUnit,
+  labelForCampaignImpactTargetType,
   campaignStatuses,
   impactSiteVerificationStatuses,
   normalizeCampaignBudgetCategory,
   normalizeCampaignCategory,
   normalizeCampaignCurrency,
   normalizeCampaignImpactUnit,
+  normalizeCampaignImpactTargetType,
   normalizeCampaignMediaType,
   normalizeCampaignStatus,
   normalizeCampaignTimelinePhaseStatus,
@@ -228,6 +233,169 @@ function campaignImpactTargetValue(value: FormDataEntryValue | null) {
 
 function campaignImpactUnitValue(input: string, category: string) {
   return input || normalizeCampaignImpactUnit(null, category);
+}
+
+function parsePositiveDecimalAmount(value: string | FormDataEntryValue | null | undefined) {
+  const amount = Number(String(value ?? "").replace(",", ".").replace(/[^0-9.]/g, ""));
+
+  if (!Number.isFinite(amount) || amount <= 0) {
+    return null;
+  }
+
+  return amount.toFixed(2);
+}
+
+function parseOptionalPercent(value: string | FormDataEntryValue | null | undefined) {
+  const amount = Number(String(value ?? "").replace(",", ".").replace(/[^0-9.]/g, ""));
+
+  if (!Number.isFinite(amount) || amount <= 0) {
+    return null;
+  }
+
+  return Math.min(100, amount).toFixed(2);
+}
+
+function derivedImpactLineUnitCost(goalAmount: string | null, target: string, explicitCost: string | null, allocationPercent: string | null) {
+  if (explicitCost) {
+    return explicitCost;
+  }
+
+  const goal = Number(goalAmount);
+  const targetAmount = Number(target);
+  const allocation = Number(allocationPercent);
+
+  if (Number.isFinite(goal) && goal > 0 && Number.isFinite(targetAmount) && targetAmount > 0 && Number.isFinite(allocation) && allocation > 0) {
+    return ((goal * (allocation / 100)) / targetAmount).toFixed(2);
+  }
+
+  return null;
+}
+
+type CampaignImpactTargetFormLine = {
+  impactType: string;
+  label: string;
+  unit: string;
+  target: string;
+  unitCost: string | null;
+  allocationPercent: string | null;
+  isPrimary: boolean;
+  sortOrder: number;
+};
+
+function fallbackCampaignImpactTargetLine(input: {
+  goalAmount: string | null;
+  impactTarget: number;
+  impactUnit: string;
+  impactUnitCost: string | null;
+}) {
+  const impactType = impactTargetTypeFromUnit(input.impactUnit);
+  const target = input.impactTarget.toFixed(2);
+
+  return {
+    impactType,
+    label: labelForCampaignImpactTargetType(impactType),
+    unit: input.impactUnit || defaultImpactUnitForImpactType(impactType),
+    target,
+    unitCost: derivedImpactLineUnitCost(input.goalAmount, target, input.impactUnitCost, "100.00") ?? input.impactUnitCost,
+    allocationPercent: "100.00",
+    isPrimary: true,
+    sortOrder: 0
+  };
+}
+
+function campaignImpactTargetsFromForm(
+  formData: FormData,
+  fallback: {
+    goalAmount: string | null;
+    impactTarget: number;
+    impactUnit: string;
+    impactUnitCost: string | null;
+  }
+) {
+  const types = formArray(formData, "impactLineType");
+  const labels = formArray(formData, "impactLineLabel");
+  const units = formArray(formData, "impactLineUnit");
+  const targets = formArray(formData, "impactLineTarget");
+  const unitCosts = formArray(formData, "impactLineUnitCost");
+  const allocations = formArray(formData, "impactLineAllocationPercent");
+  const primaryIndex = parsePositiveInteger(formData.get("impactLinePrimaryIndex")) ?? 0;
+  const rows: CampaignImpactTargetFormLine[] = [];
+
+  for (let index = 0; index < maxLength(types, labels, units, targets, unitCosts, allocations); index += 1) {
+    const target = parsePositiveDecimalAmount(targets[index]);
+
+    if (!target) {
+      continue;
+    }
+
+    const impactType = normalizeCampaignImpactTargetType(types[index]);
+    const unit = units[index] || defaultImpactUnitForImpactType(impactType);
+    const allocationPercent = parseOptionalPercent(allocations[index]);
+    const explicitUnitCost = parseOptionalAmount(unitCosts[index] ?? null);
+
+    rows.push({
+      impactType,
+      label: labels[index] || labelForCampaignImpactTargetType(impactType),
+      unit,
+      target,
+      unitCost: derivedImpactLineUnitCost(fallback.goalAmount, target, explicitUnitCost, allocationPercent),
+      allocationPercent,
+      isPrimary: index === primaryIndex,
+      sortOrder: rows.length
+    });
+  }
+
+  if (rows.length === 0) {
+    return [fallbackCampaignImpactTargetLine(fallback)];
+  }
+
+  if (!rows.some((row) => row.isPrimary)) {
+    rows[0].isPrimary = true;
+  }
+
+  return rows;
+}
+
+function primaryImpactFromTargets(goalAmount: string | null, targets: CampaignImpactTargetFormLine[]) {
+  const primary = targets.find((target) => target.isPrimary) ?? targets[0];
+  const impactTarget = Math.max(1, Math.round(Number(primary.target)));
+  const impactUnitCost = derivedImpactLineUnitCost(goalAmount, primary.target, primary.unitCost, primary.allocationPercent);
+
+  return {
+    impactTarget,
+    impactUnit: primary.unit,
+    impactUnitCost
+  };
+}
+
+type CampaignImpactTargetWriter = Pick<typeof db, "delete" | "insert">;
+
+async function replaceCampaignImpactTargets(
+  database: CampaignImpactTargetWriter,
+  campaignId: string,
+  targets: CampaignImpactTargetFormLine[],
+  now: Date
+) {
+  await database.delete(campaignImpactTargets).where(eq(campaignImpactTargets.campaignId, campaignId));
+
+  if (targets.length === 0) {
+    return;
+  }
+
+  await database.insert(campaignImpactTargets).values(
+    targets.map((target) => ({
+      campaignId,
+      impactType: target.impactType,
+      label: target.label,
+      unit: target.unit,
+      target: target.target,
+      unitCost: target.unitCost,
+      allocationPercent: target.allocationPercent,
+      isPrimary: target.isPrimary,
+      sortOrder: target.sortOrder,
+      updatedAt: now
+    }))
+  );
 }
 
 function parsePositiveInteger(value: FormDataEntryValue | null) {
@@ -1995,9 +2163,16 @@ export async function createPartnerCampaignAction(formData: FormData) {
     : null;
   const category = campaignCategoryValue(formText(formData, "category"), linkedImpactSiteDefaults);
   const region = campaignRegionValue(formText(formData, "region"), linkedImpactSiteDefaults);
-  const impactTarget = campaignImpactTargetValue(formData.get("impactTarget"));
-  const impactUnit = campaignImpactUnitValue(formText(formData, "impactUnit"), category);
-  const impactUnitCost = derivedImpactUnitCost(goalAmount, impactTarget, parseOptionalAmount(formData.get("impactUnitCost")));
+  const fallbackImpactTarget = campaignImpactTargetValue(formData.get("impactTarget"));
+  const fallbackImpactUnit = campaignImpactUnitValue(formText(formData, "impactUnit"), category);
+  const fallbackImpactUnitCost = derivedImpactUnitCost(goalAmount, fallbackImpactTarget, parseOptionalAmount(formData.get("impactUnitCost")));
+  const impactTargetRows = campaignImpactTargetsFromForm(formData, {
+    goalAmount,
+    impactTarget: fallbackImpactTarget,
+    impactUnit: fallbackImpactUnit,
+    impactUnitCost: fallbackImpactUnitCost
+  });
+  const primaryImpact = primaryImpactFromTargets(goalAmount, impactTargetRows);
 
   await db.transaction(async (tx) => {
     const [campaign] = await tx
@@ -2013,15 +2188,17 @@ export async function createPartnerCampaignAction(formData: FormData) {
         imageUrl,
         goalAmount,
         currency,
-        impactUnit,
-        impactTarget,
-        impactUnitCost,
+        impactUnit: primaryImpact.impactUnit,
+        impactTarget: primaryImpact.impactTarget,
+        impactUnitCost: primaryImpact.impactUnitCost,
         status,
         publishedAt: status === "published" ? now : null,
         endsAt,
         updatedAt: now
       })
       .returning({ id: campaigns.id });
+
+    await replaceCampaignImpactTargets(tx, campaign.id, impactTargetRows, now);
 
     let linkedImpactSiteId: string | null = null;
 
@@ -2125,38 +2302,49 @@ export async function updatePartnerCampaignAction(formData: FormData) {
       : campaign.status;
   const category = campaignCategoryValue(formText(formData, "category"), linkedImpactSite);
   const region = campaignRegionValue(formText(formData, "region"), linkedImpactSite);
-  const impactTarget = campaignImpactTargetValue(formData.get("impactTarget"));
-  const impactUnit = campaignImpactUnitValue(formText(formData, "impactUnit"), category);
-  const impactUnitCost = derivedImpactUnitCost(goalAmount, impactTarget, parseOptionalAmount(formData.get("impactUnitCost")));
+  const fallbackImpactTarget = campaignImpactTargetValue(formData.get("impactTarget"));
+  const fallbackImpactUnit = campaignImpactUnitValue(formText(formData, "impactUnit"), category);
+  const fallbackImpactUnitCost = derivedImpactUnitCost(goalAmount, fallbackImpactTarget, parseOptionalAmount(formData.get("impactUnitCost")));
+  const impactTargetRows = campaignImpactTargetsFromForm(formData, {
+    goalAmount,
+    impactTarget: fallbackImpactTarget,
+    impactUnit: fallbackImpactUnit,
+    impactUnitCost: fallbackImpactUnitCost
+  });
+  const primaryImpact = primaryImpactFromTargets(goalAmount, impactTargetRows);
 
-  await db
-    .update(campaigns)
-    .set({
-      organizationId,
-      title,
-      summary,
-      story: story || null,
-      category,
-      region,
-      imageUrl: removeImage ? null : uploadedImageUrl ?? campaign.imageUrl,
-      goalAmount,
-      currency,
-      impactUnit,
-      impactTarget,
-      impactUnitCost,
-      status,
-      publishedAt: status === "published" ? campaign.publishedAt ?? now : status === campaign.status ? campaign.publishedAt : null,
-      endsAt,
-      updatedAt: now
-    })
-    .where(eq(campaigns.id, campaignId));
+  await db.transaction(async (tx) => {
+    await tx
+      .update(campaigns)
+      .set({
+        organizationId,
+        title,
+        summary,
+        story: story || null,
+        category,
+        region,
+        imageUrl: removeImage ? null : uploadedImageUrl ?? campaign.imageUrl,
+        goalAmount,
+        currency,
+        impactUnit: primaryImpact.impactUnit,
+        impactTarget: primaryImpact.impactTarget,
+        impactUnitCost: primaryImpact.impactUnitCost,
+        status,
+        publishedAt: status === "published" ? campaign.publishedAt ?? now : status === campaign.status ? campaign.publishedAt : null,
+        endsAt,
+        updatedAt: now
+      })
+      .where(eq(campaigns.id, campaignId));
 
-  await db.insert(adminAuditLogs).values({
-    actorUserId: user.id,
-    action: "campaign.updated",
-    entityType: "campaign",
-    entityId: campaignId,
-    metadata: { source: "partner_portal", status }
+    await replaceCampaignImpactTargets(tx, campaignId, impactTargetRows, now);
+
+    await tx.insert(adminAuditLogs).values({
+      actorUserId: user.id,
+      action: "campaign.updated",
+      entityType: "campaign",
+      entityId: campaignId,
+      metadata: { source: "partner_portal", status }
+    });
   });
 
   redirectPartnerSaved(formData, "/partner/campaigns", "campaign-updated");
@@ -3581,9 +3769,16 @@ export async function createAdminCampaignAction(formData: FormData) {
   let campaignId = "";
   const category = campaignCategoryValue(formText(formData, "category"), linkedImpactSiteDefaults);
   const region = campaignRegionValue(formText(formData, "region"), linkedImpactSiteDefaults);
-  const impactTarget = campaignImpactTargetValue(formData.get("impactTarget"));
-  const impactUnit = campaignImpactUnitValue(formText(formData, "impactUnit"), category);
-  const impactUnitCost = derivedImpactUnitCost(goalAmount, impactTarget, parseOptionalAmount(formData.get("impactUnitCost")));
+  const fallbackImpactTarget = campaignImpactTargetValue(formData.get("impactTarget"));
+  const fallbackImpactUnit = campaignImpactUnitValue(formText(formData, "impactUnit"), category);
+  const fallbackImpactUnitCost = derivedImpactUnitCost(goalAmount, fallbackImpactTarget, parseOptionalAmount(formData.get("impactUnitCost")));
+  const impactTargetRows = campaignImpactTargetsFromForm(formData, {
+    goalAmount,
+    impactTarget: fallbackImpactTarget,
+    impactUnit: fallbackImpactUnit,
+    impactUnitCost: fallbackImpactUnitCost
+  });
+  const primaryImpact = primaryImpactFromTargets(goalAmount, impactTargetRows);
 
   await db.transaction(async (tx) => {
     const [campaign] = await tx
@@ -3599,9 +3794,9 @@ export async function createAdminCampaignAction(formData: FormData) {
         imageUrl,
         goalAmount,
         currency,
-        impactUnit,
-        impactTarget,
-        impactUnitCost,
+        impactUnit: primaryImpact.impactUnit,
+        impactTarget: primaryImpact.impactTarget,
+        impactUnitCost: primaryImpact.impactUnitCost,
         status,
         publishedAt: status === "published" ? now : null,
         endsAt,
@@ -3610,6 +3805,8 @@ export async function createAdminCampaignAction(formData: FormData) {
       .returning({ id: campaigns.id });
 
     campaignId = campaign.id;
+
+    await replaceCampaignImpactTargets(tx, campaign.id, impactTargetRows, now);
 
     let linkedImpactSiteId: string | null = null;
 
@@ -3743,40 +3940,51 @@ export async function updateAdminCampaignAction(formData: FormData) {
     .limit(1);
   const category = campaignCategoryValue(formText(formData, "category") || campaign.category, linkedImpactSite);
   const region = campaignRegionValue(formText(formData, "region") || campaign.region, linkedImpactSite);
-  const impactTarget = parsePositiveInteger(formData.get("impactTarget")) ?? campaign.impactTarget;
-  const impactUnit = campaignImpactUnitValue(formText(formData, "impactUnit") || campaign.impactUnit, category);
+  const fallbackImpactTarget = parsePositiveInteger(formData.get("impactTarget")) ?? campaign.impactTarget;
+  const fallbackImpactUnit = campaignImpactUnitValue(formText(formData, "impactUnit") || campaign.impactUnit, category);
   const explicitImpactUnitCost = formData.has("impactUnitCost") ? parseOptionalAmount(formData.get("impactUnitCost")) : campaign.impactUnitCost;
-  const impactUnitCost = derivedImpactUnitCost(goalAmount, impactTarget, explicitImpactUnitCost);
+  const fallbackImpactUnitCost = derivedImpactUnitCost(goalAmount, fallbackImpactTarget, explicitImpactUnitCost);
+  const impactTargetRows = campaignImpactTargetsFromForm(formData, {
+    goalAmount,
+    impactTarget: fallbackImpactTarget,
+    impactUnit: fallbackImpactUnit,
+    impactUnitCost: fallbackImpactUnitCost
+  });
+  const primaryImpact = primaryImpactFromTargets(goalAmount, impactTargetRows);
 
-  await db
-    .update(campaigns)
-    .set({
-      organizationId,
-      title,
-      slug,
-      summary,
-      story: story || null,
-      category,
-      region,
-      imageUrl: removeImage ? null : uploadedImageUrl ?? campaign.imageUrl,
-      goalAmount,
-      currency,
-      impactUnit,
-      impactTarget,
-      impactUnitCost,
-      status,
-      publishedAt: status === "published" ? campaign.publishedAt ?? now : null,
-      endsAt,
-      updatedAt: now
-    })
-    .where(eq(campaigns.id, campaignId));
+  await db.transaction(async (tx) => {
+    await tx
+      .update(campaigns)
+      .set({
+        organizationId,
+        title,
+        slug,
+        summary,
+        story: story || null,
+        category,
+        region,
+        imageUrl: removeImage ? null : uploadedImageUrl ?? campaign.imageUrl,
+        goalAmount,
+        currency,
+        impactUnit: primaryImpact.impactUnit,
+        impactTarget: primaryImpact.impactTarget,
+        impactUnitCost: primaryImpact.impactUnitCost,
+        status,
+        publishedAt: status === "published" ? campaign.publishedAt ?? now : null,
+        endsAt,
+        updatedAt: now
+      })
+      .where(eq(campaigns.id, campaignId));
 
-  await db.insert(adminAuditLogs).values({
-    actorUserId: user.id,
-    action: "campaign.updated",
-    entityType: "campaign",
-    entityId: campaignId,
-    metadata: { source: "admin", previousSlug: campaign.slug, slug, status }
+    await replaceCampaignImpactTargets(tx, campaignId, impactTargetRows, now);
+
+    await tx.insert(adminAuditLogs).values({
+      actorUserId: user.id,
+      action: "campaign.updated",
+      entityType: "campaign",
+      entityId: campaignId,
+      metadata: { source: "admin", previousSlug: campaign.slug, slug, status }
+    });
   });
 
   redirectAdminCampaignSaved("campaign-updated", formData);

@@ -5,6 +5,7 @@ import { AdminAlert } from "@/components/admin/admin-alert";
 import { AdminFormDraftPersistence } from "@/components/admin/admin-form-draft-persistence";
 import { AdminFormErrorSummary, type AdminFormErrorItem } from "@/components/admin/admin-form-error-summary";
 import { AdminPageHeader, adminInputClassName, adminPanelClassName, adminSelectClassName, adminTextareaClassName } from "@/components/admin-ui";
+import { CampaignImpactTargetFields } from "@/components/campaign-impact-target-fields";
 import { Button } from "@/components/ui/button";
 import { adminFormFieldNames } from "@/lib/admin-form-state";
 import { observeAdminDataLoader } from "@/lib/admin-observability";
@@ -226,6 +227,7 @@ export default async function AdminCampaignNewPage({ searchParams }: AdminCampai
                   <input id="campaign-region" name="region" placeholder="Indonesia" className={adminInputClassName} />
                 </Field>
               </div>
+              <CampaignImpactTargetFields inputClassName={adminInputClassName} selectClassName={adminSelectClassName} />
             </div>
           </details>
           <Button type="submit" tone="secondary" className="w-fit rounded-lg" disabled={data.organizations.length === 0}>

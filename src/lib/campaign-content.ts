@@ -26,6 +26,23 @@ export const campaignImpactUnits = [
 ] as const;
 export type CampaignImpactUnit = (typeof campaignImpactUnits)[number];
 
+export const campaignImpactTargetTypes = [
+  "coral",
+  "mangrove",
+  "seagrass",
+  "protection",
+  "carbon",
+  "community",
+  "other"
+] as const;
+export type CampaignImpactTargetType = (typeof campaignImpactTargetTypes)[number];
+
+export const campaignImpactTargetPresets = [
+  { impactType: "coral", label: "Coral restoration", unit: "coral fragments" },
+  { impactType: "mangrove", label: "Mangrove restoration", unit: "mangrove seedlings" },
+  { impactType: "carbon", label: "Estimated carbon benefit", unit: "kg CO2e" }
+] as const;
+
 export const impactSiteEcosystemTypes = [
   "Coral",
   "Mangrove",
@@ -139,6 +156,96 @@ export function defaultImpactUnitForCategory(category: string): CampaignImpactUn
   }
 
   return "project milestones";
+}
+
+export function labelForCampaignImpactTargetType(value: string) {
+  if (value === "coral") {
+    return "Coral restoration";
+  }
+
+  if (value === "mangrove") {
+    return "Mangrove restoration";
+  }
+
+  if (value === "seagrass") {
+    return "Seagrass restoration";
+  }
+
+  if (value === "protection") {
+    return "Protection";
+  }
+
+  if (value === "carbon") {
+    return "Estimated carbon benefit";
+  }
+
+  if (value === "community") {
+    return "Community conservation";
+  }
+
+  return "Other impact";
+}
+
+export function defaultImpactUnitForImpactType(value: string) {
+  if (value === "coral") {
+    return "coral fragments";
+  }
+
+  if (value === "mangrove") {
+    return "mangrove seedlings";
+  }
+
+  if (value === "seagrass") {
+    return "seagrass plots";
+  }
+
+  if (value === "protection") {
+    return "hectares protected";
+  }
+
+  if (value === "carbon") {
+    return "kg CO2e";
+  }
+
+  if (value === "community") {
+    return "project milestones";
+  }
+
+  return "project milestones";
+}
+
+export function impactTargetTypeFromUnit(unit: string | null | undefined): CampaignImpactTargetType {
+  const normalized = String(unit ?? "").toLowerCase();
+
+  if (normalized.includes("coral") || normalized.includes("karang")) {
+    return "coral";
+  }
+
+  if (normalized.includes("mangrove")) {
+    return "mangrove";
+  }
+
+  if (normalized.includes("seagrass")) {
+    return "seagrass";
+  }
+
+  if (normalized.includes("hectare") || normalized.includes("protected")) {
+    return "protection";
+  }
+
+  if (normalized.includes("carbon") || normalized.includes("co2")) {
+    return "carbon";
+  }
+
+  return "other";
+}
+
+export function normalizeCampaignImpactTargetType(value: unknown): CampaignImpactTargetType {
+  const normalized = String(value ?? "").trim().toLowerCase();
+
+  return campaignImpactTargetTypes.includes(normalized as CampaignImpactTargetType)
+    ? (normalized as CampaignImpactTargetType)
+    : "other";
 }
 
 export function normalizeCampaignImpactUnit(value: unknown, category: string): CampaignImpactUnit {

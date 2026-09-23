@@ -226,6 +226,25 @@ export const campaigns = pgTable("campaigns", {
   categoryIdx: index("campaigns_category_idx").on(table.category)
 }));
 
+export const campaignImpactTargets = pgTable("campaign_impact_targets", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  campaignId: uuid("campaign_id").notNull().references(() => campaigns.id, { onDelete: "cascade" }),
+  impactType: varchar("impact_type", { length: 80 }).default("other").notNull(),
+  label: varchar("label", { length: 160 }).notNull(),
+  unit: varchar("unit", { length: 120 }).notNull(),
+  target: numeric("target", { precision: 14, scale: 2 }).notNull(),
+  unitCost: numeric("unit_cost", { precision: 14, scale: 2 }),
+  allocationPercent: numeric("allocation_percent", { precision: 5, scale: 2 }),
+  isPrimary: boolean("is_primary").default(false).notNull(),
+  sortOrder: integer("sort_order").default(0).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull()
+}, (table) => ({
+  campaignIdx: index("campaign_impact_targets_campaign_idx").on(table.campaignId),
+  campaignSortIdx: index("campaign_impact_targets_campaign_sort_idx").on(table.campaignId, table.sortOrder),
+  primaryIdx: index("campaign_impact_targets_primary_idx").on(table.campaignId, table.isPrimary)
+}));
+
 export const campaignMediaItems = pgTable("campaign_media_items", {
   id: uuid("id").defaultRandom().primaryKey(),
   campaignId: uuid("campaign_id").notNull().references(() => campaigns.id, { onDelete: "cascade" }),

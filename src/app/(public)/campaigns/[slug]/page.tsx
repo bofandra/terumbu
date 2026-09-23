@@ -326,6 +326,7 @@ export default async function CampaignDetailPage({ params }: { params: Promise<{
                 impactUnit={campaign.impactUnit}
                 impactTarget={campaign.impactTarget}
                 impactUnitCost={campaign.impactUnitCost}
+                impactTargets={campaign.impactTargets}
                 goal={campaign.goal}
                 currency={campaign.currency}
                 carbonKgPerUsd={campaign.carbonKgPerUsd}
@@ -456,6 +457,7 @@ export default async function CampaignDetailPage({ params }: { params: Promise<{
                 impactTarget={campaign.impactTarget}
                 impactUnit={campaign.impactUnit}
                 impactUnitCost={campaign.impactUnitCost}
+                impactTargets={campaign.impactTargets}
                 currency={campaign.currency}
                 carbonKgPerUsd={campaign.carbonKgPerUsd}
               />
@@ -464,11 +466,13 @@ export default async function CampaignDetailPage({ params }: { params: Promise<{
                 <div className="rounded-2xl border border-ocean-900/10 bg-white p-6 shadow-soft">
                   <p className="text-sm font-bold uppercase tracking-[0.16em] text-coral-700">Recorded campaign targets</p>
                   <div className="mt-5 grid gap-3 text-sm font-semibold text-ocean-900/68">
-                    {[
-                      `${campaign.impactTarget.toLocaleString("id-ID")} ${campaign.impactUnit}`,
+                    {(campaign.impactTargets.length > 0
+                      ? campaign.impactTargets.map((target) => `${target.target.toLocaleString("id-ID", { maximumFractionDigits: 2 })} ${target.unit}`)
+                      : [`${campaign.impactTarget.toLocaleString("id-ID")} ${campaign.impactUnit}`]
+                    ).concat([
                       `${campaign.sites.length.toLocaleString("id-ID")} linked impact sites`,
                       `${(campaign.updates.length + campaign.evidence.length).toLocaleString("id-ID")} activity records`
-                    ].map((item) => (
+                    ]).map((item) => (
                       <span key={item} className="inline-flex items-center gap-2">
                         <CheckCircle2 className="text-kelp-500" size={17} aria-hidden="true" />
                         {item}

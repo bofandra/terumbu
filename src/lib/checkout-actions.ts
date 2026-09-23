@@ -8,6 +8,7 @@ import { redirect } from "next/navigation";
 import { db } from "@/db/client";
 import {
   campaigns,
+  campaignImpactTargets,
   corporateAccounts,
   corporateEmployees,
   donations,
@@ -74,6 +75,20 @@ export async function createDonationAction(formData: FormData) {
     redirect("/checkout/donation?error=campaign");
   }
 
+  const impactTargetRows = await db
+    .select({
+      impactType: campaignImpactTargets.impactType,
+      label: campaignImpactTargets.label,
+      unit: campaignImpactTargets.unit,
+      target: campaignImpactTargets.target,
+      unitCost: campaignImpactTargets.unitCost,
+      allocationPercent: campaignImpactTargets.allocationPercent,
+      isPrimary: campaignImpactTargets.isPrimary,
+      sortOrder: campaignImpactTargets.sortOrder
+    })
+    .from(campaignImpactTargets)
+    .where(eq(campaignImpactTargets.campaignId, campaign.id));
+
   const campaignCurrency = normalizeCurrency(campaign.currency);
   const minimumAmount = minimumDonationAmount(campaignCurrency);
 
@@ -108,7 +123,10 @@ export async function createDonationAction(formData: FormData) {
   const impact = calculateDonationImpact({
     amount,
     currency: campaignCurrency,
-    campaign
+    campaign: {
+      ...campaign,
+      impactTargets: impactTargetRows
+    }
   });
   const sponsoredFragments = impact.coralFragments > 0 ? Math.max(1, Math.round(impact.coralFragments)) : 0;
   const submittedAt = now.toISOString();
@@ -118,6 +136,13 @@ export async function createDonationAction(formData: FormData) {
     impactUnit: impact.impactUnit,
     impactUnitCost: impact.unitCost,
     impactUnitCount: Number(impact.impactUnitCount.toFixed(2)),
+    impactBreakdown: impact.impactBreakdown.map((line) => ({
+      impactType: line.impactType,
+      label: line.label,
+      unit: line.unit,
+      unitCount: Number(line.unitCount.toFixed(2)),
+      allocatedAmount: Number(line.allocatedAmount.toFixed(2))
+    })),
     paymentProofUrl: proofUpload.dataUrl,
     paymentReference: paymentReference || null,
     submittedAt,

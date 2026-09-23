@@ -18,13 +18,13 @@ import {
 import type { ReactNode } from "react";
 
 import { CampaignContentDepthEditor } from "@/components/campaign-content-depth-editor";
+import { CampaignImpactTargetFields } from "@/components/campaign-impact-target-fields";
 import { Button } from "@/components/ui/button";
 import { MetricValue } from "@/components/ui/metric-value";
 import { ProgressMeter } from "@/components/ui/progress-meter";
 import {
   campaignCategories,
   campaignCurrencies,
-  campaignImpactUnits,
   impactSiteEcosystemTypes,
   impactSiteVerificationStatuses,
   partnerCampaignStatuses
@@ -308,9 +308,6 @@ export function CampaignFields({
   const categoryOptions = campaign?.category && !campaignCategories.includes(campaign.category as (typeof campaignCategories)[number])
     ? [campaign.category, ...campaignCategories]
     : campaignCategories;
-  const impactUnitOptions = campaign?.impactUnit && !campaignImpactUnits.includes(campaign.impactUnit as (typeof campaignImpactUnits)[number])
-    ? [campaign.impactUnit, ...campaignImpactUnits]
-    : campaignImpactUnits;
   const createMode = !campaign;
 
   if (createMode) {
@@ -371,20 +368,8 @@ export function CampaignFields({
                 <input name="region" placeholder="Indonesia" className={inputClassName} />
               </Field>
             </div>
+            <CampaignImpactTargetFields inputClassName={inputClassName} />
             <div className="grid gap-3 md:grid-cols-3">
-              <Field label="Impact target">
-                <input name="impactTarget" type="number" min="1" step="1" placeholder="1" className={inputClassName} />
-              </Field>
-              <Field label="Impact unit">
-                <select name="impactUnit" defaultValue="" className={inputClassName}>
-                  <option value="">Auto from category</option>
-                  {campaignImpactUnits.map((unit) => (
-                    <option key={unit} value={unit}>
-                      {unit}
-                    </option>
-                  ))}
-                </select>
-              </Field>
               <Field label="Campaign end date">
                 <input name="endsAt" type="date" className={inputClassName} />
               </Field>
@@ -512,7 +497,7 @@ export function CampaignFields({
       <details className="rounded-lg border border-ocean-900/10 bg-sand-50 p-4">
         <summary className="cursor-pointer text-sm font-bold text-ocean-900">Advanced public details</summary>
         <div className="mt-4 grid gap-4">
-          <div className="grid gap-3 md:grid-cols-4">
+          <div className="grid gap-3 md:grid-cols-2">
             <Field label="Currency" required>
               <select name="currency" defaultValue={campaign.currency ?? "USD"} className={inputClassName} required>
                 {campaignCurrencies.map((currency) => (
@@ -522,25 +507,11 @@ export function CampaignFields({
                 ))}
               </select>
             </Field>
-            <Field label="Impact target" required>
-              <input name="impactTarget" type="number" min="1" step="1" defaultValue={campaign.impactTarget} className={inputClassName} required />
-            </Field>
-            <Field label="Impact unit" required>
-              <select name="impactUnit" defaultValue={campaign.impactUnit} className={inputClassName} required>
-                {impactUnitOptions.map((unit) => (
-                  <option key={unit} value={unit}>
-                    {unit}
-                  </option>
-                ))}
-              </select>
-            </Field>
             <Field label="Campaign end date">
               <input name="endsAt" type="date" defaultValue={dateValue(campaign.endsAt)} className={inputClassName} />
             </Field>
           </div>
-          <Field label="Cost per impact unit">
-            <input name="impactUnitCost" type="number" min="0" step="0.01" defaultValue={campaign.impactUnitCost ? Number(campaign.impactUnitCost) : undefined} placeholder="Auto-calculated from goal and target if empty" className={inputClassName} />
-          </Field>
+          <CampaignImpactTargetFields lines={campaign.impactTargets} inputClassName={inputClassName} />
           <Field label="Story">
             <textarea name="story" defaultValue={campaign.story ?? ""} placeholder="Campaign story" className={textareaClassName} />
           </Field>

@@ -14,11 +14,12 @@ import {
 } from "@/components/admin-ui";
 import { AdminConfirmSubmit } from "@/components/admin/admin-confirm-submit";
 import { CampaignContentDepthEditor } from "@/components/campaign-content-depth-editor";
+import { CampaignImpactTargetFields } from "@/components/campaign-impact-target-fields";
 import { Button } from "@/components/ui/button";
 import { FormTabs } from "@/components/ui/form-tabs";
 import { MetricValue } from "@/components/ui/metric-value";
 import { ProgressMeter } from "@/components/ui/progress-meter";
-import { campaignCategories, campaignCurrencies, campaignImpactUnits, campaignStatuses } from "@/lib/campaign-content";
+import { campaignCategories, campaignCurrencies, campaignStatuses } from "@/lib/campaign-content";
 import { observeAdminDataLoader } from "@/lib/admin-observability";
 import { requireRole } from "@/lib/auth";
 import { deleteAdminCampaignAction, updateAdminCampaignAction, updateCampaignStatusAction } from "@/lib/portal-actions";
@@ -289,7 +290,7 @@ export default async function AdminCampaignDetailPage({ params, searchParams }: 
                   <input name="endsAt" type="date" defaultValue={dateValue(campaign.endsAt)} className={adminInputClassName} />
                 </Field>
               </div>
-              <div className="grid gap-3 lg:grid-cols-4">
+              <div className="grid gap-3 lg:grid-cols-2">
                 <Field label="Currency">
                   <select name="currency" defaultValue={campaign.currency ?? "USD"} className={adminSelectClassName} required>
                     {campaignCurrencies.map((currency) => (
@@ -299,25 +300,8 @@ export default async function AdminCampaignDetailPage({ params, searchParams }: 
                     ))}
                   </select>
                 </Field>
-                <Field label="Impact target">
-                  <input name="impactTarget" type="number" min={1} defaultValue={campaign.impactTarget} className={adminInputClassName} required />
-                </Field>
-                <Field label="Impact unit">
-                  <select name="impactUnit" defaultValue={campaign.impactUnit} className={adminSelectClassName} required>
-                    {campaign.impactUnit && !campaignImpactUnits.includes(campaign.impactUnit as (typeof campaignImpactUnits)[number]) ? (
-                      <option value={campaign.impactUnit}>{campaign.impactUnit}</option>
-                    ) : null}
-                    {campaignImpactUnits.map((unit) => (
-                      <option key={unit} value={unit}>
-                        {unit}
-                      </option>
-                    ))}
-                  </select>
-                </Field>
-                <Field label="Cost per impact unit">
-                  <input name="impactUnitCost" type="number" min={0} step="0.01" defaultValue={campaign.impactUnitCost ? Number(campaign.impactUnitCost) : undefined} placeholder="Auto-calculated if empty" className={adminInputClassName} />
-                </Field>
               </div>
+              <CampaignImpactTargetFields lines={campaign.impactTargets} inputClassName={adminInputClassName} selectClassName={adminSelectClassName} />
               <Field label="Story">
                 <textarea name="story" defaultValue={campaign.story ?? ""} className={adminTextareaClassName} />
               </Field>

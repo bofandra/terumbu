@@ -5,6 +5,7 @@ import { and, desc, eq, sql } from "drizzle-orm";
 import { db } from "@/db/client";
 import {
   campaigns,
+  campaignImpactTargets,
   donationReceipts,
   donations,
   donationSubscriptions,
@@ -395,8 +396,8 @@ async function ensureSponsoredEcosystemForDonation(
       metadata: {
         donationId: donation.id,
         fragments,
-        impactUnitCount: getMetadataNumber(payload, "impactUnitCount", fragments),
-        impactUnit: getMetadataString(payload, "impactUnit") ?? "coral fragments",
+        impactUnitCount: fragments,
+        impactUnit: "coral fragments",
         carbonKg: getMetadataNumber(payload, "carbonKg"),
         amount: toNumber(donation.amount),
         currency: donation.currency,
@@ -480,6 +481,19 @@ export async function transitionDonationPayment(
     .from(platformSettings)
     .where(eq(platformSettings.key, CARBON_SETTING_KEY))
     .limit(1);
+  const impactTargetRows = await database
+    .select({
+      impactType: campaignImpactTargets.impactType,
+      label: campaignImpactTargets.label,
+      unit: campaignImpactTargets.unit,
+      target: campaignImpactTargets.target,
+      unitCost: campaignImpactTargets.unitCost,
+      allocationPercent: campaignImpactTargets.allocationPercent,
+      isPrimary: campaignImpactTargets.isPrimary,
+      sortOrder: campaignImpactTargets.sortOrder
+    })
+    .from(campaignImpactTargets)
+    .where(eq(campaignImpactTargets.campaignId, donation.campaignId));
   const impact = calculateDonationImpact({
     amount: donation.amount,
     currency: donation.currency,
@@ -487,7 +501,8 @@ export async function transitionDonationPayment(
       goalAmount: donation.campaignGoalAmount,
       impactUnit: donation.campaignImpactUnit,
       impactTarget: donation.campaignImpactTarget,
-      impactUnitCost: donation.campaignImpactUnitCost
+      impactUnitCost: donation.campaignImpactUnitCost,
+      impactTargets: impactTargetRows
     },
     carbonKgPerUsd: parseCarbonKgPerUsd(payloadObject(carbonSetting?.value).kgCo2ePerUsd)
   });
@@ -497,6 +512,13 @@ export async function transitionDonationPayment(
     impactUnit: impact.impactUnit,
     impactUnitCost: impact.unitCost,
     impactUnitCount: Number(impact.impactUnitCount.toFixed(2)),
+    impactBreakdown: impact.impactBreakdown.map((line) => ({
+      impactType: line.impactType,
+      label: line.label,
+      unit: line.unit,
+      unitCount: Number(line.unitCount.toFixed(2)),
+      allocatedAmount: Number(line.allocatedAmount.toFixed(2))
+    })),
     sponsoredFragments: roundedCoralFragments || null,
     coralFragments: roundedCoralFragments || null,
     carbonKg: impact.carbonKg == null ? null : Number(impact.carbonKg.toFixed(2))
@@ -597,6 +619,13 @@ export async function transitionDonationPayment(
       impactUnit: impact.impactUnit,
       impactUnitCost: impact.unitCost,
       impactUnitCount: Number(impact.impactUnitCount.toFixed(2)),
+      impactBreakdown: impact.impactBreakdown.map((line) => ({
+        impactType: line.impactType,
+        label: line.label,
+        unit: line.unit,
+        unitCount: Number(line.unitCount.toFixed(2)),
+        allocatedAmount: Number(line.allocatedAmount.toFixed(2))
+      })),
       fragments: roundedCoralFragments || null,
       coralFragments: roundedCoralFragments || null,
       carbonKg: impact.carbonKg == null ? null : Number(impact.carbonKg.toFixed(2)),
@@ -636,6 +665,13 @@ export async function transitionDonationPayment(
         contributionIntent,
         impactUnit: impact.impactUnit,
         impactUnitCount: Number(impact.impactUnitCount.toFixed(2)),
+        impactBreakdown: impact.impactBreakdown.map((line) => ({
+          impactType: line.impactType,
+          label: line.label,
+          unit: line.unit,
+          unitCount: Number(line.unitCount.toFixed(2)),
+          allocatedAmount: Number(line.allocatedAmount.toFixed(2))
+        })),
         coralFragments: roundedCoralFragments || null,
         carbonKg: impact.carbonKg == null ? null : Number(impact.carbonKg.toFixed(2))
       },

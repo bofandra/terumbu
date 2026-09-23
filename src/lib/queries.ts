@@ -10,6 +10,7 @@ import {
   campaignBudgetLineItems,
   campaignUpdates,
   campaigns,
+  campaignImpactTargets,
   campaignFollowSubscriptions,
   campaignMediaItems,
   campaignTimelinePhases,
@@ -821,6 +822,26 @@ export async function getFeaturedFieldUpdate() {
   };
 }
 
+function toCampaignImpactTarget(row: {
+  id: string;
+  campaignId: string;
+  impactType: string;
+  label: string;
+  unit: string;
+  target: string | number;
+  unitCost: string | number | null;
+  allocationPercent: string | number | null;
+  isPrimary: boolean;
+  sortOrder: number;
+}) {
+  return {
+    ...row,
+    target: toNumber(row.target),
+    unitCost: row.unitCost == null ? null : toNumber(row.unitCost),
+    allocationPercent: row.allocationPercent == null ? null : toNumber(row.allocationPercent)
+  };
+}
+
 export async function getCampaignDetail(slug: string) {
   const [row] = await db
     .select({
@@ -869,7 +890,8 @@ export async function getCampaignDetail(slug: string) {
     mediaRows,
     budgetRows,
     timelineRows,
-    teamRows
+    teamRows,
+    impactTargetRows
   ] = await Promise.all([
     db
       .select({
@@ -993,6 +1015,23 @@ export async function getCampaignDetail(slug: string) {
       .from(organizationTeamMembers)
       .where(and(eq(organizationTeamMembers.organizationId, row.organizationId), eq(organizationTeamMembers.isPublic, true)))
       .orderBy(asc(organizationTeamMembers.sortOrder), asc(organizationTeamMembers.name))
+    ,
+    db
+      .select({
+        id: campaignImpactTargets.id,
+        campaignId: campaignImpactTargets.campaignId,
+        impactType: campaignImpactTargets.impactType,
+        label: campaignImpactTargets.label,
+        unit: campaignImpactTargets.unit,
+        target: campaignImpactTargets.target,
+        unitCost: campaignImpactTargets.unitCost,
+        allocationPercent: campaignImpactTargets.allocationPercent,
+        isPrimary: campaignImpactTargets.isPrimary,
+        sortOrder: campaignImpactTargets.sortOrder
+      })
+      .from(campaignImpactTargets)
+      .where(eq(campaignImpactTargets.campaignId, row.id))
+      .orderBy(asc(campaignImpactTargets.sortOrder), asc(campaignImpactTargets.label))
   ]);
   const budgetLineItems = budgetRows.map((item) => ({
     ...item,
@@ -1006,6 +1045,7 @@ export async function getCampaignDetail(slug: string) {
     impactUnit: row.impactUnit,
     impactTarget: row.impactTarget,
     impactUnitCost: row.impactUnitCost,
+    impactTargets: impactTargetRows.map(toCampaignImpactTarget),
     carbonKgPerUsd,
     story: row.story,
     partnerSlug: row.partnerSlug,
@@ -5811,7 +5851,8 @@ export async function getAdminPortalData() {
     campaignMediaRows,
     campaignBudgetRows,
     campaignTimelineRows,
-    organizationTeamRows
+    organizationTeamRows,
+    campaignImpactTargetRows
   ] = await Promise.all([
     db
       .select({
@@ -6039,7 +6080,22 @@ export async function getAdminPortalData() {
         isPublic: organizationTeamMembers.isPublic
       })
       .from(organizationTeamMembers)
-      .orderBy(asc(organizationTeamMembers.sortOrder), asc(organizationTeamMembers.name))
+      .orderBy(asc(organizationTeamMembers.sortOrder), asc(organizationTeamMembers.name)),
+    db
+      .select({
+        id: campaignImpactTargets.id,
+        campaignId: campaignImpactTargets.campaignId,
+        impactType: campaignImpactTargets.impactType,
+        label: campaignImpactTargets.label,
+        unit: campaignImpactTargets.unit,
+        target: campaignImpactTargets.target,
+        unitCost: campaignImpactTargets.unitCost,
+        allocationPercent: campaignImpactTargets.allocationPercent,
+        isPrimary: campaignImpactTargets.isPrimary,
+        sortOrder: campaignImpactTargets.sortOrder
+      })
+      .from(campaignImpactTargets)
+      .orderBy(asc(campaignImpactTargets.sortOrder), asc(campaignImpactTargets.label))
   ]);
   const evidenceReviewEventsById = await getEvidenceReviewEventsByEvidenceIds(evidenceRows.map((item) => item.id));
   const pendingOperationsByDonationId = new Map(
@@ -6055,6 +6111,7 @@ export async function getAdminPortalData() {
   const timelineCounts = new Map<string, number>();
   const teamCounts = new Map<string, number>();
   const expeditionCounts = new Map<string, number>();
+  const impactTargetsByCampaign = new Map<string, ReturnType<typeof toCampaignImpactTarget>[]>();
 
   for (const row of campaignExpeditionCountRows) {
     if (row.campaignId) {
@@ -6080,10 +6137,18 @@ export async function getAdminPortalData() {
     }
   }
 
+  for (const row of campaignImpactTargetRows) {
+    const targets = impactTargetsByCampaign.get(row.campaignId) ?? [];
+
+    targets.push(toCampaignImpactTarget(row));
+    impactTargetsByCampaign.set(row.campaignId, targets);
+  }
+
   return {
     organizations: organizationRows,
     campaigns: campaignRows.map((campaign) => ({
       ...campaign,
+      impactTargets: impactTargetsByCampaign.get(campaign.id) ?? [],
       donationRecordCount: donationCounts.get(campaign.id) ?? 0,
       sponsorshipRecordCount: sponsorshipCounts.get(campaign.id) ?? 0,
       corporatePortfolioCount: portfolioCounts.get(campaign.id) ?? 0,
@@ -8697,7 +8762,8 @@ export async function getPartnerPortalData(userId?: string) {
     campaignMediaRows,
     campaignBudgetRows,
     campaignTimelineRows,
-    organizationTeamRows
+    organizationTeamRows,
+    campaignImpactTargetRows
   ] = await Promise.all([
     db
       .select({
@@ -8989,7 +9055,24 @@ export async function getPartnerPortalData(userId?: string) {
       })
       .from(organizationTeamMembers)
       .where(teamOrganizationScope)
-      .orderBy(asc(organizationTeamMembers.sortOrder), asc(organizationTeamMembers.name))
+      .orderBy(asc(organizationTeamMembers.sortOrder), asc(organizationTeamMembers.name)),
+    db
+      .select({
+        id: campaignImpactTargets.id,
+        campaignId: campaignImpactTargets.campaignId,
+        impactType: campaignImpactTargets.impactType,
+        label: campaignImpactTargets.label,
+        unit: campaignImpactTargets.unit,
+        target: campaignImpactTargets.target,
+        unitCost: campaignImpactTargets.unitCost,
+        allocationPercent: campaignImpactTargets.allocationPercent,
+        isPrimary: campaignImpactTargets.isPrimary,
+        sortOrder: campaignImpactTargets.sortOrder
+      })
+      .from(campaignImpactTargets)
+      .innerJoin(campaigns, eq(campaignImpactTargets.campaignId, campaigns.id))
+      .where(campaignScope)
+      .orderBy(asc(campaignImpactTargets.sortOrder), asc(campaignImpactTargets.label))
   ]);
 
   const expeditionBookingCounts = new Map<string, number>();
@@ -9173,6 +9256,7 @@ export async function getPartnerPortalData(userId?: string) {
   const budgetCounts = new Map<string, number>();
   const timelineCounts = new Map<string, number>();
   const teamCounts = new Map<string, number>();
+  const impactTargetsByCampaign = new Map<string, ReturnType<typeof toCampaignImpactTarget>[]>();
 
   for (const row of campaignMediaRows) {
     mediaCounts.set(row.campaignId, (mediaCounts.get(row.campaignId) ?? 0) + 1);
@@ -9192,6 +9276,13 @@ export async function getPartnerPortalData(userId?: string) {
     }
   }
 
+  for (const row of campaignImpactTargetRows) {
+    const targets = impactTargetsByCampaign.get(row.campaignId) ?? [];
+
+    targets.push(toCampaignImpactTarget(row));
+    impactTargetsByCampaign.set(row.campaignId, targets);
+  }
+
   return {
     capabilities,
     organizations: organizationRows.map((organization) => ({
@@ -9200,6 +9291,7 @@ export async function getPartnerPortalData(userId?: string) {
     })),
     campaigns: campaignRows.map((campaign) => ({
       ...campaign,
+      impactTargets: impactTargetsByCampaign.get(campaign.id) ?? [],
       verificationLabel: verificationLabel(campaign.verification),
       contentCompleteness: campaignContentCompleteness({
         media: mediaCounts.get(campaign.id) ?? 0,
@@ -10453,7 +10545,8 @@ export async function getAdminCampaignWorkspaceData(campaignId: string) {
     budgetRows,
     timelineRows,
     teamRows,
-    impactSiteRows
+    impactSiteRows,
+    impactTargetRows
   ] = await Promise.all([
     db
       .select({
@@ -10546,7 +10639,23 @@ export async function getAdminCampaignWorkspaceData(campaignId: string) {
       .from(impactSites)
       .leftJoin(campaigns, eq(impactSites.campaignId, campaigns.id))
       .where(eq(impactSites.campaignId, campaign.id))
-      .orderBy(asc(impactSites.name))
+      .orderBy(asc(impactSites.name)),
+    db
+      .select({
+        id: campaignImpactTargets.id,
+        campaignId: campaignImpactTargets.campaignId,
+        impactType: campaignImpactTargets.impactType,
+        label: campaignImpactTargets.label,
+        unit: campaignImpactTargets.unit,
+        target: campaignImpactTargets.target,
+        unitCost: campaignImpactTargets.unitCost,
+        allocationPercent: campaignImpactTargets.allocationPercent,
+        isPrimary: campaignImpactTargets.isPrimary,
+        sortOrder: campaignImpactTargets.sortOrder
+      })
+      .from(campaignImpactTargets)
+      .where(eq(campaignImpactTargets.campaignId, campaign.id))
+      .orderBy(asc(campaignImpactTargets.sortOrder), asc(campaignImpactTargets.label))
   ]);
 
   const contentCompleteness = campaignContentCompleteness({
@@ -10564,7 +10673,8 @@ export async function getAdminCampaignWorkspaceData(campaignId: string) {
       sponsorshipRecordCount: Number(sponsorshipCountRows[0]?.total ?? 0),
       corporatePortfolioCount: Number(portfolioCountRows[0]?.total ?? 0),
       relatedExpeditionCount: Number(expeditionCountRows[0]?.total ?? 0),
-      contentCompleteness
+      contentCompleteness,
+      impactTargets: impactTargetRows.map(toCampaignImpactTarget)
     },
     mediaItems: mediaRows,
     budgetLineItems: budgetRows.map((item) => ({

@@ -4,7 +4,7 @@ import { Calculator, Info } from "lucide-react";
 import { useMemo, useState } from "react";
 
 import { MetricValue } from "@/components/ui/metric-value";
-import { calculateDonationImpact, currencyMinorStep, formatImpactQuantity, minimumDonationAmount } from "@/lib/impact-calculations";
+import { calculateDonationImpact, currencyMinorStep, formatImpactQuantity, minimumDonationAmount, type CampaignImpactLineInput } from "@/lib/impact-calculations";
 import { formatCurrency } from "@/lib/utils";
 
 type CampaignImpactCalculatorProps = {
@@ -12,11 +12,12 @@ type CampaignImpactCalculatorProps = {
   impactTarget: number;
   impactUnit: string;
   impactUnitCost?: string | number | null;
+  impactTargets?: CampaignImpactLineInput[] | null;
   currency: string;
   carbonKgPerUsd?: number | null;
 };
 
-export function CampaignImpactCalculator({ goal, impactTarget, impactUnit, impactUnitCost, currency, carbonKgPerUsd = null }: CampaignImpactCalculatorProps) {
+export function CampaignImpactCalculator({ goal, impactTarget, impactUnit, impactUnitCost, impactTargets = null, currency, carbonKgPerUsd = null }: CampaignImpactCalculatorProps) {
   const step = currencyMinorStep(currency);
   const minimumAmount = minimumDonationAmount(currency);
   const defaultAmount = Math.max(minimumAmount, Math.round((Math.max(1, goal) * 0.001) / step) * step);
@@ -29,19 +30,24 @@ export function CampaignImpactCalculator({ goal, impactTarget, impactUnit, impac
         goalAmount: goal,
         impactTarget,
         impactUnit,
-        impactUnitCost
+        impactUnitCost,
+        impactTargets
       },
       carbonKgPerUsd
     });
     const goalShare = goal > 0 ? Math.min(100, (amount / goal) * 100) : 0;
+    const directOutputs = impact.impactBreakdown
+      .filter((line) => line.unitCount > 0)
+      .slice(0, 4)
+      .map((line) => [`${formatImpactQuantity(line.unitCount)} ${line.unit}`, line.label]);
+    const hasCarbonLine = impact.impactBreakdown.some((line) => line.impactType === "carbon" && line.unitCount > 0);
 
     return [
-      [`${formatImpactQuantity(impact.impactUnitCount)} ${impactUnit}`, "Estimated direct restoration output"],
-      [impact.unitCost > 0 ? formatCurrency(impact.unitCost, currency) : "Pending", `Recorded campaign cost per ${impactUnit}`],
-      [impact.carbonKg == null ? "Pending" : `${formatImpactQuantity(impact.carbonKg)} kg CO2e`, "Carbon calculation from global USD formula"],
+      ...(directOutputs.length > 0 ? directOutputs : [[`${formatImpactQuantity(impact.impactUnitCount)} ${impact.impactUnit}`, "Estimated direct restoration output"]]),
+      ...(hasCarbonLine ? [] : [[impact.carbonKg == null ? "Pending" : `${formatImpactQuantity(impact.carbonKg)} kg CO2e`, "Carbon calculation from global USD formula"]]),
       [`${goalShare.toLocaleString("id-ID", { maximumFractionDigits: 2 })}%`, "Share of campaign funding goal"]
     ];
-  }, [amount, carbonKgPerUsd, currency, goal, impactTarget, impactUnit, impactUnitCost]);
+  }, [amount, carbonKgPerUsd, currency, goal, impactTarget, impactTargets, impactUnit, impactUnitCost]);
 
   return (
     <section id="impact-calculator" className="rounded-2xl border border-ocean-900/10 bg-white p-6 shadow-soft">
