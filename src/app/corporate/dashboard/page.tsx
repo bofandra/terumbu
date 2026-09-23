@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 
 import { MetricValue } from "@/components/ui/metric-value";
 import { getUserRoles, requireUser } from "@/lib/auth";
+import { forbiddenRedirectPath } from "@/lib/account-destinations";
 import { getCorporateDashboardData, getCorporateExpeditionActivities, getCorporateProgramsForUser } from "@/lib/queries";
 import { formatCurrency } from "@/lib/utils";
 
@@ -30,7 +31,7 @@ export default async function CorporateDashboardPage() {
       redirect("/corporate/programs");
     }
 
-    redirect("/forbidden?next=%2Fcorporate");
+    redirect(forbiddenRedirectPath("/corporate"));
   }
 
   const expeditionActivities = await getCorporateExpeditionActivities(user.id, data.program.programId);
