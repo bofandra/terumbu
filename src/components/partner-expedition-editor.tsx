@@ -72,7 +72,7 @@ export function PartnerExpeditionCreateForm({ campaigns, canManageExpeditions }:
         Expedition basics
       </summary>
       <form action={createPartnerExpeditionAction} encType="multipart/form-data" className="grid gap-4 border-t border-ocean-900/10 bg-sand-50 p-5">
-        <input type="hidden" name="redirectTo" value="/partner/expeditions" />
+        <input type="hidden" name="redirectTo" value="/partner/expeditions/new" />
         <div className="grid gap-3 md:grid-cols-2">
           <Field label="Title">
             <input name="title" placeholder="Raja Ampat Coral Restoration Expedition" className={inputClassName} required />
