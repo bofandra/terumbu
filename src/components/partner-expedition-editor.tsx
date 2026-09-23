@@ -4,6 +4,7 @@ import { ArrowUpRight, CalendarPlus, Edit3, MessageSquareText, Plus, Save } from
 
 import { Field, StatusBadge, inputClassName, labelize, textareaClassName, type PartnerPortalData } from "@/components/partner-portal-ui";
 import { RepeatableFields } from "@/components/partner-expedition-repeatable-fields";
+import { ExpeditionItineraryBuilder, ExpeditionListField } from "@/components/partner-expedition-structured-fields";
 import { Button } from "@/components/ui/button";
 import { ExpeditionMarketplaceFields } from "@/components/expedition-marketplace-fields";
 import { processPartnerExpeditionInterestRequestAction } from "@/lib/expedition-interest-actions";
@@ -287,39 +288,17 @@ function DetailFields({ detail, marketplace }: { detail: ExpeditionDetailMetadat
           <Field label="Itinerary disclaimer">
             <textarea name="itineraryDisclaimer" defaultValue={detail.itineraryDisclaimer} className={textareaClassName} />
           </Field>
-          <RepeatableFields
-            rows={itineraryRows.map((day) => ({ ...day, activities: listValue(day.activities) }))}
-            emptyRow={{ day: "", title: "", meals: "", physicalLevel: "Light", activities: "" }}
-            addLabel="Add itinerary day"
-            gridClassName="grid gap-2 rounded-lg bg-sand-50 p-3 md:grid-cols-4"
-            fields={[
-              { name: "itineraryDay", valueKey: "day", placeholder: "Day" },
-              { name: "itineraryDayTitle", valueKey: "title", placeholder: "Title" },
-              { name: "itineraryMeals", valueKey: "meals", placeholder: "Meals" },
-              { name: "itineraryPhysicalLevel", valueKey: "physicalLevel", kind: "select", options: physicalOptions },
-              { name: "itineraryActivities", valueKey: "activities", kind: "textarea", placeholder: "Activities", className: "md:col-span-4" }
-            ]}
-          />
+          <ExpeditionItineraryBuilder rows={itineraryRows} physicalOptions={physicalOptions} />
           <div className="grid gap-3 md:grid-cols-2">
-            <Field label="Included">
-              <textarea name="included" defaultValue={listValue(detail.included)} className={textareaClassName} />
-            </Field>
-            <Field label="Not included">
-              <textarea name="notIncluded" defaultValue={listValue(detail.notIncluded)} className={textareaClassName} />
-            </Field>
-            <Field label="Participant requirements">
-              <textarea name="requirements" defaultValue={listValue(detail.requirements)} className={textareaClassName} />
-            </Field>
-            <Field label="Safety standards">
-              <textarea name="safety" defaultValue={listValue(detail.safety)} className={textareaClassName} />
-            </Field>
+            <ExpeditionListField label="Included" name="included" items={detail.included} addLabel="Add included item" placeholder="Included item" />
+            <ExpeditionListField label="Not included" name="notIncluded" items={detail.notIncluded} addLabel="Add exclusion" placeholder="Not included item" />
+            <ExpeditionListField label="Participant requirements" name="requirements" items={detail.requirements} addLabel="Add requirement" placeholder="Requirement" />
+            <ExpeditionListField label="Safety standards" name="safety" items={detail.safety} addLabel="Add safety item" placeholder="Safety item" />
           </div>
           <Field label="Emergency plan summary">
             <textarea name="emergencyPlanSummary" defaultValue={detail.emergencyPlanSummary} className={textareaClassName} />
           </Field>
-          <Field label="Sustainability standards">
-            <textarea name="sustainability" defaultValue={listValue(detail.sustainability)} className={textareaClassName} />
-          </Field>
+          <ExpeditionListField label="Sustainability standards" name="sustainability" items={detail.sustainability} addLabel="Add sustainability item" placeholder="Sustainability standard" />
         </div>
       </details>
 
@@ -333,12 +312,8 @@ function DetailFields({ detail, marketplace }: { detail: ExpeditionDetailMetadat
             <input name="mapEmbedUrl" defaultValue={detail.route.mapEmbedUrl} className={inputClassName} />
           </Field>
           <div className="grid gap-3 md:grid-cols-2">
-            <Field label="Route steps">
-              <textarea name="routeSteps" defaultValue={listValue(detail.route.steps)} className={textareaClassName} />
-            </Field>
-            <Field label="Travel times">
-              <textarea name="routeTravelTimes" defaultValue={listValue(detail.route.travelTimes)} className={textareaClassName} />
-            </Field>
+            <ExpeditionListField label="Route steps" name="routeSteps" items={detail.route.steps} addLabel="Add route step" placeholder="Route step" />
+            <ExpeditionListField label="Travel times" name="routeTravelTimes" items={detail.route.travelTimes} addLabel="Add travel time" placeholder="Travel time" />
           </div>
           <div className="grid gap-3 md:grid-cols-2">
             <Field label="Accommodation name">
@@ -354,9 +329,7 @@ function DetailFields({ detail, marketplace }: { detail: ExpeditionDetailMetadat
               </select>
             </Field>
           </div>
-          <Field label="Accommodation details">
-            <textarea name="accommodationDetails" defaultValue={listValue(detail.accommodation.details)} className={textareaClassName} />
-          </Field>
+          <ExpeditionListField label="Accommodation details" name="accommodationDetails" items={detail.accommodation.details} addLabel="Add accommodation detail" placeholder="Accommodation detail" />
           <Field label="Meal note">
             <textarea name="mealNote" defaultValue={detail.accommodation.mealNote} className={textareaClassName} />
           </Field>
