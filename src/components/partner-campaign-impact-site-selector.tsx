@@ -21,18 +21,22 @@ type ImpactSiteMode = "existing" | "new";
 export function PartnerCampaignImpactSiteSelector({ impactSites, inputClassName }: PartnerCampaignImpactSiteSelectorProps) {
   const hasExistingSites = impactSites.length > 0;
   const [mode, setMode] = useState<ImpactSiteMode>(hasExistingSites ? "existing" : "new");
-  const [existingSiteId, setExistingSiteId] = useState(impactSites[0]?.id ?? "");
+  const [existingSiteId, setExistingSiteId] = useState("");
   const [newType, setNewType] = useState("Coral");
   const [newRegion, setNewRegion] = useState("");
-  const existingSite = impactSites.find((site) => site.id === existingSiteId) ?? impactSites[0] ?? null;
+  const existingSite = impactSites.find((site) => site.id === existingSiteId) ?? null;
   const derivedCategory =
     mode === "existing" && existingSite
       ? campaignCategoryFromEcosystemType(existingSite.type)
-      : campaignCategoryFromEcosystemType(newType);
+      : mode === "new"
+        ? campaignCategoryFromEcosystemType(newType)
+        : "Select a location";
   const derivedRegion =
     mode === "existing" && existingSite
       ? existingSite.region
-      : newRegion || "Indonesia";
+      : mode === "new"
+        ? newRegion || "Enter a region"
+        : "Select a location";
 
   return (
     <div className="rounded-lg border border-ocean-900/10 bg-white p-4">
@@ -54,6 +58,7 @@ export function PartnerCampaignImpactSiteSelector({ impactSites, inputClassName 
           <label className="grid gap-1.5 text-sm font-bold text-ocean-900">
             Existing location
             <select name="existingImpactSiteId" value={existingSiteId} className={inputClassName} required={mode === "existing"} onChange={(event) => setExistingSiteId(event.target.value)}>
+              <option value="">Choose a location...</option>
               {impactSites.map((site) => (
                 <option key={site.id} value={site.id}>
                   {site.name} / {site.type} / {site.region}
