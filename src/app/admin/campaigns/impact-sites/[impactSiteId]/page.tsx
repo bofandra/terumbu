@@ -1,197 +1,94 @@
-import { MapPinned, Save } from "lucide-react";
+import Link from "next/link";
+import { MapPinned, ShieldCheck } from "lucide-react";
 import { notFound } from "next/navigation";
 
-import {
-  AdminImpactSiteErrorSummary,
-  AdminImpactSiteFields,
-  type AdminImpactSiteFormValues,
-  validateAdminImpactSiteFormValues
-} from "@/components/admin/admin-impact-site-form";
-import { AdminAlert } from "@/components/admin/admin-alert";
-import { AdminConfirmSubmit } from "@/components/admin/admin-confirm-submit";
 import { AdminPageHeader, AdminStatusBadge, adminPanelClassName } from "@/components/admin-ui";
-import { Button } from "@/components/ui/button";
+import { ProgressMeter } from "@/components/ui/progress-meter";
 import { observeAdminDataLoader } from "@/lib/admin-observability";
 import { requireRole } from "@/lib/auth";
-import { deleteAdminImpactSiteAction, updateAdminImpactSiteAction } from "@/lib/portal-actions";
 import { getAdminImpactSiteEditorData } from "@/lib/queries";
 
 export const metadata = {
-  title: "Manage Impact Site"
+  title: "Impact Site Monitoring"
 };
 
 export const dynamic = "force-dynamic";
 
-const directoryPath = "/admin/campaigns/impact-sites";
-
-const statusMessages: Record<string, string> = {
-  "impact-site-created": "Impact site created.",
-  "impact-site-updated": "Impact site updated."
-};
-
-const errorMessages: Record<string, string> = {
-  "campaign-missing": "Choose an existing campaign or leave the site unassigned.",
-  "impact-site-delete": "Delete confirmation was not submitted.",
-  "impact-site-invalid": "Some impact site fields need attention. Your input has been preserved.",
-  "impact-site-missing": "Impact site record was not found."
-};
-
-type SearchValue = string | string[] | undefined;
-type SearchParams = {
-  [Key in keyof AdminImpactSiteFormValues]?: SearchValue;
-} & {
-  error?: SearchValue;
-  saved?: SearchValue;
-  returnTo?: SearchValue;
-};
-
-function first(value: string | string[] | null | undefined) {
-  return Array.isArray(value) ? value[0] : value ?? "";
-}
-
-function safeReturnTo(value: string | string[] | undefined) {
-  const candidate = first(value);
-
-  if (!candidate || candidate.startsWith("//")) return directoryPath;
-
-  try {
-    const url = new URL(candidate, "https://terumbu.local");
-
-    return url.origin === "https://terumbu.local" && url.pathname === directoryPath
-      ? `${url.pathname}${url.search}`
-      : directoryPath;
-  } catch {
-    return directoryPath;
-  }
-}
-
-function hasDraftValues(params: SearchParams | undefined) {
-  return ["campaignId", "name", "ecosystemType", "region", "latitude", "longitude", "verification", "progress", "evidenceCount", "latestSurvey"].some(
-    (key) => params?.[key as keyof SearchParams] !== undefined
-  );
-}
-
-function editorValues(site: NonNullable<Awaited<ReturnType<typeof getAdminImpactSiteEditorData>>["site"]>, params: SearchParams | undefined): AdminImpactSiteFormValues {
-  if (!hasDraftValues(params)) {
-    return {
-      campaignId: site.campaignId,
-      name: site.name,
-      ecosystemType: site.ecosystemType,
-      region: site.region,
-      latitude: site.latitude.toFixed(6),
-      longitude: site.longitude.toFixed(6),
-      verification: site.verification,
-      progress: site.progress,
-      evidenceCount: site.evidenceCount,
-      latestSurvey: site.latestSurvey
-    };
-  }
-
-  return {
-    campaignId: first(params?.campaignId),
-    name: first(params?.name),
-    ecosystemType: first(params?.ecosystemType) || site.ecosystemType,
-    region: first(params?.region),
-    latitude: first(params?.latitude),
-    longitude: first(params?.longitude),
-    verification: first(params?.verification) || site.verification,
-    progress: first(params?.progress) || "0",
-    evidenceCount: first(params?.evidenceCount) || "0",
-    latestSurvey: first(params?.latestSurvey)
-  };
-}
-
 export default async function AdminImpactSiteDetailPage({
-  params,
-  searchParams
+  params
 }: {
   params: Promise<{ impactSiteId: string }>;
-  searchParams?: Promise<SearchParams>;
 }) {
   const { impactSiteId } = await params;
-  const pathname = `${directoryPath}/${impactSiteId}`;
+  const pathname = `/admin/campaigns/impact-sites/${impactSiteId}`;
   await requireRole(["admin"], pathname);
-  const query = await searchParams;
   const data = await observeAdminDataLoader("admin.impact-site.editor", () => getAdminImpactSiteEditorData(impactSiteId));
 
-  if (!data.site) notFound();
+  if (!data.site) {
+    notFound();
+  }
 
-  const returnTo = safeReturnTo(query?.returnTo);
-  const detailReturnTo = `${pathname}?returnTo=${encodeURIComponent(returnTo)}`;
-  const values = editorValues(data.site, query);
-  const errorCode = first(query?.error);
-  const savedCode = first(query?.saved);
-  const errors = errorCode === "impact-site-invalid" ? validateAdminImpactSiteFormValues(values) : {};
-  const errorMessage = errorCode ? errorMessages[errorCode] : null;
-  const savedMessage = savedCode ? statusMessages[savedCode] : null;
+  const site = data.site;
 
   return (
     <div className="space-y-6">
       <AdminPageHeader
-        eyebrow="Projects / Impact sites"
-        title={data.site.name}
-        description={`${data.site.ecosystemType} / ${data.site.region} / ${data.site.campaignTitle ?? "Unassigned staging site"}`}
-        actionHref={returnTo}
+        eyebrow="Donations / Impact sites / Read only"
+        title={site.name}
+        description={`${site.ecosystemType} / ${site.region} / ${site.campaignTitle ?? "Unassigned staging site"}`}
+        actionHref="/admin/campaigns/impact-sites"
         actionLabel="Back to impact sites"
       />
 
-      {savedMessage ? <AdminAlert tone="success">{savedMessage}</AdminAlert> : null}
-      {errorMessage ? <AdminAlert tone="error" title="Impact site was not saved">{errorMessage}</AdminAlert> : null}
-      <AdminImpactSiteErrorSummary errors={errors} />
+      <section className="rounded-lg border border-kelp-700/20 bg-kelp-100/50 p-4 shadow-soft">
+        <div className="flex items-start gap-3">
+          <ShieldCheck className="mt-0.5 size-5 shrink-0 text-kelp-700" aria-hidden="true" />
+          <div>
+            <h2 className="font-bold text-ocean-900">Partner-owned impact site</h2>
+            <p className="mt-1 text-sm font-semibold leading-6 text-ocean-900/62">
+              Platform admins can monitor this location but cannot edit its coordinates, campaign assignment, verification fields, progress, or evidence count.
+            </p>
+          </div>
+        </div>
+      </section>
 
       <section className="grid gap-3 sm:grid-cols-3" aria-label="Impact site summary">
         <article className="rounded-lg border border-ocean-900/10 bg-white p-4 shadow-soft sm:col-span-2">
           <div className="flex items-start justify-between gap-3">
             <div>
               <p className="text-sm font-bold text-ocean-900/58">Current assignment</p>
-              <p className="mt-2 text-lg font-bold text-ocean-900">{data.site.campaignTitle ?? "Unassigned staging site"}</p>
-              <p className="mt-1 text-sm font-semibold text-ocean-900/58">{data.site.latitude.toFixed(6)}, {data.site.longitude.toFixed(6)}</p>
+              <p className="mt-2 text-lg font-bold text-ocean-900">{site.campaignTitle ?? "Unassigned staging site"}</p>
+              <p className="mt-1 text-sm font-semibold text-ocean-900/58">{site.latitude.toFixed(6)}, {site.longitude.toFixed(6)}</p>
             </div>
             <MapPinned className="size-5 text-kelp-700" aria-hidden="true" />
           </div>
         </article>
         <article className="rounded-lg border border-ocean-900/10 bg-white p-4 shadow-soft">
           <p className="text-sm font-bold text-ocean-900/58">Verification</p>
-          <div className="mt-3"><AdminStatusBadge value={data.site.verification} /></div>
+          <div className="mt-3"><AdminStatusBadge value={site.verification} /></div>
         </article>
       </section>
 
       <section className={adminPanelClassName}>
         <div className="border-b border-ocean-900/10 p-4">
-          <h2 className="text-xl font-bold tracking-normal text-ocean-900">Site details</h2>
-          <p className="mt-1 text-sm font-semibold text-ocean-900/58">Edit location, assignment, verification, and tracking fields.</p>
+          <h2 className="text-xl font-bold text-ocean-900">Site snapshot</h2>
+          <p className="mt-1 text-sm font-semibold text-ocean-900/58">Partner-managed location and tracking data.</p>
         </div>
-        <form action={updateAdminImpactSiteAction} className="grid gap-4 p-4">
-          <input type="hidden" name="impactSiteId" value={data.site.id} />
-          <input type="hidden" name="errorReturnTo" value={detailReturnTo} />
-          <input type="hidden" name="savedReturnTo" value={detailReturnTo} />
-          <AdminImpactSiteFields campaigns={data.campaignOptions} values={values} errors={errors} advancedOpen />
-          <Button type="submit" tone="secondary" className="w-fit rounded-lg">
-            <Save className="size-4" aria-hidden="true" />
-            Save impact site
-          </Button>
-        </form>
-      </section>
-
-      <section className="rounded-lg border border-coral-700/20 bg-coral-100 p-4">
-        <h2 className="text-lg font-bold text-coral-700">Danger zone</h2>
-        <p className="mt-1 max-w-2xl text-sm font-semibold leading-6 text-coral-700/80">
-          Delete this site and detach linked activity and sponsorship records from the site.
-        </p>
-        <form id={`delete-impact-site-${data.site.id}`} action={deleteAdminImpactSiteAction}>
-          <input type="hidden" name="impactSiteId" value={data.site.id} />
-          <input type="hidden" name="errorReturnTo" value={detailReturnTo} />
-          <input type="hidden" name="savedReturnTo" value={returnTo} />
-        </form>
-        <div className="mt-4">
-          <AdminConfirmSubmit
-            formId={`delete-impact-site-${data.site.id}`}
-            title={`Delete ${data.site.name}?`}
-            body="This removes the impact site record and unlinks related campaign activity from this location. This action cannot be undone from the admin portal."
-            triggerLabel="Delete impact site"
-            submitLabel="Delete impact site"
-          />
-        </div>
+        <dl className="grid gap-3 p-4 md:grid-cols-2">
+          <div className="rounded-lg bg-sand-50 p-4"><dt className="text-sm font-semibold text-ocean-900/54">Ecosystem</dt><dd className="mt-2 font-bold text-ocean-900">{site.ecosystemType}</dd></div>
+          <div className="rounded-lg bg-sand-50 p-4"><dt className="text-sm font-semibold text-ocean-900/54">Region</dt><dd className="mt-2 font-bold text-ocean-900">{site.region}</dd></div>
+          <div className="rounded-lg bg-sand-50 p-4"><dt className="text-sm font-semibold text-ocean-900/54">Coordinates</dt><dd className="mt-2 font-bold text-ocean-900">{site.latitude.toFixed(6)}, {site.longitude.toFixed(6)}</dd></div>
+          <div className="rounded-lg bg-sand-50 p-4"><dt className="text-sm font-semibold text-ocean-900/54">Latest survey</dt><dd className="mt-2 font-bold text-ocean-900">{site.latestSurvey ?? "Pending"}</dd></div>
+          <div className="rounded-lg bg-sand-50 p-4"><dt className="text-sm font-semibold text-ocean-900/54">Activity records</dt><dd className="mt-2 font-bold text-ocean-900">{site.evidenceCount.toLocaleString("id-ID")}</dd></div>
+          <div className="rounded-lg bg-sand-50 p-4"><dt className="text-sm font-semibold text-ocean-900/54">Progress</dt><dd className="mt-2 font-bold text-ocean-900">{site.progress}%</dd><ProgressMeter value={site.progress} label="Impact site progress" className="mt-3 h-2" trackClassName="bg-white" /></div>
+        </dl>
+        {site.campaignId ? (
+          <div className="border-t border-ocean-900/10 p-4">
+            <Link href={`/admin/campaigns/${site.campaignId}`} className="text-sm font-bold text-coral-700 hover:text-coral-500">
+              View linked donation →
+            </Link>
+          </div>
+        ) : null}
       </section>
     </div>
   );
