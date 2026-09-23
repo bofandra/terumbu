@@ -3675,106 +3675,18 @@ export async function updateAdminCampaignAction(formData: FormData) {
 }
 
 export async function createAdminImpactSiteAction(formData: FormData) {
-  const user = await requireRole(["admin"], "/admin/campaigns/impact-sites");
-  const values = impactSiteFormValues(formData, false, (code) => redirectAdminImpactSiteError(code, formData));
-
-  if (values.campaignId) {
-    const [campaign] = await db.select({ id: campaigns.id }).from(campaigns).where(eq(campaigns.id, values.campaignId)).limit(1);
-
-    if (!campaign) {
-      redirectAdminImpactSiteError("campaign-missing", formData);
-    }
-  }
-
-  const [site] = await db
-    .insert(impactSites)
-    .values(values)
-    .returning({ id: impactSites.id });
-
-  await db.insert(adminAuditLogs).values({
-    actorUserId: user.id,
-    action: "impact_site.created",
-    entityType: "impact_site",
-    entityId: site.id,
-    metadata: { source: "admin", campaignId: values.campaignId, name: values.name }
-  });
-
-  redirectAdminCampaignSaved("impact-site-created", formData);
+  await requireRole(["admin"], "/admin/campaigns/impact-sites");
+  redirectAdminImpactSiteError("partner-owned", formData);
 }
 
 export async function updateAdminImpactSiteAction(formData: FormData) {
-  const user = await requireRole(["admin"], "/admin/campaigns/impact-sites");
-  const impactSiteId = formText(formData, "impactSiteId");
-  const values = impactSiteFormValues(formData, false, (code) => redirectAdminImpactSiteError(code, formData));
-
-  if (!impactSiteId) {
-    redirectAdminImpactSiteError("impact-site-missing", formData);
-  }
-
-  const [site] = await db.select({ id: impactSites.id, name: impactSites.name }).from(impactSites).where(eq(impactSites.id, impactSiteId)).limit(1);
-
-  if (!site) {
-    redirectAdminImpactSiteError("impact-site-missing", formData);
-  }
-
-  if (values.campaignId) {
-    const [campaign] = await db.select({ id: campaigns.id }).from(campaigns).where(eq(campaigns.id, values.campaignId)).limit(1);
-
-    if (!campaign) {
-      redirectAdminImpactSiteError("campaign-missing", formData);
-    }
-  }
-
-  await db
-    .update(impactSites)
-    .set(values)
-    .where(eq(impactSites.id, impactSiteId));
-
-  await db.insert(adminAuditLogs).values({
-    actorUserId: user.id,
-    action: "impact_site.updated",
-    entityType: "impact_site",
-    entityId: impactSiteId,
-    metadata: { source: "admin", previousName: site.name, campaignId: values.campaignId, name: values.name }
-  });
-
-  redirectAdminCampaignSaved("impact-site-updated", formData);
+  await requireRole(["admin"], "/admin/campaigns/impact-sites");
+  redirectAdminImpactSiteError("partner-owned", formData);
 }
 
 export async function deleteAdminImpactSiteAction(formData: FormData) {
-  const user = await requireRole(["admin"], "/admin/campaigns/impact-sites");
-  const impactSiteId = formText(formData, "impactSiteId");
-  const confirmed = formData.get("confirmDelete") === "delete";
-
-  if (!impactSiteId || !confirmed) {
-    redirectAdminCampaignError("impact-site-delete", formData);
-  }
-
-  const [site] = await db
-    .select({
-      id: impactSites.id,
-      campaignId: impactSites.campaignId,
-      name: impactSites.name
-    })
-    .from(impactSites)
-    .where(eq(impactSites.id, impactSiteId))
-    .limit(1);
-
-  if (!site) {
-    redirectAdminCampaignError("impact-site-missing", formData);
-  }
-
-  await db.delete(impactSites).where(eq(impactSites.id, impactSiteId));
-
-  await db.insert(adminAuditLogs).values({
-    actorUserId: user.id,
-    action: "impact_site.deleted",
-    entityType: "impact_site",
-    entityId: impactSiteId,
-    metadata: { source: "admin", campaignId: site.campaignId, name: site.name }
-  });
-
-  redirectAdminCampaignSaved("impact-site-deleted", formData);
+  await requireRole(["admin"], "/admin/campaigns/impact-sites");
+  redirectAdminImpactSiteError("partner-owned", formData);
 }
 
 export async function deleteAdminCampaignAction(formData: FormData) {
