@@ -14,7 +14,6 @@ import {
 } from "lucide-react";
 import type { ReactNode } from "react";
 
-import { CampaignImpactTargetFields } from "@/components/campaign-impact-target-fields";
 import { PartnerCampaignImpactPlanningFields } from "@/components/partner-campaign-impact-planning-fields";
 import { PartnerCampaignImpactSiteSelector } from "@/components/partner-campaign-impact-site-selector";
 import { Button } from "@/components/ui/button";
@@ -389,23 +388,9 @@ export function CampaignFields({
         </Field>
       </div>
 
-      <div className="grid gap-3 md:grid-cols-2">
-        <Field label="Campaign title" required>
-          <input name="title" defaultValue={campaign?.title} placeholder="Campaign title" className={inputClassName} required />
-        </Field>
-        <Field label="Funding goal" help="Managed from the Budget Plan after budget lines are added." required>
-          <input
-            name="goalAmount"
-            type="number"
-            min="1"
-            step="0.01"
-            defaultValue={Number(campaign.goalAmount)}
-            className={`${inputClassName} bg-ocean-50`}
-            readOnly
-            required
-          />
-        </Field>
-      </div>
+      <Field label="Campaign title" required>
+        <input name="title" defaultValue={campaign?.title} placeholder="Campaign title" className={inputClassName} required />
+      </Field>
 
       <Field label="Summary" required>
         <textarea name="summary" defaultValue={campaign.summary} placeholder="Public campaign summary" className={textareaClassName} required />
@@ -435,6 +420,12 @@ export function CampaignFields({
         </Field>
       </div>
 
+      <PartnerCampaignImpactPlanningFields
+        inputClassName={inputClassName}
+        currency={campaign.currency ?? "USD"}
+        initialLines={campaign.impactTargets}
+      />
+
       <details className="rounded-lg border border-ocean-900/10 bg-sand-50 p-4">
         <summary className="cursor-pointer text-sm font-bold text-ocean-900">Advanced public details</summary>
         <div className="mt-4 grid gap-4">
@@ -452,7 +443,6 @@ export function CampaignFields({
               <input name="endsAt" type="date" defaultValue={dateValue(campaign.endsAt)} className={inputClassName} />
             </Field>
           </div>
-          <CampaignImpactTargetFields lines={campaign.impactTargets} inputClassName={inputClassName} />
           <Field label="Story">
             <textarea name="story" defaultValue={campaign.story ?? ""} placeholder="Campaign story" className={textareaClassName} />
           </Field>
