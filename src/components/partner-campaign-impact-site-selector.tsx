@@ -19,11 +19,11 @@ type PartnerCampaignImpactSiteSelectorProps = {
 type ImpactSiteMode = "existing" | "new";
 
 export function PartnerCampaignImpactSiteSelector({ impactSites, inputClassName }: PartnerCampaignImpactSiteSelectorProps) {
+  const hasExistingSites = impactSites.length > 0;
   const [mode, setMode] = useState<ImpactSiteMode>(hasExistingSites ? "existing" : "new");
   const [existingSiteId, setExistingSiteId] = useState(impactSites[0]?.id ?? "");
   const [newType, setNewType] = useState("Coral");
   const [newRegion, setNewRegion] = useState("");
-  const hasExistingSites = impactSites.length > 0;
   const existingSite = impactSites.find((site) => site.id === existingSiteId) ?? impactSites[0] ?? null;
   const derivedCategory =
     mode === "existing" && existingSite
