@@ -46,7 +46,7 @@ function valueString(value: string | number | null | undefined) {
   return Number(text) === 0 ? "" : text;
 }
 
-function buildInitialRows(initialLines?: InitialImpactPlanLine[] | null) {
+function buildInitialRows(initialLines?: InitialImpactPlanLine[] | null): { rows: ImpactPlanRow[]; primaryIndex: number } {
   const explicitRows = (initialLines ?? [])
     .filter((line) => Number(line.target ?? 0) > 0)
     .sort((a, b) => Number(a.sortOrder ?? 0) - Number(b.sortOrder ?? 0))
