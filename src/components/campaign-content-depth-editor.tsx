@@ -242,7 +242,7 @@ function BudgetForm({
           </select>
         </Field>
         <Field label="Planned amount">
-          <input name="amount" type="number" min="1" step="1000" defaultValue={item?.amount} className={inputClassName} required />
+          <input name="amount" type="number" min="0.01" step="0.01" defaultValue={item?.amount} className={inputClassName} required />
         </Field>
       </div>
       <p className="text-xs font-semibold leading-5 text-ocean-900/54">
