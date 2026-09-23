@@ -30,7 +30,7 @@ type PartnerCampaignsPageProps = {
 };
 
 export default async function PartnerCampaignsPage({ searchParams }: PartnerCampaignsPageProps) {
-  const user = await requireRole(["partner", "admin"], "/partner");
+  const user = await requireRole(["partner"], "/partner");
   const params = await searchParams;
   const data = await getPartnerPortalData(user.id);
   const savedMessage = params?.saved ? statusMessages[params.saved] : null;
