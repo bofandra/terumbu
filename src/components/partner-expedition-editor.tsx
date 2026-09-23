@@ -66,10 +66,10 @@ export function PartnerExpeditionCreateForm({ campaigns, canManageExpeditions }:
   const canSubmit = hasCampaigns && canManageExpeditions;
 
   return (
-    <details id="add-expedition" className="rounded-lg border border-ocean-900/10 bg-white shadow-soft">
+    <details open className="rounded-lg border border-ocean-900/10 bg-white shadow-soft">
       <summary className="flex cursor-pointer items-center gap-2 px-5 py-4 text-sm font-bold text-ocean-900">
         <Plus className="size-4" aria-hidden="true" />
-        Add expedition
+        Expedition basics
       </summary>
       <form action={createPartnerExpeditionAction} encType="multipart/form-data" className="grid gap-4 border-t border-ocean-900/10 bg-sand-50 p-5">
         <input type="hidden" name="redirectTo" value="/partner/expeditions" />
