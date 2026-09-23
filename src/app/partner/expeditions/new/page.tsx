@@ -27,7 +27,7 @@ type NewPartnerExpeditionPageProps = {
 };
 
 export default async function NewPartnerExpeditionPage({ searchParams }: NewPartnerExpeditionPageProps) {
-  const user = await requireRole(["partner", "admin"], "/partner");
+  const user = await requireRole(["partner"], "/partner");
   const query = await searchParams;
   const data = await getPartnerPortalData(user.id);
   const errorMessage = query?.error ? errorMessages[query.error] ?? "Expedition could not be created." : null;
