@@ -53,8 +53,8 @@ export default async function PartnerExpeditionsPage({ searchParams }: PartnerEx
     <div className="space-y-8">
       <PartnerPageHeader
         title="Expeditions"
-        description="Manage trip catalog details, public trip-detail content, and departure availability for expeditions linked to your campaigns."
-        actionHref="#add-expedition"
+        description="Choose an expedition to manage public trip content, itinerary and logistics, departures, bookings, and requests in one workspace."
+        actionHref="/partner/expeditions/new"
         actionLabel="Add expedition"
       />
 
