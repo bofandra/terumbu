@@ -113,10 +113,6 @@ function dateValue(date: Date | null) {
   return date ? date.toISOString().slice(0, 10) : "";
 }
 
-function dateLabel(date: Date | null) {
-  return date?.toLocaleDateString("id-ID", { dateStyle: "medium" }) ?? "Date pending";
-}
-
 function isImageRecord(value: string | null) {
   if (!value) {
     return false;
@@ -143,15 +139,6 @@ function impactSiteEcosystemOptionsForSite(site?: CampaignImpactSite) {
   return site?.type && !impactSiteEcosystemTypes.includes(site.type as (typeof impactSiteEcosystemTypes)[number])
     ? [site.type, ...impactSiteEcosystemTypes]
     : impactSiteEcosystemTypes;
-}
-
-function initialsForName(value: string) {
-  return value
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part) => part[0]?.toUpperCase())
-    .join("") || "TE";
 }
 
 export function imageBackground(imageUrl: string | null) {
@@ -728,10 +715,6 @@ export function PartnerImpactSiteManagement({
       </section>
     </div>
   );
-}
-
-function EmptyRecord({ children }: { children: ReactNode }) {
-  return <p className="rounded-lg border border-dashed border-ocean-900/14 p-3 text-sm font-semibold text-ocean-900/54">{children}</p>;
 }
 
 export function CampaignList({
