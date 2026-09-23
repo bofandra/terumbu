@@ -2,7 +2,7 @@ import Link from "next/link";
 
 import { PartnerExpeditionCreateForm } from "@/components/partner-expedition-editor";
 import { PartnerPageHeader } from "@/components/partner-portal-ui";
-import { requireRole } from "@/lib/auth";
+import { requirePartnerRole } from "@/lib/auth";
 import { getPartnerPortalData } from "@/lib/queries";
 
 export const metadata = {
@@ -27,7 +27,7 @@ type NewPartnerExpeditionPageProps = {
 };
 
 export default async function NewPartnerExpeditionPage({ searchParams }: NewPartnerExpeditionPageProps) {
-  const user = await requireRole(["partner"], "/partner");
+  const user = await requirePartnerRole("/partner");
   const query = await searchParams;
   const data = await getPartnerPortalData(user.id);
   const errorMessage = query?.error ? errorMessages[query.error] ?? "Expedition could not be created." : null;
