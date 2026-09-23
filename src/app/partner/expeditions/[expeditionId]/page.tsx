@@ -48,7 +48,7 @@ type PartnerExpeditionDetailPageProps = {
 };
 
 export default async function PartnerExpeditionDetailPage({ params, searchParams }: PartnerExpeditionDetailPageProps) {
-  const user = await requireRole(["partner", "admin"], "/partner");
+  const user = await requireRole(["partner"], "/partner");
   const [{ expeditionId }, query] = await Promise.all([params, searchParams]);
   const data = await getPartnerPortalData(user.id);
   const expedition = data.expeditions.find((item) => item.id === expeditionId);
