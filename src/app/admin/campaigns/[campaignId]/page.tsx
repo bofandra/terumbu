@@ -301,7 +301,7 @@ export default async function AdminCampaignDetailPage({ params, searchParams }: 
                   </select>
                 </Field>
               </div>
-              <CampaignImpactTargetFields lines={campaign.impactTargets} inputClassName={adminInputClassName} selectClassName={adminSelectClassName} />
+              <CampaignImpactTargetFields lines={campaign.impactTargets} inputClassName={adminInputClassName} selectClassName={adminSelectClassName} showAllocation />
               <Field label="Story">
                 <textarea name="story" defaultValue={campaign.story ?? ""} className={adminTextareaClassName} />
               </Field>

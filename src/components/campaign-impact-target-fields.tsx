@@ -22,6 +22,7 @@ type CampaignImpactTargetFieldsProps = {
   lines?: ImpactTargetLine[] | null;
   inputClassName: string;
   selectClassName?: string;
+  showAllocation?: boolean;
 };
 
 function valueString(value: string | number | null | undefined) {
@@ -69,7 +70,8 @@ function formRows(lines?: ImpactTargetLine[] | null) {
 export function CampaignImpactTargetFields({
   lines,
   inputClassName,
-  selectClassName = inputClassName
+  selectClassName = inputClassName,
+  showAllocation = false
 }: CampaignImpactTargetFieldsProps) {
   const rows = formRows(lines);
   const primaryIndex = Math.max(0, rows.findIndex((line) => line.isPrimary));
@@ -80,7 +82,7 @@ export function CampaignImpactTargetFields({
         <div>
           <h3 className="text-sm font-bold uppercase tracking-[0.12em] text-coral-700">Impact mix</h3>
           <p className="mt-1 text-sm font-semibold leading-6 text-ocean-900/58">
-            Fill one or more targets. Allocation controls how each donation is split; cost per unit can be explicit or derived from allocation and target.
+            Fill one or more targets. Goal and budget share can be derived from target and cost per unit.
           </p>
         </div>
         <span className="text-xs font-bold uppercase tracking-[0.12em] text-ocean-900/45">Optional rows can stay blank</span>
@@ -88,7 +90,7 @@ export function CampaignImpactTargetFields({
 
       <div className="mt-4 grid gap-3">
         {rows.map((line, index) => (
-          <div key={`${"id" in line ? line.id ?? line.impactType : line.impactType}-${index}`} className="grid gap-3 rounded-lg border border-ocean-900/10 bg-sand-50 p-3 lg:grid-cols-[1.2fr_1fr_0.8fr_1fr_0.8fr_0.8fr_auto] lg:items-end">
+          <div key={`${"id" in line ? line.id ?? line.impactType : line.impactType}-${index}`} className={`grid gap-3 rounded-lg border border-ocean-900/10 bg-sand-50 p-3 lg:items-end ${showAllocation ? "lg:grid-cols-[1.2fr_1fr_0.8fr_1fr_0.8fr_0.8fr_auto]" : "lg:grid-cols-[1.2fr_1fr_0.8fr_1fr_0.8fr_auto]"}`}>
             <label className="grid gap-1.5 text-xs font-bold uppercase tracking-[0.08em] text-ocean-900/58">
               Label
               <input name="impactLineLabel" defaultValue={line.label} className={inputClassName} placeholder="Coral restoration" />
@@ -115,10 +117,14 @@ export function CampaignImpactTargetFields({
               Cost/unit
               <input name="impactLineUnitCost" type="number" min="0" step="0.01" defaultValue={valueString(line.unitCost)} className={inputClassName} placeholder="Auto" />
             </label>
-            <label className="grid gap-1.5 text-xs font-bold uppercase tracking-[0.08em] text-ocean-900/58">
-              Allocation %
-              <input name="impactLineAllocationPercent" type="number" min="0" max="100" step="0.01" defaultValue={valueString(line.allocationPercent)} className={inputClassName} placeholder="100" />
-            </label>
+            {showAllocation ? (
+              <label className="grid gap-1.5 text-xs font-bold uppercase tracking-[0.08em] text-ocean-900/58">
+                Budget share
+                <input name="impactLineAllocationPercent" type="number" min="0" max="100" step="0.01" defaultValue={valueString(line.allocationPercent)} className={inputClassName} placeholder="Auto" />
+              </label>
+            ) : (
+              <input name="impactLineAllocationPercent" type="hidden" value={valueString(line.allocationPercent)} />
+            )}
             <label className="flex items-center gap-2 pb-3 text-sm font-bold text-ocean-900 lg:pb-2">
               <input name="impactLinePrimaryIndex" type="radio" value={index} defaultChecked={index === primaryIndex} className="size-4 accent-coral-500" />
               Primary

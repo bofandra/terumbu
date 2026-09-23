@@ -19,6 +19,7 @@ import type { ReactNode } from "react";
 
 import { CampaignContentDepthEditor } from "@/components/campaign-content-depth-editor";
 import { CampaignImpactTargetFields } from "@/components/campaign-impact-target-fields";
+import { PartnerCampaignImpactPlanningFields } from "@/components/partner-campaign-impact-planning-fields";
 import { PartnerCampaignImpactSiteSelector } from "@/components/partner-campaign-impact-site-selector";
 import { Button } from "@/components/ui/button";
 import { MetricValue } from "@/components/ui/metric-value";
@@ -343,33 +344,15 @@ export function CampaignFields({
           <Field label="Campaign title" required>
             <input name="title" placeholder="Restore Raja Ampat Reefs" className={inputClassName} required />
           </Field>
-          <Field label="Goal amount" required>
-            <input name="goalAmount" type="number" min="1" step="0.01" className={inputClassName} required />
-          </Field>
         </div>
         <Field label="Summary" required>
           <textarea name="summary" placeholder="One or two sentences for the public campaign card." className={textareaClassName} required />
         </Field>
 
-        <details className="rounded-lg border border-ocean-900/10 bg-sand-50 p-4">
-          <summary className="cursor-pointer text-sm font-bold text-ocean-900">Advanced public details</summary>
+        <details className="rounded-lg border border-ocean-900/10 bg-sand-50 p-4" open>
+          <summary className="cursor-pointer text-sm font-bold text-ocean-900">Impact plan and location</summary>
           <div className="mt-4 grid gap-4">
-            <div className="grid gap-3 md:grid-cols-2">
-              <Field label="Category">
-                <select name="category" defaultValue="" className={inputClassName}>
-                  <option value="">Auto from linked site</option>
-                  {campaignCategories.map((category) => (
-                    <option key={category} value={category}>
-                      {category}
-                    </option>
-                  ))}
-                </select>
-              </Field>
-              <Field label="Region">
-                <input name="region" placeholder="Indonesia" className={inputClassName} />
-              </Field>
-            </div>
-            <CampaignImpactTargetFields inputClassName={inputClassName} />
+            <PartnerCampaignImpactPlanningFields inputClassName={inputClassName} />
             <div className="grid gap-3 md:grid-cols-3">
               <Field label="Campaign end date">
                 <input name="endsAt" type="date" className={inputClassName} />

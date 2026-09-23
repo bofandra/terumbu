@@ -13,7 +13,7 @@ const statusMessages: Record<string, string> = {
 };
 
 const errorMessages: Record<string, string> = {
-  campaign: "Enter campaign title, goal amount, and summary.",
+  campaign: "Enter campaign title, summary, and at least one impact target with cost per unit.",
   "impact-site-invalid": "Enter the linked impact site name, region, and valid coordinates.",
   "impact-site-missing": "Choose an existing impact site or create a new location.",
   organization: "Choose an active partner organization.",

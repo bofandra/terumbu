@@ -227,7 +227,7 @@ export default async function AdminCampaignNewPage({ searchParams }: AdminCampai
                   <input id="campaign-region" name="region" placeholder="Indonesia" className={adminInputClassName} />
                 </Field>
               </div>
-              <CampaignImpactTargetFields inputClassName={adminInputClassName} selectClassName={adminSelectClassName} />
+              <CampaignImpactTargetFields inputClassName={adminInputClassName} selectClassName={adminSelectClassName} showAllocation />
             </div>
           </details>
           <Button type="submit" tone="secondary" className="w-fit rounded-lg" disabled={data.organizations.length === 0}>

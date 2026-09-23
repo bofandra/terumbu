@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 
-import { impactSiteEcosystemTypes } from "@/lib/campaign-content";
+import { campaignCategoryFromEcosystemType, impactSiteEcosystemTypes } from "@/lib/campaign-content";
 
 type ImpactSiteOption = {
   id: string;
@@ -20,7 +20,23 @@ type ImpactSiteMode = "none" | "existing" | "new";
 
 export function PartnerCampaignImpactSiteSelector({ impactSites, inputClassName }: PartnerCampaignImpactSiteSelectorProps) {
   const [mode, setMode] = useState<ImpactSiteMode>("none");
+  const [existingSiteId, setExistingSiteId] = useState(impactSites[0]?.id ?? "");
+  const [newType, setNewType] = useState("Coral");
+  const [newRegion, setNewRegion] = useState("");
   const hasExistingSites = impactSites.length > 0;
+  const existingSite = impactSites.find((site) => site.id === existingSiteId) ?? impactSites[0] ?? null;
+  const derivedCategory =
+    mode === "existing" && existingSite
+      ? campaignCategoryFromEcosystemType(existingSite.type)
+      : mode === "new"
+        ? campaignCategoryFromEcosystemType(newType)
+        : "Conservation";
+  const derivedRegion =
+    mode === "existing" && existingSite
+      ? existingSite.region
+      : mode === "new" && newRegion
+        ? newRegion
+        : "Indonesia";
 
   return (
     <div className="rounded-lg border border-ocean-900/10 bg-white p-4">
@@ -36,7 +52,7 @@ export function PartnerCampaignImpactSiteSelector({ impactSites, inputClassName 
         {mode === "existing" ? (
           <label className="grid gap-1.5 text-sm font-bold text-ocean-900">
             Existing location
-            <select name="existingImpactSiteId" defaultValue={impactSites[0]?.id ?? ""} className={inputClassName} required={mode === "existing"}>
+            <select name="existingImpactSiteId" value={existingSiteId} className={inputClassName} required={mode === "existing"} onChange={(event) => setExistingSiteId(event.target.value)}>
               {impactSites.map((site) => (
                 <option key={site.id} value={site.id}>
                   {site.name} / {site.type} / {site.region}
@@ -47,9 +63,20 @@ export function PartnerCampaignImpactSiteSelector({ impactSites, inputClassName 
         ) : null}
       </div>
 
+      <div className="mt-3 grid gap-3 md:grid-cols-2">
+        <div className="rounded-lg border border-ocean-900/10 bg-ocean-50 px-3 py-2">
+          <p className="text-xs font-bold uppercase tracking-[0.1em] text-ocean-900/48">Public category</p>
+          <p className="mt-1 text-sm font-bold text-ocean-900">{derivedCategory}</p>
+        </div>
+        <div className="rounded-lg border border-ocean-900/10 bg-ocean-50 px-3 py-2">
+          <p className="text-xs font-bold uppercase tracking-[0.1em] text-ocean-900/48">Public region</p>
+          <p className="mt-1 text-sm font-bold text-ocean-900">{derivedRegion}</p>
+        </div>
+      </div>
+
       {mode === "none" ? (
         <p className="mt-3 text-sm font-semibold leading-6 text-ocean-900/58">
-          You can add or link a field location later from the impact sites page.
+          Category and region will use the default values until a field location is linked.
         </p>
       ) : null}
 
@@ -58,7 +85,7 @@ export function PartnerCampaignImpactSiteSelector({ impactSites, inputClassName 
           <div className="grid gap-3 md:grid-cols-2">
             <label className="grid gap-1.5 text-sm font-bold text-ocean-900">
               New site ecosystem
-              <select name="impactSiteEcosystemType" defaultValue="Coral" className={inputClassName} required={mode === "new"}>
+              <select name="impactSiteEcosystemType" value={newType} className={inputClassName} required={mode === "new"} onChange={(event) => setNewType(event.target.value)}>
                 {impactSiteEcosystemTypes.map((type) => (
                   <option key={type} value={type}>
                     {type}
@@ -74,7 +101,7 @@ export function PartnerCampaignImpactSiteSelector({ impactSites, inputClassName 
           <div className="grid gap-3 md:grid-cols-3">
             <label className="grid gap-1.5 text-sm font-bold text-ocean-900">
               New site region
-              <input name="impactSiteRegion" placeholder="Southwest Papua" className={inputClassName} required={mode === "new"} />
+              <input name="impactSiteRegion" value={newRegion} placeholder="Southwest Papua" className={inputClassName} required={mode === "new"} onChange={(event) => setNewRegion(event.target.value)} />
             </label>
             <label className="grid gap-1.5 text-sm font-bold text-ocean-900">
               Latitude
