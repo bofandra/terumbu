@@ -4,7 +4,6 @@ import {
   ArrowUpRight,
   BadgeDollarSign,
   CheckCircle2,
-  ClipboardList,
   ImageIcon,
   MapPinned,
   Pencil,
