@@ -25,6 +25,7 @@ export const metadata = {
 export const dynamic = "force-dynamic";
 
 const savedMessages: Record<string, string> = {
+  workspace: "Corporate account created. Assign Corporate Admin access, then that admin can create programs.",
   account: "Corporate account updated.",
   permission: "Corporate access assigned.",
   "permission-removed": "Corporate access removed."
@@ -115,7 +116,7 @@ export default async function AdminCorporateDetailPage({ params, searchParams }:
         syncQueryParam="tab"
         tabs={[
           { id: "account", label: "Account", description: "Company identity" },
-          { id: "programs", label: "Programs", description: "Budget and lifecycle", badge: data.programs.length.toLocaleString("id-ID") },
+          { id: "programs", label: "Programs", description: "Monitoring only", badge: data.programs.length.toLocaleString("id-ID") },
           { id: "users", label: "Users", description: "Workspace access", badge: data.permissions.length.toLocaleString("id-ID") }
         ]}
       >
