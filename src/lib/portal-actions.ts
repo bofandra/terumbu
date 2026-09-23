@@ -4424,7 +4424,6 @@ export async function updateOrganizationVerificationAction(formData: FormData) {
 export async function createCampaignActivityAction(formData: FormData) {
   const user = await requireRole(["partner", "admin"], "/partner");
   const campaignId = formText(formData, "campaignId");
-  const impactSiteId = nullableText(formData, "impactSiteId");
   const title = formText(formData, "title");
   const body = formText(formData, "body");
   const rawActivityUse = formData.get("activityUse");
@@ -4453,14 +4452,18 @@ export async function createCampaignActivityAction(formData: FormData) {
 
   await requireCampaignAccess(user.id, campaignId, formData, "/partner/activity", "activity:create");
 
-  if (impactSiteId) {
-    const [site] = await db.select({ campaignId: impactSites.campaignId }).from(impactSites).where(eq(impactSites.id, impactSiteId)).limit(1);
+  const [linkedImpactSite] = await db
+    .select({ id: impactSites.id })
+    .from(impactSites)
+    .where(eq(impactSites.campaignId, campaignId))
+    .orderBy(asc(impactSites.createdAt))
+    .limit(1);
 
-    if (!site || site.campaignId !== campaignId) {
-      redirectPartnerError(formData, "/partner/activity", "impact-site");
-    }
+  if (!linkedImpactSite) {
+    redirectPartnerError(formData, "/partner/activity", "impact-site-required");
   }
 
+  const impactSiteId = linkedImpactSite.id;
   const now = new Date();
   const storageProvider = attachmentUrl?.startsWith("data:image/") ? "database_inline" : attachmentUrl ? getEvidenceStorageProvider() : null;
   const generatedActivityCode = activityCode();
