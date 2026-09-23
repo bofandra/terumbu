@@ -287,7 +287,7 @@ export function CampaignFields({
   const singleOrganization = organizations.length === 1;
   const organizationValue = campaign?.organizationId ?? organizations[0]?.id ?? "";
   const selectedOrganization = organizations.find((organization) => organization.id === organizationValue);
-  const linkedSite = campaign ? impactSites[0] : null;
+  const linkedSite = campaign ? impactSites.find((site) => site.campaignId === campaign.id) ?? null : null;
   const categoryOptions = campaign?.category && !campaignCategories.includes(campaign.category as (typeof campaignCategories)[number])
     ? [campaign.category, ...campaignCategories]
     : campaignCategories;
@@ -398,15 +398,15 @@ export function CampaignFields({
 
       <div className="grid gap-3 md:grid-cols-2">
         {linkedSite ? (
-          <Field label="Linked impact site region">
+          <Field label="Impact site">
             <input type="hidden" name="region" value={linkedSite.region} />
             <span className="flex min-h-11 items-center rounded-lg border border-ocean-900/10 bg-ocean-50 px-3 text-sm font-bold text-ocean-900">
-              {linkedSite.name} / {linkedSite.region}
+              {linkedSite.name} / {linkedSite.type} / {linkedSite.region}
             </span>
           </Field>
         ) : (
-          <Field label="Region" required>
-            <input name="region" defaultValue={campaign.region} placeholder="Raja Ampat, Southwest Papua" className={inputClassName} required />
+          <Field label="Region">
+            <input name="region" defaultValue={campaign.region} className={`${inputClassName} bg-ocean-50`} readOnly />
           </Field>
         )}
         <Field label="Category" required>
@@ -419,6 +419,18 @@ export function CampaignFields({
           </select>
         </Field>
       </div>
+
+      {!linkedSite ? (
+        <div className="rounded-lg border border-coral-700/20 bg-coral-100/45 p-4">
+          <p className="text-sm font-bold text-coral-700">Impact site required</p>
+          <p className="mt-1 text-xs font-semibold leading-5 text-ocean-900/60">
+            This campaign predates the required impact-site rule. Choose an existing field location or create a new one before saving.
+          </p>
+          <div className="mt-3">
+            <PartnerCampaignImpactSiteSelector impactSites={impactSites.filter((site) => site.campaignId !== campaign.id)} inputClassName={inputClassName} />
+          </div>
+        </div>
+      ) : null}
 
       <PartnerCampaignImpactPlanningFields
         inputClassName={inputClassName}
