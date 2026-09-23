@@ -203,7 +203,7 @@ export default async function AdminExpeditionsPage({ searchParams }: AdminExpedi
             href={`/admin/expeditions/${expedition.id}`}
             className="inline-flex min-h-9 items-center justify-center gap-2 rounded-lg border border-ocean-900/10 bg-white px-3 text-sm font-bold text-ocean-900 transition hover:border-coral-500 hover:text-coral-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-kelp-500 focus-visible:ring-offset-2"
           >
-            Manage
+            View
             <ArrowUpRight className="size-4" aria-hidden="true" />
           </Link>
           <Link href={`/expeditions/${expedition.slug}`} className="text-center text-sm font-bold text-coral-700 hover:text-coral-500">
@@ -219,9 +219,7 @@ export default async function AdminExpeditionsPage({ searchParams }: AdminExpedi
       <AdminPageHeader
         eyebrow="Expeditions"
         title="Expeditions"
-        description="Manage expedition listings, departures, bookings, and reviews."
-        actionHref="/admin/expeditions/new"
-        actionLabel="New expedition"
+        description="Read-only monitoring for partner-owned expeditions, departures, bookings, requests, and reviews."
       />
       <AdminDomainNav items={adminExpeditionNavItems} active={pathname} />
 
@@ -241,8 +239,6 @@ export default async function AdminExpeditionsPage({ searchParams }: AdminExpedi
         searchValue={data.filters.q}
         searchPlaceholder="Search expeditions, regions, projects"
         clearHref={pathname}
-        createHref="/admin/expeditions/new"
-        createLabel="New expedition"
         hiddenFields={{
           sort: data.filters.sort === "createdAt" ? undefined : data.filters.sort,
           dir: data.filters.dir === "desc" ? undefined : data.filters.dir
@@ -269,9 +265,7 @@ export default async function AdminExpeditionsPage({ searchParams }: AdminExpedi
         emptyState={
           <AdminEmptyState
             title="No matching expeditions"
-            description="Adjust the search or filters, or create a new expedition."
-            actionHref="/admin/expeditions/new"
-            actionLabel="Create expedition"
+            description="Adjust the search or filters. Expeditions are created and maintained by partners."
           />
         }
       />
