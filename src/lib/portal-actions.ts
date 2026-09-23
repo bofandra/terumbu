@@ -3833,7 +3833,7 @@ export async function createPartnerExpeditionAction(formData: FormData) {
     metadata: { source: "partner_portal", slug, relatedCampaignId }
   });
 
-  redirectPartnerSaved(formData, "/partner/expeditions", "expedition-created");
+  redirect(`/partner/expeditions/${expedition.id}?saved=${encodeURIComponent("expedition-created")}`);
 }
 
 export async function createPartnerExpeditionDepartureAction(formData: FormData) {
