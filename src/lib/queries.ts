@@ -5407,6 +5407,7 @@ export async function getCorporateProgramsForUser(userId: string) {
       accountId: corporateAccounts.id,
       accountName: corporateAccounts.name,
       accountSlug: corporateAccounts.slug,
+      accountLogoUrl: corporateAccounts.logoUrl,
       permission: corporatePermissions.permission
     })
     .from(corporatePermissions)

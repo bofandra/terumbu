@@ -27,7 +27,7 @@ import {
   corporateSecuritySettings,
   projectEvidence,
 } from "@/db/schema";
-import { requireUser, safeRedirectPath } from "@/lib/auth";
+import { requireCorporateAdminRole, requireUser, safeRedirectPath } from "@/lib/auth";
 import {
   normalizeCorporateIntegrationStatus,
   normalizeCorporateIntegrationType
@@ -98,6 +98,22 @@ function redirectWithResult(path: string, key: "error" | "saved", value: string)
   const separator = path.includes("?") ? "&" : "?";
 
   redirect(`${path}${separator}${key}=${encodeURIComponent(value)}`);
+}
+
+async function corporateAccountContext(userId: string) {
+  const [context] = await db
+    .select({
+      accountId: corporateAccounts.id,
+      accountName: corporateAccounts.name,
+      accountSlug: corporateAccounts.slug,
+      permission: corporatePermissions.permission
+    })
+    .from(corporatePermissions)
+    .innerJoin(corporateAccounts, eq(corporatePermissions.corporateAccountId, corporateAccounts.id))
+    .where(eq(corporatePermissions.userId, userId))
+    .limit(1);
+
+  return context ?? null;
 }
 
 async function corporateContext(userId: string, requestedProgramId?: string | null) {
@@ -611,8 +627,8 @@ async function writeReportArtifacts(input: {
 }
 
 export async function createCorporateProgramAction(formData: FormData) {
-  const user = await requireUser("/corporate/programs");
-  const context = await corporateContext(user.id);
+  const user = await requireCorporateAdminRole("/corporate/programs");
+  const context = await corporateAccountContext(user.id);
 
   if (!context || !corporateCapabilitiesForPermission(context.permission).canManagePrograms) {
     redirect("/corporate/programs?error=permission");
@@ -663,7 +679,7 @@ export async function createCorporateProgramAction(formData: FormData) {
 }
 
 export async function updateCorporateProgramAction(formData: FormData) {
-  const user = await requireUser("/corporate/programs");
+  const user = await requireCorporateAdminRole("/corporate/programs");
   const context = await corporateContext(user.id);
 
   if (!context || !corporateCapabilitiesForPermission(context.permission).canManagePrograms) {

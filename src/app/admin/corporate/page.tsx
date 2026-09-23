@@ -165,15 +165,25 @@ export default async function AdminCorporatePage({ searchParams }: AdminCorporat
         <SummaryMetric label="Contributions" value={data.metrics.contributions.toLocaleString("id-ID")} icon={CircleDollarSign} />
       </section>
 
-      <FormTabs ariaLabel="Corporate administration actions" tabs={[{ id: "workspace", label: "Create workspace", description: "Company setup" }, { id: "access", label: "Assign access", description: "Corporate users" }]}>
+      <FormTabs ariaLabel="Corporate administration actions" tabs={[{ id: "workspace", label: "Create account", description: "Company governance" }, { id: "access", label: "Assign access", description: "Corporate users" }]}>
         <form action={createCorporateWorkspaceAction} className="grid gap-4">
-          <div><h2 className="text-xl font-bold tracking-normal text-ocean-900">Create workspace</h2><p className="mt-1 text-sm font-semibold leading-6 text-ocean-900/58">Only the minimum fields are required now. Details can be refined later.</p></div>
-          <div className="grid gap-3 md:grid-cols-3">
-            <label className="grid gap-2 text-sm font-bold text-ocean-900">Company name<input name="accountName" className={adminInputClassName} placeholder="Nusantara Bank" required /></label>
-            <label className="grid gap-2 text-sm font-bold text-ocean-900">Program name<input name="programName" className={adminInputClassName} placeholder="Ocean Program 2026" required /></label>
-            <label className="grid gap-2 text-sm font-bold text-ocean-900">Budget amount<input name="budgetAmount" type="number" min="1" step="1000000" className={adminInputClassName} placeholder="500000000" required /></label>
+          <div>
+            <h2 className="text-xl font-bold tracking-normal text-ocean-900">Create corporate account</h2>
+            <p className="mt-1 text-sm font-semibold leading-6 text-ocean-900/58">
+              Platform admin creates the company workspace only. Corporate Admin creates and manages programs after access is assigned.
+            </p>
           </div>
-          <Button type="submit" className="justify-self-start">Save Workspace</Button>
+          <div className="grid gap-3 md:grid-cols-2">
+            <label className="grid gap-2 text-sm font-bold text-ocean-900">
+              Company name
+              <input name="accountName" className={adminInputClassName} placeholder="Nusantara Bank" required />
+            </label>
+            <label className="grid gap-2 text-sm font-bold text-ocean-900">
+              Slug <span className="font-semibold text-ocean-900/44">(optional)</span>
+              <input name="accountSlug" className={adminInputClassName} placeholder="nusantara-bank" />
+            </label>
+          </div>
+          <Button type="submit" className="justify-self-start">Create corporate account</Button>
         </form>
 
         <form action={assignCorporatePermissionAction} className="grid gap-4">

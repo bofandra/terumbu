@@ -1,10 +1,11 @@
 import { CircleDollarSign, Compass, FolderHeart, Users } from "lucide-react";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 
 import { MetricValue } from "@/components/ui/metric-value";
-import { requireUser } from "@/lib/auth";
-import { requireCorporateDashboardData } from "@/lib/corporate-access";
-import { getCorporateExpeditionActivities } from "@/lib/queries";
+import { getUserRoles, requireUser } from "@/lib/auth";
+import { forbiddenRedirectPath } from "@/lib/account-destinations";
+import { getCorporateDashboardData, getCorporateExpeditionActivities, getCorporateProgramsForUser } from "@/lib/queries";
 import { formatCurrency } from "@/lib/utils";
 
 export const metadata = {
@@ -19,7 +20,20 @@ function formatDate(value: Date | null | undefined) {
 
 export default async function CorporateDashboardPage() {
   const user = await requireUser("/corporate");
-  const data = await requireCorporateDashboardData(user.id, "/corporate");
+  const [data, programAccess, roleKeys] = await Promise.all([
+    getCorporateDashboardData(user.id),
+    getCorporateProgramsForUser(user.id),
+    getUserRoles(user.id)
+  ]);
+
+  if (!data) {
+    if (programAccess && roleKeys.includes("corporate_admin") && !roleKeys.includes("admin")) {
+      redirect("/corporate/programs");
+    }
+
+    redirect(forbiddenRedirectPath("/corporate"));
+  }
+
   const expeditionActivities = await getCorporateExpeditionActivities(user.id, data.program.programId);
   const donationTotal = data.contributions.filter((item) => item.status !== "cancelled").reduce((total, item) => total + item.amountValue, 0);
   const verifiedEvidence = data.evidence.filter((item) => item.verificationStatus === "verified").length;

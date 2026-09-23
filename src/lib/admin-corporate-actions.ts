@@ -8,7 +8,6 @@ import {
   adminAuditLogs,
   corporateAccounts,
   corporatePermissions,
-  corporatePrograms,
   users
 } from "@/db/schema";
 import { requireRole } from "@/lib/auth";
@@ -26,18 +25,6 @@ function toSlug(value: string) {
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "")
     .slice(0, 96);
-}
-
-function parseAmount(value: FormDataEntryValue | null) {
-  const amount = Number(String(value ?? "").replace(/[^\d.]/g, ""));
-
-  return Number.isFinite(amount) && amount > 0 ? amount : null;
-}
-
-function parseDate(value: FormDataEntryValue | null) {
-  const parsed = new Date(String(value ?? ""));
-
-  return Number.isNaN(parsed.getTime()) ? null : parsed;
 }
 
 async function writeAdminAuditLog(input: {
@@ -93,15 +80,8 @@ export async function createCorporateWorkspaceAction(formData: FormData) {
   const accountName = textValue(formData.get("accountName"), 180);
   const accountSlug = toSlug(textValue(formData.get("accountSlug"), 180) || accountName);
   const logoUrl = await corporateLogoFromForm(formData);
-  const programName = textValue(formData.get("programName"), 220);
-  const programSlug = toSlug(textValue(formData.get("programSlug"), 220) || programName);
-  const now = new Date();
-  const startsAt = parseDate(formData.get("startsAt")) ?? new Date(now.getFullYear(), 0, 1);
-  const endsAt = parseDate(formData.get("endsAt")) ?? new Date(now.getFullYear(), 11, 31);
-  const budgetAmount = parseAmount(formData.get("budgetAmount"));
-  const currency = textValue(formData.get("currency"), 8).toUpperCase() || "IDR";
 
-  if (!accountName || !accountSlug || !programName || !programSlug || !budgetAmount || endsAt <= startsAt) {
+  if (!accountName || !accountSlug) {
     redirect("/admin/corporate?error=workspace-invalid");
   }
 
@@ -110,69 +90,32 @@ export async function createCorporateWorkspaceAction(formData: FormData) {
     .from(corporateAccounts)
     .where(eq(corporateAccounts.slug, accountSlug))
     .limit(1);
-  let account: { id: string };
 
   if (existingAccount) {
-    [account] = await db
-      .update(corporateAccounts)
-      .set({
-        name: accountName,
-        logoUrl: logoUrl ?? existingAccount.logoUrl
-      })
-      .where(eq(corporateAccounts.id, existingAccount.id))
-      .returning({ id: corporateAccounts.id });
-  } else {
-    [account] = await db
-      .insert(corporateAccounts)
-      .values({
-        name: accountName,
-        slug: accountSlug,
-        logoUrl
-      })
-      .returning({ id: corporateAccounts.id });
+    redirect("/admin/corporate?error=workspace-exists");
   }
 
-  const [program] = await db
-    .insert(corporatePrograms)
+  const [account] = await db
+    .insert(corporateAccounts)
     .values({
-      corporateAccountId: account.id,
-      name: programName,
-      slug: programSlug,
-      startsAt,
-      endsAt,
-      budgetAmount: budgetAmount.toFixed(2),
-      currency,
-      status: "active"
+      name: accountName,
+      slug: accountSlug,
+      logoUrl
     })
-    .onConflictDoUpdate({
-      target: corporatePrograms.slug,
-      set: {
-        corporateAccountId: account.id,
-        name: programName,
-        startsAt,
-        endsAt,
-        budgetAmount: budgetAmount.toFixed(2),
-        currency,
-        status: "active"
-      }
-    })
-    .returning({ id: corporatePrograms.id });
+    .returning({ id: corporateAccounts.id });
 
   await writeAdminAuditLog({
     actorUserId: admin.id,
-    action: "corporate.workspace.upserted",
-    entityType: "corporate_programs",
-    entityId: program.id,
+    action: "corporate.account.created",
+    entityType: "corporate_accounts",
+    entityId: account.id,
     metadata: {
-      accountId: account.id,
       accountName,
-      programName,
-      budgetAmount,
-      currency
+      accountSlug
     }
   });
 
-  redirect("/admin/corporate?saved=workspace");
+  redirect(`/admin/corporate/${account.id}?saved=workspace`);
 }
 
 export async function assignCorporatePermissionAction(formData: FormData) {
@@ -281,62 +224,8 @@ export async function updateCorporateAccountAction(formData: FormData) {
 }
 
 export async function updateCorporateProgramAction(formData: FormData) {
-  const admin = await requireRole(["admin"], "/admin/corporate");
-  const programId = textValue(formData.get("programId"), 80);
-  const name = textValue(formData.get("programName"), 220);
-  const slug = toSlug(textValue(formData.get("programSlug"), 220) || name);
-  const startsAt = parseDate(formData.get("startsAt"));
-  const endsAt = parseDate(formData.get("endsAt"));
-  const budgetAmount = parseAmount(formData.get("budgetAmount"));
-  const currency = textValue(formData.get("currency"), 8).toUpperCase() || "IDR";
-  const status = textValue(formData.get("status"), 80) || "active";
-
-  if (!programId || !name || !slug || !startsAt || !endsAt || !budgetAmount || endsAt <= startsAt) {
-    corporateRedirect(formData, "error", "program-invalid");
-  }
-
-  const [current] = await db
-    .select({ id: corporatePrograms.id, corporateAccountId: corporatePrograms.corporateAccountId })
-    .from(corporatePrograms)
-    .where(eq(corporatePrograms.id, programId))
-    .limit(1);
-
-  if (!current) {
-    corporateRedirect(formData, "error", "program-missing");
-  }
-
-  const [slugOwner] = await db
-    .select({ id: corporatePrograms.id })
-    .from(corporatePrograms)
-    .where(eq(corporatePrograms.slug, slug))
-    .limit(1);
-
-  if (slugOwner && slugOwner.id !== programId) {
-    corporateRedirect(formData, "error", "program-slug");
-  }
-
-  await db
-    .update(corporatePrograms)
-    .set({
-      name,
-      slug,
-      startsAt,
-      endsAt,
-      budgetAmount: budgetAmount.toFixed(2),
-      currency,
-      status
-    })
-    .where(eq(corporatePrograms.id, programId));
-
-  await writeAdminAuditLog({
-    actorUserId: admin.id,
-    action: "corporate.program.updated",
-    entityType: "corporate_programs",
-    entityId: programId,
-    metadata: { accountId: current.corporateAccountId, name, slug, status, budgetAmount, currency }
-  });
-
-  corporateRedirect(formData, "saved", "program");
+  await requireRole(["admin"], "/admin/corporate");
+  corporateRedirect(formData, "error", "program-owned");
 }
 
 export async function removeCorporatePermissionAction(formData: FormData) {
