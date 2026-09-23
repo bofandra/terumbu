@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  BriefcaseBusiness,
   Building2,
   CircleDollarSign,
   Compass,
@@ -26,6 +27,7 @@ type CorporateNavItem = {
 
 const corporateNavItems: CorporateNavItem[] = [
   { label: "Overview", href: "/corporate", icon: Home },
+  { label: "Programs", href: "/corporate/programs", icon: BriefcaseBusiness },
   { label: "Donations", href: "/corporate/donations", icon: CircleDollarSign },
   { label: "Expeditions", href: "/corporate/expeditions", icon: Compass },
   { label: "Employees", href: "/corporate/employees", icon: Users },
@@ -60,13 +62,15 @@ export function CorporateShell({
   displayName,
   roleLabel,
   accountName,
-  accountLogoUrl
+  accountLogoUrl,
+  canManagePrograms
 }: {
   children: ReactNode;
   displayName: string;
   roleLabel: string;
   accountName: string;
   accountLogoUrl: string | null;
+  canManagePrograms: boolean;
 }) {
   const pathname = usePathname();
   const currentTask = currentTaskForPath(pathname);
@@ -97,7 +101,7 @@ export function CorporateShell({
           </div>
 
           <nav className="mt-5 flex gap-2 overflow-x-auto pb-1 lg:grid lg:overflow-visible lg:pb-0" aria-label="Corporate sections">
-            {corporateNavItems.map((item) => {
+            {corporateNavItems.filter((item) => item.href !== "/corporate/programs" || canManagePrograms).map((item) => {
               const Icon = item.icon;
               const active = isActive(pathname, item.href);
 
