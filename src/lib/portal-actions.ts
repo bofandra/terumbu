@@ -2531,10 +2531,6 @@ export async function updatePartnerCampaignAction(formData: FormData) {
       });
     }
 
-    if (!attachedImpactSiteId) {
-      redirectPartnerError(formData, "/partner/campaigns", "impact-site-required");
-    }
-
     await tx
       .update(campaigns)
       .set({
