@@ -27,7 +27,7 @@ import {
   corporateSecuritySettings,
   projectEvidence,
 } from "@/db/schema";
-import { requireUser, safeRedirectPath } from "@/lib/auth";
+import { requireCorporateAdminRole, requireUser, safeRedirectPath } from "@/lib/auth";
 import {
   normalizeCorporateIntegrationStatus,
   normalizeCorporateIntegrationType
@@ -611,7 +611,7 @@ async function writeReportArtifacts(input: {
 }
 
 export async function createCorporateProgramAction(formData: FormData) {
-  const user = await requireUser("/corporate/programs");
+  const user = await requireCorporateAdminRole("/corporate/programs");
   const context = await corporateContext(user.id);
 
   if (!context || !corporateCapabilitiesForPermission(context.permission).canManagePrograms) {
@@ -663,7 +663,7 @@ export async function createCorporateProgramAction(formData: FormData) {
 }
 
 export async function updateCorporateProgramAction(formData: FormData) {
-  const user = await requireUser("/corporate/programs");
+  const user = await requireCorporateAdminRole("/corporate/programs");
   const context = await corporateContext(user.id);
 
   if (!context || !corporateCapabilitiesForPermission(context.permission).canManagePrograms) {
