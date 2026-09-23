@@ -6,6 +6,7 @@ import { Field, StatusBadge, inputClassName, labelize, textareaClassName, type P
 import { RepeatableFields } from "@/components/partner-expedition-repeatable-fields";
 import { ExpeditionItineraryBuilder, ExpeditionListField } from "@/components/partner-expedition-structured-fields";
 import { Button } from "@/components/ui/button";
+import { FormTabs } from "@/components/ui/form-tabs";
 import { ExpeditionMarketplaceFields } from "@/components/expedition-marketplace-fields";
 import { processPartnerExpeditionInterestRequestAction } from "@/lib/expedition-interest-actions";
 import {
@@ -144,119 +145,118 @@ function DetailFields({ detail, marketplace }: { detail: ExpeditionDetailMetadat
   );
 
   return (
-    <div className="grid gap-4">
-      <ExpeditionMarketplaceFields marketplace={marketplace} inputClassName={inputClassName} textareaClassName={textareaClassName} />
+    <FormTabs
+      ariaLabel="Expedition public content editor"
+      tabs={[
+        { id: "public", label: "Public page", description: "Summary, gallery, marketplace" },
+        { id: "impact", label: "Impact", description: "Conservation contribution" },
+        { id: "itinerary", label: "Itinerary & logistics", description: "Days, route, stay, requirements" },
+        { id: "team", label: "Team", description: "Expedition people" },
+        { id: "policy", label: "Policy & FAQ", description: "Updates, cancellation, weather" }
+      ]}
+    >
+      <div className="grid gap-4">
+        <ExpeditionMarketplaceFields marketplace={marketplace} inputClassName={inputClassName} textareaClassName={textareaClassName} />
 
-      <details className="rounded-lg border border-ocean-900/10 bg-white">
-        <summary className="cursor-pointer px-4 py-3 text-sm font-bold text-ocean-900">Public summary</summary>
-        <div className="grid gap-4 border-t border-ocean-900/10 p-4">
-          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-            <Field label="Category label">
-              <select name="categoryLabel" defaultValue={detail.categoryLabel} className={inputClassName}>
-                {optionsWithCurrent(categoryLabelOptions, detail.categoryLabel).map((option) => (
-                  <option key={option} value={option}>
-                    {option}
-                  </option>
-                ))}
-              </select>
+        <section className="rounded-lg border border-ocean-900/10 bg-white p-4">
+          <h3 className="text-lg font-bold text-ocean-900">Public summary</h3>
+          <div className="mt-4 grid gap-4">
+            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+              <Field label="Category label">
+                <select name="categoryLabel" defaultValue={detail.categoryLabel} className={inputClassName}>
+                  {optionsWithCurrent(categoryLabelOptions, detail.categoryLabel).map((option) => (
+                    <option key={option} value={option}>{option}</option>
+                  ))}
+                </select>
+              </Field>
+              <Field label="Difficulty">
+                <select name="difficulty" defaultValue={detail.difficulty} className={inputClassName}>
+                  {optionsWithCurrent(difficultyOptions, detail.difficulty).map((option) => (
+                    <option key={option} value={option}>{option}</option>
+                  ))}
+                </select>
+              </Field>
+              <Field label="Minimum age">
+                <input name="minimumAge" type="number" min={0} defaultValue={detail.minimumAge} className={inputClassName} />
+              </Field>
+              <Field label="Swimming ability">
+                <select name="swimmingAbility" defaultValue={currentSwimmingAbility} className={inputClassName}>
+                  {optionsWithCurrent(swimmingAbilityOptions, currentSwimmingAbility).map((option) => (
+                    <option key={option} value={option}>{option}</option>
+                  ))}
+                </select>
+              </Field>
+            </div>
+            <Field label="Activity summary">
+              <input name="activitySummary" defaultValue={detail.activitySummary} className={inputClassName} />
             </Field>
-            <Field label="Difficulty">
-              <select name="difficulty" defaultValue={detail.difficulty} className={inputClassName}>
-                {optionsWithCurrent(difficultyOptions, detail.difficulty).map((option) => (
-                  <option key={option} value={option}>
-                    {option}
-                  </option>
-                ))}
-              </select>
+            <Field label="Documentation link">
+              <input name="documentationUrl" type="url" defaultValue={detail.documentationUrl} placeholder="https://drive.google.com/..." className={inputClassName} />
             </Field>
-            <Field label="Minimum age">
-              <input name="minimumAge" type="number" min={0} defaultValue={detail.minimumAge} className={inputClassName} />
-            </Field>
-            <Field label="Swimming ability">
-              <select name="swimmingAbility" defaultValue={currentSwimmingAbility} className={inputClassName}>
-                {optionsWithCurrent(swimmingAbilityOptions, currentSwimmingAbility).map((option) => (
-                  <option key={option} value={option}>
-                    {option}
-                  </option>
-                ))}
-              </select>
-            </Field>
+            <div className="grid gap-3 md:grid-cols-3">
+              <Field label="Languages">
+                <textarea name="languages" defaultValue={listValue(detail.languages)} className={textareaClassName} />
+              </Field>
+              <Field label="Skill requirements">
+                <textarea name="skillRequirements" defaultValue={listValue(detail.skillRequirements)} className={textareaClassName} />
+              </Field>
+              <Field label="Tags">
+                <textarea name="tags" defaultValue={listValue(detail.tags)} className={textareaClassName} />
+              </Field>
+            </div>
           </div>
-          <Field label="Activity summary">
-            <input name="activitySummary" defaultValue={detail.activitySummary} className={inputClassName} />
-          </Field>
-          <Field label="Documentation link">
-            <input
-              name="documentationUrl"
-              type="url"
-              defaultValue={detail.documentationUrl}
-              placeholder="https://drive.google.com/..."
-              className={inputClassName}
+        </section>
+
+        <section className="rounded-lg border border-ocean-900/10 bg-white p-4">
+          <h3 className="text-lg font-bold text-ocean-900">Gallery & overview</h3>
+          <div className="mt-4 grid gap-4">
+            <RepeatableFields
+              rows={galleryRows}
+              emptyRow={{ src: "", label: "", caption: "", provenance: "" }}
+              addLabel="Add image"
+              fields={[
+                { name: "galleryLabel", valueKey: "label", placeholder: "Image label" },
+                { name: "galleryImageFile", kind: "file", hiddenExistingName: "galleryExistingSrc", hiddenExistingKey: "src" },
+                { name: "galleryCaption", valueKey: "caption", placeholder: "Caption" },
+                { name: "galleryProvenance", valueKey: "provenance", placeholder: "Provenance" }
+              ]}
             />
-          </Field>
-          <div className="grid gap-3 md:grid-cols-3">
-            <Field label="Languages">
-              <textarea name="languages" defaultValue={listValue(detail.languages)} className={textareaClassName} />
+            <Field label="Overview title">
+              <input name="overviewTitle" defaultValue={detail.overview.title} className={inputClassName} />
             </Field>
-            <Field label="Skill requirements">
-              <textarea name="skillRequirements" defaultValue={listValue(detail.skillRequirements)} className={textareaClassName} />
+            <Field label="Overview paragraphs">
+              <textarea name="overviewParagraphs" defaultValue={paragraphValue(detail.overview.paragraphs)} className={`${textareaClassName} min-h-40`} />
             </Field>
-            <Field label="Tags">
-              <textarea name="tags" defaultValue={listValue(detail.tags)} className={textareaClassName} />
+            <RepeatableFields
+              rows={pillarRows}
+              emptyRow={{ title: "", body: "" }}
+              addLabel="Add pillar"
+              gridClassName="grid gap-2 rounded-lg bg-sand-50 p-3"
+              fields={[
+                { name: "pillarTitle", valueKey: "title", placeholder: "Pillar title" },
+                { name: "pillarBody", valueKey: "body", kind: "textarea", placeholder: "Pillar body" }
+              ]}
+            />
+            <Field label="Passport note">
+              <input name="passportNote" defaultValue={detail.overview.passportNote} className={inputClassName} />
             </Field>
+            <RepeatableFields
+              rows={highlightRows}
+              emptyRow={{ title: "", status: "Included" }}
+              addLabel="Add highlight"
+              gridClassName="grid gap-2 rounded-lg bg-sand-50 p-3 sm:grid-cols-[1fr_180px]"
+              fields={[
+                { name: "highlightTitle", valueKey: "title", placeholder: "Highlight" },
+                { name: "highlightStatus", valueKey: "status", kind: "select", options: highlightOptions }
+              ]}
+            />
           </div>
-        </div>
-      </details>
+        </section>
+      </div>
 
-      <details className="rounded-lg border border-ocean-900/10 bg-white">
-        <summary className="cursor-pointer px-4 py-3 text-sm font-bold text-ocean-900">Gallery and overview</summary>
-        <div className="grid gap-4 border-t border-ocean-900/10 p-4">
-          <RepeatableFields
-            rows={galleryRows}
-            emptyRow={{ src: "", label: "", caption: "", provenance: "" }}
-            addLabel="Add image"
-            fields={[
-              { name: "galleryLabel", valueKey: "label", placeholder: "Image label" },
-              { name: "galleryImageFile", kind: "file", hiddenExistingName: "galleryExistingSrc", hiddenExistingKey: "src" },
-              { name: "galleryCaption", valueKey: "caption", placeholder: "Caption" },
-              { name: "galleryProvenance", valueKey: "provenance", placeholder: "Provenance" }
-            ]}
-          />
-          <Field label="Overview title">
-            <input name="overviewTitle" defaultValue={detail.overview.title} className={inputClassName} />
-          </Field>
-          <Field label="Overview paragraphs">
-            <textarea name="overviewParagraphs" defaultValue={paragraphValue(detail.overview.paragraphs)} className={`${textareaClassName} min-h-40`} />
-          </Field>
-          <RepeatableFields
-            rows={pillarRows}
-            emptyRow={{ title: "", body: "" }}
-            addLabel="Add pillar"
-            gridClassName="grid gap-2 rounded-lg bg-sand-50 p-3"
-            fields={[
-              { name: "pillarTitle", valueKey: "title", placeholder: "Pillar title" },
-              { name: "pillarBody", valueKey: "body", kind: "textarea", placeholder: "Pillar body" }
-            ]}
-          />
-          <Field label="Passport note">
-            <input name="passportNote" defaultValue={detail.overview.passportNote} className={inputClassName} />
-          </Field>
-          <RepeatableFields
-            rows={highlightRows}
-            emptyRow={{ title: "", status: "Included" }}
-            addLabel="Add highlight"
-            gridClassName="grid gap-2 rounded-lg bg-sand-50 p-3 sm:grid-cols-[1fr_180px]"
-            fields={[
-              { name: "highlightTitle", valueKey: "title", placeholder: "Highlight" },
-              { name: "highlightStatus", valueKey: "status", kind: "select", options: highlightOptions }
-            ]}
-          />
-        </div>
-      </details>
-
-      <details className="rounded-lg border border-ocean-900/10 bg-white">
-        <summary className="cursor-pointer px-4 py-3 text-sm font-bold text-ocean-900">Conservation contribution</summary>
-        <div className="grid gap-4 border-t border-ocean-900/10 p-4">
+      <section className="rounded-lg border border-ocean-900/10 bg-white p-4">
+        <h3 className="text-lg font-bold text-ocean-900">Conservation contribution</h3>
+        <div className="mt-4 grid gap-4">
           <Field label="Impact summary">
             <input name="impactSummary" defaultValue={detail.impact.summary} className={inputClassName} />
           </Field>
@@ -277,62 +277,83 @@ function DetailFields({ detail, marketplace }: { detail: ExpeditionDetailMetadat
             ]}
           />
         </div>
-      </details>
+      </section>
 
-      <details className="rounded-lg border border-ocean-900/10 bg-white">
-        <summary className="cursor-pointer px-4 py-3 text-sm font-bold text-ocean-900">Itinerary and requirements</summary>
-        <div className="grid gap-4 border-t border-ocean-900/10 p-4">
-          <Field label="Itinerary title">
-            <input name="itineraryTitle" defaultValue={detail.itineraryTitle} className={inputClassName} />
-          </Field>
-          <Field label="Itinerary disclaimer">
-            <textarea name="itineraryDisclaimer" defaultValue={detail.itineraryDisclaimer} className={textareaClassName} />
-          </Field>
-          <ExpeditionItineraryBuilder rows={itineraryRows} physicalOptions={physicalOptions} />
-          <div className="grid gap-3 md:grid-cols-2">
-            <ExpeditionListField label="Included" name="included" items={detail.included} addLabel="Add included item" placeholder="Included item" />
-            <ExpeditionListField label="Not included" name="notIncluded" items={detail.notIncluded} addLabel="Add exclusion" placeholder="Not included item" />
-            <ExpeditionListField label="Participant requirements" name="requirements" items={detail.requirements} addLabel="Add requirement" placeholder="Requirement" />
-            <ExpeditionListField label="Safety standards" name="safety" items={detail.safety} addLabel="Add safety item" placeholder="Safety item" />
+      <div className="grid gap-4">
+        <section className="rounded-lg border border-ocean-900/10 bg-white p-4">
+          <div>
+            <h3 className="text-lg font-bold text-ocean-900">Itinerary</h3>
+            <p className="mt-1 text-sm font-semibold text-ocean-900/54">
+              The itinerary is the day-by-day participant journey. Route and travel logistics are managed in the same workflow below.
+            </p>
           </div>
-          <Field label="Emergency plan summary">
-            <textarea name="emergencyPlanSummary" defaultValue={detail.emergencyPlanSummary} className={textareaClassName} />
-          </Field>
-          <ExpeditionListField label="Sustainability standards" name="sustainability" items={detail.sustainability} addLabel="Add sustainability item" placeholder="Sustainability standard" />
-        </div>
-      </details>
+          <div className="mt-4 grid gap-4">
+            <Field label="Itinerary title">
+              <input name="itineraryTitle" defaultValue={detail.itineraryTitle} className={inputClassName} />
+            </Field>
+            <Field label="Itinerary disclaimer">
+              <textarea name="itineraryDisclaimer" defaultValue={detail.itineraryDisclaimer} className={textareaClassName} />
+            </Field>
+            <ExpeditionItineraryBuilder rows={itineraryRows} physicalOptions={physicalOptions} />
+          </div>
+        </section>
 
-      <details className="rounded-lg border border-ocean-900/10 bg-white">
-        <summary className="cursor-pointer px-4 py-3 text-sm font-bold text-ocean-900">Route, stay, and team</summary>
-        <div className="grid gap-4 border-t border-ocean-900/10 p-4">
-          <Field label="Route title">
-            <input name="routeTitle" defaultValue={detail.route.title} className={inputClassName} />
-          </Field>
-          <Field label="Map embed URL">
-            <input name="mapEmbedUrl" defaultValue={detail.route.mapEmbedUrl} className={inputClassName} />
-          </Field>
-          <div className="grid gap-3 md:grid-cols-2">
-            <ExpeditionListField label="Route steps" name="routeSteps" items={detail.route.steps} addLabel="Add route step" placeholder="Route step" />
-            <ExpeditionListField label="Travel times" name="routeTravelTimes" items={detail.route.travelTimes} addLabel="Add travel time" placeholder="Travel time" />
-          </div>
-          <div className="grid gap-3 md:grid-cols-2">
-            <Field label="Accommodation name">
-              <input name="accommodationName" defaultValue={detail.accommodation.name} className={inputClassName} />
+        <section className="rounded-lg border border-ocean-900/10 bg-white p-4">
+          <h3 className="text-lg font-bold text-ocean-900">Route & travel logistics</h3>
+          <p className="mt-1 text-sm font-semibold text-ocean-900/54">
+            Route describes how participants move between arrival points, the base, and conservation areas. It complements the itinerary rather than being a separate trip concept.
+          </p>
+          <div className="mt-4 grid gap-4">
+            <Field label="Route title">
+              <input name="routeTitle" defaultValue={detail.route.title} className={inputClassName} />
             </Field>
-            <Field label="Accommodation type">
-              <select name="accommodationType" defaultValue={detail.accommodation.type} className={inputClassName}>
-                {optionsWithCurrent(accommodationTypeOptions, detail.accommodation.type).map((option) => (
-                  <option key={option} value={option}>
-                    {option}
-                  </option>
-                ))}
-              </select>
+            <Field label="Map embed URL">
+              <input name="mapEmbedUrl" defaultValue={detail.route.mapEmbedUrl} className={inputClassName} />
             </Field>
+            <div className="grid gap-3 md:grid-cols-2">
+              <ExpeditionListField label="Route steps" name="routeSteps" items={detail.route.steps} addLabel="Add route step" placeholder="Route step" />
+              <ExpeditionListField label="Travel times" name="routeTravelTimes" items={detail.route.travelTimes} addLabel="Add travel time" placeholder="Travel time" />
+            </div>
           </div>
-          <ExpeditionListField label="Accommodation details" name="accommodationDetails" items={detail.accommodation.details} addLabel="Add accommodation detail" placeholder="Accommodation detail" />
-          <Field label="Meal note">
-            <textarea name="mealNote" defaultValue={detail.accommodation.mealNote} className={textareaClassName} />
-          </Field>
+        </section>
+
+        <section className="rounded-lg border border-ocean-900/10 bg-white p-4">
+          <h3 className="text-lg font-bold text-ocean-900">Stay, inclusions & requirements</h3>
+          <div className="mt-4 grid gap-4">
+            <div className="grid gap-3 md:grid-cols-2">
+              <Field label="Accommodation name">
+                <input name="accommodationName" defaultValue={detail.accommodation.name} className={inputClassName} />
+              </Field>
+              <Field label="Accommodation type">
+                <select name="accommodationType" defaultValue={detail.accommodation.type} className={inputClassName}>
+                  {optionsWithCurrent(accommodationTypeOptions, detail.accommodation.type).map((option) => (
+                    <option key={option} value={option}>{option}</option>
+                  ))}
+                </select>
+              </Field>
+            </div>
+            <ExpeditionListField label="Accommodation details" name="accommodationDetails" items={detail.accommodation.details} addLabel="Add accommodation detail" placeholder="Accommodation detail" />
+            <Field label="Meal note">
+              <textarea name="mealNote" defaultValue={detail.accommodation.mealNote} className={textareaClassName} />
+            </Field>
+            <div className="grid gap-3 md:grid-cols-2">
+              <ExpeditionListField label="Included" name="included" items={detail.included} addLabel="Add included item" placeholder="Included item" />
+              <ExpeditionListField label="Not included" name="notIncluded" items={detail.notIncluded} addLabel="Add exclusion" placeholder="Not included item" />
+              <ExpeditionListField label="Participant requirements" name="requirements" items={detail.requirements} addLabel="Add requirement" placeholder="Requirement" />
+              <ExpeditionListField label="Safety standards" name="safety" items={detail.safety} addLabel="Add safety item" placeholder="Safety item" />
+            </div>
+            <Field label="Emergency plan summary">
+              <textarea name="emergencyPlanSummary" defaultValue={detail.emergencyPlanSummary} className={textareaClassName} />
+            </Field>
+            <ExpeditionListField label="Sustainability standards" name="sustainability" items={detail.sustainability} addLabel="Add sustainability item" placeholder="Sustainability standard" />
+          </div>
+        </section>
+      </div>
+
+      <section className="rounded-lg border border-ocean-900/10 bg-white p-4">
+        <h3 className="text-lg font-bold text-ocean-900">Expedition team</h3>
+        <p className="mt-1 text-sm font-semibold text-ocean-900/54">People shown on the public expedition page.</p>
+        <div className="mt-4">
           <RepeatableFields
             rows={teamRows}
             emptyRow={{ name: "", role: "", detail: "" }}
@@ -345,11 +366,11 @@ function DetailFields({ detail, marketplace }: { detail: ExpeditionDetailMetadat
             ]}
           />
         </div>
-      </details>
+      </section>
 
-      <details className="rounded-lg border border-ocean-900/10 bg-white">
-        <summary className="cursor-pointer px-4 py-3 text-sm font-bold text-ocean-900">Activity, policy, and FAQ</summary>
-        <div className="grid gap-4 border-t border-ocean-900/10 p-4">
+      <section className="rounded-lg border border-ocean-900/10 bg-white p-4">
+        <h3 className="text-lg font-bold text-ocean-900">Activity, policy & FAQ</h3>
+        <div className="mt-4 grid gap-4">
           <RepeatableFields
             rows={updateRows}
             emptyRow={{ title: "", date: "", body: "" }}
@@ -381,17 +402,15 @@ function DetailFields({ detail, marketplace }: { detail: ExpeditionDetailMetadat
               { name: "faqAnswer", valueKey: "answer", kind: "textarea", placeholder: "Answer" }
             ]}
           />
-          <div className="grid gap-3 md:grid-cols-2">
-            <Field label="Weather advisory title">
-              <input name="weatherAdvisoryTitle" defaultValue={detail.weatherAdvisory.title} className={inputClassName} />
-            </Field>
-          </div>
+          <Field label="Weather advisory title">
+            <input name="weatherAdvisoryTitle" defaultValue={detail.weatherAdvisory.title} className={inputClassName} />
+          </Field>
           <Field label="Weather advisory body">
             <textarea name="weatherAdvisoryBody" defaultValue={detail.weatherAdvisory.body} className={textareaClassName} />
           </Field>
         </div>
-      </details>
-    </div>
+      </section>
+    </FormTabs>
   );
 }
 
