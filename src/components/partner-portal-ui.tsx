@@ -33,8 +33,7 @@ import {
   createPartnerImpactSiteAction,
   createPartnerCampaignAction,
   deletePartnerImpactSiteAction,
-  updatePartnerImpactSiteAction,
-  updatePartnerCampaignAction
+  updatePartnerImpactSiteAction
 } from "@/lib/portal-actions";
 import type { getPartnerPortalData } from "@/lib/queries";
 import { evidenceSourceHref } from "@/lib/domain";
