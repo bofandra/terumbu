@@ -21,6 +21,7 @@ type CampaignContentCampaign = {
   id: string;
   organizationId: string;
   title: string;
+  currency?: string;
   contentCompleteness?: {
     score: number;
     missingLabels: string[];
@@ -76,12 +77,25 @@ type OrganizationTeamMember = {
   isPublic: boolean;
 };
 
+type CampaignEvidenceSpend = {
+  id: string;
+  title: string;
+  category: string | null;
+  amount: number;
+  currency: string;
+  verificationStatus: string;
+};
+
+type CampaignContentSection = "all" | "media" | "budget" | "timeline" | "team";
+
 type CampaignContentDepthEditorProps = {
   campaign: CampaignContentCampaign;
   mediaItems: CampaignMediaItem[];
   budgetLineItems: CampaignBudgetLineItem[];
   timelinePhases: CampaignTimelinePhase[];
   teamMembers: OrganizationTeamMember[];
+  evidenceSpends?: CampaignEvidenceSpend[];
+  section?: CampaignContentSection;
   returnTo: string;
   canManage: boolean;
 };
@@ -212,7 +226,8 @@ function BudgetForm({
           <input type="hidden" name="sortOrder" value={item.sortOrder} />
         </>
       ) : null}
-      <div className="grid gap-3 md:grid-cols-3">
+      <input type="hidden" name="spentAmount" value={item?.spentAmount ?? 0} />
+      <div className="grid gap-3 md:grid-cols-2">
         <Field label="Category">
           <select name="category" defaultValue={item?.category ?? "Restoration materials"} className={inputClassName} required>
             {item?.category && !campaignBudgetCategories.includes(item.category as (typeof campaignBudgetCategories)[number]) ? (
@@ -228,10 +243,10 @@ function BudgetForm({
         <Field label="Planned amount">
           <input name="amount" type="number" min="1" step="1000" defaultValue={item?.amount} className={inputClassName} required />
         </Field>
-        <Field label="Spent amount">
-          <input name="spentAmount" type="number" min="0" step="1000" defaultValue={item?.spentAmount ?? 0} className={inputClassName} />
-        </Field>
       </div>
+      <p className="text-xs font-semibold leading-5 text-ocean-900/54">
+        Actual spend is not typed here. It is calculated from verified evidence-backed expenses in this category.
+      </p>
       <Button type="submit" tone="secondary" className="w-fit rounded-lg">
         <Save className="size-4" aria-hidden="true" />
         {item ? "Save Budget" : "Add Budget"}
@@ -341,19 +356,166 @@ export function CampaignContentDepthEditor({
   budgetLineItems,
   timelinePhases,
   teamMembers,
+  evidenceSpends = [],
+  section = "all",
   returnTo,
   canManage
 }: CampaignContentDepthEditorProps) {
+  const currency = campaign.currency ?? "USD";
   const plannedBudget = budgetLineItems.reduce((total, item) => total + item.amount, 0);
-  const spentBudget = budgetLineItems.reduce((total, item) => total + item.spentAmount, 0);
+  const verifiedEvidenceSpends = evidenceSpends.filter((item) => item.verificationStatus === "verified" && item.amount > 0);
+  const spentBudget = verifiedEvidenceSpends.reduce((total, item) => total + item.amount, 0);
+  const spendForCategory = (category: string) =>
+    verifiedEvidenceSpends
+      .filter((item) => item.category?.trim().toLowerCase() === category.trim().toLowerCase())
+      .reduce((total, item) => total + item.amount, 0);
+
+  const mediaContent = (
+    <div className="grid gap-3">
+      {mediaItems.map((item) => (
+        <details key={item.id} className="rounded-lg border border-ocean-900/10 bg-white">
+          <summary className="cursor-pointer px-4 py-3 text-sm font-bold text-ocean-900">{item.title}</summary>
+          <div className="grid gap-3 border-t border-ocean-900/10 p-4">
+            {canManage ? <MediaForm campaign={campaign} item={item} returnTo={returnTo} /> : null}
+            {canManage ? <DeleteButton idName="mediaItemId" idValue={item.id} returnTo={returnTo} action={deleteCampaignMediaItemAction} /> : null}
+          </div>
+        </details>
+      ))}
+      {canManage ? <MediaForm campaign={campaign} returnTo={returnTo} /> : null}
+    </div>
+  );
+
+  const budgetContent = (
+    <div className="grid gap-4">
+      <div className="grid gap-3 sm:grid-cols-2">
+        <div className="rounded-lg bg-sand-50 p-4">
+          <p className="text-xs font-bold uppercase tracking-[0.1em] text-ocean-900/48">Planned budget</p>
+          <p className="mt-2 text-xl font-bold text-ocean-900">{formatCurrency(plannedBudget, currency)}</p>
+          <p className="mt-1 text-xs font-semibold text-ocean-900/54">This total becomes the campaign funding goal once budget lines exist.</p>
+        </div>
+        <div className="rounded-lg bg-sand-50 p-4">
+          <p className="text-xs font-bold uppercase tracking-[0.1em] text-ocean-900/48">Verified actual spend</p>
+          <p className="mt-2 text-xl font-bold text-ocean-900">{formatCurrency(spentBudget, currency)}</p>
+          <p className="mt-1 text-xs font-semibold text-ocean-900/54">Derived from verified evidence-backed expenses, not a manual field.</p>
+        </div>
+      </div>
+
+      {budgetLineItems.map((item) => {
+        const verifiedSpend = spendForCategory(item.category);
+
+        return (
+          <details key={item.id} className="rounded-lg border border-ocean-900/10 bg-white">
+            <summary className="cursor-pointer px-4 py-3 text-sm font-bold text-ocean-900">
+              {item.category} / {formatCurrency(verifiedSpend, currency)} verified spend of {formatCurrency(item.amount, currency)} planned
+            </summary>
+            <div className="grid gap-3 border-t border-ocean-900/10 p-4">
+              {canManage ? <BudgetForm campaign={campaign} item={item} returnTo={returnTo} /> : null}
+              {canManage ? <DeleteButton idName="budgetLineItemId" idValue={item.id} returnTo={returnTo} action={deleteCampaignBudgetLineItemAction} /> : null}
+            </div>
+          </details>
+        );
+      })}
+      {canManage ? <BudgetForm campaign={campaign} returnTo={returnTo} /> : null}
+
+      {verifiedEvidenceSpends.length > 0 ? (
+        <div className="rounded-lg border border-ocean-900/10 bg-white p-4">
+          <h3 className="text-sm font-bold uppercase tracking-[0.1em] text-coral-700">Evidence-backed expenses</h3>
+          <div className="mt-3 grid gap-2">
+            {verifiedEvidenceSpends.map((item) => (
+              <div key={item.id} className="flex flex-col justify-between gap-1 rounded-lg bg-sand-50 px-3 py-2 text-sm sm:flex-row sm:items-center">
+                <div>
+                  <p className="font-bold text-ocean-900">{item.title}</p>
+                  <p className="text-xs font-semibold text-ocean-900/52">{item.category || "Uncategorized verified expense"}</p>
+                </div>
+                <p className="font-bold text-ocean-900">{formatCurrency(item.amount, item.currency || currency)}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : null}
+    </div>
+  );
+
+  const timelineContent = (
+    <div className="grid gap-3">
+      {timelinePhases.map((item) => (
+        <details key={item.id} className="rounded-lg border border-ocean-900/10 bg-white">
+          <summary className="cursor-pointer px-4 py-3 text-sm font-bold capitalize text-ocean-900">
+            {item.title} / {labelize(item.status)}
+          </summary>
+          <div className="grid gap-3 border-t border-ocean-900/10 p-4">
+            {canManage ? <TimelineForm campaign={campaign} item={item} returnTo={returnTo} /> : null}
+            {canManage ? <DeleteButton idName="timelinePhaseId" idValue={item.id} returnTo={returnTo} action={deleteCampaignTimelinePhaseAction} /> : null}
+          </div>
+        </details>
+      ))}
+      {canManage ? <TimelineForm campaign={campaign} returnTo={returnTo} /> : null}
+    </div>
+  );
+
+  const teamContent = (
+    <div className="grid gap-3">
+      {teamMembers.map((item) => (
+        <details key={item.id} className="rounded-lg border border-ocean-900/10 bg-white">
+          <summary className="cursor-pointer px-4 py-3 text-sm font-bold text-ocean-900">
+            {item.name} / {item.role}
+          </summary>
+          <div className="grid gap-3 border-t border-ocean-900/10 p-4">
+            {canManage ? <TeamForm campaign={campaign} item={item} returnTo={returnTo} /> : null}
+            {canManage ? <DeleteButton idName="teamMemberId" idValue={item.id} returnTo={returnTo} action={deleteOrganizationTeamMemberAction} /> : null}
+          </div>
+        </details>
+      ))}
+      {canManage ? <TeamForm campaign={campaign} returnTo={returnTo} /> : null}
+    </div>
+  );
+
+  if (section !== "all") {
+    const sectionMeta = {
+      media: {
+        title: "Campaign media",
+        description: "Manage the public gallery and reusable campaign images."
+      },
+      budget: {
+        title: "Budget plan",
+        description: "Plan how the funding goal is allocated. Actual spend comes from verified evidence."
+      },
+      timeline: {
+        title: "Delivery timeline",
+        description: "Track campaign phases, dates, and field delivery status."
+      },
+      team: {
+        title: "Public team",
+        description: "Manage public partner profiles associated with this organization."
+      }
+    }[section];
+
+    const content = {
+      media: mediaContent,
+      budget: budgetContent,
+      timeline: timelineContent,
+      team: teamContent
+    }[section];
+
+    return (
+      <section className="grid gap-4">
+        <div className="rounded-lg border border-ocean-900/10 bg-white p-4 shadow-soft">
+          <h2 className="text-xl font-bold tracking-normal text-ocean-900">{sectionMeta.title}</h2>
+          <p className="mt-1 text-sm font-semibold leading-6 text-ocean-900/58">{sectionMeta.description}</p>
+        </div>
+        {content}
+      </section>
+    );
+  }
+
   return (
     <section className="grid gap-4">
       <div className="rounded-lg border border-ocean-900/10 bg-white p-4 shadow-soft">
         <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-start">
           <div>
-            <h2 className="text-xl font-bold tracking-normal text-ocean-900">Campaign content depth</h2>
+            <h2 className="text-xl font-bold tracking-normal text-ocean-900">Campaign resources</h2>
             <p className="mt-1 text-sm font-semibold leading-6 text-ocean-900/58">
-              Manage public gallery, budget detail, timeline phases, and visible partner team members.
+              Manage campaign media, budget allocation, delivery timeline, and public partner profiles.
             </p>
           </div>
           {campaign.contentCompleteness ? (
@@ -368,71 +530,18 @@ export function CampaignContentDepthEditor({
       </div>
 
       <FormTabs
-        ariaLabel={`${campaign.title} content editors`}
+        ariaLabel={`${campaign.title} resource editors`}
         tabs={[
           { id: "media", label: "Media", description: "Gallery assets", badge: mediaItems.length.toLocaleString("id-ID") },
-          { id: "budget", label: "Budget", description: "Planned and spent", badge: `${formatCurrency(spentBudget)} / ${formatCurrency(plannedBudget)}` },
+          { id: "budget", label: "Budget", description: "Plan and verified spend", badge: `${formatCurrency(spentBudget, currency)} / ${formatCurrency(plannedBudget, currency)}` },
           { id: "timeline", label: "Timeline", description: "Field phases", badge: timelinePhases.length.toLocaleString("id-ID") },
           { id: "team", label: "Team", description: "Public partner profiles", badge: teamMembers.length.toLocaleString("id-ID") }
         ]}
       >
-        <div className="grid gap-3">
-          {mediaItems.map((item) => (
-            <details key={item.id} className="rounded-lg border border-ocean-900/10 bg-white">
-              <summary className="cursor-pointer px-4 py-3 text-sm font-bold text-ocean-900">{item.title}</summary>
-              <div className="grid gap-3 border-t border-ocean-900/10 p-4">
-                {canManage ? <MediaForm campaign={campaign} item={item} returnTo={returnTo} /> : null}
-                {canManage ? <DeleteButton idName="mediaItemId" idValue={item.id} returnTo={returnTo} action={deleteCampaignMediaItemAction} /> : null}
-              </div>
-            </details>
-          ))}
-          {canManage ? <MediaForm campaign={campaign} returnTo={returnTo} /> : null}
-        </div>
-
-        <div className="grid gap-3">
-          {budgetLineItems.map((item) => (
-            <details key={item.id} className="rounded-lg border border-ocean-900/10 bg-white">
-              <summary className="cursor-pointer px-4 py-3 text-sm font-bold text-ocean-900">
-                {item.category} / {formatCurrency(item.spentAmount)} of {formatCurrency(item.amount)}
-              </summary>
-              <div className="grid gap-3 border-t border-ocean-900/10 p-4">
-                {canManage ? <BudgetForm campaign={campaign} item={item} returnTo={returnTo} /> : null}
-                {canManage ? <DeleteButton idName="budgetLineItemId" idValue={item.id} returnTo={returnTo} action={deleteCampaignBudgetLineItemAction} /> : null}
-              </div>
-            </details>
-          ))}
-          {canManage ? <BudgetForm campaign={campaign} returnTo={returnTo} /> : null}
-        </div>
-
-        <div className="grid gap-3">
-          {timelinePhases.map((item) => (
-            <details key={item.id} className="rounded-lg border border-ocean-900/10 bg-white">
-              <summary className="cursor-pointer px-4 py-3 text-sm font-bold capitalize text-ocean-900">
-                {item.title} / {labelize(item.status)}
-              </summary>
-              <div className="grid gap-3 border-t border-ocean-900/10 p-4">
-                {canManage ? <TimelineForm campaign={campaign} item={item} returnTo={returnTo} /> : null}
-                {canManage ? <DeleteButton idName="timelinePhaseId" idValue={item.id} returnTo={returnTo} action={deleteCampaignTimelinePhaseAction} /> : null}
-              </div>
-            </details>
-          ))}
-          {canManage ? <TimelineForm campaign={campaign} returnTo={returnTo} /> : null}
-        </div>
-
-        <div className="grid gap-3">
-          {teamMembers.map((item) => (
-            <details key={item.id} className="rounded-lg border border-ocean-900/10 bg-white">
-              <summary className="cursor-pointer px-4 py-3 text-sm font-bold text-ocean-900">
-                {item.name} / {item.role}
-              </summary>
-              <div className="grid gap-3 border-t border-ocean-900/10 p-4">
-                {canManage ? <TeamForm campaign={campaign} item={item} returnTo={returnTo} /> : null}
-                {canManage ? <DeleteButton idName="teamMemberId" idValue={item.id} returnTo={returnTo} action={deleteOrganizationTeamMemberAction} /> : null}
-              </div>
-            </details>
-          ))}
-          {canManage ? <TeamForm campaign={campaign} returnTo={returnTo} /> : null}
-        </div>
+        {mediaContent}
+        {budgetContent}
+        {timelineContent}
+        {teamContent}
       </FormTabs>
     </section>
   );
