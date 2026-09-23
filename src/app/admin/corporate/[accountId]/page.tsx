@@ -4,15 +4,14 @@ import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
 
 import { AdminAlert } from "@/components/admin/admin-alert";
-import { AdminPageHeader, AdminStatusBadge, adminInputClassName, adminPanelClassName, adminSelectClassName } from "@/components/admin-ui";
+import { AdminPageHeader, AdminStatusBadge, adminInputClassName, adminPanelClassName } from "@/components/admin-ui";
 import { Button } from "@/components/ui/button";
 import { FormTabs } from "@/components/ui/form-tabs";
 import { MetricValue } from "@/components/ui/metric-value";
 import {
   assignCorporatePermissionAction,
   removeCorporatePermissionAction,
-  updateCorporateAccountAction,
-  updateCorporateProgramAction
+  updateCorporateAccountAction
 } from "@/lib/admin-corporate-actions";
 import { observeAdminDataLoader } from "@/lib/admin-observability";
 import { requireRole } from "@/lib/auth";
@@ -27,7 +26,6 @@ export const dynamic = "force-dynamic";
 
 const savedMessages: Record<string, string> = {
   account: "Corporate account updated.",
-  program: "Corporate program updated.",
   permission: "Corporate access assigned.",
   "permission-removed": "Corporate access removed."
 };
@@ -40,9 +38,7 @@ const errorMessages: Record<string, string> = {
   "image-type": "Upload a supported image file.",
   "permission-invalid": "Choose a valid corporate account and user email.",
   "permission-missing": "Corporate account, access row, or user was not found.",
-  "program-invalid": "Enter valid program details, dates, and budget.",
-  "program-missing": "Corporate program was not found.",
-  "program-slug": "That program slug is already in use."
+  "program-owned": "Corporate programs are managed by Corporate Admin in the Corporate Portal."
 };
 
 type AdminCorporateDetailPageProps = {
@@ -63,10 +59,6 @@ function Field({ label, children, className = "" }: { label: string; children: R
       {children}
     </label>
   );
-}
-
-function dateValue(date: Date) {
-  return date.toISOString().slice(0, 10);
 }
 
 export default async function AdminCorporateDetailPage({ params, searchParams }: AdminCorporateDetailPageProps) {
@@ -153,65 +145,53 @@ export default async function AdminCorporateDetailPage({ params, searchParams }:
           </form>
         </section>
 
-        <section className="grid gap-3">
-          {data.programs.map((program) => (
-            <article key={program.id} className={adminPanelClassName}>
-              <div className="flex flex-col justify-between gap-3 border-b border-ocean-900/10 p-4 sm:flex-row sm:items-start">
-                <div>
-                  <h2 className="text-lg font-bold text-ocean-900">{program.name}</h2>
-                  <p className="mt-1 text-sm font-semibold text-ocean-900/54">{formatCurrency(program.budgetAmount, program.currency)}</p>
+        <section className="grid gap-4">
+          <div className="rounded-lg border border-kelp-700/20 bg-kelp-100/50 p-4">
+            <h2 className="font-bold text-ocean-900">Programs are owned by Corporate Admin</h2>
+            <p className="mt-1 text-sm font-semibold leading-6 text-ocean-900/60">
+              Platform Admin can monitor program lifecycle and budget, but cannot create, edit, archive, or change program status.
+            </p>
+          </div>
+
+          <div className="grid gap-3">
+            {data.programs.map((program) => (
+              <article key={program.id} className={adminPanelClassName}>
+                <div className="flex flex-col justify-between gap-3 border-b border-ocean-900/10 p-4 sm:flex-row sm:items-start">
+                  <div>
+                    <h2 className="text-lg font-bold text-ocean-900">{program.name}</h2>
+                    <p className="mt-1 text-sm font-semibold text-ocean-900/54">/{program.slug}</p>
+                  </div>
+                  <AdminStatusBadge value={program.status} />
                 </div>
-                <AdminStatusBadge value={program.status} />
+                <dl className="grid gap-3 p-4 sm:grid-cols-2 xl:grid-cols-4">
+                  <div className="rounded-lg bg-sand-50 p-3">
+                    <dt className="text-xs font-bold uppercase tracking-[0.08em] text-ocean-900/42">Starts</dt>
+                    <dd className="mt-2 font-bold text-ocean-900">{program.startsAt.toLocaleDateString("id-ID", { dateStyle: "medium" })}</dd>
+                  </div>
+                  <div className="rounded-lg bg-sand-50 p-3">
+                    <dt className="text-xs font-bold uppercase tracking-[0.08em] text-ocean-900/42">Ends</dt>
+                    <dd className="mt-2 font-bold text-ocean-900">{program.endsAt.toLocaleDateString("id-ID", { dateStyle: "medium" })}</dd>
+                  </div>
+                  <div className="rounded-lg bg-sand-50 p-3">
+                    <dt className="text-xs font-bold uppercase tracking-[0.08em] text-ocean-900/42">Budget</dt>
+                    <dd className="mt-2 font-bold text-ocean-900">{formatCurrency(program.budgetAmount, program.currency)}</dd>
+                  </div>
+                  <div className="rounded-lg bg-sand-50 p-3">
+                    <dt className="text-xs font-bold uppercase tracking-[0.08em] text-ocean-900/42">Currency</dt>
+                    <dd className="mt-2 font-bold text-ocean-900">{program.currency}</dd>
+                  </div>
+                </dl>
+              </article>
+            ))}
+            {data.programs.length === 0 ? (
+              <div className="rounded-lg border border-dashed border-ocean-900/14 bg-white p-5">
+                <p className="font-bold text-ocean-900">No programs yet.</p>
+                <p className="mt-1 text-sm font-semibold text-ocean-900/54">
+                  Assign a Corporate Admin to this account. The Corporate Admin can create the first program from the Corporate Portal.
+                </p>
               </div>
-              <form action={updateCorporateProgramAction} className="grid gap-4 p-4">
-                <input type="hidden" name="returnTo" value={`/admin/corporate/${account.id}?tab=programs`} />
-                <input type="hidden" name="programId" value={program.id} />
-                <div className="grid gap-3 md:grid-cols-2">
-                  <Field label="Program name">
-                    <input name="programName" defaultValue={program.name} className={adminInputClassName} required />
-                  </Field>
-                  <Field label="Slug">
-                    <input name="programSlug" defaultValue={program.slug} className={adminInputClassName} required />
-                  </Field>
-                </div>
-                <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
-                  <Field label="Starts">
-                    <input name="startsAt" type="date" defaultValue={dateValue(program.startsAt)} className={adminInputClassName} required />
-                  </Field>
-                  <Field label="Ends">
-                    <input name="endsAt" type="date" defaultValue={dateValue(program.endsAt)} className={adminInputClassName} required />
-                  </Field>
-                  <Field label="Budget">
-                    <input name="budgetAmount" type="number" min="1" step="0.01" defaultValue={program.budgetAmount} className={adminInputClassName} required />
-                  </Field>
-                  <Field label="Currency">
-                    <select name="currency" defaultValue={program.currency} className={adminSelectClassName}>
-                      <option value="IDR">IDR</option>
-                      <option value="USD">USD</option>
-                    </select>
-                  </Field>
-                  <Field label="Status">
-                    <select name="status" defaultValue={program.status} className={adminSelectClassName}>
-                      <option value="active">Active</option>
-                      <option value="draft">Draft</option>
-                      <option value="completed">Completed</option>
-                      <option value="archived">Archived</option>
-                    </select>
-                  </Field>
-                </div>
-                <Button type="submit" tone="secondary" className="w-fit rounded-lg">
-                  <Save className="size-4" aria-hidden="true" />
-                  Save program
-                </Button>
-              </form>
-            </article>
-          ))}
-          {data.programs.length === 0 ? (
-            <div className="rounded-lg border border-dashed border-ocean-900/14 bg-white p-5">
-              <p className="font-bold text-ocean-900">No programs.</p>
-              <p className="mt-1 text-sm font-semibold text-ocean-900/54">Create a program from the Corporate directory.</p>
-            </div>
-          ) : null}
+            ) : null}
+          </div>
         </section>
 
         <section className="grid gap-4">
