@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 
 import { PartnerCampaignWorkspace } from "@/components/partner-campaign-workspace";
-import { requireRole } from "@/lib/auth";
+import { requirePartnerRole } from "@/lib/auth";
 import { getPartnerPortalData } from "@/lib/queries";
 
 export const metadata = {
@@ -48,7 +48,7 @@ type PartnerCampaignDetailPageProps = {
 };
 
 export default async function PartnerCampaignDetailPage({ params, searchParams }: PartnerCampaignDetailPageProps) {
-  const user = await requireRole(["partner"], "/partner");
+  const user = await requirePartnerRole("/partner");
   const [{ campaignId }, query] = await Promise.all([params, searchParams]);
   const data = await getPartnerPortalData(user.id);
   const campaign = data.campaigns.find((item) => item.id === campaignId);
