@@ -174,7 +174,15 @@ const partnerRedirectPaths = new Set([
 function partnerRedirectPath(formData: FormData, fallbackPath: string) {
   const requestedPath = formText(formData, "redirectTo");
 
-  return partnerRedirectPaths.has(requestedPath) ? requestedPath : fallbackPath;
+  if (partnerRedirectPaths.has(requestedPath)) {
+    return requestedPath;
+  }
+
+  if (/^\/partner\/campaigns\/[A-Za-z0-9-]+$/.test(requestedPath)) {
+    return requestedPath;
+  }
+
+  return fallbackPath;
 }
 
 function redirectPartnerError(formData: FormData, fallbackPath: string, code: string): never {
@@ -2640,6 +2648,29 @@ export async function deleteCampaignMediaItemAction(formData: FormData) {
   redirectCampaignContentSaved(formData, fallbackPath, "campaign-content-deleted");
 }
 
+async function syncCampaignGoalToBudgetPlan(campaignId: string, now = new Date()) {
+  const [summary] = await db
+    .select({
+      total: sql<string>`coalesce(sum(${campaignBudgetLineItems.amount}), 0)`
+    })
+    .from(campaignBudgetLineItems)
+    .where(eq(campaignBudgetLineItems.campaignId, campaignId));
+
+  const total = Number(summary?.total ?? 0);
+
+  if (!Number.isFinite(total) || total <= 0) {
+    return;
+  }
+
+  await db
+    .update(campaigns)
+    .set({
+      goalAmount: total.toFixed(2),
+      updatedAt: now
+    })
+    .where(eq(campaigns.id, campaignId));
+}
+
 export async function upsertCampaignBudgetLineItemAction(formData: FormData) {
   const fallbackPath = campaignContentReturnPath(formData, "/partner/campaigns");
   const user = await requireRole(["partner", "admin"], fallbackPath);
@@ -2647,7 +2678,6 @@ export async function upsertCampaignBudgetLineItemAction(formData: FormData) {
   const campaignIdFromForm = formText(formData, "campaignId");
   const categoryInput = formText(formData, "category");
   const amount = parsePositiveDecimal(formData.get("amount"));
-  const spentAmount = parseNonNegativeDecimal(formData.get("spentAmount"));
   const requestedSortOrder = formData.has("sortOrder") ? parseNonNegativeInteger(formData.get("sortOrder")) : null;
   const now = new Date();
 
@@ -2658,6 +2688,7 @@ export async function upsertCampaignBudgetLineItemAction(formData: FormData) {
           campaignId: campaignBudgetLineItems.campaignId,
           category: campaignBudgetLineItems.category,
           description: campaignBudgetLineItems.description,
+          spentAmount: campaignBudgetLineItems.spentAmount,
           sortOrder: campaignBudgetLineItems.sortOrder
         })
         .from(campaignBudgetLineItems)
@@ -2669,8 +2700,9 @@ export async function upsertCampaignBudgetLineItemAction(formData: FormData) {
     existingItem && categoryInput === existingItem.category
       ? existingItem.category
       : normalizeCampaignBudgetCategory(categoryInput || existingItem?.category);
+  const spentAmount = existingItem?.spentAmount ?? "0.00";
 
-  if (!campaignId || !category || !amount || spentAmount === null) {
+  if (!campaignId || !category || !amount) {
     redirectCampaignContentError(formData, fallbackPath, "campaign-content-invalid");
   }
 
@@ -2707,6 +2739,8 @@ export async function upsertCampaignBudgetLineItemAction(formData: FormData) {
     });
   }
 
+  await syncCampaignGoalToBudgetPlan(campaignId, now);
+
   await db.insert(adminAuditLogs).values({
     actorUserId: user.id,
     action: existingItem ? "campaign_budget.updated" : "campaign_budget.created",
@@ -2740,6 +2774,7 @@ export async function deleteCampaignBudgetLineItemAction(formData: FormData) {
 
   await requireCampaignAccess(user.id, item.campaignId, formData, fallbackPath, "campaign:update");
   await db.delete(campaignBudgetLineItems).where(eq(campaignBudgetLineItems.id, budgetLineItemId));
+  await syncCampaignGoalToBudgetPlan(item.campaignId);
   await db.insert(adminAuditLogs).values({
     actorUserId: user.id,
     action: "campaign_budget.deleted",
