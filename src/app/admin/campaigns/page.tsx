@@ -7,6 +7,7 @@ import { AdminDomainNav, adminDonationNavItems } from "@/components/admin/admin-
 import { AdminListToolbar } from "@/components/admin/admin-list-toolbar";
 import { AdminPagination } from "@/components/admin/admin-pagination";
 import { AdminEmptyState, AdminPageHeader, AdminStatusBadge, adminInputClassName, adminSelectClassName } from "@/components/admin-ui";
+import { Button } from "@/components/ui/button";
 import { ProgressMeter } from "@/components/ui/progress-meter";
 import { campaignStatuses } from "@/lib/campaign-content";
 import { observeAdminDataLoader } from "@/lib/admin-observability";
@@ -41,7 +42,8 @@ const errorMessages: Record<string, string> = {
   "campaign-slug": "That project slug is already in use.",
   "image-size": "Uploaded image is too large.",
   "image-type": "Upload a supported image file.",
-  "organization-missing": "Choose an existing partner organization."
+  "organization-missing": "Choose an existing partner organization.",
+  "partner-owned": "Donation campaigns are partner-owned. Platform admins have read-only monitoring access."
 };
 
 type AdminProjectsPageProps = {
@@ -125,7 +127,6 @@ export default async function AdminProjectsPage({ searchParams }: AdminProjectsP
   const savedMessage = params?.saved ? statusMessages[String(params.saved)] : null;
   const errorMessage = params?.error ? errorMessages[String(params.error)] : null;
   const baseParams = listParams(data);
-  const returnTo = adminProjectsHref({ ...baseParams, page: data.pagination.page });
   const columns: AdminDataTableColumn<AdminProject>[] = [
     {
       key: "project",
