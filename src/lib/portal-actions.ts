@@ -2653,11 +2653,16 @@ export async function deletePartnerImpactSiteAction(formData: FormData) {
   }
 
   const site = await requirePartnerImpactSiteAccess(user.id, impactSiteId, formData, "/partner/impact-sites", "impact-site:manage");
+  const campaignId = site.campaignId;
+
+  if (!campaignId) {
+    redirectPartnerError(formData, "/partner/impact-sites", "impact-site-missing");
+  }
 
   const [replacementSite] = await db
     .select({ id: impactSites.id })
     .from(impactSites)
-    .where(and(eq(impactSites.campaignId, site.campaignId), ne(impactSites.id, impactSiteId)))
+    .where(and(eq(impactSites.campaignId, campaignId), ne(impactSites.id, impactSiteId)))
     .limit(1);
 
   if (!replacementSite) {
