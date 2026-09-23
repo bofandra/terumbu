@@ -1,5 +1,5 @@
 import { PartnerImpactSiteManagement, PartnerPageHeader } from "@/components/partner-portal-ui";
-import { requireRole } from "@/lib/auth";
+import { requirePartnerRole } from "@/lib/auth";
 import { getPartnerPortalData } from "@/lib/queries";
 
 export const metadata = {
@@ -32,7 +32,7 @@ type PartnerImpactSitesPageProps = {
 };
 
 export default async function PartnerImpactSitesPage({ searchParams }: PartnerImpactSitesPageProps) {
-  const user = await requireRole(["partner", "admin"], "/partner");
+  const user = await requirePartnerRole("/partner");
   const params = await searchParams;
   const data = await getPartnerPortalData(user.id);
   const savedMessage = params?.saved ? statusMessages[params.saved] : null;

@@ -1,7 +1,7 @@
 import { MapPinned, Megaphone, Plus, ShipWheel } from "lucide-react";
 
 import { OperationCard, PartnerPageHeader } from "@/components/partner-portal-ui";
-import { requireRole } from "@/lib/auth";
+import { requirePartnerRole } from "@/lib/auth";
 import { getPartnerPortalData } from "@/lib/queries";
 
 export const metadata = {
@@ -11,7 +11,7 @@ export const metadata = {
 export const dynamic = "force-dynamic";
 
 export default async function PartnerPortalPage() {
-  const user = await requireRole(["partner", "admin"], "/partner");
+  const user = await requirePartnerRole("/partner");
   const data = await getPartnerPortalData(user.id);
 
   return (

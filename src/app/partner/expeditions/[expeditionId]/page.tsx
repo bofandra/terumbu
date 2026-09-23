@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 
 import { PartnerExpeditionDetailWorkspace } from "@/components/partner-expedition-editor";
-import { requireRole } from "@/lib/auth";
+import { requirePartnerRole } from "@/lib/auth";
 import { getPartnerPortalData } from "@/lib/queries";
 
 export const metadata = {
@@ -48,7 +48,7 @@ type PartnerExpeditionDetailPageProps = {
 };
 
 export default async function PartnerExpeditionDetailPage({ params, searchParams }: PartnerExpeditionDetailPageProps) {
-  const user = await requireRole(["partner", "admin"], "/partner");
+  const user = await requirePartnerRole("/partner");
   const [{ expeditionId }, query] = await Promise.all([params, searchParams]);
   const data = await getPartnerPortalData(user.id);
   const expedition = data.expeditions.find((item) => item.id === expeditionId);

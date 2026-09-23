@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowUpDown, Building2, CircleDollarSign, UsersRound } from "lucide-react";
+import { ArrowUpDown, Building2, CircleDollarSign, Pencil, UsersRound } from "lucide-react";
 
 import { AdminAlert } from "@/components/admin/admin-alert";
 import { AdminDataTable, type AdminDataTableColumn } from "@/components/admin/admin-data-table";
@@ -22,7 +22,10 @@ const pathname = "/admin/corporate";
 
 const savedMessages: Record<string, string> = {
   workspace: "Corporate workspace saved.",
-  permission: "Corporate access assigned."
+  permission: "Corporate access assigned.",
+  account: "Corporate account updated.",
+  program: "Corporate program updated.",
+  "permission-removed": "Corporate access removed."
 };
 
 const errorMessages: Record<string, string> = {
@@ -30,7 +33,13 @@ const errorMessages: Record<string, string> = {
   "image-type": "Upload a supported image file.",
   "workspace-invalid": "Enter company name, program name, and a valid budget.",
   "permission-invalid": "Choose a corporate account and user email.",
-  "permission-missing": "Corporate account or user was not found. Create the user first, then assign access."
+  "permission-missing": "Corporate account, access row, or user was not found. Create the user first, then assign access.",
+  "account-invalid": "Enter a valid company name and slug.",
+  "account-missing": "Corporate account was not found.",
+  "account-slug": "That corporate slug is already in use.",
+  "program-invalid": "Enter valid program details, dates, and budget.",
+  "program-missing": "Corporate program was not found.",
+  "program-slug": "That program slug is already in use."
 };
 
 type AdminCorporatePageProps = {
@@ -93,7 +102,18 @@ export default async function AdminCorporatePage({ searchParams }: AdminCorporat
     {
       key: "company",
       header: <SortHeader label="Company" sort="name" data={data} />,
-      render: (account) => <div className="min-w-56"><p className="font-bold text-ocean-900">{account.name}</p><p className="mt-1 text-sm font-semibold text-ocean-900/58">/{account.slug}</p></div>
+      render: (account) => (
+        <div className="min-w-56">
+          <Link href={`/admin/corporate/${account.id}`} className="font-bold text-ocean-900 hover:text-coral-700">
+            {account.name}
+          </Link>
+          <p className="mt-1 text-sm font-semibold text-ocean-900/58">/{account.slug}</p>
+          <Link href={`/admin/corporate/${account.id}`} className="mt-2 inline-flex items-center gap-1 text-xs font-bold text-coral-700 hover:text-coral-500">
+            <Pencil className="size-3.5" aria-hidden="true" />
+            Manage workspace
+          </Link>
+        </div>
+      )
     },
     {
       key: "programs",
@@ -114,6 +134,20 @@ export default async function AdminCorporatePage({ searchParams }: AdminCorporat
       key: "created",
       header: <SortHeader label="Created" sort="createdAt" data={data} />,
       render: (account) => <time dateTime={account.createdAt.toISOString()} className="whitespace-nowrap font-semibold text-ocean-900/68">{account.createdAt.toLocaleDateString("id-ID", { day: "2-digit", month: "short", year: "numeric" })}</time>
+    },
+    {
+      key: "actions",
+      header: <span className="sr-only">Actions</span>,
+      className: "text-right",
+      render: (account) => (
+        <Link
+          href={`/admin/corporate/${account.id}`}
+          className="inline-flex min-h-9 items-center justify-center gap-2 rounded-lg border border-ocean-900/10 bg-white px-3 text-sm font-bold text-ocean-900 transition hover:border-coral-500 hover:text-coral-700"
+        >
+          <Pencil className="size-4" aria-hidden="true" />
+          Manage
+        </Link>
+      )
     }
   ];
 

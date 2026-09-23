@@ -9975,6 +9975,82 @@ export async function getAdminCorporatePage(params: AdminCorporateFilters = {}) 
   };
 }
 
+export async function getAdminCorporateWorkspaceData(accountId: string) {
+  const safeAccountId = adminUuidFilter(accountId);
+
+  if (!safeAccountId) {
+    return null;
+  }
+
+  const [account] = await db
+    .select({
+      id: corporateAccounts.id,
+      name: corporateAccounts.name,
+      slug: corporateAccounts.slug,
+      logoUrl: corporateAccounts.logoUrl,
+      createdAt: corporateAccounts.createdAt
+    })
+    .from(corporateAccounts)
+    .where(eq(corporateAccounts.id, safeAccountId))
+    .limit(1);
+
+  if (!account) {
+    return null;
+  }
+
+  const [programRows, permissionRows, contributionRows] = await Promise.all([
+    db
+      .select({
+        id: corporatePrograms.id,
+        name: corporatePrograms.name,
+        slug: corporatePrograms.slug,
+        startsAt: corporatePrograms.startsAt,
+        endsAt: corporatePrograms.endsAt,
+        budgetAmount: corporatePrograms.budgetAmount,
+        currency: corporatePrograms.currency,
+        status: corporatePrograms.status,
+        createdAt: corporatePrograms.createdAt
+      })
+      .from(corporatePrograms)
+      .where(eq(corporatePrograms.corporateAccountId, account.id))
+      .orderBy(desc(corporatePrograms.createdAt)),
+    db
+      .select({
+        id: corporatePermissions.id,
+        userId: corporatePermissions.userId,
+        permission: corporatePermissions.permission,
+        createdAt: corporatePermissions.createdAt,
+        email: users.email,
+        name: users.name,
+        displayName: profiles.displayName
+      })
+      .from(corporatePermissions)
+      .innerJoin(users, eq(corporatePermissions.userId, users.id))
+      .leftJoin(profiles, eq(profiles.userId, users.id))
+      .where(eq(corporatePermissions.corporateAccountId, account.id))
+      .orderBy(asc(users.email)),
+    db
+      .select({ total: sql<number>`count(*)::int` })
+      .from(corporateContributions)
+      .where(eq(corporateContributions.corporateAccountId, account.id))
+  ]);
+
+  return {
+    account: {
+      ...account,
+      programCount: programRows.length,
+      activeProgramCount: programRows.filter((program) => program.status === "active").length,
+      userCount: permissionRows.length,
+      contributionCount: Number(contributionRows[0]?.total ?? 0)
+    },
+    programs: programRows.map((program) => ({
+      ...program,
+      budgetAmount: toNumber(program.budgetAmount)
+    })),
+    permissions: permissionRows
+  };
+}
+
 export type AdminAcademyFilters = {
   q?: string | string[];
   page?: string | string[];

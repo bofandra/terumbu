@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowUpDown, Pencil, ShieldCheck } from "lucide-react";
+import { ArrowUpDown, Eye } from "lucide-react";
 
 import { AdminAlert } from "@/components/admin/admin-alert";
 import { AdminDataTable, type AdminDataTableColumn } from "@/components/admin/admin-data-table";
@@ -12,7 +12,7 @@ import { ProgressMeter } from "@/components/ui/progress-meter";
 import { campaignStatuses } from "@/lib/campaign-content";
 import { observeAdminDataLoader } from "@/lib/admin-observability";
 import { requireRole } from "@/lib/auth";
-import { updateCampaignStatusAction, updateImpactSettingsAction } from "@/lib/portal-actions";
+import { updateImpactSettingsAction } from "@/lib/portal-actions";
 import { getCarbonKgPerUsd } from "@/lib/platform-settings";
 import { getAdminProjectsPage, type AdminProjectFilters } from "@/lib/queries";
 import { cn, formatCurrency } from "@/lib/utils";
@@ -42,7 +42,8 @@ const errorMessages: Record<string, string> = {
   "campaign-slug": "That project slug is already in use.",
   "image-size": "Uploaded image is too large.",
   "image-type": "Upload a supported image file.",
-  "organization-missing": "Choose an existing partner organization."
+  "organization-missing": "Choose an existing partner organization.",
+  "partner-owned": "Donation campaigns are partner-owned. Platform admins have read-only monitoring access."
 };
 
 type AdminProjectsPageProps = {
@@ -108,18 +109,6 @@ function SortHeader({ label, sort, data }: { label: string; sort: string; data: 
   );
 }
 
-function StatusSelect({ defaultValue }: { defaultValue: string }) {
-  return (
-    <select name="status" defaultValue={defaultValue} className={cn(adminSelectClassName, "min-w-36")} aria-label="Donation status">
-      {campaignStatuses.map((status) => (
-        <option key={status} value={status}>
-          {labelize(status)}
-        </option>
-      ))}
-    </select>
-  );
-}
-
 function SummaryMetric({ label, value }: { label: string; value: string }) {
   return (
     <article className="min-w-0 rounded-lg border border-ocean-900/10 bg-white p-4 shadow-soft">
@@ -138,7 +127,6 @@ export default async function AdminProjectsPage({ searchParams }: AdminProjectsP
   const savedMessage = params?.saved ? statusMessages[String(params.saved)] : null;
   const errorMessage = params?.error ? errorMessages[String(params.error)] : null;
   const baseParams = listParams(data);
-  const returnTo = adminProjectsHref({ ...baseParams, page: data.pagination.page });
   const columns: AdminDataTableColumn<AdminProject>[] = [
     {
       key: "project",
@@ -169,20 +157,7 @@ export default async function AdminProjectsPage({ searchParams }: AdminProjectsP
     {
       key: "status",
       header: <SortHeader label="Status" sort="status" data={data} />,
-      render: (project) => (
-        <div className="min-w-48 space-y-2">
-          <AdminStatusBadge value={project.status} />
-          <form action={updateCampaignStatusAction} className="flex flex-wrap gap-2">
-            <input type="hidden" name="returnTo" value={returnTo} />
-            <input type="hidden" name="campaignId" value={project.id} />
-            <StatusSelect defaultValue={project.status} />
-            <Button type="submit" tone="secondary" className="min-h-10 rounded-lg px-3">
-              <ShieldCheck className="size-4" aria-hidden="true" />
-              Save
-            </Button>
-          </form>
-        </div>
-      )
+      render: (project) => <AdminStatusBadge value={project.status} />
     },
     {
       key: "funding",
@@ -223,8 +198,8 @@ export default async function AdminProjectsPage({ searchParams }: AdminProjectsP
             href={`/admin/campaigns/${project.id}`}
             className="inline-flex min-h-9 items-center justify-center gap-2 rounded-lg border border-ocean-900/10 bg-white px-3 text-sm font-bold text-ocean-900 transition hover:border-coral-500 hover:text-coral-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-kelp-500 focus-visible:ring-offset-2"
           >
-            <Pencil className="size-4" aria-hidden="true" />
-            Manage
+            <Eye className="size-4" aria-hidden="true" />
+            View
           </Link>
           <Link href={`/campaigns/${project.slug}`} className="text-center text-sm font-bold text-coral-700 hover:text-coral-500">
             Public page
@@ -239,9 +214,7 @@ export default async function AdminProjectsPage({ searchParams }: AdminProjectsP
       <AdminPageHeader
         eyebrow="Donations"
         title="Donations"
-        description="Manage donation pages and the projects they support."
-        actionHref="/admin/campaigns/new"
-        actionLabel="New donation"
+        description="Read-only monitoring for partner-owned donation campaigns. Campaign content and status are managed from the partner portal."
       />
       <AdminDomainNav items={adminDonationNavItems} active={pathname} />
 
@@ -272,8 +245,6 @@ export default async function AdminProjectsPage({ searchParams }: AdminProjectsP
         searchValue={data.filters.q}
         searchPlaceholder="Search donation, partner, category, or region"
         clearHref={pathname}
-        createHref="/admin/campaigns/new"
-        createLabel="New donation"
         hiddenFields={{
           sort: data.filters.sort === "updatedAt" ? undefined : data.filters.sort,
           dir: data.filters.dir === "desc" ? undefined : data.filters.dir
@@ -299,9 +270,7 @@ export default async function AdminProjectsPage({ searchParams }: AdminProjectsP
         emptyState={
           <AdminEmptyState
             title="No donations match these filters"
-            description="Clear the filters or create a donation page."
-            actionHref="/admin/campaigns/new"
-            actionLabel="Create donation"
+            description="Clear the filters. Donation campaigns are created and maintained by partners."
           />
         }
       />

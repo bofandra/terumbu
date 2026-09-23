@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowUpDown, FileCheck2, MapPinned, Pencil, Target } from "lucide-react";
+import { ArrowUpDown, Eye, FileCheck2, MapPinned, Target } from "lucide-react";
 
 import { AdminAlert } from "@/components/admin/admin-alert";
 import { AdminDataTable, type AdminDataTableColumn } from "@/components/admin/admin-data-table";
@@ -22,14 +22,11 @@ export const dynamic = "force-dynamic";
 
 const pathname = "/admin/campaigns/impact-sites";
 
-const statusMessages: Record<string, string> = {
-  "impact-site-created": "Impact site created.",
-  "impact-site-deleted": "Impact site deleted.",
-  "impact-site-updated": "Impact site updated."
-};
+const statusMessages: Record<string, string> = {};
 
 const errorMessages: Record<string, string> = {
-  "impact-site-missing": "Impact site record was not found."
+  "impact-site-missing": "Impact site record was not found.",
+  "partner-owned": "Impact sites are partner-owned. Platform admins have read-only monitoring access."
 };
 
 type AdminCampaignImpactSitesPageProps = {
@@ -112,7 +109,6 @@ export default async function AdminCampaignImpactSitesPage({ searchParams }: Adm
   const baseParams = listParams(data);
   const pageParams = { ...baseParams, page: data.pagination.page };
   const returnTo = adminImpactSitesHref(pageParams);
-  const newSiteHref = `/admin/campaigns/impact-sites/new?returnTo=${encodeURIComponent(returnTo)}`;
   const columns: AdminDataTableColumn<ImpactSite>[] = [
     {
       key: "site",
@@ -175,8 +171,8 @@ export default async function AdminCampaignImpactSitesPage({ searchParams }: Adm
           href={`/admin/campaigns/impact-sites/${site.id}?returnTo=${encodeURIComponent(returnTo)}`}
           className="inline-flex min-h-9 items-center justify-center gap-2 rounded-lg border border-ocean-900/10 bg-white px-3 text-sm font-bold text-ocean-900 transition hover:border-coral-500 hover:text-coral-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-kelp-500 focus-visible:ring-offset-2"
         >
-          <Pencil className="size-4" aria-hidden="true" />
-          Manage
+          <Eye className="size-4" aria-hidden="true" />
+          View
         </Link>
       )
     }
@@ -186,8 +182,8 @@ export default async function AdminCampaignImpactSitesPage({ searchParams }: Adm
     <div className="space-y-6">
       <AdminPageHeader
         eyebrow="Projects / Impact sites"
-        title="Impact site management"
-        description="Manage conservation locations through a searchable, paginated directory. Open one site to edit its location, tracking, verification, or assignment."
+        title="Impact site monitoring"
+        description="Read-only monitoring for partner-owned conservation locations, tracking, verification, and campaign assignment."
         actionHref="/admin/campaigns"
         actionLabel="Projects"
       />
@@ -207,8 +203,6 @@ export default async function AdminCampaignImpactSitesPage({ searchParams }: Adm
         searchValue={data.filters.q}
         searchPlaceholder="Search site, region, ecosystem, or campaign"
         clearHref={pathname}
-        createHref={newSiteHref}
-        createLabel="New site"
         hiddenFields={{
           sort: data.filters.sort === "name" ? undefined : data.filters.sort,
           dir: data.filters.dir === "asc" ? undefined : data.filters.dir
@@ -238,9 +232,7 @@ export default async function AdminCampaignImpactSitesPage({ searchParams }: Adm
           emptyState={
             <AdminEmptyState
               title="No impact sites found"
-              description="Adjust filters or create the first conservation location for campaign tracking."
-              actionHref={newSiteHref}
-              actionLabel="Create site"
+              description="Adjust filters. Impact sites are created and maintained by partners."
             />
           }
         />
