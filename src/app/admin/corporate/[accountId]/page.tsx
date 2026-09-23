@@ -79,7 +79,6 @@ export default async function AdminCorporateDetailPage({ params, searchParams }:
   }
 
   const account = data.account;
-  const returnTo = `/admin/corporate/${account.id}${query?.tab ? `?tab=${encodeURIComponent(query.tab)}` : ""}`;
   const savedMessage = query?.saved ? savedMessages[query.saved] : null;
   const errorMessage = query?.error ? errorMessages[query.error] : null;
 
