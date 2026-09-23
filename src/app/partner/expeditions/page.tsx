@@ -61,7 +61,7 @@ export default async function PartnerExpeditionsPage({ searchParams }: PartnerEx
       {savedMessage ? <p className="rounded-lg border border-kelp-700/20 bg-kelp-100 px-4 py-3 text-sm font-bold text-kelp-700">{savedMessage}</p> : null}
       {errorMessage ? <p className="rounded-lg border border-coral-700/20 bg-coral-100 px-4 py-3 text-sm font-bold text-coral-700">{errorMessage}</p> : null}
 
-      <PartnerExpeditionWorkspace campaigns={data.campaigns} expeditions={data.expeditions} canManageExpeditions={data.capabilities.canManageExpeditions} />
+      <PartnerExpeditionWorkspace expeditions={data.expeditions} canManageExpeditions={data.capabilities.canManageExpeditions} />
     </div>
   );
 }
