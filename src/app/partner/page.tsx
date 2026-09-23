@@ -34,7 +34,7 @@ export default async function PartnerPortalPage() {
         <article className="rounded-lg border border-ocean-900/10 bg-white p-4">
           <h2 className="font-bold text-ocean-900">Field activity</h2>
           <p className="mt-2 text-sm font-semibold leading-6 text-ocean-900/58">
-            Progress notes and evidence are managed inside each campaign. They are automatically linked to the campaign's required impact site.
+            Progress notes and evidence are managed inside each campaign. They are automatically linked to the required impact site for that campaign.
           </p>
         </article>
       </section>
