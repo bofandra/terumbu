@@ -1,9 +1,9 @@
 import { redirect } from "next/navigation";
 
 export const metadata = {
-  title: "Partner Activity"
+  title: "Partner Projects"
 };
 
 export default function PartnerSubmitEvidenceRedirectPage() {
-  redirect("/partner/activity");
+  redirect("/partner/campaigns");
 }
