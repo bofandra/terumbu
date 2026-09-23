@@ -2174,7 +2174,7 @@ export async function createPartnerCampaignAction(formData: FormData) {
       }
       : null;
   const existingImpactSite =
-    impactLinkMode === "existing"
+    impactLinkMode === "existing" && existingImpactSiteId
       ? await db
           .select({
             id: impactSites.id,
@@ -2399,7 +2399,7 @@ export async function updatePartnerCampaignAction(formData: FormData) {
         }
       : null;
   const existingImpactSite =
-    !linkedImpactSite && impactLinkMode === "existing"
+    !linkedImpactSite && impactLinkMode === "existing" && existingImpactSiteId
       ? await db
           .select({
             id: impactSites.id,
