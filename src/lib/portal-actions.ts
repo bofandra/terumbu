@@ -57,7 +57,7 @@ import {
   normalizePartnerCampaignStatus,
   partnerCampaignStatuses
 } from "@/lib/campaign-content";
-import { requireRole, safeRedirectPath } from "@/lib/auth";
+import { requirePartnerRole, requireRole, safeRedirectPath } from "@/lib/auth";
 import { withAdminFormOutcome } from "@/lib/admin-form-state";
 import { sendAccountSetupEmail } from "@/lib/auth-tokens";
 import { corporateEvidenceVisibilityForStatus, shouldLinkEvidenceToCorporateProgram } from "@/lib/corporate-lifecycle";
@@ -2123,7 +2123,7 @@ export async function removeOrganizationUserAction(formData: FormData) {
 }
 
 export async function createPartnerCampaignAction(formData: FormData) {
-  const user = await requireRole(["partner"], "/partner");
+  const user = await requirePartnerRole( "/partner");
   const roleKeys = await getPortalUserRoles(user.id);
   const isAdmin = roleKeys.includes("admin");
   const organizationId = formText(formData, "organizationId");
@@ -2323,7 +2323,7 @@ export async function createPartnerCampaignAction(formData: FormData) {
 }
 
 export async function updatePartnerCampaignAction(formData: FormData) {
-  const user = await requireRole(["partner"], "/partner");
+  const user = await requirePartnerRole( "/partner");
   const roleKeys = await getPortalUserRoles(user.id);
   const isAdmin = roleKeys.includes("admin");
   const campaignId = formText(formData, "campaignId");
@@ -2568,7 +2568,7 @@ export async function updatePartnerCampaignAction(formData: FormData) {
 }
 
 export async function createPartnerImpactSiteAction(formData: FormData) {
-  const user = await requireRole(["partner"], "/partner");
+  const user = await requirePartnerRole( "/partner");
   const values = impactSiteFormValues(formData, true, (code) => redirectPartnerError(formData, "/partner/impact-sites", code));
   const campaignId = values.campaignId;
 
@@ -2605,7 +2605,7 @@ export async function createPartnerImpactSiteAction(formData: FormData) {
 }
 
 export async function updatePartnerImpactSiteAction(formData: FormData) {
-  const user = await requireRole(["partner"], "/partner");
+  const user = await requirePartnerRole( "/partner");
   const impactSiteId = formText(formData, "impactSiteId");
   const values = impactSiteFormValues(formData, true, (code) => redirectPartnerError(formData, "/partner/impact-sites", code));
   const campaignId = values.campaignId;
@@ -2644,7 +2644,7 @@ export async function updatePartnerImpactSiteAction(formData: FormData) {
 }
 
 export async function deletePartnerImpactSiteAction(formData: FormData) {
-  const user = await requireRole(["partner"], "/partner");
+  const user = await requirePartnerRole( "/partner");
   const impactSiteId = formText(formData, "impactSiteId");
   const confirmed = formData.get("confirmDelete") === "delete";
 
@@ -2683,7 +2683,7 @@ export async function deletePartnerImpactSiteAction(formData: FormData) {
 }
 
 export async function deletePartnerCampaignAction(formData: FormData) {
-  const user = await requireRole(["partner"], "/partner");
+  const user = await requirePartnerRole( "/partner");
   const campaignId = formText(formData, "campaignId");
   const confirmed = formData.get("confirmDelete") === "delete";
 
@@ -2720,7 +2720,7 @@ export async function deletePartnerCampaignAction(formData: FormData) {
 
 export async function upsertCampaignMediaItemAction(formData: FormData) {
   const fallbackPath = campaignContentReturnPath(formData, "/partner/campaigns");
-  const user = await requireRole(["partner"], fallbackPath);
+  const user = await requirePartnerRole( fallbackPath);
   const mediaItemId = formText(formData, "mediaItemId");
   const campaignIdFromForm = formText(formData, "campaignId");
   const title = formText(formData, "title");
@@ -2805,7 +2805,7 @@ export async function upsertCampaignMediaItemAction(formData: FormData) {
 
 export async function deleteCampaignMediaItemAction(formData: FormData) {
   const fallbackPath = campaignContentReturnPath(formData, "/partner/campaigns");
-  const user = await requireRole(["partner"], fallbackPath);
+  const user = await requirePartnerRole( fallbackPath);
   const mediaItemId = formText(formData, "mediaItemId");
   const confirmed = formData.get("confirmDelete") === "delete";
 
@@ -2838,7 +2838,7 @@ export async function deleteCampaignMediaItemAction(formData: FormData) {
 
 export async function upsertCampaignBudgetLineItemAction(formData: FormData) {
   const fallbackPath = campaignContentReturnPath(formData, "/partner/campaigns");
-  const user = await requireRole(["partner"], fallbackPath);
+  const user = await requirePartnerRole( fallbackPath);
   const budgetLineItemId = formText(formData, "budgetLineItemId");
   const campaignIdFromForm = formText(formData, "campaignId");
   const categoryInput = formText(formData, "category");
@@ -2918,7 +2918,7 @@ export async function upsertCampaignBudgetLineItemAction(formData: FormData) {
 
 export async function deleteCampaignBudgetLineItemAction(formData: FormData) {
   const fallbackPath = campaignContentReturnPath(formData, "/partner/campaigns");
-  const user = await requireRole(["partner"], fallbackPath);
+  const user = await requirePartnerRole( fallbackPath);
   const budgetLineItemId = formText(formData, "budgetLineItemId");
   const confirmed = formData.get("confirmDelete") === "delete";
 
@@ -2951,7 +2951,7 @@ export async function deleteCampaignBudgetLineItemAction(formData: FormData) {
 
 export async function upsertCampaignTimelinePhaseAction(formData: FormData) {
   const fallbackPath = campaignContentReturnPath(formData, "/partner/campaigns");
-  const user = await requireRole(["partner"], fallbackPath);
+  const user = await requirePartnerRole( fallbackPath);
   const timelinePhaseId = formText(formData, "timelinePhaseId");
   const campaignIdFromForm = formText(formData, "campaignId");
   const title = formText(formData, "title");
@@ -3035,7 +3035,7 @@ export async function upsertCampaignTimelinePhaseAction(formData: FormData) {
 
 export async function deleteCampaignTimelinePhaseAction(formData: FormData) {
   const fallbackPath = campaignContentReturnPath(formData, "/partner/campaigns");
-  const user = await requireRole(["partner"], fallbackPath);
+  const user = await requirePartnerRole( fallbackPath);
   const timelinePhaseId = formText(formData, "timelinePhaseId");
   const confirmed = formData.get("confirmDelete") === "delete";
 
@@ -3068,7 +3068,7 @@ export async function deleteCampaignTimelinePhaseAction(formData: FormData) {
 
 export async function upsertOrganizationTeamMemberAction(formData: FormData) {
   const fallbackPath = campaignContentReturnPath(formData, "/partner/campaigns");
-  const user = await requireRole(["partner"], fallbackPath);
+  const user = await requirePartnerRole( fallbackPath);
   const teamMemberId = formText(formData, "teamMemberId");
   const organizationIdFromForm = formText(formData, "organizationId");
   const name = formText(formData, "name");
@@ -3155,7 +3155,7 @@ export async function upsertOrganizationTeamMemberAction(formData: FormData) {
 
 export async function deleteOrganizationTeamMemberAction(formData: FormData) {
   const fallbackPath = campaignContentReturnPath(formData, "/partner/campaigns");
-  const user = await requireRole(["partner"], fallbackPath);
+  const user = await requirePartnerRole( fallbackPath);
   const teamMemberId = formText(formData, "teamMemberId");
   const confirmed = formData.get("confirmDelete") === "delete";
 
@@ -3393,7 +3393,7 @@ export async function cancelExpeditionDepartureAction(formData: FormData) {
 }
 
 export async function updatePartnerExpeditionAction(formData: FormData) {
-  const user = await requireRole(["partner"], "/partner/expeditions");
+  const user = await requirePartnerRole( "/partner/expeditions");
   const expeditionId = formText(formData, "expeditionId");
   const title = formText(formData, "title");
   const slug = slugifyExpedition(formText(formData, "slug") || title);
@@ -3461,7 +3461,7 @@ export async function updatePartnerExpeditionAction(formData: FormData) {
 }
 
 export async function createPartnerExpeditionAction(formData: FormData) {
-  const user = await requireRole(["partner"], "/partner/expeditions");
+  const user = await requirePartnerRole( "/partner/expeditions");
   const title = formText(formData, "title");
   const slug = slugifyExpedition(formText(formData, "slug") || title);
   const region = formText(formData, "region");
@@ -3540,7 +3540,7 @@ export async function createPartnerExpeditionAction(formData: FormData) {
 }
 
 export async function createPartnerExpeditionDepartureAction(formData: FormData) {
-  const user = await requireRole(["partner"], "/partner/expeditions");
+  const user = await requirePartnerRole( "/partner/expeditions");
   const expeditionId = formText(formData, "expeditionId");
   const startsAt = parseDateTime(formData.get("startsAt"));
   const endsAt = parseDateTime(formData.get("endsAt"));
@@ -3589,7 +3589,7 @@ export async function createPartnerExpeditionDepartureAction(formData: FormData)
 }
 
 export async function updatePartnerExpeditionDepartureAction(formData: FormData) {
-  const user = await requireRole(["partner"], "/partner/expeditions");
+  const user = await requirePartnerRole( "/partner/expeditions");
   const departureId = formText(formData, "departureId");
   const startsAt = parseDateTime(formData.get("startsAt"));
   const endsAt = parseDateTime(formData.get("endsAt"));
@@ -3728,7 +3728,7 @@ export async function updateOrganizationVerificationAction(formData: FormData) {
 }
 
 export async function createCampaignActivityAction(formData: FormData) {
-  const user = await requireRole(["partner"], "/partner");
+  const user = await requirePartnerRole( "/partner");
   const campaignId = formText(formData, "campaignId");
   const title = formText(formData, "title");
   const body = formText(formData, "body");
@@ -3898,7 +3898,7 @@ export async function submitEvidenceAction(formData: FormData) {
 }
 
 export async function reviseEvidenceAction(formData: FormData) {
-  const user = await requireRole(["partner"], "/partner/activity");
+  const user = await requirePartnerRole( "/partner/activity");
   const evidenceId = formText(formData, "evidenceId");
   const title = formText(formData, "title");
   const body = formText(formData, "body");
