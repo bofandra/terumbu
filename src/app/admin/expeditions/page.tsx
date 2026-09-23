@@ -41,7 +41,8 @@ const errorMessages: Record<string, string> = {
   "expedition-has-bookings": "Expeditions with bookings cannot be deleted.",
   "expedition-invalid": "Enter a title, slug, region, duration, price, and summary.",
   "expedition-missing": "Expedition record was not found.",
-  "expedition-slug": "That expedition slug is already in use."
+  "expedition-slug": "That expedition slug is already in use.",
+  "partner-owned": "Expeditions are partner-owned. Platform admins have read-only monitoring access."
 };
 
 type AdminExpeditionsPageProps = {
