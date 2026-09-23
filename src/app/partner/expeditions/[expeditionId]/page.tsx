@@ -11,6 +11,7 @@ export const metadata = {
 export const dynamic = "force-dynamic";
 
 const statusMessages: Record<string, string> = {
+  "expedition-created": "Expedition created. Continue with public content, itinerary and logistics, and departure dates.",
   "departure-created": "Departure created.",
   "departure-updated": "Departure updated.",
   "expedition-updated": "Expedition updated.",
