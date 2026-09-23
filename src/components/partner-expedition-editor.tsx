@@ -27,7 +27,6 @@ const swimmingAbilityOptions = ["No swimming required", "Basic swimming required
 const highlightStatusOptions = ["Included", "Guaranteed", "Weather-dependent", "Optional", "Add-on", "Not included"];
 const physicalLevelOptions = ["Light", "Moderate", "Active", "Challenging"];
 const accommodationTypeOptions = ["Shared twin room included", "Private room upgrade", "Homestay", "Eco-lodge", "Liveaboard", "Hotel partner stay"];
-const quickFactLabels = ["Duration", "Small group", "Difficulty", "Min. age", "Swimming ability", "Per person"];
 const requestStatuses = ["contacted", "resolved", "converted", "declined", "cancelled"];
 const fileInputClassName =
   "min-h-11 w-full min-w-0 rounded-lg border border-ocean-900/14 bg-white px-3 py-2 text-sm font-semibold text-ocean-900 outline-none transition file:mr-3 file:rounded-full file:border-0 file:bg-ocean-50 file:px-3 file:py-1.5 file:text-sm file:font-bold file:text-ocean-700 focus:border-coral-500";
@@ -134,7 +133,7 @@ function DetailFields({ detail, marketplace }: { detail: ExpeditionDetailMetadat
   const updateRows = withRows(detail.tripUpdates, 2, { title: "", date: "", body: "" });
   const cancellationRows = withRows(detail.cancellationPolicy, 4, { label: "", refund: "" });
   const faqRows = withRows(detail.faqs, 5, { question: "", answer: "" });
-  const quickFactsByLabel = new Map(detail.quickFacts.map((fact) => [fact.label, fact.value]));
+  const currentSwimmingAbility = detail.quickFacts.find((fact) => fact.label === "Swimming ability")?.value ?? "Snorkeling required";
   const highlightOptions = optionsWithCurrentValues(
     highlightStatusOptions,
     highlightRows.map((highlight) => highlight.status)
@@ -151,7 +150,7 @@ function DetailFields({ detail, marketplace }: { detail: ExpeditionDetailMetadat
       <details className="rounded-lg border border-ocean-900/10 bg-white">
         <summary className="cursor-pointer px-4 py-3 text-sm font-bold text-ocean-900">Public summary</summary>
         <div className="grid gap-4 border-t border-ocean-900/10 p-4">
-          <div className="grid gap-3 md:grid-cols-3">
+          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
             <Field label="Category label">
               <select name="categoryLabel" defaultValue={detail.categoryLabel} className={inputClassName}>
                 {optionsWithCurrent(categoryLabelOptions, detail.categoryLabel).map((option) => (
@@ -172,6 +171,15 @@ function DetailFields({ detail, marketplace }: { detail: ExpeditionDetailMetadat
             </Field>
             <Field label="Minimum age">
               <input name="minimumAge" type="number" min={0} defaultValue={detail.minimumAge} className={inputClassName} />
+            </Field>
+            <Field label="Swimming ability">
+              <select name="swimmingAbility" defaultValue={currentSwimmingAbility} className={inputClassName}>
+                {optionsWithCurrent(swimmingAbilityOptions, currentSwimmingAbility).map((option) => (
+                  <option key={option} value={option}>
+                    {option}
+                  </option>
+                ))}
+              </select>
             </Field>
           </div>
           <Field label="Activity summary">
@@ -196,26 +204,6 @@ function DetailFields({ detail, marketplace }: { detail: ExpeditionDetailMetadat
             <Field label="Tags">
               <textarea name="tags" defaultValue={listValue(detail.tags)} className={textareaClassName} />
             </Field>
-          </div>
-          <div className="grid gap-3 md:grid-cols-2">
-            {quickFactLabels.map((label) => (
-              <div key={label} className="grid gap-2 rounded-lg bg-sand-50 p-3 sm:grid-cols-[150px_1fr]">
-                <span className="flex min-h-11 items-center rounded-lg border border-ocean-900/10 bg-white px-3 text-sm font-bold text-ocean-900/62">{label}</span>
-                {label === "Swimming ability" ? (
-                  <select name="swimmingAbility" defaultValue={quickFactsByLabel.get(label) ?? "Snorkeling required"} className={inputClassName}>
-                    {optionsWithCurrent(swimmingAbilityOptions, quickFactsByLabel.get(label) ?? "").map((option) => (
-                      <option key={option} value={option}>
-                        {option}
-                      </option>
-                    ))}
-                  </select>
-                ) : (
-                  <span className="flex min-h-11 items-center rounded-lg border border-ocean-900/10 bg-white px-3 text-sm font-semibold text-ocean-900">
-                    {quickFactsByLabel.get(label) ?? "Generated from expedition data"}
-                  </span>
-                )}
-              </div>
-            ))}
           </div>
         </div>
       </details>
