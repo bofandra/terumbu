@@ -33,7 +33,6 @@ import {
   createPartnerImpactSiteAction,
   createPartnerCampaignAction,
   deletePartnerImpactSiteAction,
-  deletePartnerCampaignAction,
   updatePartnerImpactSiteAction,
   updatePartnerCampaignAction
 } from "@/lib/portal-actions";
