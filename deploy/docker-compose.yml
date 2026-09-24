@@ -20,11 +20,37 @@ services:
       RESEND_FROM_EMAIL: ${RESEND_FROM_EMAIL:-}
       POSTHOG_KEY: ${POSTHOG_KEY:-}
       POSTHOG_HOST: ${POSTHOG_HOST:-https://app.posthog.com}
+      CRON_SECRET: ${CRON_SECRET:?CRON_SECRET is required}
+      NEXT_PUBLIC_FX_USD_EUR: ${NEXT_PUBLIC_FX_USD_EUR:-}
+      NEXT_PUBLIC_FX_USD_IDR: ${NEXT_PUBLIC_FX_USD_IDR:-}
+      NEXT_PUBLIC_FX_USD_JPY: ${NEXT_PUBLIC_FX_USD_JPY:-}
     ports:
       - "${TERUMBU_APP_PORT:-3100}:3000"
     depends_on:
       postgres:
         condition: service_healthy
+
+
+  reminder-worker:
+    container_name: terumbu-reminder-worker
+    image: curlimages/curl:8.12.1
+    restart: unless-stopped
+    environment:
+      CRON_SECRET: ${CRON_SECRET:?CRON_SECRET is required}
+    command:
+      - sh
+      - -c
+      - |
+        while true; do
+          sleep 3600
+          curl --fail --silent --show-error --max-time 60 \
+            -X POST \
+            -H "x-cron-secret: ${CRON_SECRET}" \
+            http://web:3000/api/cron/expedition-reminders || true
+        done
+    depends_on:
+      web:
+        condition: service_started
 
   migrate:
     build:
