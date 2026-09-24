@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { FileCheck2, MapPinned, ShieldCheck, ShipWheel, type LucideIcon } from "lucide-react";
+import { CreditCard, FileCheck2, MapPinned, ShieldCheck, ShipWheel, type LucideIcon } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 
@@ -11,12 +11,14 @@ export type AdminDomainNavItem = {
 
 export const adminDonationNavItems: AdminDomainNavItem[] = [
   { href: "/admin/campaigns", label: "Donations", icon: FileCheck2 },
+  { href: "/admin/campaigns/payments", label: "Payments", icon: CreditCard },
   { href: "/admin/campaigns/evidence", label: "Activity", icon: ShieldCheck },
   { href: "/admin/campaigns/impact-sites", label: "Impact sites", icon: MapPinned }
 ];
 
 export const adminExpeditionNavItems: AdminDomainNavItem[] = [
-  { href: "/admin/expeditions", label: "Expeditions", icon: ShipWheel }
+  { href: "/admin/expeditions", label: "Expeditions", icon: ShipWheel },
+  { href: "/admin/expeditions/payments", label: "Payments", icon: CreditCard }
 ];
 
 function activeHrefForItems(items: AdminDomainNavItem[], active: string) {
