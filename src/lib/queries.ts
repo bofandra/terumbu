@@ -37,6 +37,7 @@ import {
   donationSubscriptions,
   donations,
   evidenceReviewEvents,
+  expeditionBookingPayments,
   expeditionBookings,
   expeditionDepartures,
   expeditionInterestRequests,
@@ -10562,6 +10563,160 @@ export async function getAdminPaymentsPage(params: AdminPaymentFilters = {}) {
       donationFailures: Number(donationSummaryRows[0]?.failed ?? 0),
       bookings: bookingTotalItems,
       bookingRefunds: Number(bookingSummaryRows[0]?.refunds ?? 0)
+    }
+  };
+}
+
+
+export type AdminExpeditionPaymentFilters = {
+  q?: string | string[];
+  page?: string | string[];
+  pageSize?: string | string[];
+  sort?: string | string[];
+  dir?: string | string[];
+  queue?: string | string[];
+};
+
+const adminExpeditionPaymentSorts = ["createdAt", "amount", "expedition", "bookingCode", "paymentStatus"] as const;
+
+export async function getAdminExpeditionPaymentsPage(params: AdminExpeditionPaymentFilters = {}) {
+  const query = parseAdminListQuery(
+    {
+      q: params.q,
+      page: params.page,
+      pageSize: params.pageSize,
+      sort: params.sort,
+      dir: params.dir
+    },
+    {
+      defaultSort: "createdAt",
+      defaultDir: "asc",
+      allowedSorts: adminExpeditionPaymentSorts,
+      defaultPageSize: 20,
+      maxPageSize: 100
+    }
+  );
+  const queueCandidate = cleanAdminDirectoryFilter(params.queue, 40);
+  const queue = ["all", "payment", "refund"].includes(queueCandidate) ? queueCandidate : "all";
+  const pendingRefund = sql`exists (
+    select 1 from payment_operations po
+    where po.booking_id = ${expeditionBookings.id}
+      and po.status = 'pending'
+      and po.operation_type = 'refund'
+  )`;
+  const paymentNeedsAction = inArray(expeditionBookings.paymentStatus, ["created", "pending", "failed", "expired"]);
+  const conditions = [queue === "refund" ? pendingRefund : queue === "payment" ? paymentNeedsAction : or(paymentNeedsAction, pendingRefund)!];
+
+  if (query.q) {
+    const pattern = `%${query.q.toLowerCase()}%`;
+    conditions.push(
+      or(
+        sql`lower(${expeditions.title}) like ${pattern}`,
+        sql`lower(${expeditionBookings.bookingCode}) like ${pattern}`,
+        sql`lower(${expeditionBookings.contactName}) like ${pattern}`,
+        sql`lower(${expeditionBookings.contactEmail}) like ${pattern}`
+      )!
+    );
+  }
+
+  const whereClause = and(...conditions);
+  const sortColumn =
+    query.sort === "amount"
+      ? expeditionBookings.totalAmount
+      : query.sort === "expedition"
+        ? expeditions.title
+        : query.sort === "bookingCode"
+          ? expeditionBookings.bookingCode
+          : query.sort === "paymentStatus"
+            ? expeditionBookings.paymentStatus
+            : expeditionBookings.bookedAt;
+
+  const [totalRows, summaryRows] = await Promise.all([
+    db
+      .select({ total: sql<number>`count(*)::int` })
+      .from(expeditionBookings)
+      .innerJoin(expeditions, eq(expeditionBookings.expeditionId, expeditions.id))
+      .where(whereClause),
+    db
+      .select({
+        payment: sql<number>`count(*) filter (where ${expeditionBookings.paymentStatus} in ('created', 'pending', 'failed', 'expired'))::int`,
+        refund: sql<number>`count(*) filter (where ${pendingRefund})::int`
+      })
+      .from(expeditionBookings)
+      .innerJoin(expeditions, eq(expeditionBookings.expeditionId, expeditions.id))
+  ]);
+
+  const totalItems = Number(totalRows[0]?.total ?? 0);
+  const pagination = adminPaginationMeta(totalItems, query);
+  const rows = await db
+    .select({
+      id: expeditionBookings.id,
+      bookingCode: expeditionBookings.bookingCode,
+      contactName: expeditionBookings.contactName,
+      contactEmail: expeditionBookings.contactEmail,
+      participantsCount: expeditionBookings.participantsCount,
+      bookingStatus: expeditionBookings.status,
+      paymentStatus: expeditionBookings.paymentStatus,
+      totalAmount: expeditionBookings.totalAmount,
+      currency: expeditionBookings.currency,
+      bookedAt: expeditionBookings.bookedAt,
+      expeditionTitle: expeditions.title,
+      expeditionSlug: expeditions.slug,
+      providerReference: expeditionBookingPayments.providerReference
+    })
+    .from(expeditionBookings)
+    .innerJoin(expeditions, eq(expeditionBookings.expeditionId, expeditions.id))
+    .leftJoin(expeditionBookingPayments, eq(expeditionBookingPayments.bookingId, expeditionBookings.id))
+    .where(whereClause)
+    .orderBy(query.dir === "desc" ? desc(sortColumn) : asc(sortColumn), asc(expeditionBookings.bookedAt))
+    .limit(pagination.pageSize)
+    .offset(adminListOffset(query, totalItems));
+
+  const bookingIds = rows.map((row) => row.id);
+  const operationRows = bookingIds.length > 0
+    ? await db
+        .select({
+          id: paymentOperations.id,
+          bookingId: paymentOperations.bookingId,
+          operationCode: paymentOperations.operationCode,
+          operationType: paymentOperations.operationType,
+          status: paymentOperations.status,
+          reason: paymentOperations.reason,
+          amount: paymentOperations.amount,
+          currency: paymentOperations.currency,
+          providerReference: paymentOperations.providerReference,
+          metadata: paymentOperations.metadata,
+          createdAt: paymentOperations.createdAt
+        })
+        .from(paymentOperations)
+        .where(and(inArray(paymentOperations.bookingId, bookingIds), eq(paymentOperations.status, "pending")))
+        .orderBy(desc(paymentOperations.createdAt))
+    : [];
+
+  const operationByBooking = new Map<string, (typeof operationRows)[number]>();
+  for (const operation of operationRows) {
+    if (operation.bookingId && !operationByBooking.has(operation.bookingId)) {
+      operationByBooking.set(operation.bookingId, operation);
+    }
+  }
+
+  return {
+    bookings: rows.map((row) => ({
+      ...row,
+      totalAmount: toNumber(row.totalAmount),
+      pendingOperation: operationByBooking.get(row.id) ?? null
+    })),
+    filters: {
+      q: query.q,
+      queue,
+      sort: query.sort ?? "createdAt",
+      dir: query.dir
+    },
+    pagination,
+    summary: {
+      total: totalItems,
+      payment: Number(summaryRows[0]?.payment ?? 0),
+      refund: Number(summaryRows[0]?.refund ?? 0)
     }
   };
 }
