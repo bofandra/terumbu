@@ -4809,6 +4809,22 @@ export async function reconcileExpeditionBookingAction(formData: FormData) {
     redirectAdminPayment(formData, "error", "booking");
   }
 
+  if (operationId) {
+    const [operation] = await db
+      .select({
+        id: paymentOperations.id,
+        bookingId: paymentOperations.bookingId,
+        status: paymentOperations.status
+      })
+      .from(paymentOperations)
+      .where(eq(paymentOperations.id, operationId))
+      .limit(1);
+
+    if (!operation || operation.status !== "pending" || operation.bookingId !== booking.id) {
+      redirectAdminPayment(formData, "error", "operation");
+    }
+  }
+
   const result = await db.transaction(async (tx) => {
     const transition = await transitionExpeditionBookingPayment(tx as unknown as typeof db, {
       bookingId: booking.id,
