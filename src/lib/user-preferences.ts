@@ -27,6 +27,7 @@ const messages = {
     nav: {
       donations: "Donations",
       expeditions: "Expeditions",
+      destinations: "Destinations",
       academy: "Academy",
       impactMap: "Impact Map",
       about: "About",
@@ -62,6 +63,7 @@ const messages = {
     nav: {
       donations: "Donasi",
       expeditions: "Ekspedisi",
+      destinations: "Destinasi",
       academy: "Akademi",
       impactMap: "Peta Dampak",
       about: "Tentang",
