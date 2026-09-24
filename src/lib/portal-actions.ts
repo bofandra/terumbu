@@ -3869,6 +3869,17 @@ export async function updateCampaignStatusAction(formData: FormData) {
     redirectAdminCampaignError("campaign-review-state", formData);
   }
 
+  if (decision === "publish") {
+    const [siteSummary] = await db
+      .select({ total: sql<number>`count(*)::int` })
+      .from(impactSites)
+      .where(eq(impactSites.campaignId, campaign.id));
+
+    if (Number(siteSummary?.total ?? 0) < 1) {
+      redirectAdminCampaignError("campaign-not-ready", formData);
+    }
+  }
+
   const now = new Date();
   const nextStatus = decision === "publish" ? "published" : "draft";
 
