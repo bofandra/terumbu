@@ -282,7 +282,7 @@ export async function bookExpeditionAction(formData: FormData) {
     })
     .from(expeditionDepartures)
     .innerJoin(expeditions, eq(expeditionDepartures.expeditionId, expeditions.id))
-    .where(eq(expeditionDepartures.id, departureId))
+    .where(and(eq(expeditionDepartures.id, departureId), eq(expeditions.status, "published")))
     .limit(1);
 
   const availability = departure
