@@ -3493,9 +3493,12 @@ export async function updateExpeditionPublicationStatusAction(formData: FormData
       id: expeditions.id,
       status: expeditions.status,
       publishedAt: expeditions.publishedAt,
-      relatedCampaignId: expeditions.relatedCampaignId
+      imageUrl: expeditions.imageUrl,
+      relatedCampaignId: expeditions.relatedCampaignId,
+      relatedCampaignStatus: campaigns.status
     })
     .from(expeditions)
+    .leftJoin(campaigns, eq(expeditions.relatedCampaignId, campaigns.id))
     .where(eq(expeditions.id, expeditionId))
     .limit(1);
 
@@ -3505,6 +3508,20 @@ export async function updateExpeditionPublicationStatusAction(formData: FormData
 
   if (expedition.status !== "review") {
     redirect(withAdminFormOutcome(`/admin/expeditions/${expedition.id}`, "error", "expedition-review-state"));
+  }
+
+  if (decision === "publish") {
+    const [departureSummary] = await db
+      .select({ total: sql<number>`count(*)::int` })
+      .from(expeditionDepartures)
+      .where(eq(expeditionDepartures.expeditionId, expedition.id));
+
+    const relatedCampaignIsPublic = ["published", "funded", "completed"].includes(expedition.relatedCampaignStatus ?? "");
+    const hasDeparture = Number(departureSummary?.total ?? 0) > 0;
+
+    if (!expedition.imageUrl || !relatedCampaignIsPublic || !hasDeparture) {
+      redirect(withAdminFormOutcome(`/admin/expeditions/${expedition.id}`, "error", "expedition-not-ready"));
+    }
   }
 
   const now = new Date();
