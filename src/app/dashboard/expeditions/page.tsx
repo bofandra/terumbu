@@ -2,6 +2,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { ArrowRight, BookmarkX, CalendarDays, Heart, RefreshCw, Star } from "lucide-react";
 
+import { ExpeditionCalendarActions } from "@/components/expedition-calendar-actions";
 import { retryExpeditionPaymentAction } from "@/lib/billing-actions";
 import { submitExpeditionReviewAction } from "@/lib/expedition-review-actions";
 import { expeditionReviewStatusLabel, normalizeExpeditionReviewStatus, type ExpeditionReviewStatus } from "@/lib/expedition-reviews";
@@ -231,6 +232,13 @@ export default async function DashboardExpeditionsPage({ searchParams }: Dashboa
                   </div>
                 </div>
                 <div className="flex flex-wrap gap-2 md:justify-end">
+                  <ExpeditionCalendarActions
+                    title={booking.expeditionTitle}
+                    startsAt={booking.startsAt}
+                    endsAt={booking.endsAt}
+                    location={booking.expeditionRegion}
+                    description={`Terumbu.eco expedition booking ${booking.bookingCode}`}
+                  />
                   {["created", "pending", "failed", "expired"].includes(booking.paymentStatus) ? (
                     <form action={retryExpeditionPaymentAction}>
                       <input type="hidden" name="bookingId" value={booking.id} />
