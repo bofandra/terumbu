@@ -89,7 +89,7 @@ export default async function AdminCampaignDetailPage({ params, searchParams }: 
           <div>
             <h2 className="font-bold text-ocean-900">Partner-owned record</h2>
             <p className="mt-1 text-sm font-semibold leading-6 text-ocean-900/62">
-              Platform admins can monitor this donation but cannot change campaign content, funding targets, status, impact sites, or partner-owned evidence. Use Partner management to manage the organization and its portal access.
+              Platform admins can monitor this donation and moderate publication, but cannot edit campaign content, funding targets, impact sites, or partner-owned evidence. Use Partner management to manage the organization and its portal access.
             </p>
             <Link href={`/admin/partners/${campaign.organizationId}`} className="mt-3 inline-flex text-sm font-bold text-coral-700 hover:text-coral-500">
               Manage partner organization →
@@ -164,10 +164,14 @@ export default async function AdminCampaignDetailPage({ params, searchParams }: 
               </div>
               <p className="mt-1 text-sm font-semibold text-ocean-900/58">{campaign.summary}</p>
             </div>
-            <Link href={`/campaigns/${campaign.slug}`} className="inline-flex items-center gap-2 text-sm font-bold text-coral-700 hover:text-coral-500">
-              Public page
-              <ArrowUpRight className="size-4" aria-hidden="true" />
-            </Link>
+            {["published", "funded", "completed"].includes(campaign.status) ? (
+              <Link href={`/campaigns/${campaign.slug}`} className="inline-flex items-center gap-2 text-sm font-bold text-coral-700 hover:text-coral-500">
+                Public page
+                <ArrowUpRight className="size-4" aria-hidden="true" />
+              </Link>
+            ) : (
+              <AdminStatusBadge value={campaign.status} />
+            )}
           </div>
           <div className="grid gap-4 p-4 lg:grid-cols-2">
             <div className="rounded-lg bg-sand-50 p-4">
