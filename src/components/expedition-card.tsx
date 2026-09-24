@@ -4,17 +4,22 @@ import Link from "next/link";
 
 import { ButtonLink } from "@/components/ui/button";
 import type { ExpeditionCardData } from "@/lib/domain";
+import { secondaryPriceLabel } from "@/lib/currency-display";
+import type { DisplayCurrency } from "@/lib/user-preferences";
 import { formatCurrency } from "@/lib/utils";
 
 type ExpeditionCardProps = {
   expedition: ExpeditionCardData;
+  displayCurrency?: DisplayCurrency;
+  locale?: string;
 };
 
-export function ExpeditionCard({ expedition }: ExpeditionCardProps) {
+export function ExpeditionCard({ expedition, displayCurrency = "USD", locale = "en-US" }: ExpeditionCardProps) {
   const marketplace = expedition.marketplace;
   const helpActivities = marketplace.helpActivities.slice(0, 4);
   const badges = marketplace.badges.slice(0, 3);
   const accommodation = marketplace.accommodations[0] ?? "Stay details pending";
+  const secondaryPrice = secondaryPriceLabel(expedition.price, expedition.currency, displayCurrency, locale);
   const feeLabel = marketplace.additionalFee
     ? `+ ${formatCurrency(marketplace.additionalFee.amount, marketplace.additionalFee.currency)} ${marketplace.additionalFee.period}`
     : "No additional host fee";
@@ -102,6 +107,7 @@ export function ExpeditionCard({ expedition }: ExpeditionCardProps) {
             <p className="min-w-0 break-words text-sm text-ocean-900/58 [overflow-wrap:anywhere]">
               From <span className="text-lg font-bold text-ocean-900">{formatCurrency(expedition.price, expedition.currency)}</span>
             </p>
+            {secondaryPrice ? <p className="mt-0.5 text-xs font-bold text-kelp-700">{secondaryPrice} estimated</p> : null}
             <p className="mt-1 text-xs font-semibold text-ocean-900/48">{feeLabel}</p>
           </div>
           <ButtonLink href={`/expeditions/${expedition.slug}`} tone="secondary">
