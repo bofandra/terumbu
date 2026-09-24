@@ -18,6 +18,7 @@ type ExpeditionCheckoutPageProps = {
     expedition?: string;
     participants?: string;
     error?: string;
+    ref?: string;
   }>;
 };
 
@@ -57,8 +58,13 @@ export default async function ExpeditionCheckoutPage({ searchParams }: Expeditio
         <p className="text-sm font-bold uppercase tracking-[0.16em] text-coral-700">Booking</p>
         <h1 className="mt-3 text-3xl font-bold tracking-normal text-ocean-900">Reserve expedition seats</h1>
         <p className="mt-3 text-ocean-900/68">
-          Book for yourself first, then add other participant names if you are bringing a group. Payment will remain pending until the gateway or admin confirmation is ready.
+          Book for yourself first, then add other participant names if you are bringing a group. Your booking request is recorded immediately; payment remains pending until the current manual/admin confirmation flow is completed.
         </p>
+        <div className="mt-4 grid gap-2 rounded-xl border border-ocean-900/10 bg-ocean-50 p-4 text-sm font-semibold text-ocean-900/68 sm:grid-cols-3">
+          <span>✓ Published expedition only</span>
+          <span>✓ Availability rechecked at submit</span>
+          <span>✓ Referral source preserved</span>
+        </div>
         {params?.error ? (
           <p className="mt-4 rounded-xl border border-coral-500/20 bg-coral-100 px-4 py-3 text-sm font-semibold text-coral-700">
             {params.error === "availability"
@@ -71,6 +77,7 @@ export default async function ExpeditionCheckoutPage({ searchParams }: Expeditio
         <form action={bookExpeditionAction} className="mt-6 grid min-w-0 gap-4">
           <input type="hidden" name="next" value="/checkout/expedition" />
           <input type="hidden" name="idempotencyKey" value={idempotencyKey} />
+          <input type="hidden" name="referralCode" value={params?.ref ?? ""} />
           <label className="grid min-w-0 gap-2 text-sm font-semibold text-ocean-900">
             Departure
             <select name="departureId" defaultValue={selectedDeparture} className="w-full min-w-0 rounded-xl border border-ocean-900/14 px-4 py-3 outline-none focus:border-coral-500">
