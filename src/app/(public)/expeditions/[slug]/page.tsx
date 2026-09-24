@@ -1,5 +1,3 @@
-import { createHash } from "node:crypto";
-
 import {
   ArrowRight,
   Award,
@@ -17,6 +15,7 @@ import {
   MessageSquareText,
   Monitor,
   MapPin,
+  PlayCircle,
   Plane,
   ShieldCheck,
   Sprout,
@@ -33,6 +32,7 @@ import { notFound } from "next/navigation";
 
 import { ExpeditionMobileBookingBar } from "@/components/expedition-booking-card";
 import { ExpeditionCard } from "@/components/expedition-card";
+import { ExpeditionCalendarActions } from "@/components/expedition-calendar-actions";
 import { ExpeditionHeroGallery } from "@/components/expedition-hero-gallery";
 import { ExpeditionShareButtons } from "@/components/expedition-share-buttons";
 import { ExpeditionSectionTabs } from "@/components/expedition-section-tabs";
@@ -48,6 +48,8 @@ import {
 } from "@/lib/expedition-detail-view";
 import { getSessionUser } from "@/lib/auth";
 import { getExpeditionDetail, getExpeditionSaveState } from "@/lib/queries";
+import { referralCodeForUser } from "@/lib/referrals";
+import { getPreferredDisplayCurrency, getPreferredLocale, localeTag } from "@/lib/user-preferences";
 import { cn, formatCurrency } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
@@ -152,7 +154,13 @@ export default async function ExpeditionDetailPage({
   searchParams?: Promise<{ saved?: string; error?: string; ref?: string }>;
 }) {
   const { slug } = await params;
-  const [query, expedition, sessionUser] = await Promise.all([searchParams, getExpeditionDetail(slug), getSessionUser()]);
+  const [query, expedition, sessionUser, displayCurrency, locale] = await Promise.all([
+    searchParams,
+    getExpeditionDetail(slug),
+    getSessionUser(),
+    getPreferredDisplayCurrency(),
+    getPreferredLocale()
+  ]);
 
   if (!expedition) {
     notFound();
@@ -160,9 +168,7 @@ export default async function ExpeditionDetailPage({
 
   const expeditionPath = `/expeditions/${expedition.slug}`;
   const saveState = sessionUser ? await getExpeditionSaveState(sessionUser.id, expedition.slug) : null;
-  const referralCode = sessionUser
-    ? createHash("sha256").update(`terumbu-referral:${sessionUser.id}`).digest("hex").slice(0, 12)
-    : query?.ref?.trim() || null;
+  const referralCode = sessionUser ? referralCodeForUser(sessionUser.id) : query?.ref?.trim() || null;
   const bookingProps = {
     slug: expedition.slug,
     price: expedition.price,
@@ -176,7 +182,9 @@ export default async function ExpeditionDetailPage({
     isAuthenticated: Boolean(sessionUser),
     isSaved: saveState?.isSaved ?? false,
     expeditionPath,
-    referralCode
+    referralCode,
+    displayCurrency,
+    locale: localeTag(locale)
   };
   const tabs = [
     { id: "exchange", label: "The Exchange" },
@@ -393,7 +401,16 @@ export default async function ExpeditionDetailPage({
                         {departure.statusLabel}
                       </span>
                       {departure.status === "open" && departure.availableSeats > 0 ? (
+                        <div className="flex flex-wrap items-center justify-end gap-2">
+                        <ExpeditionCalendarActions
+                          title={expedition.title}
+                          startsAt={departure.startsAt}
+                          endsAt={departure.endsAt}
+                          location={departure.meetingPoint ?? expedition.region}
+                          description={`${expedition.summary} — Terumbu.eco conservation expedition`}
+                        />
                         <CheckoutLink departureId={departure.id} />
+                      </div>
                       ) : (
                         <form action={submitExpeditionInterestRequestAction} className="grid gap-2 rounded-md border border-ocean-900/10 bg-ocean-50 p-3">
                           <input type="hidden" name="next" value={requestNextPath} />
@@ -564,6 +581,48 @@ export default async function ExpeditionDetailPage({
               ))}
             </div>
           </section>
+
+          {expedition.travelerMedia.length > 0 ? (
+            <>
+              <DetailDivider />
+              <section id="traveler-moments" className="scroll-mt-36 py-14">
+                <SectionHeader
+                  title="Traveler moments"
+                  body="Media submitted by completed participants and reviewed by Terumbu before publication."
+                />
+                <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                  {expedition.travelerMedia.map((item) => (
+                    <article key={item.id} className="overflow-hidden rounded-md border border-ocean-900/10 bg-white">
+                      {item.mediaType === "photo" ? (
+                        <div className="relative h-64 bg-ocean-50">
+                          <Image
+                            src={item.mediaUrl}
+                            alt={item.caption ?? `Traveler moment from ${expedition.title}`}
+                            fill
+                            unoptimized
+                            className="object-cover"
+                            sizes="(min-width: 1024px) 33vw, 50vw"
+                          />
+                        </div>
+                      ) : (
+                        <a href={item.mediaUrl} target="_blank" rel="noreferrer" className="flex h-64 items-center justify-center bg-ocean-900 p-6 text-center font-bold text-white">
+                          <span>
+                            <PlayCircle className="mx-auto mb-3" size={34} aria-hidden="true" />
+                            Watch traveler video
+                          </span>
+                        </a>
+                      )}
+                      <div className="p-4">
+                        <p className="text-xs font-bold uppercase tracking-[0.12em] text-kelp-700">Verified completed participant</p>
+                        <p className="mt-2 font-bold text-ocean-900">{item.travelerName}</p>
+                        {item.caption ? <p className="mt-2 text-sm leading-6 text-ocean-900/62">{item.caption}</p> : null}
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              </section>
+            </>
+          ) : null}
 
           <DetailDivider />
           <section id="host" className="scroll-mt-36 py-14">

@@ -97,7 +97,7 @@ docker compose \
   --env-file "${ENV_FILE}" \
   --project-name "${PROJECT_NAME}" \
   -f "${COMPOSE_FILE}" \
-  up -d --no-build --force-recreate web
+  up -d --no-build --force-recreate web reminder-worker
 
 RUNNING_REVISION="$(docker inspect terumbu-web --format '{{ index .Config.Labels "org.opencontainers.image.revision" }}' 2>/dev/null || true)"
 if [ "${RUNNING_REVISION}" != "${DEPLOY_VERSION}" ]; then

@@ -26,6 +26,7 @@ import {
   parseDonationAmount,
   paymentProofUploadError,
   parseParticipantCount,
+  splitParticipantEmails,
   splitParticipantNames
 } from "@/lib/checkout";
 import { getSessionUser, safeRedirectPath } from "@/lib/auth";
@@ -220,7 +221,14 @@ export async function bookExpeditionAction(formData: FormData) {
     .toLowerCase();
   const participantCount = parseParticipantCount(formData.get("participantsCount"));
   const additionalParticipantNames = splitParticipantNames(formData.get("additionalParticipantNames"), "Additional participant", Math.max(0, participantCount - 1));
+  const additionalParticipantEmails = splitParticipantEmails(formData.get("additionalParticipantEmails"), Math.max(0, participantCount - 1));
   const participantNames = [contactName || "Participant", ...additionalParticipantNames].slice(0, participantCount);
+  const participantEmails = [contactEmail, ...additionalParticipantEmails].slice(0, participantCount);
+  const groupName = String(formData.get("groupName") ?? "").trim().slice(0, 160) || null;
+  const contactRole = String(formData.get("contactRole") ?? "Lead traveler").trim().slice(0, 80) || "Lead traveler";
+  const emergencyContact = String(formData.get("emergencyContact") ?? "").trim().slice(0, 220) || null;
+  const dietaryNotes = String(formData.get("dietaryNotes") ?? "").trim().slice(0, 1000) || null;
+  const accessibilityNotes = String(formData.get("accessibilityNotes") ?? "").trim().slice(0, 1000) || null;
   const paymentState = "pending";
   const nextPath = safeRedirectPath(formData.get("next"));
   const idempotencyKey = String(formData.get("idempotencyKey") ?? "").trim() || null;
@@ -353,7 +361,14 @@ export async function bookExpeditionAction(formData: FormData) {
           availabilityCode: availability.code,
           availabilityMessage: availability.message,
           attribution: corporateAttribution ?? { type: "personal" },
-          referralCode
+          referralCode,
+          group: participantCount > 1 || groupName
+            ? {
+                name: groupName,
+                contactRole,
+                accessibilityNotes
+              }
+            : null
         }
       })
       .returning({ id: expeditionBookings.id });
@@ -373,10 +388,12 @@ export async function bookExpeditionAction(formData: FormData) {
     });
 
     await tx.insert(expeditionParticipants).values(
-      participantNames.map((fullName) => ({
+      participantNames.map((fullName, index) => ({
         bookingId: booking.id,
         fullName,
-        email: contactEmail
+        email: participantEmails[index] || (index === 0 ? contactEmail : null),
+        emergencyContact: index === 0 ? emergencyContact : null,
+        dietaryNotes: dietaryNotes || (accessibilityNotes ? `Accessibility: ${accessibilityNotes}` : null)
       }))
     );
 
@@ -424,7 +441,10 @@ export async function bookExpeditionAction(formData: FormData) {
       status: paymentState,
       attributionType: corporateAttribution?.type ?? "personal",
       corporateAccountId: corporateAttribution?.corporateAccountId ?? null,
-      referralCode
+      referralCode,
+      groupBooking: participantCount > 1,
+      groupName,
+      contactRole
     }
   });
 

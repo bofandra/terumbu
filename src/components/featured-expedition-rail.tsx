@@ -2,11 +2,15 @@ import { CalendarDays, Heart, Users } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 
+import { secondaryPriceLabel } from "@/lib/currency-display";
 import type { ExpeditionCardData } from "@/lib/domain";
+import type { DisplayCurrency } from "@/lib/user-preferences";
 import { formatCurrency } from "@/lib/utils";
 
 type FeaturedExpeditionRailProps = {
   expeditions: ExpeditionCardData[];
+  displayCurrency?: DisplayCurrency;
+  locale?: string;
 };
 
 function activityLabel(summary: string) {
@@ -21,7 +25,7 @@ function activityLabel(summary: string) {
   return "Field learning + conservation";
 }
 
-export function FeaturedExpeditionRail({ expeditions }: FeaturedExpeditionRailProps) {
+export function FeaturedExpeditionRail({ expeditions, displayCurrency = "USD", locale = "en-US" }: FeaturedExpeditionRailProps) {
   if (expeditions.length === 0) {
     return (
       <div className="rounded-2xl border border-ocean-900/10 bg-white p-8 text-center shadow-soft">
@@ -35,7 +39,10 @@ export function FeaturedExpeditionRail({ expeditions }: FeaturedExpeditionRailPr
 
   return (
     <div className="flex snap-x gap-5 overflow-x-auto pb-3">
-      {expeditions.map((expedition) => (
+      {expeditions.map((expedition) => {
+        const secondaryPrice = secondaryPriceLabel(expedition.price, expedition.currency, displayCurrency, locale);
+
+        return (
         <Link
           key={expedition.slug}
           href={`/expeditions/${expedition.slug}`}
@@ -70,11 +77,13 @@ export function FeaturedExpeditionRail({ expeditions }: FeaturedExpeditionRailPr
               </span>
             </div>
             <p className="mt-3 text-sm text-white/74">
-              From <span className="text-base font-bold text-white">{formatCurrency(expedition.price)}</span>
+              From <span className="text-base font-bold text-white">{formatCurrency(expedition.price, expedition.currency)}</span>
             </p>
+            {secondaryPrice ? <p className="mt-1 text-xs font-bold text-coral-100">{secondaryPrice} estimated</p> : null}
           </div>
         </Link>
-      ))}
+        );
+      })}
 
       <Link
         href="/expeditions"

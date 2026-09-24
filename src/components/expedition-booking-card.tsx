@@ -5,7 +5,9 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 
 import { MetricValue } from "@/components/ui/metric-value";
+import { secondaryPriceLabel } from "@/lib/currency-display";
 import { removeSavedExpeditionAction, saveExpeditionAction } from "@/lib/retention-actions";
+import type { DisplayCurrency } from "@/lib/user-preferences";
 import { cn, formatCurrency } from "@/lib/utils";
 
 type Departure = {
@@ -36,6 +38,8 @@ type ExpeditionBookingCardProps = {
   isSaved?: boolean;
   expeditionPath?: string;
   referralCode?: string | null;
+  displayCurrency?: DisplayCurrency;
+  locale?: string;
 };
 
 function participantTotal(adults: number, students: number, children: number) {
@@ -115,7 +119,9 @@ export function ExpeditionBookingCard({
   isAuthenticated = false,
   isSaved = false,
   expeditionPath,
-  referralCode
+  referralCode,
+  displayCurrency = "USD",
+  locale = "en-US"
 }: ExpeditionBookingCardProps) {
   const firstBookableDeparture = departures.find((departure) => departure.status === "open" && departure.availableSeats > 0) ?? departures[0] ?? null;
   const [selectedDepartureId, setSelectedDepartureId] = useState(firstBookableDeparture?.id ?? null);
@@ -128,6 +134,8 @@ export function ExpeditionBookingCard({
   const bookingDisabled = !selectedDeparture || selectedDeparture.availableSeats <= 0 || !participantsWithinCapacity || selectedDeparture.status !== "open";
   const total = useMemo(() => price * participants + equipmentRental + platformFee, [equipmentRental, participants, platformFee, price]);
   const href = checkoutHref(selectedDeparture?.id ?? null, participants, referralCode);
+  const secondaryPrice = secondaryPriceLabel(price, currency, displayCurrency, locale);
+  const secondaryTotal = secondaryPriceLabel(total, currency, displayCurrency, locale);
 
   return (
     <aside
@@ -144,6 +152,7 @@ export function ExpeditionBookingCard({
           {formatCurrency(price, currency)}
           <span className="block text-base font-semibold text-ocean-900/58">per person</span>
         </MetricValue>
+        {secondaryPrice ? <p className="mt-1 text-sm font-bold text-kelp-700">{secondaryPrice} estimated</p> : null}
         <p className="mt-2 text-sm font-semibold text-ocean-900/58">Taxes and conservation contribution included.</p>
       </div>
 
@@ -224,7 +233,10 @@ export function ExpeditionBookingCard({
           </div>
           <div className="flex justify-between gap-3 border-t border-ocean-900/10 pt-3 text-lg">
             <span className="font-bold text-ocean-900">Total</span>
-            <span className="min-w-0 break-words text-right font-bold text-ocean-900 [overflow-wrap:anywhere]">{formatCurrency(total, currency)}</span>
+            <span className="min-w-0 break-words text-right font-bold text-ocean-900 [overflow-wrap:anywhere]">
+              {formatCurrency(total, currency)}
+              {secondaryTotal ? <span className="mt-0.5 block text-xs font-bold text-kelp-700">{secondaryTotal}</span> : null}
+            </span>
           </div>
         </div>
       </div>
@@ -295,6 +307,11 @@ export function ExpeditionMobileBookingBar(props: ExpeditionBookingCardProps) {
         <div className="min-w-0">
           <p className="text-xs font-semibold text-ocean-900/54">From</p>
           <p className="min-w-0 break-words font-bold text-ocean-900 [overflow-wrap:anywhere]">{formatCurrency(props.price, props.currency)} / person</p>
+          {secondaryPriceLabel(props.price, props.currency, props.displayCurrency ?? "USD", props.locale ?? "en-US") ? (
+            <p className="text-xs font-bold text-kelp-700">
+              {secondaryPriceLabel(props.price, props.currency, props.displayCurrency ?? "USD", props.locale ?? "en-US")} estimated
+            </p>
+          ) : null}
           <p className="truncate text-xs text-ocean-900/54">{firstDeparture ? `${firstDeparture.dateRangeLabel} · ${firstDeparture.availableSeats} places left` : "Dates pending"}</p>
         </div>
         <a href="#availability" className="inline-flex min-h-12 shrink-0 items-center gap-2 rounded-full bg-kelp-500 px-5 text-sm font-bold text-white shadow-soft">

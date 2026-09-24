@@ -148,3 +148,18 @@ export function splitParticipantNames(value: FormDataEntryValue | string | null 
 
   return names;
 }
+
+
+export function splitParticipantEmails(value: FormDataEntryValue | string | null | undefined, count: number) {
+  const emails = String(value ?? "")
+    .split(/\r?\n|,/)
+    .map((email) => email.trim().toLowerCase())
+    .filter(Boolean)
+    .slice(0, count);
+
+  while (emails.length < count) {
+    emails.push("");
+  }
+
+  return emails;
+}

@@ -1,6 +1,7 @@
 export const navItems = [
   { label: "Donations", href: "/campaigns" },
   { label: "Expeditions", href: "/expeditions" },
+  { label: "Destinations", href: "/destinations" },
   { label: "Academy", href: "/academy" },
   { label: "Impact Map", href: "/impact-map" },
   { label: "About", href: "/about" }

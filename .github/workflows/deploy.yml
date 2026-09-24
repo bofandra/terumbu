@@ -86,6 +86,10 @@ jobs:
           POSTHOG_KEY: ${{ secrets.POSTHOG_KEY }}
           POSTHOG_HOST: ${{ vars.POSTHOG_HOST }}
           ADMIN_QUERY_WARN_MS: ${{ vars.ADMIN_QUERY_WARN_MS }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          NEXT_PUBLIC_FX_USD_EUR: ${{ vars.NEXT_PUBLIC_FX_USD_EUR }}
+          NEXT_PUBLIC_FX_USD_IDR: ${{ vars.NEXT_PUBLIC_FX_USD_IDR }}
+          NEXT_PUBLIC_FX_USD_JPY: ${{ vars.NEXT_PUBLIC_FX_USD_JPY }}
           VPS_HOST: ${{ secrets.VPS_HOST }}
         run: |
           set -euo pipefail
@@ -113,6 +117,10 @@ jobs:
           PUBLIC_URL="$(clean_env_value "${NEXT_PUBLIC_APP_URL:-http://${VPS_HOST}:${APP_PORT}}")"
           POSTHOG_HOST_VALUE="$(clean_env_value "${POSTHOG_HOST:-https://app.posthog.com}")"
           ADMIN_QUERY_WARN_MS_VALUE="$(clean_env_value "${ADMIN_QUERY_WARN_MS:-750}")"
+          CRON_SECRET_VALUE="$(clean_env_value "${CRON_SECRET:-}")"
+          if [ -z "${CRON_SECRET_VALUE}" ]; then
+            CRON_SECRET_VALUE="$(openssl rand -hex 32)"
+          fi
 
           test -n "${POSTGRES_PASSWORD}" || { echo "TERUMBU_POSTGRES_PASSWORD secret is required"; exit 1; }
 
@@ -139,6 +147,10 @@ jobs:
           write_env_value POSTHOG_KEY "${POSTHOG_KEY}"
           write_env_value POSTHOG_HOST "${POSTHOG_HOST_VALUE}"
           write_env_value ADMIN_QUERY_WARN_MS "${ADMIN_QUERY_WARN_MS_VALUE}"
+          write_env_value CRON_SECRET "${CRON_SECRET_VALUE}"
+          write_env_value NEXT_PUBLIC_FX_USD_EUR "${NEXT_PUBLIC_FX_USD_EUR}"
+          write_env_value NEXT_PUBLIC_FX_USD_IDR "${NEXT_PUBLIC_FX_USD_IDR}"
+          write_env_value NEXT_PUBLIC_FX_USD_JPY "${NEXT_PUBLIC_FX_USD_JPY}"
 
       - name: Upload production env
         env:

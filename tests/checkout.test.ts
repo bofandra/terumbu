@@ -15,6 +15,7 @@ import {
   parseDonationAmount,
   paymentProofUploadError,
   parseParticipantCount,
+  splitParticipantEmails,
   splitParticipantNames
 } from "../src/lib/checkout";
 import nextConfig from "../next.config";
@@ -55,8 +56,9 @@ test("checkout identifiers are deterministic for a sequence", () => {
   assert.equal(buildPaymentOperationCode("ops-9", date), "TRB-OPS-2026-OPS9");
 });
 
-test("participant names fill missing entries", () => {
+test("participant names and optional emails align for group bookings", () => {
   assert.deepEqual(splitParticipantNames("Raka\nDewi", "Raka", 3), ["Raka", "Dewi", "Raka 3"]);
+  assert.deepEqual(splitParticipantEmails("DEWI@example.com\nari@example.com", 3), ["dewi@example.com", "ari@example.com", ""]);
 });
 
 test("billing helpers normalize dates and card labels", () => {

@@ -136,6 +136,7 @@ import {
 import { corporateCapabilitiesForPermission } from "@/lib/corporate-permissions";
 import { corporateReportFormatLabel, corporateReportTypeLabel, scheduledReportIsDue } from "@/lib/corporate-report-lifecycle";
 import { evidenceReviewActionLabel, evidenceReviewStage, evidenceStatusLabel, evidenceVerificationStatuses } from "@/lib/evidence-review-workflow";
+import { getPublishedExpeditionMedia } from "@/lib/expedition-media";
 import {
   buildDefaultExpeditionDetailMetadata,
   expeditionMetadataEditorJson,
@@ -150,6 +151,7 @@ import {
 } from "@/lib/expedition-booking-lifecycle";
 import { normalizeExpeditionReviewStatus } from "@/lib/expedition-reviews";
 import { partnerCapabilitiesForRoles } from "@/lib/partner-permissions";
+import { referralCodeForUser, referralRewardProgress, referralRewards } from "@/lib/referrals";
 import { formatCompact, formatCurrency, formatCurrencyText } from "@/lib/utils";
 
 type EvidenceReviewEventSummary = {
@@ -1287,7 +1289,7 @@ export async function getExpeditionDetail(slug: string) {
     return null;
   }
 
-  const [departures, relatedSites, updateRows, evidenceRows, courseRows, relatedExpeditionRows, reviewRows, participantSummaryRows] = await Promise.all([
+  const [departures, relatedSites, updateRows, evidenceRows, courseRows, relatedExpeditionRows, reviewRows, participantSummaryRows, travelerMediaRows] = await Promise.all([
     db
       .select({
         id: expeditionDepartures.id,
@@ -1360,7 +1362,8 @@ export async function getExpeditionDetail(slug: string) {
         bookingCount: sql<number>`count(${expeditionBookings.id})`
       })
       .from(expeditionBookings)
-      .where(and(eq(expeditionBookings.expeditionId, row.id), inArray(expeditionBookings.status, ["confirmed", "completed"])))
+      .where(and(eq(expeditionBookings.expeditionId, row.id), inArray(expeditionBookings.status, ["confirmed", "completed"]))),
+    getPublishedExpeditionMedia(row.id)
   ]);
 
   const mappedDepartures = departures.map((departure) => {
@@ -1601,6 +1604,10 @@ export async function getExpeditionDetail(slug: string) {
     finalCta: expeditionMetadata.finalCta,
     weatherAdvisory: expeditionMetadata.weatherAdvisory,
     bookingTrustIndicators: expeditionMetadata.bookingTrustIndicators,
+    travelerMedia: travelerMediaRows.map((item) => ({
+      ...item,
+      travelerName: item.travelerName ?? item.travelerUserName ?? "Verified participant"
+    })),
     relatedExpeditions: relatedExpeditionRows.filter((item) => item.slug !== row.slug).slice(0, 3)
   };
 }
@@ -11484,5 +11491,46 @@ export async function getAdminEvidenceBoardData() {
         sourceHref: evidenceSourceHref(item.campaignSlug, item.evidenceCode) ?? item.fileUrl
       };
     })
+  };
+}
+
+
+export async function getReferralDashboardData(userId: string) {
+  const referralCode = referralCodeForUser(userId);
+  const rows = await db
+    .select({
+      id: expeditionBookings.id,
+      expeditionTitle: expeditions.title,
+      expeditionSlug: expeditions.slug,
+      participantsCount: expeditionBookings.participantsCount,
+      status: expeditionBookings.status,
+      paymentStatus: expeditionBookings.paymentStatus,
+      bookedAt: expeditionBookings.bookedAt
+    })
+    .from(expeditionBookings)
+    .innerJoin(expeditions, eq(expeditionBookings.expeditionId, expeditions.id))
+    .where(sql`${expeditionBookings.metadata}->>'referralCode' = ${referralCode}`)
+    .orderBy(desc(expeditionBookings.bookedAt))
+    .limit(100);
+
+  const bookingCount = rows.length;
+  const participantCount = rows.reduce((total, booking) => total + booking.participantsCount, 0);
+  const confirmedParticipantCount = rows
+    .filter((booking) => booking.status === "confirmed" || booking.status === "completed")
+    .reduce((total, booking) => total + booking.participantsCount, 0);
+  const rewardProgress = referralRewardProgress(confirmedParticipantCount);
+
+  return {
+    referralCode,
+    bookingCount,
+    participantCount,
+    confirmedParticipantCount,
+    rewards: referralRewards.map((reward) => ({
+      ...reward,
+      unlocked: confirmedParticipantCount >= reward.threshold
+    })),
+    nextReward: rewardProgress.next,
+    remainingToNext: rewardProgress.remaining,
+    bookings: rows
   };
 }
