@@ -150,6 +150,7 @@ import {
 } from "@/lib/expedition-booking-lifecycle";
 import { normalizeExpeditionReviewStatus } from "@/lib/expedition-reviews";
 import { partnerCapabilitiesForRoles } from "@/lib/partner-permissions";
+import { referralCodeForUser, referralRewardProgress, referralRewards } from "@/lib/referrals";
 import { formatCompact, formatCurrency, formatCurrencyText } from "@/lib/utils";
 
 type EvidenceReviewEventSummary = {
@@ -11484,5 +11485,46 @@ export async function getAdminEvidenceBoardData() {
         sourceHref: evidenceSourceHref(item.campaignSlug, item.evidenceCode) ?? item.fileUrl
       };
     })
+  };
+}
+
+
+export async function getReferralDashboardData(userId: string) {
+  const referralCode = referralCodeForUser(userId);
+  const rows = await db
+    .select({
+      id: expeditionBookings.id,
+      expeditionTitle: expeditions.title,
+      expeditionSlug: expeditions.slug,
+      participantsCount: expeditionBookings.participantsCount,
+      status: expeditionBookings.status,
+      paymentStatus: expeditionBookings.paymentStatus,
+      bookedAt: expeditionBookings.bookedAt
+    })
+    .from(expeditionBookings)
+    .innerJoin(expeditions, eq(expeditionBookings.expeditionId, expeditions.id))
+    .where(sql`${expeditionBookings.metadata}->>'referralCode' = ${referralCode}`)
+    .orderBy(desc(expeditionBookings.bookedAt))
+    .limit(100);
+
+  const bookingCount = rows.length;
+  const participantCount = rows.reduce((total, booking) => total + booking.participantsCount, 0);
+  const confirmedParticipantCount = rows
+    .filter((booking) => booking.status === "confirmed" || booking.status === "completed")
+    .reduce((total, booking) => total + booking.participantsCount, 0);
+  const rewardProgress = referralRewardProgress(confirmedParticipantCount);
+
+  return {
+    referralCode,
+    bookingCount,
+    participantCount,
+    confirmedParticipantCount,
+    rewards: referralRewards.map((reward) => ({
+      ...reward,
+      unlocked: confirmedParticipantCount >= reward.threshold
+    })),
+    nextReward: rewardProgress.next,
+    remainingToNext: rewardProgress.remaining,
+    bookings: rows
   };
 }
