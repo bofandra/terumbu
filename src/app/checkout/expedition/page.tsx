@@ -100,6 +100,29 @@ export default async function ExpeditionCheckoutPage({ searchParams }: Expeditio
             Participants
             <input name="participantsCount" type="number" min={1} max={12} defaultValue={selectedParticipants} className="w-full min-w-0 rounded-xl border border-ocean-900/14 px-4 py-3 outline-none focus:border-coral-500" required />
           </label>
+          {selectedParticipants > 1 ? (
+            <div className="rounded-2xl border border-kelp-500/20 bg-kelp-100/40 p-4">
+              <p className="font-bold text-ocean-900">Group booking</p>
+              <p className="mt-1 text-sm leading-6 text-ocean-900/62">
+                One lead traveler manages this booking. Add participant details below so the field team can prepare logistics and accessibility support.
+              </p>
+            </div>
+          ) : null}
+          <div className="grid gap-4 sm:grid-cols-2">
+            <label className="grid min-w-0 gap-2 text-sm font-semibold text-ocean-900">
+              Group / team name <span className="font-normal text-ocean-900/42">(optional)</span>
+              <input name="groupName" placeholder="e.g. Reef Friends Jakarta" className="w-full min-w-0 rounded-xl border border-ocean-900/14 px-4 py-3 outline-none focus:border-coral-500" />
+            </label>
+            <label className="grid min-w-0 gap-2 text-sm font-semibold text-ocean-900">
+              Contact role
+              <select name="contactRole" defaultValue="Lead traveler" className="w-full min-w-0 rounded-xl border border-ocean-900/14 px-4 py-3 outline-none focus:border-coral-500">
+                <option>Lead traveler</option>
+                <option>Parent / guardian</option>
+                <option>Team coordinator</option>
+                <option>Corporate coordinator</option>
+              </select>
+            </label>
+          </div>
           {corporateOptions.length > 0 ? (
             <fieldset className="grid gap-2 rounded-2xl border border-ocean-900/10 bg-sand-50 p-4">
               <legend className="text-sm font-bold text-ocean-900">Join as</legend>
@@ -121,9 +144,29 @@ export default async function ExpeditionCheckoutPage({ searchParams }: Expeditio
               ))}
             </fieldset>
           ) : null}
+          <div className="grid gap-4 sm:grid-cols-2">
+            <label className="grid min-w-0 gap-2 text-sm font-semibold text-ocean-900">
+              Additional participant names
+              <textarea name="additionalParticipantNames" placeholder="One name per line, only if participants is more than 1" className="min-h-28 w-full min-w-0 rounded-xl border border-ocean-900/14 px-4 py-3 outline-none focus:border-coral-500" />
+            </label>
+            <label className="grid min-w-0 gap-2 text-sm font-semibold text-ocean-900">
+              Additional participant emails <span className="font-normal text-ocean-900/42">(optional)</span>
+              <textarea name="additionalParticipantEmails" placeholder="One email per line, matching the names" className="min-h-28 w-full min-w-0 rounded-xl border border-ocean-900/14 px-4 py-3 outline-none focus:border-coral-500" />
+            </label>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <label className="grid min-w-0 gap-2 text-sm font-semibold text-ocean-900">
+              Emergency contact <span className="font-normal text-ocean-900/42">(optional)</span>
+              <input name="emergencyContact" placeholder="Name + phone / WhatsApp" className="w-full min-w-0 rounded-xl border border-ocean-900/14 px-4 py-3 outline-none focus:border-coral-500" />
+            </label>
+            <label className="grid min-w-0 gap-2 text-sm font-semibold text-ocean-900">
+              Dietary notes <span className="font-normal text-ocean-900/42">(optional)</span>
+              <input name="dietaryNotes" placeholder="Diet, allergies, halal/vegetarian requests" className="w-full min-w-0 rounded-xl border border-ocean-900/14 px-4 py-3 outline-none focus:border-coral-500" />
+            </label>
+          </div>
           <label className="grid min-w-0 gap-2 text-sm font-semibold text-ocean-900">
-            Additional participant names
-            <textarea name="additionalParticipantNames" placeholder="One name per line, only if participants is more than 1" className="min-h-24 w-full min-w-0 rounded-xl border border-ocean-900/14 px-4 py-3 outline-none focus:border-coral-500" />
+            Accessibility or mobility notes <span className="font-normal text-ocean-900/42">(optional)</span>
+            <textarea name="accessibilityNotes" placeholder="Anything the field team should know to support safe participation." className="min-h-20 w-full min-w-0 rounded-xl border border-ocean-900/14 px-4 py-3 outline-none focus:border-coral-500" />
           </label>
           <Button type="submit">Continue Booking</Button>
         </form>
