@@ -48,6 +48,7 @@ import {
 import { getSessionUser } from "@/lib/auth";
 import { getExpeditionDetail, getExpeditionSaveState } from "@/lib/queries";
 import { referralCodeForUser } from "@/lib/referrals";
+import { getPreferredDisplayCurrency, getPreferredLocale, localeTag } from "@/lib/user-preferences";
 import { cn, formatCurrency } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
@@ -152,7 +153,13 @@ export default async function ExpeditionDetailPage({
   searchParams?: Promise<{ saved?: string; error?: string; ref?: string }>;
 }) {
   const { slug } = await params;
-  const [query, expedition, sessionUser] = await Promise.all([searchParams, getExpeditionDetail(slug), getSessionUser()]);
+  const [query, expedition, sessionUser, displayCurrency, locale] = await Promise.all([
+    searchParams,
+    getExpeditionDetail(slug),
+    getSessionUser(),
+    getPreferredDisplayCurrency(),
+    getPreferredLocale()
+  ]);
 
   if (!expedition) {
     notFound();
@@ -174,7 +181,9 @@ export default async function ExpeditionDetailPage({
     isAuthenticated: Boolean(sessionUser),
     isSaved: saveState?.isSaved ?? false,
     expeditionPath,
-    referralCode
+    referralCode,
+    displayCurrency,
+    locale: localeTag(locale)
   };
   const tabs = [
     { id: "exchange", label: "The Exchange" },
