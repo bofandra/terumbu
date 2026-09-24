@@ -872,7 +872,7 @@ export async function getCampaignDetail(slug: string) {
     })
     .from(campaigns)
     .innerJoin(organizations, eq(campaigns.organizationId, organizations.id))
-    .where(eq(campaigns.slug, slug))
+    .where(and(eq(campaigns.slug, slug), inArray(campaigns.status, ["published", "funded", "completed"])))
     .limit(1);
 
   if (!row) {
@@ -1146,7 +1146,7 @@ export async function getExpeditionCards(limitOrOptions?: number | ExpeditionCar
         metadata: expeditions.metadata
       })
       .from(expeditions)
-      .where(selectedRegion ? eq(expeditions.region, selectedRegion) : undefined)
+      .where(and(eq(expeditions.status, "published"), selectedRegion ? eq(expeditions.region, selectedRegion) : undefined))
       .orderBy(asc(expeditions.title)),
     db
       .select({
@@ -1263,7 +1263,7 @@ export async function getExpeditionDetail(slug: string) {
     .from(expeditions)
     .leftJoin(campaigns, eq(expeditions.relatedCampaignId, campaigns.id))
     .leftJoin(organizations, eq(campaigns.organizationId, organizations.id))
-    .where(eq(expeditions.slug, slug))
+    .where(and(eq(expeditions.slug, slug), eq(expeditions.status, "published")))
     .limit(1);
 
   if (!row) {
@@ -4252,6 +4252,7 @@ export async function getExpeditionCheckoutOptions() {
     })
     .from(expeditionDepartures)
     .innerJoin(expeditions, eq(expeditionDepartures.expeditionId, expeditions.id))
+    .where(eq(expeditions.status, "published"))
     .orderBy(asc(expeditionDepartures.startsAt));
 
   return rows
@@ -6311,6 +6312,9 @@ export async function getAdminOperationsData() {
         summary: expeditions.summary,
         imageUrl: expeditions.imageUrl,
         metadata: expeditions.metadata,
+        status: expeditions.status,
+        publishedAt: expeditions.publishedAt,
+        updatedAt: expeditions.updatedAt,
         relatedCampaignId: expeditions.relatedCampaignId,
         relatedCampaignTitle: campaigns.title,
         departureId: expeditionDepartures.id,
@@ -6512,6 +6516,9 @@ export async function getAdminOperationsData() {
       summary: string;
       imageUrl: string | null;
       metadata: unknown;
+      status: string;
+      publishedAt: Date | null;
+      updatedAt: Date;
       metadataJson: string;
       detailMetadata: ReturnType<typeof normalizeExpeditionDetailMetadata> | null;
       marketplaceMetadata: ReturnType<typeof normalizeExpeditionMarketplaceMetadata> | null;
@@ -6597,6 +6604,9 @@ export async function getAdminOperationsData() {
         summary: row.summary,
         imageUrl: row.imageUrl,
         metadata: row.metadata,
+        status: row.status,
+        publishedAt: row.publishedAt,
+        updatedAt: row.updatedAt,
         metadataJson: "",
         detailMetadata: null,
         marketplaceMetadata: null,
@@ -7484,7 +7494,10 @@ export async function getAdminExpeditionsPage(params: AdminExpeditionFilters = {
       currency: expeditions.currency,
       relatedCampaignId: expeditions.relatedCampaignId,
       relatedCampaignTitle: campaigns.title,
+      status: expeditions.status,
+      publishedAt: expeditions.publishedAt,
       createdAt: expeditions.createdAt,
+      updatedAt: expeditions.updatedAt,
       departureCount: departureCountValue,
       openDepartureCount: openDepartureCountValue,
       availableSeats: availableSeatsValue,
@@ -10904,6 +10917,9 @@ export async function getAdminExpeditionWorkspaceData(
       summary: expeditions.summary,
       imageUrl: expeditions.imageUrl,
       metadata: expeditions.metadata,
+      status: expeditions.status,
+      publishedAt: expeditions.publishedAt,
+      updatedAt: expeditions.updatedAt,
       relatedCampaignId: expeditions.relatedCampaignId,
       relatedCampaignTitle: campaigns.title
     })
