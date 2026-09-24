@@ -137,6 +137,11 @@ export default async function AdminExpeditionsPage({ searchParams }: AdminExpedi
       )
     },
     {
+      key: "status",
+      header: "Status",
+      render: (expedition) => <AdminStatusBadge value={expedition.status} />
+    },
+    {
       key: "location",
       header: <SortHeader label="Region" sort="region" data={data} />,
       render: (expedition) => <span className="font-semibold text-ocean-900/72">{expedition.region}</span>
