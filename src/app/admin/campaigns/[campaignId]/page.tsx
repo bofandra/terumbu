@@ -38,7 +38,8 @@ const savedMessages: Record<string, string> = {
 const errorMessages: Record<string, string> = {
   campaign: "Choose a valid publication decision.",
   "campaign-missing": "Campaign was not found.",
-  "campaign-review-state": "Only campaigns currently in review can be moderated."
+  "campaign-review-state": "Only campaigns currently in review can be moderated.",
+  "campaign-not-ready": "Publication requires at least one linked impact site."
 };
 
 function fundingProgress(raisedAmount: string | number, goalAmount: string | number) {
