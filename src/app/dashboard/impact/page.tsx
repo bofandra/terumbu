@@ -3,6 +3,7 @@ import Link from "next/link";
 
 import { DashboardImpactTrend } from "@/components/dashboard-impact-trend";
 import { DashboardPersonalImpactMap } from "@/components/dashboard-personal-impact-map";
+import { ImpactShareCard } from "@/components/impact-share-card";
 import { PassportShareButtons } from "@/components/passport-share-buttons";
 import { PassportPreview } from "@/components/passport-preview";
 import { MetricValue } from "@/components/ui/metric-value";
@@ -56,6 +57,18 @@ export default async function DashboardImpactPage() {
         </div>
         {passportUrl ? <PassportShareButtons url={passportUrl} title={`${data.profile?.displayName ?? "My"} Terumbu.eco Impact Passport`} /> : null}
       </header>
+
+      <section className="mt-6">
+        <ImpactShareCard
+          displayName={data.profile?.displayName ?? user.displayName ?? user.name ?? user.email}
+          passportNumber={data.profile?.passportNumber}
+          totalDonated={formatCurrency(data.summary.totalDonated)}
+          coralCount={data.summary.coralFragments}
+          fieldActivities={data.summary.fieldActivities}
+          certificates={data.summary.certificates}
+          publicUrl={passportUrl}
+        />
+      </section>
 
       <section className="mt-6 grid gap-4 md:grid-cols-5">
         {summary.map((item) => {
