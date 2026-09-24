@@ -425,6 +425,7 @@ export default async function DashboardExpeditionsPage({ searchParams }: Dashboa
                     <Button type="submit" tone="secondary" className="w-fit">Submit for review</Button>
                   </form>
                 </div>
+                </div>
               ) : null}
             </article>
           );
