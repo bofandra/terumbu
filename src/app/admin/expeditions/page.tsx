@@ -212,9 +212,13 @@ export default async function AdminExpeditionsPage({ searchParams }: AdminExpedi
             View
             <ArrowUpRight className="size-4" aria-hidden="true" />
           </Link>
-          <Link href={`/expeditions/${expedition.slug}`} className="text-center text-sm font-bold text-coral-700 hover:text-coral-500">
-            Public page
-          </Link>
+          {expedition.status === "published" ? (
+            <Link href={`/expeditions/${expedition.slug}`} className="text-center text-sm font-bold text-coral-700 hover:text-coral-500">
+              Public page
+            </Link>
+          ) : (
+            <span className="text-center text-xs font-bold text-ocean-900/42">Not public yet</span>
+          )}
         </div>
       )
     }
