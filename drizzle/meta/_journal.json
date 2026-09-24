@@ -218,6 +218,13 @@
       "when": 1790245000000,
       "tag": "0030_expedition_publication_lifecycle",
       "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "7",
+      "when": 1790300000000,
+      "tag": "0031_traveler_growth_retention",
+      "breakpoints": true
     }
   ]
 }
