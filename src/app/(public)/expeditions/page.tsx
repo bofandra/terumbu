@@ -9,6 +9,7 @@ import {
 } from "@/components/expedition-marketplace-filters";
 import { parseExpeditionSearchFilters } from "@/lib/expedition-marketplace";
 import { getExpeditionMarketplaceResults } from "@/lib/queries";
+import { getPreferredDisplayCurrency, getPreferredLocale, localeTag, t } from "@/lib/user-preferences";
 
 export const metadata = {
   title: "Expeditions"
@@ -23,7 +24,14 @@ type ExpeditionsPageProps = {
 export default async function ExpeditionsPage({ searchParams }: ExpeditionsPageProps) {
   const params = await searchParams;
   const filters = parseExpeditionSearchFilters(params ?? {});
-  const { expeditions, total, facets } = await getExpeditionMarketplaceResults(filters);
+  const [locale, displayCurrency, results] = await Promise.all([
+    getPreferredLocale(),
+    getPreferredDisplayCurrency(),
+    getExpeditionMarketplaceResults(filters)
+  ]);
+  const { expeditions, total, facets } = results;
+  const messages = t(locale).expeditions;
+  const localeName = localeTag(locale);
 
   return (
     <main className="bg-mist-50">
@@ -32,19 +40,19 @@ export default async function ExpeditionsPage({ searchParams }: ExpeditionsPageP
           <div>
             <p className="inline-flex items-center gap-2 rounded-full bg-kelp-100 px-3 py-1 text-sm font-bold text-kelp-700">
               <Leaf className="size-4" aria-hidden="true" />
-              Eco programs, conservation stays, and field bookings
+              {messages.badge}
             </p>
             <h1 className="mt-5 max-w-4xl text-4xl font-bold tracking-normal text-ocean-900 sm:text-5xl">
-              Find conservation opportunities across Indonesia
+              {messages.title}
             </h1>
             <p className="mt-4 max-w-2xl text-base leading-7 text-ocean-900/66 sm:text-lg">
-              Search verified hosts, compare what you offer and what you get, then reserve a real Terumbu field departure when dates fit.
+              {messages.intro}
             </p>
             <div className="mt-7 grid gap-3 sm:grid-cols-3">
               {[
-                { label: "Verified partners", icon: ShieldCheck },
-                { label: "Impact-linked trips", icon: Compass },
-                { label: "Small groups", icon: Users }
+                { label: messages.verifiedPartners, icon: ShieldCheck },
+                { label: messages.impactTrips, icon: Compass },
+                { label: messages.smallGroups, icon: Users }
               ].map((item) => {
                 const Icon = item.icon;
 
@@ -66,7 +74,7 @@ export default async function ExpeditionsPage({ searchParams }: ExpeditionsPageP
                 <input
                   name="q"
                   defaultValue={filters.q ?? ""}
-                  placeholder="Search by activity, destination, or host"
+                  placeholder={messages.keyword}
                   className="min-h-12 w-full rounded-lg border border-ocean-900/12 bg-white pl-9 pr-3 text-sm font-semibold text-ocean-900 outline-none focus:border-kelp-500"
                 />
               </label>
@@ -75,12 +83,12 @@ export default async function ExpeditionsPage({ searchParams }: ExpeditionsPageP
                 <input
                   name="destination"
                   defaultValue={filters.destination ?? ""}
-                  placeholder="Destination"
+                  placeholder={messages.destination}
                   className="min-h-12 w-full rounded-lg border border-ocean-900/12 bg-white px-3 text-sm font-semibold text-ocean-900 outline-none focus:border-kelp-500"
                 />
               </label>
               <button type="submit" className="flex min-h-12 items-center justify-center rounded-lg bg-kelp-500 px-4 text-sm font-bold text-white shadow-sm hover:bg-kelp-700">
-                Search
+                {messages.search}
               </button>
             </div>
           </form>
@@ -97,7 +105,7 @@ export default async function ExpeditionsPage({ searchParams }: ExpeditionsPageP
           <div className="mt-4 flex flex-col justify-between gap-4 rounded-xl border border-ocean-900/10 bg-white p-4 shadow-sm lg:mt-0 lg:flex-row lg:items-center">
             <div>
               <p className="text-xl font-bold tracking-normal text-ocean-900">
-                {total.toLocaleString("id-ID")} opportunities found
+                {total.toLocaleString(localeName)} {messages.found}
               </p>
               <div className="mt-3">
                 <ExpeditionActiveFilterChips filters={filters} />
@@ -108,13 +116,13 @@ export default async function ExpeditionsPage({ searchParams }: ExpeditionsPageP
 
           <div className="mt-5 grid gap-5">
             {expeditions.map((expedition) => (
-              <ExpeditionCard key={expedition.slug} expedition={expedition} />
+              <ExpeditionCard key={expedition.slug} expedition={expedition} displayCurrency={displayCurrency} locale={localeName} />
             ))}
           </div>
 
           {expeditions.length === 0 ? (
             <div className="mt-5 rounded-xl border border-dashed border-ocean-900/18 bg-white p-8 text-center shadow-sm">
-              <p className="text-xl font-bold tracking-normal text-ocean-900">No opportunities match those filters yet.</p>
+              <p className="text-xl font-bold tracking-normal text-ocean-900">{messages.noResults}</p>
               <p className="mx-auto mt-2 max-w-lg text-sm leading-6 text-ocean-900/62">
                 Try removing a filter, broadening the destination, or searching by a conservation activity like reef monitoring or community work.
               </p>
