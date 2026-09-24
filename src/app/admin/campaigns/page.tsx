@@ -218,7 +218,7 @@ export default async function AdminProjectsPage({ searchParams }: AdminProjectsP
       <AdminPageHeader
         eyebrow="Donations"
         title="Donations"
-        description="Read-only monitoring for partner-owned donation campaigns. Campaign content and status are managed from the partner portal."
+        description="Monitor partner-owned donation campaigns. Partners manage content; Platform Admin only reviews publication state and platform governance."
       />
       <AdminDomainNav items={adminDonationNavItems} active={pathname} />
 
