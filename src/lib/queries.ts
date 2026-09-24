@@ -8946,6 +8946,9 @@ export async function getPartnerPortalData(userId?: string) {
         summary: expeditions.summary,
         imageUrl: expeditions.imageUrl,
         metadata: expeditions.metadata,
+        publicationStatus: expeditions.status,
+        publishedAt: expeditions.publishedAt,
+        updatedAt: expeditions.updatedAt,
         relatedCampaignId: expeditions.relatedCampaignId,
         relatedCampaignTitle: campaigns.title,
         organizationId: campaigns.organizationId,
@@ -9117,6 +9120,9 @@ export async function getPartnerPortalData(userId?: string) {
       summary: string;
       imageUrl: string | null;
       metadata: unknown;
+      status: string;
+      publishedAt: Date | null;
+      updatedAt: Date;
       metadataJson: string;
       detailMetadata: ReturnType<typeof normalizeExpeditionDetailMetadata> | null;
       marketplaceMetadata: ReturnType<typeof normalizeExpeditionMarketplaceMetadata> | null;
@@ -9172,6 +9178,9 @@ export async function getPartnerPortalData(userId?: string) {
         summary: row.summary,
         imageUrl: row.imageUrl,
         metadata: row.metadata,
+        status: row.publicationStatus,
+        publishedAt: row.publishedAt,
+        updatedAt: row.updatedAt,
         metadataJson: "",
         detailMetadata: null,
         marketplaceMetadata: null,
