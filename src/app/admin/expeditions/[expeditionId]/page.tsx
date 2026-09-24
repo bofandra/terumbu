@@ -2,11 +2,14 @@ import Link from "next/link";
 import { ArrowUpRight, CalendarDays, MessageSquareText, ShieldCheck, Star, Users } from "lucide-react";
 import { notFound } from "next/navigation";
 
+import { AdminAlert } from "@/components/admin/admin-alert";
 import { AdminPageHeader, AdminStatusBadge, adminPanelClassName } from "@/components/admin-ui";
+import { Button } from "@/components/ui/button";
 import { FormTabs } from "@/components/ui/form-tabs";
 import { MetricValue } from "@/components/ui/metric-value";
 import { observeAdminDataLoader } from "@/lib/admin-observability";
 import { requireRole } from "@/lib/auth";
+import { updateExpeditionPublicationStatusAction } from "@/lib/portal-actions";
 import { getAdminExpeditionWorkspaceData } from "@/lib/queries";
 import { formatCurrency } from "@/lib/utils";
 
@@ -20,10 +23,25 @@ type AdminExpeditionDetailPageProps = {
   params: Promise<{
     expeditionId: string;
   }>;
+  searchParams?: Promise<{
+    saved?: string;
+    error?: string;
+  }>;
 };
 
-export default async function AdminExpeditionDetailPage({ params }: AdminExpeditionDetailPageProps) {
-  const { expeditionId } = await params;
+const savedMessages: Record<string, string> = {
+  "expedition-published": "Expedition approved and published.",
+  "expedition-changes-requested": "Expedition returned to draft for partner revision."
+};
+
+const errorMessages: Record<string, string> = {
+  "expedition-review": "Choose a valid publication decision.",
+  "expedition-missing": "Expedition record was not found.",
+  "expedition-review-state": "Only expeditions currently in review can be moderated."
+};
+
+export default async function AdminExpeditionDetailPage({ params, searchParams }: AdminExpeditionDetailPageProps) {
+  const [{ expeditionId }, query] = await Promise.all([params, searchParams]);
   await requireRole(["admin"], `/admin/expeditions/${expeditionId}`);
   const data = await observeAdminDataLoader("admin.expedition.workspace", () => getAdminExpeditionWorkspaceData(expeditionId));
 
@@ -32,6 +50,8 @@ export default async function AdminExpeditionDetailPage({ params }: AdminExpedit
   }
 
   const expedition = data.expedition;
+  const savedMessage = query?.saved ? savedMessages[query.saved] ?? "Expedition moderation saved." : null;
+  const errorMessage = query?.error ? errorMessages[query.error] ?? "Expedition moderation could not be saved." : null;
   const openDepartures = expedition.departures.filter((departure) => departure.status === "open").length;
   const availableSeats = expedition.departures.reduce((total, departure) => total + departure.availableSeats, 0);
   const relatedCampaign = data.campaignOptions.find((campaign) => campaign.id === expedition.relatedCampaignId);
@@ -45,6 +65,9 @@ export default async function AdminExpeditionDetailPage({ params }: AdminExpedit
         actionHref="/admin/expeditions"
         actionLabel="Expedition list"
       />
+
+      {savedMessage ? <AdminAlert tone="success">{savedMessage}</AdminAlert> : null}
+      {errorMessage ? <AdminAlert tone="error">{errorMessage}</AdminAlert> : null}
 
       <section className="rounded-lg border border-kelp-700/20 bg-kelp-100/50 p-4 shadow-soft">
         <div className="flex items-start gap-3">
@@ -62,6 +85,36 @@ export default async function AdminExpeditionDetailPage({ params }: AdminExpedit
           </div>
         </div>
       </section>
+
+      {expedition.status === "review" ? (
+        <section className="rounded-lg border border-ocean-900/10 bg-white p-5 shadow-soft">
+          <div className="flex flex-col justify-between gap-3 lg:flex-row lg:items-start">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-[0.14em] text-coral-700">Publication review</p>
+              <h2 className="mt-2 text-xl font-bold text-ocean-900">Review partner expedition</h2>
+              <p className="mt-1 max-w-2xl text-sm font-semibold leading-6 text-ocean-900/58">
+                Approval changes only publication state. Trip content, itinerary, departures, and logistics remain partner-owned.
+              </p>
+            </div>
+            <AdminStatusBadge value={expedition.status} />
+          </div>
+          <form action={updateExpeditionPublicationStatusAction} className="mt-5 grid gap-4">
+            <input type="hidden" name="expeditionId" value={expedition.id} />
+            <label className="grid gap-2 text-sm font-bold text-ocean-900">
+              Review note <span className="font-semibold text-ocean-900/42">(optional)</span>
+              <textarea
+                name="reviewNote"
+                className="min-h-24 rounded-lg border border-ocean-900/14 bg-white px-3 py-3 text-sm font-semibold text-ocean-900 outline-none focus:border-kelp-500 focus-visible:ring-2 focus-visible:ring-kelp-500 focus-visible:ring-offset-2"
+                placeholder="Add context when requesting revisions."
+              />
+            </label>
+            <div className="flex flex-wrap gap-2">
+              <Button type="submit" name="decision" value="publish">Approve & publish</Button>
+              <Button type="submit" name="decision" value="request_changes" tone="secondary">Request changes</Button>
+            </div>
+          </form>
+        </section>
+      ) : null}
 
       <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-6" aria-label="Expedition monitoring summary">
         {[
@@ -104,10 +157,14 @@ export default async function AdminExpeditionDetailPage({ params }: AdminExpedit
               <h2 className="text-xl font-bold text-ocean-900">Catalog snapshot</h2>
               <p className="mt-1 text-sm font-semibold leading-6 text-ocean-900/58">{expedition.summary}</p>
             </div>
-            <Link href={`/expeditions/${expedition.slug}`} className="inline-flex items-center gap-2 text-sm font-bold text-coral-700 hover:text-coral-500">
-              Public page
-              <ArrowUpRight className="size-4" aria-hidden="true" />
-            </Link>
+            {expedition.status === "published" ? (
+              <Link href={`/expeditions/${expedition.slug}`} className="inline-flex items-center gap-2 text-sm font-bold text-coral-700 hover:text-coral-500">
+                Public page
+                <ArrowUpRight className="size-4" aria-hidden="true" />
+              </Link>
+            ) : (
+              <AdminStatusBadge value={expedition.status} />
+            )}
           </div>
           <div className="grid gap-3 p-4 sm:grid-cols-2 lg:grid-cols-3">
             <div className="rounded-lg bg-sand-50 p-4"><p className="text-sm font-semibold text-ocean-900/54">Region</p><p className="mt-2 font-bold text-ocean-900">{expedition.region}</p></div>
