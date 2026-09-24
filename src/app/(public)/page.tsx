@@ -20,6 +20,7 @@ import {
   getImpactMapSites,
   getImpactStats
 } from "@/lib/queries";
+import { getPreferredDisplayCurrency, getPreferredLocale, localeTag, t } from "@/lib/user-preferences";
 
 export const dynamic = "force-dynamic";
 
@@ -70,7 +71,9 @@ const fallbackPassport: PassportPreviewData = {
 };
 
 export default async function HomePage() {
-  const [stats, campaigns, expeditions, impactSites, passport, fieldUpdate, reviewSummary, partners] = await Promise.all([
+  const [locale, displayCurrency, stats, campaigns, expeditions, impactSites, passport, fieldUpdate, reviewSummary, partners] = await Promise.all([
+    getPreferredLocale(),
+    getPreferredDisplayCurrency(),
     getImpactStats(),
     getCampaignCards(3),
     getExpeditionCards(3),
@@ -80,6 +83,8 @@ export default async function HomePage() {
     getHomepageReviewSummary(),
     getHomepagePartners()
   ]);
+  const messages = t(locale);
+  const localeName = localeTag(locale);
   const heroImageUrl = fieldUpdate?.imageUrl ?? fallbackHeroImageUrl;
 
   return (
@@ -98,24 +103,24 @@ export default async function HomePage() {
           <div className="max-w-3xl text-white">
             <p className="inline-flex items-center gap-2 rounded-full border border-white/30 bg-white/10 px-4 py-2 text-sm font-semibold backdrop-blur">
               <MapPinned size={17} aria-hidden="true" />
-              Conservation expeditions across Indonesia
+              {messages.home.badge}
             </p>
             <h1 className="mt-7 text-5xl font-bold tracking-normal sm:text-6xl lg:text-7xl">
-              Travel somewhere worth protecting.
+              {messages.home.title}
             </h1>
             <p className="mt-6 max-w-2xl text-lg leading-8 text-white/82 sm:text-xl">
-              Join conservation expeditions, learn from local field teams, and see the verified impact your journey helps create.
+              {messages.home.intro}
             </p>
             <div className="mt-9 flex flex-col gap-3 sm:flex-row">
               <ButtonLink href="/expeditions" tone="donation" className="sm:min-w-48">
-                Explore Expeditions
+                {messages.home.explore}
                 <ArrowRight size={18} aria-hidden="true" />
               </ButtonLink>
               <ButtonLink href="/impact-map" tone="light" className="sm:min-w-44">
-                See Verified Impact
+                {messages.home.impact}
               </ButtonLink>
               <ButtonLink href="/campaigns" tone="ghost" className="border border-white/28 text-white hover:bg-white/10">
-                Support a Project
+                {messages.home.support}
               </ButtonLink>
             </div>
             <div className="mt-7 flex flex-wrap items-center gap-4 text-sm font-semibold text-white/82">
@@ -185,7 +190,7 @@ export default async function HomePage() {
             </ButtonLink>
           </div>
           <div className="mt-10">
-            <FeaturedExpeditionRail expeditions={expeditions} />
+            <FeaturedExpeditionRail expeditions={expeditions} displayCurrency={displayCurrency} locale={localeName} />
           </div>
         </div>
       </section>
