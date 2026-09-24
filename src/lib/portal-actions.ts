@@ -3456,8 +3456,8 @@ export async function updatePartnerExpeditionAction(formData: FormData) {
       imageUrl,
       relatedCampaignId,
       metadata,
-      status: "draft",
-      publishedAt: null,
+      status,
+      publishedAt: status === "published" ? existingExpedition.publishedAt ?? new Date() : status === existingExpedition.status ? existingExpedition.publishedAt : null,
       updatedAt: new Date()
     })
     .where(eq(expeditions.id, expeditionId))
@@ -3601,7 +3601,10 @@ export async function createPartnerExpeditionAction(formData: FormData) {
       summary,
       imageUrl,
       relatedCampaignId,
-      metadata
+      metadata,
+      status: "draft",
+      publishedAt: null,
+      updatedAt: new Date()
     })
     .returning({ id: expeditions.id });
 
