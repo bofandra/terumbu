@@ -3573,6 +3573,8 @@ export async function createPartnerExpeditionAction(formData: FormData) {
       summary,
       imageUrl,
       metadata: null,
+      status: "draft",
+      publishedAt: null,
       relatedCampaignId,
       organizationId: null
     },
