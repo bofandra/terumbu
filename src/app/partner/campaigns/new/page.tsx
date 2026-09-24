@@ -9,7 +9,7 @@ export const metadata = {
 export const dynamic = "force-dynamic";
 
 const statusMessages: Record<string, string> = {
-  "campaign-created": "Campaign created and queued for review."
+  "campaign-created": "Campaign draft created. Complete the content, then submit it for review."
 };
 
 const errorMessages: Record<string, string> = {
