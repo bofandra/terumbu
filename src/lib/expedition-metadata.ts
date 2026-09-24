@@ -80,6 +80,18 @@ export type ExpeditionDetailMetadata = {
     details: string[];
     mealNote: string;
   };
+  travelInfo: {
+    meetingPoint: string;
+    nearestAirport: string;
+    airportTransfer: string;
+    arrivalGuidance: string;
+    visaGuidance: string;
+    insuranceGuidance: string;
+    connectivity: string;
+    localTimeZone: string;
+    supportContact: string;
+    packingHighlights: string[];
+  };
   team: { name: string; role: string; detail: string }[];
   preparationCourse: {
     title: string;
@@ -377,6 +389,18 @@ export function buildDefaultExpeditionDetailMetadata(input: DefaultExpeditionMet
       details: ["Fan-cooled rooms", "Shared or private bathroom by availability", "Limited mobile coverage", "Refill drinking water", "Local meals served family-style"],
       mealNote: "Three breakfasts, three lunches, and three dinners are included. Vegetarian and halal-friendly meals can be requested; allergy-safe preparation cannot be guaranteed."
     },
+    travelInfo: {
+      meetingPoint: "Final meeting point is shared with confirmed participants before departure.",
+      nearestAirport: `Nearest major arrival airport for the ${input.region} route`,
+      airportTransfer: "Local transfer guidance is provided after booking. Confirm whether transfers are included in the expedition inclusions.",
+      arrivalGuidance: "Plan to arrive with enough buffer before the first scheduled transfer. Remote-island routes can be affected by weather and transport changes.",
+      visaGuidance: "Travelers are responsible for checking Indonesia entry, passport, and visa requirements for their nationality before travel.",
+      insuranceGuidance: "Personal travel insurance covering medical care, trip disruption, and the planned field activities is strongly recommended unless explicitly included.",
+      connectivity: "Mobile signal and internet access may be limited during field days and island transfers.",
+      localTimeZone: "Indonesia local time; confirm the destination time zone in your pre-departure notes.",
+      supportContact: "Use Ask the Expedition Team before booking. Confirmed participants receive operational contact details before departure.",
+      packingHighlights: ["Passport and required travel documents", "Reef-safe sun protection", "Reusable water bottle", "Quick-dry field clothing", "Personal medication", "Waterproof bag or dry pouch"]
+    },
     team: [
       { name: "Dimas Pratama", role: "Expedition leader", detail: "8 years leading marine field programs / English and Bahasa Indonesia" },
       { name: "Partner field team", role: "Marine conservation lead", detail: "Restoration and monitoring partner for the associated campaign" },
@@ -450,6 +474,7 @@ export function normalizeExpeditionDetailMetadata(metadata: unknown, defaults: E
   const hostedBy = record(source.hostedBy);
   const route = record(source.route);
   const accommodation = record(source.accommodation);
+  const travelInfo = record(source.travelInfo);
   const preparationCourse = record(source.preparationCourse);
   const finalCta = record(source.finalCta);
   const weatherAdvisory = record(source.weatherAdvisory);
@@ -537,6 +562,18 @@ export function normalizeExpeditionDetailMetadata(metadata: unknown, defaults: E
       type: text(accommodation.type, defaults.accommodation.type),
       details: textArray(accommodation.details, defaults.accommodation.details),
       mealNote: text(accommodation.mealNote, defaults.accommodation.mealNote)
+    },
+    travelInfo: {
+      meetingPoint: text(travelInfo.meetingPoint, defaults.travelInfo.meetingPoint),
+      nearestAirport: text(travelInfo.nearestAirport, defaults.travelInfo.nearestAirport),
+      airportTransfer: text(travelInfo.airportTransfer, defaults.travelInfo.airportTransfer),
+      arrivalGuidance: text(travelInfo.arrivalGuidance, defaults.travelInfo.arrivalGuidance),
+      visaGuidance: text(travelInfo.visaGuidance, defaults.travelInfo.visaGuidance),
+      insuranceGuidance: text(travelInfo.insuranceGuidance, defaults.travelInfo.insuranceGuidance),
+      connectivity: text(travelInfo.connectivity, defaults.travelInfo.connectivity),
+      localTimeZone: text(travelInfo.localTimeZone, defaults.travelInfo.localTimeZone),
+      supportContact: text(travelInfo.supportContact, defaults.travelInfo.supportContact),
+      packingHighlights: textArray(travelInfo.packingHighlights, defaults.travelInfo.packingHighlights)
     },
     team: objectArray(source.team, defaults.team, (item, itemFallback) => ({
       name: text(item.name, itemFallback.name),
