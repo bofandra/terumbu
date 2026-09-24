@@ -1,5 +1,3 @@
-import { createHash } from "node:crypto";
-
 import {
   ArrowRight,
   Award,
@@ -48,6 +46,7 @@ import {
 } from "@/lib/expedition-detail-view";
 import { getSessionUser } from "@/lib/auth";
 import { getExpeditionDetail, getExpeditionSaveState } from "@/lib/queries";
+import { referralCodeForUser } from "@/lib/referrals";
 import { cn, formatCurrency } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
@@ -160,9 +159,7 @@ export default async function ExpeditionDetailPage({
 
   const expeditionPath = `/expeditions/${expedition.slug}`;
   const saveState = sessionUser ? await getExpeditionSaveState(sessionUser.id, expedition.slug) : null;
-  const referralCode = sessionUser
-    ? createHash("sha256").update(`terumbu-referral:${sessionUser.id}`).digest("hex").slice(0, 12)
-    : query?.ref?.trim() || null;
+  const referralCode = sessionUser ? referralCodeForUser(sessionUser.id) : query?.ref?.trim() || null;
   const bookingProps = {
     slug: expedition.slug,
     price: expedition.price,
