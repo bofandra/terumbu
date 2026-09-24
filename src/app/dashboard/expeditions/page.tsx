@@ -3,6 +3,8 @@ import Image from "next/image";
 import { ArrowRight, BookmarkX, CalendarDays, Heart, RefreshCw, Star } from "lucide-react";
 
 import { ExpeditionCalendarActions } from "@/components/expedition-calendar-actions";
+import { submitExpeditionMediaAction } from "@/lib/expedition-media-actions";
+import { getUserExpeditionMediaSubmissions } from "@/lib/expedition-media";
 import { cancelExpeditionReminderAction, scheduleSavedExpeditionReminderAction } from "@/lib/expedition-reminder-actions";
 import { getUserExpeditionReminders } from "@/lib/expedition-reminders";
 import { retryExpeditionPaymentAction } from "@/lib/billing-actions";
@@ -85,11 +87,18 @@ function reviewStatusDescription(status: ExpeditionReviewStatus | null) {
 export default async function DashboardExpeditionsPage({ searchParams }: DashboardExpeditionsPageProps) {
   const params = await searchParams;
   const user = await requireUser("/dashboard/expeditions");
-  const [data, highlightedExpeditions, reminders] = await Promise.all([
+  const [data, highlightedExpeditions, reminders, mediaSubmissions] = await Promise.all([
     getDashboardData(user.id),
     getExpeditionCards(3),
-    getUserExpeditionReminders(user.id)
+    getUserExpeditionReminders(user.id),
+    getUserExpeditionMediaSubmissions(user.id)
   ]);
+  const mediaByBooking = new Map<string, typeof mediaSubmissions>();
+  for (const submission of mediaSubmissions) {
+    const current = mediaByBooking.get(submission.bookingId) ?? [];
+    current.push(submission);
+    mediaByBooking.set(submission.bookingId, current);
+  }
 
   return (
     <main className="mx-auto max-w-5xl px-4 py-8 sm:px-6 lg:px-8">
@@ -107,7 +116,9 @@ export default async function DashboardExpeditionsPage({ searchParams }: Dashboa
             ? "Thanks, your expedition review was submitted for moderation."
             : params.saved === "expedition"
               ? "Saved expeditions updated."
-              : params.saved === "reminder"
+              : params.saved === "media"
+                ? "Traveler media submitted for moderation."
+                : params.saved === "reminder"
                 ? "Expedition reminder scheduled."
                 : params.saved === "reminder-cancelled"
                   ? "Expedition reminder cancelled."
@@ -122,9 +133,11 @@ export default async function DashboardExpeditionsPage({ searchParams }: Dashboa
               ? "That departure no longer has enough available seats for retry payment."
               : params.error === "expedition"
                 ? "Could not update that saved expedition."
-                : params.error === "reminder"
-                  ? "Could not schedule that reminder."
-                  : "Could not complete that booking billing action."}
+                : params.error?.startsWith("media")
+                  ? "Traveler media can only be submitted for completed bookings. Upload a supported image under 1.5 MB or provide a valid HTTPS media URL."
+                  : params.error === "reminder"
+                    ? "Could not schedule that reminder."
+                    : "Could not complete that booking billing action."}
         </p>
       ) : null}
 
@@ -364,6 +377,52 @@ export default async function DashboardExpeditionsPage({ searchParams }: Dashboa
                       <Star size={16} aria-hidden="true" />
                       {booking.reviewId ? "Submit Updated Review" : "Submit Review"}
                     </Button>
+                  </form>
+                <div className="mt-5 border-t border-ocean-900/10 pt-5">
+                  <div className="flex flex-col justify-between gap-2 sm:flex-row sm:items-end">
+                    <div>
+                      <p className="font-bold text-ocean-900">Share traveler moments</p>
+                      <p className="mt-1 text-sm text-ocean-900/62">
+                        Completed participants can submit photos or video links. Platform Admin reviews every submission before it appears publicly.
+                      </p>
+                    </div>
+                    <span className="text-xs font-bold text-ocean-900/46">
+                      {(mediaByBooking.get(booking.id) ?? []).length} submitted
+                    </span>
+                  </div>
+                  {(mediaByBooking.get(booking.id) ?? []).length > 0 ? (
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {(mediaByBooking.get(booking.id) ?? []).map((submission) => (
+                        <span key={submission.id} className="rounded-full bg-ocean-50 px-3 py-1 text-xs font-bold text-ocean-900">
+                          {submission.mediaType} · {submission.status}
+                        </span>
+                      ))}
+                    </div>
+                  ) : null}
+                  <form action={submitExpeditionMediaAction} encType="multipart/form-data" className="mt-4 grid gap-3 rounded-xl bg-white p-4 ring-1 ring-ocean-900/10">
+                    <input type="hidden" name="bookingId" value={booking.id} />
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <label className="grid gap-1.5 text-sm font-bold text-ocean-900">
+                        Media type
+                        <select name="mediaType" defaultValue="photo" className="min-h-11 rounded-lg border border-ocean-900/14 bg-white px-3 text-sm font-semibold">
+                          <option value="photo">Photo</option>
+                          <option value="video">Video link</option>
+                        </select>
+                      </label>
+                      <label className="grid gap-1.5 text-sm font-bold text-ocean-900">
+                        Photo upload
+                        <input name="mediaFile" type="file" accept="image/png,image/jpeg,image/webp,image/gif" className="min-h-11 rounded-lg border border-ocean-900/14 bg-white px-3 py-2 text-sm" />
+                      </label>
+                    </div>
+                    <label className="grid gap-1.5 text-sm font-bold text-ocean-900">
+                      Photo or video URL <span className="font-normal text-ocean-900/42">(optional for photo upload)</span>
+                      <input name="mediaUrl" type="url" placeholder="https://..." className="min-h-11 rounded-lg border border-ocean-900/14 bg-white px-3 text-sm font-semibold" />
+                    </label>
+                    <label className="grid gap-1.5 text-sm font-bold text-ocean-900">
+                      Caption
+                      <textarea name="caption" placeholder="What was happening, and what did you learn?" className="min-h-20 rounded-lg border border-ocean-900/14 bg-white px-3 py-3 text-sm font-semibold" />
+                    </label>
+                    <Button type="submit" tone="secondary" className="w-fit">Submit for review</Button>
                   </form>
                 </div>
               ) : null}
