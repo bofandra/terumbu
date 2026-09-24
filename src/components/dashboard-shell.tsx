@@ -12,7 +12,8 @@ import {
   Search,
   Settings,
   ShieldQuestion,
-  UserCircle
+  UserCircle,
+  UsersRound
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
@@ -26,6 +27,7 @@ const dashboardNav = [
   { label: "My Impact", href: "/dashboard/impact", icon: MapPinned },
   { label: "Donations", href: "/dashboard/donations", icon: Heart },
   { label: "Expeditions", href: "/dashboard/expeditions", icon: ShieldQuestion },
+  { label: "Referrals", href: "/dashboard/referrals", icon: UsersRound },
   { label: "Academy", href: "/dashboard/academy", icon: BookOpen }
 ];
 
