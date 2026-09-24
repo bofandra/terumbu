@@ -15,6 +15,7 @@ import {
   MessageSquareText,
   Monitor,
   MapPin,
+  PlayCircle,
   Plane,
   ShieldCheck,
   Sprout,
