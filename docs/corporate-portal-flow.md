@@ -50,10 +50,12 @@ Each contribution has a `countsTowardCampaignGoal` flag. When enabled and the st
 ## Admin setup flow
 
 ```txt
-Admin opens /admin/corporate
-→ creates corporate account and program
-→ assigns an existing user to the corporate account
-→ user can open /corporate
+Platform Admin opens /admin/corporate
+→ creates the corporate account
+→ assigns workspace access and Corporate Admin role
+→ Corporate Admin opens /corporate/programs
+→ creates and manages corporate programs
+→ authorized corporate users can open /corporate
 ```
 
 If a logged-in user opens `/corporate` without corporate permissions, the app now shows a corporate empty/no-access state instead of a confusing 404.
