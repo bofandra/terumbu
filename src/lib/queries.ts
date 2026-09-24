@@ -749,7 +749,12 @@ export async function getPartnerProfile(slug: string) {
       })
       .from(campaigns)
       .innerJoin(organizations, eq(campaigns.organizationId, organizations.id))
-      .where(eq(campaigns.organizationId, partner.id))
+      .where(
+        and(
+          eq(campaigns.organizationId, partner.id),
+          inArray(campaigns.status, ["published", "funded", "completed"])
+        )
+      )
       .orderBy(desc(campaigns.publishedAt)),
     db
       .select({
@@ -764,7 +769,13 @@ export async function getPartnerProfile(slug: string) {
       })
       .from(projectEvidence)
       .innerJoin(campaigns, eq(projectEvidence.campaignId, campaigns.id))
-      .where(eq(campaigns.organizationId, partner.id))
+      .where(
+        and(
+          eq(campaigns.organizationId, partner.id),
+          inArray(campaigns.status, ["published", "funded", "completed"]),
+          eq(projectEvidence.verificationStatus, "verified")
+        )
+      )
       .orderBy(desc(projectEvidence.createdAt))
   ]);
 
