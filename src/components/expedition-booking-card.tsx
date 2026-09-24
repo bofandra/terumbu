@@ -35,18 +35,22 @@ type ExpeditionBookingCardProps = {
   isAuthenticated?: boolean;
   isSaved?: boolean;
   expeditionPath?: string;
+  referralCode?: string | null;
 };
 
 function participantTotal(adults: number, students: number, children: number) {
   return adults + students + children;
 }
 
-function checkoutHref(departureId: string | null, participants: number) {
+function checkoutHref(departureId: string | null, participants: number, referralCode?: string | null) {
   const params = new URLSearchParams();
   if (departureId) {
     params.set("departure", departureId);
   }
   params.set("participants", String(Math.max(1, participants)));
+  if (referralCode) {
+    params.set("ref", referralCode);
+  }
 
   return `/checkout/expedition?${params.toString()}`;
 }
@@ -110,7 +114,8 @@ export function ExpeditionBookingCard({
   onQuestionClick,
   isAuthenticated = false,
   isSaved = false,
-  expeditionPath
+  expeditionPath,
+  referralCode
 }: ExpeditionBookingCardProps) {
   const firstBookableDeparture = departures.find((departure) => departure.status === "open" && departure.availableSeats > 0) ?? departures[0] ?? null;
   const [selectedDepartureId, setSelectedDepartureId] = useState(firstBookableDeparture?.id ?? null);
@@ -122,7 +127,7 @@ export function ExpeditionBookingCard({
   const participantsWithinCapacity = selectedDeparture ? participants <= selectedDeparture.availableSeats : false;
   const bookingDisabled = !selectedDeparture || selectedDeparture.availableSeats <= 0 || !participantsWithinCapacity || selectedDeparture.status !== "open";
   const total = useMemo(() => price * participants + equipmentRental + platformFee, [equipmentRental, participants, platformFee, price]);
-  const href = checkoutHref(selectedDeparture?.id ?? null, participants);
+  const href = checkoutHref(selectedDeparture?.id ?? null, participants, referralCode);
 
   return (
     <aside

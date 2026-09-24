@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { ExpeditionShareButtons } from "@/components/expedition-share-buttons";
 import { ButtonLink } from "@/components/ui/button";
 
 export const metadata = {
@@ -11,6 +12,8 @@ type CheckoutSuccessPageProps = {
     status?: string;
     type?: string;
     id?: string;
+    expedition?: string;
+    ref?: string;
   }>;
 };
 
@@ -19,11 +22,20 @@ export default async function CheckoutSuccessPage({ searchParams }: CheckoutSucc
   const failed = params?.status === "failed";
   const pending = params?.status === "pending";
   const typeLabel = params?.type === "expedition" ? "booking" : "donation";
-  const title = failed ? "Payment was not completed" : pending ? "Payment proof submitted" : "Your impact is recorded";
+  const isExpedition = params?.type === "expedition";
+  const title = failed
+    ? "Payment was not completed"
+    : pending
+      ? isExpedition
+        ? "Your expedition request is recorded"
+        : "Payment proof submitted"
+      : "Your impact is recorded";
   const body = failed
     ? `This ${typeLabel} was not paid, so it remains available for support review.`
     : pending
-      ? `Your ${typeLabel} proof has been received and is waiting for manual admin verification.`
+      ? isExpedition
+        ? "Your seats and payment state are recorded. Confirmation remains pending until the current payment/admin verification flow is completed."
+        : `Your ${typeLabel} proof has been received and is waiting for manual admin verification.`
       : `This ${typeLabel} has been recorded, and the related dashboard and receipt details are being updated.`;
 
   return (
@@ -37,6 +49,22 @@ export default async function CheckoutSuccessPage({ searchParams }: CheckoutSucc
         <ButtonLink href={failed ? (params?.type === "expedition" ? "/checkout/expedition" : "/checkout/donation") : "/dashboard"} className="mt-7">
           {failed ? "Try Again" : "View Dashboard"}
         </ButtonLink>
+        {isExpedition && params?.expedition ? (
+          <div className="mt-7 border-t border-ocean-900/10 pt-6 text-left">
+            <p className="text-sm font-bold uppercase tracking-[0.14em] text-coral-700">Travel together</p>
+            <h2 className="mt-2 text-xl font-bold text-ocean-900">Invite friends to join this expedition</h2>
+            <p className="mt-2 text-sm leading-6 text-ocean-900/62">
+              Share the expedition while your booking is being confirmed. Referral attribution is preserved in the invite link.
+            </p>
+            <div className="mt-4">
+              <ExpeditionShareButtons
+                slug={params.expedition}
+                title="Terumbu.eco conservation expedition"
+                referralCode={params.ref ?? null}
+              />
+            </div>
+          </div>
+        ) : null}
       </section>
     </main>
   );

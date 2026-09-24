@@ -1,3 +1,5 @@
+import { createHash } from "node:crypto";
+
 import {
   ArrowRight,
   Award,
@@ -14,6 +16,8 @@ import {
   LifeBuoy,
   MessageSquareText,
   Monitor,
+  MapPin,
+  Plane,
   ShieldCheck,
   Sprout,
   Star,
@@ -30,6 +34,7 @@ import { notFound } from "next/navigation";
 import { ExpeditionMobileBookingBar } from "@/components/expedition-booking-card";
 import { ExpeditionCard } from "@/components/expedition-card";
 import { ExpeditionHeroGallery } from "@/components/expedition-hero-gallery";
+import { ExpeditionShareButtons } from "@/components/expedition-share-buttons";
 import { ExpeditionSectionTabs } from "@/components/expedition-section-tabs";
 import { Button, ButtonLink } from "@/components/ui/button";
 import { submitExpeditionInterestRequestAction } from "@/lib/expedition-interest-actions";
@@ -144,7 +149,7 @@ export default async function ExpeditionDetailPage({
   searchParams
 }: {
   params: Promise<{ slug: string }>;
-  searchParams?: Promise<{ saved?: string; error?: string }>;
+  searchParams?: Promise<{ saved?: string; error?: string; ref?: string }>;
 }) {
   const { slug } = await params;
   const [query, expedition, sessionUser] = await Promise.all([searchParams, getExpeditionDetail(slug), getSessionUser()]);
@@ -155,6 +160,9 @@ export default async function ExpeditionDetailPage({
 
   const expeditionPath = `/expeditions/${expedition.slug}`;
   const saveState = sessionUser ? await getExpeditionSaveState(sessionUser.id, expedition.slug) : null;
+  const referralCode = sessionUser
+    ? createHash("sha256").update(`terumbu-referral:${sessionUser.id}`).digest("hex").slice(0, 12)
+    : query?.ref?.trim() || null;
   const bookingProps = {
     slug: expedition.slug,
     price: expedition.price,
@@ -167,7 +175,8 @@ export default async function ExpeditionDetailPage({
     questionHref: "#ask-question",
     isAuthenticated: Boolean(sessionUser),
     isSaved: saveState?.isSaved ?? false,
-    expeditionPath
+    expeditionPath,
+    referralCode
   };
   const tabs = [
     { id: "exchange", label: "The Exchange" },
@@ -243,6 +252,9 @@ export default async function ExpeditionDetailPage({
               </div>
               <h1 className="mt-6 max-w-3xl text-4xl font-bold tracking-normal text-ocean-900 sm:text-5xl lg:text-[3.35rem] lg:leading-[1.15]">{expedition.title}</h1>
               <p className="mt-5 max-w-2xl text-lg leading-8 text-ocean-900/64">{expedition.summary}</p>
+              <div className="mt-6">
+                <ExpeditionShareButtons slug={expedition.slug} title={expedition.title} referralCode={referralCode} compact />
+              </div>
 
               <div className="mt-8 grid gap-6">
                 {heroBadges.map((badge, index) => {
@@ -470,6 +482,53 @@ export default async function ExpeditionDetailPage({
                   <p className="text-xl font-bold text-ocean-900">What&apos;s not included</p>
                   <p className="mt-4 text-base leading-8 text-ocean-900/62">{expedition.notIncluded.slice(0, 5).join(", ")}</p>
                 </div>
+              </div>
+            </div>
+          </section>
+
+          <DetailDivider />
+          <section id="travel-planning" className="scroll-mt-36 py-14">
+            <SectionHeader
+              title="Plan your trip"
+              body="Practical travel information for international visitors. Confirm nationality-specific entry rules and insurance coverage before purchasing transport."
+            />
+            <div className="mt-8 grid gap-5 md:grid-cols-2 lg:grid-cols-3">
+              {[
+                [Plane, "Nearest arrival hub", expedition.travelInfo.nearestAirport],
+                [MapPin, "Meeting point", expedition.travelInfo.meetingPoint],
+                [Clock, "Local time", expedition.travelInfo.localTimeZone],
+                [Wifi, "Connectivity", expedition.travelInfo.connectivity],
+                [ShieldCheck, "Travel insurance", expedition.travelInfo.insuranceGuidance],
+                [LifeBuoy, "Traveler support", expedition.travelInfo.supportContact]
+              ].map(([Icon, label, value]) => {
+                const TravelIcon = Icon as LucideIcon;
+                return (
+                  <article key={String(label)} className="rounded-md border border-ocean-900/10 bg-ocean-50 p-5">
+                    <TravelIcon size={22} aria-hidden="true" className="text-sky-700" />
+                    <p className="mt-4 text-sm font-bold uppercase tracking-[0.12em] text-ocean-900/48">{String(label)}</p>
+                    <p className="mt-2 text-base font-semibold leading-7 text-ocean-900">{String(value)}</p>
+                  </article>
+                );
+              })}
+            </div>
+            <div className="mt-8 grid gap-6 lg:grid-cols-2">
+              <div className="rounded-md border border-ocean-900/10 bg-white p-5">
+                <h3 className="text-xl font-bold text-ocean-900">Arrival & transfer</h3>
+                <p className="mt-4 text-sm leading-7 text-ocean-900/64">{expedition.travelInfo.airportTransfer}</p>
+                <p className="mt-3 text-sm leading-7 text-ocean-900/64">{expedition.travelInfo.arrivalGuidance}</p>
+                <h4 className="mt-5 font-bold text-ocean-900">Visa & entry guidance</h4>
+                <p className="mt-2 text-sm leading-7 text-ocean-900/64">{expedition.travelInfo.visaGuidance}</p>
+              </div>
+              <div className="rounded-md border border-ocean-900/10 bg-white p-5">
+                <h3 className="text-xl font-bold text-ocean-900">Packing highlights</h3>
+                <ul className="mt-4 grid gap-2 text-sm leading-6 text-ocean-900/68 sm:grid-cols-2">
+                  {expedition.travelInfo.packingHighlights.map((item) => (
+                    <li key={item} className="flex items-start gap-2">
+                      <Check size={16} aria-hidden="true" className="mt-1 shrink-0 text-kelp-500" />
+                      <span>{item}</span>
+                    </li>
+                  ))}
+                </ul>
               </div>
             </div>
           </section>
@@ -731,6 +790,9 @@ export default async function ExpeditionDetailPage({
             <div className="mt-7 flex flex-wrap gap-3">
               <ButtonLink href="#availability" className="rounded-full">{expedition.finalCta.primaryLabel}</ButtonLink>
               <ButtonLink href="#ask-question" tone="light" className="rounded-full border border-ocean-900/10">{expedition.finalCta.secondaryLabel}</ButtonLink>
+            </div>
+            <div className="mt-5">
+              <ExpeditionShareButtons slug={expedition.slug} title={expedition.title} referralCode={referralCode} />
             </div>
           </section>
         </div>

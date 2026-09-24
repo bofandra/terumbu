@@ -318,6 +318,53 @@ function DetailFields({ detail, marketplace }: { detail: ExpeditionDetailMetadat
         </section>
 
         <section className="rounded-lg border border-ocean-900/10 bg-white p-4">
+          <h3 className="text-lg font-bold text-ocean-900">International traveler readiness</h3>
+          <p className="mt-1 text-sm font-semibold text-ocean-900/54">
+            Give overseas travelers enough practical information to decide, plan arrival, and understand what they must arrange themselves.
+          </p>
+          <div className="mt-4 grid gap-4">
+            <div className="grid gap-3 md:grid-cols-2">
+              <Field label="Meeting point">
+                <input name="travelMeetingPoint" defaultValue={detail.travelInfo.meetingPoint} className={inputClassName} />
+              </Field>
+              <Field label="Nearest airport / arrival hub">
+                <input name="travelNearestAirport" defaultValue={detail.travelInfo.nearestAirport} className={inputClassName} />
+              </Field>
+              <Field label="Local time zone">
+                <input name="travelLocalTimeZone" defaultValue={detail.travelInfo.localTimeZone} className={inputClassName} />
+              </Field>
+              <Field label="Connectivity">
+                <input name="travelConnectivity" defaultValue={detail.travelInfo.connectivity} className={inputClassName} />
+              </Field>
+            </div>
+            <Field label="Airport / arrival transfer">
+              <textarea name="travelAirportTransfer" defaultValue={detail.travelInfo.airportTransfer} className={textareaClassName} />
+            </Field>
+            <Field label="Arrival guidance">
+              <textarea name="travelArrivalGuidance" defaultValue={detail.travelInfo.arrivalGuidance} className={textareaClassName} />
+            </Field>
+            <div className="grid gap-3 md:grid-cols-2">
+              <Field label="Visa & entry guidance">
+                <textarea name="travelVisaGuidance" defaultValue={detail.travelInfo.visaGuidance} className={textareaClassName} />
+              </Field>
+              <Field label="Travel insurance guidance">
+                <textarea name="travelInsuranceGuidance" defaultValue={detail.travelInfo.insuranceGuidance} className={textareaClassName} />
+              </Field>
+            </div>
+            <Field label="Traveler support contact">
+              <textarea name="travelSupportContact" defaultValue={detail.travelInfo.supportContact} className={textareaClassName} />
+            </Field>
+            <ExpeditionListField
+              label="Packing highlights"
+              name="travelPackingHighlights"
+              items={detail.travelInfo.packingHighlights}
+              addLabel="Add packing item"
+              placeholder="Packing item"
+            />
+          </div>
+        </section>
+
+        <section className="rounded-lg border border-ocean-900/10 bg-white p-4">
           <h3 className="text-lg font-bold text-ocean-900">Stay, inclusions & requirements</h3>
           <div className="mt-4 grid gap-4">
             <div className="grid gap-3 md:grid-cols-2">

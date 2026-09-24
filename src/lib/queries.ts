@@ -1590,6 +1590,7 @@ export async function getExpeditionDetail(slug: string) {
       sites: relatedSites
     },
     accommodation: expeditionMetadata.accommodation,
+    travelInfo: expeditionMetadata.travelInfo,
     team: expeditionMetadata.team,
     preparationCourse: expeditionMetadata.preparationCourse,
     reviewCategories: publicReviewCategories,

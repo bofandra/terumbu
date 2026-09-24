@@ -1358,6 +1358,18 @@ async function partnerExpeditionMetadataFromForm(
       details: formLinesOrFallback(formData, "accommodationDetails", context.currentMetadata.accommodation.details),
       mealNote: formTextOrFallback(formData, "mealNote", context.currentMetadata.accommodation.mealNote)
     },
+    travelInfo: {
+      meetingPoint: formTextOrFallback(formData, "travelMeetingPoint", context.currentMetadata.travelInfo.meetingPoint),
+      nearestAirport: formTextOrFallback(formData, "travelNearestAirport", context.currentMetadata.travelInfo.nearestAirport),
+      airportTransfer: formTextOrFallback(formData, "travelAirportTransfer", context.currentMetadata.travelInfo.airportTransfer),
+      arrivalGuidance: formTextOrFallback(formData, "travelArrivalGuidance", context.currentMetadata.travelInfo.arrivalGuidance),
+      visaGuidance: formTextOrFallback(formData, "travelVisaGuidance", context.currentMetadata.travelInfo.visaGuidance),
+      insuranceGuidance: formTextOrFallback(formData, "travelInsuranceGuidance", context.currentMetadata.travelInfo.insuranceGuidance),
+      connectivity: formTextOrFallback(formData, "travelConnectivity", context.currentMetadata.travelInfo.connectivity),
+      localTimeZone: formTextOrFallback(formData, "travelLocalTimeZone", context.currentMetadata.travelInfo.localTimeZone),
+      supportContact: formTextOrFallback(formData, "travelSupportContact", context.currentMetadata.travelInfo.supportContact),
+      packingHighlights: formLinesOrFallback(formData, "travelPackingHighlights", context.currentMetadata.travelInfo.packingHighlights)
+    },
     team: hasTeamFields
       ? Array.from({ length: maxLength(teamNames, teamRoles, teamDetails) }, (_, index) => ({
           name: teamNames[index] ?? "",

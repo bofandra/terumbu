@@ -225,6 +225,10 @@ export async function bookExpeditionAction(formData: FormData) {
   const nextPath = safeRedirectPath(formData.get("next"));
   const idempotencyKey = String(formData.get("idempotencyKey") ?? "").trim() || null;
   const joinAs = String(formData.get("joinAs") ?? "personal").trim();
+  const referralCode = String(formData.get("referralCode") ?? "")
+    .trim()
+    .replace(/[^a-zA-Z0-9_-]/g, "")
+    .slice(0, 64) || null;
   const selectedCorporateAccountId = joinAs.startsWith("corporate:") ? joinAs.replace("corporate:", "").trim() : null;
   const sessionUser = await getSessionUser();
 
@@ -272,6 +276,7 @@ export async function bookExpeditionAction(formData: FormData) {
       id: expeditionDepartures.id,
       expeditionId: expeditions.id,
       expeditionTitle: expeditions.title,
+      expeditionSlug: expeditions.slug,
       basePrice: expeditions.basePrice,
       currency: expeditions.currency,
       capacity: expeditionDepartures.capacity,
@@ -347,7 +352,8 @@ export async function bookExpeditionAction(formData: FormData) {
           participantNames,
           availabilityCode: availability.code,
           availabilityMessage: availability.message,
-          attribution: corporateAttribution ?? { type: "personal" }
+          attribution: corporateAttribution ?? { type: "personal" },
+          referralCode
         }
       })
       .returning({ id: expeditionBookings.id });
@@ -417,9 +423,20 @@ export async function bookExpeditionAction(formData: FormData) {
       currency: normalizeCurrency(departure.currency),
       status: paymentState,
       attributionType: corporateAttribution?.type ?? "personal",
-      corporateAccountId: corporateAttribution?.corporateAccountId ?? null
+      corporateAccountId: corporateAttribution?.corporateAccountId ?? null,
+      referralCode
     }
   });
 
-  redirect(`/checkout/success?status=pending&type=expedition&id=${bookingId}`);
+  const successParams = new URLSearchParams({
+    status: "pending",
+    type: "expedition",
+    id: bookingId,
+    expedition: departure.expeditionSlug
+  });
+  if (referralCode) {
+    successParams.set("ref", referralCode);
+  }
+
+  redirect(`/checkout/success?${successParams.toString()}`);
 }
