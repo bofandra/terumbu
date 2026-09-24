@@ -2,12 +2,13 @@
 
 import { FileBadge, Heart, LayoutDashboard, LogOut, Menu, Settings, UserCircle, X } from "lucide-react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { usePathname, useRouter } from "next/navigation";
+import { useState, useTransition } from "react";
 
 import { navItems } from "@/lib/data";
 import { logoutAction } from "@/lib/auth-actions";
 import { cn } from "@/lib/utils";
+import { setPublicPreferencesAction } from "@/lib/user-preferences-actions";
 
 type SiteHeaderUser = {
   displayName: string;
@@ -31,9 +32,69 @@ function levelLabel(heroLevel: number | null) {
   return heroLevel ? `Ocean Hero L${heroLevel}` : "Ocean Hero";
 }
 
-export function SiteHeader({ user }: { user?: SiteHeaderUser | null }) {
+export function SiteHeader({
+  user,
+  locale = "en",
+  displayCurrency = "USD"
+}: {
+  user?: SiteHeaderUser | null;
+  locale?: "en" | "id";
+  displayCurrency?: "USD" | "EUR" | "IDR" | "JPY";
+}) {
   const pathname = usePathname();
+  const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
+  const [isPending, startTransition] = useTransition();
+  const labels =
+    locale === "id"
+      ? {
+          donations: "Donasi",
+          expeditions: "Ekspedisi",
+          academy: "Akademi",
+          impactMap: "Peta Dampak",
+          about: "Tentang",
+          dashboard: "Dasbor",
+          myImpact: "Dampak Saya",
+          settings: "Pengaturan akun",
+          logout: "Keluar",
+          login: "Masuk",
+          apply: "Terapkan"
+        }
+      : {
+          donations: "Donations",
+          expeditions: "Expeditions",
+          academy: "Academy",
+          impactMap: "Impact Map",
+          about: "About",
+          dashboard: "Dashboard",
+          myImpact: "My Impact",
+          settings: "Account settings",
+          logout: "Log out",
+          login: "Login",
+          apply: "Apply"
+        };
+  const localizedNavItems = navItems.map((item) => ({
+    ...item,
+    label:
+      item.href === "/campaigns"
+        ? labels.donations
+        : item.href === "/expeditions"
+          ? labels.expeditions
+          : item.href === "/academy"
+            ? labels.academy
+            : item.href === "/impact-map"
+              ? labels.impactMap
+              : item.href === "/about"
+                ? labels.about
+                : item.label
+  }));
+
+  function updatePreferences(formData: FormData) {
+    startTransition(async () => {
+      await setPublicPreferencesAction(formData);
+      router.refresh();
+    });
+  }
   const initials = user ? initialsForDisplayName(user.displayName) : null;
 
   return (
@@ -47,7 +108,7 @@ export function SiteHeader({ user }: { user?: SiteHeaderUser | null }) {
         </Link>
 
         <nav className="hidden items-center gap-1 xl:flex" aria-label="Main navigation">
-          {navItems.map((item) => {
+          {localizedNavItems.map((item) => {
             const isActive = item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
 
             return (
@@ -66,6 +127,20 @@ export function SiteHeader({ user }: { user?: SiteHeaderUser | null }) {
         </nav>
 
         <div className="hidden items-center gap-2 xl:flex">
+          <form action={updatePreferences} className="flex items-center gap-1 rounded-full border border-white/15 bg-white/8 p-1">
+            <select name="locale" defaultValue={locale} aria-label="Language" className="rounded-full bg-transparent px-2 py-2 text-xs font-bold text-white outline-none">
+              <option value="en" className="text-ocean-900">EN</option>
+              <option value="id" className="text-ocean-900">ID</option>
+            </select>
+            <select name="currency" defaultValue={displayCurrency} aria-label="Display currency" className="rounded-full bg-transparent px-2 py-2 text-xs font-bold text-white outline-none">
+              {["USD", "EUR", "IDR", "JPY"].map((currency) => (
+                <option key={currency} value={currency} className="text-ocean-900">{currency}</option>
+              ))}
+            </select>
+            <button type="submit" disabled={isPending} className="rounded-full bg-white/12 px-2.5 py-2 text-xs font-bold text-white hover:bg-white/20 disabled:opacity-50">
+              {isPending ? "…" : labels.apply}
+            </button>
+          </form>
           {user ? (
             <details className="group relative">
               <summary className="flex min-h-11 cursor-pointer list-none items-center gap-3 rounded-full px-2 py-1 text-left transition hover:bg-white/10">
@@ -82,20 +157,20 @@ export function SiteHeader({ user }: { user?: SiteHeaderUser | null }) {
                 </div>
                 <Link href={user.dashboardHref} className="mt-2 flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-bold hover:bg-ocean-50">
                   <LayoutDashboard size={16} aria-hidden="true" />
-                  Dashboard
+                  {labels.dashboard}
                 </Link>
                 <Link href="/dashboard/impact" className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-bold hover:bg-ocean-50">
                   <FileBadge size={16} aria-hidden="true" />
-                  My Impact
+                  {labels.myImpact}
                 </Link>
                 <Link href="/dashboard/settings" className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-bold hover:bg-ocean-50">
                   <Settings size={16} aria-hidden="true" />
-                  Account settings
+                  {labels.settings}
                 </Link>
                 <form action={logoutAction}>
                   <button type="submit" className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-sm font-bold text-coral-700 hover:bg-coral-100">
                     <LogOut size={16} aria-hidden="true" />
-                    Log out
+                    {labels.logout}
                   </button>
                 </form>
               </div>
@@ -107,7 +182,7 @@ export function SiteHeader({ user }: { user?: SiteHeaderUser | null }) {
               aria-label="Login"
             >
               <UserCircle size={19} aria-hidden="true" />
-              Login
+              {labels.login}
             </Link>
           )}
         </div>
@@ -124,7 +199,19 @@ export function SiteHeader({ user }: { user?: SiteHeaderUser | null }) {
       {isOpen ? (
         <div className="border-t border-white/10 bg-ocean-900 px-4 py-5 lg:hidden">
           <nav className="grid gap-2" aria-label="Mobile navigation">
-            {navItems.map((item) => (
+            <form action={updatePreferences} className="mb-3 grid grid-cols-[1fr_1fr_auto] gap-2 rounded-xl border border-white/12 bg-white/8 p-2">
+              <select name="locale" defaultValue={locale} aria-label="Language" className="min-h-10 rounded-lg bg-white px-2 text-sm font-bold text-ocean-900">
+                <option value="en">English</option>
+                <option value="id">Indonesia</option>
+              </select>
+              <select name="currency" defaultValue={displayCurrency} aria-label="Display currency" className="min-h-10 rounded-lg bg-white px-2 text-sm font-bold text-ocean-900">
+                {["USD", "EUR", "IDR", "JPY"].map((currency) => <option key={currency} value={currency}>{currency}</option>)}
+              </select>
+              <button type="submit" disabled={isPending} className="rounded-lg bg-kelp-500 px-3 text-xs font-bold text-white">
+                {isPending ? "…" : labels.apply}
+              </button>
+            </form>
+            {localizedNavItems.map((item) => (
               <Link
                 key={item.href}
                 href={item.href}
@@ -145,17 +232,17 @@ export function SiteHeader({ user }: { user?: SiteHeaderUser | null }) {
                 </div>
                 <div className="mt-3 grid gap-1">
                   <Link href={user.dashboardHref} className="rounded-xl px-3 py-2 text-sm font-semibold text-white/88 hover:bg-white/10" onClick={() => setIsOpen(false)}>
-                    Dashboard
+                    {labels.dashboard}
                   </Link>
                   <Link href="/dashboard/impact" className="rounded-xl px-3 py-2 text-sm font-semibold text-white/88 hover:bg-white/10" onClick={() => setIsOpen(false)}>
-                    My Impact
+                    {labels.myImpact}
                   </Link>
                   <Link href="/dashboard/settings" className="rounded-xl px-3 py-2 text-sm font-semibold text-white/88 hover:bg-white/10" onClick={() => setIsOpen(false)}>
-                    Account settings
+                    {labels.settings}
                   </Link>
                   <form action={logoutAction}>
                     <button type="submit" className="w-full rounded-xl px-3 py-2 text-left text-sm font-semibold text-coral-200 hover:bg-white/10">
-                      Log out
+                      {labels.logout}
                     </button>
                   </form>
                 </div>
@@ -166,7 +253,7 @@ export function SiteHeader({ user }: { user?: SiteHeaderUser | null }) {
                 className="rounded-xl px-3 py-3 text-sm font-semibold text-white/88 hover:bg-white/10"
                 onClick={() => setIsOpen(false)}
               >
-                Login
+                {labels.login}
               </Link>
             )}
           </nav>
