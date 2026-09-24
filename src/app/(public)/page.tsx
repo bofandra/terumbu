@@ -98,24 +98,24 @@ export default async function HomePage() {
           <div className="max-w-3xl text-white">
             <p className="inline-flex items-center gap-2 rounded-full border border-white/30 bg-white/10 px-4 py-2 text-sm font-semibold backdrop-blur">
               <MapPinned size={17} aria-hidden="true" />
-              Indonesia conservation engagement platform
+              Conservation expeditions across Indonesia
             </p>
             <h1 className="mt-7 text-5xl font-bold tracking-normal sm:text-6xl lg:text-7xl">
-              Become an Ocean Hero
+              Travel somewhere worth protecting.
             </h1>
             <p className="mt-6 max-w-2xl text-lg leading-8 text-white/82 sm:text-xl">
-              Fund conservation, explore Indonesia, learn from field teams, and watch your verified impact grow over time.
+              Join conservation expeditions, learn from local field teams, and see the verified impact your journey helps create.
             </p>
             <div className="mt-9 flex flex-col gap-3 sm:flex-row">
-              <ButtonLink href="/campaigns" tone="donation" className="sm:min-w-40">
-                Donate Now
+              <ButtonLink href="/expeditions" tone="donation" className="sm:min-w-48">
+                Explore Expeditions
                 <ArrowRight size={18} aria-hidden="true" />
               </ButtonLink>
-              <ButtonLink href="/expeditions" tone="light" className="sm:min-w-48">
-                Join an Expedition
+              <ButtonLink href="/impact-map" tone="light" className="sm:min-w-44">
+                See Verified Impact
               </ButtonLink>
-              <ButtonLink href="/impact-map" tone="ghost" className="border border-white/28 text-white hover:bg-white/10">
-                Explore Impact
+              <ButtonLink href="/campaigns" tone="ghost" className="border border-white/28 text-white hover:bg-white/10">
+                Support a Project
               </ButtonLink>
             </div>
             <div className="mt-7 flex flex-wrap items-center gap-4 text-sm font-semibold text-white/82">
@@ -134,7 +134,7 @@ export default async function HomePage() {
               ) : null}
               <span className="inline-flex items-center gap-2">
                 <Users size={16} aria-hidden="true" />
-                Donors, travelers, volunteers, and learners
+                Travelers, donors, volunteers, and learners
               </span>
             </div>
           </div>
@@ -160,8 +160,8 @@ export default async function HomePage() {
 
       <section className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8">
         <div className="flex flex-col justify-between gap-6 md:flex-row md:items-end">
-          <SectionHeading eyebrow="Featured campaigns" title="Fund the next conservation milestone">
-            Pick a verified project and see what your contribution helps create in the field.
+          <SectionHeading eyebrow="Support from anywhere" title="Can’t travel yet? Fund the next conservation milestone">
+            Back a verified project now, then follow field activity and evidence as the work progresses.
           </SectionHeading>
           <ButtonLink href="/campaigns" tone="secondary">
             View Campaigns
@@ -177,8 +177,8 @@ export default async function HomePage() {
       <section className="bg-white py-20">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="flex flex-col justify-between gap-6 md:flex-row md:items-end">
-            <SectionHeading eyebrow="Featured destinations" title="Travel with a conservation purpose">
-              Field trips connect participants with restoration teams, local communities, and measurable ecosystem outcomes.
+            <SectionHeading eyebrow="Featured expeditions" title="Go beyond sightseeing">
+              Join field experiences with local conservation teams, clear logistics, verified partners, and impact you can carry into your Impact Passport.
             </SectionHeading>
             <ButtonLink href="/expeditions" tone="secondary">
               Explore Trips
@@ -201,7 +201,7 @@ export default async function HomePage() {
 
       <section className="bg-ocean-50 py-20">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <SectionHeading eyebrow="How it works" title="One journey from care to verified action" />
+          <SectionHeading eyebrow="How it works" title="Discover → travel → contribute → verify → share" />
           <div className="mt-10 grid gap-5 md:grid-cols-2 lg:grid-cols-4">
             {journey.map((item) => {
               const Icon = item.icon;
@@ -222,8 +222,8 @@ export default async function HomePage() {
 
       <section className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8">
         <div className="grid gap-10 lg:grid-cols-[0.9fr_1.1fr] lg:items-center">
-          <SectionHeading eyebrow="Digital Impact Passport" title="Make every contribution part of a lifelong record">
-            Donations, sponsored corals, expeditions, courses, volunteer hours, and certificates become a verified profile users can keep and share.
+          <SectionHeading eyebrow="Digital Impact Passport" title="Your trip should leave more than photos">
+            Donations, field expeditions, sponsored ecosystems, learning, volunteer hours, and certificates become a verified conservation record you can keep and share.
           </SectionHeading>
           <PassportPreview passport={passport?.preview ?? fallbackPassport} />
         </div>
