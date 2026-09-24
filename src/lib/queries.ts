@@ -136,6 +136,7 @@ import {
 import { corporateCapabilitiesForPermission } from "@/lib/corporate-permissions";
 import { corporateReportFormatLabel, corporateReportTypeLabel, scheduledReportIsDue } from "@/lib/corporate-report-lifecycle";
 import { evidenceReviewActionLabel, evidenceReviewStage, evidenceStatusLabel, evidenceVerificationStatuses } from "@/lib/evidence-review-workflow";
+import { getPublishedExpeditionMedia } from "@/lib/expedition-media";
 import {
   buildDefaultExpeditionDetailMetadata,
   expeditionMetadataEditorJson,
@@ -1288,7 +1289,7 @@ export async function getExpeditionDetail(slug: string) {
     return null;
   }
 
-  const [departures, relatedSites, updateRows, evidenceRows, courseRows, relatedExpeditionRows, reviewRows, participantSummaryRows] = await Promise.all([
+  const [departures, relatedSites, updateRows, evidenceRows, courseRows, relatedExpeditionRows, reviewRows, participantSummaryRows, travelerMediaRows] = await Promise.all([
     db
       .select({
         id: expeditionDepartures.id,
@@ -1361,7 +1362,8 @@ export async function getExpeditionDetail(slug: string) {
         bookingCount: sql<number>`count(${expeditionBookings.id})`
       })
       .from(expeditionBookings)
-      .where(and(eq(expeditionBookings.expeditionId, row.id), inArray(expeditionBookings.status, ["confirmed", "completed"])))
+      .where(and(eq(expeditionBookings.expeditionId, row.id), inArray(expeditionBookings.status, ["confirmed", "completed"]))),
+    getPublishedExpeditionMedia(row.id)
   ]);
 
   const mappedDepartures = departures.map((departure) => {
@@ -1602,6 +1604,10 @@ export async function getExpeditionDetail(slug: string) {
     finalCta: expeditionMetadata.finalCta,
     weatherAdvisory: expeditionMetadata.weatherAdvisory,
     bookingTrustIndicators: expeditionMetadata.bookingTrustIndicators,
+    travelerMedia: travelerMediaRows.map((item) => ({
+      ...item,
+      travelerName: item.travelerName ?? item.travelerUserName ?? "Verified participant"
+    })),
     relatedExpeditions: relatedExpeditionRows.filter((item) => item.slug !== row.slug).slice(0, 3)
   };
 }
