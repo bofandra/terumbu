@@ -3,6 +3,8 @@ import Image from "next/image";
 import { ArrowRight, BookmarkX, CalendarDays, Heart, RefreshCw, Star } from "lucide-react";
 
 import { ExpeditionCalendarActions } from "@/components/expedition-calendar-actions";
+import { cancelExpeditionReminderAction, scheduleSavedExpeditionReminderAction } from "@/lib/expedition-reminder-actions";
+import { getUserExpeditionReminders } from "@/lib/expedition-reminders";
 import { retryExpeditionPaymentAction } from "@/lib/billing-actions";
 import { submitExpeditionReviewAction } from "@/lib/expedition-review-actions";
 import { expeditionReviewStatusLabel, normalizeExpeditionReviewStatus, type ExpeditionReviewStatus } from "@/lib/expedition-reviews";
@@ -83,7 +85,11 @@ function reviewStatusDescription(status: ExpeditionReviewStatus | null) {
 export default async function DashboardExpeditionsPage({ searchParams }: DashboardExpeditionsPageProps) {
   const params = await searchParams;
   const user = await requireUser("/dashboard/expeditions");
-  const [data, highlightedExpeditions] = await Promise.all([getDashboardData(user.id), getExpeditionCards(3)]);
+  const [data, highlightedExpeditions, reminders] = await Promise.all([
+    getDashboardData(user.id),
+    getExpeditionCards(3),
+    getUserExpeditionReminders(user.id)
+  ]);
 
   return (
     <main className="mx-auto max-w-5xl px-4 py-8 sm:px-6 lg:px-8">
@@ -101,7 +107,11 @@ export default async function DashboardExpeditionsPage({ searchParams }: Dashboa
             ? "Thanks, your expedition review was submitted for moderation."
             : params.saved === "expedition"
               ? "Saved expeditions updated."
-              : "Booking billing changes saved."}
+              : params.saved === "reminder"
+                ? "Expedition reminder scheduled."
+                : params.saved === "reminder-cancelled"
+                  ? "Expedition reminder cancelled."
+                  : "Booking billing changes saved."}
         </p>
       ) : null}
       {params?.error ? (
@@ -112,7 +122,9 @@ export default async function DashboardExpeditionsPage({ searchParams }: Dashboa
               ? "That departure no longer has enough available seats for retry payment."
               : params.error === "expedition"
                 ? "Could not update that saved expedition."
-                : "Could not complete that booking billing action."}
+                : params.error === "reminder"
+                  ? "Could not schedule that reminder."
+                  : "Could not complete that booking billing action."}
         </p>
       ) : null}
 
@@ -182,18 +194,32 @@ export default async function DashboardExpeditionsPage({ searchParams }: Dashboa
                     Saved {expedition.savedAt.toLocaleDateString("id-ID", { dateStyle: "medium" })}
                   </p>
                 </div>
-                <form action={removeSavedExpeditionAction}>
-                  <input type="hidden" name="expeditionSlug" value={expedition.slug} />
-                  <input type="hidden" name="next" value="/dashboard/expeditions" />
-                  <button
-                    type="submit"
-                    aria-label="Remove saved expedition"
-                    className="inline-flex min-h-9 items-center gap-2 rounded-full border border-ocean-900/10 px-3 text-xs font-bold text-coral-700 hover:border-coral-500"
-                  >
-                    <BookmarkX size={14} aria-hidden="true" />
-                    Remove
-                  </button>
-                </form>
+                <div className="grid gap-2 sm:justify-items-end">
+                  <form action={scheduleSavedExpeditionReminderAction} className="flex items-center gap-2">
+                    <input type="hidden" name="expeditionSlug" value={expedition.slug} />
+                    <select name="delayDays" defaultValue="7" className="min-h-9 rounded-full border border-ocean-900/10 bg-white px-3 text-xs font-bold text-ocean-900">
+                      <option value="3">Remind in 3 days</option>
+                      <option value="7">Remind in 7 days</option>
+                      <option value="14">Remind in 14 days</option>
+                      <option value="30">Remind in 30 days</option>
+                    </select>
+                    <button type="submit" className="min-h-9 rounded-full bg-kelp-500 px-3 text-xs font-bold text-white hover:bg-kelp-700">
+                      Remind me
+                    </button>
+                  </form>
+                  <form action={removeSavedExpeditionAction}>
+                    <input type="hidden" name="expeditionSlug" value={expedition.slug} />
+                    <input type="hidden" name="next" value="/dashboard/expeditions" />
+                    <button
+                      type="submit"
+                      aria-label="Remove saved expedition"
+                      className="inline-flex min-h-9 items-center gap-2 rounded-full border border-ocean-900/10 px-3 text-xs font-bold text-coral-700 hover:border-coral-500"
+                    >
+                      <BookmarkX size={14} aria-hidden="true" />
+                      Remove
+                    </button>
+                  </form>
+                </div>
               </div>
             </article>
           ))}
@@ -205,6 +231,31 @@ export default async function DashboardExpeditionsPage({ searchParams }: Dashboa
           </p>
         ) : null}
       </section>
+
+      {reminders.length > 0 ? (
+        <section className="mt-6 rounded-2xl border border-ocean-900/10 bg-white p-5 shadow-soft">
+          <h2 className="text-2xl font-bold tracking-normal text-ocean-900">Scheduled reminders</h2>
+          <p className="mt-1 text-sm font-semibold text-ocean-900/58">In-app and email reminders follow your expedition notification preference.</p>
+          <div className="mt-4 grid gap-3">
+            {reminders.map((reminder) => (
+              <article key={reminder.id} className="flex flex-col justify-between gap-3 rounded-xl bg-sand-50 p-4 sm:flex-row sm:items-center">
+                <div>
+                  <Link href={`/expeditions/${reminder.expeditionSlug}`} className="font-bold text-ocean-900 hover:text-coral-700">{reminder.expeditionTitle}</Link>
+                  <p className="mt-1 text-sm text-ocean-900/58">
+                    Reminder {reminder.remindAt.toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short" })}
+                  </p>
+                </div>
+                <form action={cancelExpeditionReminderAction}>
+                  <input type="hidden" name="reminderId" value={reminder.id} />
+                  <button type="submit" className="min-h-9 rounded-full border border-ocean-900/10 px-3 text-xs font-bold text-coral-700 hover:border-coral-500">
+                    Cancel reminder
+                  </button>
+                </form>
+              </article>
+            ))}
+          </div>
+        </section>
+      ) : null}
 
       <section className="mt-6 grid gap-4">
         {data.bookings.map((booking) => {
