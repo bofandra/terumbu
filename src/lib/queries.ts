@@ -6317,7 +6317,7 @@ export async function getAdminOperationsData() {
         summary: expeditions.summary,
         imageUrl: expeditions.imageUrl,
         metadata: expeditions.metadata,
-        status: expeditions.status,
+        publicationStatus: expeditions.status,
         publishedAt: expeditions.publishedAt,
         updatedAt: expeditions.updatedAt,
         relatedCampaignId: expeditions.relatedCampaignId,
@@ -6327,7 +6327,7 @@ export async function getAdminOperationsData() {
         endsAt: expeditionDepartures.endsAt,
         capacity: expeditionDepartures.capacity,
         seatsBooked: expeditionDepartures.seatsBooked,
-        status: expeditionDepartures.status,
+        departureStatus: expeditionDepartures.status,
         departureMetadata: expeditionDepartures.metadata
       })
       .from(expeditions)
@@ -6609,7 +6609,7 @@ export async function getAdminOperationsData() {
         summary: row.summary,
         imageUrl: row.imageUrl,
         metadata: row.metadata,
-        status: row.status,
+        status: row.publicationStatus,
         publishedAt: row.publishedAt,
         updatedAt: row.updatedAt,
         metadataJson: "",
@@ -6626,10 +6626,10 @@ export async function getAdminOperationsData() {
       expeditionCatalogById.set(row.id, expedition);
     }
 
-    if (row.departureId && row.startsAt && row.endsAt && row.capacity !== null && row.seatsBooked !== null && row.status) {
+    if (row.departureId && row.startsAt && row.endsAt && row.capacity !== null && row.seatsBooked !== null && row.departureStatus) {
       const minParticipants = getMetadataNumber(row.departureMetadata, "minParticipants", 6);
       const availability = expeditionDepartureAvailability({
-        status: row.status,
+        status: row.departureStatus,
         capacity: row.capacity,
         seatsBooked: row.seatsBooked,
         minParticipants
@@ -6642,7 +6642,7 @@ export async function getAdminOperationsData() {
         capacity: row.capacity,
         seatsBooked: row.seatsBooked,
         availableSeats: availability.availableSeats,
-        status: row.status,
+        status: row.departureStatus,
         bookingCount: departureBookingCounts.get(row.departureId) ?? 0,
         meetingPoint: getMetadataString(row.departureMetadata, "meetingPoint"),
         guide: getMetadataString(row.departureMetadata, "guide"),
@@ -6671,7 +6671,7 @@ export async function getAdminOperationsData() {
       contactName: row.contactName,
       contactEmail: row.contactEmail,
       participantsCount: row.participantsCount,
-      status: row.status,
+      status: row.departureStatus,
       paymentStatus: row.paymentStatus,
       totalAmount: toNumber(row.totalAmount),
       currency: row.currency,
