@@ -31,6 +31,7 @@ import { notFound } from "next/navigation";
 
 import { ExpeditionMobileBookingBar } from "@/components/expedition-booking-card";
 import { ExpeditionCard } from "@/components/expedition-card";
+import { ExpeditionCalendarActions } from "@/components/expedition-calendar-actions";
 import { ExpeditionHeroGallery } from "@/components/expedition-hero-gallery";
 import { ExpeditionShareButtons } from "@/components/expedition-share-buttons";
 import { ExpeditionSectionTabs } from "@/components/expedition-section-tabs";
@@ -390,7 +391,16 @@ export default async function ExpeditionDetailPage({
                         {departure.statusLabel}
                       </span>
                       {departure.status === "open" && departure.availableSeats > 0 ? (
+                        <div className="flex flex-wrap items-center justify-end gap-2">
+                        <ExpeditionCalendarActions
+                          title={expedition.title}
+                          startsAt={departure.startsAt}
+                          endsAt={departure.endsAt}
+                          location={departure.meetingPoint ?? expedition.region}
+                          description={`${expedition.summary} — Terumbu.eco conservation expedition`}
+                        />
                         <CheckoutLink departureId={departure.id} />
+                      </div>
                       ) : (
                         <form action={submitExpeditionInterestRequestAction} className="grid gap-2 rounded-md border border-ocean-900/10 bg-ocean-50 p-3">
                           <input type="hidden" name="next" value={requestNextPath} />
