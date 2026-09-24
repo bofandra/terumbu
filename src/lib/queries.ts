@@ -1107,7 +1107,11 @@ export async function getCampaignUpdateDetail(campaignSlug: string, updateId: st
     .from(campaignUpdates)
     .innerJoin(campaigns, eq(campaignUpdates.campaignId, campaigns.id))
     .innerJoin(organizations, eq(campaigns.organizationId, organizations.id))
-    .where(and(eq(campaigns.slug, campaignSlug), eq(campaignUpdates.id, updateId)))
+    .where(and(
+      eq(campaigns.slug, campaignSlug),
+      eq(campaignUpdates.id, updateId),
+      inArray(campaigns.status, ["published", "funded", "completed"])
+    ))
     .limit(1);
 
   return update
@@ -1226,6 +1230,7 @@ export async function getExpeditionRegions() {
       region: expeditions.region
     })
     .from(expeditions)
+    .where(eq(expeditions.status, "published"))
     .groupBy(expeditions.region)
     .orderBy(asc(expeditions.region));
 
