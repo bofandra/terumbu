@@ -23,7 +23,7 @@ type PartnerNavItem = {
 
 const partnerNavItems: PartnerNavItem[] = [
   { href: "/partner", label: "Overview", icon: LayoutDashboard },
-  { href: "/partner/campaigns", label: "Projects", icon: FileCheck2 },
+  { href: "/partner/campaigns", label: "Campaigns", icon: FileCheck2 },
   { href: "/partner/expeditions", label: "Expeditions", icon: ShipWheel }
 ];
 
@@ -67,7 +67,7 @@ export function PartnerShell({ children, displayName, roleLabel }: { children: R
           <nav className="mt-5 flex gap-2 overflow-x-auto pb-1 lg:grid lg:overflow-visible lg:pb-0" aria-label="Partner sections">
             {partnerNavItems.map((item) => {
               const Icon = item.icon;
-              const isActive = pathname === item.href;
+              const isActive = pathname === item.href || (item.href !== "/partner" && pathname.startsWith(`${item.href}/`));
 
               return (
                 <Link
