@@ -1659,7 +1659,11 @@ export async function getImpactMapSites(campaignId?: string): Promise<ImpactSite
     .from(impactSites)
     .leftJoin(campaigns, eq(impactSites.campaignId, campaigns.id))
     .leftJoin(organizations, eq(campaigns.organizationId, organizations.id))
-    .where(campaignId ? eq(impactSites.campaignId, campaignId) : undefined)
+    .where(
+      campaignId
+        ? eq(impactSites.campaignId, campaignId)
+        : inArray(campaigns.status, ["published", "funded", "completed"])
+    )
     .orderBy(asc(impactSites.name));
 
   if (rows.length === 0) {
