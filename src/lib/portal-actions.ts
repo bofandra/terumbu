@@ -3491,11 +3491,13 @@ export async function updateExpeditionPublicationStatusAction(formData: FormData
   const [expedition] = await db
     .select({
       id: expeditions.id,
+      title: expeditions.title,
       status: expeditions.status,
       publishedAt: expeditions.publishedAt,
       imageUrl: expeditions.imageUrl,
       relatedCampaignId: expeditions.relatedCampaignId,
-      relatedCampaignStatus: campaigns.status
+      relatedCampaignStatus: campaigns.status,
+      organizationId: campaigns.organizationId
     })
     .from(expeditions)
     .leftJoin(campaigns, eq(expeditions.relatedCampaignId, campaigns.id))
@@ -3549,6 +3551,18 @@ export async function updateExpeditionPublicationStatusAction(formData: FormData
         relatedCampaignId: expedition.relatedCampaignId
       }
     });
+  });
+
+  await notifyPartnerOrganizationReview({
+    organizationId: expedition.organizationId,
+    subject: nextStatus === "published" ? `${expedition.title} is now published` : `Changes requested for ${expedition.title}`,
+    template: nextStatus === "published" ? "expedition_publication_approved" : "expedition_changes_requested",
+    payload: {
+      expeditionId: expedition.id,
+      expedition: expedition.title,
+      status: nextStatus,
+      reviewNote: reviewNote ?? ""
+    }
   });
 
   redirect(withAdminFormOutcome(`/admin/expeditions/${expedition.id}`, "saved", nextStatus === "published" ? "expedition-published" : "expedition-changes-requested"));
@@ -3793,6 +3807,38 @@ export async function deleteAdminCampaignAction(formData: FormData) {
   redirectAdminCampaignError("partner-owned", formData);
 }
 
+async function notifyPartnerOrganizationReview(input: {
+  organizationId: string | null;
+  subject: string;
+  template: string;
+  payload: Record<string, unknown>;
+}) {
+  if (!input.organizationId) {
+    return;
+  }
+
+  const recipients = await db
+    .select({
+      userId: users.id,
+      email: users.email
+    })
+    .from(organizationUsers)
+    .innerJoin(users, eq(organizationUsers.userId, users.id))
+    .where(and(eq(organizationUsers.organizationId, input.organizationId), eq(organizationUsers.status, "active")));
+
+  await Promise.allSettled(
+    recipients.map((recipient) =>
+      sendTransactionalEmail({
+        userId: recipient.userId,
+        recipientEmail: recipient.email,
+        subject: input.subject,
+        template: input.template,
+        payload: input.payload
+      })
+    )
+  );
+}
+
 export async function updateCampaignStatusAction(formData: FormData) {
   const user = await requireRole(["admin"], "/admin/campaigns");
   const campaignId = formText(formData, "campaignId");
@@ -3848,6 +3894,18 @@ export async function updateCampaignStatusAction(formData: FormData) {
         organizationId: campaign.organizationId
       }
     });
+  });
+
+  await notifyPartnerOrganizationReview({
+    organizationId: campaign.organizationId,
+    subject: nextStatus === "published" ? `${campaign.title} is now published` : `Changes requested for ${campaign.title}`,
+    template: nextStatus === "published" ? "campaign_publication_approved" : "campaign_changes_requested",
+    payload: {
+      campaignId: campaign.id,
+      campaign: campaign.title,
+      status: nextStatus,
+      reviewNote: reviewNote ?? ""
+    }
   });
 
   redirectAdminCampaignSaved(nextStatus === "published" ? "campaign-published" : "campaign-changes-requested", formData);
