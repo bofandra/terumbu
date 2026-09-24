@@ -734,6 +734,45 @@ export const expeditionParticipants = pgTable("expedition_participants", {
   bookingIdx: index("expedition_participants_booking_idx").on(table.bookingId)
 }));
 
+export const expeditionReminders = pgTable("expedition_reminders", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  expeditionId: uuid("expedition_id").notNull().references(() => expeditions.id, { onDelete: "cascade" }),
+  departureId: uuid("departure_id").references(() => expeditionDepartures.id, { onDelete: "cascade" }),
+  remindAt: timestamp("remind_at", { withTimezone: true }).notNull(),
+  channel: varchar("channel", { length: 40 }).default("in_app_email").notNull(),
+  status: varchar("status", { length: 40 }).default("scheduled").notNull(),
+  sentAt: timestamp("sent_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull()
+}, (table) => ({
+  userIdx: index("expedition_reminders_user_idx").on(table.userId),
+  dueIdx: index("expedition_reminders_due_idx").on(table.status, table.remindAt),
+  expeditionIdx: index("expedition_reminders_expedition_idx").on(table.expeditionId),
+  uniqueReminderIdx: uniqueIndex("expedition_reminders_unique_idx").on(table.userId, table.expeditionId, table.remindAt)
+}));
+
+export const expeditionMediaSubmissions = pgTable("expedition_media_submissions", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  expeditionId: uuid("expedition_id").notNull().references(() => expeditions.id, { onDelete: "cascade" }),
+  bookingId: uuid("booking_id").notNull().references(() => expeditionBookings.id, { onDelete: "cascade" }),
+  userId: uuid("user_id").references(() => users.id, { onDelete: "set null" }),
+  mediaType: varchar("media_type", { length: 40 }).default("photo").notNull(),
+  mediaUrl: text("media_url").notNull(),
+  caption: text("caption"),
+  status: varchar("status", { length: 40 }).default("pending").notNull(),
+  reviewedByUserId: uuid("reviewed_by_user_id").references(() => users.id, { onDelete: "set null" }),
+  reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
+  rejectionReason: text("rejection_reason"),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull()
+}, (table) => ({
+  expeditionIdx: index("expedition_media_submissions_expedition_idx").on(table.expeditionId),
+  bookingIdx: index("expedition_media_submissions_booking_idx").on(table.bookingId),
+  userIdx: index("expedition_media_submissions_user_idx").on(table.userId),
+  statusIdx: index("expedition_media_submissions_status_idx").on(table.status)
+}));
+
 export const expeditionBookingPayments = pgTable("expedition_booking_payments", {
   id: uuid("id").defaultRandom().primaryKey(),
   bookingId: uuid("booking_id").notNull(),
