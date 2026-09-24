@@ -2,12 +2,15 @@ import Link from "next/link";
 import { ArrowUpRight, Building2, Image as ImageIcon, MapPinned, ShieldCheck } from "lucide-react";
 import { notFound } from "next/navigation";
 
+import { AdminAlert } from "@/components/admin/admin-alert";
 import { AdminPageHeader, AdminStatusBadge, adminPanelClassName } from "@/components/admin-ui";
+import { Button } from "@/components/ui/button";
 import { FormTabs } from "@/components/ui/form-tabs";
 import { MetricValue } from "@/components/ui/metric-value";
 import { ProgressMeter } from "@/components/ui/progress-meter";
 import { observeAdminDataLoader } from "@/lib/admin-observability";
 import { requireRole } from "@/lib/auth";
+import { updateCampaignStatusAction } from "@/lib/portal-actions";
 import { getAdminCampaignWorkspaceData } from "@/lib/queries";
 import { formatCurrency } from "@/lib/utils";
 
@@ -21,6 +24,22 @@ type AdminCampaignDetailPageProps = {
   params: Promise<{
     campaignId: string;
   }>;
+  searchParams?: Promise<{
+    saved?: string;
+    error?: string;
+  }>;
+};
+
+const savedMessages: Record<string, string> = {
+  "campaign-published": "Campaign approved and published.",
+  "campaign-changes-requested": "Campaign returned to draft for partner revision."
+};
+
+const errorMessages: Record<string, string> = {
+  campaign: "Choose a valid publication decision.",
+  "campaign-missing": "Campaign was not found.",
+  "campaign-review-state": "Only campaigns currently in review can be moderated.",
+  "campaign-not-ready": "Publication requires at least one linked impact site."
 };
 
 function fundingProgress(raisedAmount: string | number, goalAmount: string | number) {
@@ -38,8 +57,8 @@ function labelize(value: string) {
   return value.replace(/_/g, " ");
 }
 
-export default async function AdminCampaignDetailPage({ params }: AdminCampaignDetailPageProps) {
-  const { campaignId } = await params;
+export default async function AdminCampaignDetailPage({ params, searchParams }: AdminCampaignDetailPageProps) {
+  const [{ campaignId }, query] = await Promise.all([params, searchParams]);
   await requireRole(["admin"], `/admin/campaigns/${campaignId}`);
   const data = await observeAdminDataLoader("admin.campaign.workspace", () => getAdminCampaignWorkspaceData(campaignId));
 
@@ -49,6 +68,8 @@ export default async function AdminCampaignDetailPage({ params }: AdminCampaignD
 
   const campaign = data.campaign;
   const progress = fundingProgress(campaign.raisedAmount, campaign.goalAmount);
+  const savedMessage = query?.saved ? savedMessages[query.saved] ?? "Campaign moderation saved." : null;
+  const errorMessage = query?.error ? errorMessages[query.error] ?? "Campaign moderation could not be saved." : null;
 
   return (
     <div className="space-y-6">
@@ -60,13 +81,16 @@ export default async function AdminCampaignDetailPage({ params }: AdminCampaignD
         actionLabel="Donation list"
       />
 
+      {savedMessage ? <AdminAlert tone="success">{savedMessage}</AdminAlert> : null}
+      {errorMessage ? <AdminAlert tone="error">{errorMessage}</AdminAlert> : null}
+
       <section className="rounded-lg border border-kelp-700/20 bg-kelp-100/50 p-4 shadow-soft">
         <div className="flex items-start gap-3">
           <ShieldCheck className="mt-0.5 size-5 shrink-0 text-kelp-700" aria-hidden="true" />
           <div>
             <h2 className="font-bold text-ocean-900">Partner-owned record</h2>
             <p className="mt-1 text-sm font-semibold leading-6 text-ocean-900/62">
-              Platform admins can monitor this donation but cannot change campaign content, funding targets, status, impact sites, or partner-owned evidence. Use Partner management to manage the organization and its portal access.
+              Platform admins can monitor this donation and moderate publication, but cannot edit campaign content, funding targets, impact sites, or partner-owned evidence. Use Partner management to manage the organization and its portal access.
             </p>
             <Link href={`/admin/partners/${campaign.organizationId}`} className="mt-3 inline-flex text-sm font-bold text-coral-700 hover:text-coral-500">
               Manage partner organization →
@@ -74,6 +98,41 @@ export default async function AdminCampaignDetailPage({ params }: AdminCampaignD
           </div>
         </div>
       </section>
+
+      {campaign.status === "review" ? (
+        <section className="rounded-lg border border-ocean-900/10 bg-white p-5 shadow-soft">
+          <div className="flex flex-col justify-between gap-3 lg:flex-row lg:items-start">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-[0.14em] text-coral-700">Publication review</p>
+              <h2 className="mt-2 text-xl font-bold text-ocean-900">Review partner submission</h2>
+              <p className="mt-1 max-w-2xl text-sm font-semibold leading-6 text-ocean-900/58">
+                Approval only changes publication status. Campaign content, impact planning, funding targets, and evidence remain partner-owned.
+              </p>
+            </div>
+            <AdminStatusBadge value={campaign.status} />
+          </div>
+          <form action={updateCampaignStatusAction} className="mt-5 grid gap-4">
+            <input type="hidden" name="campaignId" value={campaign.id} />
+            <input type="hidden" name="returnTo" value={`/admin/campaigns/${campaign.id}`} />
+            <label className="grid gap-2 text-sm font-bold text-ocean-900">
+              Review note <span className="font-semibold text-ocean-900/42">(optional)</span>
+              <textarea
+                name="reviewNote"
+                className="min-h-24 rounded-lg border border-ocean-900/14 bg-white px-3 py-3 text-sm font-semibold text-ocean-900 outline-none focus:border-kelp-500 focus-visible:ring-2 focus-visible:ring-kelp-500 focus-visible:ring-offset-2"
+                placeholder="Add context for the partner when requesting revisions."
+              />
+            </label>
+            <div className="flex flex-wrap gap-2">
+              <Button type="submit" name="decision" value="publish">
+                Approve & publish
+              </Button>
+              <Button type="submit" name="decision" value="request_changes" tone="secondary">
+                Request changes
+              </Button>
+            </div>
+          </form>
+        </section>
+      ) : null}
 
       <section className="grid gap-3 md:grid-cols-4" aria-label="Donation monitoring summary">
         {[
@@ -106,10 +165,14 @@ export default async function AdminCampaignDetailPage({ params }: AdminCampaignD
               </div>
               <p className="mt-1 text-sm font-semibold text-ocean-900/58">{campaign.summary}</p>
             </div>
-            <Link href={`/campaigns/${campaign.slug}`} className="inline-flex items-center gap-2 text-sm font-bold text-coral-700 hover:text-coral-500">
-              Public page
-              <ArrowUpRight className="size-4" aria-hidden="true" />
-            </Link>
+            {["published", "funded", "completed"].includes(campaign.status) ? (
+              <Link href={`/campaigns/${campaign.slug}`} className="inline-flex items-center gap-2 text-sm font-bold text-coral-700 hover:text-coral-500">
+                Public page
+                <ArrowUpRight className="size-4" aria-hidden="true" />
+              </Link>
+            ) : (
+              <AdminStatusBadge value={campaign.status} />
+            )}
           </div>
           <div className="grid gap-4 p-4 lg:grid-cols-2">
             <div className="rounded-lg bg-sand-50 p-4">

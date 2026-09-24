@@ -305,10 +305,14 @@ export function PartnerCampaignWorkspace({
               <p className="mt-4 text-sm leading-6 text-ocean-900/62">
                 {campaign.story || "No long-form story has been added yet."}
               </p>
-              <Link href={`/campaigns/${campaign.slug}`} className="mt-5 inline-flex items-center gap-2 text-sm font-bold text-coral-700">
-                Preview public page
-                <ArrowUpRight className="size-4" aria-hidden="true" />
-              </Link>
+              {["published", "funded", "completed"].includes(campaign.status) ? (
+                <Link href={`/campaigns/${campaign.slug}`} className="mt-5 inline-flex items-center gap-2 text-sm font-bold text-coral-700">
+                  View public page
+                  <ArrowUpRight className="size-4" aria-hidden="true" />
+                </Link>
+              ) : (
+                <p className="mt-5 text-sm font-bold text-ocean-900/42">Public page is available after publication approval.</p>
+              )}
             </article>
             <div className="min-h-72 rounded-lg bg-ocean-900 bg-cover bg-center p-6 text-white" style={imageBackground(campaign.imageUrl)}>
               <p className="text-xs font-bold uppercase tracking-[0.12em] text-white/72">Public preview</p>

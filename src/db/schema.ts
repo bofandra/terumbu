@@ -23,6 +23,14 @@ export const campaignStatus = pgEnum("campaign_status", [
   "archived"
 ]);
 
+export const expeditionStatus = pgEnum("expedition_status", [
+  "draft",
+  "review",
+  "published",
+  "completed",
+  "archived"
+]);
+
 export const paymentStatus = pgEnum("payment_status", [
   "created",
   "pending",
@@ -607,9 +615,13 @@ export const expeditions = pgTable("expeditions", {
   imageUrl: text("image_url"),
   relatedCampaignId: uuid("related_campaign_id").references(() => campaigns.id, { onDelete: "set null" }),
   metadata: jsonb("metadata"),
-  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull()
+  status: expeditionStatus("status").default("draft").notNull(),
+  publishedAt: timestamp("published_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull()
 }, (table) => ({
-  slugIdx: uniqueIndex("expeditions_slug_idx").on(table.slug)
+  slugIdx: uniqueIndex("expeditions_slug_idx").on(table.slug),
+  statusIdx: index("expeditions_status_idx").on(table.status)
 }));
 
 export const userSavedExpeditions = pgTable("user_saved_expeditions", {

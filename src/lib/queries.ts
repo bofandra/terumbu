@@ -37,6 +37,7 @@ import {
   donationSubscriptions,
   donations,
   evidenceReviewEvents,
+  expeditionBookingPayments,
   expeditionBookings,
   expeditionDepartures,
   expeditionInterestRequests,
@@ -749,7 +750,12 @@ export async function getPartnerProfile(slug: string) {
       })
       .from(campaigns)
       .innerJoin(organizations, eq(campaigns.organizationId, organizations.id))
-      .where(eq(campaigns.organizationId, partner.id))
+      .where(
+        and(
+          eq(campaigns.organizationId, partner.id),
+          inArray(campaigns.status, ["published", "funded", "completed"])
+        )
+      )
       .orderBy(desc(campaigns.publishedAt)),
     db
       .select({
@@ -764,7 +770,13 @@ export async function getPartnerProfile(slug: string) {
       })
       .from(projectEvidence)
       .innerJoin(campaigns, eq(projectEvidence.campaignId, campaigns.id))
-      .where(eq(campaigns.organizationId, partner.id))
+      .where(
+        and(
+          eq(campaigns.organizationId, partner.id),
+          inArray(campaigns.status, ["published", "funded", "completed"]),
+          eq(projectEvidence.verificationStatus, "verified")
+        )
+      )
       .orderBy(desc(projectEvidence.createdAt))
   ]);
 
@@ -872,7 +884,7 @@ export async function getCampaignDetail(slug: string) {
     })
     .from(campaigns)
     .innerJoin(organizations, eq(campaigns.organizationId, organizations.id))
-    .where(eq(campaigns.slug, slug))
+    .where(and(eq(campaigns.slug, slug), inArray(campaigns.status, ["published", "funded", "completed"])))
     .limit(1);
 
   if (!row) {
@@ -902,7 +914,7 @@ export async function getCampaignDetail(slug: string) {
         publishedAt: campaignUpdates.publishedAt
       })
       .from(campaignUpdates)
-      .where(eq(campaignUpdates.campaignId, row.id))
+      .where(and(eq(campaignUpdates.campaignId, row.id), eq(campaignUpdates.status, "published")))
       .orderBy(desc(campaignUpdates.publishedAt)),
     getImpactMapSites(row.id),
     db
@@ -921,7 +933,7 @@ export async function getCampaignDetail(slug: string) {
       })
       .from(projectEvidence)
       .leftJoin(impactSites, eq(projectEvidence.impactSiteId, impactSites.id))
-      .where(eq(projectEvidence.campaignId, row.id))
+      .where(and(eq(projectEvidence.campaignId, row.id), eq(projectEvidence.verificationStatus, "verified")))
       .orderBy(desc(projectEvidence.createdAt)),
     db
       .select({
@@ -1107,7 +1119,11 @@ export async function getCampaignUpdateDetail(campaignSlug: string, updateId: st
     .from(campaignUpdates)
     .innerJoin(campaigns, eq(campaignUpdates.campaignId, campaigns.id))
     .innerJoin(organizations, eq(campaigns.organizationId, organizations.id))
-    .where(and(eq(campaigns.slug, campaignSlug), eq(campaignUpdates.id, updateId)))
+    .where(and(
+      eq(campaigns.slug, campaignSlug),
+      eq(campaignUpdates.id, updateId),
+      inArray(campaigns.status, ["published", "funded", "completed"])
+    ))
     .limit(1);
 
   return update
@@ -1146,7 +1162,7 @@ export async function getExpeditionCards(limitOrOptions?: number | ExpeditionCar
         metadata: expeditions.metadata
       })
       .from(expeditions)
-      .where(selectedRegion ? eq(expeditions.region, selectedRegion) : undefined)
+      .where(and(eq(expeditions.status, "published"), selectedRegion ? eq(expeditions.region, selectedRegion) : undefined))
       .orderBy(asc(expeditions.title)),
     db
       .select({
@@ -1226,6 +1242,7 @@ export async function getExpeditionRegions() {
       region: expeditions.region
     })
     .from(expeditions)
+    .where(eq(expeditions.status, "published"))
     .groupBy(expeditions.region)
     .orderBy(asc(expeditions.region));
 
@@ -1263,7 +1280,7 @@ export async function getExpeditionDetail(slug: string) {
     .from(expeditions)
     .leftJoin(campaigns, eq(expeditions.relatedCampaignId, campaigns.id))
     .leftJoin(organizations, eq(campaigns.organizationId, organizations.id))
-    .where(eq(expeditions.slug, slug))
+    .where(and(eq(expeditions.slug, slug), eq(expeditions.status, "published")))
     .limit(1);
 
   if (!row) {
@@ -1296,7 +1313,7 @@ export async function getExpeditionDetail(slug: string) {
             createdAt: campaignUpdates.createdAt
           })
           .from(campaignUpdates)
-          .where(eq(campaignUpdates.campaignId, row.relatedCampaignId))
+          .where(and(eq(campaignUpdates.campaignId, row.relatedCampaignId), eq(campaignUpdates.status, "published")))
           .orderBy(desc(campaignUpdates.publishedAt))
           .limit(3)
       : Promise.resolve([]),
@@ -1315,7 +1332,7 @@ export async function getExpeditionDetail(slug: string) {
           })
           .from(projectEvidence)
           .leftJoin(impactSites, eq(projectEvidence.impactSiteId, impactSites.id))
-          .where(eq(projectEvidence.campaignId, row.relatedCampaignId))
+          .where(and(eq(projectEvidence.campaignId, row.relatedCampaignId), eq(projectEvidence.verificationStatus, "verified")))
           .orderBy(desc(projectEvidence.verifiedAt))
           .limit(4)
       : Promise.resolve([]),
@@ -1654,7 +1671,11 @@ export async function getImpactMapSites(campaignId?: string): Promise<ImpactSite
     .from(impactSites)
     .leftJoin(campaigns, eq(impactSites.campaignId, campaigns.id))
     .leftJoin(organizations, eq(campaigns.organizationId, organizations.id))
-    .where(campaignId ? eq(impactSites.campaignId, campaignId) : undefined)
+    .where(
+      campaignId
+        ? eq(impactSites.campaignId, campaignId)
+        : inArray(campaigns.status, ["published", "funded", "completed"])
+    )
     .orderBy(asc(impactSites.name));
 
   if (rows.length === 0) {
@@ -4252,6 +4273,7 @@ export async function getExpeditionCheckoutOptions() {
     })
     .from(expeditionDepartures)
     .innerJoin(expeditions, eq(expeditionDepartures.expeditionId, expeditions.id))
+    .where(eq(expeditions.status, "published"))
     .orderBy(asc(expeditionDepartures.startsAt));
 
   return rows
@@ -6311,6 +6333,9 @@ export async function getAdminOperationsData() {
         summary: expeditions.summary,
         imageUrl: expeditions.imageUrl,
         metadata: expeditions.metadata,
+        publicationStatus: expeditions.status,
+        publishedAt: expeditions.publishedAt,
+        updatedAt: expeditions.updatedAt,
         relatedCampaignId: expeditions.relatedCampaignId,
         relatedCampaignTitle: campaigns.title,
         departureId: expeditionDepartures.id,
@@ -6318,7 +6343,7 @@ export async function getAdminOperationsData() {
         endsAt: expeditionDepartures.endsAt,
         capacity: expeditionDepartures.capacity,
         seatsBooked: expeditionDepartures.seatsBooked,
-        status: expeditionDepartures.status,
+        departureStatus: expeditionDepartures.status,
         departureMetadata: expeditionDepartures.metadata
       })
       .from(expeditions)
@@ -6512,6 +6537,9 @@ export async function getAdminOperationsData() {
       summary: string;
       imageUrl: string | null;
       metadata: unknown;
+      status: string;
+      publishedAt: Date | null;
+      updatedAt: Date;
       metadataJson: string;
       detailMetadata: ReturnType<typeof normalizeExpeditionDetailMetadata> | null;
       marketplaceMetadata: ReturnType<typeof normalizeExpeditionMarketplaceMetadata> | null;
@@ -6597,6 +6625,9 @@ export async function getAdminOperationsData() {
         summary: row.summary,
         imageUrl: row.imageUrl,
         metadata: row.metadata,
+        status: row.publicationStatus,
+        publishedAt: row.publishedAt,
+        updatedAt: row.updatedAt,
         metadataJson: "",
         detailMetadata: null,
         marketplaceMetadata: null,
@@ -6611,10 +6642,10 @@ export async function getAdminOperationsData() {
       expeditionCatalogById.set(row.id, expedition);
     }
 
-    if (row.departureId && row.startsAt && row.endsAt && row.capacity !== null && row.seatsBooked !== null && row.status) {
+    if (row.departureId && row.startsAt && row.endsAt && row.capacity !== null && row.seatsBooked !== null && row.departureStatus) {
       const minParticipants = getMetadataNumber(row.departureMetadata, "minParticipants", 6);
       const availability = expeditionDepartureAvailability({
-        status: row.status,
+        status: row.departureStatus,
         capacity: row.capacity,
         seatsBooked: row.seatsBooked,
         minParticipants
@@ -6627,7 +6658,7 @@ export async function getAdminOperationsData() {
         capacity: row.capacity,
         seatsBooked: row.seatsBooked,
         availableSeats: availability.availableSeats,
-        status: row.status,
+        status: row.departureStatus,
         bookingCount: departureBookingCounts.get(row.departureId) ?? 0,
         meetingPoint: getMetadataString(row.departureMetadata, "meetingPoint"),
         guide: getMetadataString(row.departureMetadata, "guide"),
@@ -7484,7 +7515,10 @@ export async function getAdminExpeditionsPage(params: AdminExpeditionFilters = {
       currency: expeditions.currency,
       relatedCampaignId: expeditions.relatedCampaignId,
       relatedCampaignTitle: campaigns.title,
+      status: expeditions.status,
+      publishedAt: expeditions.publishedAt,
       createdAt: expeditions.createdAt,
+      updatedAt: expeditions.updatedAt,
       departureCount: departureCountValue,
       openDepartureCount: openDepartureCountValue,
       availableSeats: availableSeatsValue,
@@ -8928,6 +8962,9 @@ export async function getPartnerPortalData(userId?: string) {
         summary: expeditions.summary,
         imageUrl: expeditions.imageUrl,
         metadata: expeditions.metadata,
+        publicationStatus: expeditions.status,
+        publishedAt: expeditions.publishedAt,
+        updatedAt: expeditions.updatedAt,
         relatedCampaignId: expeditions.relatedCampaignId,
         relatedCampaignTitle: campaigns.title,
         organizationId: campaigns.organizationId,
@@ -9099,6 +9136,9 @@ export async function getPartnerPortalData(userId?: string) {
       summary: string;
       imageUrl: string | null;
       metadata: unknown;
+      status: string;
+      publishedAt: Date | null;
+      updatedAt: Date;
       metadataJson: string;
       detailMetadata: ReturnType<typeof normalizeExpeditionDetailMetadata> | null;
       marketplaceMetadata: ReturnType<typeof normalizeExpeditionMarketplaceMetadata> | null;
@@ -9154,6 +9194,9 @@ export async function getPartnerPortalData(userId?: string) {
         summary: row.summary,
         imageUrl: row.imageUrl,
         metadata: row.metadata,
+        status: row.publicationStatus,
+        publishedAt: row.publishedAt,
+        updatedAt: row.updatedAt,
         metadataJson: "",
         detailMetadata: null,
         marketplaceMetadata: null,
@@ -10524,6 +10567,160 @@ export async function getAdminPaymentsPage(params: AdminPaymentFilters = {}) {
   };
 }
 
+
+export type AdminExpeditionPaymentFilters = {
+  q?: string | string[];
+  page?: string | string[];
+  pageSize?: string | string[];
+  sort?: string | string[];
+  dir?: string | string[];
+  queue?: string | string[];
+};
+
+const adminExpeditionPaymentSorts = ["createdAt", "amount", "expedition", "bookingCode", "paymentStatus"] as const;
+
+export async function getAdminExpeditionPaymentsPage(params: AdminExpeditionPaymentFilters = {}) {
+  const query = parseAdminListQuery(
+    {
+      q: params.q,
+      page: params.page,
+      pageSize: params.pageSize,
+      sort: params.sort,
+      dir: params.dir
+    },
+    {
+      defaultSort: "createdAt",
+      defaultDir: "asc",
+      allowedSorts: adminExpeditionPaymentSorts,
+      defaultPageSize: 20,
+      maxPageSize: 100
+    }
+  );
+  const queueCandidate = cleanAdminDirectoryFilter(params.queue, 40);
+  const queue = ["all", "payment", "refund"].includes(queueCandidate) ? queueCandidate : "all";
+  const pendingRefund = sql`exists (
+    select 1 from payment_operations po
+    where po.booking_id = ${expeditionBookings.id}
+      and po.status = 'pending'
+      and po.operation_type = 'refund'
+  )`;
+  const paymentNeedsAction = inArray(expeditionBookings.paymentStatus, ["created", "pending", "failed", "expired"]);
+  const conditions = [queue === "refund" ? pendingRefund : queue === "payment" ? paymentNeedsAction : or(paymentNeedsAction, pendingRefund)!];
+
+  if (query.q) {
+    const pattern = `%${query.q.toLowerCase()}%`;
+    conditions.push(
+      or(
+        sql`lower(${expeditions.title}) like ${pattern}`,
+        sql`lower(${expeditionBookings.bookingCode}) like ${pattern}`,
+        sql`lower(${expeditionBookings.contactName}) like ${pattern}`,
+        sql`lower(${expeditionBookings.contactEmail}) like ${pattern}`
+      )!
+    );
+  }
+
+  const whereClause = and(...conditions);
+  const sortColumn =
+    query.sort === "amount"
+      ? expeditionBookings.totalAmount
+      : query.sort === "expedition"
+        ? expeditions.title
+        : query.sort === "bookingCode"
+          ? expeditionBookings.bookingCode
+          : query.sort === "paymentStatus"
+            ? expeditionBookings.paymentStatus
+            : expeditionBookings.bookedAt;
+
+  const [totalRows, summaryRows] = await Promise.all([
+    db
+      .select({ total: sql<number>`count(*)::int` })
+      .from(expeditionBookings)
+      .innerJoin(expeditions, eq(expeditionBookings.expeditionId, expeditions.id))
+      .where(whereClause),
+    db
+      .select({
+        payment: sql<number>`count(*) filter (where ${expeditionBookings.paymentStatus} in ('created', 'pending', 'failed', 'expired'))::int`,
+        refund: sql<number>`count(*) filter (where ${pendingRefund})::int`
+      })
+      .from(expeditionBookings)
+      .innerJoin(expeditions, eq(expeditionBookings.expeditionId, expeditions.id))
+  ]);
+
+  const totalItems = Number(totalRows[0]?.total ?? 0);
+  const pagination = adminPaginationMeta(totalItems, query);
+  const rows = await db
+    .select({
+      id: expeditionBookings.id,
+      bookingCode: expeditionBookings.bookingCode,
+      contactName: expeditionBookings.contactName,
+      contactEmail: expeditionBookings.contactEmail,
+      participantsCount: expeditionBookings.participantsCount,
+      bookingStatus: expeditionBookings.status,
+      paymentStatus: expeditionBookings.paymentStatus,
+      totalAmount: expeditionBookings.totalAmount,
+      currency: expeditionBookings.currency,
+      bookedAt: expeditionBookings.bookedAt,
+      expeditionTitle: expeditions.title,
+      expeditionSlug: expeditions.slug,
+      providerReference: expeditionBookingPayments.providerReference
+    })
+    .from(expeditionBookings)
+    .innerJoin(expeditions, eq(expeditionBookings.expeditionId, expeditions.id))
+    .leftJoin(expeditionBookingPayments, eq(expeditionBookingPayments.bookingId, expeditionBookings.id))
+    .where(whereClause)
+    .orderBy(query.dir === "desc" ? desc(sortColumn) : asc(sortColumn), asc(expeditionBookings.bookedAt))
+    .limit(pagination.pageSize)
+    .offset(adminListOffset(query, totalItems));
+
+  const bookingIds = rows.map((row) => row.id);
+  const operationRows = bookingIds.length > 0
+    ? await db
+        .select({
+          id: paymentOperations.id,
+          bookingId: paymentOperations.bookingId,
+          operationCode: paymentOperations.operationCode,
+          operationType: paymentOperations.operationType,
+          status: paymentOperations.status,
+          reason: paymentOperations.reason,
+          amount: paymentOperations.amount,
+          currency: paymentOperations.currency,
+          providerReference: paymentOperations.providerReference,
+          metadata: paymentOperations.metadata,
+          createdAt: paymentOperations.createdAt
+        })
+        .from(paymentOperations)
+        .where(and(inArray(paymentOperations.bookingId, bookingIds), eq(paymentOperations.status, "pending")))
+        .orderBy(desc(paymentOperations.createdAt))
+    : [];
+
+  const operationByBooking = new Map<string, (typeof operationRows)[number]>();
+  for (const operation of operationRows) {
+    if (operation.bookingId && !operationByBooking.has(operation.bookingId)) {
+      operationByBooking.set(operation.bookingId, operation);
+    }
+  }
+
+  return {
+    bookings: rows.map((row) => ({
+      ...row,
+      totalAmount: toNumber(row.totalAmount),
+      pendingOperation: operationByBooking.get(row.id) ?? null
+    })),
+    filters: {
+      q: query.q,
+      queue,
+      sort: query.sort ?? "createdAt",
+      dir: query.dir
+    },
+    pagination,
+    summary: {
+      total: totalItems,
+      payment: Number(summaryRows[0]?.payment ?? 0),
+      refund: Number(summaryRows[0]?.refund ?? 0)
+    }
+  };
+}
+
 /**
  * Lightweight, page-specific admin queries.
  *
@@ -10549,8 +10746,18 @@ export async function getAdminDashboardData() {
         ),
       db
         .select({ total: sql<number>`count(*)::int` })
-        .from(paymentOperations)
-        .where(and(eq(paymentOperations.status, "pending"), eq(paymentOperations.entityType, "expedition_booking"))),
+        .from(expeditionBookings)
+        .where(
+          or(
+            inArray(expeditionBookings.paymentStatus, ["created", "pending", "failed", "expired"]),
+            sql`exists (
+              select 1 from payment_operations po
+              where po.booking_id = ${expeditionBookings.id}
+                and po.status = 'pending'
+                and po.operation_type = 'refund'
+            )`
+          )
+        ),
       db.select({ total: sql<number>`count(*)::int` }).from(expeditions),
       db.select({ total: sql<number>`count(*)::int` }).from(organizations),
       db.select({ total: sql<number>`count(*)::int` }).from(corporateReportExports),
@@ -10904,6 +11111,9 @@ export async function getAdminExpeditionWorkspaceData(
       summary: expeditions.summary,
       imageUrl: expeditions.imageUrl,
       metadata: expeditions.metadata,
+      status: expeditions.status,
+      publishedAt: expeditions.publishedAt,
+      updatedAt: expeditions.updatedAt,
       relatedCampaignId: expeditions.relatedCampaignId,
       relatedCampaignTitle: campaigns.title
     })

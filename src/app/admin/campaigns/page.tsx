@@ -201,9 +201,13 @@ export default async function AdminProjectsPage({ searchParams }: AdminProjectsP
             <Eye className="size-4" aria-hidden="true" />
             View
           </Link>
-          <Link href={`/campaigns/${project.slug}`} className="text-center text-sm font-bold text-coral-700 hover:text-coral-500">
-            Public page
-          </Link>
+          {["published", "funded", "completed"].includes(project.status) ? (
+            <Link href={`/campaigns/${project.slug}`} className="text-center text-sm font-bold text-coral-700 hover:text-coral-500">
+              Public page
+            </Link>
+          ) : (
+            <span className="text-center text-xs font-bold text-ocean-900/42">Not public yet</span>
+          )}
         </div>
       )
     }
@@ -214,7 +218,7 @@ export default async function AdminProjectsPage({ searchParams }: AdminProjectsP
       <AdminPageHeader
         eyebrow="Donations"
         title="Donations"
-        description="Read-only monitoring for partner-owned donation campaigns. Campaign content and status are managed from the partner portal."
+        description="Monitor partner-owned donation campaigns. Partners manage content; Platform Admin only reviews publication state and platform governance."
       />
       <AdminDomainNav items={adminDonationNavItems} active={pathname} />
 

@@ -4,11 +4,14 @@ on:
   push:
     branches:
       - main
+  pull_request:
+    branches:
+      - main
   workflow_dispatch:
 
 concurrency:
-  group: terumbu-production
-  cancel-in-progress: false
+  group: ${{ github.event_name == 'pull_request' && format('terumbu-pr-{0}', github.event.pull_request.number) || 'terumbu-production' }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   verify:

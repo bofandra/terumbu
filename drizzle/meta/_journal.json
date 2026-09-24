@@ -211,6 +211,13 @@
       "when": 1790190000000,
       "tag": "0029_reconcile_campaign_goal_from_impact",
       "breakpoints": true
+    },
+    {
+      "idx": 30,
+      "version": "7",
+      "when": 1790245000000,
+      "tag": "0030_expedition_publication_lifecycle",
+      "breakpoints": true
     }
   ]
 }

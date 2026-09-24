@@ -1374,6 +1374,8 @@ async function seed() {
         summary: "Plant coral fragments, join reef monitoring, and learn directly from local field teams.",
         imageUrl: "https://images.unsplash.com/photo-1546026423-cc4642628d2b?auto=format&fit=crop&w=1200&q=80",
         relatedCampaignId: campaignBySlug.get("restore-raja-ampat-reefs")!,
+        status: "published",
+        publishedAt: date("2026-06-01T00:00:00.000Z"),
         metadata: {
           marketplace: {
             typeLabel: "Eco Village",
@@ -1403,6 +1405,8 @@ async function seed() {
         summary: "Practice reef survey basics, document restoration sites, and support community guides.",
         imageUrl: "https://images.unsplash.com/photo-1583212292454-1fe6229603b7?auto=format&fit=crop&w=1200&q=80",
         relatedCampaignId: campaignBySlug.get("restore-raja-ampat-reefs")!,
+        status: "published",
+        publishedAt: date("2026-06-01T00:00:00.000Z"),
         metadata: {
           marketplace: {
             typeLabel: "Community",
@@ -1432,6 +1436,8 @@ async function seed() {
         summary: "Support English practice, sports, gardening, and slow-living activities with students in an eco village.",
         imageUrl: "https://images.unsplash.com/photo-1509099836639-18ba1795216d?auto=format&fit=crop&w=1200&q=80",
         relatedCampaignId: campaignBySlug.get("mangrove-shield-bali")!,
+        status: "published",
+        publishedAt: date("2026-06-01T00:00:00.000Z"),
         metadata: {
           marketplace: {
             typeLabel: "Eco Village",
@@ -1461,6 +1467,8 @@ async function seed() {
         summary: "Join farm tasks, social work, gardening, and homestay life while supporting a local sustainable project.",
         imageUrl: "https://images.unsplash.com/photo-1500382017468-9049fed747ef?auto=format&fit=crop&w=1200&q=80",
         relatedCampaignId: campaignBySlug.get("mangrove-shield-bali")!,
+        status: "published",
+        publishedAt: date("2026-06-01T00:00:00.000Z"),
         metadata: {
           marketplace: {
             typeLabel: "Farm",
@@ -1496,6 +1504,8 @@ async function seed() {
         summary: "Create photos, short videos, and social media stories for a Bali conservation homestay and local partner.",
         imageUrl: "https://images.unsplash.com/photo-1537996194471-e657df975ab4?auto=format&fit=crop&w=1200&q=80",
         relatedCampaignId: campaignBySlug.get("mangrove-shield-bali")!,
+        status: "published",
+        publishedAt: date("2026-06-01T00:00:00.000Z"),
         metadata: {
           marketplace: {
             typeLabel: "Homestay",
@@ -1525,6 +1535,8 @@ async function seed() {
         summary: "Help sort coastal waste, document cleanup evidence, and support community education near Komodo.",
         imageUrl: "https://images.unsplash.com/photo-1618477461853-cf6ed80faba5?auto=format&fit=crop&w=1200&q=80",
         relatedCampaignId: campaignBySlug.get("cleanup-komodo-coast")!,
+        status: "published",
+        publishedAt: date("2026-06-01T00:00:00.000Z"),
         metadata: {
           marketplace: {
             typeLabel: "NGO",
@@ -1556,6 +1568,8 @@ async function seed() {
         imageUrl: sql`excluded.image_url`,
         currency: sql`excluded.currency`,
         relatedCampaignId: sql`excluded.related_campaign_id`,
+        status: "published",
+        publishedAt: date("2026-06-01T00:00:00.000Z"),
         metadata: sql`excluded.metadata`
       }
     })

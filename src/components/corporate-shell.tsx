@@ -12,6 +12,7 @@ import {
   Waves,
   type LucideIcon
 } from "lucide-react";
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
@@ -91,9 +92,20 @@ export function CorporateShell({
 
           <div className="mt-5 rounded-lg border border-ocean-900/10 bg-sand-50 p-3" title={accountLogoUrl ? "Company logo configured" : accountName}>
             <div className="flex items-center gap-3">
-              <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-white text-sm font-bold text-ocean-900 ring-1 ring-ocean-900/10">
-                {initialsForName(accountName)}
-              </span>
+              {accountLogoUrl ? (
+                <Image
+                  src={accountLogoUrl}
+                  alt={`${accountName} logo`}
+                  width={40}
+                  height={40}
+                  unoptimized
+                  className="size-10 shrink-0 rounded-lg bg-white object-contain p-1 ring-1 ring-ocean-900/10"
+                />
+              ) : (
+                <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-white text-sm font-bold text-ocean-900 ring-1 ring-ocean-900/10">
+                  {initialsForName(accountName)}
+                </span>
+              )}
               <div className="min-w-0">
                 <p className="truncate text-sm font-bold text-ocean-900">{accountName}</p>
               </div>

@@ -1,6 +1,6 @@
 "use client";
 
-import { FileBadge, Heart, LayoutDashboard, LogOut, Menu, Search, Settings, UserCircle, X } from "lucide-react";
+import { FileBadge, Heart, LayoutDashboard, LogOut, Menu, Settings, UserCircle, X } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
@@ -66,12 +66,6 @@ export function SiteHeader({ user }: { user?: SiteHeaderUser | null }) {
         </nav>
 
         <div className="hidden items-center gap-2 xl:flex">
-          <button
-            aria-label="Search"
-            className="flex size-11 items-center justify-center rounded-full text-white/80 transition hover:bg-white/10 hover:text-white"
-          >
-            <Search size={19} aria-hidden="true" />
-          </button>
           {user ? (
             <details className="group relative">
               <summary className="flex min-h-11 cursor-pointer list-none items-center gap-3 rounded-full px-2 py-1 text-left transition hover:bg-white/10">

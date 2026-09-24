@@ -470,7 +470,14 @@ function ExpeditionDetailForm({
               </select>
             </Field>
           </div>
-          <div className="grid gap-3 md:grid-cols-2">
+          <div className="grid gap-3 md:grid-cols-3">
+            <Field label="Publication status">
+              <select name="status" defaultValue={expedition.status} className={inputClassName}>
+                {!["draft", "review"].includes(expedition.status) ? <option value={expedition.status}>{labelize(expedition.status)}</option> : null}
+                <option value="draft">Draft</option>
+                <option value="review">Submit for review</option>
+              </select>
+            </Field>
             <Field label="Related campaign">
               <select name="relatedCampaignId" defaultValue={expedition.relatedCampaignId ?? ""} className={inputClassName} required>
                 <option value="">Choose campaign</option>
@@ -715,16 +722,20 @@ export function PartnerExpeditionWorkspace({
                 <div>
                   <div className="flex flex-wrap items-center gap-2">
                     <h2 className="text-xl font-bold tracking-normal text-ocean-900">{expedition.title}</h2>
-                    <StatusBadge value={expedition.relatedCampaignTitle ? "published" : "draft"} />
+                    <StatusBadge value={expedition.status} />
                   </div>
                   <p className="mt-1 text-sm font-semibold text-ocean-900/58">
                     {expedition.partner ?? "Partner"} · {expedition.region} · {expedition.durationDays} days
                   </p>
                 </div>
-                <Link href={`/expeditions/${expedition.slug}`} className="inline-flex items-center gap-2 text-sm font-bold text-coral-700 hover:text-coral-500">
-                  Public page
-                  <ArrowUpRight className="size-4" aria-hidden="true" />
-                </Link>
+                {expedition.status === "published" ? (
+                  <Link href={`/expeditions/${expedition.slug}`} className="inline-flex items-center gap-2 text-sm font-bold text-coral-700 hover:text-coral-500">
+                    Public page
+                    <ArrowUpRight className="size-4" aria-hidden="true" />
+                  </Link>
+                ) : (
+                  <span className="text-sm font-bold text-ocean-900/42">Public page available after approval</span>
+                )}
               </div>
 
               <div className="mt-4 grid gap-2 sm:grid-cols-4">
@@ -798,11 +809,17 @@ export function PartnerExpeditionDetailWorkspace({
           <div className="absolute inset-0 bg-gradient-to-r from-ocean-900/90 via-ocean-900/55 to-ocean-900/20" />
           <div className="relative z-10 flex min-h-48 flex-col justify-between p-5 text-white">
             <div className="flex items-start justify-between gap-4">
-              <StatusBadge value={expedition.relatedCampaignTitle ? "published" : "draft"} />
-              <Link href={`/expeditions/${expedition.slug}`} className="inline-flex min-h-10 items-center gap-2 rounded-lg bg-white px-3 text-sm font-bold text-ocean-900">
-                View public page
-                <ArrowUpRight className="size-4" aria-hidden="true" />
-              </Link>
+              <StatusBadge value={expedition.status} />
+              {expedition.status === "published" ? (
+                <Link href={`/expeditions/${expedition.slug}`} className="inline-flex min-h-10 items-center gap-2 rounded-lg bg-white px-3 text-sm font-bold text-ocean-900">
+                  View public page
+                  <ArrowUpRight className="size-4" aria-hidden="true" />
+                </Link>
+              ) : (
+                <span className="inline-flex min-h-10 items-center rounded-lg bg-white/15 px-3 text-sm font-bold text-white/80">
+                  Awaiting publication
+                </span>
+              )}
             </div>
             <div>
               <h1 className="text-3xl font-bold tracking-normal">{expedition.title}</h1>

@@ -112,6 +112,7 @@ const partnerExpeditionSwimmingAbilities = ["No swimming required", "Basic swimm
 const partnerExpeditionPhysicalLevels = ["Light", "Moderate", "Active", "Challenging"] as const;
 const partnerExpeditionHighlightStatuses = ["Included", "Guaranteed", "Weather-dependent", "Optional", "Add-on", "Not included"] as const;
 const partnerExpeditionAccommodationTypes = ["Shared twin room included", "Private room upgrade", "Homestay", "Eco-lodge", "Liveaboard", "Hotel partner stay"] as const;
+const partnerExpeditionStatuses = ["draft", "review"] as const;
 
 function formText(formData: FormData, key: string) {
   return String(formData.get(key) ?? "").trim();
@@ -119,7 +120,15 @@ function formText(formData: FormData, key: string) {
 
 function adminPaymentReturnPath(formData: FormData) {
   const path = safeRedirectPath(formData.get("next"), "/admin/payments");
-  return path === "/admin/payments" || path.startsWith("/admin/payments?") ? path : "/admin/payments";
+  const allowed =
+    path === "/admin/payments" ||
+    path.startsWith("/admin/payments?") ||
+    path === "/admin/campaigns/payments" ||
+    path.startsWith("/admin/campaigns/payments?") ||
+    path === "/admin/expeditions/payments" ||
+    path.startsWith("/admin/expeditions/payments?");
+
+  return allowed ? path : "/admin/payments";
 }
 
 function redirectAdminPayment(formData: FormData, outcome: "saved" | "error", code: string): never {
@@ -1709,6 +1718,8 @@ async function requireExpeditionAccess(
       summary: expeditions.summary,
       imageUrl: expeditions.imageUrl,
       metadata: expeditions.metadata,
+      status: expeditions.status,
+      publishedAt: expeditions.publishedAt,
       relatedCampaignId: expeditions.relatedCampaignId,
       organizationId: campaigns.organizationId
     })
@@ -3403,6 +3414,7 @@ export async function updatePartnerExpeditionAction(formData: FormData) {
   const currency = normalizeCurrency(formData.get("currency"));
   const summary = formText(formData, "summary");
   const relatedCampaignId = nullableText(formData, "relatedCampaignId");
+  const requestedStatus = formText(formData, "status");
 
   if (!expeditionId || !title || !slug || !region || !durationDays || !basePrice || !summary || !relatedCampaignId) {
     redirectPartnerError(formData, "/partner/expeditions", "expedition-invalid");
@@ -3419,6 +3431,9 @@ export async function updatePartnerExpeditionAction(formData: FormData) {
 
   const [uploadedImageUrl, maxCapacity] = await Promise.all([uploadedPartnerImage(formData, "imageFile"), expeditionMaxCapacity(expeditionId)]);
   const imageUrl = uploadedImageUrl ?? existingExpedition.imageUrl;
+  const status = partnerExpeditionStatuses.includes(requestedStatus as (typeof partnerExpeditionStatuses)[number])
+    ? (requestedStatus as (typeof partnerExpeditionStatuses)[number])
+    : existingExpedition.status;
   const currentMetadata = normalizeExpeditionDetailMetadata(existingExpedition.metadata, defaultPartnerExpeditionMetadata(existingExpedition, maxCapacity));
   const metadata = await partnerExpeditionMetadataFromForm(formData, {
     currentMetadata,
@@ -3440,7 +3455,10 @@ export async function updatePartnerExpeditionAction(formData: FormData) {
       summary,
       imageUrl,
       relatedCampaignId,
-      metadata
+      metadata,
+      status,
+      publishedAt: status === "published" ? existingExpedition.publishedAt ?? new Date() : status === existingExpedition.status ? existingExpedition.publishedAt : null,
+      updatedAt: new Date()
     })
     .where(eq(expeditions.id, expeditionId))
     .returning({ id: expeditions.id });
@@ -3454,10 +3472,100 @@ export async function updatePartnerExpeditionAction(formData: FormData) {
     action: "partner_expedition.updated",
     entityType: "expedition",
     entityId: expeditionId,
-    metadata: { source: "partner_portal", slug, relatedCampaignId }
+    metadata: { source: "partner_portal", slug, relatedCampaignId, status }
   });
 
   redirectPartnerSaved(formData, "/partner/expeditions", "expedition-updated");
+}
+
+export async function updateExpeditionPublicationStatusAction(formData: FormData) {
+  const user = await requireRole(["admin"], "/admin/expeditions");
+  const expeditionId = formText(formData, "expeditionId");
+  const decision = formText(formData, "decision");
+  const reviewNote = formText(formData, "reviewNote") || null;
+
+  if (!expeditionId || !["publish", "request_changes"].includes(decision)) {
+    redirect(withAdminFormOutcome("/admin/expeditions", "error", "expedition-review"));
+  }
+
+  const [expedition] = await db
+    .select({
+      id: expeditions.id,
+      title: expeditions.title,
+      status: expeditions.status,
+      publishedAt: expeditions.publishedAt,
+      imageUrl: expeditions.imageUrl,
+      relatedCampaignId: expeditions.relatedCampaignId,
+      relatedCampaignStatus: campaigns.status,
+      organizationId: campaigns.organizationId
+    })
+    .from(expeditions)
+    .leftJoin(campaigns, eq(expeditions.relatedCampaignId, campaigns.id))
+    .where(eq(expeditions.id, expeditionId))
+    .limit(1);
+
+  if (!expedition) {
+    redirect(withAdminFormOutcome("/admin/expeditions", "error", "expedition-missing"));
+  }
+
+  if (expedition.status !== "review") {
+    redirect(withAdminFormOutcome(`/admin/expeditions/${expedition.id}`, "error", "expedition-review-state"));
+  }
+
+  if (decision === "publish") {
+    const [departureSummary] = await db
+      .select({ total: sql<number>`count(*)::int` })
+      .from(expeditionDepartures)
+      .where(eq(expeditionDepartures.expeditionId, expedition.id));
+
+    const relatedCampaignIsPublic = ["published", "funded", "completed"].includes(expedition.relatedCampaignStatus ?? "");
+    const hasDeparture = Number(departureSummary?.total ?? 0) > 0;
+
+    if (!expedition.imageUrl || !relatedCampaignIsPublic || !hasDeparture) {
+      redirect(withAdminFormOutcome(`/admin/expeditions/${expedition.id}`, "error", "expedition-not-ready"));
+    }
+  }
+
+  const now = new Date();
+  const nextStatus = decision === "publish" ? "published" : "draft";
+
+  await db.transaction(async (tx) => {
+    await tx
+      .update(expeditions)
+      .set({
+        status: nextStatus,
+        publishedAt: nextStatus === "published" ? expedition.publishedAt ?? now : null,
+        updatedAt: now
+      })
+      .where(eq(expeditions.id, expedition.id));
+
+    await tx.insert(adminAuditLogs).values({
+      actorUserId: user.id,
+      action: nextStatus === "published" ? "expedition.publication_approved" : "expedition.changes_requested",
+      entityType: "expedition",
+      entityId: expedition.id,
+      metadata: {
+        previousStatus: expedition.status,
+        status: nextStatus,
+        reviewNote,
+        relatedCampaignId: expedition.relatedCampaignId
+      }
+    });
+  });
+
+  await notifyPartnerOrganizationReview({
+    organizationId: expedition.organizationId,
+    subject: nextStatus === "published" ? `${expedition.title} is now published` : `Changes requested for ${expedition.title}`,
+    template: nextStatus === "published" ? "expedition_publication_approved" : "expedition_changes_requested",
+    payload: {
+      expeditionId: expedition.id,
+      expedition: expedition.title,
+      status: nextStatus,
+      reviewNote: reviewNote ?? ""
+    }
+  });
+
+  redirect(withAdminFormOutcome(`/admin/expeditions/${expedition.id}`, "saved", nextStatus === "published" ? "expedition-published" : "expedition-changes-requested"));
 }
 
 export async function createPartnerExpeditionAction(formData: FormData) {
@@ -3496,6 +3604,8 @@ export async function createPartnerExpeditionAction(formData: FormData) {
       summary,
       imageUrl,
       metadata: null,
+      status: "draft",
+      publishedAt: null,
       relatedCampaignId,
       organizationId: null
     },
@@ -3524,7 +3634,10 @@ export async function createPartnerExpeditionAction(formData: FormData) {
       summary,
       imageUrl,
       relatedCampaignId,
-      metadata
+      metadata,
+      status: "draft",
+      publishedAt: null,
+      updatedAt: new Date()
     })
     .returning({ id: expeditions.id });
 
@@ -3694,9 +3807,119 @@ export async function deleteAdminCampaignAction(formData: FormData) {
   redirectAdminCampaignError("partner-owned", formData);
 }
 
+async function notifyPartnerOrganizationReview(input: {
+  organizationId: string | null;
+  subject: string;
+  template: string;
+  payload: Record<string, unknown>;
+}) {
+  if (!input.organizationId) {
+    return;
+  }
+
+  const recipients = await db
+    .select({
+      userId: users.id,
+      email: users.email
+    })
+    .from(organizationUsers)
+    .innerJoin(users, eq(organizationUsers.userId, users.id))
+    .where(and(eq(organizationUsers.organizationId, input.organizationId), eq(organizationUsers.status, "active")));
+
+  await Promise.allSettled(
+    recipients.map((recipient) =>
+      sendTransactionalEmail({
+        userId: recipient.userId,
+        recipientEmail: recipient.email,
+        subject: input.subject,
+        template: input.template,
+        payload: input.payload
+      })
+    )
+  );
+}
+
 export async function updateCampaignStatusAction(formData: FormData) {
-  await requireRole(["admin"], "/admin/campaigns");
-  redirectAdminCampaignError("partner-owned", formData);
+  const user = await requireRole(["admin"], "/admin/campaigns");
+  const campaignId = formText(formData, "campaignId");
+  const decision = formText(formData, "decision");
+  const reviewNote = formText(formData, "reviewNote") || null;
+
+  if (!campaignId || !["publish", "request_changes"].includes(decision)) {
+    redirectAdminCampaignError("campaign", formData);
+  }
+
+  const [campaign] = await db
+    .select({
+      id: campaigns.id,
+      title: campaigns.title,
+      status: campaigns.status,
+      organizationId: campaigns.organizationId,
+      publishedAt: campaigns.publishedAt
+    })
+    .from(campaigns)
+    .where(eq(campaigns.id, campaignId))
+    .limit(1);
+
+  if (!campaign) {
+    redirectAdminCampaignError("campaign-missing", formData);
+  }
+
+  if (campaign.status !== "review") {
+    redirectAdminCampaignError("campaign-review-state", formData);
+  }
+
+  if (decision === "publish") {
+    const [siteSummary] = await db
+      .select({ total: sql<number>`count(*)::int` })
+      .from(impactSites)
+      .where(eq(impactSites.campaignId, campaign.id));
+
+    if (Number(siteSummary?.total ?? 0) < 1) {
+      redirectAdminCampaignError("campaign-not-ready", formData);
+    }
+  }
+
+  const now = new Date();
+  const nextStatus = decision === "publish" ? "published" : "draft";
+
+  await db.transaction(async (tx) => {
+    await tx
+      .update(campaigns)
+      .set({
+        status: nextStatus,
+        publishedAt: nextStatus === "published" ? campaign.publishedAt ?? now : null,
+        updatedAt: now
+      })
+      .where(eq(campaigns.id, campaign.id));
+
+    await tx.insert(adminAuditLogs).values({
+      actorUserId: user.id,
+      action: nextStatus === "published" ? "campaign.publication_approved" : "campaign.changes_requested",
+      entityType: "campaign",
+      entityId: campaign.id,
+      metadata: {
+        previousStatus: campaign.status,
+        status: nextStatus,
+        reviewNote,
+        organizationId: campaign.organizationId
+      }
+    });
+  });
+
+  await notifyPartnerOrganizationReview({
+    organizationId: campaign.organizationId,
+    subject: nextStatus === "published" ? `${campaign.title} is now published` : `Changes requested for ${campaign.title}`,
+    template: nextStatus === "published" ? "campaign_publication_approved" : "campaign_changes_requested",
+    payload: {
+      campaignId: campaign.id,
+      campaign: campaign.title,
+      status: nextStatus,
+      reviewNote: reviewNote ?? ""
+    }
+  });
+
+  redirectAdminCampaignSaved(nextStatus === "published" ? "campaign-published" : "campaign-changes-requested", formData);
 }
 
 export async function updateOrganizationVerificationAction(formData: FormData) {
@@ -4653,6 +4876,22 @@ export async function reconcileExpeditionBookingAction(formData: FormData) {
 
   if (!booking) {
     redirectAdminPayment(formData, "error", "booking");
+  }
+
+  if (operationId) {
+    const [operation] = await db
+      .select({
+        id: paymentOperations.id,
+        bookingId: paymentOperations.bookingId,
+        status: paymentOperations.status
+      })
+      .from(paymentOperations)
+      .where(eq(paymentOperations.id, operationId))
+      .limit(1);
+
+    if (!operation || operation.status !== "pending" || operation.bookingId !== booking.id) {
+      redirectAdminPayment(formData, "error", "operation");
+    }
   }
 
   const result = await db.transaction(async (tx) => {
