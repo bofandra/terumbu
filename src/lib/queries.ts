@@ -914,7 +914,7 @@ export async function getCampaignDetail(slug: string) {
         publishedAt: campaignUpdates.publishedAt
       })
       .from(campaignUpdates)
-      .where(eq(campaignUpdates.campaignId, row.id))
+      .where(and(eq(campaignUpdates.campaignId, row.id), eq(campaignUpdates.status, "published")))
       .orderBy(desc(campaignUpdates.publishedAt)),
     getImpactMapSites(row.id),
     db
@@ -933,7 +933,7 @@ export async function getCampaignDetail(slug: string) {
       })
       .from(projectEvidence)
       .leftJoin(impactSites, eq(projectEvidence.impactSiteId, impactSites.id))
-      .where(eq(projectEvidence.campaignId, row.id))
+      .where(and(eq(projectEvidence.campaignId, row.id), eq(projectEvidence.verificationStatus, "verified")))
       .orderBy(desc(projectEvidence.createdAt)),
     db
       .select({
@@ -1313,7 +1313,7 @@ export async function getExpeditionDetail(slug: string) {
             createdAt: campaignUpdates.createdAt
           })
           .from(campaignUpdates)
-          .where(eq(campaignUpdates.campaignId, row.relatedCampaignId))
+          .where(and(eq(campaignUpdates.campaignId, row.relatedCampaignId), eq(campaignUpdates.status, "published")))
           .orderBy(desc(campaignUpdates.publishedAt))
           .limit(3)
       : Promise.resolve([]),
@@ -1332,7 +1332,7 @@ export async function getExpeditionDetail(slug: string) {
           })
           .from(projectEvidence)
           .leftJoin(impactSites, eq(projectEvidence.impactSiteId, impactSites.id))
-          .where(eq(projectEvidence.campaignId, row.relatedCampaignId))
+          .where(and(eq(projectEvidence.campaignId, row.relatedCampaignId), eq(projectEvidence.verificationStatus, "verified")))
           .orderBy(desc(projectEvidence.verifiedAt))
           .limit(4)
       : Promise.resolve([]),
@@ -10746,8 +10746,18 @@ export async function getAdminDashboardData() {
         ),
       db
         .select({ total: sql<number>`count(*)::int` })
-        .from(paymentOperations)
-        .where(and(eq(paymentOperations.status, "pending"), eq(paymentOperations.entityType, "expedition_booking"))),
+        .from(expeditionBookings)
+        .where(
+          or(
+            inArray(expeditionBookings.paymentStatus, ["created", "pending", "failed", "expired"]),
+            sql`exists (
+              select 1 from payment_operations po
+              where po.booking_id = ${expeditionBookings.id}
+                and po.status = 'pending'
+                and po.operation_type = 'refund'
+            )`
+          )
+        ),
       db.select({ total: sql<number>`count(*)::int` }).from(expeditions),
       db.select({ total: sql<number>`count(*)::int` }).from(organizations),
       db.select({ total: sql<number>`count(*)::int` }).from(corporateReportExports),
