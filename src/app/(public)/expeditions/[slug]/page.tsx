@@ -572,6 +572,48 @@ export default async function ExpeditionDetailPage({
             </div>
           </section>
 
+          {expedition.travelerMedia.length > 0 ? (
+            <>
+              <DetailDivider />
+              <section id="traveler-moments" className="scroll-mt-36 py-14">
+                <SectionHeader
+                  title="Traveler moments"
+                  body="Media submitted by completed participants and reviewed by Terumbu before publication."
+                />
+                <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                  {expedition.travelerMedia.map((item) => (
+                    <article key={item.id} className="overflow-hidden rounded-md border border-ocean-900/10 bg-white">
+                      {item.mediaType === "photo" ? (
+                        <div className="relative h-64 bg-ocean-50">
+                          <Image
+                            src={item.mediaUrl}
+                            alt={item.caption ?? `Traveler moment from ${expedition.title}`}
+                            fill
+                            unoptimized
+                            className="object-cover"
+                            sizes="(min-width: 1024px) 33vw, 50vw"
+                          />
+                        </div>
+                      ) : (
+                        <a href={item.mediaUrl} target="_blank" rel="noreferrer" className="flex h-64 items-center justify-center bg-ocean-900 p-6 text-center font-bold text-white">
+                          <span>
+                            <PlayCircle className="mx-auto mb-3" size={34} aria-hidden="true" />
+                            Watch traveler video
+                          </span>
+                        </a>
+                      )}
+                      <div className="p-4">
+                        <p className="text-xs font-bold uppercase tracking-[0.12em] text-kelp-700">Verified completed participant</p>
+                        <p className="mt-2 font-bold text-ocean-900">{item.travelerName}</p>
+                        {item.caption ? <p className="mt-2 text-sm leading-6 text-ocean-900/62">{item.caption}</p> : null}
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              </section>
+            </>
+          ) : null}
+
           <DetailDivider />
           <section id="host" className="scroll-mt-36 py-14">
             <SectionHeader title="About the host" />
