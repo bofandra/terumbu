@@ -50,6 +50,7 @@ export function SiteHeader({
       ? {
           donations: "Donasi",
           expeditions: "Ekspedisi",
+          destinations: "Destinasi",
           academy: "Akademi",
           impactMap: "Peta Dampak",
           about: "Tentang",
@@ -63,6 +64,7 @@ export function SiteHeader({
       : {
           donations: "Donations",
           expeditions: "Expeditions",
+          destinations: "Destinations",
           academy: "Academy",
           impactMap: "Impact Map",
           about: "About",
@@ -80,6 +82,8 @@ export function SiteHeader({
         ? labels.donations
         : item.href === "/expeditions"
           ? labels.expeditions
+          : item.href === "/destinations"
+          ? labels.destinations
           : item.href === "/academy"
             ? labels.academy
             : item.href === "/impact-map"
