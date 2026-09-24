@@ -1,4 +1,4 @@
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, sql } from "drizzle-orm";
 
 import { db } from "@/db/client";
 import {
@@ -57,7 +57,7 @@ export async function getAdminExpeditionMediaSubmissions() {
     .leftJoin(users, eq(expeditionMediaSubmissions.userId, users.id))
     .leftJoin(profiles, eq(profiles.userId, users.id))
     .orderBy(
-      eq(expeditionMediaSubmissions.status, "pending"),
+      sql`case when ${expeditionMediaSubmissions.status} = 'pending' then 0 else 1 end`,
       desc(expeditionMediaSubmissions.createdAt)
     );
 }
