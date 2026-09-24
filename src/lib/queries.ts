@@ -6671,7 +6671,7 @@ export async function getAdminOperationsData() {
       contactName: row.contactName,
       contactEmail: row.contactEmail,
       participantsCount: row.participantsCount,
-      status: row.departureStatus,
+      status: row.status,
       paymentStatus: row.paymentStatus,
       totalAmount: toNumber(row.totalAmount),
       currency: row.currency,
