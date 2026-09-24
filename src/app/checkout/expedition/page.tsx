@@ -2,8 +2,10 @@ import { randomBytes } from "node:crypto";
 
 import { Button, ButtonLink } from "@/components/ui/button";
 import { getSessionUser } from "@/lib/auth";
+import { secondaryPriceLabel } from "@/lib/currency-display";
 import { bookExpeditionAction } from "@/lib/checkout-actions";
 import { getExpeditionCheckoutOptions, getUserCorporateAttributionOptions } from "@/lib/queries";
+import { getPreferredDisplayCurrency, getPreferredLocale, localeTag } from "@/lib/user-preferences";
 import { formatCurrency } from "@/lib/utils";
 
 export const metadata = {
@@ -24,7 +26,13 @@ type ExpeditionCheckoutPageProps = {
 
 export default async function ExpeditionCheckoutPage({ searchParams }: ExpeditionCheckoutPageProps) {
   const params = await searchParams;
-  const [options, user] = await Promise.all([getExpeditionCheckoutOptions(), getSessionUser()]);
+  const [options, user, displayCurrency, locale] = await Promise.all([
+    getExpeditionCheckoutOptions(),
+    getSessionUser(),
+    getPreferredDisplayCurrency(),
+    getPreferredLocale()
+  ]);
+  const localeName = localeTag(locale);
   const corporateOptions = user ? await getUserCorporateAttributionOptions(user.id) : [];
   const filteredOptions = params?.expedition ? options.filter((option) => option.expeditionSlug === params.expedition) : options;
   const visibleOptions = filteredOptions.length > 0 ? filteredOptions : options;
@@ -83,7 +91,7 @@ export default async function ExpeditionCheckoutPage({ searchParams }: Expeditio
             <select name="departureId" defaultValue={selectedDeparture} className="w-full min-w-0 rounded-xl border border-ocean-900/14 px-4 py-3 outline-none focus:border-coral-500">
               {visibleOptions.map((option) => (
                 <option key={option.departureId} value={option.departureId}>
-                  {option.expeditionTitle} · {option.startsAt.toLocaleDateString("id-ID", { dateStyle: "medium" })} · {option.availabilityLabel} · {option.availableSeats} seats · {formatCurrency(option.basePrice, option.currency)}
+                  {option.expeditionTitle} · {option.startsAt.toLocaleDateString(localeName, { dateStyle: "medium" })} · {option.availabilityLabel} · {option.availableSeats} seats · {formatCurrency(option.basePrice, option.currency)}{secondaryPriceLabel(option.basePrice, option.currency, displayCurrency, localeName) ? ` · ≈ ${secondaryPriceLabel(option.basePrice, option.currency, displayCurrency, localeName)}` : ""}
                 </option>
               ))}
             </select>
