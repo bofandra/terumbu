@@ -41,7 +41,6 @@ import {
   defaultImpactUnitForImpactType,
   impactTargetTypeFromUnit,
   labelForCampaignImpactTargetType,
-  campaignStatuses,
   impactSiteVerificationStatuses,
   normalizeCampaignBudgetCategory,
   normalizeCampaignCategory,
@@ -458,24 +457,6 @@ function parsePositiveDecimal(value: FormDataEntryValue | null) {
   return amount.toFixed(2);
 }
 
-function parseNonNegativeDecimal(value: FormDataEntryValue | null, fallback = "0.00") {
-  const normalized = String(value ?? "")
-    .trim()
-    .replace(/,/g, "");
-
-  if (!normalized) {
-    return fallback;
-  }
-
-  const amount = Number(normalized);
-
-  if (!Number.isFinite(amount) || amount < 0) {
-    return null;
-  }
-
-  return amount.toFixed(2);
-}
-
 function parseCoordinate(value: FormDataEntryValue | null, min: number, max: number) {
   const normalized = String(value ?? "")
     .trim()
@@ -555,23 +536,6 @@ function adminCampaignImpactLinkModeFromForm(value: FormDataEntryValue | null) {
     : "none";
 }
 
-function initialAdminCampaignImpactLinkFromForm(formData: FormData):
-  | {
-      mode: "new";
-      values: {
-        name: string;
-        ecosystemType: string;
-        region: string;
-        latitude: string;
-        longitude: string;
-        metadata: {
-          progress: number;
-          evidenceCount: number;
-          latestSurvey: string | null;
-          verification: (typeof impactSiteVerificationStatuses)[number];
-        };
-      };
-    }
   | {
       mode: "existing";
       impactSiteId: string;
@@ -893,32 +857,6 @@ function departureMetadata(formData: FormData) {
 
 function objectMetadata(value: unknown) {
   return value && typeof value === "object" && !Array.isArray(value) ? (value as Record<string, unknown>) : {};
-}
-
-function expeditionMetadataFromForm(formData: FormData, onError: (code: string, formData?: FormData) => never, existingMetadata?: unknown) {
-  const hasMetadataJson = formData.has("metadataJson");
-  const result = hasMetadataJson
-    ? parseExpeditionMetadataJson(formText(formData, "metadataJson"))
-    : { metadata: objectMetadata(existingMetadata), error: null as string | null };
-  const documentationUrl = formText(formData, "documentationUrl");
-
-  if (result.error) {
-    onError(result.error, formData);
-  }
-
-  const metadata = {
-    ...(result.metadata ?? {}),
-    ...(formData.has("documentationUrl") ? { documentationUrl } : {})
-  };
-
-  if (!hasMarketplaceFields(formData)) {
-    return Object.keys(metadata).length > 0 ? metadata : null;
-  }
-
-  return {
-    ...metadata,
-    marketplace: marketplaceMetadataFromForm(formData, marketplaceDefaultsFromForm(formData, metadata))
-  };
 }
 
 function formNumber(formData: FormData, key: string, fallback = 0) {
@@ -1474,16 +1412,6 @@ async function syncPartnerRoleForUser(userId: string) {
   }
 }
 
-async function imageFromAdminCampaignForm(formData: FormData) {
-  const upload = await readUploadedImageAsDataUrl(formData.get("imageFile"));
-
-  if (upload.error) {
-    redirectAdminCampaignError(`image-${upload.error}`, formData, ["imageFile"]);
-  }
-
-  return upload.dataUrl;
-}
-
 async function campaignContentImageFromForm(formData: FormData, fallbackPath: string) {
   const upload = await readUploadedImageAsDataUrl(formData.get("fileUpload"));
 
@@ -1499,16 +1427,6 @@ async function campaignContentPortraitFromForm(formData: FormData, fallbackPath:
 
   if (upload.error) {
     redirectCampaignContentError(formData, fallbackPath, `image-${upload.error}`);
-  }
-
-  return upload.dataUrl;
-}
-
-async function imageFromAdminExpeditionForm(formData: FormData) {
-  const upload = await readUploadedImageAsDataUrl(formData.get("imageFile"));
-
-  if (upload.error) {
-    redirectAdminExpeditionError(`image-${upload.error}`, formData, ["imageFile"]);
   }
 
   return upload.dataUrl;
