@@ -233,7 +233,10 @@ export default async function ExpeditionDetailPage({
       : null;
   const questionSavedMessage = query?.saved === "interest-question" ? "Your question is in the website inbox for Terumbu admins and the expedition partner." : null;
   const questionErrorMessage = query?.error === "interest-question-invalid" ? "Write your question before sending." : null;
-  const heroBadges = Array.from(new Set([...expedition.marketplace.badges, ...expedition.marketplace.highlights])).slice(0, 3);
+  const legacyAutoBadges = new Set(["sustainable project", "higher approval", "higher chance of approval"]);
+  const heroBadges = Array.from(new Set([...expedition.marketplace.badges, ...expedition.marketplace.highlights]))
+    .filter((badge) => !legacyAutoBadges.has(badge.trim().toLowerCase()))
+    .slice(0, 3);
   const hostImage = expedition.associatedCampaign?.imageUrl ?? expedition.galleryImages[0]?.src;
 
   return (
@@ -290,12 +293,7 @@ export default async function ExpeditionDetailPage({
                     </div>
                   );
                 })}
-                <div className="grid grid-cols-[32px_minmax(0,1fr)] gap-4">
-                  <Languages size={26} strokeWidth={1.8} aria-hidden="true" className="text-sky-700" />
-                  <p className="rounded-md bg-ocean-50 px-4 py-3 text-base font-semibold leading-7 text-ocean-900/70">
-                    Some content is adapted for international travelers. Original host and booking details stay available in Terumbu records.
-                  </p>
-                </div>
+
               </div>
             </div>
           </div>
@@ -523,7 +521,7 @@ export default async function ExpeditionDetailPage({
                 [Wifi, "Connectivity", expedition.travelInfo.connectivity],
                 [ShieldCheck, "Travel insurance", expedition.travelInfo.insuranceGuidance],
                 [LifeBuoy, "Traveler support", expedition.travelInfo.supportContact]
-              ].map(([Icon, label, value]) => {
+              ].filter(([, , value]) => typeof value === "string" && value.trim()).map(([Icon, label, value]) => {
                 const TravelIcon = Icon as LucideIcon;
                 return (
                   <article key={String(label)} className="rounded-md border border-ocean-900/10 bg-ocean-50 p-5">

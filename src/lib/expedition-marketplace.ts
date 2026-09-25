@@ -116,24 +116,6 @@ function containsNormalized(value: string, query: string | undefined) {
   return !target || normalized(value).includes(target);
 }
 
-function defaultHelpActivities(input: DefaultMarketplaceInput) {
-  const haystack = `${input.title ?? ""} ${input.summary}`.toLowerCase();
-
-  if (haystack.includes("monitor") || haystack.includes("survey")) {
-    return ["Reef Monitoring", "Documentation", "Community Work"];
-  }
-
-  if (haystack.includes("mangrove")) {
-    return ["Mangrove Planting", "Nursery Work", "Community Work"];
-  }
-
-  if (haystack.includes("cleanup") || haystack.includes("plastic")) {
-    return ["Ocean Cleanup", "Sorting Waste", "Community Work"];
-  }
-
-  return ["Coral Restoration", "Reef Monitoring", "Community Work"];
-}
-
 function defaultTravelLength(durationDays: number) {
   if (durationDays <= 7) {
     return "Short Term Stay";
@@ -147,22 +129,20 @@ function defaultTravelLength(durationDays: number) {
 }
 
 export function buildDefaultExpeditionMarketplaceMetadata(input: DefaultMarketplaceInput): ExpeditionMarketplaceMetadata {
-  const helpActivities = defaultHelpActivities(input);
-
   return {
-    typeLabel: "Eco Program",
-    programTypes: ["Eco Program"],
-    highlights: ["Higher chance of approval"],
-    purposes: ["Connect with nature", "Learn about sustainability"],
-    helpActivities,
-    styles: ["Contact with nature", "Rural"],
-    collaborationHoursPerWeek: Math.min(32, Math.max(8, input.durationDays * 5)),
+    typeLabel: "",
+    programTypes: [],
+    highlights: [],
+    purposes: [],
+    helpActivities: [],
+    styles: [],
+    collaborationHoursPerWeek: 0,
     travelLengthLabel: defaultTravelLength(input.durationDays),
-    accommodations: ["Shared Dorm"],
-    mealsIncluded: "2 meals",
-    digitalNomadAmenities: ["Basic Internet Access"],
-    benefits: ["Use our equipped kitchen", "Free Events"],
-    badges: ["Sustainable project", "Higher approval"],
+    accommodations: [],
+    mealsIncluded: "",
+    digitalNomadAmenities: [],
+    benefits: [],
+    badges: [],
     additionalFee: null
   };
 }

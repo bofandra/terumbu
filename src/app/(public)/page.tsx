@@ -1,4 +1,4 @@
-import { ArrowRight, BadgeCheck, BookOpen, Compass, HeartHandshake, MapPinned, PlayCircle, Star, Users } from "lucide-react";
+import { ArrowRight, BadgeCheck, BookOpen, CalendarDays, Compass, HeartHandshake, MapPinned, PlayCircle, Search, Star, Users } from "lucide-react";
 
 import { CampaignCard } from "@/components/campaign-card";
 import { FeaturedExpeditionRail } from "@/components/featured-expedition-rail";
@@ -111,17 +111,25 @@ export default async function HomePage() {
             <p className="mt-6 max-w-2xl text-lg leading-8 text-white/82 sm:text-xl">
               {messages.home.intro}
             </p>
-            <div className="mt-9 flex flex-col gap-3 sm:flex-row">
-              <ButtonLink href="/expeditions" tone="donation" className="sm:min-w-48">
-                {messages.home.explore}
-                <ArrowRight size={18} aria-hidden="true" />
-              </ButtonLink>
-              <ButtonLink href="/impact-map" tone="light" className="sm:min-w-44">
-                {messages.home.impact}
-              </ButtonLink>
-              <ButtonLink href="/campaigns" tone="ghost" className="border border-white/28 text-white hover:bg-white/10">
-                {messages.home.support}
-              </ButtonLink>
+            <form action="/expeditions" className="mt-9 grid gap-2 rounded-2xl border border-white/24 bg-white/12 p-3 backdrop-blur-xl sm:grid-cols-[1fr_1fr_auto]">
+              <label className="relative">
+                <span className="sr-only">Where in Indonesia?</span>
+                <MapPinned className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-ocean-900/45" aria-hidden="true" />
+                <input name="destination" placeholder="Where in Indonesia?" className="min-h-12 w-full rounded-xl border-0 bg-white pl-9 pr-3 text-sm font-semibold text-ocean-900 outline-none ring-1 ring-white/20 focus:ring-2 focus:ring-coral-300" />
+              </label>
+              <label className="relative">
+                <span className="sr-only">What do you want to do?</span>
+                <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-ocean-900/45" aria-hidden="true" />
+                <input name="q" placeholder="Reef, wildlife, community..." className="min-h-12 w-full rounded-xl border-0 bg-white pl-9 pr-3 text-sm font-semibold text-ocean-900 outline-none ring-1 ring-white/20 focus:ring-2 focus:ring-coral-300" />
+              </label>
+              <button type="submit" className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-coral-500 px-5 text-sm font-bold text-white hover:bg-coral-700">
+                Search trips <ArrowRight size={17} aria-hidden="true" />
+              </button>
+            </form>
+            <div className="mt-4 flex flex-wrap items-center gap-4 text-sm font-semibold text-white/78">
+              <span className="inline-flex items-center gap-2"><CalendarDays size={16} aria-hidden="true" /> Flexible dates</span>
+              <span>Verified local partners</span>
+              <span>Impact evidence after your trip</span>
             </div>
             <div className="mt-7 flex flex-wrap items-center gap-4 text-sm font-semibold text-white/82">
               {reviewSummary ? (
@@ -163,6 +171,22 @@ export default async function HomePage() {
 
       <StatStrip stats={stats} />
 
+      <section className="bg-white py-20">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div className="flex flex-col justify-between gap-6 md:flex-row md:items-end">
+            <SectionHeading eyebrow="Featured expeditions" title="Go beyond sightseeing">
+              Join field experiences with local conservation teams, clear logistics, verified partners, and impact you can carry into your Impact Passport.
+            </SectionHeading>
+            <ButtonLink href="/expeditions" tone="secondary">
+              Explore Trips
+            </ButtonLink>
+          </div>
+          <div className="mt-10">
+            <FeaturedExpeditionRail expeditions={expeditions} displayCurrency={displayCurrency} locale={localeName} />
+          </div>
+        </div>
+      </section>
+
       <section className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8">
         <div className="flex flex-col justify-between gap-6 md:flex-row md:items-end">
           <SectionHeading eyebrow="Support from anywhere" title="Can’t travel yet? Fund the next conservation milestone">
@@ -179,21 +203,7 @@ export default async function HomePage() {
         </div>
       </section>
 
-      <section className="bg-white py-20">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="flex flex-col justify-between gap-6 md:flex-row md:items-end">
-            <SectionHeading eyebrow="Featured expeditions" title="Go beyond sightseeing">
-              Join field experiences with local conservation teams, clear logistics, verified partners, and impact you can carry into your Impact Passport.
-            </SectionHeading>
-            <ButtonLink href="/expeditions" tone="secondary">
-              Explore Trips
-            </ButtonLink>
-          </div>
-          <div className="mt-10">
-            <FeaturedExpeditionRail expeditions={expeditions} displayCurrency={displayCurrency} locale={localeName} />
-          </div>
-        </div>
-      </section>
+
 
       <section className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8">
         <SectionHeading eyebrow="Impact map" title="Field activity should be visible, not hidden in reports">
