@@ -78,7 +78,7 @@ function buildInitialRows(initialLines?: InitialImpactPlanLine[] | null): { rows
   const seededRows = explicitRows.length > 0 ? [...explicitRows, ...presetRows] : presetRows;
 
   return {
-    rows: seededRows.map(({ isPrimary: _isPrimary, ...row }) => row),
+    rows: seededRows.map(({ impactType, label, target, unit, unitCost }) => ({ impactType, label, target, unit, unitCost })),
     primaryIndex: Math.max(0, seededRows.findIndex((row) => row.isPrimary))
   };
 }
