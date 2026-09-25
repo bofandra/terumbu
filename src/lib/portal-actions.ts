@@ -87,7 +87,6 @@ import {
   type PartnerOrganizationPermission
 } from "@/lib/partner-permissions";
 import { transitionDonationPayment, transitionExpeditionBookingPayment } from "@/lib/payment-workflows";
-import { demoGatewaySettleRefund } from "@/lib/payment-provider";
 import { upsertCarbonKgPerUsd } from "@/lib/platform-settings";
 import { processDueDonationSubscriptions } from "@/lib/subscription-billing";
 import { getEvidenceStorageProvider, readUploadedImageAsDataUrl } from "@/lib/storage";
@@ -4607,27 +4606,18 @@ export async function settlePaymentOperationAction(formData: FormData) {
       redirectAdminPayment(formData, "error", "operation");
     }
 
-    const providerResult = demoGatewaySettleRefund({
-      idempotencyKey: `refund:${operation.id}`,
-      amount: Number(operation.amount ?? donation.amount),
-      currency: operation.currency ?? donation.currency,
-      providerReference: operation.providerReference,
-      now
-    });
+    const providerReference = operation.providerReference ?? `MANUAL-REFUND-${operation.id}`;
 
     await db.transaction(async (tx) => {
       await transitionDonationPayment(tx as unknown as typeof db, {
         donationId: donation.id,
-        nextStatus: providerResult.status,
-        providerReference: providerResult.providerReference,
+        nextStatus: "refunded",
+        providerReference,
         providerPayload: {
-          method: "refund_settlement",
+          method: "manual_external_refund",
           operationId: operation.id,
-          providerStatus: providerResult.rawStatus,
-          providerProcessedAt: providerResult.processedAt.toISOString(),
-          idempotencyKey: providerResult.idempotencyKey,
-          adminNote,
-          ...providerResult.metadata
+          manuallyConfirmedAt: now.toISOString(),
+          adminNote
         },
         processedByUserId: user.id,
         operationType: "refund_settlement",
@@ -4639,12 +4629,12 @@ export async function settlePaymentOperationAction(formData: FormData) {
         .set({
           processedByUserId: user.id,
           status: "completed",
-          providerReference: providerResult.providerReference,
+          providerReference,
           processedAt: now,
           updatedAt: now,
           metadata: {
             decision: "approved",
-            providerStatus: providerResult.rawStatus,
+            providerStatus: "manually_confirmed",
             adminNote
           }
         })
@@ -4674,7 +4664,7 @@ export async function settlePaymentOperationAction(formData: FormData) {
       entityId: donation.id,
       metadata: {
         operationId: operation.id,
-        providerReference: providerResult.providerReference,
+        providerReference,
         adminNote
       }
     });
@@ -4702,27 +4692,18 @@ export async function settlePaymentOperationAction(formData: FormData) {
       redirectAdminPayment(formData, "error", "operation");
     }
 
-    const providerResult = demoGatewaySettleRefund({
-      idempotencyKey: `refund:${operation.id}`,
-      amount: Number(operation.amount ?? booking.totalAmount),
-      currency: operation.currency ?? booking.currency,
-      providerReference: operation.providerReference,
-      now
-    });
+    const providerReference = operation.providerReference ?? `MANUAL-REFUND-${operation.id}`;
 
     await db.transaction(async (tx) => {
       await transitionExpeditionBookingPayment(tx as unknown as typeof db, {
         bookingId: booking.id,
-        nextStatus: providerResult.status,
-        providerReference: providerResult.providerReference,
+        nextStatus: "refunded",
+        providerReference,
         providerPayload: {
-          method: "refund_settlement",
+          method: "manual_external_refund",
           operationId: operation.id,
-          providerStatus: providerResult.rawStatus,
-          providerProcessedAt: providerResult.processedAt.toISOString(),
-          idempotencyKey: providerResult.idempotencyKey,
-          adminNote,
-          ...providerResult.metadata
+          manuallyConfirmedAt: now.toISOString(),
+          adminNote
         },
         processedByUserId: user.id,
         operationType: "refund_settlement",
@@ -4734,12 +4715,12 @@ export async function settlePaymentOperationAction(formData: FormData) {
         .set({
           processedByUserId: user.id,
           status: "completed",
-          providerReference: providerResult.providerReference,
+          providerReference,
           processedAt: now,
           updatedAt: now,
           metadata: {
             decision: "approved",
-            providerStatus: providerResult.rawStatus,
+            providerStatus: "manually_confirmed",
             adminNote
           }
         })
@@ -4768,7 +4749,7 @@ export async function settlePaymentOperationAction(formData: FormData) {
       entityId: booking.id,
       metadata: {
         operationId: operation.id,
-        providerReference: providerResult.providerReference,
+        providerReference,
         adminNote
       }
     });
