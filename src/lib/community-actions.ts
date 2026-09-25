@@ -541,10 +541,11 @@ export async function createCommunityCommentAction(formData: FormData) {
   }
 
   if (parentCommentId) {
+    const parentId = parentCommentId;
     const [parent] = await db
       .select({ id: communityComments.id, targetType: communityComments.targetType, targetId: communityComments.targetId })
       .from(communityComments)
-      .where(and(eq(communityComments.id, parentCommentId), eq(communityComments.targetId, targetId)))
+      .where(and(eq(communityComments.id, parentId), eq(communityComments.targetId, targetId)))
       .limit(1);
 
     if (!parent) {
