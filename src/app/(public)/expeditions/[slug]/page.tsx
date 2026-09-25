@@ -168,11 +168,13 @@ export default async function ExpeditionDetailPage({
 
   const expeditionPath = `/expeditions/${expedition.slug}`;
   const saveState = sessionUser ? await getExpeditionSaveState(sessionUser.id, expedition.slug) : null;
-  const incomingReferralCode = (query?.ref ?? "")
+  const ownReferralCode = sessionUser ? referralCodeForUser(sessionUser.id) : null;
+  const rawIncomingReferralCode = (query?.ref ?? "")
     .trim()
     .replace(/[^a-zA-Z0-9_-]/g, "")
     .slice(0, 64) || null;
-  const shareReferralCode = sessionUser ? referralCodeForUser(sessionUser.id) : incomingReferralCode;
+  const incomingReferralCode = rawIncomingReferralCode && rawIncomingReferralCode !== ownReferralCode ? rawIncomingReferralCode : null;
+  const shareReferralCode = ownReferralCode;
   const bookingProps = {
     slug: expedition.slug,
     price: expedition.price,
