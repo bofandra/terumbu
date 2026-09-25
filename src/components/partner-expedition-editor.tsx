@@ -25,7 +25,7 @@ type Campaign = PartnerPortalData["campaigns"][number];
 const departureStatuses = ["open", "waitlist", "full", "private_group", "cancelled"];
 const categoryLabelOptions = ["Coral Restoration Expedition", "Reef Monitoring Expedition", "Marine Conservation Expedition", "Community Conservation Expedition"];
 const difficultyOptions = ["Light", "Moderate", "Challenging", "Advanced"];
-const swimmingAbilityOptions = ["No swimming required", "Basic swimming required", "Comfortable swimming required", "Snorkeling required", "Diving certification required"];
+const swimmingAbilityOptions = ["Not specified", "No swimming required", "Basic swimming required", "Comfortable swimming required", "Snorkeling required", "Diving certification required"];
 const highlightStatusOptions = ["Included", "Guaranteed", "Weather-dependent", "Optional", "Add-on", "Not included"];
 const physicalLevelOptions = ["Light", "Moderate", "Active", "Challenging"];
 const accommodationTypeOptions = ["Shared twin room included", "Private room upgrade", "Homestay", "Eco-lodge", "Liveaboard", "Hotel partner stay"];
@@ -79,6 +79,7 @@ export function PartnerExpeditionCreateForm({ campaigns, canManageExpeditions }:
           </Field>
           <Field label="Slug">
             <input name="slug" placeholder="raja-ampat-coral-restoration" className={inputClassName} required />
+            <span className="text-xs font-semibold text-ocean-900/48">Use a stable URL slug. Public facts are never inferred from this field.</span>
           </Field>
         </div>
         <div className="grid gap-3 md:grid-cols-4">
@@ -134,7 +135,7 @@ function DetailFields({ detail, marketplace }: { detail: ExpeditionDetailMetadat
   const updateRows = withRows(detail.tripUpdates, 2, { title: "", date: "", body: "" });
   const cancellationRows = withRows(detail.cancellationPolicy, 4, { label: "", refund: "" });
   const faqRows = withRows(detail.faqs, 5, { question: "", answer: "" });
-  const currentSwimmingAbility = detail.quickFacts.find((fact) => fact.label === "Swimming ability")?.value ?? "Snorkeling required";
+  const currentSwimmingAbility = detail.quickFacts.find((fact) => fact.label === "Swimming ability")?.value ?? "Not specified";
   const highlightOptions = optionsWithCurrentValues(
     highlightStatusOptions,
     highlightRows.map((highlight) => highlight.status)
@@ -331,7 +332,9 @@ function DetailFields({ detail, marketplace }: { detail: ExpeditionDetailMetadat
                 <input name="travelNearestAirport" defaultValue={detail.travelInfo.nearestAirport} className={inputClassName} />
               </Field>
               <Field label="Local time zone">
-                <input name="travelLocalTimeZone" defaultValue={detail.travelInfo.localTimeZone} className={inputClassName} />
+                <select name="travelLocalTimeZone" defaultValue={detail.travelInfo.localTimeZone} className={inputClassName}>
+                  <option value="">Not specified</option><option value="WIB (UTC+7)">WIB (UTC+7)</option><option value="WITA (UTC+8)">WITA (UTC+8)</option><option value="WIT (UTC+9)">WIT (UTC+9)</option>
+                </select>
               </Field>
               <Field label="Connectivity">
                 <input name="travelConnectivity" defaultValue={detail.travelInfo.connectivity} className={inputClassName} />
