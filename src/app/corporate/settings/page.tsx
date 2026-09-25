@@ -1,6 +1,6 @@
 import { Building2, Users } from "lucide-react";
 
-import { requireUser } from "@/lib/auth";
+import { requireCorporateAdminRole } from "@/lib/auth";
 import { requireCorporateDashboardData } from "@/lib/corporate-access";
 
 export const metadata = {
@@ -14,7 +14,7 @@ function formatDate(value: Date | null | undefined) {
 }
 
 export default async function CorporateSettingsPage() {
-  const user = await requireUser("/corporate/settings");
+  const user = await requireCorporateAdminRole("/corporate/settings");
   const data = await requireCorporateDashboardData(user.id, "/corporate/settings");
 
   return (
