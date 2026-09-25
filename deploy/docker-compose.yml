@@ -84,3 +84,4 @@ services:
 
 volumes:
   terumbu_postgres_data:
+  terumbu_generated_reports:
