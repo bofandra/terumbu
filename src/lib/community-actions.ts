@@ -377,9 +377,11 @@ export async function createCommunityEventAction(formData: FormData) {
 
   if (!title || !summary || !description || !startsAt || !endsAt || !location) {
     redirect(withStatus(createPath, "error", "event-invalid"));
+    return;
   }
   if (endsAt.getTime() <= startsAt.getTime()) {
     redirect(withStatus(createPath, "error", "event-invalid"));
+    return;
   }
 
   const slug = await uniqueSlugFor("event", title);
@@ -428,9 +430,11 @@ export async function createCommunityChallengeAction(formData: FormData) {
 
   if (!title || !summary || !description) {
     redirect(withStatus(createPath, "error", "challenge-invalid"));
+    return;
   }
   if (startsAt && endsAt && endsAt.getTime() <= startsAt.getTime()) {
     redirect(withStatus(createPath, "error", "challenge-invalid"));
+    return;
   }
 
   const slug = await uniqueSlugFor("challenge", title);
@@ -470,6 +474,7 @@ export async function deleteCommunityPostAction(formData: FormData) {
 
   if (!target || !(await canManageCommunityTarget(user.id, target.ownerUserId))) {
     redirect(withStatus(next, "error", "permission"));
+    return;
   }
 
   await db
@@ -489,6 +494,7 @@ export async function deleteCommunityEventAction(formData: FormData) {
 
   if (!target || !(await canManageCommunityTarget(user.id, target.ownerUserId))) {
     redirect(withStatus(next, "error", "permission"));
+    return;
   }
 
   await db
@@ -508,6 +514,7 @@ export async function deleteCommunityChallengeAction(formData: FormData) {
 
   if (!target || !(await canManageCommunityTarget(user.id, target.ownerUserId))) {
     redirect(withStatus(next, "error", "permission"));
+    return;
   }
 
   await db
@@ -530,6 +537,7 @@ export async function createCommunityCommentAction(formData: FormData) {
 
   if (!target || !body) {
     redirect(withStatus(next, "error", "comment"));
+    return;
   }
 
   if (parentCommentId) {
@@ -586,6 +594,7 @@ export async function reactToCommunityTargetAction(formData: FormData) {
 
   if (!target) {
     redirect(withStatus(next, "error", "reaction"));
+    return;
   }
 
   await db
@@ -623,6 +632,7 @@ export async function reportCommunityTargetAction(formData: FormData) {
 
   if (!target) {
     redirect(withStatus(next, "error", "report"));
+    return;
   }
 
   await db
@@ -795,6 +805,7 @@ export async function markCommunityEventAttendanceAction(formData: FormData) {
 
   if (!registration || !(await canManageCommunityTarget(user.id, registration.eventAuthorUserId))) {
     redirect(withStatus(next, "error", "permission"));
+    return;
   }
 
   const now = new Date();
