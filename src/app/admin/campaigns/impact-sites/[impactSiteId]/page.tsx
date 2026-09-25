@@ -81,7 +81,7 @@ export default async function AdminImpactSiteDetailPage({
         <p className="text-xs font-bold uppercase tracking-[0.14em] text-coral-700">Platform governance</p>
         <h2 className="mt-2 text-xl font-bold text-ocean-900">Verification level</h2>
         <p className="mt-1 text-sm font-semibold leading-6 text-ocean-900/58">
-          This control changes only Terumbu verification level. It does not modify the partner's location or operational progress data.
+          This control changes only Terumbu verification level. It does not modify the partner&apos;s location or operational progress data.
         </p>
         <form action={updateImpactSiteVerificationAction} className="mt-4 flex flex-wrap items-end gap-3">
           <input type="hidden" name="impactSiteId" value={site.id} />
