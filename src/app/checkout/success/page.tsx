@@ -21,9 +21,7 @@ type CheckoutSuccessPageProps = {
 
 export default async function CheckoutSuccessPage({ searchParams }: CheckoutSuccessPageProps) {
   const [params, sessionUser] = await Promise.all([searchParams, getSessionUser()]);
-  const shareReferralCode = sessionUser
-    ? referralCodeForUser(sessionUser.id)
-    : (params?.ref ?? "").trim().replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 64) || null;
+  const shareReferralCode = sessionUser ? referralCodeForUser(sessionUser.id) : null;
   const failed = params?.status === "failed";
   const pending = params?.status === "pending";
   const typeLabel = params?.type === "expedition" ? "booking" : "donation";
@@ -51,15 +49,33 @@ export default async function CheckoutSuccessPage({ searchParams }: CheckoutSucc
         </Link>
         <h1 className="mt-8 text-3xl font-bold tracking-normal text-ocean-900">{title}</h1>
         <p className="mt-3 text-ocean-900/68">{body}</p>
-        <ButtonLink href={failed ? (params?.type === "expedition" ? "/checkout/expedition" : "/checkout/donation") : "/dashboard"} className="mt-7">
-          {failed ? "Try Again" : "View Dashboard"}
+        {!sessionUser && !failed ? (
+          <p className="mt-4 rounded-xl bg-ocean-50 px-4 py-3 text-sm font-semibold leading-6 text-ocean-900/64">
+            You checked out as a guest. Status updates will use the email you entered at checkout; this guest record is not shown in a personal dashboard.
+          </p>
+        ) : null}
+        <ButtonLink
+          href={
+            failed
+              ? params?.type === "expedition"
+                ? "/checkout/expedition"
+                : "/checkout/donation"
+              : sessionUser
+                ? "/dashboard"
+                : params?.type === "expedition"
+                  ? "/expeditions"
+                  : "/campaigns"
+          }
+          className="mt-7"
+        >
+          {failed ? "Try Again" : sessionUser ? "View Dashboard" : params?.type === "expedition" ? "Explore Expeditions" : "Explore Projects"}
         </ButtonLink>
         {isExpedition && params?.expedition ? (
           <div className="mt-7 border-t border-ocean-900/10 pt-6 text-left">
             <p className="text-sm font-bold uppercase tracking-[0.14em] text-coral-700">Travel together</p>
             <h2 className="mt-2 text-xl font-bold text-ocean-900">Invite friends to join this expedition</h2>
             <p className="mt-2 text-sm leading-6 text-ocean-900/62">
-              Share the expedition while your booking is being confirmed. Your own invite code is used when you are signed in.
+              Share the expedition while your booking is being confirmed. Signed-in travelers receive personal referral attribution; guest shares remain untracked.
             </p>
             <div className="mt-4">
               <ExpeditionShareButtons
