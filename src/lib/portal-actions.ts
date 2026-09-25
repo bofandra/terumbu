@@ -4386,11 +4386,15 @@ export async function verifyEvidenceAction(formData: FormData) {
   const [evidence] = await db
     .select({
       id: projectEvidence.id,
+      campaignId: projectEvidence.campaignId,
       evidenceCode: projectEvidence.evidenceCode,
       verificationStatus: projectEvidence.verificationStatus,
-      assignedReviewerUserId: projectEvidence.assignedReviewerUserId
+      assignedReviewerUserId: projectEvidence.assignedReviewerUserId,
+      campaignTitle: campaigns.title,
+      organizationId: campaigns.organizationId
     })
     .from(projectEvidence)
+    .innerJoin(campaigns, eq(projectEvidence.campaignId, campaigns.id))
     .where(eq(projectEvidence.id, evidenceId))
     .limit(1);
 
@@ -4506,6 +4510,32 @@ export async function verifyEvidenceAction(formData: FormData) {
     );
   }
 
+  if (status !== "in_review") {
+    await notifyPartnerOrganizationReview({
+      organizationId: evidence.organizationId,
+      subject:
+        status === "verified"
+          ? `Evidence verified for ${evidence.campaignTitle}`
+          : status === "needs_clarification"
+            ? `Evidence clarification requested for ${evidence.campaignTitle}`
+            : `Evidence review update for ${evidence.campaignTitle}`,
+      template:
+        status === "verified"
+          ? "evidence_verified"
+          : status === "needs_clarification"
+            ? "evidence_clarification_requested"
+            : "evidence_rejected",
+      payload: {
+        evidenceId: evidence.id,
+        evidenceCode: evidence.evidenceCode,
+        campaignId: evidence.campaignId,
+        campaign: evidence.campaignTitle,
+        status,
+        reviewNote: reviewNote || ""
+      }
+    });
+  }
+
   redirect(evidenceReviewRedirect(redirectTo, "saved", "evidence"));
 }
 
@@ -4614,6 +4644,21 @@ export async function reconcileDonationAction(formData: FormData) {
         campaign: donation.campaignTitle,
         amount: Number(donation.amount),
         currency: donation.currency
+      }
+    });
+  }
+
+  if (status === "failed" && donation.status !== "failed" && donation.donorEmail) {
+    await sendTransactionalEmail({
+      recipientEmail: donation.donorEmail,
+      subject: "Your Terumbu donation payment needs attention",
+      template: "donation_payment_rejected",
+      payload: {
+        donationId: donation.id,
+        campaign: donation.campaignTitle,
+        amount: Number(donation.amount),
+        currency: donation.currency,
+        status: "failed"
       }
     });
   }
@@ -5036,6 +5081,22 @@ export async function reconcileExpeditionBookingAction(formData: FormData) {
         departure: booking.startsAt.toISOString(),
         participantsCount: booking.participantsCount,
         paymentStatus: "paid"
+      }
+    });
+  }
+
+  if (status === "failed" && booking.paymentStatus !== "failed") {
+    await sendTransactionalEmail({
+      userId: booking.userId,
+      recipientEmail: booking.contactEmail,
+      subject: `Payment verification update for ${booking.expeditionTitle}`,
+      template: "expedition_payment_rejected",
+      payload: {
+        bookingCode: booking.bookingCode,
+        bookingId: booking.id,
+        expedition: booking.expeditionTitle,
+        departure: booking.startsAt.toISOString(),
+        paymentStatus: "failed"
       }
     });
   }
