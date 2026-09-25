@@ -122,7 +122,9 @@ export default async function DashboardExpeditionsPage({ searchParams }: Dashboa
                 ? "Expedition reminder scheduled."
                 : params.saved === "reminder-cancelled"
                   ? "Expedition reminder cancelled."
-                  : "Booking billing changes saved."}
+                  : params.saved === "payment-recheck"
+                    ? "Payment recheck requested. Platform Admin will verify the booking payment."
+                    : "Booking billing changes saved."}
         </p>
       ) : null}
       {params?.error ? (
@@ -130,7 +132,7 @@ export default async function DashboardExpeditionsPage({ searchParams }: Dashboa
           {params.error.startsWith("review")
             ? "Reviews are available after expedition completion. Add a rating and at least 10 characters."
             : params.error === "availability"
-              ? "That departure no longer has enough available seats for retry payment."
+              ? "That departure no longer has enough available seats for payment recheck."
               : params.error === "expedition"
                 ? "Could not update that saved expedition."
                 : params.error?.startsWith("media")
@@ -308,7 +310,7 @@ export default async function DashboardExpeditionsPage({ searchParams }: Dashboa
                       <input type="hidden" name="bookingId" value={booking.id} />
                       <button className="inline-flex min-h-9 items-center gap-2 rounded-full border border-ocean-900/10 px-3 text-xs font-bold text-ocean-900 hover:border-coral-500" type="submit">
                         <RefreshCw size={14} aria-hidden="true" />
-                        Retry
+                        Request recheck
                       </button>
                     </form>
                   ) : null}
