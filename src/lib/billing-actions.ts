@@ -9,6 +9,7 @@ import { db } from "@/db/client";
 import {
   donationSubscriptions,
   donations,
+  expeditionBookingPayments,
   expeditionBookings,
   expeditionDepartures,
   paymentOperations,
@@ -26,12 +27,9 @@ import {
 } from "@/lib/billing-lifecycle";
 import { normalizeCardLast4 } from "@/lib/checkout";
 import { expeditionDepartureAvailability } from "@/lib/expedition-booking-lifecycle";
-import { sendTransactionalEmail } from "@/lib/email";
 import {
   ensureUserPaymentMethod,
-  recordPaymentOperation,
-  transitionDonationPayment,
-  transitionExpeditionBookingPayment
+  recordPaymentOperation
 } from "@/lib/payment-workflows";
 
 function randomReference(prefix: string) {
@@ -300,14 +298,14 @@ export async function updateSubscriptionPaymentMethodAction(formData: FormData) 
 export async function retryDonationPaymentAction(formData: FormData) {
   const user = await requireUser("/dashboard/donations");
   const donationId = String(formData.get("donationId") ?? "");
-  const providerReference = randomReference("DEMO-RETRY-DONATION");
+  const providerReference = randomReference("MANUAL-RECHECK-DONATION");
   const now = new Date();
 
   const [donation] = await db
     .select({
       id: donations.id,
-      userId: donations.userId,
-      donorEmail: donations.donorEmail,
+      amount: donations.amount,
+      currency: donations.currency,
       status: donations.status
     })
     .from(donations)
@@ -317,8 +315,6 @@ export async function retryDonationPaymentAction(formData: FormData) {
   if (!donation || donation.status === "paid" || donation.status === "refunded") {
     redirect("/dashboard/donations?error=retry");
   }
-
-  let receiptNumber: string | null = null;
 
   await db.transaction(async (tx) => {
     await tx
@@ -330,34 +326,30 @@ export async function retryDonationPaymentAction(formData: FormData) {
       })
       .where(eq(paymentTransactions.donationId, donation.id));
 
-    const result = await transitionDonationPayment(tx as unknown as typeof db, {
+    await tx
+      .update(donations)
+      .set({ status: "pending" })
+      .where(eq(donations.id, donation.id));
+
+    await recordPaymentOperation(tx as unknown as typeof db, {
+      operationType: "payment_recheck_requested",
+      entityType: "donation",
       donationId: donation.id,
-      nextStatus: "paid",
+      requestedByUserId: user.id,
+      status: "pending",
+      amount: donation.amount,
+      currency: donation.currency,
+      provider: "manual_external",
       providerReference,
-      providerPayload: {
-        method: "demo_retry",
-        retriedAt: now.toISOString()
+      reason: "User requested manual payment recheck.",
+      metadata: {
+        previousStatus: donation.status,
+        nextStatus: "pending",
+        source: "dashboard"
       },
-      processedByUserId: user.id,
-      operationType: "retry",
       now
     });
-
-    receiptNumber = result?.receiptCreated ? result.receiptNumber : null;
   });
-
-  if (receiptNumber && donation.donorEmail) {
-    await sendTransactionalEmail({
-      userId: user.id,
-      recipientEmail: donation.donorEmail,
-      subject: "Your Terumbu donation receipt",
-      template: "donation_receipt",
-      payload: {
-        receiptNumber,
-        donationId: donation.id
-      }
-    });
-  }
 
   redirectToDashboardDonations();
 }
@@ -409,12 +401,14 @@ export async function requestDonationRefundAction(formData: FormData) {
 export async function retryExpeditionPaymentAction(formData: FormData) {
   const user = await requireUser("/dashboard/expeditions");
   const bookingId = String(formData.get("bookingId") ?? "");
-  const providerReference = randomReference("DEMO-RETRY-EXPEDITION");
+  const providerReference = randomReference("MANUAL-RECHECK-EXPEDITION");
   const now = new Date();
 
   const [booking] = await db
     .select({
       id: expeditionBookings.id,
+      totalAmount: expeditionBookings.totalAmount,
+      currency: expeditionBookings.currency,
       paymentStatus: expeditionBookings.paymentStatus,
       participantsCount: expeditionBookings.participantsCount,
       departureStatus: expeditionDepartures.status,
@@ -446,21 +440,50 @@ export async function retryExpeditionPaymentAction(formData: FormData) {
   }
 
   await db.transaction(async (tx) => {
-    await transitionExpeditionBookingPayment(tx as unknown as typeof db, {
+    await tx
+      .update(expeditionBookingPayments)
+      .set({
+        provider: "manual_external",
+        providerReference,
+        status: "pending",
+        payload: {
+          method: "manual_recheck",
+          requestedAt: now.toISOString()
+        },
+        updatedAt: now
+      })
+      .where(eq(expeditionBookingPayments.bookingId, booking.id));
+
+    await tx
+      .update(expeditionBookings)
+      .set({
+        paymentStatus: "pending",
+        status: "pending_payment",
+        confirmedAt: null
+      })
+      .where(eq(expeditionBookings.id, booking.id));
+
+    await recordPaymentOperation(tx as unknown as typeof db, {
+      operationType: "payment_recheck_requested",
+      entityType: "expedition_booking",
       bookingId: booking.id,
-      nextStatus: "paid",
+      requestedByUserId: user.id,
+      status: "pending",
+      amount: booking.totalAmount,
+      currency: booking.currency,
+      provider: "manual_external",
       providerReference,
-      providerPayload: {
-        method: "demo_retry",
-        retriedAt: now.toISOString()
+      reason: "User requested manual booking payment recheck.",
+      metadata: {
+        previousStatus: booking.paymentStatus,
+        nextStatus: "pending",
+        source: "dashboard"
       },
-      processedByUserId: user.id,
-      operationType: "retry",
       now
     });
   });
 
-  redirect("/dashboard/expeditions?saved=billing");
+  redirect("/dashboard/expeditions?saved=payment-recheck");
 }
 
 export async function requestExpeditionRefundAction(formData: FormData) {
