@@ -3304,6 +3304,15 @@ export async function cancelExpeditionBookingAction(formData: FormData) {
       });
     }
 
+    await db
+      .update(expeditionBookings)
+      .set({
+        status: "cancelled",
+        confirmedAt: null,
+        metadata: sql`coalesce(${expeditionBookings.metadata}, '{}'::jsonb) || jsonb_build_object('cancellationReason', ${reason}, 'cancellationRequestedAt', ${now.toISOString()})`
+      })
+      .where(eq(expeditionBookings.id, booking.id));
+
     await db.insert(adminAuditLogs).values({
       actorUserId: user.id,
       action: "expedition_booking.refund_requested",
@@ -4542,7 +4551,8 @@ export async function settlePaymentOperationAction(formData: FormData) {
       amount: paymentOperations.amount,
       currency: paymentOperations.currency,
       reason: paymentOperations.reason,
-      providerReference: paymentOperations.providerReference
+      providerReference: paymentOperations.providerReference,
+      metadata: paymentOperations.metadata
     })
     .from(paymentOperations)
     .where(eq(paymentOperations.id, operationId))
@@ -4550,6 +4560,15 @@ export async function settlePaymentOperationAction(formData: FormData) {
 
   if (!operation || operation.status !== "pending" || operation.operationType !== "refund") {
     redirectAdminPayment(formData, "error", "operation");
+  }
+
+  const operationMetadata = metadataObject(operation.metadata);
+  const mandatoryRefund =
+    operationMetadata.source === "operator_cancellation" ||
+    operationMetadata.source === "partner_departure_cancellation";
+
+  if (decision === "reject" && mandatoryRefund) {
+    redirectAdminPayment(formData, "error", "mandatory-refund");
   }
 
   if (decision === "reject") {
