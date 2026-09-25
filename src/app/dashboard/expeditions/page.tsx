@@ -315,7 +315,7 @@ export default async function DashboardExpeditionsPage({ searchParams }: Dashboa
                     location={booking.expeditionRegion}
                     description={`Terumbu.eco expedition booking ${booking.bookingCode}`}
                   />
-                  {["created", "pending", "failed", "expired"].includes(booking.paymentStatus) && booking.status !== "cancelled" ? (
+                  {booking.canCancelBooking ? (
                     <>
                       <form action={retryExpeditionPaymentAction}>
                         <input type="hidden" name="bookingId" value={booking.id} />
@@ -332,7 +332,7 @@ export default async function DashboardExpeditionsPage({ searchParams }: Dashboa
                       </form>
                     </>
                   ) : null}
-                  {booking.paymentStatus === "paid" && booking.status === "confirmed" && booking.startsAt.getTime() > Date.now() ? (
+                  {booking.canRequestRefund ? (
                     <details className="relative">
                       <summary className="inline-flex min-h-9 cursor-pointer list-none items-center rounded-full border border-coral-500/30 px-3 text-xs font-bold text-coral-700 hover:border-coral-500">
                         Request refund
