@@ -3258,7 +3258,8 @@ export async function cancelExpeditionBookingAction(formData: FormData) {
       bookingCode: expeditionBookings.bookingCode,
       status: expeditionBookings.status,
       paymentStatus: expeditionBookings.paymentStatus,
-      metadata: expeditionBookings.metadata,
+      totalAmount: expeditionBookings.totalAmount,
+      currency: expeditionBookings.currency,
       startsAt: expeditionDepartures.startsAt
     })
     .from(expeditionBookings)
@@ -3270,12 +3271,57 @@ export async function cancelExpeditionBookingAction(formData: FormData) {
     redirectAdminExpeditionError("booking-cancel", formData);
   }
 
-  const nextPaymentStatus = booking.paymentStatus === "paid" ? "refunded" : "expired";
+  if (booking.paymentStatus === "paid") {
+    const [existingRefund] = await db
+      .select({ id: paymentOperations.id })
+      .from(paymentOperations)
+      .where(
+        and(
+          eq(paymentOperations.bookingId, booking.id),
+          eq(paymentOperations.operationType, "refund"),
+          eq(paymentOperations.status, "pending")
+        )
+      )
+      .limit(1);
+
+    if (!existingRefund) {
+      await recordPaymentOperation(db, {
+        operationType: "refund",
+        entityType: "expedition_booking",
+        bookingId: booking.id,
+        requestedByUserId: user.id,
+        status: "pending",
+        amount: booking.totalAmount,
+        currency: booking.currency,
+        reason,
+        metadata: {
+          source: "operator_cancellation",
+          bookingCode: booking.bookingCode
+        },
+        now
+      });
+    }
+
+    await db.insert(adminAuditLogs).values({
+      actorUserId: user.id,
+      action: "expedition_booking.refund_requested",
+      entityType: "expedition_booking",
+      entityId: booking.id,
+      metadata: {
+        expeditionId: booking.expeditionId,
+        departureId: booking.departureId,
+        bookingCode: booking.bookingCode,
+        reason
+      }
+    });
+
+    redirectAdminExpeditionSaved("booking-refund-requested", formData);
+  }
 
   await db.transaction(async (tx) => {
     await transitionExpeditionBookingPayment(tx as unknown as typeof db, {
       bookingId: booking.id,
-      nextStatus: nextPaymentStatus,
+      nextStatus: "expired",
       processedByUserId: user.id,
       providerPayload: {
         method: "operator_cancellation",
@@ -3288,15 +3334,7 @@ export async function cancelExpeditionBookingAction(formData: FormData) {
 
     await tx
       .update(expeditionBookings)
-      .set({
-        status: "cancelled",
-        metadata: {
-          ...objectMetadata(booking.metadata),
-          cancellationReason: reason,
-          cancelledByUserId: user.id,
-          cancelledAt: now.toISOString()
-        }
-      })
+      .set({ status: "cancelled", confirmedAt: null })
       .where(eq(expeditionBookings.id, booking.id));
   });
 
@@ -3311,7 +3349,7 @@ export async function cancelExpeditionBookingAction(formData: FormData) {
       bookingCode: booking.bookingCode,
       previousStatus: booking.status,
       previousPaymentStatus: booking.paymentStatus,
-      nextPaymentStatus,
+      nextPaymentStatus: "expired",
       reason
     }
   });
@@ -4764,7 +4802,7 @@ export async function reconcileExpeditionBookingAction(formData: FormData) {
   const user = await requireRole(["admin"], "/admin");
   const bookingId = String(formData.get("bookingId") ?? "");
   const requestedStatus = String(formData.get("status") ?? "paid");
-  const status = requestedStatus === "failed" || requestedStatus === "refunded" ? requestedStatus : "paid";
+  const status = requestedStatus === "failed" ? "failed" : "paid";
   const operationId = String(formData.get("operationId") ?? "");
   const now = new Date();
 
