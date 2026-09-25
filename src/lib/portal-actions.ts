@@ -2577,6 +2577,17 @@ export async function updatePartnerCampaignAction(formData: FormData) {
       })
       .where(eq(campaigns.id, campaignId));
 
+    if (campaign.status === "published" && status === "review") {
+      await tx
+        .update(expeditions)
+        .set({
+          status: "review",
+          publishedAt: null,
+          updatedAt: now
+        })
+        .where(and(eq(expeditions.relatedCampaignId, campaignId), eq(expeditions.status, "published")));
+    }
+
     await replaceCampaignImpactTargets(tx, campaignId, impactTargetRows, now);
 
     await tx.insert(adminAuditLogs).values({
