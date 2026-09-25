@@ -7,7 +7,11 @@ import { submitExpeditionMediaAction } from "@/lib/expedition-media-actions";
 import { getUserExpeditionMediaSubmissions } from "@/lib/expedition-media";
 import { cancelExpeditionReminderAction, scheduleSavedExpeditionReminderAction } from "@/lib/expedition-reminder-actions";
 import { getUserExpeditionReminders } from "@/lib/expedition-reminders";
-import { retryExpeditionPaymentAction } from "@/lib/billing-actions";
+import {
+  cancelOwnExpeditionBookingAction,
+  requestExpeditionRefundAction,
+  retryExpeditionPaymentAction
+} from "@/lib/billing-actions";
 import { submitExpeditionReviewAction } from "@/lib/expedition-review-actions";
 import { expeditionReviewStatusLabel, normalizeExpeditionReviewStatus, type ExpeditionReviewStatus } from "@/lib/expedition-reviews";
 import { Button, ButtonLink } from "@/components/ui/button";
@@ -124,7 +128,9 @@ export default async function DashboardExpeditionsPage({ searchParams }: Dashboa
                   ? "Expedition reminder cancelled."
                   : params.saved === "payment-recheck"
                     ? "Payment recheck requested. Platform Admin will verify the booking payment."
-                    : "Booking billing changes saved."}
+                    : params.saved === "booking-cancelled"
+                      ? "Unpaid booking cancelled."
+                      : "Booking billing changes saved."}
         </p>
       ) : null}
       {params?.error ? (
@@ -139,7 +145,11 @@ export default async function DashboardExpeditionsPage({ searchParams }: Dashboa
                   ? "Traveler media can only be submitted for completed bookings. Upload a supported image under 1.5 MB or provide a valid HTTPS media URL."
                   : params.error === "reminder"
                     ? "Could not schedule that reminder."
-                    : "Could not complete that booking billing action."}
+                    : params.error === "cancel"
+                      ? "This booking can no longer be cancelled from your dashboard."
+                      : params.error === "refund"
+                        ? "Refund can only be requested for a paid booking before the expedition starts."
+                        : "Could not complete that booking billing action."}
         </p>
       ) : null}
 
@@ -305,14 +315,37 @@ export default async function DashboardExpeditionsPage({ searchParams }: Dashboa
                     location={booking.expeditionRegion}
                     description={`Terumbu.eco expedition booking ${booking.bookingCode}`}
                   />
-                  {["created", "pending", "failed", "expired"].includes(booking.paymentStatus) ? (
-                    <form action={retryExpeditionPaymentAction}>
-                      <input type="hidden" name="bookingId" value={booking.id} />
-                      <button className="inline-flex min-h-9 items-center gap-2 rounded-full border border-ocean-900/10 px-3 text-xs font-bold text-ocean-900 hover:border-coral-500" type="submit">
-                        <RefreshCw size={14} aria-hidden="true" />
-                        Request recheck
-                      </button>
-                    </form>
+                  {["created", "pending", "failed", "expired"].includes(booking.paymentStatus) && booking.status !== "cancelled" ? (
+                    <>
+                      <form action={retryExpeditionPaymentAction}>
+                        <input type="hidden" name="bookingId" value={booking.id} />
+                        <button className="inline-flex min-h-9 items-center gap-2 rounded-full border border-ocean-900/10 px-3 text-xs font-bold text-ocean-900 hover:border-coral-500" type="submit">
+                          <RefreshCw size={14} aria-hidden="true" />
+                          Request recheck
+                        </button>
+                      </form>
+                      <form action={cancelOwnExpeditionBookingAction}>
+                        <input type="hidden" name="bookingId" value={booking.id} />
+                        <button className="inline-flex min-h-9 items-center gap-2 rounded-full border border-coral-500/30 px-3 text-xs font-bold text-coral-700 hover:border-coral-500" type="submit">
+                          Cancel booking
+                        </button>
+                      </form>
+                    </>
+                  ) : null}
+                  {booking.paymentStatus === "paid" && booking.status === "confirmed" && booking.startsAt.getTime() > Date.now() ? (
+                    <details className="relative">
+                      <summary className="inline-flex min-h-9 cursor-pointer list-none items-center rounded-full border border-coral-500/30 px-3 text-xs font-bold text-coral-700 hover:border-coral-500">
+                        Request refund
+                      </summary>
+                      <form action={requestExpeditionRefundAction} className="absolute right-0 z-20 mt-2 grid w-72 gap-2 rounded-xl border border-ocean-900/10 bg-white p-3 shadow-soft">
+                        <input type="hidden" name="bookingId" value={booking.id} />
+                        <label className="grid gap-1 text-xs font-bold text-ocean-900">
+                          Reason
+                          <textarea name="reason" className="min-h-20 rounded-lg border border-ocean-900/14 px-3 py-2 text-sm font-semibold" placeholder="Tell us why you need a refund." required />
+                        </label>
+                        <Button type="submit" tone="secondary">Submit refund request</Button>
+                      </form>
+                    </details>
                   ) : null}
                 </div>
               </div>
