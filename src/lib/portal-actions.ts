@@ -511,7 +511,6 @@ function impactSiteMetadataFromForm(formData: FormData) {
   const progress = parsePercent(formData.get("progress"));
   const evidenceCount = parseOptionalCount(formData.get("evidenceCount"));
   const latestSurvey = nullableText(formData, "latestSurvey");
-  const verification = verificationFromForm(formData.get("verification"));
 
   if (progress === null || evidenceCount === null) {
     return null;
@@ -521,7 +520,7 @@ function impactSiteMetadataFromForm(formData: FormData) {
     progress,
     evidenceCount,
     latestSurvey,
-    verification
+    verification: "basic" as const
   };
 }
 
@@ -1652,7 +1651,8 @@ async function requirePartnerImpactSiteAccess(
     .select({
       id: impactSites.id,
       campaignId: impactSites.campaignId,
-      name: impactSites.name
+      name: impactSites.name,
+      metadata: impactSites.metadata
     })
     .from(impactSites)
     .where(eq(impactSites.id, impactSiteId))
@@ -2637,8 +2637,14 @@ export async function updatePartnerImpactSiteAction(formData: FormData) {
     redirectPartnerError(formData, "/partner/impact-sites", "impact-site-missing");
   }
 
-  await requirePartnerImpactSiteAccess(user.id, impactSiteId, formData, "/partner/impact-sites", "impact-site:manage");
+  const existingSite = await requirePartnerImpactSiteAccess(user.id, impactSiteId, formData, "/partner/impact-sites", "impact-site:manage");
   await requireCampaignAccess(user.id, campaignId, formData, "/partner/impact-sites", "impact-site:manage");
+
+  const existingMetadata =
+    existingSite.metadata && typeof existingSite.metadata === "object" && !Array.isArray(existingSite.metadata)
+      ? (existingSite.metadata as Record<string, unknown>)
+      : {};
+  values.metadata.verification = normalizeImpactSiteVerificationStatus(existingMetadata.verification);
 
   const [conflictingSite] = await db
     .select({ id: impactSites.id })
