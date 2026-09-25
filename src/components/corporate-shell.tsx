@@ -113,7 +113,13 @@ export function CorporateShell({
           </div>
 
           <nav className="mt-5 flex gap-2 overflow-x-auto pb-1 lg:grid lg:overflow-visible lg:pb-0" aria-label="Corporate sections">
-            {corporateNavItems.filter((item) => item.href !== "/corporate/programs" || canManagePrograms).map((item) => {
+            {corporateNavItems
+              .filter((item) =>
+                canManagePrograms
+                  ? true
+                  : !["/corporate/programs", "/corporate/employees", "/corporate/settings"].includes(item.href)
+              )
+              .map((item) => {
               const Icon = item.icon;
               const active = isActive(pathname, item.href);
 
