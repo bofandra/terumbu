@@ -375,7 +375,7 @@ export async function createCommunityEventAction(formData: FormData) {
   const waitlistEnabled = checked(formData.get("waitlistEnabled"));
   const imageUrl = await uploadedCommunityImage(formData, createPath);
 
-  if (!title || !summary || !description || !startsAt || !endsAt || endsAt <= startsAt || !location) {
+  if (!title || !summary || !description || !startsAt || !endsAt || !location) {\n    redirect(withStatus(createPath, "error", "event-invalid"));\n  }\n  if (endsAt.getTime() <= startsAt.getTime()) {
     redirect(withStatus(createPath, "error", "event-invalid"));
   }
 
@@ -423,7 +423,7 @@ export async function createCommunityChallengeAction(formData: FormData) {
   const unit = textValue(formData.get("unit"), 80) || "actions";
   const imageUrl = await uploadedCommunityImage(formData, createPath);
 
-  if (!title || !summary || !description || (startsAt && endsAt && endsAt <= startsAt)) {
+  if (!title || !summary || !description) {\n    redirect(withStatus(createPath, "error", "challenge-invalid"));\n  }\n  if (startsAt && endsAt && endsAt.getTime() <= startsAt.getTime()) {
     redirect(withStatus(createPath, "error", "challenge-invalid"));
   }
 
@@ -726,13 +726,13 @@ export async function registerCommunityEventAction(formData: FormData) {
     .values({
       eventId,
       userId: user.id,
-      status: availability.nextStatus,
+      status: registrationStatus,
       updatedAt: new Date()
     })
     .onConflictDoUpdate({
       target: [communityEventRegistrations.eventId, communityEventRegistrations.userId],
       set: {
-        status: availability.nextStatus,
+        status: registrationStatus,
         updatedAt: new Date()
       }
     })
