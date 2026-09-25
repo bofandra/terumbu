@@ -116,24 +116,6 @@ function containsNormalized(value: string, query: string | undefined) {
   return !target || normalized(value).includes(target);
 }
 
-function defaultHelpActivities(input: DefaultMarketplaceInput) {
-  const haystack = `${input.title ?? ""} ${input.summary}`.toLowerCase();
-
-  if (haystack.includes("monitor") || haystack.includes("survey")) {
-    return ["Reef Monitoring", "Documentation", "Community Work"];
-  }
-
-  if (haystack.includes("mangrove")) {
-    return ["Mangrove Planting", "Nursery Work", "Community Work"];
-  }
-
-  if (haystack.includes("cleanup") || haystack.includes("plastic")) {
-    return ["Ocean Cleanup", "Sorting Waste", "Community Work"];
-  }
-
-  return ["Coral Restoration", "Reef Monitoring", "Community Work"];
-}
-
 function defaultTravelLength(durationDays: number) {
   if (durationDays <= 7) {
     return "Short Term Stay";
