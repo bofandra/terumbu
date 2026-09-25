@@ -168,7 +168,11 @@ export default async function ExpeditionDetailPage({
 
   const expeditionPath = `/expeditions/${expedition.slug}`;
   const saveState = sessionUser ? await getExpeditionSaveState(sessionUser.id, expedition.slug) : null;
-  const referralCode = sessionUser ? referralCodeForUser(sessionUser.id) : query?.ref?.trim() || null;
+  const incomingReferralCode = (query?.ref ?? "")
+    .trim()
+    .replace(/[^a-zA-Z0-9_-]/g, "")
+    .slice(0, 64) || null;
+  const shareReferralCode = sessionUser ? referralCodeForUser(sessionUser.id) : incomingReferralCode;
   const bookingProps = {
     slug: expedition.slug,
     price: expedition.price,
@@ -182,7 +186,7 @@ export default async function ExpeditionDetailPage({
     isAuthenticated: Boolean(sessionUser),
     isSaved: saveState?.isSaved ?? false,
     expeditionPath,
-    referralCode,
+    referralCode: incomingReferralCode,
     displayCurrency,
     locale: localeTag(locale)
   };
@@ -261,7 +265,7 @@ export default async function ExpeditionDetailPage({
               <h1 className="mt-6 max-w-3xl text-4xl font-bold tracking-normal text-ocean-900 sm:text-5xl lg:text-[3.35rem] lg:leading-[1.15]">{expedition.title}</h1>
               <p className="mt-5 max-w-2xl text-lg leading-8 text-ocean-900/64">{expedition.summary}</p>
               <div className="mt-6">
-                <ExpeditionShareButtons slug={expedition.slug} title={expedition.title} referralCode={referralCode} compact />
+                <ExpeditionShareButtons slug={expedition.slug} title={expedition.title} referralCode={shareReferralCode} compact />
               </div>
 
               <div className="mt-8 grid gap-6">
@@ -851,7 +855,7 @@ export default async function ExpeditionDetailPage({
               <ButtonLink href="#ask-question" tone="light" className="rounded-full border border-ocean-900/10">{expedition.finalCta.secondaryLabel}</ButtonLink>
             </div>
             <div className="mt-5">
-              <ExpeditionShareButtons slug={expedition.slug} title={expedition.title} referralCode={referralCode} />
+              <ExpeditionShareButtons slug={expedition.slug} title={expedition.title} referralCode={shareReferralCode} />
             </div>
           </section>
         </div>
