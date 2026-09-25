@@ -26,7 +26,7 @@ import {
   parseExpiryYear
 } from "@/lib/billing-lifecycle";
 import { normalizeCardLast4 } from "@/lib/checkout";
-import { expeditionDepartureAvailability } from "@/lib/expedition-booking-lifecycle";
+import { canCancelExpeditionBooking, expeditionDepartureAvailability } from "@/lib/expedition-booking-lifecycle";
 import {
   ensureUserPaymentMethod,
   recordPaymentOperation
