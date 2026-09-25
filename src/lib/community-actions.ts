@@ -379,7 +379,7 @@ export async function createCommunityEventAction(formData: FormData) {
     redirect(withStatus(createPath, "error", "event-invalid"));
     return;
   }
-  if (endsAt.getTime() <= startsAt.getTime()) {
+  if (endsAt!.getTime() <= startsAt!.getTime()) {
     redirect(withStatus(createPath, "error", "event-invalid"));
     return;
   }
@@ -397,8 +397,8 @@ export async function createCommunityEventAction(formData: FormData) {
       description,
       eventType,
       status: "published",
-      startsAt,
-      endsAt,
+      startsAt: startsAt!,
+      endsAt: endsAt!,
       location,
       capacity,
       waitlistEnabled,
@@ -472,7 +472,7 @@ export async function deleteCommunityPostAction(formData: FormData) {
   const next = nextPath(formData, "/dashboard/community");
   const target = await targetRecord("post", postId);
 
-  if (!target || !(await canManageCommunityTarget(user.id, target.ownerUserId))) {
+  if (!target || !(await canManageCommunityTarget(user.id, target?.ownerUserId))) {
     redirect(withStatus(next, "error", "permission"));
     return;
   }
@@ -492,7 +492,7 @@ export async function deleteCommunityEventAction(formData: FormData) {
   const next = nextPath(formData, "/dashboard/community");
   const target = await targetRecord("event", eventId);
 
-  if (!target || !(await canManageCommunityTarget(user.id, target.ownerUserId))) {
+  if (!target || !(await canManageCommunityTarget(user.id, target?.ownerUserId))) {
     redirect(withStatus(next, "error", "permission"));
     return;
   }
@@ -512,7 +512,7 @@ export async function deleteCommunityChallengeAction(formData: FormData) {
   const next = nextPath(formData, "/dashboard/community");
   const target = await targetRecord("challenge", challengeId);
 
-  if (!target || !(await canManageCommunityTarget(user.id, target.ownerUserId))) {
+  if (!target || !(await canManageCommunityTarget(user.id, target?.ownerUserId))) {
     redirect(withStatus(next, "error", "permission"));
     return;
   }
@@ -549,6 +549,7 @@ export async function createCommunityCommentAction(formData: FormData) {
 
     if (!parent) {
       redirect(withStatus(next, "error", "comment"));
+      return;
     }
   }
 
@@ -567,14 +568,14 @@ export async function createCommunityCommentAction(formData: FormData) {
 
   await recordCommunityScore(user.id, "community_comment", comment.id, "comment_created");
 
-  if (target.ownerUserId && target.ownerUserId !== user.id) {
+  if (target!.ownerUserId && target!.ownerUserId !== user.id) {
     await createNotification({
-      userId: target.ownerUserId,
+      userId: target!.ownerUserId,
       notificationCode: `community-comment-${comment.id}`,
       category: "Community",
-      title: target.title,
-      message: `${user.displayName ?? user.name ?? user.email} commented on ${target.title}.`,
-      href: target.href,
+      title: target!.title,
+      message: `${user.displayName ?? user.name ?? user.email} commented on ${target!.title}.`,
+      href: target!.href,
       sourceType: "community_comment",
       sourceId: comment.id
     });
