@@ -9,7 +9,6 @@ import {
   Clock,
   ExternalLink,
   Home,
-  Languages,
   Leaf,
   LifeBuoy,
   MessageSquareText,
