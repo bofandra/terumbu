@@ -70,7 +70,6 @@ import {
 import {
   buildDefaultExpeditionDetailMetadata,
   normalizeExpeditionDetailMetadata,
-  parseExpeditionMetadataJson,
   type ExpeditionDetailMetadata
 } from "@/lib/expedition-metadata";
 import {
@@ -99,7 +98,6 @@ function activityCode() {
   return `ACT-${randomBytes(5).toString("hex").toUpperCase()}`;
 }
 
-const adminCampaignImpactLinkModes = ["new", "existing", "none"] as const;
 const organizationUserStatuses = ["active", "inactive"] as const;
 const expeditionDepartureStatuses = ["open", "waitlist", "full", "private_group", "cancelled"] as const;
 const activityUses = ["public_update", "evidence", "update_and_evidence"] as const;
@@ -528,13 +526,6 @@ function impactSiteFormValues(formData: FormData, campaignRequired: boolean, onE
   };
 }
 
-function adminCampaignImpactLinkModeFromForm(value: FormDataEntryValue | null) {
-  const mode = String(value ?? "none");
-
-  return adminCampaignImpactLinkModes.includes(mode as (typeof adminCampaignImpactLinkModes)[number])
-    ? (mode as (typeof adminCampaignImpactLinkModes)[number])
-    : "none";
-}
 
 function campaignStatusFromForm(value: FormDataEntryValue | null) {
   return normalizeCampaignStatus(value);
@@ -790,9 +781,6 @@ function departureMetadata(formData: FormData) {
   return Object.keys(metadata).length > 0 ? metadata : null;
 }
 
-function objectMetadata(value: unknown) {
-  return value && typeof value === "object" && !Array.isArray(value) ? (value as Record<string, unknown>) : {};
-}
 
 function formNumber(formData: FormData, key: string, fallback = 0) {
   const value = Number(formText(formData, key));
