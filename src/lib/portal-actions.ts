@@ -87,7 +87,6 @@ import {
   type PartnerOrganizationPermission
 } from "@/lib/partner-permissions";
 import { transitionDonationPayment, transitionExpeditionBookingPayment } from "@/lib/payment-workflows";
-import { demoGatewaySettleRefund } from "@/lib/payment-provider";
 import { upsertCarbonKgPerUsd } from "@/lib/platform-settings";
 import { processDueDonationSubscriptions } from "@/lib/subscription-billing";
 import { getEvidenceStorageProvider, readUploadedImageAsDataUrl } from "@/lib/storage";
@@ -511,7 +510,6 @@ function impactSiteMetadataFromForm(formData: FormData) {
   const progress = parsePercent(formData.get("progress"));
   const evidenceCount = parseOptionalCount(formData.get("evidenceCount"));
   const latestSurvey = nullableText(formData, "latestSurvey");
-  const verification = verificationFromForm(formData.get("verification"));
 
   if (progress === null || evidenceCount === null) {
     return null;
@@ -521,7 +519,7 @@ function impactSiteMetadataFromForm(formData: FormData) {
     progress,
     evidenceCount,
     latestSurvey,
-    verification
+    verification: "basic" as const
   };
 }
 
@@ -1652,7 +1650,8 @@ async function requirePartnerImpactSiteAccess(
     .select({
       id: impactSites.id,
       campaignId: impactSites.campaignId,
-      name: impactSites.name
+      name: impactSites.name,
+      metadata: impactSites.metadata
     })
     .from(impactSites)
     .where(eq(impactSites.id, impactSiteId))
@@ -2192,7 +2191,7 @@ export async function createPartnerCampaignAction(formData: FormData) {
             progress: parsePercent(formData.get("impactSiteProgress")) ?? 0,
             evidenceCount: parseOptionalCount(formData.get("impactSiteEvidenceCount")) ?? 0,
             latestSurvey: nullableText(formData, "impactSiteLatestSurvey"),
-            verification: verificationFromForm(formData.get("impactSiteVerification"))
+            verification: "basic" as const
           }
       }
       : null;
@@ -2417,7 +2416,7 @@ export async function updatePartnerCampaignAction(formData: FormData) {
             progress: parsePercent(formData.get("impactSiteProgress")) ?? 0,
             evidenceCount: parseOptionalCount(formData.get("impactSiteEvidenceCount")) ?? 0,
             latestSurvey: nullableText(formData, "impactSiteLatestSurvey"),
-            verification: verificationFromForm(formData.get("impactSiteVerification"))
+            verification: "basic" as const
           }
         }
       : null;
@@ -2482,9 +2481,11 @@ export async function updatePartnerCampaignAction(formData: FormData) {
   const now = new Date();
   const status = isAdmin
     ? requestedStatus
-    : partnerCampaignStatuses.includes(requestedStatus as (typeof partnerCampaignStatuses)[number])
-      ? (requestedStatus as (typeof partnerCampaignStatuses)[number])
-      : campaign.status;
+    : campaign.status === "published"
+      ? "review"
+      : partnerCampaignStatuses.includes(requestedStatus as (typeof partnerCampaignStatuses)[number])
+        ? (requestedStatus as (typeof partnerCampaignStatuses)[number])
+        : campaign.status;
   const category = campaignCategoryValue(formText(formData, "category"), impactSiteDefaults);
   const region = campaignRegionValue(formText(formData, "region"), impactSiteDefaults);
   const fallbackImpactTarget = campaignImpactTargetValue(formData.get("impactTarget"));
@@ -2576,6 +2577,17 @@ export async function updatePartnerCampaignAction(formData: FormData) {
       })
       .where(eq(campaigns.id, campaignId));
 
+    if (campaign.status === "published" && status === "review") {
+      await tx
+        .update(expeditions)
+        .set({
+          status: "review",
+          publishedAt: null,
+          updatedAt: now
+        })
+        .where(and(eq(expeditions.relatedCampaignId, campaignId), eq(expeditions.status, "published")));
+    }
+
     await replaceCampaignImpactTargets(tx, campaignId, impactTargetRows, now);
 
     await tx.insert(adminAuditLogs).values({
@@ -2637,8 +2649,14 @@ export async function updatePartnerImpactSiteAction(formData: FormData) {
     redirectPartnerError(formData, "/partner/impact-sites", "impact-site-missing");
   }
 
-  await requirePartnerImpactSiteAccess(user.id, impactSiteId, formData, "/partner/impact-sites", "impact-site:manage");
+  const existingSite = await requirePartnerImpactSiteAccess(user.id, impactSiteId, formData, "/partner/impact-sites", "impact-site:manage");
   await requireCampaignAccess(user.id, campaignId, formData, "/partner/impact-sites", "impact-site:manage");
+
+  const existingMetadata =
+    existingSite.metadata && typeof existingSite.metadata === "object" && !Array.isArray(existingSite.metadata)
+      ? (existingSite.metadata as Record<string, unknown>)
+      : {};
+  values.metadata.verification = normalizeImpactSiteVerificationStatus(existingMetadata.verification);
 
   const [conflictingSite] = await db
     .select({ id: impactSites.id })
@@ -3253,7 +3271,8 @@ export async function cancelExpeditionBookingAction(formData: FormData) {
       bookingCode: expeditionBookings.bookingCode,
       status: expeditionBookings.status,
       paymentStatus: expeditionBookings.paymentStatus,
-      metadata: expeditionBookings.metadata,
+      totalAmount: expeditionBookings.totalAmount,
+      currency: expeditionBookings.currency,
       startsAt: expeditionDepartures.startsAt
     })
     .from(expeditionBookings)
@@ -3265,12 +3284,66 @@ export async function cancelExpeditionBookingAction(formData: FormData) {
     redirectAdminExpeditionError("booking-cancel", formData);
   }
 
-  const nextPaymentStatus = booking.paymentStatus === "paid" ? "refunded" : "expired";
+  if (booking.paymentStatus === "paid") {
+    const [existingRefund] = await db
+      .select({ id: paymentOperations.id })
+      .from(paymentOperations)
+      .where(
+        and(
+          eq(paymentOperations.bookingId, booking.id),
+          eq(paymentOperations.operationType, "refund"),
+          eq(paymentOperations.status, "pending")
+        )
+      )
+      .limit(1);
+
+    if (!existingRefund) {
+      await recordPaymentOperation(db, {
+        operationType: "refund",
+        entityType: "expedition_booking",
+        bookingId: booking.id,
+        requestedByUserId: user.id,
+        status: "pending",
+        amount: booking.totalAmount,
+        currency: booking.currency,
+        reason,
+        metadata: {
+          source: "operator_cancellation",
+          bookingCode: booking.bookingCode
+        },
+        now
+      });
+    }
+
+    await db
+      .update(expeditionBookings)
+      .set({
+        status: "cancelled",
+        confirmedAt: null,
+        metadata: sql`coalesce(${expeditionBookings.metadata}, '{}'::jsonb) || jsonb_build_object('cancellationReason', ${reason}, 'cancellationRequestedAt', ${now.toISOString()})`
+      })
+      .where(eq(expeditionBookings.id, booking.id));
+
+    await db.insert(adminAuditLogs).values({
+      actorUserId: user.id,
+      action: "expedition_booking.refund_requested",
+      entityType: "expedition_booking",
+      entityId: booking.id,
+      metadata: {
+        expeditionId: booking.expeditionId,
+        departureId: booking.departureId,
+        bookingCode: booking.bookingCode,
+        reason
+      }
+    });
+
+    redirectAdminExpeditionSaved("booking-refund-requested", formData);
+  }
 
   await db.transaction(async (tx) => {
     await transitionExpeditionBookingPayment(tx as unknown as typeof db, {
       bookingId: booking.id,
-      nextStatus: nextPaymentStatus,
+      nextStatus: "expired",
       processedByUserId: user.id,
       providerPayload: {
         method: "operator_cancellation",
@@ -3283,15 +3356,7 @@ export async function cancelExpeditionBookingAction(formData: FormData) {
 
     await tx
       .update(expeditionBookings)
-      .set({
-        status: "cancelled",
-        metadata: {
-          ...objectMetadata(booking.metadata),
-          cancellationReason: reason,
-          cancelledByUserId: user.id,
-          cancelledAt: now.toISOString()
-        }
-      })
+      .set({ status: "cancelled", confirmedAt: null })
       .where(eq(expeditionBookings.id, booking.id));
   });
 
@@ -3306,7 +3371,7 @@ export async function cancelExpeditionBookingAction(formData: FormData) {
       bookingCode: booking.bookingCode,
       previousStatus: booking.status,
       previousPaymentStatus: booking.paymentStatus,
-      nextPaymentStatus,
+      nextPaymentStatus: "expired",
       reason
     }
   });
@@ -3315,104 +3380,8 @@ export async function cancelExpeditionBookingAction(formData: FormData) {
 }
 
 export async function cancelExpeditionDepartureAction(formData: FormData) {
-  const user = await requireRole(["admin"], "/admin/expeditions");
-  const departureId = formText(formData, "departureId");
-  const reason = formText(formData, "reason") || "Operator cancelled this departure";
-  const now = new Date();
-
-  const [departure] = await db
-    .select({
-      id: expeditionDepartures.id,
-      expeditionId: expeditionDepartures.expeditionId,
-      status: expeditionDepartures.status,
-      metadata: expeditionDepartures.metadata
-    })
-    .from(expeditionDepartures)
-    .where(eq(expeditionDepartures.id, departureId))
-    .limit(1);
-
-  if (!departure || departure.status === "cancelled") {
-    redirectAdminExpeditionError("departure-cancel", formData);
-  }
-
-  const bookingRows = await db
-    .select({
-      id: expeditionBookings.id,
-      bookingCode: expeditionBookings.bookingCode,
-      status: expeditionBookings.status,
-      paymentStatus: expeditionBookings.paymentStatus,
-      metadata: expeditionBookings.metadata,
-      startsAt: expeditionDepartures.startsAt
-    })
-    .from(expeditionBookings)
-    .innerJoin(expeditionDepartures, eq(expeditionBookings.departureId, expeditionDepartures.id))
-    .where(eq(expeditionBookings.departureId, departure.id));
-
-  const cancellableBookings = bookingRows.filter((booking) =>
-    canCancelExpeditionBooking({ bookingStatus: booking.status, paymentStatus: booking.paymentStatus, startsAt: booking.startsAt }, now)
-  );
-
-  await db.transaction(async (tx) => {
-    await tx
-      .update(expeditionDepartures)
-      .set({
-        status: "cancelled",
-        metadata: {
-          ...objectMetadata(departure.metadata),
-          cancellationReason: reason,
-          cancelledByUserId: user.id,
-          cancelledAt: now.toISOString()
-        }
-      })
-      .where(eq(expeditionDepartures.id, departure.id));
-
-    for (const booking of cancellableBookings) {
-      const nextPaymentStatus = booking.paymentStatus === "paid" ? "refunded" : "expired";
-
-      await transitionExpeditionBookingPayment(tx as unknown as typeof db, {
-        bookingId: booking.id,
-        nextStatus: nextPaymentStatus,
-        processedByUserId: user.id,
-        providerPayload: {
-          method: "operator_departure_cancellation",
-          cancellationReason: reason,
-          cancelledAt: now.toISOString()
-        },
-        operationType: "operator_departure_cancellation",
-        now
-      });
-
-      await tx
-        .update(expeditionBookings)
-        .set({
-          status: "cancelled",
-          metadata: {
-            ...objectMetadata(booking.metadata),
-            cancellationReason: reason,
-            cancelledByUserId: user.id,
-            cancelledAt: now.toISOString(),
-            source: "departure_cancellation"
-          }
-        })
-        .where(eq(expeditionBookings.id, booking.id));
-    }
-  });
-
-  await db.insert(adminAuditLogs).values({
-    actorUserId: user.id,
-    action: "expedition_departure.cancelled",
-    entityType: "expedition_departure",
-    entityId: departure.id,
-    metadata: {
-      expeditionId: departure.expeditionId,
-      previousStatus: departure.status,
-      cancelledBookings: cancellableBookings.length,
-      skippedBookings: bookingRows.length - cancellableBookings.length,
-      reason
-    }
-  });
-
-  redirectAdminExpeditionSaved("departure-cancelled", formData);
+  await requireRole(["admin"], "/admin/expeditions");
+  redirectAdminExpeditionError("partner-owned", formData);
 }
 
 export async function updatePartnerExpeditionAction(formData: FormData) {
@@ -3443,9 +3412,12 @@ export async function updatePartnerExpeditionAction(formData: FormData) {
 
   const [uploadedImageUrl, maxCapacity] = await Promise.all([uploadedPartnerImage(formData, "imageFile"), expeditionMaxCapacity(expeditionId)]);
   const imageUrl = uploadedImageUrl ?? existingExpedition.imageUrl;
-  const status = partnerExpeditionStatuses.includes(requestedStatus as (typeof partnerExpeditionStatuses)[number])
-    ? (requestedStatus as (typeof partnerExpeditionStatuses)[number])
-    : existingExpedition.status;
+  const status =
+    existingExpedition.status === "published"
+      ? "review"
+      : partnerExpeditionStatuses.includes(requestedStatus as (typeof partnerExpeditionStatuses)[number])
+        ? (requestedStatus as (typeof partnerExpeditionStatuses)[number])
+        : existingExpedition.status;
   const currentMetadata = normalizeExpeditionDetailMetadata(existingExpedition.metadata, defaultPartnerExpeditionMetadata(existingExpedition, maxCapacity));
   const metadata = await partnerExpeditionMetadataFromForm(formData, {
     currentMetadata,
@@ -3714,7 +3686,7 @@ export async function createPartnerExpeditionDepartureAction(formData: FormData)
 }
 
 export async function updatePartnerExpeditionDepartureAction(formData: FormData) {
-  const user = await requirePartnerRole( "/partner/expeditions");
+  const user = await requirePartnerRole("/partner/expeditions");
   const departureId = formText(formData, "departureId");
   const startsAt = parseDateTime(formData.get("startsAt"));
   const endsAt = parseDateTime(formData.get("endsAt"));
@@ -3729,9 +3701,13 @@ export async function updatePartnerExpeditionDepartureAction(formData: FormData)
     .select({
       id: expeditionDepartures.id,
       expeditionId: expeditionDepartures.expeditionId,
-      seatsBooked: expeditionDepartures.seatsBooked
+      startsAt: expeditionDepartures.startsAt,
+      status: expeditionDepartures.status,
+      seatsBooked: expeditionDepartures.seatsBooked,
+      expeditionTitle: expeditions.title
     })
     .from(expeditionDepartures)
+    .innerJoin(expeditions, eq(expeditionDepartures.expeditionId, expeditions.id))
     .where(eq(expeditionDepartures.id, departureId))
     .limit(1);
 
@@ -3745,6 +3721,16 @@ export async function updatePartnerExpeditionDepartureAction(formData: FormData)
     redirectPartnerError(formData, "/partner/expeditions", "departure-capacity");
   }
 
+  const isNewCancellation = status === "cancelled" && existingDeparture.status !== "cancelled";
+
+  if (existingDeparture.status === "cancelled" && status !== "cancelled") {
+    redirectPartnerError(formData, "/partner/expeditions", "departure-cancelled-final");
+  }
+
+  if (isNewCancellation && existingDeparture.startsAt.getTime() <= Date.now()) {
+    redirectPartnerError(formData, "/partner/expeditions", "departure-cancel-started");
+  }
+
   const [duplicate] = await db
     .select({ id: expeditionDepartures.id })
     .from(expeditionDepartures)
@@ -3755,26 +3741,141 @@ export async function updatePartnerExpeditionDepartureAction(formData: FormData)
     redirectPartnerError(formData, "/partner/expeditions", "departure-duplicate");
   }
 
-  await db
-    .update(expeditionDepartures)
-    .set({
-      startsAt,
-      endsAt,
-      capacity,
-      status,
-      metadata: departureMetadata(formData)
-    })
-    .where(eq(expeditionDepartures.id, departureId));
+  const affectedBookings = isNewCancellation
+    ? await db
+        .select({
+          id: expeditionBookings.id,
+          userId: expeditionBookings.userId,
+          bookingCode: expeditionBookings.bookingCode,
+          contactEmail: expeditionBookings.contactEmail,
+          status: expeditionBookings.status,
+          paymentStatus: expeditionBookings.paymentStatus,
+          totalAmount: expeditionBookings.totalAmount,
+          currency: expeditionBookings.currency
+        })
+        .from(expeditionBookings)
+        .where(eq(expeditionBookings.departureId, departureId))
+    : [];
 
-  await db.insert(adminAuditLogs).values({
-    actorUserId: user.id,
-    action: "partner_expedition_departure.updated",
-    entityType: "expedition_departure",
-    entityId: departureId,
-    metadata: { source: "partner_portal", expeditionId: existingDeparture.expeditionId, status, capacity }
+  const cancellableBookings = affectedBookings.filter(
+    (booking) => !["cancelled", "completed"].includes(booking.status) && booking.paymentStatus !== "refunded"
+  );
+  const now = new Date();
+
+  await db.transaction(async (tx) => {
+    await tx
+      .update(expeditionDepartures)
+      .set({
+        startsAt,
+        endsAt,
+        capacity,
+        status,
+        metadata: departureMetadata(formData)
+      })
+      .where(eq(expeditionDepartures.id, departureId));
+
+    if (isNewCancellation) {
+      for (const booking of cancellableBookings) {
+        if (booking.paymentStatus === "paid") {
+          const [existingRefund] = await tx
+            .select({ id: paymentOperations.id })
+            .from(paymentOperations)
+            .where(
+              and(
+                eq(paymentOperations.bookingId, booking.id),
+                eq(paymentOperations.operationType, "refund"),
+                eq(paymentOperations.status, "pending")
+              )
+            )
+            .limit(1);
+
+          if (!existingRefund) {
+            await recordPaymentOperation(tx as unknown as typeof db, {
+              operationType: "refund",
+              entityType: "expedition_booking",
+              bookingId: booking.id,
+              requestedByUserId: user.id,
+              status: "pending",
+              amount: booking.totalAmount,
+              currency: booking.currency,
+              reason: "Departure cancelled by expedition partner.",
+              metadata: {
+                source: "partner_departure_cancellation",
+                departureId,
+                expeditionId: existingDeparture.expeditionId,
+                bookingCode: booking.bookingCode
+              },
+              now
+            });
+          }
+
+          await tx
+            .update(expeditionBookings)
+            .set({
+              status: "cancelled",
+              confirmedAt: null,
+              metadata: sql`coalesce(${expeditionBookings.metadata}, '{}'::jsonb) || jsonb_build_object('cancellationSource', 'partner_departure_cancellation', 'cancellationRequestedAt', ${now.toISOString()})`
+            })
+            .where(eq(expeditionBookings.id, booking.id));
+        } else {
+          await transitionExpeditionBookingPayment(tx as unknown as typeof db, {
+            bookingId: booking.id,
+            nextStatus: "expired",
+            processedByUserId: user.id,
+            providerPayload: {
+              method: "partner_departure_cancellation",
+              departureId,
+              cancelledAt: now.toISOString()
+            },
+            operationType: "partner_departure_cancellation",
+            now
+          });
+
+          await tx
+            .update(expeditionBookings)
+            .set({ status: "cancelled", confirmedAt: null })
+            .where(eq(expeditionBookings.id, booking.id));
+        }
+      }
+    }
+
+    await tx.insert(adminAuditLogs).values({
+      actorUserId: user.id,
+      action: "partner_expedition_departure.updated",
+      entityType: "expedition_departure",
+      entityId: departureId,
+      metadata: {
+        source: "partner_portal",
+        expeditionId: existingDeparture.expeditionId,
+        previousStatus: existingDeparture.status,
+        status,
+        capacity,
+        affectedBookings: cancellableBookings.length,
+        mandatoryRefunds: cancellableBookings.filter((booking) => booking.paymentStatus === "paid").length
+      }
+    });
   });
 
-  redirectPartnerSaved(formData, "/partner/expeditions", "departure-updated");
+  if (isNewCancellation) {
+    await Promise.allSettled(
+      cancellableBookings.map((booking) =>
+        sendTransactionalEmail({
+          userId: booking.userId,
+          recipientEmail: booking.contactEmail,
+          subject: `${existingDeparture.expeditionTitle} departure cancelled`,
+          template: "expedition_departure_cancelled",
+          payload: {
+            expedition: existingDeparture.expeditionTitle,
+            bookingCode: booking.bookingCode,
+            departure: existingDeparture.startsAt.toISOString(),
+            refundStatus: booking.paymentStatus === "paid" ? "pending_manual_refund" : "not_required"
+          }
+        })
+      )
+    );
+  }
+
+  redirectPartnerSaved(formData, "/partner/expeditions", isNewCancellation ? "departure-cancelled" : "departure-updated");
 }
 
 export async function createAdminCampaignAction(formData: FormData) {
@@ -3797,6 +3898,60 @@ export async function updateImpactSettingsAction(formData: FormData) {
 export async function updateAdminCampaignAction(formData: FormData) {
   await requireRole(["admin"], "/admin/campaigns");
   redirectAdminCampaignError("partner-owned", formData);
+}
+
+export async function updateImpactSiteVerificationAction(formData: FormData) {
+  const user = await requireRole(["admin"], "/admin/campaigns/impact-sites");
+  const impactSiteId = formText(formData, "impactSiteId");
+  const verification = formText(formData, "verification");
+
+  if (!impactSiteId || !impactSiteVerificationStatuses.includes(verification as (typeof impactSiteVerificationStatuses)[number])) {
+    redirect("/admin/campaigns/impact-sites?error=verification");
+  }
+
+  const [site] = await db
+    .select({
+      id: impactSites.id,
+      campaignId: impactSites.campaignId,
+      name: impactSites.name,
+      metadata: impactSites.metadata
+    })
+    .from(impactSites)
+    .where(eq(impactSites.id, impactSiteId))
+    .limit(1);
+
+  if (!site) {
+    redirect("/admin/campaigns/impact-sites?error=impact-site-missing");
+  }
+
+  const currentMetadata = metadataObject(site.metadata);
+  const previousVerification = normalizeImpactSiteVerificationStatus(currentMetadata.verification);
+  const nextVerification = verification as (typeof impactSiteVerificationStatuses)[number];
+
+  await db
+    .update(impactSites)
+    .set({
+      metadata: {
+        ...currentMetadata,
+        verification: nextVerification
+      }
+    })
+    .where(eq(impactSites.id, site.id));
+
+  await db.insert(adminAuditLogs).values({
+    actorUserId: user.id,
+    action: "impact_site.verification.updated",
+    entityType: "impact_site",
+    entityId: site.id,
+    metadata: {
+      campaignId: site.campaignId,
+      name: site.name,
+      previousVerification,
+      verification: nextVerification
+    }
+  });
+
+  redirect(`/admin/campaigns/impact-sites/${site.id}?saved=verification`);
 }
 
 export async function createAdminImpactSiteAction(formData: FormData) {
@@ -4300,11 +4455,15 @@ export async function verifyEvidenceAction(formData: FormData) {
   const [evidence] = await db
     .select({
       id: projectEvidence.id,
+      campaignId: projectEvidence.campaignId,
       evidenceCode: projectEvidence.evidenceCode,
       verificationStatus: projectEvidence.verificationStatus,
-      assignedReviewerUserId: projectEvidence.assignedReviewerUserId
+      assignedReviewerUserId: projectEvidence.assignedReviewerUserId,
+      campaignTitle: campaigns.title,
+      organizationId: campaigns.organizationId
     })
     .from(projectEvidence)
+    .innerJoin(campaigns, eq(projectEvidence.campaignId, campaigns.id))
     .where(eq(projectEvidence.id, evidenceId))
     .limit(1);
 
@@ -4420,6 +4579,32 @@ export async function verifyEvidenceAction(formData: FormData) {
     );
   }
 
+  if (status !== "in_review") {
+    await notifyPartnerOrganizationReview({
+      organizationId: evidence.organizationId,
+      subject:
+        status === "verified"
+          ? `Evidence verified for ${evidence.campaignTitle}`
+          : status === "needs_clarification"
+            ? `Evidence clarification requested for ${evidence.campaignTitle}`
+            : `Evidence review update for ${evidence.campaignTitle}`,
+      template:
+        status === "verified"
+          ? "evidence_verified"
+          : status === "needs_clarification"
+            ? "evidence_clarification_requested"
+            : "evidence_rejected",
+      payload: {
+        evidenceId: evidence.id,
+        evidenceCode: evidence.evidenceCode,
+        campaignId: evidence.campaignId,
+        campaign: evidence.campaignTitle,
+        status,
+        reviewNote: reviewNote || ""
+      }
+    });
+  }
+
   redirect(evidenceReviewRedirect(redirectTo, "saved", "evidence"));
 }
 
@@ -4532,6 +4717,21 @@ export async function reconcileDonationAction(formData: FormData) {
     });
   }
 
+  if (status === "failed" && donation.status !== "failed" && donation.donorEmail) {
+    await sendTransactionalEmail({
+      recipientEmail: donation.donorEmail,
+      subject: "Your Terumbu donation payment needs attention",
+      template: "donation_payment_rejected",
+      payload: {
+        donationId: donation.id,
+        campaign: donation.campaignTitle,
+        amount: Number(donation.amount),
+        currency: donation.currency,
+        status: "failed"
+      }
+    });
+  }
+
   await db.insert(adminAuditLogs).values({
     actorUserId: user.id,
     action: "donation.reconciled",
@@ -4590,7 +4790,8 @@ export async function settlePaymentOperationAction(formData: FormData) {
       amount: paymentOperations.amount,
       currency: paymentOperations.currency,
       reason: paymentOperations.reason,
-      providerReference: paymentOperations.providerReference
+      providerReference: paymentOperations.providerReference,
+      metadata: paymentOperations.metadata
     })
     .from(paymentOperations)
     .where(eq(paymentOperations.id, operationId))
@@ -4598,6 +4799,15 @@ export async function settlePaymentOperationAction(formData: FormData) {
 
   if (!operation || operation.status !== "pending" || operation.operationType !== "refund") {
     redirectAdminPayment(formData, "error", "operation");
+  }
+
+  const operationMetadata = metadataObject(operation.metadata);
+  const mandatoryRefund =
+    operationMetadata.source === "operator_cancellation" ||
+    operationMetadata.source === "partner_departure_cancellation";
+
+  if (decision === "reject" && mandatoryRefund) {
+    redirectAdminPayment(formData, "error", "mandatory-refund");
   }
 
   if (decision === "reject") {
@@ -4697,27 +4907,18 @@ export async function settlePaymentOperationAction(formData: FormData) {
       redirectAdminPayment(formData, "error", "operation");
     }
 
-    const providerResult = demoGatewaySettleRefund({
-      idempotencyKey: `refund:${operation.id}`,
-      amount: Number(operation.amount ?? donation.amount),
-      currency: operation.currency ?? donation.currency,
-      providerReference: operation.providerReference,
-      now
-    });
+    const providerReference = operation.providerReference ?? `MANUAL-REFUND-${operation.id}`;
 
     await db.transaction(async (tx) => {
       await transitionDonationPayment(tx as unknown as typeof db, {
         donationId: donation.id,
-        nextStatus: providerResult.status,
-        providerReference: providerResult.providerReference,
+        nextStatus: "refunded",
+        providerReference,
         providerPayload: {
-          method: "refund_settlement",
+          method: "manual_external_refund",
           operationId: operation.id,
-          providerStatus: providerResult.rawStatus,
-          providerProcessedAt: providerResult.processedAt.toISOString(),
-          idempotencyKey: providerResult.idempotencyKey,
-          adminNote,
-          ...providerResult.metadata
+          manuallyConfirmedAt: now.toISOString(),
+          adminNote
         },
         processedByUserId: user.id,
         operationType: "refund_settlement",
@@ -4729,12 +4930,12 @@ export async function settlePaymentOperationAction(formData: FormData) {
         .set({
           processedByUserId: user.id,
           status: "completed",
-          providerReference: providerResult.providerReference,
+          providerReference,
           processedAt: now,
           updatedAt: now,
           metadata: {
             decision: "approved",
-            providerStatus: providerResult.rawStatus,
+            providerStatus: "manually_confirmed",
             adminNote
           }
         })
@@ -4764,7 +4965,7 @@ export async function settlePaymentOperationAction(formData: FormData) {
       entityId: donation.id,
       metadata: {
         operationId: operation.id,
-        providerReference: providerResult.providerReference,
+        providerReference,
         adminNote
       }
     });
@@ -4792,27 +4993,18 @@ export async function settlePaymentOperationAction(formData: FormData) {
       redirectAdminPayment(formData, "error", "operation");
     }
 
-    const providerResult = demoGatewaySettleRefund({
-      idempotencyKey: `refund:${operation.id}`,
-      amount: Number(operation.amount ?? booking.totalAmount),
-      currency: operation.currency ?? booking.currency,
-      providerReference: operation.providerReference,
-      now
-    });
+    const providerReference = operation.providerReference ?? `MANUAL-REFUND-${operation.id}`;
 
     await db.transaction(async (tx) => {
       await transitionExpeditionBookingPayment(tx as unknown as typeof db, {
         bookingId: booking.id,
-        nextStatus: providerResult.status,
-        providerReference: providerResult.providerReference,
+        nextStatus: "refunded",
+        providerReference,
         providerPayload: {
-          method: "refund_settlement",
+          method: "manual_external_refund",
           operationId: operation.id,
-          providerStatus: providerResult.rawStatus,
-          providerProcessedAt: providerResult.processedAt.toISOString(),
-          idempotencyKey: providerResult.idempotencyKey,
-          adminNote,
-          ...providerResult.metadata
+          manuallyConfirmedAt: now.toISOString(),
+          adminNote
         },
         processedByUserId: user.id,
         operationType: "refund_settlement",
@@ -4824,12 +5016,12 @@ export async function settlePaymentOperationAction(formData: FormData) {
         .set({
           processedByUserId: user.id,
           status: "completed",
-          providerReference: providerResult.providerReference,
+          providerReference,
           processedAt: now,
           updatedAt: now,
           metadata: {
             decision: "approved",
-            providerStatus: providerResult.rawStatus,
+            providerStatus: "manually_confirmed",
             adminNote
           }
         })
@@ -4858,7 +5050,7 @@ export async function settlePaymentOperationAction(formData: FormData) {
       entityId: booking.id,
       metadata: {
         operationId: operation.id,
-        providerReference: providerResult.providerReference,
+        providerReference,
         adminNote
       }
     });
@@ -4873,16 +5065,24 @@ export async function reconcileExpeditionBookingAction(formData: FormData) {
   const user = await requireRole(["admin"], "/admin");
   const bookingId = String(formData.get("bookingId") ?? "");
   const requestedStatus = String(formData.get("status") ?? "paid");
-  const status = requestedStatus === "failed" || requestedStatus === "refunded" ? requestedStatus : "paid";
+  const status = requestedStatus === "failed" ? "failed" : "paid";
   const operationId = String(formData.get("operationId") ?? "");
   const now = new Date();
 
   const [booking] = await db
     .select({
       id: expeditionBookings.id,
-      paymentStatus: expeditionBookings.paymentStatus
+      bookingCode: expeditionBookings.bookingCode,
+      contactEmail: expeditionBookings.contactEmail,
+      userId: expeditionBookings.userId,
+      participantsCount: expeditionBookings.participantsCount,
+      paymentStatus: expeditionBookings.paymentStatus,
+      startsAt: expeditionDepartures.startsAt,
+      expeditionTitle: expeditions.title
     })
     .from(expeditionBookings)
+    .innerJoin(expeditionDepartures, eq(expeditionBookings.departureId, expeditionDepartures.id))
+    .innerJoin(expeditions, eq(expeditionBookings.expeditionId, expeditions.id))
     .where(eq(expeditionBookings.id, bookingId))
     .limit(1);
 
@@ -4935,6 +5135,39 @@ export async function reconcileExpeditionBookingAction(formData: FormData) {
 
   if (!result) {
     redirectAdminPayment(formData, "error", "booking");
+  }
+
+  if (status === "paid" && booking.paymentStatus !== "paid") {
+    await sendTransactionalEmail({
+      userId: booking.userId,
+      recipientEmail: booking.contactEmail,
+      subject: `Your ${booking.expeditionTitle} booking is confirmed`,
+      template: "expedition_booking_confirmation",
+      payload: {
+        bookingCode: booking.bookingCode,
+        bookingId: booking.id,
+        expedition: booking.expeditionTitle,
+        departure: booking.startsAt.toISOString(),
+        participantsCount: booking.participantsCount,
+        paymentStatus: "paid"
+      }
+    });
+  }
+
+  if (status === "failed" && booking.paymentStatus !== "failed") {
+    await sendTransactionalEmail({
+      userId: booking.userId,
+      recipientEmail: booking.contactEmail,
+      subject: `Payment verification update for ${booking.expeditionTitle}`,
+      template: "expedition_payment_rejected",
+      payload: {
+        bookingCode: booking.bookingCode,
+        bookingId: booking.id,
+        expedition: booking.expeditionTitle,
+        departure: booking.startsAt.toISOString(),
+        paymentStatus: "failed"
+      }
+    });
   }
 
   await db.insert(adminAuditLogs).values({

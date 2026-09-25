@@ -519,6 +519,11 @@ function ExpeditionDetailForm({
           </div>
           <div className="grid gap-3 md:grid-cols-3">
             <Field label="Publication status">
+              {expedition.status === "published" ? (
+                <p className="mb-2 rounded-lg bg-sand-50 px-3 py-2 text-xs font-bold leading-5 text-ocean-900/64">
+                  Saving core expedition changes sends this published trip back to review and temporarily removes it from public booking until Platform Admin approves it again.
+                </p>
+              ) : null}
               <select name="status" defaultValue={expedition.status} className={inputClassName}>
                 {!["draft", "review"].includes(expedition.status) ? <option value={expedition.status}>{labelize(expedition.status)}</option> : null}
                 <option value="draft">Draft</option>

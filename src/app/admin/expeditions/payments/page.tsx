@@ -49,6 +49,13 @@ export default async function AdminExpeditionPaymentsPage({ searchParams }: Page
         {data.bookings.map((booking) => {
           const operation = booking.pendingOperation;
           const isRefund = operation?.operationType === "refund";
+          const operationMetadata =
+            operation?.metadata && typeof operation.metadata === "object" && !Array.isArray(operation.metadata)
+              ? (operation.metadata as Record<string, unknown>)
+              : {};
+          const mandatoryRefund =
+            operationMetadata.source === "operator_cancellation" ||
+            operationMetadata.source === "partner_departure_cancellation";
           return (
             <article key={booking.id} className="rounded-lg border border-ocean-900/10 bg-white p-5 shadow-soft">
               <div className="flex flex-col justify-between gap-3 lg:flex-row lg:items-start">
@@ -75,14 +82,20 @@ export default async function AdminExpeditionPaymentsPage({ searchParams }: Page
                     <input type="hidden" name="operationId" value={operation?.id ?? ""} />
                     <input type="hidden" name="decision" value="approve" />
                     <input type="hidden" name="confirmPayment" value="approve" />
-                    <Button type="submit">Approve refund</Button>
+                    <Button type="submit">{mandatoryRefund ? "Confirm mandatory refund" : "Approve refund"}</Button>
                   </form>
-                  <form action={settlePaymentOperationAction}>
-                    <input type="hidden" name="next" value={pathname} />
-                    <input type="hidden" name="operationId" value={operation?.id ?? ""} />
-                    <input type="hidden" name="decision" value="reject" />
-                    <Button type="submit" tone="secondary">Reject refund</Button>
-                  </form>
+                  {mandatoryRefund ? (
+                    <span className="inline-flex min-h-10 items-center rounded-lg bg-coral-100 px-3 text-sm font-bold text-coral-700">
+                      Departure/operator cancellation · refund required
+                    </span>
+                  ) : (
+                    <form action={settlePaymentOperationAction}>
+                      <input type="hidden" name="next" value={pathname} />
+                      <input type="hidden" name="operationId" value={operation?.id ?? ""} />
+                      <input type="hidden" name="decision" value="reject" />
+                      <Button type="submit" tone="secondary">Reject refund</Button>
+                    </form>
+                  )}
                 </div>
               ) : (
                 <div className="mt-4 flex flex-wrap gap-2 border-t border-ocean-900/10 pt-4">

@@ -11509,7 +11509,12 @@ export async function getReferralDashboardData(userId: string) {
     })
     .from(expeditionBookings)
     .innerJoin(expeditions, eq(expeditionBookings.expeditionId, expeditions.id))
-    .where(sql`${expeditionBookings.metadata}->>'referralCode' = ${referralCode}`)
+    .where(
+      and(
+        sql`${expeditionBookings.metadata}->>'referralCode' = ${referralCode}`,
+        sql`${expeditionBookings.userId} is distinct from ${userId}`
+      )
+    )
     .orderBy(desc(expeditionBookings.bookedAt))
     .limit(100);
 

@@ -2,10 +2,13 @@ import Link from "next/link";
 import { MapPinned, ShieldCheck } from "lucide-react";
 import { notFound } from "next/navigation";
 
-import { AdminPageHeader, AdminStatusBadge, adminPanelClassName } from "@/components/admin-ui";
+import { AdminAlert } from "@/components/admin/admin-alert";
+import { AdminPageHeader, AdminStatusBadge, adminPanelClassName, adminSelectClassName } from "@/components/admin-ui";
+import { Button } from "@/components/ui/button";
 import { ProgressMeter } from "@/components/ui/progress-meter";
 import { observeAdminDataLoader } from "@/lib/admin-observability";
 import { requireRole } from "@/lib/auth";
+import { updateImpactSiteVerificationAction } from "@/lib/portal-actions";
 import { getAdminImpactSiteEditorData } from "@/lib/queries";
 
 export const metadata = {
@@ -15,11 +18,13 @@ export const metadata = {
 export const dynamic = "force-dynamic";
 
 export default async function AdminImpactSiteDetailPage({
-  params
+  params,
+  searchParams
 }: {
   params: Promise<{ impactSiteId: string }>;
+  searchParams?: Promise<{ saved?: string; error?: string }>;
 }) {
-  const { impactSiteId } = await params;
+  const [{ impactSiteId }, query] = await Promise.all([params, searchParams]);
   const pathname = `/admin/campaigns/impact-sites/${impactSiteId}`;
   await requireRole(["admin"], pathname);
   const data = await observeAdminDataLoader("admin.impact-site.editor", () => getAdminImpactSiteEditorData(impactSiteId));
@@ -46,11 +51,14 @@ export default async function AdminImpactSiteDetailPage({
           <div>
             <h2 className="font-bold text-ocean-900">Partner-owned impact site</h2>
             <p className="mt-1 text-sm font-semibold leading-6 text-ocean-900/62">
-              Platform admins can monitor this location but cannot edit its coordinates, campaign assignment, verification fields, progress, or evidence count.
+              Platform admins cannot edit partner-owned coordinates, campaign assignment, progress, or evidence counts. Verification level is a platform governance control and is managed separately below.
             </p>
           </div>
         </div>
       </section>
+
+      {query?.saved === "verification" ? <AdminAlert tone="success">Impact site verification updated.</AdminAlert> : null}
+      {query?.error ? <AdminAlert tone="error">Impact site verification could not be updated.</AdminAlert> : null}
 
       <section className="grid gap-3 sm:grid-cols-3" aria-label="Impact site summary">
         <article className="rounded-lg border border-ocean-900/10 bg-white p-4 shadow-soft sm:col-span-2">
@@ -67,6 +75,26 @@ export default async function AdminImpactSiteDetailPage({
           <p className="text-sm font-bold text-ocean-900/58">Verification</p>
           <div className="mt-3"><AdminStatusBadge value={site.verification} /></div>
         </article>
+      </section>
+
+      <section className="rounded-lg border border-ocean-900/10 bg-white p-5 shadow-soft">
+        <p className="text-xs font-bold uppercase tracking-[0.14em] text-coral-700">Platform governance</p>
+        <h2 className="mt-2 text-xl font-bold text-ocean-900">Verification level</h2>
+        <p className="mt-1 text-sm font-semibold leading-6 text-ocean-900/58">
+          This control changes only Terumbu verification level. It does not modify the partner's location or operational progress data.
+        </p>
+        <form action={updateImpactSiteVerificationAction} className="mt-4 flex flex-wrap items-end gap-3">
+          <input type="hidden" name="impactSiteId" value={site.id} />
+          <label className="grid gap-2 text-sm font-bold text-ocean-900">
+            Verification
+            <select name="verification" defaultValue={site.verification} className={adminSelectClassName}>
+              <option value="basic">Basic</option>
+              <option value="document">Document verified</option>
+              <option value="field">Field verified</option>
+            </select>
+          </label>
+          <Button type="submit">Update verification</Button>
+        </form>
       </section>
 
       <section className={adminPanelClassName}>

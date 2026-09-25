@@ -415,20 +415,21 @@ export async function bookExpeditionAction(formData: FormData) {
     }
   });
 
-  if (shouldSendBookingEmail) {
-    await sendTransactionalEmail({
-      userId: bookingEmailUserId,
-      recipientEmail: contactEmail,
-      subject: `Your ${departure.expeditionTitle} booking is confirmed`,
-      template: "expedition_booking_confirmation",
-      payload: {
-        bookingCode,
-        bookingId,
-        departure: departure.startsAt.toISOString(),
-        participantsCount: participantCount
-      }
-    });
-  }
+  await sendTransactionalEmail({
+    userId: bookingEmailUserId,
+    recipientEmail: contactEmail,
+    subject: shouldSendBookingEmail
+      ? `Your ${departure.expeditionTitle} booking is confirmed`
+      : `We received your ${departure.expeditionTitle} booking request`,
+    template: shouldSendBookingEmail ? "expedition_booking_confirmation" : "expedition_booking_received",
+    payload: {
+      bookingCode,
+      bookingId,
+      departure: departure.startsAt.toISOString(),
+      participantsCount: participantCount,
+      paymentStatus: shouldSendBookingEmail ? "paid" : "pending_verification"
+    }
+  });
 
   await trackEvent({
     distinctId: sessionUser?.id ?? contactEmail,

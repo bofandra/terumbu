@@ -26,6 +26,8 @@ services:
       NEXT_PUBLIC_FX_USD_JPY: ${NEXT_PUBLIC_FX_USD_JPY:-}
     ports:
       - "${TERUMBU_APP_PORT:-3100}:3000"
+    volumes:
+      - terumbu_generated_reports:/app/public/generated/corporate-reports
     depends_on:
       postgres:
         condition: service_healthy
@@ -82,3 +84,4 @@ services:
 
 volumes:
   terumbu_postgres_data:
+  terumbu_generated_reports:

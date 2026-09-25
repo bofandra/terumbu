@@ -3,7 +3,7 @@ import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
 import { MetricValue } from "@/components/ui/metric-value";
-import { requireUser } from "@/lib/auth";
+import { getUserRoles, requireUser } from "@/lib/auth";
 import { requireCorporateDashboardData } from "@/lib/corporate-access";
 import { createCorporateActivityPdfReportAction } from "@/lib/corporate-actions";
 import { corporateReportArtifactRoute } from "@/lib/corporate-report-artifact-links";
@@ -28,6 +28,8 @@ export default async function CorporateExpeditionsPage({ searchParams }: Corpora
   const params = await searchParams;
   const user = await requireUser("/corporate/expeditions");
   const data = await requireCorporateDashboardData(user.id, "/corporate/expeditions", params?.programId);
+  const roleKeys = await getUserRoles(user.id);
+  const canManageCorporate = roleKeys.includes("corporate_admin") && !roleKeys.includes("admin");
   const activities = await getCorporateExpeditionActivities(user.id, data.program.programId);
   const reports = data.exports.filter((item) => item.activityScope === "expeditions");
   const participantCount = activities.reduce((total, item) => total + item.participantsCount, 0);
@@ -74,11 +76,15 @@ export default async function CorporateExpeditionsPage({ searchParams }: Corpora
       <section className="mt-6 rounded-lg border border-ocean-900/10 bg-white p-5 shadow-soft">
         <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
           <div><h2 className="text-xl font-bold tracking-normal text-ocean-900">Expedition report</h2><p className="mt-1 text-sm text-ocean-900/58">Branded PDF with report scope, booking and participant summary, expedition activity detail, and traceability note.</p></div>
-          <form action={createCorporateActivityPdfReportAction}>
-            <input type="hidden" name="activityScope" value="expeditions" />
-            <input type="hidden" name="programId" value={data.program.programId} />
-            <Button type="submit" tone="secondary"><Download className="size-4" aria-hidden="true" />Generate PDF</Button>
-          </form>
+          {canManageCorporate ? (
+            <form action={createCorporateActivityPdfReportAction}>
+              <input type="hidden" name="activityScope" value="expeditions" />
+              <input type="hidden" name="programId" value={data.program.programId} />
+              <Button type="submit" tone="secondary"><Download className="size-4" aria-hidden="true" />Generate PDF</Button>
+            </form>
+          ) : (
+            <span className="rounded-full bg-ocean-50 px-3 py-2 text-xs font-bold text-ocean-900/58">Read-only</span>
+          )}
         </div>
         <div className="mt-4 divide-y divide-ocean-900/10">
           {reports.map((report) => (

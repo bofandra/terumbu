@@ -21,6 +21,8 @@ const statusMessages: Record<string, string> = {
 const errorMessages: Record<string, string> = {
   "campaign-missing": "Choose an existing related campaign.",
   "departure-capacity": "Capacity cannot be lower than seats already booked.",
+  "departure-cancelled-final": "A cancelled departure cannot be reopened. Create a new departure for a replacement schedule.",
+  "departure-cancel-started": "A departure cannot be cancelled after its start time.",
   "departure-duplicate": "That expedition already has a departure with the same start time.",
   "departure-invalid": "Enter valid departure dates and capacity.",
   "departure-missing": "Departure record was not found.",

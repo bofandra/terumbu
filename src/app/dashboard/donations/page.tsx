@@ -4,6 +4,7 @@ import Link from "next/link";
 import { CampaignCard } from "@/components/campaign-card";
 import { Button, ButtonLink } from "@/components/ui/button";
 import { requireUser } from "@/lib/auth";
+import { requestDonationRefundAction } from "@/lib/billing-actions";
 import { getBillingData, getCampaignCards, getDashboardData } from "@/lib/queries";
 import { removeSavedCampaignAction } from "@/lib/retention-actions";
 import { formatCurrency } from "@/lib/utils";
@@ -132,6 +133,21 @@ export default async function DashboardDonationsPage({ searchParams }: Dashboard
               <div className="md:text-right">
                 <p className="font-bold text-ocean-900">{formatCurrency(Number(donation.amount), donation.currency)}</p>
                 <span className={`mt-2 inline-flex rounded-full px-3 py-1 text-xs font-bold ${statusClass(donation.status)}`}>{donation.status}</span>
+                {donation.status === "paid" ? (
+                  <details className="relative mt-3">
+                    <summary className="inline-flex min-h-9 cursor-pointer list-none items-center rounded-full border border-coral-500/30 px-3 text-xs font-bold text-coral-700 hover:border-coral-500">
+                      Request refund
+                    </summary>
+                    <form action={requestDonationRefundAction} className="absolute right-0 z-20 mt-2 grid w-72 gap-2 rounded-xl border border-ocean-900/10 bg-white p-3 text-left shadow-soft">
+                      <input type="hidden" name="donationId" value={donation.id} />
+                      <label className="grid gap-1 text-xs font-bold text-ocean-900">
+                        Reason
+                        <textarea name="reason" className="min-h-20 rounded-lg border border-ocean-900/14 px-3 py-2 text-sm font-semibold" placeholder="Tell us why you need a refund." required />
+                      </label>
+                      <Button type="submit" tone="secondary">Submit refund request</Button>
+                    </form>
+                  </details>
+                ) : null}
               </div>
             </div>
           </article>
