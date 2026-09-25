@@ -3675,7 +3675,7 @@ export async function createPartnerExpeditionDepartureAction(formData: FormData)
 }
 
 export async function updatePartnerExpeditionDepartureAction(formData: FormData) {
-  const user = await requirePartnerRole( "/partner/expeditions");
+  const user = await requirePartnerRole("/partner/expeditions");
   const departureId = formText(formData, "departureId");
   const startsAt = parseDateTime(formData.get("startsAt"));
   const endsAt = parseDateTime(formData.get("endsAt"));
@@ -3690,9 +3690,13 @@ export async function updatePartnerExpeditionDepartureAction(formData: FormData)
     .select({
       id: expeditionDepartures.id,
       expeditionId: expeditionDepartures.expeditionId,
-      seatsBooked: expeditionDepartures.seatsBooked
+      startsAt: expeditionDepartures.startsAt,
+      status: expeditionDepartures.status,
+      seatsBooked: expeditionDepartures.seatsBooked,
+      expeditionTitle: expeditions.title
     })
     .from(expeditionDepartures)
+    .innerJoin(expeditions, eq(expeditionDepartures.expeditionId, expeditions.id))
     .where(eq(expeditionDepartures.id, departureId))
     .limit(1);
 
@@ -3706,6 +3710,12 @@ export async function updatePartnerExpeditionDepartureAction(formData: FormData)
     redirectPartnerError(formData, "/partner/expeditions", "departure-capacity");
   }
 
+  const isNewCancellation = status === "cancelled" && existingDeparture.status !== "cancelled";
+
+  if (isNewCancellation && existingDeparture.startsAt.getTime() <= Date.now()) {
+    redirectPartnerError(formData, "/partner/expeditions", "departure-cancel-started");
+  }
+
   const [duplicate] = await db
     .select({ id: expeditionDepartures.id })
     .from(expeditionDepartures)
@@ -3716,26 +3726,141 @@ export async function updatePartnerExpeditionDepartureAction(formData: FormData)
     redirectPartnerError(formData, "/partner/expeditions", "departure-duplicate");
   }
 
-  await db
-    .update(expeditionDepartures)
-    .set({
-      startsAt,
-      endsAt,
-      capacity,
-      status,
-      metadata: departureMetadata(formData)
-    })
-    .where(eq(expeditionDepartures.id, departureId));
+  const affectedBookings = isNewCancellation
+    ? await db
+        .select({
+          id: expeditionBookings.id,
+          userId: expeditionBookings.userId,
+          bookingCode: expeditionBookings.bookingCode,
+          contactEmail: expeditionBookings.contactEmail,
+          status: expeditionBookings.status,
+          paymentStatus: expeditionBookings.paymentStatus,
+          totalAmount: expeditionBookings.totalAmount,
+          currency: expeditionBookings.currency
+        })
+        .from(expeditionBookings)
+        .where(eq(expeditionBookings.departureId, departureId))
+    : [];
 
-  await db.insert(adminAuditLogs).values({
-    actorUserId: user.id,
-    action: "partner_expedition_departure.updated",
-    entityType: "expedition_departure",
-    entityId: departureId,
-    metadata: { source: "partner_portal", expeditionId: existingDeparture.expeditionId, status, capacity }
+  const cancellableBookings = affectedBookings.filter(
+    (booking) => !["cancelled", "completed"].includes(booking.status) && booking.paymentStatus !== "refunded"
+  );
+  const now = new Date();
+
+  await db.transaction(async (tx) => {
+    await tx
+      .update(expeditionDepartures)
+      .set({
+        startsAt,
+        endsAt,
+        capacity,
+        status,
+        metadata: departureMetadata(formData)
+      })
+      .where(eq(expeditionDepartures.id, departureId));
+
+    if (isNewCancellation) {
+      for (const booking of cancellableBookings) {
+        if (booking.paymentStatus === "paid") {
+          const [existingRefund] = await tx
+            .select({ id: paymentOperations.id })
+            .from(paymentOperations)
+            .where(
+              and(
+                eq(paymentOperations.bookingId, booking.id),
+                eq(paymentOperations.operationType, "refund"),
+                eq(paymentOperations.status, "pending")
+              )
+            )
+            .limit(1);
+
+          if (!existingRefund) {
+            await recordPaymentOperation(tx as unknown as typeof db, {
+              operationType: "refund",
+              entityType: "expedition_booking",
+              bookingId: booking.id,
+              requestedByUserId: user.id,
+              status: "pending",
+              amount: booking.totalAmount,
+              currency: booking.currency,
+              reason: "Departure cancelled by expedition partner.",
+              metadata: {
+                source: "partner_departure_cancellation",
+                departureId,
+                expeditionId: existingDeparture.expeditionId,
+                bookingCode: booking.bookingCode
+              },
+              now
+            });
+          }
+
+          await tx
+            .update(expeditionBookings)
+            .set({
+              status: "cancelled",
+              confirmedAt: null,
+              metadata: sql`coalesce(${expeditionBookings.metadata}, '{}'::jsonb) || jsonb_build_object('cancellationSource', 'partner_departure_cancellation', 'cancellationRequestedAt', ${now.toISOString()})`
+            })
+            .where(eq(expeditionBookings.id, booking.id));
+        } else {
+          await transitionExpeditionBookingPayment(tx as unknown as typeof db, {
+            bookingId: booking.id,
+            nextStatus: "expired",
+            processedByUserId: user.id,
+            providerPayload: {
+              method: "partner_departure_cancellation",
+              departureId,
+              cancelledAt: now.toISOString()
+            },
+            operationType: "partner_departure_cancellation",
+            now
+          });
+
+          await tx
+            .update(expeditionBookings)
+            .set({ status: "cancelled", confirmedAt: null })
+            .where(eq(expeditionBookings.id, booking.id));
+        }
+      }
+    }
+
+    await tx.insert(adminAuditLogs).values({
+      actorUserId: user.id,
+      action: "partner_expedition_departure.updated",
+      entityType: "expedition_departure",
+      entityId: departureId,
+      metadata: {
+        source: "partner_portal",
+        expeditionId: existingDeparture.expeditionId,
+        previousStatus: existingDeparture.status,
+        status,
+        capacity,
+        affectedBookings: cancellableBookings.length,
+        mandatoryRefunds: cancellableBookings.filter((booking) => booking.paymentStatus === "paid").length
+      }
+    });
   });
 
-  redirectPartnerSaved(formData, "/partner/expeditions", "departure-updated");
+  if (isNewCancellation) {
+    await Promise.allSettled(
+      cancellableBookings.map((booking) =>
+        sendTransactionalEmail({
+          userId: booking.userId,
+          recipientEmail: booking.contactEmail,
+          subject: `${existingDeparture.expeditionTitle} departure cancelled`,
+          template: "expedition_departure_cancelled",
+          payload: {
+            expedition: existingDeparture.expeditionTitle,
+            bookingCode: booking.bookingCode,
+            departure: existingDeparture.startsAt.toISOString(),
+            refundStatus: booking.paymentStatus === "paid" ? "pending_manual_refund" : "not_required"
+          }
+        })
+      )
+    );
+  }
+
+  redirectPartnerSaved(formData, "/partner/expeditions", isNewCancellation ? "departure-cancelled" : "departure-updated");
 }
 
 export async function createAdminCampaignAction(formData: FormData) {
