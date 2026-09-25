@@ -3896,6 +3896,60 @@ export async function updateAdminCampaignAction(formData: FormData) {
   redirectAdminCampaignError("partner-owned", formData);
 }
 
+export async function updateImpactSiteVerificationAction(formData: FormData) {
+  const user = await requireRole(["admin"], "/admin/campaigns/impact-sites");
+  const impactSiteId = formText(formData, "impactSiteId");
+  const verification = formText(formData, "verification");
+
+  if (!impactSiteId || !impactSiteVerificationStatuses.includes(verification as (typeof impactSiteVerificationStatuses)[number])) {
+    redirect("/admin/campaigns/impact-sites?error=verification");
+  }
+
+  const [site] = await db
+    .select({
+      id: impactSites.id,
+      campaignId: impactSites.campaignId,
+      name: impactSites.name,
+      metadata: impactSites.metadata
+    })
+    .from(impactSites)
+    .where(eq(impactSites.id, impactSiteId))
+    .limit(1);
+
+  if (!site) {
+    redirect("/admin/campaigns/impact-sites?error=impact-site-missing");
+  }
+
+  const currentMetadata = metadataObject(site.metadata);
+  const previousVerification = normalizeImpactSiteVerificationStatus(currentMetadata.verification);
+  const nextVerification = verification as (typeof impactSiteVerificationStatuses)[number];
+
+  await db
+    .update(impactSites)
+    .set({
+      metadata: {
+        ...currentMetadata,
+        verification: nextVerification
+      }
+    })
+    .where(eq(impactSites.id, site.id));
+
+  await db.insert(adminAuditLogs).values({
+    actorUserId: user.id,
+    action: "impact_site.verification.updated",
+    entityType: "impact_site",
+    entityId: site.id,
+    metadata: {
+      campaignId: site.campaignId,
+      name: site.name,
+      previousVerification,
+      verification: nextVerification
+    }
+  });
+
+  redirect(`/admin/campaigns/impact-sites/${site.id}?saved=verification`);
+}
+
 export async function createAdminImpactSiteAction(formData: FormData) {
   await requireRole(["admin"], "/admin/campaigns/impact-sites");
   redirectAdminImpactSiteError("partner-owned", formData);
