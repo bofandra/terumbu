@@ -2191,7 +2191,7 @@ export async function createPartnerCampaignAction(formData: FormData) {
             progress: parsePercent(formData.get("impactSiteProgress")) ?? 0,
             evidenceCount: parseOptionalCount(formData.get("impactSiteEvidenceCount")) ?? 0,
             latestSurvey: nullableText(formData, "impactSiteLatestSurvey"),
-            verification: verificationFromForm(formData.get("impactSiteVerification"))
+            verification: "basic" as const
           }
       }
       : null;
@@ -2416,7 +2416,7 @@ export async function updatePartnerCampaignAction(formData: FormData) {
             progress: parsePercent(formData.get("impactSiteProgress")) ?? 0,
             evidenceCount: parseOptionalCount(formData.get("impactSiteEvidenceCount")) ?? 0,
             latestSurvey: nullableText(formData, "impactSiteLatestSurvey"),
-            verification: verificationFromForm(formData.get("impactSiteVerification"))
+            verification: "basic" as const
           }
         }
       : null;
@@ -2481,9 +2481,11 @@ export async function updatePartnerCampaignAction(formData: FormData) {
   const now = new Date();
   const status = isAdmin
     ? requestedStatus
-    : partnerCampaignStatuses.includes(requestedStatus as (typeof partnerCampaignStatuses)[number])
-      ? (requestedStatus as (typeof partnerCampaignStatuses)[number])
-      : campaign.status;
+    : campaign.status === "published"
+      ? "review"
+      : partnerCampaignStatuses.includes(requestedStatus as (typeof partnerCampaignStatuses)[number])
+        ? (requestedStatus as (typeof partnerCampaignStatuses)[number])
+        : campaign.status;
   const category = campaignCategoryValue(formText(formData, "category"), impactSiteDefaults);
   const region = campaignRegionValue(formText(formData, "region"), impactSiteDefaults);
   const fallbackImpactTarget = campaignImpactTargetValue(formData.get("impactTarget"));
@@ -3390,9 +3392,12 @@ export async function updatePartnerExpeditionAction(formData: FormData) {
 
   const [uploadedImageUrl, maxCapacity] = await Promise.all([uploadedPartnerImage(formData, "imageFile"), expeditionMaxCapacity(expeditionId)]);
   const imageUrl = uploadedImageUrl ?? existingExpedition.imageUrl;
-  const status = partnerExpeditionStatuses.includes(requestedStatus as (typeof partnerExpeditionStatuses)[number])
-    ? (requestedStatus as (typeof partnerExpeditionStatuses)[number])
-    : existingExpedition.status;
+  const status =
+    existingExpedition.status === "published"
+      ? "review"
+      : partnerExpeditionStatuses.includes(requestedStatus as (typeof partnerExpeditionStatuses)[number])
+        ? (requestedStatus as (typeof partnerExpeditionStatuses)[number])
+        : existingExpedition.status;
   const currentMetadata = normalizeExpeditionDetailMetadata(existingExpedition.metadata, defaultPartnerExpeditionMetadata(existingExpedition, maxCapacity));
   const metadata = await partnerExpeditionMetadataFromForm(formData, {
     currentMetadata,
