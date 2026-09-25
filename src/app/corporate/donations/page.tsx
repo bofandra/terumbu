@@ -3,7 +3,7 @@ import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
 import { MetricValue } from "@/components/ui/metric-value";
-import { requireUser } from "@/lib/auth";
+import { getUserRoles, requireUser } from "@/lib/auth";
 import { requireCorporateDashboardData } from "@/lib/corporate-access";
 import { createCorporateActivityPdfReportAction, fundCorporateProjectAction } from "@/lib/corporate-actions";
 import { corporateReportArtifactRoute } from "@/lib/corporate-report-artifact-links";
@@ -38,7 +38,9 @@ export default async function CorporateDonationsPage({ searchParams }: Corporate
   const params = await searchParams;
   const user = await requireUser("/corporate/donations");
   const data = await requireCorporateDashboardData(user.id, "/corporate/donations");
-  const projectOptions = await getCorporateProjectOptions(user.id, data.program.programId);
+  const roleKeys = await getUserRoles(user.id);
+  const canManageCorporate = roleKeys.includes("corporate_admin") && !roleKeys.includes("admin");
+  const projectOptions = canManageCorporate ? await getCorporateProjectOptions(user.id, data.program.programId) : [];
   const donationReports = data.exports.filter((item) => item.activityScope === "donations");
   const totalDonations = data.contributions.filter((item) => item.status !== "cancelled").reduce((total, item) => total + item.amountValue, 0);
   const supportedProjects = new Set(data.contributions.map((item) => item.campaignId)).size;
@@ -72,9 +74,10 @@ export default async function CorporateDonationsPage({ searchParams }: Corporate
       </section>
 
       <section className="mt-6 grid gap-6 lg:grid-cols-[360px_1fr]">
-        <article className="rounded-lg border border-ocean-900/10 bg-white p-5 shadow-soft">
-          <h2 className="text-xl font-bold tracking-normal text-ocean-900">Add donation</h2>
-          <form action={fundCorporateProjectAction} className="mt-5 grid gap-3">
+        {canManageCorporate ? (
+          <article className="rounded-lg border border-ocean-900/10 bg-white p-5 shadow-soft">
+            <h2 className="text-xl font-bold tracking-normal text-ocean-900">Add donation</h2>
+            <form action={fundCorporateProjectAction} className="mt-5 grid gap-3">
             <input type="hidden" name="programId" value={data.program.programId} />
             <input type="hidden" name="status" value="funded" />
             <input type="hidden" name="contributionType" value="csr" />
@@ -94,8 +97,15 @@ export default async function CorporateDonationsPage({ searchParams }: Corporate
               <span>Show this donation in public project progress</span>
             </label>
             <Button type="submit" disabled={projectOptions.length === 0}>Save donation</Button>
-          </form>
-        </article>
+            </form>
+          </article>
+        ) : (
+          <article className="rounded-lg border border-ocean-900/10 bg-white p-5 shadow-soft">
+            <p className="text-xs font-bold uppercase tracking-[0.14em] text-ocean-900/46">Corporate User</p>
+            <h2 className="mt-2 text-xl font-bold tracking-normal text-ocean-900">Donation activity is read-only</h2>
+            <p className="mt-2 text-sm leading-6 text-ocean-900/58">Corporate Admin records funding and manages corporate program commitments.</p>
+          </article>
+        )}
 
         <article className="rounded-lg border border-ocean-900/10 bg-white p-5 shadow-soft">
           <h2 className="text-xl font-bold tracking-normal text-ocean-900">Donation activity</h2>
@@ -141,11 +151,15 @@ export default async function CorporateDonationsPage({ searchParams }: Corporate
       <section className="mt-6 rounded-lg border border-ocean-900/10 bg-white p-5 shadow-soft">
         <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
           <div><h2 className="text-xl font-bold tracking-normal text-ocean-900">Donation report</h2><p className="mt-1 text-sm text-ocean-900/58">Branded PDF with report scope, donation summary, field activity, and traceability note.</p></div>
-          <form action={createCorporateActivityPdfReportAction}>
-            <input type="hidden" name="activityScope" value="donations" />
-            <input type="hidden" name="programId" value={data.program.programId} />
-            <Button type="submit" tone="secondary"><Download className="size-4" aria-hidden="true" />Generate PDF</Button>
-          </form>
+          {canManageCorporate ? (
+            <form action={createCorporateActivityPdfReportAction}>
+              <input type="hidden" name="activityScope" value="donations" />
+              <input type="hidden" name="programId" value={data.program.programId} />
+              <Button type="submit" tone="secondary"><Download className="size-4" aria-hidden="true" />Generate PDF</Button>
+            </form>
+          ) : (
+            <span className="rounded-full bg-ocean-50 px-3 py-2 text-xs font-bold text-ocean-900/58">Read-only</span>
+          )}
         </div>
         <div className="mt-4 divide-y divide-ocean-900/10">
           {donationReports.map((report) => (
