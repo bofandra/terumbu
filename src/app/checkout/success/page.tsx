@@ -2,6 +2,8 @@ import Link from "next/link";
 
 import { ExpeditionShareButtons } from "@/components/expedition-share-buttons";
 import { ButtonLink } from "@/components/ui/button";
+import { getSessionUser } from "@/lib/auth";
+import { referralCodeForUser } from "@/lib/referrals";
 
 export const metadata = {
   title: "Checkout Success"
@@ -18,7 +20,10 @@ type CheckoutSuccessPageProps = {
 };
 
 export default async function CheckoutSuccessPage({ searchParams }: CheckoutSuccessPageProps) {
-  const params = await searchParams;
+  const [params, sessionUser] = await Promise.all([searchParams, getSessionUser()]);
+  const shareReferralCode = sessionUser
+    ? referralCodeForUser(sessionUser.id)
+    : (params?.ref ?? "").trim().replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 64) || null;
   const failed = params?.status === "failed";
   const pending = params?.status === "pending";
   const typeLabel = params?.type === "expedition" ? "booking" : "donation";
@@ -54,13 +59,13 @@ export default async function CheckoutSuccessPage({ searchParams }: CheckoutSucc
             <p className="text-sm font-bold uppercase tracking-[0.14em] text-coral-700">Travel together</p>
             <h2 className="mt-2 text-xl font-bold text-ocean-900">Invite friends to join this expedition</h2>
             <p className="mt-2 text-sm leading-6 text-ocean-900/62">
-              Share the expedition while your booking is being confirmed. Referral attribution is preserved in the invite link.
+              Share the expedition while your booking is being confirmed. Your own invite code is used when you are signed in.
             </p>
             <div className="mt-4">
               <ExpeditionShareButtons
                 slug={params.expedition}
                 title="Terumbu.eco conservation expedition"
-                referralCode={params.ref ?? null}
+                referralCode={shareReferralCode}
               />
             </div>
           </div>
