@@ -1,7 +1,7 @@
 import { UserPlus } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { requireUser } from "@/lib/auth";
+import { requireCorporateAdminRole } from "@/lib/auth";
 import { requireCorporateDashboardData } from "@/lib/corporate-access";
 import { inviteCorporateEmployeeAction } from "@/lib/corporate-actions";
 
@@ -20,7 +20,7 @@ type CorporateEmployeesPageProps = {
 
 export default async function CorporateEmployeesPage({ searchParams }: CorporateEmployeesPageProps) {
   const params = await searchParams;
-  const user = await requireUser("/corporate/employees");
+  const user = await requireCorporateAdminRole("/corporate/employees");
   const data = await requireCorporateDashboardData(user.id, "/corporate/employees");
 
   return (
