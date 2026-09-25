@@ -313,6 +313,7 @@ async function canManageCommunityTarget(userId: string, ownerUserId: string | nu
 }
 
 export async function createCommunityPostAction(formData: FormData) {
+  redirect("/dashboard/impact");
   const createPath = "/dashboard/community/new?type=post";
   const user = await requireUser(createPath);
   const title = textValue(formData.get("title"), 220);
@@ -359,6 +360,7 @@ export async function createCommunityPostAction(formData: FormData) {
 }
 
 export async function createCommunityEventAction(formData: FormData) {
+  redirect("/dashboard/impact");
   const createPath = "/dashboard/community/new?type=event";
   const user = await requireUser(createPath);
   const title = textValue(formData.get("title"), 220);
@@ -406,6 +408,7 @@ export async function createCommunityEventAction(formData: FormData) {
 }
 
 export async function createCommunityChallengeAction(formData: FormData) {
+  redirect("/dashboard/impact");
   const createPath = "/dashboard/community/new?type=challenge";
   const user = await requireUser(createPath);
   const title = textValue(formData.get("title"), 220);
@@ -453,6 +456,7 @@ export async function createCommunityChallengeAction(formData: FormData) {
 }
 
 export async function deleteCommunityPostAction(formData: FormData) {
+  redirect("/dashboard/impact");
   const user = await requireUser("/dashboard/community");
   const postId = textValue(formData.get("postId"), 80);
   const next = nextPath(formData, "/dashboard/community");
@@ -471,6 +475,7 @@ export async function deleteCommunityPostAction(formData: FormData) {
 }
 
 export async function deleteCommunityEventAction(formData: FormData) {
+  redirect("/dashboard/impact");
   const user = await requireUser("/dashboard/community");
   const eventId = textValue(formData.get("eventId"), 80);
   const next = nextPath(formData, "/dashboard/community");
@@ -489,6 +494,7 @@ export async function deleteCommunityEventAction(formData: FormData) {
 }
 
 export async function deleteCommunityChallengeAction(formData: FormData) {
+  redirect("/dashboard/impact");
   const user = await requireUser("/dashboard/community");
   const challengeId = textValue(formData.get("challengeId"), 80);
   const next = nextPath(formData, "/dashboard/community");
@@ -507,6 +513,7 @@ export async function deleteCommunityChallengeAction(formData: FormData) {
 }
 
 export async function createCommunityCommentAction(formData: FormData) {
+  redirect("/dashboard/impact");
   const targetType = normalizeCommunityTargetType(formData.get("targetType"));
   const targetId = textValue(formData.get("targetId"), 80);
   const next = nextPath(formData, "/community");
@@ -563,6 +570,7 @@ export async function createCommunityCommentAction(formData: FormData) {
 }
 
 export async function reactToCommunityTargetAction(formData: FormData) {
+  redirect("/dashboard/impact");
   const targetType = normalizeCommunityTargetType(formData.get("targetType"));
   const targetId = textValue(formData.get("targetId"), 80);
   const next = nextPath(formData, "/community");
@@ -586,6 +594,7 @@ export async function reactToCommunityTargetAction(formData: FormData) {
 }
 
 export async function removeCommunityReactionAction(formData: FormData) {
+  redirect("/dashboard/impact");
   const targetType = normalizeCommunityTargetType(formData.get("targetType"));
   const targetId = textValue(formData.get("targetId"), 80);
   const next = nextPath(formData, "/community");
@@ -597,6 +606,7 @@ export async function removeCommunityReactionAction(formData: FormData) {
 }
 
 export async function reportCommunityTargetAction(formData: FormData) {
+  redirect("/dashboard/impact");
   const targetType = normalizeCommunityTargetType(formData.get("targetType"));
   const targetId = textValue(formData.get("targetId"), 80);
   const next = nextPath(formData, "/community");
@@ -634,6 +644,7 @@ export async function reportCommunityTargetAction(formData: FormData) {
 }
 
 export async function joinCommunityChapterAction(formData: FormData) {
+  redirect("/dashboard/impact");
   const chapterId = textValue(formData.get("chapterId"), 80);
   const next = nextPath(formData, "/community");
   const user = await requireUser(next);
@@ -663,6 +674,7 @@ export async function joinCommunityChapterAction(formData: FormData) {
 }
 
 export async function leaveCommunityChapterAction(formData: FormData) {
+  redirect("/dashboard/impact");
   const chapterId = textValue(formData.get("chapterId"), 80);
   const next = nextPath(formData, "/community");
   const user = await requireUser(next);
@@ -676,6 +688,7 @@ export async function leaveCommunityChapterAction(formData: FormData) {
 }
 
 export async function registerCommunityEventAction(formData: FormData) {
+  redirect("/dashboard/impact");
   const eventId = textValue(formData.get("eventId"), 80);
   const next = nextPath(formData, "/community");
   const user = await requireUser(next);
@@ -741,6 +754,7 @@ export async function registerCommunityEventAction(formData: FormData) {
 }
 
 export async function cancelCommunityEventRegistrationAction(formData: FormData) {
+  redirect("/dashboard/impact");
   const eventId = textValue(formData.get("eventId"), 80);
   const next = nextPath(formData, "/community");
   const user = await requireUser(next);
@@ -754,6 +768,7 @@ export async function cancelCommunityEventRegistrationAction(formData: FormData)
 }
 
 export async function markCommunityEventAttendanceAction(formData: FormData) {
+  redirect("/dashboard/impact");
   const user = await requireUser("/community");
   const registrationId = textValue(formData.get("registrationId"), 80);
   const next = nextPath(formData, "/community");
@@ -807,6 +822,7 @@ export async function markCommunityEventAttendanceAction(formData: FormData) {
 }
 
 export async function joinCommunityChallengeAction(formData: FormData) {
+  redirect("/dashboard/impact");
   const challengeId = textValue(formData.get("challengeId"), 80);
   const next = nextPath(formData, "/community");
   const user = await requireUser(next);
@@ -842,6 +858,7 @@ export async function joinCommunityChallengeAction(formData: FormData) {
 }
 
 export async function logCommunityChallengeProgressAction(formData: FormData) {
+  redirect("/dashboard/impact");
   const challengeId = textValue(formData.get("challengeId"), 80);
   const next = nextPath(formData, "/community");
   const user = await requireUser(next);
@@ -926,6 +943,7 @@ export async function logCommunityChallengeProgressAction(formData: FormData) {
 }
 
 export async function moderateCommunityContentAction(formData: FormData) {
+  redirect("/admin");
   const admin = await requireRole(["admin"], "/admin/community");
   const targetType = normalizeCommunityTargetType(formData.get("targetType"));
   const targetId = textValue(formData.get("targetId"), 80);
@@ -1017,6 +1035,7 @@ export async function moderateCommunityContentAction(formData: FormData) {
 }
 
 export async function reviewCommunityReportAction(formData: FormData) {
+  redirect("/admin");
   const admin = await requireRole(["admin"], "/admin/community");
   const reportId = textValue(formData.get("reportId"), 80);
   const status = normalizeCommunityReportStatus(formData.get("status"), "reviewed");
