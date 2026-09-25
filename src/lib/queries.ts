@@ -4037,7 +4037,18 @@ export async function getDashboardData(userId: string) {
     ],
     donations: donationRows,
     ecosystems: ecosystemRows,
-    bookings: bookingRows,
+    bookings: bookingRows.map((booking) => {
+      const canCancel = canCancelExpeditionBooking(
+        { bookingStatus: booking.status, paymentStatus: booking.paymentStatus, startsAt: booking.startsAt },
+        now
+      );
+
+      return {
+        ...booking,
+        canCancelBooking: canCancel && ["created", "pending", "failed", "expired"].includes(booking.paymentStatus),
+        canRequestRefund: canCancel && booking.paymentStatus === "paid" && booking.status === "confirmed"
+      };
+    }),
     enrollments: enrollmentRows,
     certificates: certificateRows,
     passportPreview
