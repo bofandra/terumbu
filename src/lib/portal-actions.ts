@@ -86,7 +86,7 @@ import {
   partnerRoleAllows,
   type PartnerOrganizationPermission
 } from "@/lib/partner-permissions";
-import { transitionDonationPayment, transitionExpeditionBookingPayment } from "@/lib/payment-workflows";
+import { recordPaymentOperation, transitionDonationPayment, transitionExpeditionBookingPayment } from "@/lib/payment-workflows";
 import { upsertCarbonKgPerUsd } from "@/lib/platform-settings";
 import { processDueDonationSubscriptions } from "@/lib/subscription-billing";
 import { getEvidenceStorageProvider, readUploadedImageAsDataUrl } from "@/lib/storage";
@@ -2656,7 +2656,7 @@ export async function updatePartnerImpactSiteAction(formData: FormData) {
     existingSite.metadata && typeof existingSite.metadata === "object" && !Array.isArray(existingSite.metadata)
       ? (existingSite.metadata as Record<string, unknown>)
       : {};
-  values.metadata.verification = normalizeImpactSiteVerificationStatus(existingMetadata.verification);
+  values.metadata.verification = normalizeImpactSiteVerificationStatus(existingMetadata.verification) as typeof values.metadata.verification;
 
   const [conflictingSite] = await db
     .select({ id: impactSites.id })
@@ -3441,7 +3441,7 @@ export async function updatePartnerExpeditionAction(formData: FormData) {
       relatedCampaignId,
       metadata,
       status,
-      publishedAt: status === "published" ? existingExpedition.publishedAt ?? new Date() : status === existingExpedition.status ? existingExpedition.publishedAt : null,
+      publishedAt: status === "completed" ? existingExpedition.publishedAt ?? new Date() : status === existingExpedition.status ? existingExpedition.publishedAt : null,
       updatedAt: new Date()
     })
     .where(eq(expeditions.id, expeditionId))
