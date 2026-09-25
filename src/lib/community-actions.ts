@@ -432,7 +432,7 @@ export async function createCommunityChallengeAction(formData: FormData) {
     redirect(withStatus(createPath, "error", "challenge-invalid"));
     return;
   }
-  if (startsAt && endsAt && endsAt.getTime() <= startsAt.getTime()) {
+  if (startsAt && endsAt && endsAt!.getTime() <= startsAt!.getTime()) {
     redirect(withStatus(createPath, "error", "challenge-invalid"));
     return;
   }
@@ -544,7 +544,7 @@ export async function createCommunityCommentAction(formData: FormData) {
     const [parent] = await db
       .select({ id: communityComments.id, targetType: communityComments.targetType, targetId: communityComments.targetId })
       .from(communityComments)
-      .where(and(eq(communityComments.id, parentCommentId), eq(communityComments.targetType, targetType), eq(communityComments.targetId, targetId)))
+      .where(and(eq(communityComments.id, parentCommentId), eq(communityComments.targetType, String(targetType)), eq(communityComments.targetId, targetId)))
       .limit(1);
 
     if (!parent) {
@@ -743,13 +743,13 @@ export async function registerCommunityEventAction(formData: FormData) {
     .values({
       eventId,
       userId: user.id,
-      status: registrationStatus,
+      status: availability.nextStatus!,
       updatedAt: new Date()
     })
     .onConflictDoUpdate({
       target: [communityEventRegistrations.eventId, communityEventRegistrations.userId],
       set: {
-        status: registrationStatus,
+        status: availability.nextStatus!,
         updatedAt: new Date()
       }
     })
@@ -977,6 +977,7 @@ export async function moderateCommunityContentAction(formData: FormData) {
 
   if (!target) {
     redirect(withStatus(next, "error", "target"));
+    return;
   }
 
   const now = new Date();
@@ -1035,16 +1036,16 @@ export async function moderateCommunityContentAction(formData: FormData) {
     action: `community.${targetType}.${action}`,
     entityType: `community_${targetType}`,
     entityId: targetId,
-    metadata: { reason, href: target.href }
+    metadata: { reason, href: target!.href }
   });
 
   await createNotification({
-    userId: target.ownerUserId,
+    userId: target!.ownerUserId,
     notificationCode: `community-moderation-${targetType}-${targetId}-${action}`,
     category: "Community moderation",
-    title: target.title,
+    title: target!.title,
     message: `Your community ${targetType} was ${action}.`,
-    href: target.href,
+    href: target!.href,
     sourceType: `community_${targetType}`,
     sourceId: targetId
   });
