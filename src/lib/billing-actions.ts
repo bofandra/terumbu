@@ -486,6 +486,81 @@ export async function retryExpeditionPaymentAction(formData: FormData) {
   redirect("/dashboard/expeditions?saved=payment-recheck");
 }
 
+export async function cancelOwnExpeditionBookingAction(formData: FormData) {
+  const user = await requireUser("/dashboard/expeditions");
+  const bookingId = String(formData.get("bookingId") ?? "");
+  const now = new Date();
+
+  const [booking] = await db
+    .select({
+      id: expeditionBookings.id,
+      status: expeditionBookings.status,
+      paymentStatus: expeditionBookings.paymentStatus,
+      startsAt: expeditionDepartures.startsAt
+    })
+    .from(expeditionBookings)
+    .innerJoin(expeditionDepartures, eq(expeditionBookings.departureId, expeditionDepartures.id))
+    .where(and(eq(expeditionBookings.id, bookingId), eq(expeditionBookings.userId, user.id)))
+    .limit(1);
+
+  if (
+    !booking ||
+    booking.paymentStatus === "paid" ||
+    booking.paymentStatus === "refunded" ||
+    !canCancelExpeditionBooking({
+      bookingStatus: booking.status,
+      paymentStatus: booking.paymentStatus,
+      startsAt: booking.startsAt
+    }, now)
+  ) {
+    redirect("/dashboard/expeditions?error=cancel");
+  }
+
+  await db.transaction(async (tx) => {
+    await tx
+      .update(expeditionBookingPayments)
+      .set({
+        status: "expired",
+        payload: {
+          method: "user_cancellation",
+          cancelledAt: now.toISOString()
+        },
+        updatedAt: now
+      })
+      .where(eq(expeditionBookingPayments.bookingId, booking.id));
+
+    await tx
+      .update(expeditionBookings)
+      .set({
+        status: "cancelled",
+        paymentStatus: "expired",
+        confirmedAt: null
+      })
+      .where(eq(expeditionBookings.id, booking.id));
+
+    await recordPaymentOperation(tx as unknown as typeof db, {
+      operationType: "user_cancellation",
+      entityType: "expedition_booking",
+      bookingId: booking.id,
+      requestedByUserId: user.id,
+      processedByUserId: user.id,
+      status: "completed",
+      provider: "manual_external",
+      reason: "User cancelled unpaid expedition booking.",
+      metadata: {
+        previousBookingStatus: booking.status,
+        previousPaymentStatus: booking.paymentStatus,
+        nextBookingStatus: "cancelled",
+        nextPaymentStatus: "expired"
+      },
+      processedAt: now,
+      now
+    });
+  });
+
+  redirect("/dashboard/expeditions?saved=booking-cancelled");
+}
+
 export async function requestExpeditionRefundAction(formData: FormData) {
   const user = await requireUser("/dashboard/expeditions");
   const bookingId = String(formData.get("bookingId") ?? "");
@@ -495,15 +570,26 @@ export async function requestExpeditionRefundAction(formData: FormData) {
   const [booking] = await db
     .select({
       id: expeditionBookings.id,
+      status: expeditionBookings.status,
       totalAmount: expeditionBookings.totalAmount,
       currency: expeditionBookings.currency,
-      paymentStatus: expeditionBookings.paymentStatus
+      paymentStatus: expeditionBookings.paymentStatus,
+      startsAt: expeditionDepartures.startsAt
     })
     .from(expeditionBookings)
+    .innerJoin(expeditionDepartures, eq(expeditionBookings.departureId, expeditionDepartures.id))
     .where(and(eq(expeditionBookings.id, bookingId), eq(expeditionBookings.userId, user.id)))
     .limit(1);
 
-  if (!booking || booking.paymentStatus !== "paid") {
+  if (
+    !booking ||
+    booking.paymentStatus !== "paid" ||
+    !canCancelExpeditionBooking({
+      bookingStatus: booking.status,
+      paymentStatus: booking.paymentStatus,
+      startsAt: booking.startsAt
+    }, now)
+  ) {
     redirect("/dashboard/expeditions?error=refund");
   }
 
