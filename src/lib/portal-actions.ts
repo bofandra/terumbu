@@ -3723,6 +3723,10 @@ export async function updatePartnerExpeditionDepartureAction(formData: FormData)
 
   const isNewCancellation = status === "cancelled" && existingDeparture.status !== "cancelled";
 
+  if (existingDeparture.status === "cancelled" && status !== "cancelled") {
+    redirectPartnerError(formData, "/partner/expeditions", "departure-cancelled-final");
+  }
+
   if (isNewCancellation && existingDeparture.startsAt.getTime() <= Date.now()) {
     redirectPartnerError(formData, "/partner/expeditions", "departure-cancel-started");
   }
