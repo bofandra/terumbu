@@ -454,7 +454,7 @@ export function PartnerCampaignWorkspace({
                   </p>
                   {campaign.status === "published" ? (
                     <p className="mt-2 rounded-lg bg-sand-50 px-3 py-2 text-xs font-bold leading-5 text-ocean-900/64">
-                      Saving core settings on a published campaign sends it back to publication review. Field updates and evidence can still be added without changing publication status.
+                      Saving core settings on a published campaign sends it back to publication review. Any published expedition linked to this campaign also returns to review until the campaign is approved again. Field updates and evidence can still be added without changing publication status.
                     </p>
                   ) : null}
                 </div>
