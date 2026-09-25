@@ -1,4 +1,4 @@
-import { Award, CheckCircle2, Copy, Share2, Users } from "lucide-react";
+import { Award, CheckCircle2, Share2 } from "lucide-react";
 import Link from "next/link";
 
 import { ExpeditionShareButtons } from "@/components/expedition-share-buttons";
