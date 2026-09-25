@@ -4958,9 +4958,17 @@ export async function reconcileExpeditionBookingAction(formData: FormData) {
   const [booking] = await db
     .select({
       id: expeditionBookings.id,
-      paymentStatus: expeditionBookings.paymentStatus
+      bookingCode: expeditionBookings.bookingCode,
+      contactEmail: expeditionBookings.contactEmail,
+      userId: expeditionBookings.userId,
+      participantsCount: expeditionBookings.participantsCount,
+      paymentStatus: expeditionBookings.paymentStatus,
+      startsAt: expeditionDepartures.startsAt,
+      expeditionTitle: expeditions.title
     })
     .from(expeditionBookings)
+    .innerJoin(expeditionDepartures, eq(expeditionBookings.departureId, expeditionDepartures.id))
+    .innerJoin(expeditions, eq(expeditionBookings.expeditionId, expeditions.id))
     .where(eq(expeditionBookings.id, bookingId))
     .limit(1);
 
@@ -5013,6 +5021,23 @@ export async function reconcileExpeditionBookingAction(formData: FormData) {
 
   if (!result) {
     redirectAdminPayment(formData, "error", "booking");
+  }
+
+  if (status === "paid" && booking.paymentStatus !== "paid") {
+    await sendTransactionalEmail({
+      userId: booking.userId,
+      recipientEmail: booking.contactEmail,
+      subject: `Your ${booking.expeditionTitle} booking is confirmed`,
+      template: "expedition_booking_confirmation",
+      payload: {
+        bookingCode: booking.bookingCode,
+        bookingId: booking.id,
+        expedition: booking.expeditionTitle,
+        departure: booking.startsAt.toISOString(),
+        participantsCount: booking.participantsCount,
+        paymentStatus: "paid"
+      }
+    });
   }
 
   await db.insert(adminAuditLogs).values({
