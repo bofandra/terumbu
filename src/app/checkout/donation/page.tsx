@@ -108,8 +108,11 @@ export default async function DonationCheckoutPage({ searchParams }: DonationChe
           <div className="grid gap-3 rounded-xl border border-ocean-900/10 bg-sand-50 p-4">
             <p className="font-bold text-ocean-900">Payment outside the website</p>
             <p className="text-sm leading-6 text-ocean-900/62">
-              Selesaikan pembayaran melalui kanal resmi Terumbu.eco yang sudah kamu gunakan di luar website. Setelah bukti diunggah, admin akan memeriksa pembayaran secara manual sebelum receipt dan impact record diterbitkan.
+              Selesaikan pembayaran melalui kanal resmi Terumbu.eco di luar website. Jika belum menerima instruksi pembayaran, hubungi tim Terumbu terlebih dahulu. Setelah bukti diunggah, admin akan memeriksa pembayaran secara manual sebelum receipt dan impact record diterbitkan.
             </p>
+            <a href="mailto:support@terumbu.eco?subject=Donation payment instructions" className="w-fit text-sm font-bold text-coral-700 underline-offset-4 hover:underline">
+              Request payment instructions
+            </a>
           </div>
           <label className="grid min-w-0 gap-2 text-sm font-semibold text-ocean-900">
             Payment reference
