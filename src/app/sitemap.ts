@@ -1,12 +1,16 @@
 import type { MetadataRoute } from "next";
 
+import { getPublishedDestinations } from "@/lib/queries";
+
 const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://terumbu.eco";
 
-export default function sitemap(): MetadataRoute.Sitemap {
-  return [
+export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
+  const destinations = await getPublishedDestinations();
+  const staticPaths = [
     "",
     "/campaigns",
     "/expeditions",
+    "/destinations",
     "/academy",
     "/impact-map",
     "/platform",
@@ -17,8 +21,16 @@ export default function sitemap(): MetadataRoute.Sitemap {
     "/privacy",
     "/donation-policy",
     "/refund-policy"
-  ].map((path) => ({
-    url: `${baseUrl}${path}`,
-    lastModified: new Date()
-  }));
+  ];
+
+  return [
+    ...staticPaths.map((path) => ({
+      url: `${baseUrl}${path}`,
+      lastModified: new Date()
+    })),
+    ...destinations.map((destination) => ({
+      url: `${baseUrl}/destinations/${destination.slug}`,
+      lastModified: destination.updatedAt
+    }))
+  ];
 }
