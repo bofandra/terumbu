@@ -25,11 +25,13 @@ import {
   Wifi,
   type LucideIcon
 } from "lucide-react";
+import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { ExpeditionMobileBookingBar } from "@/components/expedition-booking-card";
+import { JsonLd } from "@/components/json-ld";
 import { ExpeditionCard } from "@/components/expedition-card";
 import { ExpeditionCalendarActions } from "@/components/expedition-calendar-actions";
 import { ExpeditionHeroGallery } from "@/components/expedition-hero-gallery";
@@ -52,6 +54,8 @@ import { getPreferredDisplayCurrency, getPreferredLocale, localeTag } from "@/li
 import { cn, formatCurrency } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
+
+const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://terumbu.eco";
 
 function formatDate(value: Date) {
   return value.toLocaleDateString("id-ID", { dateStyle: "medium" });
@@ -145,6 +149,36 @@ function CheckoutLink({ departureId }: { departureId: string }) {
   );
 }
 
+export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
+  const { slug } = await params;
+  const expedition = await getExpeditionDetail(slug);
+
+  if (!expedition) {
+    return { title: "Expedition" };
+  }
+
+  const imageUrl = expedition.galleryImages[0]?.src;
+
+  return {
+    title: expedition.title,
+    description: expedition.summary,
+    alternates: { canonical: `/expeditions/${expedition.slug}` },
+    openGraph: {
+      title: expedition.title,
+      description: expedition.summary,
+      type: "website",
+      url: `/expeditions/${expedition.slug}`,
+      images: imageUrl ? [{ url: imageUrl }] : undefined
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: expedition.title,
+      description: expedition.summary,
+      images: imageUrl ? [imageUrl] : undefined
+    }
+  };
+}
+
 export default async function ExpeditionDetailPage({
   params,
   searchParams
@@ -166,6 +200,62 @@ export default async function ExpeditionDetailPage({
   }
 
   const expeditionPath = `/expeditions/${expedition.slug}`;
+  const expeditionUrl = new URL(expeditionPath, appUrl).toString();
+  const expeditionImage = expedition.galleryImages[0]?.src;
+  const expeditionStructuredData = [
+    {
+      "@context": "https://schema.org",
+      "@type": "TouristTrip",
+      name: expedition.title,
+      description: expedition.summary,
+      url: expeditionUrl,
+      image: expeditionImage ? [expeditionImage] : undefined,
+      itinerary: {
+        "@type": "Place",
+        name: expedition.region,
+        address: {
+          "@type": "PostalAddress",
+          addressCountry: "ID"
+        }
+      },
+      provider: expedition.partner
+        ? {
+            "@type": "Organization",
+            name: expedition.partner,
+            url: expedition.partnerSlug ? new URL(`/partners/${expedition.partnerSlug}`, appUrl).toString() : undefined
+          }
+        : undefined,
+      offers: expedition.price > 0
+        ? {
+            "@type": "Offer",
+            price: expedition.price,
+            priceCurrency: expedition.currency,
+            url: expeditionUrl,
+            availability: expedition.departures.some((departure) => departure.canBook)
+              ? "https://schema.org/InStock"
+              : "https://schema.org/SoldOut"
+          }
+        : undefined,
+      aggregateRating: expedition.reviewCount > 0
+        ? {
+            "@type": "AggregateRating",
+            ratingValue: expedition.rating,
+            reviewCount: expedition.reviewCount,
+            bestRating: 5,
+            worstRating: 1
+          }
+        : undefined
+    },
+    {
+      "@context": "https://schema.org",
+      "@type": "BreadcrumbList",
+      itemListElement: [
+        { "@type": "ListItem", position: 1, name: "Home", item: appUrl },
+        { "@type": "ListItem", position: 2, name: "Expeditions", item: new URL("/expeditions", appUrl).toString() },
+        { "@type": "ListItem", position: 3, name: expedition.title, item: expeditionUrl }
+      ]
+    }
+  ];
   const saveState = sessionUser ? await getExpeditionSaveState(sessionUser.id, expedition.slug) : null;
   const ownReferralCode = sessionUser ? referralCodeForUser(sessionUser.id) : null;
   const rawIncomingReferralCode = (query?.ref ?? "")
@@ -264,6 +354,7 @@ export default async function ExpeditionDetailPage({
 
   return (
     <>
+      <JsonLd data={expeditionStructuredData} />
       <main className="bg-white pb-24">
         <section className="border-b border-ocean-900/10 bg-white">
           <div className="mx-auto max-w-7xl px-4 pt-6 sm:px-6 lg:px-8">
