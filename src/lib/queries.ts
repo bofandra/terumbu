@@ -151,6 +151,7 @@ import {
 } from "@/lib/expedition-metadata";
 import {
   canCancelExpeditionBooking,
+  canCompleteExpeditionBooking,
   expeditionDepartureAvailability,
   normalizeExpeditionInterestRequestStatus,
   normalizeExpeditionInterestRequestType
@@ -6624,7 +6625,8 @@ export async function getAdminOperationsData() {
         totalAmount: expeditionBookings.totalAmount,
         currency: expeditionBookings.currency,
         bookedAt: expeditionBookings.bookedAt,
-        startsAt: expeditionDepartures.startsAt
+        startsAt: expeditionDepartures.startsAt,
+        endsAt: expeditionDepartures.endsAt
       })
       .from(expeditionBookings)
       .innerJoin(expeditionDepartures, eq(expeditionBookings.departureId, expeditionDepartures.id))
@@ -6830,6 +6832,8 @@ export async function getAdminOperationsData() {
         currency: string;
         bookedAt: Date;
         startsAt: Date;
+        endsAt: Date;
+        canComplete: boolean;
         canCancel: boolean;
       }[];
       interestRequests: {
@@ -6948,6 +6952,8 @@ export async function getAdminOperationsData() {
       currency: row.currency,
       bookedAt: row.bookedAt,
       startsAt: row.startsAt,
+      endsAt: row.endsAt,
+      canComplete: canCompleteExpeditionBooking({ bookingStatus: row.status, paymentStatus: row.paymentStatus, endsAt: row.endsAt }, now),
       canCancel: canCancelExpeditionBooking({ bookingStatus: row.status, paymentStatus: row.paymentStatus, startsAt: row.startsAt }, now)
     });
   }
@@ -9044,6 +9050,7 @@ export async function getPartnerPortalData(userId?: string) {
     sponsoredRows,
     expeditionRows,
     expeditionBookingCountRows,
+    expeditionBookingRows,
     expeditionInterestRequestRows,
     donorRows,
     campaignMediaRows,
@@ -9250,6 +9257,30 @@ export async function getPartnerPortalData(userId?: string) {
       .groupBy(expeditionBookings.expeditionId, expeditionBookings.departureId),
     db
       .select({
+        id: expeditionBookings.id,
+        expeditionId: expeditionBookings.expeditionId,
+        departureId: expeditionBookings.departureId,
+        bookingCode: expeditionBookings.bookingCode,
+        contactName: expeditionBookings.contactName,
+        contactEmail: expeditionBookings.contactEmail,
+        participantsCount: expeditionBookings.participantsCount,
+        status: expeditionBookings.status,
+        paymentStatus: expeditionBookings.paymentStatus,
+        totalAmount: expeditionBookings.totalAmount,
+        currency: expeditionBookings.currency,
+        bookedAt: expeditionBookings.bookedAt,
+        startsAt: expeditionDepartures.startsAt,
+        endsAt: expeditionDepartures.endsAt
+      })
+      .from(expeditionBookings)
+      .innerJoin(expeditions, eq(expeditionBookings.expeditionId, expeditions.id))
+      .innerJoin(expeditionDepartures, eq(expeditionBookings.departureId, expeditionDepartures.id))
+      .leftJoin(campaigns, eq(expeditions.relatedCampaignId, campaigns.id))
+      .where(expeditionScope)
+      .orderBy(desc(expeditionBookings.bookedAt))
+      .limit(500),
+    db
+      .select({
         id: expeditionInterestRequests.id,
         expeditionId: expeditionInterestRequests.expeditionId,
         departureId: expeditionInterestRequests.departureId,
@@ -9416,6 +9447,23 @@ export async function getPartnerPortalData(userId?: string) {
         minParticipants: number;
         weatherAdvisory: string | null;
       }[];
+      bookings: {
+        id: string;
+        departureId: string;
+        bookingCode: string;
+        contactName: string;
+        contactEmail: string;
+        participantsCount: number;
+        status: string;
+        paymentStatus: string;
+        totalAmount: number;
+        currency: string;
+        bookedAt: Date;
+        startsAt: Date;
+        endsAt: Date;
+        canComplete: boolean;
+        canCancel: boolean;
+      }[];
       interestRequests: {
         id: string;
         departureId: string | null;
@@ -9462,6 +9510,7 @@ export async function getPartnerPortalData(userId?: string) {
         partner: row.partner,
         bookingCount: expeditionBookingCounts.get(row.id) ?? 0,
         departures: [],
+        bookings: [],
         interestRequests: []
       };
       expeditionsById.set(row.id, expedition);
@@ -9483,6 +9532,31 @@ export async function getPartnerPortalData(userId?: string) {
         weatherAdvisory: getMetadataString(row.departureMetadata, "weatherAdvisory")
       });
     }
+  }
+
+  const partnerBookingNow = new Date();
+
+  for (const row of expeditionBookingRows) {
+    const expedition = expeditionsById.get(row.expeditionId);
+    if (!expedition) continue;
+
+    expedition.bookings.push({
+      id: row.id,
+      departureId: row.departureId,
+      bookingCode: row.bookingCode,
+      contactName: row.contactName,
+      contactEmail: row.contactEmail,
+      participantsCount: row.participantsCount,
+      status: row.status,
+      paymentStatus: row.paymentStatus,
+      totalAmount: toNumber(row.totalAmount),
+      currency: row.currency,
+      bookedAt: row.bookedAt,
+      startsAt: row.startsAt,
+      endsAt: row.endsAt,
+      canComplete: canCompleteExpeditionBooking({ bookingStatus: row.status, paymentStatus: row.paymentStatus, endsAt: row.endsAt }, partnerBookingNow),
+      canCancel: canCancelExpeditionBooking({ bookingStatus: row.status, paymentStatus: row.paymentStatus, startsAt: row.startsAt }, partnerBookingNow)
+    });
   }
 
   for (const row of expeditionInterestRequestRows) {

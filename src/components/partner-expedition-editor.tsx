@@ -12,6 +12,7 @@ import { processPartnerExpeditionInterestRequestAction } from "@/lib/expedition-
 import {
   createPartnerExpeditionAction,
   createPartnerExpeditionDepartureAction,
+  completePartnerExpeditionBookingAction,
   updatePartnerExpeditionAction,
   updatePartnerExpeditionDepartureAction
 } from "@/lib/portal-actions";
@@ -888,6 +889,7 @@ export function PartnerExpeditionDetailWorkspace({
   const contentReturnTo = `${basePath}?tab=content`;
   const departuresReturnTo = `${basePath}?tab=departures`;
   const requestsReturnTo = `${basePath}?tab=requests`;
+  const bookingsReturnTo = `${basePath}?tab=bookings`;
   const nextDeparture = [...expedition.departures].sort((a, b) => a.startsAt.getTime() - b.startsAt.getTime())[0];
 
   return (
@@ -954,6 +956,7 @@ export function PartnerExpeditionDetailWorkspace({
           { id: "overview", label: "Overview", description: "Trip health" },
           { id: "content", label: "Trip content", description: "Public page and itinerary" },
           { id: "departures", label: "Departures", description: "Dates and capacity", badge: expedition.departures.length.toLocaleString("id-ID") },
+          { id: "bookings", label: "Participants", description: "Confirmed and completed bookings", badge: expedition.bookings.length.toLocaleString("id-ID") },
           { id: "requests", label: "Requests", description: "Questions and private groups", badge: expedition.interestRequests.length.toLocaleString("id-ID") }
         ]}
       >
@@ -1002,7 +1005,47 @@ export function PartnerExpeditionDetailWorkspace({
           </div>
         )}
 
-        <RequestList expedition={expedition} returnTo={requestsReturnTo} />
+        <section className="grid gap-3">
+          {expedition.bookings.map((booking) => (
+            <article key={booking.id} className="rounded-lg border border-ocean-900/10 bg-white p-5 shadow-soft">
+              <div className="flex flex-col justify-between gap-4 lg:flex-row lg:items-center">
+                <div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h3 className="font-bold text-ocean-900">{booking.bookingCode}</h3>
+                    <StatusBadge value={booking.status} />
+                    <StatusBadge value={booking.paymentStatus} />
+                  </div>
+                  <p className="mt-2 text-sm font-semibold text-ocean-900/58">
+                    {booking.contactName} · {booking.contactEmail} · {booking.participantsCount} participant(s)
+                  </p>
+                  <p className="mt-1 text-xs font-semibold text-ocean-900/48">
+                    Departure ends {booking.endsAt.toLocaleString("id-ID")}
+                  </p>
+                </div>
+                {canManageExpeditions && booking.canComplete ? (
+                  <form action={completePartnerExpeditionBookingAction}>
+                    <input type="hidden" name="bookingId" value={booking.id} />
+                    <input type="hidden" name="redirectTo" value={bookingsReturnTo} />
+                    <Button type="submit">Confirm participation completed</Button>
+                  </form>
+                ) : booking.status === "completed" ? (
+                  <span className="text-sm font-bold text-kelp-700">Participation completed</span>
+                ) : (
+                  <span className="text-sm font-semibold text-ocean-900/48">
+                    {booking.paymentStatus !== "paid" ? "Waiting for verified payment" : "Completion available after departure ends"}
+                  </span>
+                )}
+              </div>
+            </article>
+          ))}
+          {expedition.bookings.length === 0 ? (
+            <div className="rounded-lg border border-dashed border-ocean-900/14 bg-white p-6 text-sm font-semibold text-ocean-900/58">
+              No bookings for this expedition yet.
+            </div>
+          ) : null}
+        </section>
+
+                <RequestList expedition={expedition} returnTo={requestsReturnTo} />
       </FormTabs>
     </div>
   );

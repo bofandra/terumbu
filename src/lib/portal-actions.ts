@@ -89,14 +89,14 @@ import {
   normalizeExpeditionMarketplaceMetadata,
   type ExpeditionMarketplaceMetadata
 } from "@/lib/expedition-marketplace";
-import { canCancelExpeditionBooking } from "@/lib/expedition-booking-lifecycle";
+import { canCancelExpeditionBooking, canCompleteExpeditionBooking } from "@/lib/expedition-booking-lifecycle";
 import { buildPassportNumber, normalizeCurrency, parseCarbonKgPerUsd } from "@/lib/impact-calculations";
 import {
   normalizePartnerOrganizationRole,
   partnerRoleAllows,
   type PartnerOrganizationPermission
 } from "@/lib/partner-permissions";
-import { recordPaymentOperation, transitionDonationPayment, transitionExpeditionBookingPayment } from "@/lib/payment-workflows";
+import { ensureCompletedExpeditionPassportItem, recordPaymentOperation, transitionDonationPayment, transitionExpeditionBookingPayment } from "@/lib/payment-workflows";
 import { upsertCarbonKgPerUsd } from "@/lib/platform-settings";
 import { processDueDonationSubscriptions } from "@/lib/subscription-billing";
 import { getEvidenceStorageProvider, readUploadedImageAsDataUrl } from "@/lib/storage";
@@ -4024,6 +4024,82 @@ export async function updatePartnerExpeditionDepartureAction(formData: FormData)
   }
 
   redirectPartnerSaved(formData, "/partner/expeditions", isNewCancellation ? "departure-cancelled" : "departure-updated");
+}
+
+export async function completePartnerExpeditionBookingAction(formData: FormData) {
+  const user = await requirePartnerRole("/partner/expeditions");
+  const bookingId = formText(formData, "bookingId");
+
+  if (!bookingId) {
+    redirectPartnerError(formData, "/partner/expeditions", "booking-missing");
+  }
+
+  const [booking] = await db
+    .select({
+      id: expeditionBookings.id,
+      expeditionId: expeditionBookings.expeditionId,
+      status: expeditionBookings.status,
+      paymentStatus: expeditionBookings.paymentStatus,
+      departureEndsAt: expeditionDepartures.endsAt,
+      userId: expeditionBookings.userId,
+      bookingCode: expeditionBookings.bookingCode,
+      participantsCount: expeditionBookings.participantsCount,
+      bookedAt: expeditionBookings.bookedAt,
+      expeditionTitle: expeditions.title,
+      expeditionSlug: expeditions.slug
+    })
+    .from(expeditionBookings)
+    .innerJoin(expeditionDepartures, eq(expeditionBookings.departureId, expeditionDepartures.id))
+    .where(eq(expeditionBookings.id, bookingId))
+    .limit(1);
+
+  if (!booking) {
+    redirectPartnerError(formData, "/partner/expeditions", "booking-missing");
+  }
+
+  await requireExpeditionAccess(user.id, booking.expeditionId, formData, "/partner/expeditions", "expedition:manage");
+
+  const now = new Date();
+  if (!canCompleteExpeditionBooking({ bookingStatus: booking.status, paymentStatus: booking.paymentStatus, endsAt: booking.departureEndsAt }, now)) {
+    redirectPartnerError(
+      formData,
+      "/partner/expeditions",
+      booking.status !== "confirmed" || booking.paymentStatus !== "paid" ? "booking-not-confirmed" : "booking-not-finished"
+    );
+  }
+
+  await db.transaction(async (tx) => {
+    await tx
+      .update(expeditionBookings)
+      .set({
+        status: "completed",
+        metadata: sql`coalesce(${expeditionBookings.metadata}, '{}'::jsonb) || jsonb_build_object('completedAt', ${now.toISOString()}, 'completionSource', 'partner_portal')`
+      })
+      .where(and(eq(expeditionBookings.id, booking.id), eq(expeditionBookings.status, "confirmed"), eq(expeditionBookings.paymentStatus, "paid")));
+
+    await ensureCompletedExpeditionPassportItem(tx as unknown as typeof db, {
+      id: booking.id,
+      userId: booking.userId,
+      expeditionTitle: booking.expeditionTitle,
+      expeditionSlug: booking.expeditionSlug,
+      bookedAt: booking.bookedAt,
+      participantsCount: booking.participantsCount
+    });
+
+    await tx.insert(adminAuditLogs).values({
+      actorUserId: user.id,
+      action: "partner_expedition_booking.completed",
+      entityType: "expedition_booking",
+      entityId: booking.id,
+      metadata: {
+        source: "partner_portal",
+        expeditionId: booking.expeditionId,
+        completedAt: now.toISOString()
+      }
+    });
+  });
+
+  redirectPartnerSaved(formData, "/partner/expeditions", "booking-completed");
 }
 
 export async function createAdminCampaignAction(formData: FormData) {
