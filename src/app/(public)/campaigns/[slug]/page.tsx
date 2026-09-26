@@ -24,6 +24,7 @@ import { CampaignProgressStrip } from "@/components/campaign-progress-strip";
 import { CampaignSectionTabs } from "@/components/campaign-section-tabs";
 import { CampaignUpdatesEvidence } from "@/components/campaign-updates-evidence";
 import { ExpeditionCard } from "@/components/expedition-card";
+import { AnalyticsEvent } from "@/components/analytics-event";
 import { ImpactMapPreview } from "@/components/impact-map-preview";
 import { JsonLd } from "@/components/json-ld";
 import { SectionHeading } from "@/components/section-heading";
@@ -289,6 +290,13 @@ export default async function CampaignDetailPage({ params }: { params: Promise<{
 
   return (
     <main className="pb-24 lg:pb-0">
+      <AnalyticsEvent
+        event="campaign_view"
+        properties={{
+          campaignId: campaign.id,
+          campaignSlug: campaign.slug
+        }}
+      />
       <JsonLd data={campaignStructuredData} />
       <section className="bg-white">
         <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
