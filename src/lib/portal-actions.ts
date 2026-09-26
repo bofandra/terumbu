@@ -96,7 +96,7 @@ import {
   partnerRoleAllows,
   type PartnerOrganizationPermission
 } from "@/lib/partner-permissions";
-import { recordPaymentOperation, transitionDonationPayment, transitionExpeditionBookingPayment } from "@/lib/payment-workflows";
+import { ensureCompletedExpeditionPassportItem, recordPaymentOperation, transitionDonationPayment, transitionExpeditionBookingPayment } from "@/lib/payment-workflows";
 import { upsertCarbonKgPerUsd } from "@/lib/platform-settings";
 import { processDueDonationSubscriptions } from "@/lib/subscription-billing";
 import { getEvidenceStorageProvider, readUploadedImageAsDataUrl } from "@/lib/storage";
@@ -4040,7 +4040,13 @@ export async function completePartnerExpeditionBookingAction(formData: FormData)
       expeditionId: expeditionBookings.expeditionId,
       status: expeditionBookings.status,
       paymentStatus: expeditionBookings.paymentStatus,
-      departureEndsAt: expeditionDepartures.endsAt
+      departureEndsAt: expeditionDepartures.endsAt,
+      userId: expeditionBookings.userId,
+      bookingCode: expeditionBookings.bookingCode,
+      participantsCount: expeditionBookings.participantsCount,
+      bookedAt: expeditionBookings.bookedAt,
+      expeditionTitle: expeditions.title,
+      expeditionSlug: expeditions.slug
     })
     .from(expeditionBookings)
     .innerJoin(expeditionDepartures, eq(expeditionBookings.departureId, expeditionDepartures.id))
@@ -4070,6 +4076,15 @@ export async function completePartnerExpeditionBookingAction(formData: FormData)
         metadata: sql`coalesce(${expeditionBookings.metadata}, '{}'::jsonb) || jsonb_build_object('completedAt', ${now.toISOString()}, 'completionSource', 'partner_portal')`
       })
       .where(and(eq(expeditionBookings.id, booking.id), eq(expeditionBookings.status, "confirmed"), eq(expeditionBookings.paymentStatus, "paid")));
+
+    await ensureCompletedExpeditionPassportItem(tx as unknown as typeof db, {
+      id: booking.id,
+      userId: booking.userId,
+      expeditionTitle: booking.expeditionTitle,
+      expeditionSlug: booking.expeditionSlug,
+      bookedAt: booking.bookedAt,
+      participantsCount: booking.participantsCount
+    });
 
     await tx.insert(adminAuditLogs).values({
       actorUserId: user.id,
