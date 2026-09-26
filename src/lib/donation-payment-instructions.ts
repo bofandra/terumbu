@@ -1,5 +1,3 @@
-"use server";
-
 import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
@@ -54,6 +52,7 @@ export async function getDonationPaymentInstructions() {
 }
 
 export async function updateDonationPaymentInstructionsAction(formData: FormData) {
+  "use server";
   const user = await requireRole(["admin"], "/admin/payment-instructions");
   const now = new Date();
   const value = normalize({
