@@ -4,6 +4,8 @@ import { getPublishedDestinations } from "@/lib/queries";
 
 const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://terumbu.eco";
 
+export const dynamic = "force-dynamic";
+
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const destinations = await getPublishedDestinations();
   const staticPaths = [
