@@ -41,12 +41,18 @@ assert_public_page "/academy" >/dev/null
 assert_public_page "/about" >/dev/null
 assert_public_page "/login" >/dev/null
 
-first_campaign="$(grep -om1 -E 'href="/campaigns/[^"#?]+' <<<"${campaigns}" | cut -d'"' -f2 || true)"
+first_campaign=""
+if [[ ${campaigns} =~ href="(/campaigns/[^"#?]+) ]]; then
+  first_campaign="${BASH_REMATCH[1]}"
+fi
 if [ -n "${first_campaign}" ]; then
   assert_public_page "${first_campaign}" >/dev/null
 fi
 
-first_expedition="$(grep -om1 -E 'href="/expeditions/[^"#?]+' <<<"${expeditions}" | cut -d'"' -f2 || true)"
+first_expedition=""
+if [[ ${expeditions} =~ href="(/expeditions/[^"#?]+) ]]; then
+  first_expedition="${BASH_REMATCH[1]}"
+fi
 if [ -n "${first_expedition}" ]; then
   detail="$(assert_public_page "${first_expedition}")"
   for obsolete in "Sustainable project" "Higher approval" "Higher chance of approval" "Some content is adapted for international travelers"; do
