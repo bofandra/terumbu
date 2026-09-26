@@ -80,6 +80,7 @@ import {
 } from "@/lib/evidence-review-workflow";
 import {
   buildDefaultExpeditionDetailMetadata,
+  expeditionTravelerReadiness,
   normalizeExpeditionDetailMetadata,
   type ExpeditionDetailMetadata
 } from "@/lib/expedition-metadata";
@@ -3496,6 +3497,15 @@ export async function updatePartnerExpeditionAction(formData: FormData) {
         ? (requestedStatus as (typeof partnerExpeditionStatuses)[number])
         : existingExpedition.status;
   if (status === "review") {
+    const reviewMetadata = await partnerExpeditionMetadataFromForm(formData, {
+      currentMetadata: normalizeExpeditionDetailMetadata(existingExpedition.metadata, defaultPartnerExpeditionMetadata(existingExpedition, maxCapacity)),
+      durationDays,
+      basePrice: Number(basePrice),
+      currency,
+      maxCapacity
+    });
+    const travelerReadiness = expeditionTravelerReadiness(reviewMetadata);
+
     const [departureSummary, relatedCampaign] = await Promise.all([
       db
         .select({ total: sql<number>`count(*)::int` })
@@ -3513,7 +3523,7 @@ export async function updatePartnerExpeditionAction(formData: FormData) {
     const relatedCampaignIsPublic = ["published", "funded", "completed"].includes(relatedCampaign?.status ?? "");
     const hasDeparture = Number(departureSummary?.total ?? 0) > 0;
 
-    if (!imageUrl || !relatedCampaignIsPublic || !hasDeparture) {
+    if (!imageUrl || !relatedCampaignIsPublic || !hasDeparture || !travelerReadiness.ready) {
       redirectPartnerError(formData, "/partner/expeditions", "expedition-not-ready");
     }
   }
