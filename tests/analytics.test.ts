@@ -5,6 +5,7 @@ import {
   analyticsEventNames,
   isAnalyticsEventName,
   safeAnalyticsDistinctId,
+  safeBrowserAnonymousId,
   sanitizePublicAnalyticsProperties
 } from "../src/lib/analytics";
 
@@ -42,8 +43,10 @@ test("public analytics properties drop pii and arbitrary fields", () => {
   );
 });
 
-test("analytics distinct ids are bounded and stripped of email punctuation", () => {
+test("analytics identifiers stay opaque", () => {
   assert.equal(safeAnalyticsDistinctId(" user:abc-123 ", "fallback"), "user:abc-123");
-  assert.equal(safeAnalyticsDistinctId("person@example.com", "fallback"), "personexamplecom");
   assert.equal(safeAnalyticsDistinctId("", "fallback"), "fallback");
+  assert.equal(safeBrowserAnonymousId("8f37f71a-7c4e-4b11-a70a-58461ea25a93"), "8f37f71a-7c4e-4b11-a70a-58461ea25a93");
+  assert.equal(safeBrowserAnonymousId("person@example.com"), "browser");
+  assert.equal(safeBrowserAnonymousId("short"), "browser");
 });
