@@ -235,15 +235,6 @@ export default async function ExpeditionDetailPage({
               ? "https://schema.org/InStock"
               : "https://schema.org/SoldOut"
           }
-        : undefined,
-      aggregateRating: expedition.reviewCount > 0
-        ? {
-            "@type": "AggregateRating",
-            ratingValue: expedition.rating,
-            reviewCount: expedition.reviewCount,
-            bestRating: 5,
-            worstRating: 1
-          }
         : undefined
     },
     {
