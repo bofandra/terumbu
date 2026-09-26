@@ -94,6 +94,12 @@ export function safeAnalyticsDistinctId(value: string | null | undefined, fallba
   return cleaned || fallback;
 }
 
+export function safeBrowserAnonymousId(value: unknown) {
+  const candidate = typeof value === "string" ? value.trim() : "";
+
+  return /^[a-zA-Z0-9_-]{8,80}$/.test(candidate) ? candidate : "browser";
+}
+
 export async function trackEvent(input: AnalyticsEventInput) {
   const { apiKey, host } = posthogConfig();
 
