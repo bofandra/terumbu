@@ -26,6 +26,7 @@ const errorMessages: Record<string, string> = {
   "departure-duplicate": "That expedition already has a departure with the same start time.",
   "departure-invalid": "Enter valid departure dates and capacity.",
   "departure-missing": "Departure record was not found.",
+  "destination-missing": "Choose a published destination managed by Terumbu.",
   "expedition-campaign-required": "This expedition must remain linked to one of your campaigns.",
   "expedition-invalid": "Enter a title, slug, region, duration, price, summary, and related campaign.",
   "expedition-missing": "Expedition record was not found.",
@@ -72,6 +73,7 @@ export default async function PartnerExpeditionDetailPage({ params, searchParams
       ) : null}
       <PartnerExpeditionDetailWorkspace
         campaigns={data.campaigns}
+        destinations={data.destinations}
         expedition={expedition}
         canManageExpeditions={data.capabilities.canManageExpeditions}
         defaultTabId={query?.tab}
