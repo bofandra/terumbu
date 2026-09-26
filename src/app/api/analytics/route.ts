@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 
 import {
   isAnalyticsEventName,
-  safeAnalyticsDistinctId,
+  safeBrowserAnonymousId,
   sanitizePublicAnalyticsProperties,
   trackEvent
 } from "@/lib/analytics";
@@ -30,10 +30,7 @@ export async function POST(request: Request) {
   }
 
   const user = await getSessionUser();
-  const anonymousId = safeAnalyticsDistinctId(
-    typeof payload.anonymousId === "string" ? payload.anonymousId : null,
-    "browser"
-  );
+  const anonymousId = safeBrowserAnonymousId(payload.anonymousId);
   const distinctId = user?.id ? `user:${user.id}` : `anon:${anonymousId}`;
 
   await trackEvent({
