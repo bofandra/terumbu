@@ -9472,6 +9472,23 @@ export async function getPartnerPortalData(userId?: string) {
         minParticipants: number;
         weatherAdvisory: string | null;
       }[];
+      bookings: {
+        id: string;
+        departureId: string;
+        bookingCode: string;
+        contactName: string;
+        contactEmail: string;
+        participantsCount: number;
+        status: string;
+        paymentStatus: string;
+        totalAmount: number;
+        currency: string;
+        bookedAt: Date;
+        startsAt: Date;
+        endsAt: Date;
+        canComplete: boolean;
+        canCancel: boolean;
+      }[];
       interestRequests: {
         id: string;
         departureId: string | null;
