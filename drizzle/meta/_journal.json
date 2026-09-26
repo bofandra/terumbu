@@ -225,6 +225,13 @@
       "when": 1790300000000,
       "tag": "0031_traveler_growth_retention",
       "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1790384400000,
+      "tag": "0032_destination_cms",
+      "breakpoints": true
     }
   ]
 }
