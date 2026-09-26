@@ -293,7 +293,6 @@ export default async function CampaignDetailPage({ params }: { params: Promise<{
       <AnalyticsEvent
         event="campaign_view"
         properties={{
-          campaignId: campaign.id,
           campaignSlug: campaign.slug
         }}
       />
