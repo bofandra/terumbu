@@ -58,8 +58,10 @@ export default async function CheckoutSuccessPage({ searchParams }: CheckoutSucc
           href={
             failed
               ? params?.type === "expedition"
-                ? "/checkout/expedition"
-                : "/checkout/donation"
+                ? params?.expedition
+                  ? `/expeditions/${params.expedition}`
+                  : "/expeditions"
+                : "/campaigns"
               : sessionUser
                 ? "/dashboard"
                 : params?.type === "expedition"
@@ -68,7 +70,7 @@ export default async function CheckoutSuccessPage({ searchParams }: CheckoutSucc
           }
           className="mt-7"
         >
-          {failed ? "Try Again" : sessionUser ? "View Dashboard" : params?.type === "expedition" ? "Explore Expeditions" : "Explore Projects"}
+          {failed ? (params?.type === "expedition" ? "Return to Expedition" : "Return to Campaigns") : sessionUser ? "View Dashboard" : params?.type === "expedition" ? "Explore Expeditions" : "Explore Projects"}
         </ButtonLink>
         {isExpedition && params?.expedition ? (
           <div className="mt-7 border-t border-ocean-900/10 pt-6 text-left">

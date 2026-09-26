@@ -85,7 +85,16 @@ export default async function ExpeditionCheckoutPage({ searchParams }: Expeditio
           </p>
         ) : null}
         <form action={bookExpeditionAction} className="mt-6 grid min-w-0 gap-4">
-          <input type="hidden" name="next" value="/checkout/expedition" />
+          <input
+            type="hidden"
+            name="next"
+            value={`/checkout/expedition?${new URLSearchParams({
+              ...(params?.departure ? { departure: params.departure } : {}),
+              participants: String(selectedParticipants),
+              ...(params?.expedition ? { expedition: params.expedition } : {}),
+              ...(params?.ref ? { ref: params.ref } : {})
+            }).toString()}`}
+          />
           <input type="hidden" name="idempotencyKey" value={idempotencyKey} />
           <input type="hidden" name="referralCode" value={params?.ref ?? ""} />
           <label className="grid min-w-0 gap-2 text-sm font-semibold text-ocean-900">
@@ -182,8 +191,11 @@ export default async function ExpeditionCheckoutPage({ searchParams }: Expeditio
             <div>
               <p className="font-bold text-ocean-900">Payment verification</p>
               <p className="mt-1 text-sm leading-6 text-ocean-900/62">
-                Complete payment through Terumbu&apos;s official external payment channel, then upload the proof here. Your seats remain pending until an admin verifies the payment.
+                Complete payment through Terumbu&apos;s official external payment channel, then upload the proof here. If you have not received payment instructions yet, contact the Terumbu team first. Your seats remain pending until an admin verifies the payment.
               </p>
+              <a href="mailto:support@terumbu.eco?subject=Expedition payment instructions" className="mt-2 inline-block text-sm font-bold text-coral-700 underline-offset-4 hover:underline">
+                Request payment instructions
+              </a>
             </div>
             <label className="grid min-w-0 gap-2 text-sm font-semibold text-ocean-900">
               Payment reference <span className="font-normal text-ocean-900/42">(optional)</span>

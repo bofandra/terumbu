@@ -37,7 +37,7 @@ export default async function CorporateSettingsPage() {
         <article className="rounded-lg border border-ocean-900/10 bg-white p-5 shadow-soft">
           <div className="flex items-center gap-2"><Users className="size-5 text-ocean-700" aria-hidden="true" /><h2 className="text-xl font-bold tracking-normal text-ocean-900">Access</h2></div>
           <dl className="mt-4 grid gap-3 text-sm">
-            <div><dt className="font-bold text-ocean-900/56">Your access</dt><dd className="mt-1 font-semibold text-ocean-900">Corporate User</dd></div>
+            <div><dt className="font-bold text-ocean-900/56">Your access</dt><dd className="mt-1 font-semibold text-ocean-900">Corporate Admin</dd></div>
             <div><dt className="font-bold text-ocean-900/56">Employees</dt><dd className="mt-1 font-semibold text-ocean-900">{data.employees.length.toLocaleString("id-ID")}</dd></div>
           </dl>
         </article>
