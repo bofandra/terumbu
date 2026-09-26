@@ -89,7 +89,7 @@ import {
   normalizeExpeditionMarketplaceMetadata,
   type ExpeditionMarketplaceMetadata
 } from "@/lib/expedition-marketplace";
-import { canCancelExpeditionBooking } from "@/lib/expedition-booking-lifecycle";
+import { canCancelExpeditionBooking, canCompleteExpeditionBooking } from "@/lib/expedition-booking-lifecycle";
 import { buildPassportNumber, normalizeCurrency, parseCarbonKgPerUsd } from "@/lib/impact-calculations";
 import {
   normalizePartnerOrganizationRole,
