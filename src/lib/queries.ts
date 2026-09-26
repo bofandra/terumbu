@@ -151,6 +151,7 @@ import {
 } from "@/lib/expedition-metadata";
 import {
   canCancelExpeditionBooking,
+  canCompleteExpeditionBooking,
   expeditionDepartureAvailability,
   normalizeExpeditionInterestRequestStatus,
   normalizeExpeditionInterestRequestType
@@ -6831,6 +6832,8 @@ export async function getAdminOperationsData() {
         currency: string;
         bookedAt: Date;
         startsAt: Date;
+        endsAt: Date;
+        canComplete: boolean;
         canCancel: boolean;
       }[];
       interestRequests: {
@@ -6950,7 +6953,7 @@ export async function getAdminOperationsData() {
       bookedAt: row.bookedAt,
       startsAt: row.startsAt,
       endsAt: row.endsAt,
-      canComplete: row.status === "confirmed" && row.paymentStatus === "paid" && row.endsAt <= now,
+      canComplete: canCompleteExpeditionBooking({ bookingStatus: row.status, paymentStatus: row.paymentStatus, endsAt: row.endsAt }, now),
       canCancel: canCancelExpeditionBooking({ bookingStatus: row.status, paymentStatus: row.paymentStatus, startsAt: row.startsAt }, now)
     });
   }
