@@ -49,6 +49,7 @@ const {
   courses,
   donationReceipts,
   donations,
+  destinations,
   emailLogs,
   expeditionBookingPayments,
   expeditionBookings,
@@ -97,6 +98,11 @@ const ids = {
   organizationRajaAmpat: "33333333-3333-4333-8333-333333333331",
   organizationBali: "33333333-3333-4333-8333-333333333332",
   organizationKomodo: "33333333-3333-4333-8333-333333333333",
+  destinationRajaAmpat: "f1000000-0000-4000-8000-000000000001",
+  destinationBali: "f1000000-0000-4000-8000-000000000002",
+  destinationKomodo: "f1000000-0000-4000-8000-000000000003",
+  destinationWakatobi: "f1000000-0000-4000-8000-000000000004",
+  destinationLombok: "f1000000-0000-4000-8000-000000000005",
   campaignUpdateRajaAmpat: "55555555-5555-4555-8555-555555555551",
   campaignUpdateBali: "55555555-5555-4555-8555-555555555552",
   campaignUpdateKomodo: "55555555-5555-4555-8555-555555555553",
@@ -338,6 +344,118 @@ async function seed() {
         heroLevel: 4,
         xp: 2450,
         isPublic: true,
+        updatedAt: now
+      }
+    });
+
+  await db
+    .insert(destinations)
+    .values([
+      {
+        id: ids.destinationRajaAmpat,
+        name: "Raja Ampat",
+        slug: "raja-ampat",
+        province: "Southwest Papua",
+        islandGroup: "Papua",
+        eyebrow: "Southwest Papua conservation travel",
+        headline: "Conservation expeditions in Raja Ampat",
+        summary: "Explore Raja Ampat through conservation expeditions managed by Terumbu partners and linked to field impact records.",
+        conservationFocus: ["Coral restoration", "Reef monitoring", "Community conservation", "Marine conservation"],
+        arrivalHubs: [],
+        bestMonths: [],
+        travelNotes: ["Confirm the expedition meeting point and transfer plan before arranging onward travel.", "Remote island transfers can change with weather and sea conditions."],
+        responsibleTravelNotes: ["Follow partner and protected-area guidance while visiting reef and community sites."],
+        status: "published",
+        publishedAt: now,
+        updatedAt: now
+      },
+      {
+        id: ids.destinationBali,
+        name: "Bali",
+        slug: "bali",
+        province: "Bali",
+        islandGroup: "Bali & Nusa Tenggara",
+        eyebrow: "Bali conservation travel",
+        headline: "Conservation expeditions in Bali",
+        summary: "Explore Bali through conservation expeditions managed by Terumbu partners and linked to field impact records.",
+        conservationFocus: ["Coral restoration", "Marine debris reduction", "Environmental education", "Community conservation"],
+        arrivalHubs: [],
+        bestMonths: [],
+        travelNotes: ["Confirm the transfer time from the arrival hub to the expedition meeting point."],
+        responsibleTravelNotes: ["Use locally managed services and follow site-specific waste and wildlife guidance."],
+        status: "published",
+        publishedAt: now,
+        updatedAt: now
+      },
+      {
+        id: ids.destinationKomodo,
+        name: "Komodo",
+        slug: "komodo",
+        province: "East Nusa Tenggara",
+        islandGroup: "Bali & Nusa Tenggara",
+        eyebrow: "Flores and Komodo conservation travel",
+        headline: "Conservation expeditions around Komodo",
+        summary: "Explore Flores and Komodo through conservation expeditions managed by Terumbu partners and linked to field impact records.",
+        conservationFocus: ["Marine conservation", "Coastal restoration", "Community conservation", "Wildlife monitoring"],
+        arrivalHubs: [],
+        bestMonths: [],
+        travelNotes: ["Boat routes and meeting points depend on the selected expedition and departure."],
+        responsibleTravelNotes: ["Protected-area and wildlife rules take priority over itinerary convenience."],
+        status: "published",
+        publishedAt: now,
+        updatedAt: now
+      },
+      {
+        id: ids.destinationWakatobi,
+        name: "Wakatobi",
+        slug: "wakatobi",
+        province: "Southeast Sulawesi",
+        islandGroup: "Sulawesi",
+        eyebrow: "Southeast Sulawesi conservation travel",
+        headline: "Conservation expeditions in Wakatobi",
+        summary: "Explore Wakatobi through conservation expeditions managed by Terumbu partners and linked to field impact records.",
+        conservationFocus: ["Reef monitoring", "Coral restoration", "Marine conservation", "Environmental education"],
+        arrivalHubs: [],
+        bestMonths: [],
+        travelNotes: ["Check the selected expedition for its exact arrival route and meeting point."],
+        responsibleTravelNotes: ["Respect local conservation rules and partner guidance in reef and community areas."],
+        status: "published",
+        publishedAt: now,
+        updatedAt: now
+      },
+      {
+        id: ids.destinationLombok,
+        name: "Lombok",
+        slug: "lombok",
+        province: "West Nusa Tenggara",
+        islandGroup: "Bali & Nusa Tenggara",
+        eyebrow: "Lombok conservation travel",
+        headline: "Conservation expeditions in Lombok",
+        summary: "Explore Lombok and the Gilis through conservation expeditions managed by Terumbu partners and linked to field impact records.",
+        conservationFocus: ["Coral restoration", "Reef monitoring", "Waste reduction", "Community conservation"],
+        arrivalHubs: [],
+        bestMonths: [],
+        travelNotes: ["Confirm whether the selected expedition starts on mainland Lombok or an offshore island."],
+        responsibleTravelNotes: ["Follow local reef, waste, and community guidance provided by the expedition host."],
+        status: "published",
+        publishedAt: now,
+        updatedAt: now
+      }
+    ])
+    .onConflictDoUpdate({
+      target: destinations.slug,
+      set: {
+        name: sql`excluded.name`,
+        province: sql`excluded.province`,
+        islandGroup: sql`excluded.island_group`,
+        eyebrow: sql`excluded.eyebrow`,
+        headline: sql`excluded.headline`,
+        summary: sql`excluded.summary`,
+        conservationFocus: sql`excluded.conservation_focus`,
+        arrivalHubs: sql`excluded.arrival_hubs`,
+        travelNotes: sql`excluded.travel_notes`,
+        responsibleTravelNotes: sql`excluded.responsible_travel_notes`,
+        status: "published",
         updatedAt: now
       }
     });
@@ -706,6 +824,7 @@ async function seed() {
       {
         id: ids.impactSiteRajaAmpat,
         campaignId: campaignBySlug.get("restore-raja-ampat-reefs")!,
+        destinationId: ids.destinationRajaAmpat,
         name: "Raja Ampat Reef Garden",
         ecosystemType: "Coral",
         region: "Southwest Papua",
@@ -721,6 +840,7 @@ async function seed() {
       {
         id: ids.impactSiteBali,
         campaignId: campaignBySlug.get("mangrove-shield-bali")!,
+        destinationId: ids.destinationBali,
         name: "North Bali Mangrove Belt",
         ecosystemType: "Mangrove",
         region: "Bali",
@@ -736,6 +856,7 @@ async function seed() {
       {
         id: ids.impactSiteKomodo,
         campaignId: campaignBySlug.get("cleanup-komodo-coast")!,
+        destinationId: ids.destinationKomodo,
         name: "Komodo Cleanup Route",
         ecosystemType: "Cleanup",
         region: "East Nusa Tenggara",
@@ -753,6 +874,7 @@ async function seed() {
       target: impactSites.id,
       set: {
         campaignId: sql`excluded.campaign_id`,
+        destinationId: sql`excluded.destination_id`,
         name: sql`excluded.name`,
         ecosystemType: sql`excluded.ecosystem_type`,
         region: sql`excluded.region`,
@@ -1367,6 +1489,7 @@ async function seed() {
       {
         title: "Raja Ampat Coral Restoration Expedition",
         slug: "raja-ampat-coral-restoration",
+        destinationId: ids.destinationRajaAmpat,
         region: "Raja Ampat",
         durationDays: 4,
         basePrice: "250.00",
@@ -1398,6 +1521,7 @@ async function seed() {
       {
         title: "Wakatobi Reef Monitoring Weekend",
         slug: "wakatobi-reef-monitoring",
+        destinationId: ids.destinationWakatobi,
         region: "Wakatobi",
         durationDays: 3,
         basePrice: "185.00",
@@ -1497,6 +1621,7 @@ async function seed() {
       {
         title: "Help create content & manage social media for our homestay",
         slug: "bali-homestay-content-social-media",
+        destinationId: ids.destinationBali,
         region: "Kota Denpasar",
         durationDays: 10,
         basePrice: "120.00",
@@ -1528,6 +1653,7 @@ async function seed() {
       {
         title: "Plastic-Free Coast: Cleanup, Sorting & Community Education",
         slug: "komodo-coast-cleanup-community-education",
+        destinationId: ids.destinationKomodo,
         region: "Labuan Bajo",
         durationDays: 5,
         basePrice: "110.00",
@@ -1561,6 +1687,7 @@ async function seed() {
       target: expeditions.slug,
       set: {
         title: sql`excluded.title`,
+        destinationId: sql`excluded.destination_id`,
         region: sql`excluded.region`,
         durationDays: sql`excluded.duration_days`,
         basePrice: sql`excluded.base_price`,

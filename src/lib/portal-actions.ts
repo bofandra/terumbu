@@ -19,6 +19,7 @@ import {
   corporateEvidenceCenter,
   corporateProjectPortfolio,
   donations,
+  destinations,
   evidenceReviewEvents,
   expeditionBookings,
   expeditionDepartures,
@@ -57,6 +58,15 @@ import {
   partnerCampaignStatuses
 } from "@/lib/campaign-content";
 import { requirePartnerRole, requireRole, safeRedirectPath } from "@/lib/auth";
+import {
+  destinationArrivalHubTypes,
+  destinationConservationFocusOptions,
+  destinationIslandGroups,
+  destinationMonthOptions,
+  destinationProvinceOptions,
+  destinationStatus,
+  type DestinationArrivalHub
+} from "@/lib/destination-content";
 import { withAdminFormOutcome } from "@/lib/admin-form-state";
 import { sendAccountSetupEmail } from "@/lib/auth-tokens";
 import { corporateEvidenceVisibilityForStatus, shouldLinkEvidenceToCorporateProgram } from "@/lib/corporate-lifecycle";
@@ -504,6 +514,7 @@ function impactSiteMetadataFromForm(formData: FormData) {
 
 function impactSiteFormValues(formData: FormData, campaignRequired: boolean, onError: (code: string) => never) {
   const campaignId = campaignRequired ? formText(formData, "campaignId") : nullableText(formData, "campaignId");
+  const destinationId = formText(formData, "destinationId");
   const name = formText(formData, "name");
   const ecosystemType = normalizeImpactSiteEcosystemType(formData.get("ecosystemType"));
   const region = formText(formData, "region");
@@ -511,12 +522,13 @@ function impactSiteFormValues(formData: FormData, campaignRequired: boolean, onE
   const longitude = parseCoordinate(formData.get("longitude"), -180, 180);
   const metadata = impactSiteMetadataFromForm(formData);
 
-  if ((campaignRequired && !campaignId) || !name || !ecosystemType || !region || !latitude || !longitude || !metadata) {
+  if ((campaignRequired && !campaignId) || !destinationId || !name || !ecosystemType || !latitude || !longitude || !metadata) {
     onError("impact-site-invalid");
   }
 
   return {
     campaignId,
+    destinationId,
     name,
     ecosystemType,
     region,
@@ -585,6 +597,16 @@ function slugifyPartner(value: string) {
     .slice(0, 120);
 
   return slug || `partner-${randomBytes(2).toString("hex")}`;
+}
+
+function slugifyDestination(value: string) {
+  const slug = value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 160);
+
+  return slug || `destination-${randomBytes(2).toString("hex")}`;
 }
 
 function slugifyExpedition(value: string) {
@@ -679,6 +701,97 @@ function redirectAdminPartnerError(code: string, formData?: FormData, fields: re
 
 function redirectAdminPartnerSaved(code: string, formData?: FormData): never {
   redirectAdminForm(adminReturnPath(formData, "/admin/partners", "saved"), "saved", code);
+}
+
+function redirectAdminDestinationError(code: string, formData?: FormData, fields: readonly string[] = []): never {
+  redirectAdminForm(adminReturnPath(formData, "/admin/destinations", "error"), "error", code, fields);
+}
+
+function redirectAdminDestinationSaved(code: string, formData?: FormData): never {
+  redirectAdminForm(adminReturnPath(formData, "/admin/destinations", "saved"), "saved", code);
+}
+
+function destinationArrayFromForm(formData: FormData, key: string) {
+  return Array.from(new Set(formData.getAll(key).map((value) => String(value ?? "").trim()).filter(Boolean)));
+}
+
+function destinationArrivalHubsFromForm(formData: FormData): DestinationArrivalHub[] {
+  const types = formData.getAll("arrivalHubType").map((value) => String(value ?? "").trim().toLowerCase());
+  const names = formData.getAll("arrivalHubName").map((value) => String(value ?? "").trim());
+  const codes = formData.getAll("arrivalHubCode").map((value) => String(value ?? "").trim().toUpperCase());
+
+  return Array.from({ length: Math.max(types.length, names.length, codes.length) }, (_, index) => {
+    const typeCandidate = types[index] ?? "";
+    const type = destinationArrivalHubTypes.includes(typeCandidate as DestinationArrivalHub["type"])
+      ? (typeCandidate as DestinationArrivalHub["type"])
+      : "city";
+
+    return {
+      type,
+      name: names[index] ?? "",
+      code: codes[index] ?? ""
+    };
+  }).filter((hub) => hub.name);
+}
+
+async function destinationFormValues(formData: FormData, existingHeroImageUrl: string | null = null) {
+  const name = formText(formData, "name");
+  const slug = slugifyDestination(formText(formData, "slug") || name);
+  const province = formText(formData, "province");
+  const islandGroup = formText(formData, "islandGroup");
+  const headline = formText(formData, "headline");
+  const summary = formText(formData, "summary");
+  const status = destinationStatus(formData.get("status"));
+  const conservationFocus = destinationArrayFromForm(formData, "conservationFocus").filter((value) =>
+    destinationConservationFocusOptions.includes(value as (typeof destinationConservationFocusOptions)[number])
+  );
+  const bestMonths = destinationArrayFromForm(formData, "bestMonths")
+    .map((value) => Number(value))
+    .filter((value) => destinationMonthOptions.some((month) => month.value === value));
+  const arrivalHubs = destinationArrivalHubsFromForm(formData);
+  const travelNotes = formLines(formData, "travelNotes");
+  const responsibleTravelNotes = formLines(formData, "responsibleTravelNotes");
+  const upload = await readUploadedImageAsDataUrl(formData.get("heroFile"));
+
+  if (upload.error) {
+    redirectAdminDestinationError(`image-${upload.error}`, formData, ["heroFile"]);
+  }
+
+  if (
+    !name ||
+    !slug ||
+    !province ||
+    !destinationProvinceOptions.includes(province as (typeof destinationProvinceOptions)[number]) ||
+    !islandGroup ||
+    !destinationIslandGroups.includes(islandGroup as (typeof destinationIslandGroups)[number]) ||
+    !headline ||
+    !summary
+  ) {
+    redirectAdminDestinationError("destination-invalid", formData);
+  }
+
+  if (status === "published" && conservationFocus.length === 0) {
+    redirectAdminDestinationError("destination-not-ready", formData, ["conservationFocus"]);
+  }
+
+  return {
+    name,
+    slug,
+    province,
+    islandGroup,
+    eyebrow: nullableText(formData, "eyebrow"),
+    headline,
+    summary,
+    heroImageUrl: upload.dataUrl ?? existingHeroImageUrl,
+    conservationFocus,
+    arrivalHubs,
+    bestMonths,
+    travelNotes,
+    responsibleTravelNotes,
+    status,
+    publishedAt: status === "published" ? new Date() : null,
+    updatedAt: new Date()
+  };
 }
 
 function redirectAdminCampaignError(code: string, formData?: FormData, fields: readonly string[] = []): never {
@@ -1642,6 +1755,91 @@ function defaultPartnerExpeditionMetadata(
   });
 }
 
+export async function createDestinationAction(formData: FormData) {
+  const user = await requireRole(["admin"], "/admin/destinations");
+  const values = await destinationFormValues(formData);
+
+  const [existing] = await db
+    .select({ id: destinations.id })
+    .from(destinations)
+    .where(eq(destinations.slug, values.slug))
+    .limit(1);
+
+  if (existing) {
+    redirectAdminDestinationError("destination-slug", formData, ["slug"]);
+  }
+
+  const [destination] = await db
+    .insert(destinations)
+    .values(values)
+    .returning({ id: destinations.id });
+
+  await db.insert(adminAuditLogs).values({
+    actorUserId: user.id,
+    action: "destination.created",
+    entityType: "destination",
+    entityId: destination.id,
+    metadata: { slug: values.slug, status: values.status }
+  });
+
+  redirectAdminDestinationSaved("destination-created", formData);
+}
+
+export async function updateDestinationAction(formData: FormData) {
+  const user = await requireRole(["admin"], "/admin/destinations");
+  const destinationId = formText(formData, "destinationId");
+
+  if (!destinationId) {
+    redirectAdminDestinationError("destination-missing", formData);
+  }
+
+  const [current] = await db
+    .select({
+      id: destinations.id,
+      slug: destinations.slug,
+      heroImageUrl: destinations.heroImageUrl,
+      publishedAt: destinations.publishedAt
+    })
+    .from(destinations)
+    .where(eq(destinations.id, destinationId))
+    .limit(1);
+
+  if (!current) {
+    redirectAdminDestinationError("destination-missing", formData);
+  }
+
+  const values = await destinationFormValues(formData, current.heroImageUrl);
+  const [slugConflict] = await db
+    .select({ id: destinations.id })
+    .from(destinations)
+    .where(eq(destinations.slug, values.slug))
+    .limit(1);
+
+  if (slugConflict && slugConflict.id !== destinationId) {
+    redirectAdminDestinationError("destination-slug", formData, ["slug"]);
+  }
+
+  const publishedAt =
+    values.status === "published"
+      ? current.publishedAt ?? values.publishedAt ?? new Date()
+      : null;
+
+  await db
+    .update(destinations)
+    .set({ ...values, publishedAt })
+    .where(eq(destinations.id, destinationId));
+
+  await db.insert(adminAuditLogs).values({
+    actorUserId: user.id,
+    action: "destination.updated",
+    entityType: "destination",
+    entityId: destinationId,
+    metadata: { slug: values.slug, status: values.status }
+  });
+
+  redirectAdminDestinationSaved("destination-updated", formData);
+}
+
 export async function createOrganizationAction(formData: FormData) {
   const user = await requireRole(["admin"], "/admin/partners");
   const name = formText(formData, "name");
@@ -2454,6 +2652,18 @@ export async function createPartnerImpactSiteAction(formData: FormData) {
 
   await requireCampaignAccess(user.id, campaignId, formData, "/partner/impact-sites", "impact-site:manage");
 
+  const [destination] = await db
+    .select({ id: destinations.id, name: destinations.name })
+    .from(destinations)
+    .where(and(eq(destinations.id, values.destinationId), eq(destinations.status, "published")))
+    .limit(1);
+
+  if (!destination) {
+    redirectPartnerError(formData, "/partner/impact-sites", "destination-missing");
+  }
+
+  values.region = values.region || destination.name;
+
   const [existingSite] = await db
     .select({ id: impactSites.id })
     .from(impactSites)
@@ -2492,6 +2702,18 @@ export async function updatePartnerImpactSiteAction(formData: FormData) {
 
   const existingSite = await requirePartnerImpactSiteAccess(user.id, impactSiteId, formData, "/partner/impact-sites", "impact-site:manage");
   await requireCampaignAccess(user.id, campaignId, formData, "/partner/impact-sites", "impact-site:manage");
+
+  const [destination] = await db
+    .select({ id: destinations.id, name: destinations.name })
+    .from(destinations)
+    .where(and(eq(destinations.id, values.destinationId), eq(destinations.status, "published")))
+    .limit(1);
+
+  if (!destination) {
+    redirectPartnerError(formData, "/partner/impact-sites", "destination-missing");
+  }
+
+  values.region = values.region || destination.name;
 
   const existingMetadata =
     existingSite.metadata && typeof existingSite.metadata === "object" && !Array.isArray(existingSite.metadata)
@@ -3230,7 +3452,8 @@ export async function updatePartnerExpeditionAction(formData: FormData) {
   const expeditionId = formText(formData, "expeditionId");
   const title = formText(formData, "title");
   const slug = slugifyExpedition(formText(formData, "slug") || title);
-  const region = formText(formData, "region");
+  const destinationId = formText(formData, "destinationId");
+  const requestedRegion = formText(formData, "region");
   const durationDays = parsePositiveInteger(formData.get("durationDays"));
   const basePrice = parsePositiveDecimal(formData.get("basePrice"));
   const currency = normalizeCurrency(formData.get("currency"));
@@ -3238,12 +3461,24 @@ export async function updatePartnerExpeditionAction(formData: FormData) {
   const relatedCampaignId = nullableText(formData, "relatedCampaignId");
   const requestedStatus = formText(formData, "status");
 
-  if (!expeditionId || !title || !slug || !region || !durationDays || !basePrice || !summary || !relatedCampaignId) {
+  if (!expeditionId || !title || !slug || !destinationId || !durationDays || !basePrice || !summary || !relatedCampaignId) {
     redirectPartnerError(formData, "/partner/expeditions", "expedition-invalid");
   }
 
   const existingExpedition = await requireExpeditionAccess(user.id, expeditionId, formData, "/partner/expeditions", "expedition:manage");
   await requireCampaignAccess(user.id, relatedCampaignId, formData, "/partner/expeditions", "expedition:manage");
+
+  const [destination] = await db
+    .select({ id: destinations.id, name: destinations.name })
+    .from(destinations)
+    .where(and(eq(destinations.id, destinationId), eq(destinations.status, "published")))
+    .limit(1);
+
+  if (!destination) {
+    redirectPartnerError(formData, "/partner/expeditions", "destination-missing");
+  }
+
+  const region = requestedRegion || destination.name;
 
   const [existingSlug] = await db.select({ id: expeditions.id }).from(expeditions).where(eq(expeditions.slug, slug)).limit(1);
 
@@ -3273,6 +3508,7 @@ export async function updatePartnerExpeditionAction(formData: FormData) {
     .set({
       title,
       slug,
+      destinationId,
       region,
       durationDays,
       basePrice,
@@ -3320,11 +3556,14 @@ export async function updateExpeditionPublicationStatusAction(formData: FormData
       status: expeditions.status,
       publishedAt: expeditions.publishedAt,
       imageUrl: expeditions.imageUrl,
+      destinationId: expeditions.destinationId,
+      destinationStatus: destinations.status,
       relatedCampaignId: expeditions.relatedCampaignId,
       relatedCampaignStatus: campaigns.status,
       organizationId: campaigns.organizationId
     })
     .from(expeditions)
+    .leftJoin(destinations, eq(expeditions.destinationId, destinations.id))
     .leftJoin(campaigns, eq(expeditions.relatedCampaignId, campaigns.id))
     .where(eq(expeditions.id, expeditionId))
     .limit(1);
@@ -3344,9 +3583,10 @@ export async function updateExpeditionPublicationStatusAction(formData: FormData
       .where(eq(expeditionDepartures.expeditionId, expedition.id));
 
     const relatedCampaignIsPublic = ["published", "funded", "completed"].includes(expedition.relatedCampaignStatus ?? "");
+    const destinationIsPublic = Boolean(expedition.destinationId) && expedition.destinationStatus === "published";
     const hasDeparture = Number(departureSummary?.total ?? 0) > 0;
 
-    if (!expedition.imageUrl || !relatedCampaignIsPublic || !hasDeparture) {
+    if (!expedition.imageUrl || !destinationIsPublic || !relatedCampaignIsPublic || !hasDeparture) {
       redirect(withAdminFormOutcome(`/admin/expeditions/${expedition.id}`, "error", "expedition-not-ready"));
     }
   }
@@ -3397,18 +3637,31 @@ export async function createPartnerExpeditionAction(formData: FormData) {
   const user = await requirePartnerRole( "/partner/expeditions");
   const title = formText(formData, "title");
   const slug = slugifyExpedition(formText(formData, "slug") || title);
-  const region = formText(formData, "region");
+  const destinationId = formText(formData, "destinationId");
+  const requestedRegion = formText(formData, "region");
   const durationDays = parsePositiveInteger(formData.get("durationDays"));
   const basePrice = parsePositiveDecimal(formData.get("basePrice"));
   const currency = normalizeCurrency(formData.get("currency"));
   const summary = formText(formData, "summary");
   const relatedCampaignId = nullableText(formData, "relatedCampaignId");
 
-  if (!title || !slug || !region || !durationDays || !basePrice || !summary || !relatedCampaignId) {
+  if (!title || !slug || !destinationId || !durationDays || !basePrice || !summary || !relatedCampaignId) {
     redirectPartnerError(formData, "/partner/expeditions", "expedition-invalid");
   }
 
   await requireCampaignAccess(user.id, relatedCampaignId, formData, "/partner/expeditions", "expedition:manage");
+
+  const [destination] = await db
+    .select({ id: destinations.id, name: destinations.name })
+    .from(destinations)
+    .where(and(eq(destinations.id, destinationId), eq(destinations.status, "published")))
+    .limit(1);
+
+  if (!destination) {
+    redirectPartnerError(formData, "/partner/expeditions", "destination-missing");
+  }
+
+  const region = requestedRegion || destination.name;
 
   const [existing] = await db.select({ id: expeditions.id }).from(expeditions).where(eq(expeditions.slug, slug)).limit(1);
 
@@ -3452,6 +3705,7 @@ export async function createPartnerExpeditionAction(formData: FormData) {
     .values({
       title,
       slug,
+      destinationId,
       region,
       durationDays,
       basePrice,

@@ -16,6 +16,7 @@ const statusMessages: Record<string, string> = {
 
 const errorMessages: Record<string, string> = {
   "campaign-missing": "Choose an existing campaign.",
+  "destination-missing": "Choose a published destination managed by Terumbu.",
   "impact-site-delete": "Confirm impact-site deletion by checking the delete box.",
   "impact-site-invalid": "Enter site name, ecosystem type, region, valid coordinates, progress between 0 and 100, and activity count.",
   "impact-site-missing": "Impact site record was not found.",
@@ -48,6 +49,7 @@ export default async function PartnerImpactSitesPage({ searchParams }: PartnerIm
       {errorMessage ? <p className="rounded-lg border border-coral-700/20 bg-coral-100 px-4 py-3 text-sm font-bold text-coral-700">{errorMessage}</p> : null}
       <PartnerImpactSiteManagement
         campaigns={data.campaigns}
+        destinations={data.destinations}
         impactSites={data.impactSites}
         canManageImpactSites={data.capabilities.canManageImpactSites}
       />

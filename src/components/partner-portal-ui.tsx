@@ -41,6 +41,7 @@ import { cn, formatCurrency } from "@/lib/utils";
 
 export type PartnerPortalData = Awaited<ReturnType<typeof getPartnerPortalData>>;
 type Campaign = PartnerPortalData["campaigns"][number];
+type Destination = PartnerPortalData["destinations"][number];
 type Organization = PartnerPortalData["organizations"][number];
 type CampaignActivity = PartnerPortalData["activities"][number];
 type CampaignUpdate = PartnerPortalData["updates"][number];
@@ -543,10 +544,12 @@ function ImpactSiteVerificationSelect({ defaultValue = "basic", disabled }: { de
 
 function ImpactSiteFields({
   campaigns,
+  destinations,
   site,
   disabled
 }: {
   campaigns: Campaign[];
+  destinations: Destination[];
   site?: CampaignImpactSite;
   disabled?: boolean;
 }) {
@@ -562,7 +565,22 @@ function ImpactSiteFields({
           <ImpactSiteVerificationSelect defaultValue={site?.verification} disabled={disabled} />
         </Field>
       </div>
-      <div className="grid gap-3 md:grid-cols-3">
+      <div className="grid gap-3 md:grid-cols-2">
+        <Field label="Destination" required>
+          <select name="destinationId" defaultValue={site?.destinationId ?? ""} className={inputClassName} disabled={disabled || destinations.length === 0} required>
+            <option value="">Choose managed destination</option>
+            {destinations.map((destination) => (
+              <option key={destination.id} value={destination.id}>
+                {destination.name} / {destination.province}
+              </option>
+            ))}
+          </select>
+        </Field>
+        <Field label="Local area / region" help="Optional. Leave blank to use the destination name.">
+          <input name="region" defaultValue={site?.region} placeholder="Misool, South Raja Ampat" className={inputClassName} disabled={disabled} />
+        </Field>
+      </div>
+      <div className="grid gap-3 md:grid-cols-2">
         <Field label="Site name" required>
           <input name="name" defaultValue={site?.name} placeholder="Raja Ampat Reef Garden" className={inputClassName} disabled={disabled} required />
         </Field>
@@ -574,9 +592,6 @@ function ImpactSiteFields({
               </option>
             ))}
           </select>
-        </Field>
-        <Field label="Region" required>
-          <input name="region" defaultValue={site?.region} placeholder="Southwest Papua" className={inputClassName} disabled={disabled} required />
         </Field>
       </div>
       <div className="grid gap-3 md:grid-cols-2">
@@ -607,14 +622,16 @@ function ImpactSiteFields({
 
 export function PartnerImpactSiteManagement({
   campaigns,
+  destinations,
   impactSites,
   canManageImpactSites
 }: {
   campaigns: Campaign[];
+  destinations: Destination[];
   impactSites: CampaignImpactSite[];
   canManageImpactSites: boolean;
 }) {
-  const canSubmit = campaigns.length > 0 && canManageImpactSites;
+  const canSubmit = campaigns.length > 0 && destinations.length > 0 && canManageImpactSites;
 
   return (
     <div className="grid gap-6">
@@ -630,7 +647,7 @@ export function PartnerImpactSiteManagement({
           <MapPinned className="size-5 text-kelp-700" aria-hidden="true" />
         </div>
         <div className="mt-5 grid gap-4">
-          <ImpactSiteFields campaigns={campaigns} disabled={!canSubmit} />
+          <ImpactSiteFields campaigns={campaigns} destinations={destinations} disabled={!canSubmit} />
         </div>
         <Button type="submit" className="mt-5" disabled={!canSubmit}>
           <Plus className="size-4" aria-hidden="true" />
@@ -683,7 +700,7 @@ export function PartnerImpactSiteManagement({
                     <form action={updatePartnerImpactSiteAction} className="grid gap-4">
                       <input type="hidden" name="redirectTo" value="/partner/impact-sites" />
                       <input type="hidden" name="impactSiteId" value={site.id} />
-                      <ImpactSiteFields campaigns={campaigns} site={site} />
+                      <ImpactSiteFields campaigns={campaigns} destinations={destinations} site={site} />
                       <Button type="submit" className="w-fit">
                         <Save className="size-4" aria-hidden="true" />
                         Save Site

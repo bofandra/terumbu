@@ -192,6 +192,32 @@ export const organizations = pgTable("organizations", {
   slugIdx: uniqueIndex("organizations_slug_idx").on(table.slug)
 }));
 
+export const destinations = pgTable("destinations", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  name: varchar("name", { length: 180 }).notNull(),
+  slug: varchar("slug", { length: 180 }).notNull(),
+  province: varchar("province", { length: 120 }).notNull(),
+  islandGroup: varchar("island_group", { length: 120 }).notNull(),
+  eyebrow: varchar("eyebrow", { length: 220 }),
+  headline: varchar("headline", { length: 260 }).notNull(),
+  summary: text("summary").notNull(),
+  heroImageUrl: text("hero_image_url"),
+  conservationFocus: jsonb("conservation_focus").default([]).notNull(),
+  arrivalHubs: jsonb("arrival_hubs").default([]).notNull(),
+  bestMonths: jsonb("best_months").default([]).notNull(),
+  travelNotes: jsonb("travel_notes").default([]).notNull(),
+  responsibleTravelNotes: jsonb("responsible_travel_notes").default([]).notNull(),
+  status: varchar("status", { length: 40 }).default("draft").notNull(),
+  publishedAt: timestamp("published_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull()
+}, (table) => ({
+  slugIdx: uniqueIndex("destinations_slug_idx").on(table.slug),
+  statusIdx: index("destinations_status_idx").on(table.status),
+  provinceIdx: index("destinations_province_idx").on(table.province),
+  islandGroupIdx: index("destinations_island_group_idx").on(table.islandGroup)
+}));
+
 export const organizationUsers = pgTable("organization_users", {
   id: uuid("id").defaultRandom().primaryKey(),
   organizationId: uuid("organization_id").notNull().references(() => organizations.id, { onDelete: "cascade" }),
@@ -327,6 +353,7 @@ export const organizationTeamMembers = pgTable("organization_team_members", {
 export const impactSites = pgTable("impact_sites", {
   id: uuid("id").defaultRandom().primaryKey(),
   campaignId: uuid("campaign_id").references(() => campaigns.id, { onDelete: "set null" }),
+  destinationId: uuid("destination_id").references(() => destinations.id, { onDelete: "set null" }),
   name: varchar("name", { length: 180 }).notNull(),
   ecosystemType: varchar("ecosystem_type", { length: 80 }).notNull(),
   region: varchar("region", { length: 120 }).notNull(),
@@ -335,7 +362,8 @@ export const impactSites = pgTable("impact_sites", {
   metadata: jsonb("metadata"),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull()
 }, (table) => ({
-  campaignIdx: index("impact_sites_campaign_idx").on(table.campaignId)
+  campaignIdx: index("impact_sites_campaign_idx").on(table.campaignId),
+  destinationIdx: index("impact_sites_destination_idx").on(table.destinationId)
 }));
 
 export const donationSubscriptions = pgTable("donation_subscriptions", {
@@ -607,6 +635,7 @@ export const expeditions = pgTable("expeditions", {
   id: uuid("id").defaultRandom().primaryKey(),
   title: varchar("title", { length: 220 }).notNull(),
   slug: varchar("slug", { length: 220 }).notNull(),
+  destinationId: uuid("destination_id").references(() => destinations.id, { onDelete: "set null" }),
   region: varchar("region", { length: 120 }).notNull(),
   durationDays: integer("duration_days").notNull(),
   basePrice: numeric("base_price", { precision: 14, scale: 2 }).notNull(),
@@ -621,7 +650,8 @@ export const expeditions = pgTable("expeditions", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull()
 }, (table) => ({
   slugIdx: uniqueIndex("expeditions_slug_idx").on(table.slug),
-  statusIdx: index("expeditions_status_idx").on(table.status)
+  statusIdx: index("expeditions_status_idx").on(table.status),
+  destinationIdx: index("expeditions_destination_idx").on(table.destinationId)
 }));
 
 export const userSavedExpeditions = pgTable("user_saved_expeditions", {

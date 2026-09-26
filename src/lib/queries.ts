@@ -36,6 +36,7 @@ import {
   donationReceipts,
   donationSubscriptions,
   donations,
+  destinations,
   evidenceReviewEvents,
   expeditionBookingPayments,
   expeditionBookings,
@@ -77,6 +78,11 @@ import {
 import { adminListOffset, adminPaginationMeta, parseAdminListQuery } from "@/lib/admin-list-query";
 import { campaignBudgetUtilization, campaignContentCompleteness, campaignStatuses, impactSiteVerificationStatuses } from "@/lib/campaign-content";
 import { corporateReportArtifactSourceUrl } from "@/lib/corporate-report-artifact-links";
+import {
+  destinationArrivalHubs,
+  destinationMonthArray,
+  destinationStringArray
+} from "@/lib/destination-content";
 import {
   getMetadataNumber,
   getMetadataNumberOrString,
@@ -1136,9 +1142,192 @@ export async function getCampaignUpdateDetail(campaignSlug: string, updateId: st
     : null;
 }
 
+export type DestinationDirectoryItem = {
+  id: string;
+  name: string;
+  slug: string;
+  province: string;
+  islandGroup: string;
+  eyebrow: string;
+  headline: string;
+  summary: string;
+  heroImageUrl: string | null;
+  conservationFocus: string[];
+  arrivalHubs: ReturnType<typeof destinationArrivalHubs>;
+  bestMonths: number[];
+  travelNotes: string[];
+  responsibleTravelNotes: string[];
+  status: string;
+  publishedAt: Date | null;
+  createdAt: Date;
+  updatedAt: Date;
+  expeditionCount: number;
+  impactSiteCount: number;
+  startingPrice: number | null;
+  startingCurrency: string | null;
+  nextDeparture: Date | null;
+};
+
+async function destinationDirectory(status?: string): Promise<DestinationDirectoryItem[]> {
+  const destinationRows = await db
+    .select({
+      id: destinations.id,
+      name: destinations.name,
+      slug: destinations.slug,
+      province: destinations.province,
+      islandGroup: destinations.islandGroup,
+      eyebrow: destinations.eyebrow,
+      headline: destinations.headline,
+      summary: destinations.summary,
+      heroImageUrl: destinations.heroImageUrl,
+      conservationFocus: destinations.conservationFocus,
+      arrivalHubs: destinations.arrivalHubs,
+      bestMonths: destinations.bestMonths,
+      travelNotes: destinations.travelNotes,
+      responsibleTravelNotes: destinations.responsibleTravelNotes,
+      status: destinations.status,
+      publishedAt: destinations.publishedAt,
+      createdAt: destinations.createdAt,
+      updatedAt: destinations.updatedAt
+    })
+    .from(destinations)
+    .where(status ? eq(destinations.status, status) : undefined)
+    .orderBy(asc(destinations.name));
+
+  if (destinationRows.length === 0) {
+    return [];
+  }
+
+  const destinationIds = destinationRows.map((destination) => destination.id);
+  const now = new Date();
+  const [expeditionRows, departureRows, siteRows] = await Promise.all([
+    db
+      .select({
+        id: expeditions.id,
+        destinationId: expeditions.destinationId,
+        basePrice: expeditions.basePrice,
+        currency: expeditions.currency
+      })
+      .from(expeditions)
+      .where(and(inArray(expeditions.destinationId, destinationIds), eq(expeditions.status, "published"))),
+    db
+      .select({
+        destinationId: expeditions.destinationId,
+        startsAt: expeditionDepartures.startsAt,
+        status: expeditionDepartures.status,
+        capacity: expeditionDepartures.capacity,
+        seatsBooked: expeditionDepartures.seatsBooked
+      })
+      .from(expeditionDepartures)
+      .innerJoin(expeditions, eq(expeditionDepartures.expeditionId, expeditions.id))
+      .where(
+        and(
+          inArray(expeditions.destinationId, destinationIds),
+          eq(expeditions.status, "published"),
+          gte(expeditionDepartures.startsAt, now)
+        )
+      )
+      .orderBy(asc(expeditionDepartures.startsAt)),
+    db
+      .select({
+        destinationId: impactSites.destinationId,
+        id: impactSites.id
+      })
+      .from(impactSites)
+      .innerJoin(campaigns, eq(impactSites.campaignId, campaigns.id))
+      .where(
+        and(
+          inArray(impactSites.destinationId, destinationIds),
+          inArray(campaigns.status, ["published", "funded", "completed"])
+        )
+      )
+  ]);
+
+  const expeditionsByDestination = new Map<string, typeof expeditionRows>();
+  for (const expedition of expeditionRows) {
+    if (!expedition.destinationId) continue;
+    const rows = expeditionsByDestination.get(expedition.destinationId) ?? [];
+    rows.push(expedition);
+    expeditionsByDestination.set(expedition.destinationId, rows);
+  }
+
+  const nextDepartureByDestination = new Map<string, Date>();
+  for (const departure of departureRows) {
+    if (!departure.destinationId || nextDepartureByDestination.has(departure.destinationId)) continue;
+    const availableSeats = Math.max(0, departure.capacity - departure.seatsBooked);
+    if (!["open", "waitlist"].includes(departure.status) || availableSeats <= 0) continue;
+    nextDepartureByDestination.set(departure.destinationId, departure.startsAt);
+  }
+
+  const siteCounts = new Map<string, number>();
+  for (const site of siteRows) {
+    if (!site.destinationId) continue;
+    siteCounts.set(site.destinationId, (siteCounts.get(site.destinationId) ?? 0) + 1);
+  }
+
+  return destinationRows.map((destination) => {
+    const linkedExpeditions = expeditionsByDestination.get(destination.id) ?? [];
+    const cheapest = linkedExpeditions
+      .map((expedition) => ({ price: toNumber(expedition.basePrice), currency: expedition.currency }))
+      .filter((item) => item.price > 0)
+      .sort((a, b) => a.price - b.price)[0] ?? null;
+
+    return {
+      ...destination,
+      eyebrow: destination.eyebrow ?? destination.name,
+      conservationFocus: destinationStringArray(destination.conservationFocus),
+      arrivalHubs: destinationArrivalHubs(destination.arrivalHubs),
+      bestMonths: destinationMonthArray(destination.bestMonths),
+      travelNotes: destinationStringArray(destination.travelNotes),
+      responsibleTravelNotes: destinationStringArray(destination.responsibleTravelNotes),
+      expeditionCount: linkedExpeditions.length,
+      impactSiteCount: siteCounts.get(destination.id) ?? 0,
+      startingPrice: cheapest?.price ?? null,
+      startingCurrency: cheapest?.currency ?? null,
+      nextDeparture: nextDepartureByDestination.get(destination.id) ?? null
+    };
+  });
+}
+
+export async function getPublishedDestinations() {
+  return destinationDirectory("published");
+}
+
+export async function getPublishedDestinationBySlug(slug: string) {
+  const destinations = await getPublishedDestinations();
+  return destinations.find((destination) => destination.slug === slug) ?? null;
+}
+
+export async function getAdminDestinations() {
+  return destinationDirectory();
+}
+
+export async function getAdminDestination(destinationId: string) {
+  const destinations = await getAdminDestinations();
+  return destinations.find((destination) => destination.id === destinationId) ?? null;
+}
+
+export async function getDestinationOptions() {
+  const rows = await db
+    .select({
+      id: destinations.id,
+      name: destinations.name,
+      slug: destinations.slug,
+      province: destinations.province,
+      islandGroup: destinations.islandGroup,
+      status: destinations.status
+    })
+    .from(destinations)
+    .where(eq(destinations.status, "published"))
+    .orderBy(asc(destinations.name));
+
+  return rows;
+}
+
 type ExpeditionCardsOptions = {
   limit?: number;
   region?: string;
+  destinationId?: string;
   filters?: ExpeditionSearchFilters;
 };
 
@@ -1149,6 +1338,7 @@ function expeditionCardsOptions(limitOrOptions?: number | ExpeditionCardsOptions
 export async function getExpeditionCards(limitOrOptions?: number | ExpeditionCardsOptions, region?: string): Promise<ExpeditionCardData[]> {
   const options = expeditionCardsOptions(limitOrOptions, region);
   const selectedRegion = options.region;
+  const selectedDestinationId = options.destinationId;
   const [rows, departureRows] = await Promise.all([
     db
       .select({
@@ -1164,7 +1354,13 @@ export async function getExpeditionCards(limitOrOptions?: number | ExpeditionCar
         metadata: expeditions.metadata
       })
       .from(expeditions)
-      .where(and(eq(expeditions.status, "published"), selectedRegion ? eq(expeditions.region, selectedRegion) : undefined))
+      .where(
+        and(
+          eq(expeditions.status, "published"),
+          selectedRegion ? eq(expeditions.region, selectedRegion) : undefined,
+          selectedDestinationId ? eq(expeditions.destinationId, selectedDestinationId) : undefined
+        )
+      )
       .orderBy(asc(expeditions.title)),
     db
       .select({
@@ -1187,14 +1383,14 @@ export async function getExpeditionCards(limitOrOptions?: number | ExpeditionCar
       status: departure.status,
       capacity: departure.capacity,
       seatsBooked: departure.seatsBooked,
-      minParticipants: getMetadataNumber(departure.metadata, "minParticipants", 6)
+      minParticipants: getMetadataNumber(departure.metadata, "minParticipants", 0)
     });
     const currentAvailability = current
       ? expeditionDepartureAvailability({
           status: current.status,
           capacity: current.capacity,
           seatsBooked: current.seatsBooked,
-          minParticipants: getMetadataNumber(current.metadata, "minParticipants", 6)
+          minParticipants: getMetadataNumber(current.metadata, "minParticipants", 0)
         })
       : null;
 
@@ -1210,7 +1406,7 @@ export async function getExpeditionCards(limitOrOptions?: number | ExpeditionCar
           status: nextDeparture.status,
           capacity: nextDeparture.capacity,
           seatsBooked: nextDeparture.seatsBooked,
-          minParticipants: getMetadataNumber(nextDeparture.metadata, "minParticipants", 6)
+          minParticipants: getMetadataNumber(nextDeparture.metadata, "minParticipants", 0)
         })
       : null;
     const availabilityLabel = nextAvailability?.canBook
@@ -6330,6 +6526,7 @@ export async function getAdminOperationsData() {
         id: expeditions.id,
         title: expeditions.title,
         slug: expeditions.slug,
+        destinationId: expeditions.destinationId,
         region: expeditions.region,
         durationDays: expeditions.durationDays,
         basePrice: expeditions.basePrice,
@@ -6432,6 +6629,7 @@ export async function getAdminOperationsData() {
       .select({
         id: impactSites.id,
         campaignId: impactSites.campaignId,
+        destinationId: impactSites.destinationId,
         name: impactSites.name,
         ecosystemType: impactSites.ecosystemType,
         region: impactSites.region,
@@ -6534,6 +6732,7 @@ export async function getAdminOperationsData() {
       id: string;
       title: string;
       slug: string;
+      destinationId: string | null;
       region: string;
       durationDays: number;
       basePrice: number;
@@ -6622,6 +6821,7 @@ export async function getAdminOperationsData() {
         id: row.id,
         title: row.title,
         slug: row.slug,
+        destinationId: row.destinationId,
         region: row.region,
         durationDays: row.durationDays,
         basePrice: toNumber(row.basePrice),
@@ -6647,7 +6847,7 @@ export async function getAdminOperationsData() {
     }
 
     if (row.departureId && row.startsAt && row.endsAt && row.capacity !== null && row.seatsBooked !== null && row.departureStatus) {
-      const minParticipants = getMetadataNumber(row.departureMetadata, "minParticipants", 6);
+      const minParticipants = getMetadataNumber(row.departureMetadata, "minParticipants", 0);
       const availability = expeditionDepartureAvailability({
         status: row.departureStatus,
         capacity: row.capacity,
@@ -6759,21 +6959,17 @@ export async function getAdminOperationsData() {
         price: expedition.basePrice,
         currency: expedition.currency,
         maxCapacity,
-        galleryImages: [
-          {
-            src: expedition.imageUrl ?? "https://images.unsplash.com/photo-1582967788606-a171c1080cb0?auto=format&fit=crop&w=1400&q=80",
-            label: "Destination",
-            caption: `${expedition.region} expedition landscape`,
-            provenance: "Partner-managed public detail image"
-          }
-        ],
-        tripUpdates: [
-          {
-            title: "Seasonal weather advisory",
-            date: "2026-06-01T00:00:00.000Z",
-            body: "Boat schedules may shift when sea conditions require safer departure windows."
-          }
-        ]
+        galleryImages: expedition.imageUrl
+          ? [
+              {
+                src: expedition.imageUrl,
+                label: "Expedition",
+                caption: expedition.title,
+                provenance: "Partner-managed expedition image"
+              }
+            ]
+          : [],
+        tripUpdates: []
       })
     );
 
@@ -8785,6 +8981,7 @@ export async function getPartnerPortalData(userId?: string) {
   const campaignScope = organizationIds === null ? sql`true` : organizationIds.length > 0 ? inArray(campaigns.organizationId, organizationIds) : sql`false`;
   const expeditionScope = organizationIds === null ? sql`true` : organizationIds.length > 0 ? inArray(campaigns.organizationId, organizationIds) : sql`false`;
   const teamOrganizationScope = organizationIds === null ? sql`true` : organizationIds.length > 0 ? inArray(organizationTeamMembers.organizationId, organizationIds) : sql`false`;
+  const destinationRows = await getDestinationOptions();
 
   const [
     organizationRows,
@@ -8924,6 +9121,7 @@ export async function getPartnerPortalData(userId?: string) {
       .select({
         id: impactSites.id,
         campaignId: impactSites.campaignId,
+        destinationId: impactSites.destinationId,
         name: impactSites.name,
         type: impactSites.ecosystemType,
         region: impactSites.region,
@@ -8959,6 +9157,7 @@ export async function getPartnerPortalData(userId?: string) {
         id: expeditions.id,
         title: expeditions.title,
         slug: expeditions.slug,
+        destinationId: expeditions.destinationId,
         region: expeditions.region,
         durationDays: expeditions.durationDays,
         basePrice: expeditions.basePrice,
@@ -9133,6 +9332,7 @@ export async function getPartnerPortalData(userId?: string) {
       id: string;
       title: string;
       slug: string;
+      destinationId: string | null;
       region: string;
       durationDays: number;
       basePrice: number;
@@ -9191,6 +9391,7 @@ export async function getPartnerPortalData(userId?: string) {
         id: row.id,
         title: row.title,
         slug: row.slug,
+        destinationId: row.destinationId,
         region: row.region,
         durationDays: row.durationDays,
         basePrice: toNumber(row.basePrice),
@@ -9227,7 +9428,7 @@ export async function getPartnerPortalData(userId?: string) {
         bookingCount: departureBookingCounts.get(row.departureId) ?? 0,
         meetingPoint: getMetadataString(row.departureMetadata, "meetingPoint"),
         guide: getMetadataString(row.departureMetadata, "guide"),
-        minParticipants: getMetadataNumber(row.departureMetadata, "minParticipants", 6),
+        minParticipants: getMetadataNumber(row.departureMetadata, "minParticipants", 0),
         weatherAdvisory: getMetadataString(row.departureMetadata, "weatherAdvisory")
       });
     }
@@ -9268,21 +9469,17 @@ export async function getPartnerPortalData(userId?: string) {
         price: expedition.basePrice,
         currency: expedition.currency,
         maxCapacity,
-        galleryImages: [
-          {
-            src: expedition.imageUrl ?? "https://images.unsplash.com/photo-1582967788606-a171c1080cb0?auto=format&fit=crop&w=1400&q=80",
-            label: "Destination",
-            caption: `${expedition.region} expedition landscape`,
-            provenance: "Partner-managed public detail image"
-          }
-        ],
-        tripUpdates: [
-          {
-            title: "Seasonal weather advisory",
-            date: "2026-06-01T00:00:00.000Z",
-            body: "Boat schedules may shift when sea conditions require safer departure windows."
-          }
-        ]
+        galleryImages: expedition.imageUrl
+          ? [
+              {
+                src: expedition.imageUrl,
+                label: "Expedition",
+                caption: expedition.title,
+                provenance: "Partner-managed expedition image"
+              }
+            ]
+          : [],
+        tripUpdates: []
       })
     );
 
@@ -9333,6 +9530,7 @@ export async function getPartnerPortalData(userId?: string) {
 
   return {
     capabilities,
+    destinations: destinationRows,
     organizations: organizationRows.map((organization) => ({
       ...organization,
         verificationLabel: verificationLabel(organization.verification)
