@@ -3671,7 +3671,6 @@ export async function createPartnerExpeditionAction(formData: FormData) {
       id: "",
       title,
       slug,
-      destinationId,
       region,
       durationDays,
       basePrice,
@@ -3702,6 +3701,7 @@ export async function createPartnerExpeditionAction(formData: FormData) {
     .values({
       title,
       slug,
+      destinationId,
       region,
       durationDays,
       basePrice,
