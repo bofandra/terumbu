@@ -167,9 +167,11 @@ export function CorporateShell({
                 <Link href="/corporate" className="block rounded-lg px-3 py-2 text-sm font-bold text-ocean-900 hover:bg-ocean-50">
                   Overview
                 </Link>
-                <Link href="/corporate/settings" className="block rounded-lg px-3 py-2 text-sm font-bold text-ocean-900 hover:bg-ocean-50">
-                  Settings
-                </Link>
+                {canManagePrograms ? (
+                  <Link href="/corporate/settings" className="block rounded-lg px-3 py-2 text-sm font-bold text-ocean-900 hover:bg-ocean-50">
+                    Settings
+                  </Link>
+                ) : null}
                 <form action={logoutAction}>
                   <button type="submit" className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm font-bold text-coral-700 hover:bg-coral-100">
                     <LogOut size={16} aria-hidden="true" />
