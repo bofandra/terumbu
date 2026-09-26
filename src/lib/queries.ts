@@ -9534,6 +9534,31 @@ export async function getPartnerPortalData(userId?: string) {
     }
   }
 
+  const partnerBookingNow = new Date();
+
+  for (const row of expeditionBookingRows) {
+    const expedition = expeditionsById.get(row.expeditionId);
+    if (!expedition) continue;
+
+    expedition.bookings.push({
+      id: row.id,
+      departureId: row.departureId,
+      bookingCode: row.bookingCode,
+      contactName: row.contactName,
+      contactEmail: row.contactEmail,
+      participantsCount: row.participantsCount,
+      status: row.status,
+      paymentStatus: row.paymentStatus,
+      totalAmount: toNumber(row.totalAmount),
+      currency: row.currency,
+      bookedAt: row.bookedAt,
+      startsAt: row.startsAt,
+      endsAt: row.endsAt,
+      canComplete: canCompleteExpeditionBooking({ bookingStatus: row.status, paymentStatus: row.paymentStatus, endsAt: row.endsAt }, partnerBookingNow),
+      canCancel: canCancelExpeditionBooking({ bookingStatus: row.status, paymentStatus: row.paymentStatus, startsAt: row.startsAt }, partnerBookingNow)
+    });
+  }
+
   for (const row of expeditionInterestRequestRows) {
     const expedition = expeditionsById.get(row.expeditionId);
 
