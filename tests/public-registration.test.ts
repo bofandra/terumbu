@@ -3,7 +3,11 @@ import test from "node:test";
 
 import { publicSitemapPaths } from "../src/app/sitemap";
 
-test("public registration is not advertised", () => {
+test("sitemap advertises discovery pages instead of account entry points", () => {
   assert.equal(publicSitemapPaths.includes("/signup" as never), false);
-  assert.equal(publicSitemapPaths.includes("/login"), true);
+  assert.equal(publicSitemapPaths.includes("/login" as never), false);
+  assert.equal(publicSitemapPaths.includes("/campaigns"), true);
+  assert.equal(publicSitemapPaths.includes("/expeditions"), true);
+  assert.equal(publicSitemapPaths.includes("/destinations"), true);
+  assert.equal(publicSitemapPaths.includes("/academy"), true);
 });
