@@ -4026,6 +4026,67 @@ export async function updatePartnerExpeditionDepartureAction(formData: FormData)
   redirectPartnerSaved(formData, "/partner/expeditions", isNewCancellation ? "departure-cancelled" : "departure-updated");
 }
 
+export async function completePartnerExpeditionBookingAction(formData: FormData) {
+  const user = await requirePartnerRole("/partner/expeditions");
+  const bookingId = formText(formData, "bookingId");
+
+  if (!bookingId) {
+    redirectPartnerError(formData, "/partner/expeditions", "booking-missing");
+  }
+
+  const [booking] = await db
+    .select({
+      id: expeditionBookings.id,
+      expeditionId: expeditionBookings.expeditionId,
+      status: expeditionBookings.status,
+      paymentStatus: expeditionBookings.paymentStatus,
+      departureEndsAt: expeditionDepartures.endsAt
+    })
+    .from(expeditionBookings)
+    .innerJoin(expeditionDepartures, eq(expeditionBookings.departureId, expeditionDepartures.id))
+    .where(eq(expeditionBookings.id, bookingId))
+    .limit(1);
+
+  if (!booking) {
+    redirectPartnerError(formData, "/partner/expeditions", "booking-missing");
+  }
+
+  await requireExpeditionAccess(user.id, booking.expeditionId, formData, "/partner/expeditions", "expedition:manage");
+
+  if (booking.status !== "confirmed" || booking.paymentStatus !== "paid") {
+    redirectPartnerError(formData, "/partner/expeditions", "booking-not-confirmed");
+  }
+
+  const now = new Date();
+  if (booking.departureEndsAt.getTime() > now.getTime()) {
+    redirectPartnerError(formData, "/partner/expeditions", "booking-not-finished");
+  }
+
+  await db.transaction(async (tx) => {
+    await tx
+      .update(expeditionBookings)
+      .set({
+        status: "completed",
+        metadata: sql`coalesce(${expeditionBookings.metadata}, '{}'::jsonb) || jsonb_build_object('completedAt', ${now.toISOString()}, 'completionSource', 'partner_portal')`
+      })
+      .where(and(eq(expeditionBookings.id, booking.id), eq(expeditionBookings.status, "confirmed"), eq(expeditionBookings.paymentStatus, "paid")));
+
+    await tx.insert(adminAuditLogs).values({
+      actorUserId: user.id,
+      action: "partner_expedition_booking.completed",
+      entityType: "expedition_booking",
+      entityId: booking.id,
+      metadata: {
+        source: "partner_portal",
+        expeditionId: booking.expeditionId,
+        completedAt: now.toISOString()
+      }
+    });
+  });
+
+  redirectPartnerSaved(formData, "/partner/expeditions", "booking-completed");
+}
+
 export async function createAdminCampaignAction(formData: FormData) {
   await requireRole(["admin"], "/admin/campaigns");
   redirectAdminCampaignError("partner-owned", formData);
