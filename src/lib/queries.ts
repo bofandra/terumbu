@@ -1367,7 +1367,7 @@ export async function getExpeditionDetail(slug: string) {
   ]);
 
   const mappedDepartures = departures.map((departure) => {
-    const minParticipants = getMetadataNumber(departure.metadata, "minParticipants", 6);
+    const minParticipants = getMetadataNumber(departure.metadata, "minParticipants", 0);
     const availability = expeditionDepartureAvailability({
       status: departure.status,
       capacity: departure.capacity,
@@ -1410,50 +1410,35 @@ export async function getExpeditionDetail(slug: string) {
     Math.round((toNumber(row.relatedCampaignRaisedAmount) / Math.max(1, toNumber(row.relatedCampaignGoalAmount))) * 100)
   );
   const defaultGalleryImages = [
-    {
-      src: row.imageUrl ?? "https://images.unsplash.com/photo-1582967788606-a171c1080cb0?auto=format&fit=crop&w=1400&q=80",
-      label: "Destination",
-      caption: `${row.region} expedition landscape`,
-      provenance: "Illustrative destination image"
-    },
-    {
-      src: evidenceRows.find((item) => item.fileUrl)?.fileUrl ?? "https://images.unsplash.com/photo-1544551763-46a013bb70d5?auto=format&fit=crop&w=1200&q=80",
-      label: "Conservation activity",
-      caption: "Field team conservation activity",
-      provenance: evidenceRows[0]?.verifiedAt ? `Activity verified ${evidenceRows[0].verifiedAt.toLocaleDateString("id-ID", { dateStyle: "medium" })}` : "Reference field visual"
-    },
-    {
-      src: updateRows.find((item) => item.imageUrl)?.imageUrl ?? "https://images.unsplash.com/photo-1546026423-cc4642628d2b?auto=format&fit=crop&w=1200&q=80",
-      label: "Reef monitoring",
-      caption: "Participant reef monitoring activity",
-      provenance: updateRows[0]?.publishedAt ? `Campaign update ${updateRows[0].publishedAt.toLocaleDateString("id-ID", { dateStyle: "medium" })}` : "Reference activity visual"
-    },
-    {
-      src: "https://images.unsplash.com/photo-1510414842594-a61c69b5ae57?auto=format&fit=crop&w=1200&q=80",
-      label: "Accommodation",
-      caption: "Eco-lodge accommodation style",
-      provenance: "Accommodation may be replaced with equivalent property"
-    },
-    {
-      src: "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=1200&q=80",
-      label: "Field team",
-      caption: "Local field team and boat logistics",
-      provenance: "Illustrative operating conditions"
-    }
+    ...(row.imageUrl
+      ? [{ src: row.imageUrl, label: "Expedition", caption: row.title, provenance: "Image provided for this expedition" }]
+      : []),
+    ...evidenceRows
+      .filter((item) => Boolean(item.fileUrl))
+      .slice(0, 2)
+      .map((item) => ({
+        src: item.fileUrl,
+        label: "Verified conservation activity",
+        caption: item.title,
+        provenance: item.verifiedAt
+          ? `Verified activity record · ${item.verifiedAt.toLocaleDateString("id-ID", { dateStyle: "medium" })}`
+          : "Verified campaign activity record"
+      })),
+    ...updateRows
+      .filter((item) => Boolean(item.imageUrl))
+      .slice(0, 2)
+      .map((item) => ({
+        src: item.imageUrl!,
+        label: "Campaign update",
+        caption: item.title,
+        provenance: item.publishedAt
+          ? `Published campaign update · ${item.publishedAt.toLocaleDateString("id-ID", { dateStyle: "medium" })}`
+          : "Published campaign update"
+      }))
   ];
-  const defaultTripUpdates = [
-    updateRows[0]
-      ? {
-          title: updateRows[0].title,
-          date: (updateRows[0].publishedAt ?? updateRows[0].createdAt).toISOString(),
-          body: updateRows[0].body
-        }
-      : {
-          title: "Seasonal weather advisory",
-          date: "2026-06-01T00:00:00.000Z",
-          body: "Boat schedules may shift when sea conditions require safer departure windows."
-        }
-  ];
+  const defaultTripUpdates = updateRows[0]
+    ? [{ title: updateRows[0].title, date: (updateRows[0].publishedAt ?? updateRows[0].createdAt).toISOString(), body: updateRows[0].body }]
+    : [];
   const durationLabel = toExpeditionCard(row).duration;
   const selectedPreparationCourse =
     courseRows.find((course) => course.title.toLowerCase().includes("coral")) ??
