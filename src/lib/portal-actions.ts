@@ -1688,11 +1688,7 @@ async function requireExpeditionAccess(
       status: expeditions.status,
       publishedAt: expeditions.publishedAt,
       relatedCampaignId: expeditions.relatedCampaignId,
-      organizationId: campaigns.organizationId,
-      metadata: expeditions.metadata,
-      durationDays: expeditions.durationDays,
-      basePrice: expeditions.basePrice,
-      currency: expeditions.currency
+      organizationId: campaigns.organizationId
     })
     .from(expeditions)
     .leftJoin(campaigns, eq(expeditions.relatedCampaignId, campaigns.id))
@@ -3598,7 +3594,11 @@ export async function updateExpeditionPublicationStatusAction(formData: FormData
       destinationStatus: destinations.status,
       relatedCampaignId: expeditions.relatedCampaignId,
       relatedCampaignStatus: campaigns.status,
-      organizationId: campaigns.organizationId
+      organizationId: campaigns.organizationId,
+      metadata: expeditions.metadata,
+      durationDays: expeditions.durationDays,
+      basePrice: expeditions.basePrice,
+      currency: expeditions.currency
     })
     .from(expeditions)
     .leftJoin(destinations, eq(expeditions.destinationId, destinations.id))
