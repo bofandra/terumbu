@@ -6732,6 +6732,7 @@ export async function getAdminOperationsData() {
       id: string;
       title: string;
       slug: string;
+      destinationId: string | null;
       region: string;
       durationDays: number;
       basePrice: number;
@@ -6820,6 +6821,7 @@ export async function getAdminOperationsData() {
         id: row.id,
         title: row.title,
         slug: row.slug,
+        destinationId: row.destinationId,
         region: row.region,
         durationDays: row.durationDays,
         basePrice: toNumber(row.basePrice),
@@ -6845,7 +6847,7 @@ export async function getAdminOperationsData() {
     }
 
     if (row.departureId && row.startsAt && row.endsAt && row.capacity !== null && row.seatsBooked !== null && row.departureStatus) {
-      const minParticipants = getMetadataNumber(row.departureMetadata, "minParticipants", 6);
+      const minParticipants = getMetadataNumber(row.departureMetadata, "minParticipants", 0);
       const availability = expeditionDepartureAvailability({
         status: row.departureStatus,
         capacity: row.capacity,
@@ -9119,6 +9121,7 @@ export async function getPartnerPortalData(userId?: string) {
       .select({
         id: impactSites.id,
         campaignId: impactSites.campaignId,
+        destinationId: impactSites.destinationId,
         name: impactSites.name,
         type: impactSites.ecosystemType,
         region: impactSites.region,
@@ -9422,7 +9425,7 @@ export async function getPartnerPortalData(userId?: string) {
         bookingCount: departureBookingCounts.get(row.departureId) ?? 0,
         meetingPoint: getMetadataString(row.departureMetadata, "meetingPoint"),
         guide: getMetadataString(row.departureMetadata, "guide"),
-        minParticipants: getMetadataNumber(row.departureMetadata, "minParticipants", 6),
+        minParticipants: getMetadataNumber(row.departureMetadata, "minParticipants", 0),
         weatherAdvisory: getMetadataString(row.departureMetadata, "weatherAdvisory")
       });
     }
@@ -9463,21 +9466,17 @@ export async function getPartnerPortalData(userId?: string) {
         price: expedition.basePrice,
         currency: expedition.currency,
         maxCapacity,
-        galleryImages: [
-          {
-            src: expedition.imageUrl ?? "https://images.unsplash.com/photo-1582967788606-a171c1080cb0?auto=format&fit=crop&w=1400&q=80",
-            label: "Destination",
-            caption: `${expedition.region} expedition landscape`,
-            provenance: "Partner-managed public detail image"
-          }
-        ],
-        tripUpdates: [
-          {
-            title: "Seasonal weather advisory",
-            date: "2026-06-01T00:00:00.000Z",
-            body: "Boat schedules may shift when sea conditions require safer departure windows."
-          }
-        ]
+        galleryImages: expedition.imageUrl
+          ? [
+              {
+                src: expedition.imageUrl,
+                label: "Expedition",
+                caption: expedition.title,
+                provenance: "Partner-managed expedition image"
+              }
+            ]
+          : [],
+        tripUpdates: []
       })
     );
 
