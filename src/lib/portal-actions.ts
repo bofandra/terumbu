@@ -1688,7 +1688,11 @@ async function requireExpeditionAccess(
       status: expeditions.status,
       publishedAt: expeditions.publishedAt,
       relatedCampaignId: expeditions.relatedCampaignId,
-      organizationId: campaigns.organizationId
+      organizationId: campaigns.organizationId,
+      metadata: expeditions.metadata,
+      durationDays: expeditions.durationDays,
+      basePrice: expeditions.basePrice,
+      currency: expeditions.currency
     })
     .from(expeditions)
     .leftJoin(campaigns, eq(expeditions.relatedCampaignId, campaigns.id))
@@ -3619,8 +3623,23 @@ export async function updateExpeditionPublicationStatusAction(formData: FormData
     const relatedCampaignIsPublic = ["published", "funded", "completed"].includes(expedition.relatedCampaignStatus ?? "");
     const destinationIsPublic = Boolean(expedition.destinationId) && expedition.destinationStatus === "published";
     const hasDeparture = Number(departureSummary?.total ?? 0) > 0;
+    const travelerReadiness = expeditionTravelerReadiness(
+      normalizeExpeditionDetailMetadata(
+        expedition.metadata,
+        buildDefaultExpeditionDetailMetadata({
+          title: expedition.title,
+          region: "",
+          durationLabel: `${expedition.durationDays} days`,
+          price: Number(expedition.basePrice),
+          currency: expedition.currency,
+          maxCapacity: 0,
+          galleryImages: [],
+          tripUpdates: []
+        })
+      )
+    );
 
-    if (!expedition.imageUrl || !destinationIsPublic || !relatedCampaignIsPublic || !hasDeparture) {
+    if (!expedition.imageUrl || !destinationIsPublic || !relatedCampaignIsPublic || !hasDeparture || !travelerReadiness.ready) {
       redirect(withAdminFormOutcome(`/admin/expeditions/${expedition.id}`, "error", "expedition-not-ready"));
     }
   }
