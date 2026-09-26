@@ -85,7 +85,16 @@ export default async function ExpeditionCheckoutPage({ searchParams }: Expeditio
           </p>
         ) : null}
         <form action={bookExpeditionAction} className="mt-6 grid min-w-0 gap-4">
-          <input type="hidden" name="next" value="/checkout/expedition" />
+          <input
+            type="hidden"
+            name="next"
+            value={`/checkout/expedition?${new URLSearchParams({
+              ...(params?.departure ? { departure: params.departure } : {}),
+              participants: String(selectedParticipants),
+              ...(params?.expedition ? { expedition: params.expedition } : {}),
+              ...(params?.ref ? { ref: params.ref } : {})
+            }).toString()}`}
+          />
           <input type="hidden" name="idempotencyKey" value={idempotencyKey} />
           <input type="hidden" name="referralCode" value={params?.ref ?? ""} />
           <label className="grid min-w-0 gap-2 text-sm font-semibold text-ocean-900">
