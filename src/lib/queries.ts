@@ -1383,14 +1383,14 @@ export async function getExpeditionCards(limitOrOptions?: number | ExpeditionCar
       status: departure.status,
       capacity: departure.capacity,
       seatsBooked: departure.seatsBooked,
-      minParticipants: getMetadataNumber(departure.metadata, "minParticipants", 6)
+      minParticipants: getMetadataNumber(departure.metadata, "minParticipants", 0)
     });
     const currentAvailability = current
       ? expeditionDepartureAvailability({
           status: current.status,
           capacity: current.capacity,
           seatsBooked: current.seatsBooked,
-          minParticipants: getMetadataNumber(current.metadata, "minParticipants", 6)
+          minParticipants: getMetadataNumber(current.metadata, "minParticipants", 0)
         })
       : null;
 
@@ -1406,7 +1406,7 @@ export async function getExpeditionCards(limitOrOptions?: number | ExpeditionCar
           status: nextDeparture.status,
           capacity: nextDeparture.capacity,
           seatsBooked: nextDeparture.seatsBooked,
-          minParticipants: getMetadataNumber(nextDeparture.metadata, "minParticipants", 6)
+          minParticipants: getMetadataNumber(nextDeparture.metadata, "minParticipants", 0)
         })
       : null;
     const availabilityLabel = nextAvailability?.canBook
@@ -6957,21 +6957,17 @@ export async function getAdminOperationsData() {
         price: expedition.basePrice,
         currency: expedition.currency,
         maxCapacity,
-        galleryImages: [
-          {
-            src: expedition.imageUrl ?? "https://images.unsplash.com/photo-1582967788606-a171c1080cb0?auto=format&fit=crop&w=1400&q=80",
-            label: "Destination",
-            caption: `${expedition.region} expedition landscape`,
-            provenance: "Partner-managed public detail image"
-          }
-        ],
-        tripUpdates: [
-          {
-            title: "Seasonal weather advisory",
-            date: "2026-06-01T00:00:00.000Z",
-            body: "Boat schedules may shift when sea conditions require safer departure windows."
-          }
-        ]
+        galleryImages: expedition.imageUrl
+          ? [
+              {
+                src: expedition.imageUrl,
+                label: "Expedition",
+                caption: expedition.title,
+                provenance: "Partner-managed expedition image"
+              }
+            ]
+          : [],
+        tripUpdates: []
       })
     );
 
