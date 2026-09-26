@@ -94,7 +94,7 @@ export function buildExpeditionOfferFacts(marketplace: ExpeditionMarketplaceMeta
   }
 
   if (marketplace.additionalFee) {
-    facts.push({ kind: "fee", value: "Fee", label: "Additional fee", description: "An additional local fee is listed by the host." });
+    facts.push({ kind: "fee", value: "Fee", label: "Additional Fee", description: "An additional local fee is listed by the host." });
   }
 
   return facts;
