@@ -1293,6 +1293,57 @@ export async function getPublishedDestinations() {
   return destinationDirectory("published");
 }
 
+export async function getPublicSitemapRecords() {
+  const [campaignRows, expeditionRows, courseRows, partnerRows] = await Promise.all([
+    db
+      .select({
+        slug: campaigns.slug,
+        updatedAt: campaigns.updatedAt,
+        imageUrl: campaigns.imageUrl
+      })
+      .from(campaigns)
+      .where(inArray(campaigns.status, ["published", "funded", "completed"]))
+      .orderBy(asc(campaigns.slug)),
+    db
+      .select({
+        slug: expeditions.slug,
+        updatedAt: expeditions.updatedAt,
+        imageUrl: expeditions.imageUrl
+      })
+      .from(expeditions)
+      .where(eq(expeditions.status, "published"))
+      .orderBy(asc(expeditions.slug)),
+    db
+      .select({
+        slug: courses.slug,
+        updatedAt: courses.updatedAt,
+        imageUrl: courses.imageUrl
+      })
+      .from(courses)
+      .where(eq(courses.status, "published"))
+      .orderBy(asc(courses.slug)),
+    db
+      .select({
+        slug: organizations.slug,
+        updatedAt: organizations.updatedAt,
+        imageUrl: organizations.logoUrl
+      })
+      .from(organizations)
+      .innerJoin(campaigns, eq(campaigns.organizationId, organizations.id))
+      .where(inArray(campaigns.status, ["published", "funded", "completed"]))
+      .groupBy(organizations.id, organizations.slug, organizations.updatedAt, organizations.logoUrl)
+      .orderBy(asc(organizations.slug))
+  ]);
+
+  return {
+    campaigns: campaignRows,
+    expeditions: expeditionRows,
+    courses: courseRows,
+    partners: partnerRows
+  };
+}
+
+
 export async function getPublishedDestinationBySlug(slug: string) {
   const destinations = await getPublishedDestinations();
   return destinations.find((destination) => destination.slug === slug) ?? null;
