@@ -6,9 +6,7 @@ const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://terumbu.eco";
 
 export const dynamic = "force-dynamic";
 
-export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const destinations = await getPublishedDestinations();
-  const staticPaths = [
+export const publicSitemapPaths = [
     "",
     "/campaigns",
     "/expeditions",
@@ -23,10 +21,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     "/privacy",
     "/donation-policy",
     "/refund-policy"
-  ];
+  ] as const;
+
+export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
+  const destinations = await getPublishedDestinations();
 
   return [
-    ...staticPaths.map((path) => ({
+    ...publicSitemapPaths.map((path) => ({
       url: `${baseUrl}${path}`,
       lastModified: new Date()
     })),
