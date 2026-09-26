@@ -958,7 +958,13 @@ export async function getCampaignDetail(slug: string) {
         currency: donations.currency,
         message: donations.message,
         createdAt: donations.createdAt,
-        transactionPayload: paymentTransactions.payload
+        transactionPayload: paymentTransactions.payload,
+        sponsoredCode: sponsoredEcosystems.code,
+        sponsoredLabel: sponsoredEcosystems.label,
+        sponsoredStatus: sponsoredEcosystems.status,
+        sponsoredPlantedAt: sponsoredEcosystems.plantedAt,
+        sponsoredLastUpdatedAt: sponsoredEcosystems.lastUpdatedAt,
+        sponsoredMetadata: sponsoredEcosystems.metadata
       })
       .from(donations)
       .leftJoin(paymentTransactions, eq(paymentTransactions.donationId, donations.id))
@@ -3294,6 +3300,7 @@ export async function getDashboardData(userId: string) {
       .innerJoin(organizations, eq(campaigns.organizationId, organizations.id))
       .leftJoin(donationReceipts, eq(donationReceipts.donationId, donations.id))
       .leftJoin(paymentTransactions, eq(paymentTransactions.donationId, donations.id))
+      .leftJoin(sponsoredEcosystems, eq(sponsoredEcosystems.donationId, donations.id))
       .where(eq(donations.userId, userId))
       .orderBy(desc(donations.createdAt)),
     db
@@ -3622,6 +3629,68 @@ export async function getDashboardData(userId: string) {
   for (const donation of paidDonations) {
     donationAmountByCampaign.set(donation.campaignSlug, (donationAmountByCampaign.get(donation.campaignSlug) ?? 0) + toNumber(donation.amount));
   }
+
+  const donationImpactJourneys = donationRows.map((donation) => {
+    const contributionIntent = getMetadataString(donation.transactionPayload, "contributionIntent") ?? "one-time";
+    const isIndividualSponsorship = contributionIntent === "coral" && Boolean(donation.sponsoredCode);
+    const campaignUpdates = updateRows.filter((update) => update.campaignId === donation.campaignId);
+    const campaignEvidence = evidenceRows.filter(
+      (evidence) => evidence.campaignId === donation.campaignId && evidence.verificationStatus === "verified"
+    );
+    const latestUpdate = campaignUpdates[0] ?? null;
+    const latestEvidence = campaignEvidence[0] ?? null;
+    const estimatedFragments =
+      getMetadataNumber(donation.transactionPayload, "sponsoredFragments") ||
+      getMetadataNumber(donation.sponsoredMetadata, "fragments");
+    const estimatedCarbonKg = getMetadataNumber(donation.transactionPayload, "carbonKg");
+    const estimatedImpact =
+      estimatedFragments > 0
+        ? `${estimatedFragments.toLocaleString("id-ID")} coral fragments supported`
+        : estimatedCarbonKg > 0
+          ? `${estimatedCarbonKg.toLocaleString("id-ID")} kg CO2e estimated support`
+          : null;
+
+    return {
+      donationId: donation.id,
+      campaignSlug: donation.campaignSlug,
+      campaignTitle: donation.campaignTitle,
+      campaignImageUrl: donation.campaignImageUrl,
+      amount: toNumber(donation.amount),
+      currency: donation.currency,
+      donatedAt: donation.createdAt,
+      paymentStatus: donation.status,
+      receiptNumber: donation.receiptNumber,
+      journeyType: isIndividualSponsorship ? "individual_sponsorship" as const : "pooled_campaign" as const,
+      estimatedImpact,
+      latestUpdate: latestUpdate
+        ? {
+            id: latestUpdate.id,
+            title: latestUpdate.title,
+            occurredAt: latestUpdate.publishedAt ?? latestUpdate.createdAt,
+            href: `/campaigns/${donation.campaignSlug}/updates/${latestUpdate.id}`
+          }
+        : null,
+      verifiedOutcome: latestEvidence
+        ? {
+            title: latestEvidence.title,
+            occurredAt: latestEvidence.verifiedAt ?? latestEvidence.createdAt,
+            href: `/campaigns/${donation.campaignSlug}#evidence`,
+            evidenceCode: latestEvidence.evidenceCode
+          }
+        : null,
+      sponsorship: isIndividualSponsorship
+        ? {
+            code: donation.sponsoredCode!,
+            label: donation.sponsoredLabel!,
+            status: donation.sponsoredStatus!,
+            plantedAt: donation.sponsoredPlantedAt,
+            lastUpdatedAt: donation.sponsoredLastUpdatedAt,
+            fragments: getMetadataNumber(donation.sponsoredMetadata, "fragments"),
+            survivalRate: getMetadataNumber(donation.sponsoredMetadata, "survivalRate")
+          }
+        : null
+    };
+  });
 
   const campaignContributions = Array.from(
     paidDonations.reduce((contributions, donation) => {
@@ -4264,6 +4333,7 @@ export async function getDashboardData(userId: string) {
     latestImpactUpdate,
     personalMapSites,
     campaignContributions,
+    donationImpactJourneys,
     coralCards,
     upcomingExpedition,
     academy: {
