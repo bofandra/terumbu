@@ -21,6 +21,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
 
+      - name: Validate deploy scripts
+        run: bash -n scripts/deploy-vps.sh scripts/smoke-production.sh
+
       - name: Setup Node
         uses: actions/setup-node@v7
         with:
