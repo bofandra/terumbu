@@ -1,20 +1,47 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { ExternalLink, ShieldCheck } from "lucide-react";
 import { notFound } from "next/navigation";
 
 import { CampaignCard } from "@/components/campaign-card";
+import { JsonLd } from "@/components/json-ld";
 import { SectionHeading } from "@/components/section-heading";
 import { ButtonLink } from "@/components/ui/button";
 import { getPartnerProfile } from "@/lib/queries";
 
 export const dynamic = "force-dynamic";
 
-export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
+const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://terumbu.eco";
+
+export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params;
   const partner = await getPartnerProfile(slug);
 
+  if (!partner) {
+    return { title: "Partner" };
+  }
+
+  const description =
+    partner.description ??
+    `Published conservation campaigns and verified activity linked to ${partner.name} on Terumbu.eco.`;
+
   return {
-    title: partner?.name ?? "Partner"
+    title: partner.name,
+    description,
+    alternates: { canonical: `/partners/${partner.slug}` },
+    openGraph: {
+      title: partner.name,
+      description,
+      type: "website",
+      url: `/partners/${partner.slug}`,
+      images: partner.logoUrl ? [{ url: partner.logoUrl }] : undefined
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: partner.name,
+      description,
+      images: partner.logoUrl ? [partner.logoUrl] : undefined
+    }
   };
 }
 
@@ -26,8 +53,35 @@ export default async function PartnerProfilePage({ params }: { params: Promise<{
     notFound();
   }
 
+  const partnerPath = `/partners/${partner.slug}`;
+  const partnerUrl = new URL(partnerPath, appUrl).toString();
+  const partnerDescription =
+    partner.description ??
+    `Published conservation campaigns and verified activity linked to ${partner.name} on Terumbu.eco.`;
+  const partnerStructuredData = [
+    {
+      "@context": "https://schema.org",
+      "@type": "Organization",
+      name: partner.name,
+      description: partnerDescription,
+      url: partnerUrl,
+      logo: partner.logoUrl ?? undefined,
+      sameAs: partner.websiteUrl ? [partner.websiteUrl] : undefined
+    },
+    {
+      "@context": "https://schema.org",
+      "@type": "BreadcrumbList",
+      itemListElement: [
+        { "@type": "ListItem", position: 1, name: "Home", item: appUrl },
+        { "@type": "ListItem", position: 2, name: "Partners", item: new URL("/campaigns", appUrl).toString() },
+        { "@type": "ListItem", position: 3, name: partner.name, item: partnerUrl }
+      ]
+    }
+  ];
+
   return (
     <>
+      <JsonLd data={partnerStructuredData} />
       <section className="bg-ocean-900 text-white">
         <div className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
           <p className="inline-flex items-center gap-2 text-sm font-bold uppercase tracking-[0.16em] text-coral-300">
