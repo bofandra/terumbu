@@ -21,6 +21,7 @@ import { formatCurrency } from "@/lib/utils";
 
 type Expedition = PartnerPortalData["expeditions"][number];
 type Campaign = PartnerPortalData["campaigns"][number];
+type Destination = PartnerPortalData["destinations"][number];
 
 const departureStatuses = ["open", "waitlist", "full", "private_group", "cancelled"];
 const categoryLabelOptions = ["Coral Restoration Expedition", "Reef Monitoring Expedition", "Marine Conservation Expedition", "Community Conservation Expedition"];
@@ -61,9 +62,18 @@ function optionsWithCurrentValues(options: string[], values: string[]) {
   return values.reduce((choices, value) => optionsWithCurrent(choices, value), options);
 }
 
-export function PartnerExpeditionCreateForm({ campaigns, canManageExpeditions }: { campaigns: Campaign[]; canManageExpeditions: boolean }) {
+export function PartnerExpeditionCreateForm({
+  campaigns,
+  destinations,
+  canManageExpeditions
+}: {
+  campaigns: Campaign[];
+  destinations: Destination[];
+  canManageExpeditions: boolean;
+}) {
   const hasCampaigns = campaigns.length > 0;
-  const canSubmit = hasCampaigns && canManageExpeditions;
+  const hasDestinations = destinations.length > 0;
+  const canSubmit = hasCampaigns && hasDestinations && canManageExpeditions;
 
   return (
     <details open className="rounded-lg border border-ocean-900/10 bg-white shadow-soft">
@@ -82,10 +92,22 @@ export function PartnerExpeditionCreateForm({ campaigns, canManageExpeditions }:
             <span className="text-xs font-semibold text-ocean-900/48">Use a stable URL slug. Public facts are never inferred from this field.</span>
           </Field>
         </div>
-        <div className="grid gap-3 md:grid-cols-4">
-          <Field label="Region">
-            <input name="region" placeholder="Raja Ampat" className={inputClassName} required />
+        <div className="grid gap-3 md:grid-cols-2">
+          <Field label="Destination" required>
+            <select name="destinationId" defaultValue="" className={inputClassName} required disabled={!hasDestinations}>
+              <option value="">Choose managed destination</option>
+              {destinations.map((destination) => (
+                <option key={destination.id} value={destination.id}>
+                  {destination.name} / {destination.province}
+                </option>
+              ))}
+            </select>
           </Field>
+          <Field label="Local area / region" help="Optional. Leave blank to use the destination name.">
+            <input name="region" placeholder="Misool, South Raja Ampat" className={inputClassName} />
+          </Field>
+        </div>
+        <div className="grid gap-3 md:grid-cols-3">
           <Field label="Duration days">
             <input name="durationDays" type="number" min={1} defaultValue={4} className={inputClassName} required />
           </Field>
@@ -467,10 +489,12 @@ function DetailFields({ detail, marketplace }: { detail: ExpeditionDetailMetadat
 function ExpeditionDetailForm({
   expedition,
   campaigns,
+  destinations,
   returnTo
 }: {
   expedition: Expedition;
   campaigns: Campaign[];
+  destinations: Destination[];
   returnTo: string;
 }) {
   const detail = expedition.detailMetadata;
@@ -504,10 +528,22 @@ function ExpeditionDetailForm({
               <input name="slug" defaultValue={expedition.slug} className={inputClassName} required />
             </Field>
           </div>
-          <div className="grid gap-3 md:grid-cols-4">
-            <Field label="Region">
-              <input name="region" defaultValue={expedition.region} className={inputClassName} required />
+          <div className="grid gap-3 md:grid-cols-2">
+            <Field label="Destination" required>
+              <select name="destinationId" defaultValue={expedition.destinationId ?? ""} className={inputClassName} required>
+                <option value="">Choose managed destination</option>
+                {destinations.map((destination) => (
+                  <option key={destination.id} value={destination.id}>
+                    {destination.name} / {destination.province}
+                  </option>
+                ))}
+              </select>
             </Field>
+            <Field label="Local area / region" help="Optional. Leave blank to use the destination name.">
+              <input name="region" defaultValue={expedition.region} className={inputClassName} />
+            </Field>
+          </div>
+          <div className="grid gap-3 md:grid-cols-3">
             <Field label="Duration days">
               <input name="durationDays" type="number" min={1} defaultValue={expedition.durationDays} className={inputClassName} required />
             </Field>
@@ -837,11 +873,13 @@ export function PartnerExpeditionWorkspace({
 
 export function PartnerExpeditionDetailWorkspace({
   campaigns,
+  destinations,
   expedition,
   canManageExpeditions,
   defaultTabId
 }: {
   campaigns: Campaign[];
+  destinations: Destination[];
   expedition: Expedition;
   canManageExpeditions: boolean;
   defaultTabId?: string;
@@ -949,7 +987,7 @@ export function PartnerExpeditionDetailWorkspace({
         </div>
 
         {canManageExpeditions ? (
-          <ExpeditionDetailForm expedition={expedition} campaigns={campaigns} returnTo={contentReturnTo} />
+          <ExpeditionDetailForm expedition={expedition} campaigns={campaigns} destinations={destinations} returnTo={contentReturnTo} />
         ) : (
           <div className="rounded-lg border border-ocean-900/10 bg-white p-5 text-sm font-semibold text-ocean-900/62">
             Your partner role can view this expedition but cannot edit its public content.
