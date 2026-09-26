@@ -39,6 +39,7 @@ import {
 } from "@/db/schema";
 import {
   campaignCategoryFromEcosystemType,
+  campaignContentCompleteness,
   defaultImpactUnitForImpactType,
   impactTargetTypeFromUnit,
   labelForCampaignImpactTargetType,
@@ -4140,7 +4141,9 @@ export async function updateCampaignStatusAction(formData: FormData) {
       title: campaigns.title,
       status: campaigns.status,
       organizationId: campaigns.organizationId,
-      publishedAt: campaigns.publishedAt
+      publishedAt: campaigns.publishedAt,
+      imageUrl: campaigns.imageUrl,
+      story: campaigns.story
     })
     .from(campaigns)
     .where(eq(campaigns.id, campaignId))
@@ -4155,12 +4158,28 @@ export async function updateCampaignStatusAction(formData: FormData) {
   }
 
   if (decision === "publish") {
-    const [siteSummary] = await db
-      .select({ total: sql<number>`count(*)::int` })
-      .from(impactSites)
-      .where(eq(impactSites.campaignId, campaign.id));
+    const [siteSummary, targetSummary, mediaSummary, budgetSummary, timelineSummary, teamSummary] = await Promise.all([
+      db.select({ total: sql<number>`count(*)::int` }).from(impactSites).where(eq(impactSites.campaignId, campaign.id)).then((rows) => rows[0]),
+      db.select({ total: sql<number>`count(*)::int` }).from(campaignImpactTargets).where(eq(campaignImpactTargets.campaignId, campaign.id)).then((rows) => rows[0]),
+      db.select({ total: sql<number>`count(*)::int` }).from(campaignMediaItems).where(eq(campaignMediaItems.campaignId, campaign.id)).then((rows) => rows[0]),
+      db.select({ total: sql<number>`count(*)::int` }).from(campaignBudgetLineItems).where(eq(campaignBudgetLineItems.campaignId, campaign.id)).then((rows) => rows[0]),
+      db.select({ total: sql<number>`count(*)::int` }).from(campaignTimelinePhases).where(eq(campaignTimelinePhases.campaignId, campaign.id)).then((rows) => rows[0]),
+      db.select({ total: sql<number>`count(*)::int` }).from(organizationTeamMembers).where(and(eq(organizationTeamMembers.organizationId, campaign.organizationId), eq(organizationTeamMembers.isPublic, true))).then((rows) => rows[0])
+    ]);
+    const content = campaignContentCompleteness({
+      media: Number(mediaSummary?.total ?? 0),
+      budget: Number(budgetSummary?.total ?? 0),
+      timeline: Number(timelineSummary?.total ?? 0),
+      team: Number(teamSummary?.total ?? 0)
+    });
 
-    if (Number(siteSummary?.total ?? 0) < 1) {
+    if (
+      Number(siteSummary?.total ?? 0) < 1 ||
+      Number(targetSummary?.total ?? 0) < 1 ||
+      !campaign.imageUrl ||
+      !campaign.story ||
+      content.completeCount !== content.totalCount
+    ) {
       redirectAdminCampaignError("campaign-not-ready", formData);
     }
   }
