@@ -9157,6 +9157,7 @@ export async function getPartnerPortalData(userId?: string) {
         id: expeditions.id,
         title: expeditions.title,
         slug: expeditions.slug,
+        destinationId: expeditions.destinationId,
         region: expeditions.region,
         durationDays: expeditions.durationDays,
         basePrice: expeditions.basePrice,
