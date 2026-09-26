@@ -10,6 +10,7 @@ import {
   Handshake,
   LayoutDashboard,
   MapPinned,
+  CreditCard,
   LogOut,
   Menu,
   ScrollText,
@@ -33,6 +34,7 @@ type AdminNavItem = {
 const adminNavItems: AdminNavItem[] = [
   { href: "/admin", label: "Overview", icon: LayoutDashboard },
   { href: "/admin/campaigns", label: "Donations", icon: FileCheck2 },
+  { href: "/admin/payment-instructions", label: "Payment setup", icon: CreditCard },
   { href: "/admin/expeditions", label: "Expeditions", icon: ShipWheel },
   { href: "/admin/destinations", label: "Destinations", icon: MapPinned },
   { href: "/admin/partners", label: "Partners", icon: Handshake },
