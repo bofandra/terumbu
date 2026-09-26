@@ -24,14 +24,15 @@ export function ExpeditionHeroGallery({ images, region }: ExpeditionHeroGalleryP
     <>
       <button
         type="button"
-        className="group relative h-[340px] w-full overflow-hidden rounded-md bg-ocean-900 text-left sm:h-[430px] lg:h-[480px]"
-        onClick={() => setOpen(true)}
+        className="group relative h-[340px] w-full overflow-hidden rounded-md bg-ocean-900 text-left disabled:cursor-default sm:h-[430px] lg:h-[480px]"
+        onClick={() => main && setOpen(true)}
+        disabled={!main}
       >
         {main ? <Image src={main.src} alt={main.caption} fill className="object-cover transition duration-500 group-hover:scale-[1.03]" sizes="(min-width: 1024px) 48vw, 100vw" priority /> : null}
         <div className="absolute inset-0 bg-gradient-to-t from-ocean-900/18 via-transparent to-transparent" />
         <span className="absolute bottom-5 right-5 inline-flex min-h-11 items-center gap-2 rounded-full bg-white px-5 text-sm font-bold text-ocean-900 shadow-soft">
           <Camera size={16} aria-hidden="true" />
-          View all {images.length} photos
+          {main ? `View all ${images.length} photos` : "Photos not added yet"}
         </span>
         <span className="absolute left-4 top-4 rounded-full bg-white/92 px-3 py-1 text-xs font-bold text-ocean-900 shadow-sm">{region}</span>
       </button>
