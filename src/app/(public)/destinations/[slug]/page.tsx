@@ -5,12 +5,15 @@ import { notFound } from "next/navigation";
 import { ArrowRight, CalendarDays, Check, Compass, MapPinned, Navigation, ShieldCheck } from "lucide-react";
 
 import { ExpeditionCard } from "@/components/expedition-card";
+import { JsonLd } from "@/components/json-ld";
 import { destinationMonthLabels } from "@/lib/destination-content";
 import { getExpeditionCards, getPublishedDestinationBySlug } from "@/lib/queries";
 import { getPreferredDisplayCurrency, getPreferredLocale, localeTag } from "@/lib/user-preferences";
 import { formatCurrency } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
+
+const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://terumbu.eco";
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params;
@@ -29,7 +32,14 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
       title,
       description,
       type: "website",
+      url: `/destinations/${destination.slug}`,
       images: destination.heroImageUrl ? [{ url: destination.heroImageUrl }] : undefined
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description,
+      images: destination.heroImageUrl ? [destination.heroImageUrl] : undefined
     }
   };
 }
@@ -47,9 +57,36 @@ export default async function DestinationPage({ params }: { params: Promise<{ sl
   ]);
   const localeName = localeTag(locale);
   const bestMonths = destinationMonthLabels(destination.bestMonths);
+  const destinationPath = `/destinations/${destination.slug}`;
+  const destinationUrl = new URL(destinationPath, appUrl).toString();
+  const destinationStructuredData = [
+    {
+      "@context": "https://schema.org",
+      "@type": "TouristDestination",
+      name: destination.name,
+      description: destination.summary,
+      url: destinationUrl,
+      image: destination.heroImageUrl ? [destination.heroImageUrl] : undefined,
+      address: {
+        "@type": "PostalAddress",
+        addressRegion: destination.province,
+        addressCountry: "ID"
+      }
+    },
+    {
+      "@context": "https://schema.org",
+      "@type": "BreadcrumbList",
+      itemListElement: [
+        { "@type": "ListItem", position: 1, name: "Home", item: appUrl },
+        { "@type": "ListItem", position: 2, name: "Destinations", item: new URL("/destinations", appUrl).toString() },
+        { "@type": "ListItem", position: 3, name: destination.name, item: destinationUrl }
+      ]
+    }
+  ];
 
   return (
     <main className="bg-sand-50">
+      <JsonLd data={destinationStructuredData} />
       <section className="relative overflow-hidden border-b border-ocean-900/10 bg-white">
         {destination.heroImageUrl ? (
           <>

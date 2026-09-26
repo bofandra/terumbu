@@ -19,10 +19,12 @@ import {
   ShieldCheck,
   XCircle
 } from "lucide-react";
+import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import { JsonLd } from "@/components/json-ld";
 import { Button, ButtonLink } from "@/components/ui/button";
 import { ProgressMeter } from "@/components/ui/progress-meter";
 import {
@@ -35,6 +37,8 @@ import {
 import { getSessionUser } from "@/lib/auth";
 import { getCourseDetail } from "@/lib/queries";
 import { cn } from "@/lib/utils";
+
+const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://terumbu.eco";
 
 function ProgressBar({ value, label }: { value: number; label: string }) {
   return <ProgressMeter value={value} label={label} indicatorClassName="bg-kelp-500" trackClassName="bg-ocean-900/10" />;
@@ -225,6 +229,34 @@ function CourseAssessmentCard({
   );
 }
 
+export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
+  const { slug } = await params;
+  const course = await getCourseDetail(slug);
+
+  if (!course) {
+    return { title: "Academy Course" };
+  }
+
+  return {
+    title: course.title,
+    description: course.summary,
+    alternates: { canonical: `/academy/courses/${course.slug}` },
+    openGraph: {
+      title: course.title,
+      description: course.summary,
+      type: "website",
+      url: `/academy/courses/${course.slug}`,
+      images: course.imageUrl ? [{ url: course.imageUrl }] : undefined
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: course.title,
+      description: course.summary,
+      images: course.imageUrl ? [course.imageUrl] : undefined
+    }
+  };
+}
+
 export default async function CourseDetailPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   const user = await getSessionUser();
@@ -239,9 +271,38 @@ export default async function CourseDetailPage({ params }: { params: Promise<{ s
   const certificateIssued = course.certificate?.issuedAt ? formatDate(course.certificate.issuedAt) : null;
   const SaveIcon = course.isSaved ? BookmarkCheck : Bookmark;
   const assessmentCount = course.assessments.length;
+  const coursePath = `/academy/courses/${course.slug}`;
+  const courseUrl = new URL(coursePath, appUrl).toString();
+  const courseStructuredData = [
+    {
+      "@context": "https://schema.org",
+      "@type": "Course",
+      name: course.title,
+      description: course.summary,
+      url: courseUrl,
+      image: course.imageUrl ? [course.imageUrl] : undefined,
+      educationalLevel: course.level,
+      timeRequired: `PT${course.durationMinutes}M`,
+      provider: {
+        "@type": "Organization",
+        name: "Terumbu.eco",
+        url: appUrl
+      }
+    },
+    {
+      "@context": "https://schema.org",
+      "@type": "BreadcrumbList",
+      itemListElement: [
+        { "@type": "ListItem", position: 1, name: "Home", item: appUrl },
+        { "@type": "ListItem", position: 2, name: "Academy", item: new URL("/academy", appUrl).toString() },
+        { "@type": "ListItem", position: 3, name: course.title, item: courseUrl }
+      ]
+    }
+  ];
 
   return (
     <>
+      <JsonLd data={courseStructuredData} />
       <section className="relative overflow-hidden bg-ocean-900 text-white">
         {course.imageUrl ? <Image src={course.imageUrl} alt="" fill priority className="object-cover opacity-[0.38]" sizes="100vw" /> : null}
         <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(7,52,63,0.98),rgba(7,52,63,0.82),rgba(7,52,63,0.38))]" />
