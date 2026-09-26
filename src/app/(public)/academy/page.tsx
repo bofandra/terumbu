@@ -19,6 +19,7 @@ import {
 import Image from "next/image";
 import Link from "next/link";
 
+import { JsonLd } from "@/components/json-ld";
 import { Button, ButtonLink } from "@/components/ui/button";
 import { MetricValue } from "@/components/ui/metric-value";
 import { ProgressMeter } from "@/components/ui/progress-meter";
@@ -28,10 +29,20 @@ import { getAcademyHomeData } from "@/lib/queries";
 import { cn } from "@/lib/utils";
 
 export const metadata = {
-  title: "Academy"
+  title: "Conservation Academy",
+  description: "Explore published conservation courses from Terumbu.eco, including field preparation and ocean-learning modules.",
+  alternates: { canonical: "/academy" },
+  openGraph: {
+    title: "Conservation Academy",
+    description: "Explore published conservation courses from Terumbu.eco, including field preparation and ocean-learning modules.",
+    url: "/academy",
+    type: "website"
+  }
 };
 
 export const dynamic = "force-dynamic";
+
+const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://terumbu.eco";
 
 type AcademyHomeData = Awaited<ReturnType<typeof getAcademyHomeData>>;
 type AcademyCourse = AcademyHomeData["courses"][number];
@@ -174,9 +185,36 @@ export default async function AcademyPage({
   const firstCourseHref = data.courses[0] ? `/academy/courses/${data.courses[0].slug}` : "/academy";
   const heroCourse = data.featuredCourse ?? data.courses[0] ?? null;
   const isAuthenticated = Boolean(user);
+  const courseStructuredData = [
+    {
+      "@context": "https://schema.org",
+      "@type": "ItemList",
+      name: "Terumbu Academy courses",
+      itemListElement: data.courses.map((course, index) => ({
+        "@type": "ListItem",
+        position: index + 1,
+        url: new URL(`/academy/courses/${course.slug}`, appUrl).toString()
+      }))
+    },
+    ...data.courses.map((course) => ({
+      "@context": "https://schema.org",
+      "@type": "Course",
+      name: course.title,
+      description: course.summary,
+      url: new URL(`/academy/courses/${course.slug}`, appUrl).toString(),
+      image: course.imageUrl ? [course.imageUrl] : undefined,
+      educationalLevel: course.level,
+      provider: {
+        "@type": "Organization",
+        name: "Terumbu.eco",
+        url: appUrl
+      }
+    }))
+  ];
 
   return (
     <>
+      <JsonLd data={courseStructuredData} />
       <section className="relative min-h-[620px] overflow-hidden bg-ocean-900 text-white">
         {data.heroImageUrl ? (
           <Image src={data.heroImageUrl} alt="" fill priority className="object-cover opacity-[0.42]" sizes="100vw" />
