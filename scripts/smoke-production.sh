@@ -36,7 +36,15 @@ fi
 assert_public_page "/" >/dev/null
 campaigns="$(assert_public_page "/campaigns")"
 expeditions="$(assert_public_page "/expeditions")"
-assert_public_page "/destinations" >/dev/null
+destinations="$(assert_public_page "/destinations")"
+first_destination=""
+destination_href_re='href="(/destinations/[^"#?]+)'
+if [[ ${destinations} =~ ${destination_href_re} ]]; then
+  first_destination="${BASH_REMATCH[1]}"
+fi
+if [ -n "${first_destination}" ]; then
+  assert_public_page "${first_destination}" >/dev/null
+fi
 assert_public_page "/academy" >/dev/null
 assert_public_page "/about" >/dev/null
 assert_public_page "/login" >/dev/null
