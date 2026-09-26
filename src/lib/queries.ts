@@ -6624,7 +6624,8 @@ export async function getAdminOperationsData() {
         totalAmount: expeditionBookings.totalAmount,
         currency: expeditionBookings.currency,
         bookedAt: expeditionBookings.bookedAt,
-        startsAt: expeditionDepartures.startsAt
+        startsAt: expeditionDepartures.startsAt,
+        endsAt: expeditionDepartures.endsAt
       })
       .from(expeditionBookings)
       .innerJoin(expeditionDepartures, eq(expeditionBookings.departureId, expeditionDepartures.id))
@@ -6948,6 +6949,8 @@ export async function getAdminOperationsData() {
       currency: row.currency,
       bookedAt: row.bookedAt,
       startsAt: row.startsAt,
+      endsAt: row.endsAt,
+      canComplete: row.status === "confirmed" && row.paymentStatus === "paid" && row.endsAt <= now,
       canCancel: canCancelExpeditionBooking({ bookingStatus: row.status, paymentStatus: row.paymentStatus, startsAt: row.startsAt }, now)
     });
   }
