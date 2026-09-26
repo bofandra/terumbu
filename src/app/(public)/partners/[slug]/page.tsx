@@ -73,7 +73,7 @@ export default async function PartnerProfilePage({ params }: { params: Promise<{
       "@type": "BreadcrumbList",
       itemListElement: [
         { "@type": "ListItem", position: 1, name: "Home", item: appUrl },
-        { "@type": "ListItem", position: 2, name: "Partners", item: new URL("/campaigns", appUrl).toString() },
+        { "@type": "ListItem", position: 2, name: "Campaigns", item: new URL("/campaigns", appUrl).toString() },
         { "@type": "ListItem", position: 3, name: partner.name, item: partnerUrl }
       ]
     }
