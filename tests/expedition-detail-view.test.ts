@@ -45,9 +45,9 @@ test("detail view maps marketplace metadata into offer and benefit facts", () =>
 
   assert.equal(offerFacts[0].value, "20h");
   assert.equal(offerFacts.at(-1)?.label, "Additional Fee");
-  assert.equal(benefitFacts[0].value, "2");
+  assert.equal(benefitFacts[0].value, "4 days");
   assert.equal(benefitFacts.some((fact) => fact.label === "Private Room"), true);
-  assert.equal(benefitFacts.some((fact) => fact.label === "Certificate"), true);
+  assert.equal(benefitFacts.some((fact) => fact.label === "Digital participation certificate"), true);
 });
 
 test("detail view builds compact month availability from departures", () => {
@@ -85,12 +85,14 @@ test("detail view handles sparse metadata defaults", () => {
   });
   const stayRange = buildExpeditionStayRange(9, "Medium Term Stay");
 
-  assert.equal(offerFacts.at(-1)?.label, "No Additional Fee");
-  assert.equal(benefitFacts.some((fact) => fact.label === "Accommodation"), true);
+  assert.deepEqual(offerFacts, []);
+  assert.equal(benefitFacts.some((fact) => fact.label === "Accommodation"), false);
+  assert.equal(benefitFacts.some((fact) => fact.label === "Verified host"), false);
+  assert.equal(benefitFacts[0]?.value, "9 days");
   assert.equal(stayRange.stayUpTo, "4 weeks");
 });
 
-test("detail view derives SDG facts with fallback", () => {
+test("detail view derives only supported SDG facts", () => {
   const reefFacts = buildExpeditionSdgFacts({
     tags: ["SDG 14", "Reef monitoring"],
     sustainability: ["Local procurement"],
@@ -104,6 +106,6 @@ test("detail view derives SDG facts with fallback", () => {
 
   assert.equal(reefFacts.some((fact) => fact.code === "14"), true);
   assert.equal(reefFacts.some((fact) => fact.code === "8"), true);
-  assert.deepEqual(fallbackFacts.map((fact) => fact.code), ["14", "13", "8"]);
+  assert.deepEqual(fallbackFacts, []);
 });
 
