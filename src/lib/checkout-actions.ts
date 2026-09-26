@@ -198,7 +198,7 @@ export async function createDonationAction(formData: FormData) {
   });
 
   await trackEvent({
-    distinctId: sessionUser?.id ?? donorEmail,
+    distinctId: sessionUser?.id ? `user:${sessionUser.id}` : `donation:${donationId}`,
     event: "donation_payment_proof_submitted",
     properties: {
       campaignSlug,
@@ -432,20 +432,16 @@ export async function bookExpeditionAction(formData: FormData) {
   });
 
   await trackEvent({
-    distinctId: sessionUser?.id ?? contactEmail,
-    event: "expedition_booking_completed",
+    distinctId: sessionUser?.id ? `user:${sessionUser.id}` : `booking:${bookingId}`,
+    event: "expedition_booking_submitted",
     properties: {
+      expeditionId: departure.expeditionId,
+      expeditionSlug: departure.expeditionSlug,
       departureId,
       participantsCount: participantCount,
-      totalAmount,
-      currency: normalizeCurrency(departure.currency),
       status: paymentState,
-      attributionType: corporateAttribution?.type ?? "personal",
-      corporateAccountId: corporateAttribution?.corporateAccountId ?? null,
-      referralCode,
-      groupBooking: participantCount > 1,
-      groupName,
-      contactRole
+      authenticated: Boolean(sessionUser),
+      hasReferral: Boolean(referralCode)
     }
   });
 

@@ -30,6 +30,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import { AnalyticsEvent } from "@/components/analytics-event";
 import { ExpeditionMobileBookingBar } from "@/components/expedition-booking-card";
 import { JsonLd } from "@/components/json-ld";
 import { ExpeditionCard } from "@/components/expedition-card";
@@ -345,6 +346,15 @@ export default async function ExpeditionDetailPage({
 
   return (
     <>
+      <AnalyticsEvent
+        event="expedition_view"
+        properties={{
+          expeditionId: expedition.id,
+          expeditionSlug: expedition.slug,
+          availableDepartureCount: expedition.departures.filter((departure) => departure.canBook).length,
+          hasReferral: Boolean(incomingReferralCode)
+        }}
+      />
       <JsonLd data={expeditionStructuredData} />
       <main className="bg-white pb-24">
         <section className="border-b border-ocean-900/10 bg-white">
