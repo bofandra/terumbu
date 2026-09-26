@@ -244,6 +244,9 @@ function date(value: string) {
 }
 
 async function seed() {
+  if (process.env.NODE_ENV === "production" && process.env.ALLOW_PRODUCTION_DEMO_SEED !== "true") {
+    throw new Error("Refusing to seed demo data in production. Set ALLOW_PRODUCTION_DEMO_SEED=true only for an intentional disposable environment.");
+  }
   const now = new Date();
 
   const [demoUser] = await db

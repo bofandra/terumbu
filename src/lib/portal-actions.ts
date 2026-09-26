@@ -3494,6 +3494,29 @@ export async function updatePartnerExpeditionAction(formData: FormData) {
       : partnerExpeditionStatuses.includes(requestedStatus as (typeof partnerExpeditionStatuses)[number])
         ? (requestedStatus as (typeof partnerExpeditionStatuses)[number])
         : existingExpedition.status;
+  if (status === "review") {
+    const [departureSummary, relatedCampaign] = await Promise.all([
+      db
+        .select({ total: sql<number>`count(*)::int` })
+        .from(expeditionDepartures)
+        .where(eq(expeditionDepartures.expeditionId, expeditionId))
+        .then((rows) => rows[0]),
+      db
+        .select({ status: campaigns.status })
+        .from(campaigns)
+        .where(eq(campaigns.id, relatedCampaignId))
+        .limit(1)
+        .then((rows) => rows[0] ?? null)
+    ]);
+
+    const relatedCampaignIsPublic = ["published", "funded", "completed"].includes(relatedCampaign?.status ?? "");
+    const hasDeparture = Number(departureSummary?.total ?? 0) > 0;
+
+    if (!imageUrl || !relatedCampaignIsPublic || !hasDeparture) {
+      redirectPartnerError(formData, "/partner/expeditions", "expedition-not-ready");
+    }
+  }
+
   const currentMetadata = normalizeExpeditionDetailMetadata(existingExpedition.metadata, defaultPartnerExpeditionMetadata(existingExpedition, maxCapacity));
   const metadata = await partnerExpeditionMetadataFromForm(formData, {
     currentMetadata,

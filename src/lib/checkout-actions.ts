@@ -230,6 +230,7 @@ export async function bookExpeditionAction(formData: FormData) {
   const dietaryNotes = String(formData.get("dietaryNotes") ?? "").trim().slice(0, 1000) || null;
   const accessibilityNotes = String(formData.get("accessibilityNotes") ?? "").trim().slice(0, 1000) || null;
   const paymentState = "pending";
+  const paymentReference = String(formData.get("paymentReference") ?? "").trim();
   const nextPath = safeRedirectPath(formData.get("next"));
   const idempotencyKey = String(formData.get("idempotencyKey") ?? "").trim() || null;
   const joinAs = String(formData.get("joinAs") ?? "personal").trim();
@@ -329,8 +330,22 @@ export async function bookExpeditionAction(formData: FormData) {
     }
   }
 
+  const proofUpload = await readUploadedImageAsDataUrl(formData.get("paymentProofFile"));
+  const proofError = paymentProofUploadError(proofUpload);
+
+  if (proofError) {
+    redirect(`${nextPath}?error=payment_proof`);
+  }
+
   const now = new Date();
-  const providerReference = randomReference("DEMO-EXPEDITION");
+  const providerReference = randomReference("MANUAL-EXPEDITION");
+  const manualPaymentMetadata = {
+    method: "manual_external",
+    paymentProofUrl: proofUpload.dataUrl,
+    paymentReference: paymentReference || null,
+    submittedAt: now.toISOString(),
+    verificationStatus: "submitted"
+  };
   const bookingCode = buildBookingCode(providerReference, now);
   const totalAmount = calculateBookingTotal(departure.basePrice, participantCount);
   let bookingId = "";
@@ -377,13 +392,10 @@ export async function bookExpeditionAction(formData: FormData) {
 
     await tx.insert(expeditionBookingPayments).values({
       bookingId: booking.id,
-      provider: "demo_gateway",
+      provider: "manual_external",
       providerReference,
       status: "pending",
-      payload: {
-        method: "gateway_pending",
-        submittedAt: now.toISOString()
-      },
+      payload: manualPaymentMetadata,
       updatedAt: now
     });
 
@@ -401,11 +413,8 @@ export async function bookExpeditionAction(formData: FormData) {
       bookingId: booking.id,
       nextStatus: paymentState,
       providerReference,
-      providerPayload: {
-        method: "gateway_pending",
-        submittedAt: now.toISOString()
-      },
-      operationType: "checkout",
+      providerPayload: manualPaymentMetadata,
+      operationType: "payment_proof_submitted",
       now
     });
 
