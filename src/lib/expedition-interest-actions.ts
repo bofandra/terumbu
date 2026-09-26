@@ -16,6 +16,7 @@ import {
   roles,
   userRoles
 } from "@/db/schema";
+import { trackEvent } from "@/lib/analytics";
 import { getSessionUser, requireRole, safeRedirectPath } from "@/lib/auth";
 import { buildExpeditionInterestRequestCode, parseParticipantCount } from "@/lib/checkout";
 import {
@@ -163,6 +164,20 @@ export async function submitExpeditionInterestRequestAction(formData: FormData) 
       })
       .where(eq(expeditionInterestRequests.id, existingRequest.id));
 
+    await trackEvent({
+      distinctId: user?.id ? `user:${user.id}` : `interest:${existingRequest.id}`,
+      event: "expedition_interest_submitted",
+      properties: {
+        expeditionId: expedition.id,
+        expeditionSlug: expedition.slug,
+        departureId,
+        requestType,
+        participantsCount,
+        authenticated: Boolean(user),
+        status: "updated"
+      }
+    });
+
     redirect(appendResult(nextPath, "saved", successCodeForRequestType(requestType, true)));
   }
 
@@ -196,6 +211,20 @@ export async function submitExpeditionInterestRequestAction(formData: FormData) 
       requestType,
       participantsCount,
       requestCode: request.requestCode
+    }
+  });
+
+  await trackEvent({
+    distinctId: user?.id ? `user:${user.id}` : `interest:${request.id}`,
+    event: "expedition_interest_submitted",
+    properties: {
+      expeditionId: expedition.id,
+      expeditionSlug: expedition.slug,
+      departureId,
+      requestType,
+      participantsCount,
+      authenticated: Boolean(user),
+      status: "created"
     }
   });
 
