@@ -9323,6 +9323,30 @@ export async function getPartnerPortalData(userId?: string) {
       .groupBy(expeditionBookings.expeditionId, expeditionBookings.departureId),
     db
       .select({
+        id: expeditionBookings.id,
+        expeditionId: expeditionBookings.expeditionId,
+        departureId: expeditionBookings.departureId,
+        bookingCode: expeditionBookings.bookingCode,
+        contactName: expeditionBookings.contactName,
+        contactEmail: expeditionBookings.contactEmail,
+        participantsCount: expeditionBookings.participantsCount,
+        status: expeditionBookings.status,
+        paymentStatus: expeditionBookings.paymentStatus,
+        totalAmount: expeditionBookings.totalAmount,
+        currency: expeditionBookings.currency,
+        bookedAt: expeditionBookings.bookedAt,
+        startsAt: expeditionDepartures.startsAt,
+        endsAt: expeditionDepartures.endsAt
+      })
+      .from(expeditionBookings)
+      .innerJoin(expeditions, eq(expeditionBookings.expeditionId, expeditions.id))
+      .innerJoin(expeditionDepartures, eq(expeditionBookings.departureId, expeditionDepartures.id))
+      .leftJoin(campaigns, eq(expeditions.relatedCampaignId, campaigns.id))
+      .where(expeditionScope)
+      .orderBy(desc(expeditionBookings.bookedAt))
+      .limit(500),
+    db
+      .select({
         id: expeditionInterestRequests.id,
         expeditionId: expeditionInterestRequests.expeditionId,
         departureId: expeditionInterestRequests.departureId,
