@@ -6958,31 +6958,6 @@ export async function getAdminOperationsData() {
     });
   }
 
-  const bookingNow = new Date();
-
-  for (const row of expeditionBookingRows) {
-    const expedition = expeditionsById.get(row.expeditionId);
-    if (!expedition) continue;
-
-    expedition.bookings.push({
-      id: row.id,
-      departureId: row.departureId,
-      bookingCode: row.bookingCode,
-      contactName: row.contactName,
-      contactEmail: row.contactEmail,
-      participantsCount: row.participantsCount,
-      status: row.status,
-      paymentStatus: row.paymentStatus,
-      totalAmount: toNumber(row.totalAmount),
-      currency: row.currency,
-      bookedAt: row.bookedAt,
-      startsAt: row.startsAt,
-      endsAt: row.endsAt,
-      canComplete: canCompleteExpeditionBooking({ bookingStatus: row.status, paymentStatus: row.paymentStatus, endsAt: row.endsAt }, bookingNow),
-      canCancel: canCancelExpeditionBooking({ bookingStatus: row.status, paymentStatus: row.paymentStatus, startsAt: row.startsAt }, bookingNow)
-    });
-  }
-
   for (const row of expeditionInterestRequestRows) {
     const expedition = expeditionCatalogById.get(row.expeditionId);
 
