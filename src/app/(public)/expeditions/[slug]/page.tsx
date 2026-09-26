@@ -193,9 +193,9 @@ export default async function ExpeditionDetailPage({
   };
   const tabs = [
     { id: "exchange", label: "The Exchange" },
-    { id: "photos", label: `Photos (${expedition.galleryImages.length})` },
+    ...(expedition.galleryImages.length > 0 ? [{ id: "photos", label: `Photos (${expedition.galleryImages.length})` }] : []),
     { id: "host", label: "Your Host" },
-    { id: "map", label: "Map" }
+    ...(expedition.route.mapEmbedUrl.trim() ? [{ id: "map", label: "Map" }] : [])
   ];
   const requestNextPath = `${expeditionPath}#availability`;
   const questionNextPath = `${expeditionPath}#ask-question`;
@@ -237,6 +237,30 @@ export default async function ExpeditionDetailPage({
     .filter((badge) => !legacyAutoBadges.has(badge.trim().toLowerCase()))
     .slice(0, 3);
   const hostImage = expedition.associatedCampaign?.imageUrl ?? expedition.galleryImages[0]?.src;
+  const hasExperienceDetails = Boolean(
+    expedition.overview.title.trim() ||
+      expedition.overview.paragraphs.length ||
+      expedition.requirements.length ||
+      expedition.notIncluded.length
+  );
+  const hasTravelPlanning = [
+    expedition.travelInfo.nearestAirport,
+    expedition.travelInfo.meetingPoint,
+    expedition.travelInfo.localTimeZone,
+    expedition.travelInfo.connectivity,
+    expedition.travelInfo.insuranceGuidance,
+    expedition.travelInfo.supportContact,
+    expedition.travelInfo.airportTransfer,
+    expedition.travelInfo.arrivalGuidance,
+    expedition.travelInfo.visaGuidance
+  ].some((value) => value.trim()) || expedition.travelInfo.packingHighlights.length > 0;
+  const hasMap = Boolean(expedition.route.mapEmbedUrl.trim());
+  const hasImpact = Boolean(
+    expedition.associatedCampaign ||
+      expedition.impact.conservationContribution > 0 ||
+      expedition.impact.summary.trim() ||
+      expedition.impact.targets.length > 0
+  );
 
   return (
     <>
@@ -257,7 +281,7 @@ export default async function ExpeditionDetailPage({
 
             <div className="min-w-0 lg:pt-1">
               <p className="text-lg font-semibold text-ocean-900/72">
-                {expedition.marketplace.typeLabel} &bull; {expedition.region}, Indonesia
+                {expedition.marketplace.typeLabel ? <>{expedition.marketplace.typeLabel} &bull; </> : null}{expedition.region}, Indonesia
               </p>
               <div className="mt-4 flex flex-wrap items-center gap-2 text-sm font-semibold text-ocean-900/58">
                 <span className="flex items-center gap-1">
@@ -282,11 +306,7 @@ export default async function ExpeditionDetailPage({
                       <div>
                         <p className="text-lg font-bold text-ocean-900">{badge}</p>
                         <p className="mt-1 text-base leading-7 text-ocean-900/58">
-                          {badge.toLowerCase().includes("approval")
-                            ? "This host has upcoming departures and is actively reviewing traveler requests."
-                            : badge.toLowerCase().includes("top")
-                              ? "This host keeps a strong Terumbu operating record for field experiences."
-                              : "This host contributes to building a better and more sustainable future for all."}
+                          Information provided by the expedition host for this listing.
                         </p>
                       </div>
                     </div>
@@ -304,10 +324,12 @@ export default async function ExpeditionDetailPage({
           {savedBannerMessage ? <p className="mt-8 rounded-md border border-kelp-500/20 bg-kelp-100 px-4 py-3 text-sm font-bold text-kelp-700">{savedBannerMessage}</p> : null}
           {errorBannerMessage ? <p className="mt-8 rounded-md border border-coral-500/20 bg-coral-100 px-4 py-3 text-sm font-bold text-coral-700">{errorBannerMessage}</p> : null}
 
-          <section id="exchange" className="scroll-mt-36 py-14">
-            <SectionHeader title="What you offer" learnHref="#experience" />
-            <FactGrid facts={offerFacts} iconFor={offerIcon} />
-          </section>
+          {offerFacts.length > 0 ? (
+            <section id="exchange" className="scroll-mt-36 py-14">
+              <SectionHeader title="What you offer" learnHref={hasExperienceDetails ? "#experience" : undefined} />
+              <FactGrid facts={offerFacts} iconFor={offerIcon} />
+            </section>
+          ) : null}
 
           {expedition.marketplace.additionalFee ? (
             <>
@@ -342,11 +364,15 @@ export default async function ExpeditionDetailPage({
             </>
           ) : null}
 
-          <DetailDivider />
-          <section className="py-14">
-            <SectionHeader title="What you get" learnHref="#experience" />
-            <FactGrid facts={benefitFacts} iconFor={benefitIcon} />
-          </section>
+          {benefitFacts.length > 0 ? (
+            <>
+              <DetailDivider />
+              <section className="py-14">
+                <SectionHeader title="What you get" learnHref={hasExperienceDetails ? "#experience" : undefined} />
+                <FactGrid facts={benefitFacts} iconFor={benefitIcon} />
+              </section>
+            </>
+          ) : null}
 
           <DetailDivider />
           <section id="availability" tabIndex={-1} className="scroll-mt-36 py-14 outline-none">
@@ -394,9 +420,9 @@ export default async function ExpeditionDetailPage({
                         {departure.availableSeats} of {departure.capacity} places remaining
                       </h3>
                       <div className="mt-3 flex flex-wrap gap-x-5 gap-y-2 text-sm font-semibold text-ocean-900/58">
-                        <span>Trip leader: {departure.guide ?? "Field team leader"}</span>
-                        <span>Meeting point: {departure.meetingPoint ?? expedition.region}</span>
-                        <span>Minimum {departure.minParticipants} participants</span>
+                        {departure.guide ? <span>Trip leader: {departure.guide}</span> : null}
+                        {departure.meetingPoint ? <span>Meeting point: {departure.meetingPoint}</span> : null}
+                        {departure.minParticipants > 0 ? <span>Minimum {departure.minParticipants} participants</span> : null}
                       </div>
                     </div>
                     <div className="grid gap-3 lg:justify-items-end">
@@ -471,19 +497,21 @@ export default async function ExpeditionDetailPage({
             </form>
           </section>
 
+          {hasExperienceDetails ? (
+            <>
           <DetailDivider />
           <section id="experience" className="scroll-mt-36 py-14">
-            <SectionHeader title="The Experience" learnHref="#photos" />
+            <SectionHeader title="The Experience" learnHref={expedition.galleryImages.length > 0 ? "#photos" : undefined} />
             <div className="mt-8 grid gap-12 lg:grid-cols-[0.58fr_0.42fr]">
               <div>
-                <h3 className="text-2xl font-semibold tracking-normal text-ocean-900">{expedition.overview.title}</h3>
+                {expedition.overview.title ? <h3 className="text-2xl font-semibold tracking-normal text-ocean-900">{expedition.overview.title}</h3> : null}
                 {expedition.overview.paragraphs.map((paragraph, index) => (
                   <p key={paragraph} className={cn(index === 0 ? "mt-5" : "mt-4", "max-w-2xl text-base leading-8 text-ocean-900/62")}>
                     {paragraph}
                   </p>
                 ))}
                 <Link href="#ask-question" className="mt-5 inline-flex items-center gap-1 text-base font-bold text-sky-700">
-                  + Learn more
+                  + Ask the expedition team
                 </Link>
               </div>
               <div className="grid gap-8">
@@ -506,6 +534,11 @@ export default async function ExpeditionDetailPage({
             </div>
           </section>
 
+            </>
+          ) : null}
+
+          {hasTravelPlanning ? (
+            <>
           <DetailDivider />
           <section id="travel-planning" className="scroll-mt-36 py-14">
             <SectionHeader
@@ -553,9 +586,14 @@ export default async function ExpeditionDetailPage({
             </div>
           </section>
 
+            </>
+          ) : null}
+
+          {sdgFacts.length > 0 ? (
+            <>
           <DetailDivider />
           <section className="py-14">
-            <SectionHeader title="UN Sustainable Development Goals" body="Join the host in pursuit of these goals and contribute to building a better and more sustainable future for all." learnHref="#impact" />
+            <SectionHeader title="UN Sustainable Development Goals" body="Goals shown here are derived only from host-provided details or recorded impact targets." learnHref={hasImpact ? "#impact" : undefined} />
             <div className="mt-10 grid gap-x-12 gap-y-10 md:grid-cols-2">
               {sdgFacts.map((goal) => (
                 <div key={goal.code} className="grid grid-cols-[132px_minmax(0,1fr)] gap-7">
@@ -571,6 +609,11 @@ export default async function ExpeditionDetailPage({
             </div>
           </section>
 
+            </>
+          ) : null}
+
+          {expedition.galleryImages.length > 0 ? (
+            <>
           <DetailDivider />
           <section id="photos" className="scroll-mt-36 py-14">
             <SectionHeader title={`Photos (${expedition.galleryImages.length})`} />
@@ -584,6 +627,9 @@ export default async function ExpeditionDetailPage({
               ))}
             </div>
           </section>
+
+            </>
+          ) : null}
 
           {expedition.travelerMedia.length > 0 ? (
             <>
@@ -636,25 +682,11 @@ export default async function ExpeditionDetailPage({
                   <div className="relative aspect-square overflow-hidden rounded-md bg-ocean-100">
                     {hostImage ? <Image src={hostImage} alt={`${expedition.hostedBy.title} host`} fill className="object-cover" sizes="180px" /> : null}
                   </div>
-                  <p className="mt-4 text-sm font-semibold text-kelp-700">&bull; Recently active</p>
+                  {expedition.hostedBy.verificationLabel ? <p className="mt-4 text-sm font-semibold text-kelp-700">{expedition.hostedBy.verificationLabel}</p> : null}
                 </div>
                 <div>
                   <h3 className="text-xl font-bold text-ocean-900">{expedition.hostedBy.title}</h3>
-                  <div className="mt-6 grid gap-5">
-                    {[
-                      ["Response Rate", "This host usually answers most messages."],
-                      ["Response Time", "This host usually writes back in a few hours."],
-                      ["Verified Host", expedition.hostedBy.verificationLabel]
-                    ].map(([label, body]) => (
-                      <div key={label} className="grid grid-cols-[28px_minmax(0,1fr)] gap-4">
-                        <MessageSquareText size={24} strokeWidth={1.8} aria-hidden="true" className="text-ocean-900/70" />
-                        <div>
-                          <p className="text-lg font-bold text-ocean-900">{label}</p>
-                          <p className="mt-1 text-base leading-7 text-ocean-900/58">{body}</p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+                  {expedition.partnerDescription ? <p className="mt-5 text-base leading-7 text-ocean-900/62">{expedition.partnerDescription}</p> : null}
                 </div>
               </div>
               <div className="overflow-hidden rounded-md bg-sky-700 p-8 text-white">
@@ -683,14 +715,21 @@ export default async function ExpeditionDetailPage({
             </>
           ) : null}
 
+          {hasMap ? (
+            <>
           <DetailDivider />
           <section id="map" className="scroll-mt-36 py-14">
-            <SectionHeader title="Map" body={expedition.route.privacyNote} />
+            <SectionHeader title="Map" body={expedition.route.privacyNote || undefined} />
             <div className="mt-8 overflow-hidden rounded-md border border-ocean-900/10 bg-ocean-50">
-              <iframe title={expedition.route.mapTitle} className="h-[420px] w-full border-0 lg:h-[560px]" loading="lazy" src={expedition.route.mapEmbedUrl} />
+              <iframe title={expedition.route.mapTitle || `${expedition.title} map`} className="h-[420px] w-full border-0 lg:h-[560px]" loading="lazy" src={expedition.route.mapEmbedUrl} />
             </div>
           </section>
 
+            </>
+          ) : null}
+
+          {hasImpact ? (
+            <>
           <DetailDivider />
           <section id="impact" className="scroll-mt-36 py-14">
             <SectionHeader title="Terumbu conservation impact" body={`${formatCurrency(expedition.impact.conservationContribution, expedition.currency)} from each booking supports the associated conservation program. ${expedition.impact.summary}`} />
@@ -719,6 +758,9 @@ export default async function ExpeditionDetailPage({
               </div>
             ) : null}
           </section>
+
+            </>
+          ) : null}
 
           <DetailDivider />
           <section id="ask-question" className="scroll-mt-36 py-14">
@@ -790,6 +832,8 @@ export default async function ExpeditionDetailPage({
             </div>
           </section>
 
+          {expedition.faqs.length > 0 ? (
+            <>
           <DetailDivider />
           <section id="faq" className="scroll-mt-36 py-14">
             <SectionHeader title="Before you book" />
@@ -803,6 +847,11 @@ export default async function ExpeditionDetailPage({
             </div>
           </section>
 
+            </>
+          ) : null}
+
+          {expedition.sustainability.length > 0 ? (
+            <>
           <DetailDivider />
           <section className="py-14">
             <SectionHeader title="How we travel responsibly" />
@@ -816,6 +865,9 @@ export default async function ExpeditionDetailPage({
             </div>
             <Link href="/terms" className="mt-6 inline-flex text-sm font-bold text-sky-700">Read Participant Code of Conduct</Link>
           </section>
+
+            </>
+          ) : null}
 
           {expedition.tripUpdates.length > 0 ? (
             <>

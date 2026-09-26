@@ -104,6 +104,12 @@ function normalized(value: string | null | undefined) {
     .toLowerCase();
 }
 
+const obsoleteMarketplaceLabels = new Set(["sustainable project", "higher approval", "higher chance of approval"]);
+
+function publicMarketplaceLabels(values: string[]) {
+  return values.filter((value) => !obsoleteMarketplaceLabels.has(normalized(value)));
+}
+
 function includesNormalized(values: string[], expected: string | undefined) {
   const target = normalized(expected);
 
@@ -169,7 +175,7 @@ export function normalizeExpeditionMarketplaceMetadata(metadata: unknown, defaul
   return {
     typeLabel: text(source.typeLabel, defaults.typeLabel),
     programTypes: textArray(source.programTypes, defaults.programTypes),
-    highlights: textArray(source.highlights, defaults.highlights),
+    highlights: publicMarketplaceLabels(textArray(source.highlights, defaults.highlights)),
     purposes: textArray(source.purposes, defaults.purposes),
     helpActivities: textArray(source.helpActivities, defaults.helpActivities),
     styles: textArray(source.styles, defaults.styles),
@@ -179,7 +185,7 @@ export function normalizeExpeditionMarketplaceMetadata(metadata: unknown, defaul
     mealsIncluded: text(source.mealsIncluded, defaults.mealsIncluded),
     digitalNomadAmenities: textArray(source.digitalNomadAmenities, defaults.digitalNomadAmenities),
     benefits: textArray(source.benefits, defaults.benefits),
-    badges: textArray(source.badges, defaults.badges),
+    badges: publicMarketplaceLabels(textArray(source.badges, defaults.badges)),
     additionalFee
   };
 }

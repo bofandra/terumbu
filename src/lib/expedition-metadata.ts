@@ -150,11 +150,11 @@ function record(value: unknown): Record<string, unknown> {
   return isRecord(value) ? value : {};
 }
 
-function text(value: unknown, fallback: string) {
+function text(value: unknown, fallback = "") {
   return typeof value === "string" && value.trim() ? value.trim() : fallback;
 }
 
-function numberValue(value: unknown, fallback: number) {
+function numberValue(value: unknown, fallback = 0) {
   const parsed = typeof value === "number" ? value : typeof value === "string" ? Number(value) : NaN;
 
   return Number.isFinite(parsed) ? parsed : fallback;
@@ -179,7 +179,7 @@ function objectArray<T>(value: unknown, fallback: T[], mapper: (value: Record<st
     return fallback;
   }
 
-  return value.map((item, index) => mapper(record(item), fallback[index] ?? fallback[0])).filter(Boolean);
+  return value.map((item, index) => mapper(record(item), fallback[index] ?? fallback[0] ?? ({} as T))).filter(Boolean);
 }
 
 function pairArray(value: unknown, fallback: { label: string; value: string }[]) {
@@ -224,245 +224,26 @@ export function parseExpeditionMetadataJson(value: string) {
 }
 
 export function buildDefaultExpeditionDetailMetadata(input: DefaultExpeditionMetadataInput): ExpeditionDetailMetadata {
-  const capacityLabel = input.maxCapacity > 0 ? `Max ${input.maxCapacity} people` : "Capacity pending";
-
+  const quickFacts: { label: string; value: string }[] = [];
+  if (input.durationLabel.trim()) quickFacts.push({ label: "Duration", value: input.durationLabel });
+  if (input.maxCapacity > 0) quickFacts.push({ label: "Group size", value: `Up to ${input.maxCapacity} people` });
+  if (input.price > 0) quickFacts.push({ label: "Per person", value: formatCurrency(input.price, input.currency) });
   return {
-    categoryLabel: "Coral Restoration Expedition",
-    activitySummary: "Boat travel, snorkeling, and outdoor field conditions.",
-    documentationUrl: "",
-    rating: 0,
-    reviewCount: 0,
-    participantCount: 0,
-    difficulty: "Moderate",
-    minimumAge: 16,
-    languages: ["English", "Bahasa Indonesia"],
-    skillRequirements: ["Snorkeling ability required", "Diving certification optional"],
-    tags: ["Coral restoration", "Reef monitoring", "Community-based conservation", "Snorkeling", "Small group", "SDG 14"],
-    quickFacts: [
-      { label: "Duration", value: input.durationLabel },
-      { label: "Small group", value: capacityLabel },
-      { label: "Difficulty", value: "Moderate" },
-      { label: "Min. age", value: "16+ years old" },
-      { label: "Swimming ability", value: "Snorkeling required" },
-      { label: "Per person", value: formatCurrency(input.price, input.currency) }
-    ],
-    galleryImages: input.galleryImages,
-    hostedBy: input.hostedBy ?? {
-      title: "Hosted by Terumbu.eco",
-      verificationLabel: "Verified Expedition Partner",
-      profileHref: "",
-      profileLabel: "View partner profile"
-    },
-    overview: {
-      title: "A Conservation Journey, Not Just a Holiday",
-      paragraphs: [
-        `This expedition blends adventure and purpose. You will explore ${input.region}'s seascapes, learn from local conservation experts, and contribute to active coral restoration projects.`,
-        "Participants support field teams through supervised preparation, documentation, and learning activities. The work is designed to help, not replace trained restoration practitioners."
-      ],
-      pillars: [
-        { title: "Explore", body: "Discover pristine lagoons, islands, and vibrant marine life." },
-        { title: "Contribute", body: "Assist with supervised restoration, monitoring, and cleanups." },
-        { title: "Learn", body: "Gain knowledge from marine professionals and local teams." }
-      ],
-      passportNote: "Impact recorded in your Passport after completion."
-    },
-    highlights: [
-      { title: "Prepare coral fragments with trained restoration staff", status: "Weather-dependent" },
-      { title: "Visit an active coral nursery", status: "Weather-dependent" },
-      { title: "Record basic reef-monitoring observations", status: "Included" },
-      { title: "Learn from local marine conservation practitioners", status: "Guaranteed" },
-      { title: "Support community-led conservation", status: "Included" },
-      { title: "Receive a verified expedition record in your Impact Passport", status: "Included" }
-    ],
-    impact: {
-      title: "How This Expedition Creates Impact",
-      summary: "Each booking directly supports the associated conservation program.",
-      contributionPercent: 16,
-      methodologyUpdatedAt: "2026-06-01",
-      methodologyNote:
-        "Estimates use booking allocation, unit-cost assumptions from the related campaign, a monitoring period of one field cycle, and partner activity records.",
-      targets: [],
-      allocation: [
-        { label: "Field conservation activities", percent: 35 },
-        { label: "Local guides and community services", percent: 25 },
-        { label: "Accommodation and meals", percent: 18 },
-        { label: "Boats and local transport", percent: 12 },
-        { label: "Safety, insurance, and equipment", percent: 6 },
-        { label: "Platform operations", percent: 4 }
-      ]
-    },
-    priceBreakdown: {
-      equipmentRental: 250000,
-      platformFeePercent: 4
-    },
-    itineraryTitle: `${input.durationLabel.split(" / ")[0]} in the field`,
-    itineraryDisclaimer: "Itinerary may change because of weather, sea conditions, conservation priorities, or safety considerations.",
-    itinerary: [
-      {
-        day: "Day 1",
-        title: "Arrival and Orientation",
-        meals: "Dinner",
-        physicalLevel: "Light",
-        activities: ["Sorong arrival", "Transfer to harbor", "Boat journey to base island", "Safety and conservation briefing", "Welcome dinner"]
-      },
-      {
-        day: "Day 2",
-        title: "Coral Nursery and Field Training",
-        meals: "Breakfast, lunch, dinner",
-        physicalLevel: "Moderate",
-        activities: ["Reef-ecology introduction", "Equipment familiarization", "Coral nursery visit", "Supervised conservation activity", "Field debrief"]
-      },
-      {
-        day: "Day 3",
-        title: "Reef Monitoring and Community Program",
-        meals: "Breakfast, lunch, dinner",
-        physicalLevel: "Moderate",
-        activities: ["Monitoring-site visit", "Photo and observation recording", "Community conservation discussion", "Optional snorkeling", "Impact-data review"]
-      },
-      {
-        day: "Day 4",
-        title: "Reflection and Departure",
-        meals: "Breakfast",
-        physicalLevel: "Light",
-        activities: ["Final learning session", "Participant feedback", "Impact Passport confirmation", "Boat transfer", "Departure from Sorong"]
-      }
-    ],
-    included: [
-      "Three nights of accommodation",
-      "Meals listed in the itinerary",
-      "Local boat transport",
-      "Harbor transfer",
-      "Conservation activities",
-      "Field equipment",
-      "Expedition leader and local guide",
-      "Participant insurance",
-      "Impact Passport record",
-      "Digital participation certificate"
-    ],
-    notIncluded: [
-      "Flight to Sorong",
-      "Personal travel insurance extension",
-      "Diving equipment unless selected",
-      "Personal expenses",
-      "Additional accommodation",
-      "Optional activities",
-      "Medical testing or certification"
-    ],
-    requirements: [
-      "Comfortable on small boats",
-      "Able to swim or snorkel",
-      "Able to walk on uneven and wet surfaces",
-      "Able to join outdoor activity for several hours",
-      "No conservation experience required"
-    ],
-    safety: [
-      "Life jackets provided",
-      "Certified boat operators",
-      "First-aid equipment",
-      "Emergency communication",
-      "Weather monitoring",
-      "Participant insurance",
-      "Maximum ratio: 1 facilitator for every 6 participants"
-    ],
-    emergencyPlanSummary: "A public summary is provided during briefing. Sensitive operational details are shared only with confirmed participants.",
-    sustainability: [
-      "No coral touching without direct instruction",
-      "No wildlife feeding",
-      "Reef-safe personal products encouraged",
-      "Local procurement where practical",
-      "Waste-management protocol",
-      "Community consent and conservation-first itinerary decisions"
-    ],
-    route: {
-      title: "Route without exposing sensitive reef coordinates",
-      mapTitle: `OpenStreetMap route preview for ${input.region} expedition`,
-      mapEmbedUrl: "https://www.openstreetmap.org/export/embed.html?bbox=130.2%2C-0.7%2C131%2C0.2&layer=mapnik",
-      privacyNote: "Precise restoration-site coordinates are hidden to protect the ecosystem.",
-      sidebarTitle: "Route privacy",
-      sidebarNote: "Exact restoration coordinates are hidden. Public maps show approximate zones and travel sequence only.",
-      steps: ["Sorong Airport", "Sorong Harbor", "Expedition Base Island", "General conservation zone"],
-      travelTimes: ["Airport to harbor: 20-30 min", "Harbor to island: 2-3 hours by boat", "Daily boat journey: 20-45 min depending on sea conditions"]
-    },
-    accommodation: {
-      name: `${input.region} Eco-lodge partner stay`,
-      type: "Shared twin room included",
-      details: ["Fan-cooled rooms", "Shared or private bathroom by availability", "Limited mobile coverage", "Refill drinking water", "Local meals served family-style"],
-      mealNote: "Three breakfasts, three lunches, and three dinners are included. Vegetarian and halal-friendly meals can be requested; allergy-safe preparation cannot be guaranteed."
-    },
-    travelInfo: {
-      meetingPoint: "Final meeting point is shared with confirmed participants before departure.",
-      nearestAirport: `Nearest major arrival airport for the ${input.region} route`,
-      airportTransfer: "Local transfer guidance is provided after booking. Confirm whether transfers are included in the expedition inclusions.",
-      arrivalGuidance: "Plan to arrive with enough buffer before the first scheduled transfer. Remote-island routes can be affected by weather and transport changes.",
-      visaGuidance: "Travelers are responsible for checking Indonesia entry, passport, and visa requirements for their nationality before travel.",
-      insuranceGuidance: "Personal travel insurance covering medical care, trip disruption, and the planned field activities is strongly recommended unless explicitly included.",
-      connectivity: "Mobile signal and internet access may be limited during field days and island transfers.",
-      localTimeZone: "Indonesia local time; confirm the destination time zone in your pre-departure notes.",
-      supportContact: "Use Ask the Expedition Team before booking. Confirmed participants receive operational contact details before departure.",
-      packingHighlights: ["Passport and required travel documents", "Reef-safe sun protection", "Reusable water bottle", "Quick-dry field clothing", "Personal medication", "Waterproof bag or dry pouch"]
-    },
-    team: [
-      { name: "Dimas Pratama", role: "Expedition leader", detail: "8 years leading marine field programs / English and Bahasa Indonesia" },
-      { name: "Partner field team", role: "Marine conservation lead", detail: "Restoration and monitoring partner for the associated campaign" },
-      { name: "Local community coordinator", role: "Participant support", detail: "Coordinates village etiquette, meals, transfers, and local guides" },
-      { name: "Safety officer", role: "First-aid lead", detail: "Responsible for field briefings and emergency communication" }
-    ],
-    preparationCourse: input.preparationCourse ?? {
-      title: "Expedition Preparation",
-      summary: "Review conservation etiquette, safety expectations, and field participation basics before departure.",
-      imageUrl: null,
-      href: "/academy",
-      ctaLabel: "Open Academy"
-    },
-    reviewCategories: [
-      { label: "Conservation experience", value: "Excellent" },
-      { label: "Field-team quality", value: "Excellent" },
-      { label: "Safety", value: "Excellent" },
-      { label: "Accommodation", value: "Excellent" },
-      { label: "Value", value: "Excellent" }
-    ],
-    reviews: [
-      {
-        name: "Raka A.",
-        joinedAs: "First-time conservation traveler",
-        rating: 5,
-        date: "June 2026",
-        body: "The field team explained what we could safely help with and what should be left to trained restorers. It felt purposeful and careful."
-      },
-      {
-        name: "Maya S.",
-        joinedAs: "Student participant",
-        rating: 5,
-        date: "May 2026",
-        body: "The best part was reviewing monitoring photos and understanding how activity becomes part of the campaign record."
-      }
-    ],
-    tripUpdates: input.tripUpdates,
-    cancellationPolicy: [
-      { label: "More than 30 days before departure", refund: "90%" },
-      { label: "15-30 days before departure", refund: "50%" },
-      { label: "Fewer than 15 days", refund: "Non-refundable" },
-      { label: "Operator cancellation", refund: "Full refund or reschedule" }
-    ],
-    faqs: [
-      { question: "Do I need conservation experience?", answer: "No. Field activities are supervised and designed for beginners." },
-      { question: "Do I need to be able to dive?", answer: "No. Snorkeling ability is required; diving certification is only needed for optional diving activities." },
-      { question: "Are flights included?", answer: `Flights to ${input.region} are not included unless the partner adds them to the included list.` },
-      { question: "How is my booking contribution used?", answer: "The booking contribution supports field conservation activity connected to the associated campaign." },
-      { question: "Will this appear in my Impact Passport?", answer: "Confirmed participants receive a verified expedition record after completion." }
-    ],
-    finalCta: {
-      eyebrow: "Final call",
-      title: `Join the ${input.title}`,
-      body: "Learn from local conservation teams, contribute to active field work, and bring the experience into your Impact Passport.",
-      primaryLabel: "Check Available Dates",
-      secondaryLabel: "Ask the Expedition Team"
-    },
-    weatherAdvisory: {
-      title: "Weather advisory",
-      body: "Boat schedules may shift for sea conditions. Confirmed participants receive operational activity notes before departure."
-    },
-    bookingTrustIndicators: ["Secure payment", "Verified partner", "Insurance included", "Transparent pricing"]
+    categoryLabel: "", activitySummary: "", documentationUrl: "", rating: 0, reviewCount: 0, participantCount: 0, difficulty: "", minimumAge: 0,
+    languages: [], skillRequirements: [], tags: [], quickFacts, galleryImages: input.galleryImages,
+    hostedBy: input.hostedBy ?? { title: "", verificationLabel: "", profileHref: "", profileLabel: "View partner profile" },
+    overview: { title: "", paragraphs: [], pillars: [], passportNote: "" }, highlights: [],
+    impact: { title: "", summary: "", contributionPercent: 0, methodologyUpdatedAt: "", methodologyNote: "", targets: [], allocation: [] },
+    priceBreakdown: { equipmentRental: 0, platformFeePercent: 0 }, itineraryTitle: "", itineraryDisclaimer: "", itinerary: [], included: [], notIncluded: [],
+    requirements: [], safety: [], emergencyPlanSummary: "", sustainability: [],
+    route: { title: "", mapTitle: "", mapEmbedUrl: "", privacyNote: "", sidebarTitle: "", sidebarNote: "", steps: [], travelTimes: [] },
+    accommodation: { name: "", type: "", details: [], mealNote: "" },
+    travelInfo: { meetingPoint: "", nearestAirport: "", airportTransfer: "", arrivalGuidance: "", visaGuidance: "", insuranceGuidance: "", connectivity: "", localTimeZone: "", supportContact: "", packingHighlights: [] },
+    team: [],
+    preparationCourse: input.preparationCourse ?? { title: "", summary: "", imageUrl: null, href: "", ctaLabel: "Open course" },
+    reviewCategories: [], reviews: [], tripUpdates: input.tripUpdates, cancellationPolicy: [], faqs: [],
+    finalCta: { eyebrow: "", title: `Join ${input.title}`, body: "", primaryLabel: "Check Available Dates", secondaryLabel: "Ask the Expedition Team" },
+    weatherAdvisory: { title: "", body: "" }, bookingTrustIndicators: []
   };
 }
 

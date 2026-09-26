@@ -83,39 +83,19 @@ export function buildExpeditionStayRange(durationDays: number, travelLengthLabel
 }
 
 export function buildExpeditionOfferFacts(marketplace: ExpeditionMarketplaceMetadata): ExpeditionFact[] {
-  const facts: ExpeditionFact[] = [
-    {
-      kind: "hours",
-      value: `${marketplace.collaborationHoursPerWeek}h`,
-      label: "Hours per week",
-      description: "Help out and collaborate with your host only a few hours per week."
-    }
-  ];
+  const facts: ExpeditionFact[] = [];
 
-  for (const activity of marketplace.helpActivities.slice(0, 3)) {
-    facts.push({
-      kind: activity.toLowerCase().replace(/[^a-z0-9]+/g, "-"),
-      value: "",
-      label: activity,
-      description: "Support hands-on field work with guidance from the local team."
-    });
+  if (marketplace.collaborationHoursPerWeek > 0) {
+    facts.push({ kind: "hours", value: `${marketplace.collaborationHoursPerWeek}h`, label: "Hours per week", description: "Collaboration time listed by the host." });
   }
 
-  facts.push(
-    marketplace.additionalFee
-      ? {
-          kind: "fee",
-          value: "Fee",
-          label: "Additional Fee",
-          description: "This host charges a local fee in addition to the platform booking."
-        }
-      : {
-          kind: "fee",
-          value: "No fee",
-          label: "No Additional Fee",
-          description: "No extra host fee is listed for this opportunity."
-        }
-  );
+  for (const activity of marketplace.helpActivities.slice(0, 4)) {
+    facts.push({ kind: activity.toLowerCase().replace(/[^a-z0-9]+/g, "-"), value: "", label: activity, description: "Activity listed by the expedition host." });
+  }
+
+  if (marketplace.additionalFee) {
+    facts.push({ kind: "fee", value: "Fee", label: "Additional Fee", description: "An additional local fee is listed by the host." });
+  }
 
   return facts;
 }
@@ -131,68 +111,34 @@ export function buildExpeditionBenefitFacts({
   included: string[];
   hostVerificationLabel: string;
 }): ExpeditionFact[] {
-  const daysOff = marketplace.collaborationHoursPerWeek <= 20 ? 2 : 1;
-  const accommodation = marketplace.accommodations[0] ?? "Accommodation";
-  const nomadAmenity = marketplace.digitalNomadAmenities[0] ?? "Basic Internet Access";
-  const includesCertificate = included.some((item) => item.toLowerCase().includes("certificate"));
-  const stayRange = buildExpeditionStayRange(durationDays, marketplace.travelLengthLabel);
+  const facts: ExpeditionFact[] = [];
 
-  return [
-    {
-      kind: "days-off",
-      value: String(daysOff),
-      label: "Days off per week",
-      description: "Have time off for yourself, go explore the area, or rest for a while."
-    },
-    {
-      kind: "stay",
-      value: stayRange.stayAtLeast,
-      label: marketplace.travelLengthLabel,
-      description: `Plan a stay from ${stayRange.stayAtLeast} and up to ${stayRange.stayUpTo}.`
-    },
-    {
-      kind: "accommodation",
-      value: "",
-      label: accommodation,
-      description: "A place to sleep is included during the confirmed expedition dates."
-    },
-    {
-      kind: "meals",
-      value: "",
-      label: marketplace.mealsIncluded,
-      description: "Meals are included according to the host and departure details."
-    },
-    {
-      kind: "internet",
-      value: "",
-      label: nomadAmenity,
-      description: "Connectivity varies by field site and weather conditions."
-    },
-    {
-      kind: "workspace",
-      value: "",
-      label: marketplace.benefits.find((item) => item.toLowerCase().includes("workspace")) ?? "Dedicated Workspace",
-      description: "A practical place for planning, reflection, or light remote work when available."
-    },
-    {
-      kind: "certificate",
-      value: "",
-      label: includesCertificate ? "Certificate" : "Impact Passport record",
-      description: includesCertificate ? "Get a certificate after finishing your experience." : "Completed trips are recorded in your Terumbu Impact Passport."
-    },
-    {
-      kind: "support",
-      value: "",
-      label: "Support",
-      description: "Get help from Terumbu and the host team before and during the trip."
-    },
-    {
-      kind: "verified-host",
-      value: "",
-      label: "Verified Host",
-      description: hostVerificationLabel
-    }
-  ];
+  if (durationDays > 0) {
+    facts.push({ kind: "stay", value: plural(durationDays, "day"), label: "Expedition duration", description: "Duration configured for this expedition." });
+  }
+  if (marketplace.accommodations[0]) {
+    facts.push({ kind: "accommodation", value: "", label: marketplace.accommodations[0], description: "Accommodation option listed by the host." });
+  }
+  if (marketplace.mealsIncluded) {
+    facts.push({ kind: "meals", value: "", label: marketplace.mealsIncluded, description: "Meal inclusion listed by the host." });
+  }
+  if (marketplace.digitalNomadAmenities[0]) {
+    facts.push({ kind: "internet", value: "", label: marketplace.digitalNomadAmenities[0], description: "Connectivity or work amenity listed by the host." });
+  }
+
+  for (const item of marketplace.benefits.slice(0, 3)) {
+    facts.push({ kind: item.toLowerCase().includes("certificate") ? "certificate" : "benefit", value: "", label: item, description: "Benefit listed by the host." });
+  }
+
+  const explicitCertificate = included.find((item) => item.toLowerCase().includes("certificate"));
+  if (explicitCertificate && !facts.some((fact) => fact.label === explicitCertificate)) {
+    facts.push({ kind: "certificate", value: "", label: explicitCertificate, description: "Included item listed for this expedition." });
+  }
+  if (hostVerificationLabel.trim()) {
+    facts.push({ kind: "verified-host", value: "", label: "Host verification", description: hostVerificationLabel });
+  }
+
+  return facts;
 }
 
 export function buildExpeditionSdgFacts({
@@ -256,27 +202,6 @@ export function buildExpeditionSdgFacts({
     .map((code) => facts.find((fact) => fact.code === code))
     .filter((fact): fact is ExpeditionSdgFact => Boolean(fact));
 
-  return uniqueFacts.length > 0
-    ? uniqueFacts.slice(0, 4)
-    : [
-        {
-          code: "14",
-          label: "Life below water",
-          description: "Protect, restore, and monitor coastal and marine ecosystems.",
-          tone: "ocean"
-        },
-        {
-          code: "13",
-          label: "Climate action",
-          description: "Contribute to ecosystem protection with climate co-benefits.",
-          tone: "kelp"
-        },
-        {
-          code: "8",
-          label: "Decent work and economic growth",
-          description: "Support local livelihoods connected to conservation work.",
-          tone: "sand"
-        }
-      ];
+  return uniqueFacts.slice(0, 4);
 }
 
