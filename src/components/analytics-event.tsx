@@ -31,7 +31,13 @@ export function AnalyticsEvent({
   event: AnalyticsEventName;
   properties?: AnalyticsProperties;
 }) {
+  const serializedProperties = JSON.stringify(properties);
+
   useEffect(() => {
+    if (navigator.doNotTrack === "1") {
+      return;
+    }
+
     const controller = new AbortController();
 
     void fetch("/api/analytics", {
@@ -42,14 +48,14 @@ export function AnalyticsEvent({
       body: JSON.stringify({
         event,
         anonymousId: anonymousId(),
-        properties
+        properties: JSON.parse(serializedProperties) as AnalyticsProperties
       }),
       keepalive: true,
       signal: controller.signal
     }).catch(() => undefined);
 
     return () => controller.abort();
-  }, [event, properties]);
+  }, [event, serializedProperties]);
 
   return null;
 }
