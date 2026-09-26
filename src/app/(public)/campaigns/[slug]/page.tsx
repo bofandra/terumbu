@@ -10,6 +10,7 @@ import {
   Users,
   Waves
 } from "lucide-react";
+import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -24,6 +25,7 @@ import { CampaignSectionTabs } from "@/components/campaign-section-tabs";
 import { CampaignUpdatesEvidence } from "@/components/campaign-updates-evidence";
 import { ExpeditionCard } from "@/components/expedition-card";
 import { ImpactMapPreview } from "@/components/impact-map-preview";
+import { JsonLd } from "@/components/json-ld";
 import { SectionHeading } from "@/components/section-heading";
 import { Button, ButtonLink } from "@/components/ui/button";
 import { MetricValue } from "@/components/ui/metric-value";
@@ -35,6 +37,8 @@ import { followCampaignAction, removeSavedCampaignAction, saveCampaignAction, un
 import { formatCurrency } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
+
+const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://terumbu.eco";
 
 const tabs = [
   { label: "Overview", href: "#overview" },
@@ -111,12 +115,31 @@ function publicDonorName(value: string | null) {
   return value.split(/\s+/)[0];
 }
 
-export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
+export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params;
   const campaign = await getCampaignDetail(slug);
 
+  if (!campaign) {
+    return { title: "Campaign" };
+  }
+
   return {
-    title: campaign?.title ?? "Campaign"
+    title: campaign.title,
+    description: campaign.summary,
+    alternates: { canonical: `/campaigns/${campaign.slug}` },
+    openGraph: {
+      title: campaign.title,
+      description: campaign.summary,
+      type: "website",
+      url: `/campaigns/${campaign.slug}`,
+      images: campaign.imageUrl ? [{ url: campaign.imageUrl }] : undefined
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: campaign.title,
+      description: campaign.summary,
+      images: campaign.imageUrl ? [campaign.imageUrl] : undefined
+    }
   };
 }
 
@@ -212,6 +235,38 @@ export default async function CampaignDetailPage({ params }: { params: Promise<{
   const publicTags = [campaign.category, partnerTypeLabel(campaign.partnerType), campaign.verification, campaign.region];
   const verifiedEvidenceCount = campaign.evidence.filter((item) => item.verificationStatus === "verified").length;
   const campaignPath = `/campaigns/${campaign.slug}`;
+  const campaignUrl = new URL(campaignPath, appUrl).toString();
+  const campaignStructuredData = [
+    {
+      "@context": "https://schema.org",
+      "@type": "WebPage",
+      name: campaign.title,
+      description: campaign.summary,
+      url: campaignUrl,
+      primaryImageOfPage: campaign.imageUrl
+        ? { "@type": "ImageObject", url: campaign.imageUrl }
+        : undefined,
+      about: {
+        "@type": "Thing",
+        name: campaign.category,
+        description: campaign.summary
+      },
+      publisher: {
+        "@type": "Organization",
+        name: "Terumbu.eco",
+        url: appUrl
+      }
+    },
+    {
+      "@context": "https://schema.org",
+      "@type": "BreadcrumbList",
+      itemListElement: [
+        { "@type": "ListItem", position: 1, name: "Home", item: appUrl },
+        { "@type": "ListItem", position: 2, name: "Campaigns", item: new URL("/campaigns", appUrl).toString() },
+        { "@type": "ListItem", position: 3, name: campaign.title, item: campaignUrl }
+      ]
+    }
+  ];
   const recordedMilestones = [
     ...campaign.updates.map((update) => ({
       key: `update-${update.id}`,
@@ -234,6 +289,7 @@ export default async function CampaignDetailPage({ params }: { params: Promise<{
 
   return (
     <main className="pb-24 lg:pb-0">
+      <JsonLd data={campaignStructuredData} />
       <section className="bg-white">
         <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
           <nav className="flex flex-wrap items-center gap-2 text-sm font-semibold text-ocean-900/58" aria-label="Breadcrumb">
