@@ -3556,11 +3556,14 @@ export async function updateExpeditionPublicationStatusAction(formData: FormData
       status: expeditions.status,
       publishedAt: expeditions.publishedAt,
       imageUrl: expeditions.imageUrl,
+      destinationId: expeditions.destinationId,
+      destinationStatus: destinations.status,
       relatedCampaignId: expeditions.relatedCampaignId,
       relatedCampaignStatus: campaigns.status,
       organizationId: campaigns.organizationId
     })
     .from(expeditions)
+    .leftJoin(destinations, eq(expeditions.destinationId, destinations.id))
     .leftJoin(campaigns, eq(expeditions.relatedCampaignId, campaigns.id))
     .where(eq(expeditions.id, expeditionId))
     .limit(1);
@@ -3580,9 +3583,10 @@ export async function updateExpeditionPublicationStatusAction(formData: FormData
       .where(eq(expeditionDepartures.expeditionId, expedition.id));
 
     const relatedCampaignIsPublic = ["published", "funded", "completed"].includes(expedition.relatedCampaignStatus ?? "");
+    const destinationIsPublic = Boolean(expedition.destinationId) && expedition.destinationStatus === "published";
     const hasDeparture = Number(departureSummary?.total ?? 0) > 0;
 
-    if (!expedition.imageUrl || !relatedCampaignIsPublic || !hasDeparture) {
+    if (!expedition.imageUrl || !destinationIsPublic || !relatedCampaignIsPublic || !hasDeparture) {
       redirect(withAdminFormOutcome(`/admin/expeditions/${expedition.id}`, "error", "expedition-not-ready"));
     }
   }
