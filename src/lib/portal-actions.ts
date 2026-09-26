@@ -4053,13 +4053,13 @@ export async function completePartnerExpeditionBookingAction(formData: FormData)
 
   await requireExpeditionAccess(user.id, booking.expeditionId, formData, "/partner/expeditions", "expedition:manage");
 
-  if (booking.status !== "confirmed" || booking.paymentStatus !== "paid") {
-    redirectPartnerError(formData, "/partner/expeditions", "booking-not-confirmed");
-  }
-
   const now = new Date();
-  if (booking.departureEndsAt.getTime() > now.getTime()) {
-    redirectPartnerError(formData, "/partner/expeditions", "booking-not-finished");
+  if (!canCompleteExpeditionBooking({ bookingStatus: booking.status, paymentStatus: booking.paymentStatus, endsAt: booking.departureEndsAt }, now)) {
+    redirectPartnerError(
+      formData,
+      "/partner/expeditions",
+      booking.status !== "confirmed" || booking.paymentStatus !== "paid" ? "booking-not-confirmed" : "booking-not-finished"
+    );
   }
 
   await db.transaction(async (tx) => {
