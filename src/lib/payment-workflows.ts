@@ -828,7 +828,6 @@ export async function transitionExpeditionBookingPayment(
       })
       .where(eq(expeditionDepartures.id, booking.departureId));
 
-    await ensureExpeditionPassportItem(database, booking);
   }
 
   if (wasPaid && !isPaid) {
@@ -842,7 +841,6 @@ export async function transitionExpeditionBookingPayment(
       })
       .where(eq(expeditionDepartures.id, booking.departureId));
 
-    await deleteExpeditionPassportItem(database, booking.id);
   }
 
   if (input.operationType) {
