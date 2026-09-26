@@ -4,6 +4,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowRight, CalendarDays, Check, Compass, MapPinned, Navigation, ShieldCheck } from "lucide-react";
 
+import { AnalyticsEvent } from "@/components/analytics-event";
 import { ExpeditionCard } from "@/components/expedition-card";
 import { JsonLd } from "@/components/json-ld";
 import { destinationMonthLabels } from "@/lib/destination-content";
@@ -86,6 +87,15 @@ export default async function DestinationPage({ params }: { params: Promise<{ sl
 
   return (
     <main className="bg-sand-50">
+      <AnalyticsEvent
+        event="destination_view"
+        properties={{
+          destinationId: destination.id,
+          destinationSlug: destination.slug,
+          expeditionCount: destination.expeditionCount,
+          impactSiteCount: destination.impactSiteCount
+        }}
+      />
       <JsonLd data={destinationStructuredData} />
       <section className="relative overflow-hidden border-b border-ocean-900/10 bg-white">
         {destination.heroImageUrl ? (
