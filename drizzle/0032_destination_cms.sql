@@ -64,7 +64,7 @@ INSERT INTO "destinations" (
   'Conservation expeditions in Raja Ampat',
   'Explore Raja Ampat through conservation expeditions managed by Terumbu partners and linked to field impact records.',
   '["Coral restoration","Reef monitoring","Community conservation","Marine conservation"]'::jsonb,
-  '[{"type":"airport","name":"Domine Eduard Osok Airport, Sorong","code":"SOQ"},{"type":"city","name":"Sorong","code":""}]'::jsonb,
+  '[]'::jsonb,
   '[]'::jsonb,
   '["Confirm the expedition meeting point and transfer plan before arranging onward travel.","Remote island transfers can change with weather and sea conditions."]'::jsonb,
   '["Follow partner and protected-area guidance while visiting reef and community sites."]'::jsonb,
@@ -82,7 +82,7 @@ INSERT INTO "destinations" (
   'Conservation expeditions in Bali',
   'Explore Bali through conservation expeditions managed by Terumbu partners and linked to field impact records.',
   '["Coral restoration","Marine debris reduction","Environmental education","Community conservation"]'::jsonb,
-  '[{"type":"airport","name":"I Gusti Ngurah Rai International Airport","code":"DPS"}]'::jsonb,
+  '[]'::jsonb,
   '[]'::jsonb,
   '["Confirm the transfer time from the arrival hub to the expedition meeting point."]'::jsonb,
   '["Use locally managed services and follow site-specific waste and wildlife guidance."]'::jsonb,
@@ -100,7 +100,7 @@ INSERT INTO "destinations" (
   'Conservation expeditions around Komodo',
   'Explore Flores and Komodo through conservation expeditions managed by Terumbu partners and linked to field impact records.',
   '["Marine conservation","Coastal restoration","Community conservation","Wildlife monitoring"]'::jsonb,
-  '[{"type":"airport","name":"Komodo Airport, Labuan Bajo","code":"LBJ"},{"type":"city","name":"Labuan Bajo","code":""}]'::jsonb,
+  '[]'::jsonb,
   '[]'::jsonb,
   '["Boat routes and meeting points depend on the selected expedition and departure."]'::jsonb,
   '["Protected-area and wildlife rules take priority over itinerary convenience."]'::jsonb,
@@ -136,7 +136,7 @@ INSERT INTO "destinations" (
   'Conservation expeditions in Lombok',
   'Explore Lombok and the Gilis through conservation expeditions managed by Terumbu partners and linked to field impact records.',
   '["Coral restoration","Reef monitoring","Waste reduction","Community conservation"]'::jsonb,
-  '[{"type":"airport","name":"Zainuddin Abdul Madjid International Airport","code":"LOP"}]'::jsonb,
+  '[]'::jsonb,
   '[]'::jsonb,
   '["Confirm whether the selected expedition starts on mainland Lombok or an offshore island."]'::jsonb,
   '["Follow local reef, waste, and community guidance provided by the expedition host."]'::jsonb,
@@ -172,9 +172,15 @@ WHERE "destination_id" IS NULL;
 
 UPDATE "impact_sites"
 SET "destination_id" = CASE
-  WHEN lower("region") LIKE '%raja ampat%' OR lower("region") LIKE '%sorong%' OR lower("region") LIKE '%papua%' THEN (SELECT "id" FROM "destinations" WHERE "slug" = 'raja-ampat')
-  WHEN lower("region") LIKE '%bali%' OR lower("region") LIKE '%denpasar%' OR lower("region") LIKE '%nusa penida%' OR lower("region") LIKE '%nusa lembongan%' THEN (SELECT "id" FROM "destinations" WHERE "slug" = 'bali')
-  WHEN lower("region") LIKE '%komodo%' OR lower("region") LIKE '%labuan bajo%' OR lower("region") LIKE '%flores%' THEN (SELECT "id" FROM "destinations" WHERE "slug" = 'komodo')
+  WHEN "campaign_id" = (SELECT "id" FROM "campaigns" WHERE "slug" = 'restore-raja-ampat-reefs' LIMIT 1)
+    OR lower("region") LIKE '%raja ampat%' OR lower("region") LIKE '%sorong%'
+    THEN (SELECT "id" FROM "destinations" WHERE "slug" = 'raja-ampat')
+  WHEN "campaign_id" = (SELECT "id" FROM "campaigns" WHERE "slug" = 'mangrove-shield-bali' LIMIT 1)
+    OR lower("region") LIKE '%bali%' OR lower("region") LIKE '%denpasar%' OR lower("region") LIKE '%nusa penida%' OR lower("region") LIKE '%nusa lembongan%'
+    THEN (SELECT "id" FROM "destinations" WHERE "slug" = 'bali')
+  WHEN "campaign_id" = (SELECT "id" FROM "campaigns" WHERE "slug" = 'cleanup-komodo-coast' LIMIT 1)
+    OR lower("region") LIKE '%komodo%' OR lower("region") LIKE '%labuan bajo%' OR lower("region") LIKE '%flores%'
+    THEN (SELECT "id" FROM "destinations" WHERE "slug" = 'komodo')
   WHEN lower("region") LIKE '%wakatobi%' THEN (SELECT "id" FROM "destinations" WHERE "slug" = 'wakatobi')
   WHEN lower("region") LIKE '%lombok%' OR lower("region") LIKE '%gili%' THEN (SELECT "id" FROM "destinations" WHERE "slug" = 'lombok')
   ELSE "destination_id"
