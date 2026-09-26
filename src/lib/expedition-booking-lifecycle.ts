@@ -154,3 +154,8 @@ export function departureStatusAfterSeatChange(status: unknown, capacity: number
 
   return normalized;
 }
+
+
+export function canCompleteExpeditionBooking(input: { bookingStatus: unknown; paymentStatus: unknown; endsAt: Date }, now = new Date()) {
+  return String(input.bookingStatus ?? "") === "confirmed" && String(input.paymentStatus ?? "") === "paid" && input.endsAt <= now;
+}

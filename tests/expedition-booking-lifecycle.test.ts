@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import {
+import { canCompleteExpeditionBooking,
   canCancelExpeditionBooking,
   departureStatusAfterSeatChange,
   expeditionDepartureAvailability,
@@ -65,4 +65,13 @@ test("operator cancellation blocks completed, refunded, and already-started book
   assert.equal(canCancelExpeditionBooking({ bookingStatus: "completed", paymentStatus: "paid", startsAt: tomorrow }, now), false);
   assert.equal(canCancelExpeditionBooking({ bookingStatus: "cancelled", paymentStatus: "refunded", startsAt: tomorrow }, now), false);
   assert.equal(canCancelExpeditionBooking({ bookingStatus: "confirmed", paymentStatus: "paid", startsAt: yesterday }, now), false);
+});
+
+
+test("booking completion requires paid confirmed booking after departure end", () => {
+  const now = new Date("2026-09-26T12:00:00Z");
+  assert.equal(canCompleteExpeditionBooking({ bookingStatus: "confirmed", paymentStatus: "paid", endsAt: new Date("2026-09-26T11:00:00Z") }, now), true);
+  assert.equal(canCompleteExpeditionBooking({ bookingStatus: "confirmed", paymentStatus: "paid", endsAt: new Date("2026-09-26T13:00:00Z") }, now), false);
+  assert.equal(canCompleteExpeditionBooking({ bookingStatus: "pending_payment", paymentStatus: "pending", endsAt: new Date("2026-09-26T11:00:00Z") }, now), false);
+  assert.equal(canCompleteExpeditionBooking({ bookingStatus: "cancelled", paymentStatus: "paid", endsAt: new Date("2026-09-26T11:00:00Z") }, now), false);
 });

@@ -694,7 +694,7 @@ export async function transitionDonationPayment(
   };
 }
 
-async function ensureExpeditionPassportItem(
+export async function ensureCompletedExpeditionPassportItem(
   database: DatabaseLike,
   booking: {
     id: string;
@@ -726,9 +726,9 @@ async function ensureExpeditionPassportItem(
       sourceType: "expedition_booking",
       sourceId: booking.id,
       itemType: "expedition",
-      title: `Booked ${booking.expeditionTitle}`,
-      description: `${booking.participantsCount.toLocaleString("id-ID")} participant booking confirmed.`,
-      occurredAt: booking.bookedAt,
+      title: `Completed ${booking.expeditionTitle}`,
+      description: `${booking.participantsCount.toLocaleString("id-ID")} participant expedition completed.`,
+      occurredAt: new Date(),
       metadata: {
         expeditionSlug: booking.expeditionSlug,
         participantsCount: booking.participantsCount
@@ -739,7 +739,7 @@ async function ensureExpeditionPassportItem(
     });
 }
 
-async function deleteExpeditionPassportItem(database: DatabaseLike, bookingId: string) {
+export async function deleteExpeditionPassportItem(database: DatabaseLike, bookingId: string) {
   await database.delete(impactPassportItems).where(and(eq(impactPassportItems.sourceType, "expedition_booking"), eq(impactPassportItems.sourceId, bookingId)));
 }
 
@@ -828,7 +828,6 @@ export async function transitionExpeditionBookingPayment(
       })
       .where(eq(expeditionDepartures.id, booking.departureId));
 
-    await ensureExpeditionPassportItem(database, booking);
   }
 
   if (wasPaid && !isPaid) {
@@ -842,7 +841,6 @@ export async function transitionExpeditionBookingPayment(
       })
       .where(eq(expeditionDepartures.id, booking.departureId));
 
-    await deleteExpeditionPassportItem(database, booking.id);
   }
 
   if (input.operationType) {
