@@ -42,7 +42,8 @@ assert_public_page "/about" >/dev/null
 assert_public_page "/login" >/dev/null
 
 first_campaign=""
-if [[ ${campaigns} =~ href="(/campaigns/[^"#?]+) ]]; then
+campaign_href_re='href="(/campaigns/[^"#?]+)'
+if [[ ${campaigns} =~ ${campaign_href_re} ]]; then
   first_campaign="${BASH_REMATCH[1]}"
 fi
 if [ -n "${first_campaign}" ]; then
@@ -50,7 +51,8 @@ if [ -n "${first_campaign}" ]; then
 fi
 
 first_expedition=""
-if [[ ${expeditions} =~ href="(/expeditions/[^"#?]+) ]]; then
+expedition_href_re='href="(/expeditions/[^"#?]+)'
+if [[ ${expeditions} =~ ${expedition_href_re} ]]; then
   first_expedition="${BASH_REMATCH[1]}"
 fi
 if [ -n "${first_expedition}" ]; then
