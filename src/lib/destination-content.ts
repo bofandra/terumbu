@@ -146,7 +146,7 @@ export function destinationStatus(value: unknown): DestinationStatus {
 }
 
 export function destinationMonthLabels(months: number[]) {
-  const labels = new Map(destinationMonthOptions.map((month) => [month.value, month.label]));
+  const labels = new Map<number, string>(destinationMonthOptions.map((month) => [month.value, month.label]));
 
   return months.map((month) => labels.get(month)).filter((label): label is string => Boolean(label));
 }
