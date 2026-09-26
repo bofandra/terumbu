@@ -6,6 +6,7 @@ import { getSessionUser } from "@/lib/auth";
 import { createDonationAction } from "@/lib/checkout-actions";
 import { normalizeDonationContributionIntent, parseDonationAmount } from "@/lib/checkout";
 import { suggestedDonationAmounts } from "@/lib/domain";
+import { getDonationPaymentInstructions } from "@/lib/donation-payment-instructions";
 import { getDonationCheckoutOptions } from "@/lib/queries";
 
 export const metadata = {
@@ -25,7 +26,11 @@ type DonationCheckoutPageProps = {
 
 export default async function DonationCheckoutPage({ searchParams }: DonationCheckoutPageProps) {
   const params = await searchParams;
-  const [campaigns, user] = await Promise.all([getDonationCheckoutOptions(), getSessionUser()]);
+  const [campaigns, user, paymentInstructions] = await Promise.all([
+    getDonationCheckoutOptions(),
+    getSessionUser(),
+    getDonationPaymentInstructions()
+  ]);
   const selectedCampaign = params?.campaign ?? campaigns[0]?.slug;
   const selectedCampaignData = campaigns.find((campaign) => campaign.slug === selectedCampaign) ?? campaigns[0];
   const selectedCurrency = selectedCampaignData?.currency ?? "USD";
@@ -105,15 +110,27 @@ export default async function DonationCheckoutPage({ searchParams }: DonationChe
             Message
             <textarea name="message" className="min-h-24 w-full min-w-0 rounded-xl border border-ocean-900/14 px-4 py-3 outline-none focus:border-coral-500" />
           </label>
-          <div className="grid gap-3 rounded-xl border border-ocean-900/10 bg-sand-50 p-4">
-            <p className="font-bold text-ocean-900">Payment outside the website</p>
-            <p className="text-sm leading-6 text-ocean-900/62">
-              Selesaikan pembayaran melalui kanal resmi Terumbu.eco di luar website. Jika belum menerima instruksi pembayaran, hubungi tim Terumbu terlebih dahulu. Setelah bukti diunggah, admin akan memeriksa pembayaran secara manual sebelum receipt dan impact record diterbitkan.
-            </p>
-            <a href="mailto:support@terumbu.eco?subject=Donation payment instructions" className="w-fit text-sm font-bold text-coral-700 underline-offset-4 hover:underline">
-              Request payment instructions
-            </a>
-          </div>
+          {paymentInstructions.enabled ? (
+            <div className="grid gap-3 rounded-xl border border-kelp-500/20 bg-kelp-100 p-4">
+              <div>
+                <p className="text-xs font-bold uppercase tracking-[0.14em] text-kelp-700">Manual payment instructions</p>
+                <p className="mt-1 font-bold text-ocean-900">{paymentInstructions.methodLabel}</p>
+              </div>
+              <dl className="grid gap-2 text-sm sm:grid-cols-2">
+                <div><dt className="font-semibold text-ocean-900/52">Bank / provider</dt><dd className="mt-1 font-bold text-ocean-900">{paymentInstructions.providerName}</dd></div>
+                <div><dt className="font-semibold text-ocean-900/52">Recipient</dt><dd className="mt-1 font-bold text-ocean-900">{paymentInstructions.accountName}</dd></div>
+                <div><dt className="font-semibold text-ocean-900/52">Account / reference</dt><dd className="mt-1 font-bold text-ocean-900">{paymentInstructions.accountNumber}</dd></div>
+                {paymentInstructions.swiftCode ? <div><dt className="font-semibold text-ocean-900/52">SWIFT / international code</dt><dd className="mt-1 font-bold text-ocean-900">{paymentInstructions.swiftCode}</dd></div> : null}
+              </dl>
+              {paymentInstructions.notes ? <p className="text-sm leading-6 text-ocean-900/68">{paymentInstructions.notes}</p> : null}
+              <p className="text-xs leading-5 text-ocean-900/52">After paying, upload your payment proof below. Receipt and impact records are issued only after platform verification.</p>
+            </div>
+          ) : (
+            <div className="rounded-xl border border-coral-500/20 bg-coral-100 p-4">
+              <p className="font-bold text-coral-700">Manual payment is temporarily unavailable</p>
+              <p className="mt-1 text-sm leading-6 text-ocean-900/62">Terumbu has not published an active payment destination yet. Please return later rather than sending funds to an unverified destination.</p>
+            </div>
+          )}
           <label className="grid min-w-0 gap-2 text-sm font-semibold text-ocean-900">
             Payment reference
             <input
@@ -132,7 +149,7 @@ export default async function DonationCheckoutPage({ searchParams }: DonationChe
               required
             />
           </label>
-          <Button type="submit">Submit Payment Proof</Button>
+          <Button type="submit" disabled={!paymentInstructions.enabled}>Submit Payment Proof</Button>
         </form>
       </section>
     </main>
