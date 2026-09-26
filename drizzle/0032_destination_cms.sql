@@ -93,6 +93,7 @@ INSERT INTO "destinations" (
 (
   'f1000000-0000-4000-8000-000000000003',
   'Komodo',
+  'komodo',
   'East Nusa Tenggara',
   'Bali & Nusa Tenggara',
   'Flores and Komodo conservation travel',
