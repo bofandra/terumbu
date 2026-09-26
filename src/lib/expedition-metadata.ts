@@ -413,3 +413,28 @@ export function metadataDate(value: string) {
 
   return Number.isNaN(date.getTime()) ? new Date("2026-06-01T00:00:00.000Z") : date;
 }
+
+
+export function expeditionTravelerReadiness(metadata: ExpeditionDetailMetadata) {
+  const checks = {
+    languages: metadata.languages.length > 0,
+    requirements: metadata.requirements.length > 0,
+    safety: metadata.safety.length > 0 && Boolean(metadata.emergencyPlanSummary.trim()),
+    itinerary: metadata.itinerary.length > 0,
+    accommodation: Boolean(metadata.accommodation.name.trim() || metadata.accommodation.type.trim()) && metadata.accommodation.details.length > 0,
+    arrival: Boolean(metadata.travelInfo.meetingPoint.trim() && metadata.travelInfo.nearestAirport.trim() && metadata.travelInfo.arrivalGuidance.trim()),
+    internationalTravel: Boolean(metadata.travelInfo.visaGuidance.trim() && metadata.travelInfo.insuranceGuidance.trim() && metadata.travelInfo.localTimeZone.trim()),
+    packing: metadata.travelInfo.packingHighlights.length > 0,
+    cancellation: metadata.cancellationPolicy.length > 0
+  };
+
+  const missing = Object.entries(checks)
+    .filter(([, ready]) => !ready)
+    .map(([key]) => key);
+
+  return {
+    checks,
+    missing,
+    ready: missing.length === 0
+  };
+}
