@@ -912,7 +912,8 @@ export async function getCampaignDetail(slug: string) {
     budgetRows,
     timelineRows,
     teamRows,
-    impactTargetRows
+    impactTargetRows,
+    activityRows
   ] = await Promise.all([
     db
       .select({
@@ -1052,7 +1053,21 @@ export async function getCampaignDetail(slug: string) {
       })
       .from(campaignImpactTargets)
       .where(eq(campaignImpactTargets.campaignId, row.id))
-      .orderBy(asc(campaignImpactTargets.sortOrder), asc(campaignImpactTargets.label))
+      .orderBy(asc(campaignImpactTargets.sortOrder), asc(campaignImpactTargets.label)),
+    db
+      .select({
+        id: campaignActivities.id,
+        title: campaignActivities.title,
+        activityType: campaignActivities.activityType,
+        verificationStatus: campaignActivities.verificationStatus,
+        verifiedAt: campaignActivities.verifiedAt,
+        publishedAt: campaignActivities.publishedAt,
+        sourceEvidenceId: campaignActivities.sourceEvidenceId,
+        metadata: campaignActivities.metadata
+      })
+      .from(campaignActivities)
+      .where(and(eq(campaignActivities.campaignId, row.id), eq(campaignActivities.visibilityStatus, "published")))
+      .orderBy(desc(campaignActivities.publishedAt), desc(campaignActivities.createdAt))
   ]);
   const budgetLineItems = budgetRows.map((item) => ({
     ...item,
@@ -1108,7 +1123,21 @@ export async function getCampaignDetail(slug: string) {
     }),
     updates,
     sites,
-    evidence
+    evidence,
+    traceability: {
+      paidFunding: row.raisedAmount ? toNumber(row.raisedAmount) : 0,
+      plannedBudget: budgetLineItems.reduce((total, item) => total + item.amount, 0),
+      recordedSpend: budgetLineItems.reduce((total, item) => total + item.spentAmount, 0),
+      evidencedSpend: evidence.reduce((total, item) => total + evidenceFinanceSpendAmount(item.metadata), 0),
+      publishedActivities: activityRows.length,
+      verifiedActivities: activityRows.filter((item) => item.verificationStatus === "verified").length,
+      verifiedEvidence: evidence.length,
+      latestVerifiedAt:
+        evidence
+          .map((item) => item.verifiedAt)
+          .filter((value): value is Date => Boolean(value))
+          .sort((a, b) => b.getTime() - a.getTime())[0] ?? null
+    }
   };
 }
 
