@@ -79,7 +79,9 @@ export default async function ExpeditionCheckoutPage({ searchParams }: Expeditio
               ? "That departure is no longer available for the requested seats."
               : params.error === "attribution"
                 ? "Choose Personal or a company you belong to."
-                : "Check departure availability and contact details."}
+                : params.error === "payment_proof"
+                  ? "Upload payment proof as JPG, PNG, WebP, or GIF up to 1.5 MB."
+                  : "Check departure availability, contact details, and payment proof."}
           </p>
         ) : null}
         <form action={bookExpeditionAction} className="mt-6 grid min-w-0 gap-4">
@@ -176,7 +178,23 @@ export default async function ExpeditionCheckoutPage({ searchParams }: Expeditio
             Accessibility or mobility notes <span className="font-normal text-ocean-900/42">(optional)</span>
             <textarea name="accessibilityNotes" placeholder="Anything the field team should know to support safe participation." className="min-h-20 w-full min-w-0 rounded-xl border border-ocean-900/14 px-4 py-3 outline-none focus:border-coral-500" />
           </label>
-          <Button type="submit">Continue Booking</Button>
+          <section className="grid gap-4 rounded-2xl border border-ocean-900/10 bg-sand-50 p-4">
+            <div>
+              <p className="font-bold text-ocean-900">Payment verification</p>
+              <p className="mt-1 text-sm leading-6 text-ocean-900/62">
+                Complete payment through Terumbu&apos;s official external payment channel, then upload the proof here. Your seats remain pending until an admin verifies the payment.
+              </p>
+            </div>
+            <label className="grid min-w-0 gap-2 text-sm font-semibold text-ocean-900">
+              Payment reference <span className="font-normal text-ocean-900/42">(optional)</span>
+              <input name="paymentReference" placeholder="Bank / transfer reference" className="w-full min-w-0 rounded-xl border border-ocean-900/14 bg-white px-4 py-3 outline-none focus:border-coral-500" />
+            </label>
+            <label className="grid min-w-0 gap-2 text-sm font-semibold text-ocean-900">
+              Payment proof
+              <input name="paymentProofFile" type="file" accept="image/jpeg,image/png,image/webp,image/gif" className="w-full min-w-0 rounded-xl border border-ocean-900/14 bg-white px-4 py-3 text-sm" required />
+            </label>
+          </section>
+          <Button type="submit">Submit Booking for Verification</Button>
         </form>
       </section>
     </main>
