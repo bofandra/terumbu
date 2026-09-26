@@ -9331,6 +9331,7 @@ export async function getPartnerPortalData(userId?: string) {
       id: string;
       title: string;
       slug: string;
+      destinationId: string | null;
       region: string;
       durationDays: number;
       basePrice: number;
@@ -9389,6 +9390,7 @@ export async function getPartnerPortalData(userId?: string) {
         id: row.id,
         title: row.title,
         slug: row.slug,
+        destinationId: row.destinationId,
         region: row.region,
         durationDays: row.durationDays,
         basePrice: toNumber(row.basePrice),
