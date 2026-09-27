@@ -129,10 +129,26 @@ export async function processDueDonationSubscriptions(input: {
         continue;
       }
 
-      // A prior worker claimed the cycle but disappeared before recording any
-      // provider transaction. Reuse the same donation and provider idempotency
-      // key rather than creating a second cycle.
-      claimedDonation = { id: existingCycle.id };
+      const [reclaimed] = await database
+        .update(donations)
+        .set({ createdAt: now })
+        .where(
+          and(
+            eq(donations.id, existingCycle.id),
+            eq(donations.status, "created"),
+            lte(donations.createdAt, staleBefore)
+          )
+        )
+        .returning({ id: donations.id });
+
+      if (!reclaimed) {
+        summary.skipped += 1;
+        continue;
+      }
+
+      // Touching createdAt acts as a short lease: another worker can no longer
+      // consider this claim stale while this worker reconciles it.
+      claimedDonation = reclaimed;
     }
 
     const donationId = claimedDonation.id;
