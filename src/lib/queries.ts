@@ -2409,6 +2409,58 @@ export async function getAcademyHomeData(userId?: string) {
     };
   });
 
+  const expeditionImpactJourneys = bookingRows.map((booking) => {
+    const relatedUpdates = booking.relatedCampaignId
+      ? updateRows.filter((update) => update.campaignId === booking.relatedCampaignId)
+      : [];
+    const relatedEvidence = booking.relatedCampaignId
+      ? evidenceRows.filter(
+          (evidence) => evidence.campaignId === booking.relatedCampaignId && evidence.verificationStatus === "verified"
+        )
+      : [];
+    const latestUpdate = relatedUpdates[0] ?? null;
+    const latestEvidence = relatedEvidence[0] ?? null;
+    const participationCompleted = booking.status === "completed";
+
+    return {
+      bookingId: booking.id,
+      bookingCode: booking.bookingCode,
+      expeditionTitle: booking.expeditionTitle,
+      expeditionSlug: booking.expeditionSlug,
+      startsAt: booking.startsAt,
+      endsAt: booking.endsAt,
+      bookingStatus: booking.status,
+      paymentStatus: booking.paymentStatus,
+      preparationComplete: [
+        getMetadataString(booking.bookingMetadata, "waiverAccepted") === "true",
+        getMetadataString(booking.bookingMetadata, "emergencyContactComplete") === "true",
+        getMetadataString(booking.bookingMetadata, "briefingCompleted") === "true"
+      ].filter(Boolean).length,
+      preparationTotal: 3,
+      participationCompleted,
+      completedAt: participationCompleted ? booking.endsAt : null,
+      relatedCampaignId: booking.relatedCampaignId,
+      latestFieldActivity: latestUpdate
+        ? {
+            id: latestUpdate.id,
+            title: latestUpdate.title,
+            occurredAt: latestUpdate.publishedAt ?? latestUpdate.createdAt,
+            href: `/campaigns/${latestUpdate.campaignSlug}/updates/${latestUpdate.id}`
+          }
+        : null,
+      verifiedOutcome: latestEvidence
+        ? {
+            id: latestEvidence.id,
+            title: latestEvidence.title,
+            evidenceCode: latestEvidence.evidenceCode,
+            occurredAt: latestEvidence.verifiedAt ?? latestEvidence.createdAt,
+            href: `/campaigns/${latestEvidence.campaignSlug}#evidence`
+          }
+        : null,
+      passportEligible: participationCompleted && booking.paymentStatus === "paid"
+    };
+  });
+
   const upcomingBooking = upcomingBookingRows[0] ?? null;
   const preparationModules = upcomingBooking
     ? [
@@ -3354,6 +3406,7 @@ export async function getDashboardData(userId: string) {
         endsAt: expeditionDepartures.endsAt,
         departureStatus: expeditionDepartures.status,
         departureMetadata: expeditionDepartures.metadata,
+        relatedCampaignId: expeditions.relatedCampaignId,
         reviewId: expeditionReviews.id,
         reviewRating: expeditionReviews.rating,
         reviewTitle: expeditionReviews.title,
@@ -4384,6 +4437,7 @@ export async function getDashboardData(userId: string) {
     campaignContributions,
     donationImpactJourneys,
     coralCards,
+    expeditionImpactJourneys,
     upcomingExpedition,
     academy: {
       enrollments: enrollmentsWithProgress,
