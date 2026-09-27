@@ -565,21 +565,38 @@ export default async function CourseDetailPage({ params }: { params: Promise<{ s
             </div>
           </article>
 
-          <article className="rounded-2xl border border-ocean-900/10 bg-white p-5 shadow-soft">
-            <p className="text-sm font-bold uppercase text-coral-700">Apply this knowledge</p>
-            <h2 className="mt-2 text-xl font-bold text-ocean-900">Connect learning to conservation action</h2>
+          <article className="rounded-2xl border border-kelp-700/20 bg-kelp-100/40 p-5 shadow-soft">
+            <p className="text-sm font-bold uppercase text-kelp-700">{course.enrollment?.status === "completed" ? "Ready for action" : "What this course unlocks"}</p>
+            <h2 className="mt-2 text-xl font-bold text-ocean-900">Turn learning into conservation action</h2>
             <p className="mt-3 text-sm leading-6 text-ocean-900/62">
-              Use this course before supporting campaigns, joining field activities, or explaining verified outcomes in your Impact Passport.
+              {course.fieldReadiness
+                ? "This course is part of field-readiness preparation. Complete the learning and assessments before moving into the recommended field activity."
+                : "Continue from this course into a related conservation activity selected by the Terumbu team."}
             </p>
-            <div className="mt-4 grid gap-2">
-              <Link href="/campaigns" className="inline-flex min-h-10 items-center justify-between rounded-xl bg-ocean-50 px-4 text-sm font-bold text-ocean-900">
-                Explore campaigns
-                <ArrowRight size={16} aria-hidden="true" />
-              </Link>
-              <Link href="/expeditions" className="inline-flex min-h-10 items-center justify-between rounded-xl bg-ocean-50 px-4 text-sm font-bold text-ocean-900">
-                Explore expeditions
-                <ArrowRight size={16} aria-hidden="true" />
-              </Link>
+            {course.trackKey ? <p className="mt-3 text-xs font-bold uppercase text-ocean-900/48">Track: {course.trackKey.replace(/-/g, " ")}</p> : null}
+            <div className="mt-4 grid gap-3">
+              {course.relatedExpedition ? (
+                <div className="rounded-xl border border-ocean-900/10 bg-white p-4">
+                  <p className="text-xs font-bold uppercase text-coral-700">Recommended expedition</p>
+                  <p className="mt-1 font-bold text-ocean-900">{course.relatedExpedition.title}</p>
+                  <p className="mt-1 text-xs font-semibold text-ocean-900/54">{course.relatedExpedition.region}</p>
+                  <Link href={`/expeditions/${course.relatedExpedition.slug}`} className="mt-3 inline-flex items-center gap-2 text-sm font-bold text-coral-700">Explore field action <ArrowRight size={16} aria-hidden="true" /></Link>
+                </div>
+              ) : null}
+              {course.relatedCampaign ? (
+                <div className="rounded-xl border border-ocean-900/10 bg-white p-4">
+                  <p className="text-xs font-bold uppercase text-kelp-700">Related project</p>
+                  <p className="mt-1 font-bold text-ocean-900">{course.relatedCampaign.title}</p>
+                  <p className="mt-1 text-xs font-semibold text-ocean-900/54">{course.relatedCampaign.region}</p>
+                  <Link href={`/campaigns/${course.relatedCampaign.slug}`} className="mt-3 inline-flex items-center gap-2 text-sm font-bold text-kelp-700">Support this project <ArrowRight size={16} aria-hidden="true" /></Link>
+                </div>
+              ) : null}
+              {!course.relatedExpedition && !course.relatedCampaign ? (
+                <>
+                  <Link href="/campaigns" className="inline-flex min-h-10 items-center justify-between rounded-xl bg-white px-4 text-sm font-bold text-ocean-900">Explore campaigns <ArrowRight size={16} aria-hidden="true" /></Link>
+                  <Link href="/expeditions" className="inline-flex min-h-10 items-center justify-between rounded-xl bg-white px-4 text-sm font-bold text-ocean-900">Explore expeditions <ArrowRight size={16} aria-hidden="true" /></Link>
+                </>
+              ) : null}
             </div>
           </article>
         </aside>
