@@ -325,7 +325,8 @@ export async function getImpactStats(): Promise<ImpactStatData[]> {
       metadata: sponsoredEcosystems.metadata,
       plantedAt: sponsoredEcosystems.plantedAt
     })
-    .from(sponsoredEcosystems);
+    .from(sponsoredEcosystems)
+    .where(inArray(sponsoredEcosystems.status, ["sponsored", "growing", "planted", "monitored"]));
 
   const [heroSummary] = await db
     .select({
@@ -351,7 +352,14 @@ export async function getHomepageReviewSummary() {
       reviewCount: sql<number>`count(${expeditionReviews.id})::int`
     })
     .from(expeditionReviews)
-    .where(eq(expeditionReviews.status, "published"));
+    .innerJoin(expeditionBookings, eq(expeditionReviews.bookingId, expeditionBookings.id))
+    .where(
+      and(
+        eq(expeditionReviews.status, "published"),
+        eq(expeditionBookings.status, "completed"),
+        eq(expeditionBookings.paymentStatus, "paid")
+      )
+    );
 
   const reviewCount = Number(row?.reviewCount ?? 0);
 
