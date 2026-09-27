@@ -286,13 +286,13 @@ export default async function CampaignDetailPage({ params }: { params: Promise<{
 
   return (
     <main className="pb-24 lg:pb-0">
-      <AnalyticsEvent
-          event="campaign_view"
-          properties={{
-            campaignSlug: campaign.slug
-          }}
-        />
       <JsonLd data={campaignStructuredData} />
+      <AnalyticsEvent
+        event="campaign_view"
+        properties={{
+          campaignSlug: campaign.slug
+        }}
+      />
       <section className="bg-white">
         <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
           <nav className="flex flex-wrap items-center gap-2 text-sm font-semibold text-ocean-900/58" aria-label="Breadcrumb">
