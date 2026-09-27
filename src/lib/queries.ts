@@ -3293,7 +3293,13 @@ export async function getDashboardData(userId: string) {
         message: donations.message,
         createdAt: donations.createdAt,
         receiptNumber: donationReceipts.receiptNumber,
-        transactionPayload: paymentTransactions.payload
+        transactionPayload: paymentTransactions.payload,
+        sponsoredCode: sponsoredEcosystems.code,
+        sponsoredLabel: sponsoredEcosystems.label,
+        sponsoredStatus: sponsoredEcosystems.status,
+        sponsoredPlantedAt: sponsoredEcosystems.plantedAt,
+        sponsoredLastUpdatedAt: sponsoredEcosystems.lastUpdatedAt,
+        sponsoredMetadata: sponsoredEcosystems.metadata
       })
       .from(donations)
       .innerJoin(campaigns, eq(donations.campaignId, campaigns.id))
