@@ -19,6 +19,7 @@ const statusMessages: Record<string, string> = {
 };
 
 const errorMessages: Record<string, string> = {
+  "academy-course-missing": "Choose a published Academy course for the expedition prerequisite.",
   "campaign-missing": "Choose an existing related campaign.",
   "departure-capacity": "Capacity cannot be lower than seats already booked.",
   "departure-cancelled-final": "A cancelled departure cannot be reopened. Create a new departure for a replacement schedule.",
