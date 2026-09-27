@@ -19,6 +19,7 @@ import {
   adminAuditLogs,
   assessmentAttempts,
   assessmentChoices,
+  campaigns,
   assessmentQuestions,
   courseAssessments,
   courseCertificates,
@@ -106,6 +107,20 @@ async function courseImageFromForm(formData: FormData) {
   }
 
   return upload.dataUrl;
+}
+
+async function validateAcademyActionTargets(relatedExpeditionId: string | null, relatedCampaignId: string | null) {
+  const [expeditionRows, campaignRows] = await Promise.all([
+    relatedExpeditionId
+      ? db.select({ id: expeditions.id }).from(expeditions).where(and(eq(expeditions.id, relatedExpeditionId), eq(expeditions.status, "published"))).limit(1)
+      : Promise.resolve([]),
+    relatedCampaignId
+      ? db.select({ id: campaigns.id }).from(campaigns).where(and(eq(campaigns.id, relatedCampaignId), eq(campaigns.status, "published"))).limit(1)
+      : Promise.resolve([])
+  ]);
+
+  if (relatedExpeditionId && !expeditionRows[0]) redirect("/admin/academy?error=action-target");
+  if (relatedCampaignId && !campaignRows[0]) redirect("/admin/academy?error=action-target");
 }
 
 async function courseBySlug(slug: string) {
@@ -487,6 +502,8 @@ export async function createAcademyCourseAction(formData: FormData) {
     redirect("/admin/academy?error=course");
   }
 
+  await validateAcademyActionTargets(relatedExpeditionId, relatedCampaignId);
+
   const [course] = await db
     .insert(courses)
     .values({
@@ -541,6 +558,8 @@ export async function updateAcademyCourseAction(formData: FormData) {
   if (!course) {
     redirect("/admin/academy?error=course");
   }
+
+  await validateAcademyActionTargets(relatedExpeditionId, relatedCampaignId);
 
   if (status !== "published") {
     await db.update(expeditions).set({ requiredAcademyCourseId: null, updatedAt: now }).where(eq(expeditions.requiredAcademyCourseId, courseId));
