@@ -85,19 +85,32 @@ export async function processDueDonationSubscriptions(input: {
 
     const cycleBillingAt = subscription.nextBillingAt;
     const idempotencyKey = monthlySubscriptionCycleKey(subscription.id, cycleBillingAt);
-    const [existingDonation] = await database
-      .select({
-        id: donations.id,
-        status: donations.status
+    const [claimedDonation] = await database
+      .insert(donations)
+      .values({
+        campaignId: subscription.campaignId,
+        userId: subscription.userId,
+        subscriptionId: subscription.id,
+        idempotencyKey,
+        donorName: subscription.donorName,
+        donorEmail: subscription.donorEmail,
+        amount: subscription.amount,
+        currency: subscription.currency,
+        status: "created",
+        message: `Monthly contribution for ${subscription.campaignTitle}`,
+        createdAt: now
       })
-      .from(donations)
-      .where(eq(donations.idempotencyKey, idempotencyKey))
-      .limit(1);
+      .onConflictDoNothing({
+        target: donations.idempotencyKey
+      })
+      .returning({ id: donations.id });
 
-    if (existingDonation) {
+    if (!claimedDonation) {
       summary.skipped += 1;
       continue;
     }
+
+    const donationId = claimedDonation.id;
 
     const amount = Number(subscription.amount);
     const providerResult = demoGatewayChargeSubscription({
@@ -111,29 +124,9 @@ export async function processDueDonationSubscriptions(input: {
       now
     });
 
-    let donationId = "";
     const result = await database.transaction(async (tx) => {
-      const [donation] = await tx
-        .insert(donations)
-        .values({
-          campaignId: subscription.campaignId,
-          userId: subscription.userId,
-          subscriptionId: subscription.id,
-          idempotencyKey,
-          donorName: subscription.donorName,
-          donorEmail: subscription.donorEmail,
-          amount: subscription.amount,
-          currency: subscription.currency,
-          status: "created",
-          message: `Monthly contribution for ${subscription.campaignTitle}`,
-          createdAt: now
-        })
-        .returning({ id: donations.id });
-
-      donationId = donation.id;
-
       await tx.insert(paymentTransactions).values({
-        donationId: donation.id,
+        donationId: donationId,
         paymentMethodId: subscription.paymentMethodId,
         provider: providerResult.provider,
         providerReference: providerResult.providerReference,
@@ -153,7 +146,7 @@ export async function processDueDonationSubscriptions(input: {
       });
 
       const transition = await transitionDonationPayment(tx as unknown as typeof db, {
-        donationId: donation.id,
+        donationId: donationId,
         nextStatus: providerResult.status,
         providerReference: providerResult.providerReference,
         paymentMethodId: subscription.paymentMethodId,
