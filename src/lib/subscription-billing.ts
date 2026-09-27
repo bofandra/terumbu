@@ -83,7 +83,8 @@ export async function processDueDonationSubscriptions(input: {
       continue;
     }
 
-    const idempotencyKey = monthlySubscriptionCycleKey(subscription.id, subscription.nextBillingAt);
+    const cycleBillingAt = subscription.nextBillingAt;
+    const idempotencyKey = monthlySubscriptionCycleKey(subscription.id, cycleBillingAt);
     const [existingDonation] = await database
       .select({
         id: donations.id,
@@ -143,7 +144,7 @@ export async function processDueDonationSubscriptions(input: {
           interval: "month",
           subscriptionId: subscription.id,
           providerSubscriptionReference: subscription.providerSubscriptionReference,
-          subscriptionCycleAt: subscription.nextBillingAt.toISOString(),
+          subscriptionCycleAt: cycleBillingAt.toISOString(),
           providerStatus: providerResult.rawStatus,
           idempotencyKey,
           ...providerResult.metadata
@@ -162,7 +163,7 @@ export async function processDueDonationSubscriptions(input: {
           interval: "month",
           subscriptionId: subscription.id,
           providerSubscriptionReference: subscription.providerSubscriptionReference,
-          subscriptionCycleAt: subscription.nextBillingAt.toISOString(),
+          subscriptionCycleAt: cycleBillingAt.toISOString(),
           providerStatus: providerResult.rawStatus,
           providerProcessedAt: providerResult.processedAt.toISOString(),
           idempotencyKey,
