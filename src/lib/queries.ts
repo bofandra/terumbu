@@ -4799,6 +4799,8 @@ export async function getSponsoredEcosystemDetail(userId: string, code: string) 
     return null;
   }
 
+  const isActiveImpact = ["sponsored", "growing", "planted", "monitored"].includes(ecosystem.status);
+
   const allEvidenceRows = await db
     .select({
       id: projectEvidence.id,
@@ -4828,6 +4830,13 @@ export async function getSponsoredEcosystemDetail(userId: string, code: string) 
 
   return {
     ...ecosystem,
+    isActiveImpact,
+    lifecycleLabel:
+      ecosystem.status === "refunded"
+        ? "Historical record — contribution refunded"
+        : ecosystem.status === "payment_reversed"
+          ? "Historical record — payment reversed"
+          : "Active sponsorship",
     fragments: getMetadataNumber(ecosystem.metadata, "fragments"),
     seedlings: getMetadataNumber(ecosystem.metadata, "seedlings"),
     quantity: ecosystemQuantity(ecosystem.metadata),

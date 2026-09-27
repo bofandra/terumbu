@@ -74,6 +74,16 @@ export default async function SponsoredEcosystemDetailPage({ params }: { params:
         Back to My Impact
       </Link>
 
+      {!ecosystem.isActiveImpact ? (
+        <section className="mt-4 rounded-2xl border border-ocean-900/15 bg-sand-100 p-5">
+          <p className="text-sm font-bold uppercase tracking-[0.14em] text-ocean-900/60">Historical sponsorship</p>
+          <h2 className="mt-2 text-xl font-bold text-ocean-900">{ecosystem.lifecycleLabel}</h2>
+          <p className="mt-2 max-w-3xl text-sm leading-6 text-ocean-900/62">
+            This record is retained for payment and impact-history traceability. It is not counted as active sponsored impact. Field evidence below belongs to the campaign or restoration site and does not imply an active personal sponsorship.
+          </p>
+        </section>
+      ) : null}
+
       <header className="mt-4 overflow-hidden rounded-2xl bg-ocean-900 shadow-soft">
         <div className="grid min-h-[360px] lg:grid-cols-[0.95fr_1.05fr]">
           <div className="relative min-h-[280px] bg-ocean-800">
@@ -106,9 +116,9 @@ export default async function SponsoredEcosystemDetailPage({ params }: { params:
             <div className="mt-6 grid gap-3 sm:grid-cols-2">
               {[
                 ["Current status", ecosystem.status],
-                ["Supported units", primaryMetric],
-                ["Latest survey", formatDate(ecosystem.latestSurvey)],
-                ["Survival rate", ecosystem.survivalRate > 0 ? `${ecosystem.survivalRate}%` : "Pending"]
+                [ecosystem.isActiveImpact ? "Supported units" : "Historical units", primaryMetric],
+                [ecosystem.isActiveImpact ? "Latest survey" : "Last linked survey", formatDate(ecosystem.latestSurvey)],
+                [ecosystem.isActiveImpact ? "Survival rate" : "Last recorded survival rate", ecosystem.survivalRate > 0 ? `${ecosystem.survivalRate}%` : "Pending"]
               ].map(([label, value]) => (
                 <div key={label} className="rounded-xl bg-white/10 p-4 ring-1 ring-white/10">
                   <p className="text-xs font-bold uppercase tracking-[0.12em] text-white/50">{label}</p>
@@ -125,7 +135,7 @@ export default async function SponsoredEcosystemDetailPage({ params }: { params:
           ["Activity records", ecosystem.evidenceCount.toLocaleString("id-ID"), Camera],
           ["Verified", ecosystem.verifiedEvidenceCount.toLocaleString("id-ID"), CheckCircle2],
           ["In review", ecosystem.pendingEvidenceCount.toLocaleString("id-ID"), Clock3],
-          ["Milestone progress", `${ecosystem.progress}%`, Activity]
+          [ecosystem.isActiveImpact ? "Milestone progress" : "Historical progress", `${ecosystem.progress}%`, Activity]
         ].map(([label, value, Icon]) => (
           <article key={label as string} className="min-w-0 rounded-2xl border border-ocean-900/10 bg-white p-5 shadow-soft">
             <Icon size={22} aria-hidden="true" className="text-coral-500" />
