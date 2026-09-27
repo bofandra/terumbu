@@ -351,7 +351,14 @@ export async function getHomepageReviewSummary() {
       reviewCount: sql<number>`count(${expeditionReviews.id})::int`
     })
     .from(expeditionReviews)
-    .where(eq(expeditionReviews.status, "published"));
+    .innerJoin(expeditionBookings, eq(expeditionReviews.bookingId, expeditionBookings.id))
+    .where(
+      and(
+        eq(expeditionReviews.status, "published"),
+        eq(expeditionBookings.status, "completed"),
+        eq(expeditionBookings.paymentStatus, "paid")
+      )
+    );
 
   const reviewCount = Number(row?.reviewCount ?? 0);
 
