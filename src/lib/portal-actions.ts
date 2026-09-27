@@ -4088,13 +4088,18 @@ export async function completePartnerExpeditionBookingAction(formData: FormData)
   }
 
   await db.transaction(async (tx) => {
-    await tx
+    const [completedBooking] = await tx
       .update(expeditionBookings)
       .set({
         status: "completed",
-        metadata: sql`coalesce(${expeditionBookings.metadata}, '{}'::jsonb) || jsonb_build_object('completedAt', ${now.toISOString()}, 'completionSource', 'partner_portal')`
+        metadata: sql`coalesce(${expeditionBookings.metadata}, '{}'::jsonb) || jsonb_build_object('completedAt', ${now.toISOString()}, 'completionSource', 'partner_portal', 'completedByUserId', ${user.id})`
       })
-      .where(and(eq(expeditionBookings.id, booking.id), eq(expeditionBookings.status, "confirmed"), eq(expeditionBookings.paymentStatus, "paid")));
+      .where(and(eq(expeditionBookings.id, booking.id), eq(expeditionBookings.status, "confirmed"), eq(expeditionBookings.paymentStatus, "paid")))
+      .returning({ id: expeditionBookings.id });
+
+    if (!completedBooking) {
+      throw new Error("EXPEDITION_COMPLETION_CONFLICT");
+    }
 
     await ensureCompletedExpeditionPassportItem(tx as unknown as typeof db, {
       id: booking.id,
@@ -4102,7 +4107,10 @@ export async function completePartnerExpeditionBookingAction(formData: FormData)
       expeditionTitle: booking.expeditionTitle,
       expeditionSlug: booking.expeditionSlug,
       bookedAt: booking.bookedAt,
-      participantsCount: booking.participantsCount
+      participantsCount: booking.participantsCount,
+      completedAt: now,
+      completedByUserId: user.id,
+      completionSource: "partner_portal"
     });
 
     await tx.insert(adminAuditLogs).values({

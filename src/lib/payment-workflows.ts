@@ -702,6 +702,9 @@ export async function ensureCompletedExpeditionPassportItem(
     expeditionSlug: string;
     bookedAt: Date;
     participantsCount: number;
+    completedAt?: Date;
+    completedByUserId?: string | null;
+    completionSource?: string;
   }
 ) {
   if (!booking.userId) {
@@ -727,10 +730,13 @@ export async function ensureCompletedExpeditionPassportItem(
       itemType: "expedition",
       title: `Completed ${booking.expeditionTitle}`,
       description: `${booking.participantsCount.toLocaleString("id-ID")} participant expedition completed.`,
-      occurredAt: new Date(),
+      occurredAt: booking.completedAt ?? new Date(),
       metadata: {
         expeditionSlug: booking.expeditionSlug,
-        participantsCount: booking.participantsCount
+        participantsCount: booking.participantsCount,
+        completionSource: booking.completionSource ?? "system",
+        completedByUserId: booking.completedByUserId ?? null,
+        completedAt: (booking.completedAt ?? new Date()).toISOString()
       }
     })
     .onConflictDoNothing({
