@@ -232,6 +232,20 @@
       "when": 1790384400000,
       "tag": "0032_destination_cms",
       "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1790470800000,
+      "tag": "0033_academy_action_pathway",
+      "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1790557200000,
+      "tag": "0034_expedition_academy_prerequisite",
+      "breakpoints": true
     }
   ]
 }
