@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { createPortal } from "react-dom";
 
 import type { AnalyticsEventName, AnalyticsProperties } from "@/lib/analytics";
 
@@ -57,5 +58,8 @@ export function AnalyticsEvent({
     return () => controller.abort();
   }, [event, serializedProperties]);
 
-  return null;
+  // Keep this client component from becoming the first child of a server-rendered
+  // JSON-LD script. React's hydration markers around a null client component can
+  // otherwise move the following script out of the initial HTML stream.
+  return typeof document === "undefined" ? null : createPortal(null, document.body);
 }
