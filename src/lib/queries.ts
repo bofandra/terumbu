@@ -1652,10 +1652,16 @@ export async function getExpeditionDetail(slug: string) {
     db
       .select({
         participantCount: sql<number>`coalesce(sum(${expeditionBookings.participantsCount}), 0)`,
-        bookingCount: sql<number>`count(${expeditionBookings.id})`
+        completedBookingCount: sql<number>`count(${expeditionBookings.id}) filter (where ${expeditionBookings.status} = 'completed')`
       })
       .from(expeditionBookings)
-      .where(and(eq(expeditionBookings.expeditionId, row.id), inArray(expeditionBookings.status, ["confirmed", "completed"]))),
+      .where(
+        and(
+          eq(expeditionBookings.expeditionId, row.id),
+          eq(expeditionBookings.paymentStatus, "paid"),
+          inArray(expeditionBookings.status, ["confirmed", "completed"])
+        )
+      ),
     getPublishedExpeditionMedia(row.id),
     row.requiredAcademyCourseId
       ? db.select({ id: courses.id, title: courses.title, slug: courses.slug, summary: courses.summary, imageUrl: courses.imageUrl, trackKey: courses.trackKey, fieldReadiness: courses.fieldReadiness })
@@ -1772,7 +1778,7 @@ export async function getExpeditionDetail(slug: string) {
   const expeditionMetadata = normalizeExpeditionDetailMetadata(row.metadata, defaultExpeditionMetadata);
   const reviewCount = reviewRows.length;
   const averageRating = reviewCount > 0 ? Number((reviewRows.reduce((total, review) => total + review.rating, 0) / reviewCount).toFixed(1)) : 0;
-  const participantSummary = participantSummaryRows[0] ?? { participantCount: 0, bookingCount: 0 };
+  const participantSummary = participantSummaryRows[0] ?? { participantCount: 0, completedBookingCount: 0 };
   const publicParticipantCount = Number(participantSummary.participantCount ?? 0);
   const publicReviews = reviewRows.map((review) => ({
     id: review.id,
@@ -1787,7 +1793,7 @@ export async function getExpeditionDetail(slug: string) {
       ? [
           { label: "Average rating", value: `${averageRating.toFixed(1)} / 5` },
           { label: "Verified reviews", value: reviewCount.toLocaleString("id-ID") },
-          { label: "Completed bookings", value: Number(participantSummary.bookingCount ?? 0).toLocaleString("id-ID") }
+          { label: "Completed bookings", value: Number(participantSummary.completedBookingCount ?? 0).toLocaleString("id-ID") }
         ]
       : [];
   const conservationContribution = expeditionMetadata.impact.conservationContribution ?? Math.round((price * expeditionMetadata.impact.contributionPercent) / 100);
