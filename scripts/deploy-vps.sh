@@ -138,7 +138,11 @@ if [ "${HEALTHY}" != "1" ]; then
 fi
 
 echo "Running production smoke suite..."
-BASE_URL="http://127.0.0.1:${APP_PORT}" EXPECTED_VERSION="${DEPLOY_VERSION}" bash "${APP_DIR}/scripts/smoke-production.sh"
+if ! BASE_URL="http://127.0.0.1:${APP_PORT}" EXPECTED_VERSION="${DEPLOY_VERSION}" bash "${APP_DIR}/scripts/smoke-production.sh"; then
+  echo "Production smoke suite failed. Recent web logs:" >&2
+  docker compose --env-file "${ENV_FILE}" --project-name "${PROJECT_NAME}" -f "${COMPOSE_FILE}" logs --tail=180 web >&2 || true
+  exit 1
+fi
 
 docker compose --env-file "${ENV_FILE}" --project-name "${PROJECT_NAME}" -f "${COMPOSE_FILE}" ps
 echo "Terumbu deployment and production smoke checks passed."
