@@ -34,7 +34,12 @@ assert_seo_detail() {
   if ! grep -Fqi 'application/ld+json' <<<"${body}"; then
     echo "SEO debug: ${path} response bytes=${#body}" >&2
     echo "SEO debug: response markers:" >&2
-    grep -Eio '<script[^>]*>|application/ld[^< ]*|<link[^>]+canonical[^>]*>|campaign_view|restore-raja-ampat-reefs|schema\.org' <<<"${body}" | head -n 40 >&2 || true
+    grep -Eio '<script[^>]*>|application/ld[^< ]*|<link[^>]+canonical[^>]*>|<h1[^>]*>[^<]*|campaign_view|restore-raja-ampat-reefs|schema\\.org' <<<"${body}" | head -n 60 >&2 || true
+    echo "SEO debug: schema/flight context:" >&2
+    grep -Eo '.{0,180}(schema\\.org|campaign_view|restore-raja-ampat-reefs).{0,320}' <<<"${body}" | head -n 12 >&2 || true
+    echo "SEO debug: response tail:" >&2
+    printf '%s' "${body}" | tail -c 1600 >&2 || true
+    echo >&2
     echo "SEO debug: JSON-LD may be deferred by React streaming; checking full response is complete." >&2
     grep -Fqi '</html>' <<<"${body}" || fail "${path} returned incomplete streamed HTML"
     fail "${path} is missing JSON-LD"
