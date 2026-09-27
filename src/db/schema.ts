@@ -861,6 +861,10 @@ export const courses = pgTable("courses", {
   description: text("description"),
   status: varchar("status", { length: 80 }).default("published").notNull(),
   imageUrl: text("image_url"),
+  trackKey: varchar("track_key", { length: 120 }),
+  fieldReadiness: boolean("field_readiness").default(false).notNull(),
+  relatedExpeditionId: uuid("related_expedition_id"),
+  relatedCampaignId: uuid("related_campaign_id"),
   publishedAt: timestamp("published_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull()
