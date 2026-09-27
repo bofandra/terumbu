@@ -139,6 +139,22 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
       title: campaign.title,
       description: campaign.summary,
       images: campaign.imageUrl ? [campaign.imageUrl] : undefined
+    },
+    other: {
+      "script:ld+json": JSON.stringify([
+        {
+          "@context": "https://schema.org",
+          "@type": "WebPage",
+          name: campaign.title,
+          description: campaign.summary,
+          url: new URL(`/campaigns/${campaign.slug}`, appUrl).toString(),
+          primaryImageOfPage: campaign.imageUrl
+            ? { "@type": "ImageObject", url: campaign.imageUrl }
+            : undefined,
+          about: { "@type": "Thing", name: campaign.category, description: campaign.summary },
+          publisher: { "@type": "Organization", name: "Terumbu.eco", url: appUrl }
+        }
+      ])
     }
   };
 }
