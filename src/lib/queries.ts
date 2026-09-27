@@ -4135,47 +4135,82 @@ export async function getDashboardData(userId: string) {
   const timelineItems = [
     ...paidDonations.map((donation) => ({
       id: `donation-${donation.id}`,
-      category: "Donations",
-      title: `Donated ${formatCurrency(toNumber(donation.amount))}`,
+      category: "Contribution",
+      title: `Contribution verified · ${formatCurrency(toNumber(donation.amount))}`,
       description: donation.campaignTitle,
       occurredAt: donation.createdAt,
-      href: `/campaigns/${donation.campaignSlug}`
+      href: `/dashboard/donations`
     })),
-    ...coralCards.map((ecosystem) => ({
-      id: `ecosystem-${ecosystem.code}`,
-      category: "Impact",
-      title: `Sponsored ${ecosystem.quantity.toLocaleString("id-ID")} ${ecosystem.unit}`,
-      description: ecosystem.label,
-      occurredAt: ecosystem.plantedAt ?? ecosystem.lastUpdatedAt ?? now,
-      href: `/dashboard/corals/${ecosystem.code}`
-    })),
+    ...coralCards.flatMap((ecosystem) => [
+      {
+        id: `ecosystem-${ecosystem.code}`,
+        category: "Sponsorship",
+        title: `Sponsored ${ecosystem.quantity.toLocaleString("id-ID")} ${ecosystem.unit}`,
+        description: ecosystem.label,
+        occurredAt: ecosystem.plantedAt ?? ecosystem.lastUpdatedAt ?? now,
+        href: `/dashboard/corals/${ecosystem.code}`
+      },
+      ...(ecosystem.lastUpdatedAt
+        ? [{
+            id: `ecosystem-monitoring-${ecosystem.code}-${ecosystem.lastUpdatedAt.getTime()}`,
+            category: "Monitoring",
+            title: "Sponsorship monitoring updated",
+            description: ecosystem.label,
+            occurredAt: ecosystem.lastUpdatedAt,
+            href: `/dashboard/corals/${ecosystem.code}`
+          }]
+        : [])
+    ]),
     ...bookingRows.map((booking) => ({
       id: `booking-${booking.bookingCode}`,
-      category: "Expeditions",
-      title: `Joined ${booking.expeditionTitle}`,
-      description: `${booking.status} booking for ${booking.startsAt.toLocaleDateString("id-ID", { dateStyle: "medium" })}`,
-      occurredAt: booking.bookedAt,
+      category: booking.status === "completed" ? "Expedition" : "Booking",
+      title: booking.status === "completed" ? `Completed ${booking.expeditionTitle}` : `Booked ${booking.expeditionTitle}`,
+      description: booking.status === "completed"
+        ? "Participation confirmed by the expedition partner."
+        : `${booking.status} booking · ${booking.startsAt.toLocaleDateString("id-ID", { dateStyle: "medium" })}`,
+      occurredAt: booking.status === "completed" ? booking.endsAt : booking.bookedAt,
       href: "/dashboard/expeditions"
     })),
+    ...enrollmentRows
+      .filter((enrollment) => enrollment.status === "completed" && enrollment.completedAt)
+      .map((enrollment) => ({
+        id: `course-completed-${enrollment.enrollmentId}`,
+        category: "Learning",
+        title: "Course completed",
+        description: enrollment.courseTitle,
+        occurredAt: enrollment.completedAt!,
+        href: `/academy/courses/${enrollment.courseSlug}`
+      })),
     ...certificateRows.map((certificate) => ({
       id: `certificate-${certificate.certificateNumber}`,
-      category: "Learning",
+      category: "Certificate",
       title: "Certificate awarded",
       description: certificate.courseTitle,
       occurredAt: certificate.issuedAt,
       href: `/passport/${profileRow?.publicSlug ?? ""}`
     })),
-    ...updateRows.slice(0, 4).map((update) => ({
+    ...updateRows.slice(0, 6).map((update) => ({
       id: `update-${update.id}`,
-      category: "Activity",
+      category: "Field activity",
       title: update.title,
-      description: update.campaignTitle,
+      description: `${update.campaignTitle} · campaign-level activity`,
       occurredAt: update.publishedAt ?? update.createdAt,
       href: `/campaigns/${update.campaignSlug}#updates`
     })),
-    ...passportItemRows.slice(0, 4).map((item) => ({
+    ...evidenceRows
+      .filter((evidence) => evidence.verificationStatus === "verified")
+      .slice(0, 6)
+      .map((evidence) => ({
+        id: `verified-evidence-${evidence.id}`,
+        category: "Verified impact",
+        title: evidence.title,
+        description: `${evidence.campaignTitle} · verified campaign outcome`,
+        occurredAt: evidence.verifiedAt ?? evidence.createdAt,
+        href: `/campaigns/${evidence.campaignSlug}#evidence`
+      })),
+    ...passportItemRows.slice(0, 6).map((item) => ({
       id: `passport-${item.id}`,
-      category: "Achievements",
+      category: "Impact Passport",
       title: item.title,
       description: formatCurrencyText(item.description ?? "Verified activity added to your Impact Passport."),
       occurredAt: item.occurredAt,
@@ -4183,7 +4218,7 @@ export async function getDashboardData(userId: string) {
     }))
   ]
     .sort((a, b) => b.occurredAt.getTime() - a.occurredAt.getTime())
-    .slice(0, 8);
+    .slice(0, 20);
 
   const preferences = deliverySettings;
   const supportedCampaignUpdateNotifications = updateRows.slice(0, 6).map((update) => ({

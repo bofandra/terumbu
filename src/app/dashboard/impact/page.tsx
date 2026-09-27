@@ -49,7 +49,7 @@ export default async function DashboardImpactPage() {
           <p className="text-sm font-bold uppercase tracking-[0.16em] text-coral-700">My Impact</p>
           <h1 className="mt-2 text-3xl font-bold tracking-normal text-ocean-900">Your conservation footprint</h1>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-ocean-900/62">
-            Personal locations, field activity, learning, and contribution history are shown as approximate zones.
+            One timeline for your contributions, sponsorship monitoring, expedition participation, verified campaign outcomes, learning, and Impact Passport records.
           </p>
           {data.profile?.passportNumber ? (
             <p className="mt-3 text-sm font-bold text-ocean-900">Passport ID: {data.profile.passportNumber}</p>
@@ -128,9 +128,10 @@ export default async function DashboardImpactPage() {
         <DashboardImpactTrend trend={data.trend} />
         <article className="rounded-2xl border border-ocean-900/10 bg-white p-5 shadow-soft">
           <p className="text-sm font-bold uppercase tracking-[0.16em] text-coral-700">Impact timeline</p>
-          <h2 className="mt-2 text-2xl font-bold tracking-normal text-ocean-900">Unified activity</h2>
+          <h2 className="mt-2 text-2xl font-bold tracking-normal text-ocean-900">Your journey across Terumbu</h2>
+          <p className="mt-2 text-sm leading-6 text-ocean-900/58">Personal milestones and campaign-level conservation outcomes are kept distinct so the timeline does not overstate individual attribution.</p>
           <ol className="mt-5 space-y-4">
-            {data.timelineItems.slice(0, 6).map((item) => (
+            {data.timelineItems.slice(0, 12).map((item) => (
               <li key={item.id} className="grid grid-cols-[84px_1fr] gap-3">
                 <time className="text-xs font-bold text-ocean-900/52">{formatShortDate(item.occurredAt)}</time>
                 <Link href={item.href} className="border-l-2 border-ocean-100 pl-4">
