@@ -31,7 +31,11 @@ assert_seo_detail() {
   local path="$1"
   local body="$2"
 
-  grep -Fqi 'application/ld+json' <<<"${body}" || fail "${path} is missing JSON-LD"
+  if ! grep -Fqi 'application/ld+json' <<<"${body}"; then
+    echo "SEO debug: ${path} response bytes=${#body}" >&2
+    grep -Eio '<script[^>]*>|application/ld[^< ]*|<link[^>]+canonical[^>]*>' <<<"${body}" | head -n 20 >&2 || true
+    fail "${path} is missing JSON-LD"
+  fi
   grep -Fqi 'rel="canonical"' <<<"${body}" || fail "${path} is missing a canonical link"
   echo "SEO OK: ${path}" >&2
 }
