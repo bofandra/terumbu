@@ -4133,7 +4133,7 @@ export async function getDashboardData(userId: string) {
       enabled: preferences.evidenceAlerts
     }));
   const sponsorshipMonitoringNotifications = ecosystemRows
-    .filter((ecosystem) => Boolean(ecosystem.lastUpdatedAt))
+        .filter((ecosystem): ecosystem is typeof ecosystem & { lastUpdatedAt: Date } => ecosystem.lastUpdatedAt !== null)
     .slice(0, 6)
     .map((ecosystem) => ({
       notificationCode: `sponsorship-monitoring-${ecosystem.code}-${ecosystem.lastUpdatedAt.getTime()}`,
