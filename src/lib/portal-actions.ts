@@ -18,6 +18,7 @@ import {
   campaigns,
   corporateEvidenceCenter,
   corporateProjectPortfolio,
+  courses,
   donations,
   destinations,
   evidenceReviewEvents,
