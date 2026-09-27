@@ -1548,6 +1548,7 @@ export async function getExpeditionDetail(slug: string) {
       summary: expeditions.summary,
       metadata: expeditions.metadata,
       relatedCampaignId: expeditions.relatedCampaignId,
+      requiredAcademyCourseId: expeditions.requiredAcademyCourseId,
       relatedCampaignSlug: campaigns.slug,
       relatedCampaignTitle: campaigns.title,
       relatedCampaignSummary: campaigns.summary,
@@ -1572,7 +1573,7 @@ export async function getExpeditionDetail(slug: string) {
     return null;
   }
 
-  const [departures, relatedSites, updateRows, evidenceRows, courseRows, relatedExpeditionRows, reviewRows, participantSummaryRows, travelerMediaRows] = await Promise.all([
+  const [departures, relatedSites, updateRows, evidenceRows, courseRows, relatedExpeditionRows, reviewRows, participantSummaryRows, travelerMediaRows, requiredAcademyCourseRows] = await Promise.all([
     db
       .select({
         id: expeditionDepartures.id,
@@ -1646,7 +1647,11 @@ export async function getExpeditionDetail(slug: string) {
       })
       .from(expeditionBookings)
       .where(and(eq(expeditionBookings.expeditionId, row.id), inArray(expeditionBookings.status, ["confirmed", "completed"]))),
-    getPublishedExpeditionMedia(row.id)
+    getPublishedExpeditionMedia(row.id),
+    row.requiredAcademyCourseId
+      ? db.select({ id: courses.id, title: courses.title, slug: courses.slug, summary: courses.summary, imageUrl: courses.imageUrl, trackKey: courses.trackKey, fieldReadiness: courses.fieldReadiness })
+          .from(courses).where(and(eq(courses.id, row.requiredAcademyCourseId), eq(courses.status, "published"))).limit(1)
+      : Promise.resolve([])
   ]);
 
   const mappedDepartures = departures.map((departure) => {
@@ -1723,7 +1728,9 @@ export async function getExpeditionDetail(slug: string) {
     ? [{ title: updateRows[0].title, date: (updateRows[0].publishedAt ?? updateRows[0].createdAt).toISOString(), body: updateRows[0].body }]
     : [];
   const durationLabel = toExpeditionCard(row).duration;
+  const requiredAcademyCourse = requiredAcademyCourseRows[0] ?? null;
   const selectedPreparationCourse =
+    requiredAcademyCourse ??
     courseRows.find((course) => course.title.toLowerCase().includes("coral")) ??
     courseRows.find((course) => course.title.toLowerCase().includes("ocean")) ??
     courseRows[0] ??
@@ -1864,6 +1871,7 @@ export async function getExpeditionDetail(slug: string) {
     travelInfo: expeditionMetadata.travelInfo,
     team: expeditionMetadata.team,
     preparationCourse: expeditionMetadata.preparationCourse,
+    requiredAcademyCourse,
     reviewCategories: publicReviewCategories,
     reviews: publicReviews,
     tripUpdates: expeditionMetadata.tripUpdates.map((update) => ({ ...update, date: metadataDate(update.date) })),
