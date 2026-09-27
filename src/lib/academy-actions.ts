@@ -24,6 +24,7 @@ import {
   courseCertificates,
   courseEnrollments,
   courseLessons,
+  expeditions,
   courses,
   impactPassportItems,
   impactPassports,
@@ -539,6 +540,10 @@ export async function updateAcademyCourseAction(formData: FormData) {
 
   if (!course) {
     redirect("/admin/academy?error=course");
+  }
+
+  if (status !== "published") {
+    await db.update(expeditions).set({ requiredAcademyCourseId: null, updatedAt: now }).where(eq(expeditions.requiredAcademyCourseId, courseId));
   }
 
   await db
