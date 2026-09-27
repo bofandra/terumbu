@@ -25,6 +25,7 @@ import { CampaignSectionTabs } from "@/components/campaign-section-tabs";
 import { CampaignUpdatesEvidence } from "@/components/campaign-updates-evidence";
 import { ExpeditionCard } from "@/components/expedition-card";
 import { AnalyticsEvent } from "@/components/analytics-event";
+import { JsonLd } from "@/components/json-ld";
 import { ImpactMapPreview } from "@/components/impact-map-preview";
 import { SectionHeading } from "@/components/section-heading";
 import { Button, ButtonLink } from "@/components/ui/button";
@@ -288,18 +289,14 @@ export default async function CampaignDetailPage({ params }: { params: Promise<{
   const sponsorAmount = donationAmounts[1] ?? donationAmounts[0] ?? 0;
 
   return (
-    <>
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(campaignStructuredData).replace(/</g, "\\u003c") }}
-      />
-      <main className="pb-24 lg:pb-0">
-        <AnalyticsEvent
+    <main className="pb-24 lg:pb-0">
+      <AnalyticsEvent
           event="campaign_view"
           properties={{
             campaignSlug: campaign.slug
           }}
         />
+      <JsonLd data={campaignStructuredData} />
       <section className="bg-white">
         <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
           <nav className="flex flex-wrap items-center gap-2 text-sm font-semibold text-ocean-900/58" aria-label="Breadcrumb">
@@ -944,7 +941,6 @@ export default async function CampaignDetailPage({ params }: { params: Promise<{
           </div>
         </section>
       ) : null}
-      </main>
-    </>
+    </main>
   );
 }
