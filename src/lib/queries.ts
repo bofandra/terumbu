@@ -640,6 +640,7 @@ export async function getRetentionCenterData(userId: string) {
       .limit(6),
     getNotificationPreferences(userId)
   ]);
+  const savedCampaignPaidMetrics = await paidCampaignMetricsBySlug(savedRows.map((row) => row.slug));
   const followedBySlug = new Map<string, (typeof followedRows)[number]>();
 
   for (const row of followedRows) {
@@ -650,7 +651,7 @@ export async function getRetentionCenterData(userId: string) {
 
   return {
     savedCampaigns: savedRows.map((row) => ({
-      ...toCampaignCard(row),
+      ...campaignCardWithPaidMetrics(row, savedCampaignPaidMetrics),
       savedAt: row.savedAt
     })),
     savedCourses: savedCourseRows,
@@ -828,10 +829,12 @@ export async function getPartnerProfile(slug: string) {
       .orderBy(desc(projectEvidence.createdAt))
   ]);
 
+  const paidMetrics = await paidCampaignMetricsBySlug(campaignRows.map((campaign) => campaign.slug));
+
   return {
     ...partner,
     verification: verificationLabel(partner.verification),
-    campaigns: campaignRows.map((campaign) => toCampaignCard(campaign)),
+    campaigns: campaignRows.map((campaign) => campaignCardWithPaidMetrics(campaign, paidMetrics)),
     evidence: evidenceRows
   };
 }
@@ -879,6 +882,43 @@ export async function getFeaturedFieldUpdate() {
     title: `${focus} is ${progress}% funded.`,
     description: `${donorCount.toLocaleString("id-ID")} supporters have raised ${formatCurrency(raised, row.currency)} toward ${formatCurrency(goal, row.currency)} for ${row.impactTarget.toLocaleString("id-ID")} ${row.impactUnit}.`
   };
+}
+
+async function paidCampaignMetricsBySlug(slugs: string[]) {
+  if (slugs.length === 0) {
+    return new Map<string, { raisedAmount: string; donorCount: number }>();
+  }
+
+  const rows = await db
+    .select({
+      campaignSlug: campaigns.slug,
+      raisedAmount: sql<string>`coalesce(sum(${donations.amount}), 0)`,
+      donorCount: sql<number>`count(${donations.id})::int`
+    })
+    .from(campaigns)
+    .leftJoin(donations, and(eq(donations.campaignId, campaigns.id), eq(donations.status, "paid")))
+    .where(inArray(campaigns.slug, slugs))
+    .groupBy(campaigns.slug);
+
+  return new Map(
+    rows.map((row) => [
+      row.campaignSlug,
+      { raisedAmount: row.raisedAmount, donorCount: Number(row.donorCount ?? 0) }
+    ])
+  );
+}
+
+function campaignCardWithPaidMetrics<T extends Parameters<typeof toCampaignCard>[0]>(
+  row: T,
+  metrics: Map<string, { raisedAmount: string; donorCount: number }>
+) {
+  const metric = metrics.get(row.slug);
+
+  return toCampaignCard({
+    ...row,
+    raisedAmount: metric?.raisedAmount ?? "0",
+    donorCount: metric?.donorCount ?? 0
+  });
 }
 
 function toCampaignImpactTarget(row: {
@@ -939,6 +979,7 @@ export async function getCampaignDetail(slug: string) {
   }
 
   const carbonKgPerUsd = await getCarbonKgPerUsd();
+  const detailPaidMetrics = await paidCampaignMetricsBySlug([row.slug]);
   const [
     updates,
     sites,
@@ -1126,7 +1167,7 @@ export async function getCampaignDetail(slug: string) {
   }));
 
   return {
-    ...toCampaignCard(row),
+    ...campaignCardWithPaidMetrics(row, detailPaidMetrics),
     currency: row.currency,
     impactUnit: row.impactUnit,
     impactTarget: row.impactTarget,
