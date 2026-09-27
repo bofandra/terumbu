@@ -85,7 +85,7 @@ export async function processDueDonationSubscriptions(input: {
 
     const cycleBillingAt = subscription.nextBillingAt;
     const idempotencyKey = monthlySubscriptionCycleKey(subscription.id, cycleBillingAt);
-    const [claimedDonation] = await database
+    let [claimedDonation] = await database
       .insert(donations)
       .values({
         campaignId: subscription.campaignId,
@@ -106,11 +106,49 @@ export async function processDueDonationSubscriptions(input: {
       .returning({ id: donations.id });
 
     if (!claimedDonation) {
-      // Another worker already owns or completed this billing cycle. The
-      // idempotency key is also forwarded to the provider, so a later recovery
-      // path can safely reconcile a stale claim without issuing a second charge.
-      summary.skipped += 1;
-      continue;
+      const [existingCycle] = await database
+        .select({
+          id: donations.id,
+          status: donations.status,
+          createdAt: donations.createdAt,
+          paymentTransactionId: paymentTransactions.id
+        })
+        .from(donations)
+        .leftJoin(paymentTransactions, eq(paymentTransactions.donationId, donations.id))
+        .where(eq(donations.idempotencyKey, idempotencyKey))
+        .limit(1);
+
+      const staleBefore = new Date(now.getTime() - 15 * 60 * 1000);
+      const recoverableStaleClaim =
+        existingCycle?.status === "created" &&
+        !existingCycle.paymentTransactionId &&
+        existingCycle.createdAt <= staleBefore;
+
+      if (!recoverableStaleClaim) {
+        summary.skipped += 1;
+        continue;
+      }
+
+      const [reclaimed] = await database
+        .update(donations)
+        .set({ createdAt: now })
+        .where(
+          and(
+            eq(donations.id, existingCycle.id),
+            eq(donations.status, "created"),
+            lte(donations.createdAt, staleBefore)
+          )
+        )
+        .returning({ id: donations.id });
+
+      if (!reclaimed) {
+        summary.skipped += 1;
+        continue;
+      }
+
+      // Touching createdAt acts as a short lease: another worker can no longer
+      // consider this claim stale while this worker reconciles it.
+      claimedDonation = reclaimed;
     }
 
     const donationId = claimedDonation.id;
