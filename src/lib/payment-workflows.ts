@@ -32,7 +32,6 @@ import {
   normalizeCardLast4
 } from "@/lib/checkout";
 import { getMetadataNumber, getMetadataString, toNumber } from "@/lib/domain";
-import { departureStatusAfterSeatChange } from "@/lib/expedition-booking-lifecycle";
 import { CARBON_SETTING_KEY, calculateDonationImpact, formatImpactQuantity, parseCarbonKgPerUsd } from "@/lib/impact-calculations";
 import { formatCurrency } from "@/lib/utils";
 
@@ -799,6 +798,32 @@ export async function transitionExpeditionBookingPayment(
   const wasPaid = booking.previousStatus === "paid";
   const isPaid = input.nextStatus === "paid";
 
+  // Claim capacity before marking the booking paid. The conditional UPDATE is
+  // atomic in PostgreSQL, so concurrent verifications cannot oversell a departure.
+  if (!wasPaid && isPaid) {
+    const [claimedDeparture] = await database
+      .update(expeditionDepartures)
+      .set({
+        seatsBooked: sql`${expeditionDepartures.seatsBooked} + ${booking.participantsCount}`,
+        status: sql`case
+          when ${expeditionDepartures.seatsBooked} + ${booking.participantsCount} >= ${expeditionDepartures.capacity} then 'full'
+          else ${expeditionDepartures.status}
+        end`
+      })
+      .where(
+        and(
+          eq(expeditionDepartures.id, booking.departureId),
+          eq(expeditionDepartures.status, "open"),
+          sql`${expeditionDepartures.seatsBooked} + ${booking.participantsCount} <= ${expeditionDepartures.capacity}`
+        )
+      )
+      .returning({ id: expeditionDepartures.id });
+
+    if (!claimedDeparture) {
+      throw new Error("EXPEDITION_CAPACITY_UNAVAILABLE");
+    }
+  }
+
   await database
     .update(expeditionBookingPayments)
     .set({
@@ -817,30 +842,19 @@ export async function transitionExpeditionBookingPayment(
     })
     .where(eq(expeditionBookings.id, booking.id));
 
-  if (!wasPaid && isPaid) {
-    const nextSeatsBooked = Math.max(0, booking.departureSeatsBooked + booking.participantsCount);
-
-    await database
-      .update(expeditionDepartures)
-      .set({
-        seatsBooked: nextSeatsBooked,
-        status: departureStatusAfterSeatChange(booking.departureStatus, booking.departureCapacity, nextSeatsBooked)
-      })
-      .where(eq(expeditionDepartures.id, booking.departureId));
-
-  }
-
   if (wasPaid && !isPaid) {
-    const nextSeatsBooked = Math.max(0, booking.departureSeatsBooked - booking.participantsCount);
-
     await database
       .update(expeditionDepartures)
       .set({
-        seatsBooked: nextSeatsBooked,
-        status: departureStatusAfterSeatChange(booking.departureStatus, booking.departureCapacity, nextSeatsBooked)
+        seatsBooked: sql`greatest(${expeditionDepartures.seatsBooked} - ${booking.participantsCount}, 0)`,
+        status: sql`case
+          when ${expeditionDepartures.status} = 'full'
+            and greatest(${expeditionDepartures.seatsBooked} - ${booking.participantsCount}, 0) < ${expeditionDepartures.capacity}
+            then 'open'
+          else ${expeditionDepartures.status}
+        end`
       })
       .where(eq(expeditionDepartures.id, booking.departureId));
-
   }
 
   if (input.operationType) {
