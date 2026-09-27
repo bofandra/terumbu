@@ -2539,6 +2539,10 @@ export async function getCourseDetail(slug: string, userId?: string) {
       summary: courses.summary,
       description: courses.description,
       imageUrl: courses.imageUrl,
+      trackKey: courses.trackKey,
+      fieldReadiness: courses.fieldReadiness,
+      relatedExpeditionId: courses.relatedExpeditionId,
+      relatedCampaignId: courses.relatedCampaignId,
       status: courses.status
     })
     .from(courses)
@@ -2589,6 +2593,16 @@ export async function getCourseDetail(slug: string, userId?: string) {
   ]);
 
   const enrollment = enrollmentRows[0] ?? null;
+  const [relatedExpeditionRows, relatedCampaignRows] = await Promise.all([
+    course.relatedExpeditionId
+      ? db.select({ id: expeditions.id, title: expeditions.title, slug: expeditions.slug, summary: expeditions.summary, region: expeditions.region, imageUrl: expeditions.imageUrl })
+          .from(expeditions).where(and(eq(expeditions.id, course.relatedExpeditionId), eq(expeditions.status, "published"))).limit(1)
+      : Promise.resolve([]),
+    course.relatedCampaignId
+      ? db.select({ id: campaigns.id, title: campaigns.title, slug: campaigns.slug, summary: campaigns.summary, region: campaigns.region, imageUrl: campaigns.imageUrl })
+          .from(campaigns).where(and(eq(campaigns.id, course.relatedCampaignId), eq(campaigns.status, "published"))).limit(1)
+      : Promise.resolve([])
+  ]);
   const [progressRows, certificateRows, attemptRows, savedCourseRows, assessmentQuestionRows] = await Promise.all([
     enrollment
       ? db
@@ -2761,7 +2775,9 @@ export async function getCourseDetail(slug: string, userId?: string) {
     enrollment,
     certificate: certificateRows[0] ?? null,
     attempt: assessmentsForUi[0]?.attempt ?? null,
-    isSaved: savedCourseRows[0]?.status === "active"
+    isSaved: savedCourseRows[0]?.status === "active",
+    relatedExpedition: relatedExpeditionRows[0] ?? null,
+    relatedCampaign: relatedCampaignRows[0] ?? null
   };
 }
 
@@ -10225,6 +10241,10 @@ export async function getAdminAcademyData() {
         description: courses.description,
         status: courses.status,
         imageUrl: courses.imageUrl,
+        trackKey: courses.trackKey,
+        fieldReadiness: courses.fieldReadiness,
+        relatedExpeditionId: courses.relatedExpeditionId,
+        relatedCampaignId: courses.relatedCampaignId,
         publishedAt: courses.publishedAt,
         createdAt: courses.createdAt,
         updatedAt: courses.updatedAt
@@ -10388,6 +10408,17 @@ export async function getAdminAcademyData() {
       certificateCount: toNumber(certificateByCourse.get(course.id)?.total)
     }))
   };
+}
+
+export async function getAcademyActionOptions() {
+  const [expeditionRows, campaignRows] = await Promise.all([
+    db.select({ id: expeditions.id, title: expeditions.title, region: expeditions.region })
+      .from(expeditions).where(eq(expeditions.status, "published")).orderBy(asc(expeditions.title)),
+    db.select({ id: campaigns.id, title: campaigns.title, region: campaigns.region })
+      .from(campaigns).where(eq(campaigns.status, "published")).orderBy(asc(campaigns.title))
+  ]);
+
+  return { expeditions: expeditionRows, campaigns: campaignRows };
 }
 
 export async function getAdminAcademyCourse(courseId: string) {
