@@ -406,7 +406,38 @@ export async function getCampaignCards(limit?: number, category?: string): Promi
     .where(category ? and(eq(campaigns.status, "published"), eq(campaigns.category, category)) : eq(campaigns.status, "published"))
     .orderBy(desc(campaigns.publishedAt));
 
-  const cards = rows.map((row) => toCampaignCard(row));
+  const campaignIds = rows.map((row) => row.slug);
+  const paidMetrics = rows.length
+    ? await db
+        .select({
+          campaignId: campaigns.slug,
+          raisedAmount: sql<string>`coalesce(sum(${donations.amount}), 0)`,
+          donorCount: sql<number>`count(${donations.id})::int`
+        })
+        .from(campaigns)
+        .leftJoin(donations, and(eq(donations.campaignId, campaigns.id), eq(donations.status, "paid")))
+        .where(inArray(campaigns.slug, campaignIds))
+        .groupBy(campaigns.slug)
+    : [];
+  const paidMetricsByCampaign = new Map(
+    paidMetrics.map((metric) => [
+      metric.campaignId,
+      {
+        raisedAmount: metric.raisedAmount,
+        donorCount: Number(metric.donorCount ?? 0)
+      }
+    ])
+  );
+
+  const cards = rows.map((row) => {
+    const metric = paidMetricsByCampaign.get(row.slug);
+
+    return toCampaignCard({
+      ...row,
+      raisedAmount: metric?.raisedAmount ?? "0",
+      donorCount: metric?.donorCount ?? 0
+    });
+  });
 
   return typeof limit === "number" ? cards.slice(0, limit) : cards;
 }
@@ -836,9 +867,8 @@ export async function getFeaturedFieldUpdate() {
     })
     .from(donations)
     .where(and(eq(donations.campaignId, row.id), eq(donations.status, "paid")));
-  const transactionDonorCount = Number(paidDonationSummary?.donorCount ?? 0);
-  const raised = transactionDonorCount > 0 ? toNumber(paidDonationSummary?.raisedAmount) : toNumber(row.raisedAmount);
-  const donorCount = transactionDonorCount > 0 ? transactionDonorCount : row.donorCount;
+  const donorCount = Number(paidDonationSummary?.donorCount ?? 0);
+  const raised = toNumber(paidDonationSummary?.raisedAmount);
   const goal = toNumber(row.goalAmount);
   const progress = goal > 0 ? Math.min(100, Math.round((raised / goal) * 100)) : 0;
   const focus = row.siteName ?? row.campaignTitle;
