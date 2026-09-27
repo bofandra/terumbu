@@ -18,6 +18,7 @@ import {
   campaigns,
   corporateEvidenceCenter,
   corporateProjectPortfolio,
+  courses,
   donations,
   destinations,
   evidenceReviewEvents,
@@ -3461,6 +3462,7 @@ export async function updatePartnerExpeditionAction(formData: FormData) {
   const currency = normalizeCurrency(formData.get("currency"));
   const summary = formText(formData, "summary");
   const relatedCampaignId = nullableText(formData, "relatedCampaignId");
+  const requiredAcademyCourseId = nullableText(formData, "requiredAcademyCourseId");
   const requestedStatus = formText(formData, "status");
 
   if (!expeditionId || !title || !slug || !destinationId || !durationDays || !basePrice || !summary || !relatedCampaignId) {
@@ -3481,6 +3483,13 @@ export async function updatePartnerExpeditionAction(formData: FormData) {
   }
 
   const region = requestedRegion || destination.name;
+
+  if (requiredAcademyCourseId) {
+    const [academyCourse] = await db.select({ id: courses.id }).from(courses).where(and(eq(courses.id, requiredAcademyCourseId), eq(courses.status, "published"))).limit(1);
+    if (!academyCourse) {
+      redirectPartnerError(formData, "/partner/expeditions", "academy-course-missing");
+    }
+  }
 
   const [existingSlug] = await db.select({ id: expeditions.id }).from(expeditions).where(eq(expeditions.slug, slug)).limit(1);
 
@@ -3550,6 +3559,7 @@ export async function updatePartnerExpeditionAction(formData: FormData) {
       summary,
       imageUrl,
       relatedCampaignId,
+      requiredAcademyCourseId,
       metadata,
       status,
       publishedAt: status === "completed" ? existingExpedition.publishedAt ?? new Date() : status === existingExpedition.status ? existingExpedition.publishedAt : null,
@@ -3697,6 +3707,7 @@ export async function createPartnerExpeditionAction(formData: FormData) {
   const currency = normalizeCurrency(formData.get("currency"));
   const summary = formText(formData, "summary");
   const relatedCampaignId = nullableText(formData, "relatedCampaignId");
+  const requiredAcademyCourseId = nullableText(formData, "requiredAcademyCourseId");
 
   if (!title || !slug || !destinationId || !durationDays || !basePrice || !summary || !relatedCampaignId) {
     redirectPartnerError(formData, "/partner/expeditions", "expedition-invalid");
@@ -3715,6 +3726,13 @@ export async function createPartnerExpeditionAction(formData: FormData) {
   }
 
   const region = requestedRegion || destination.name;
+
+  if (requiredAcademyCourseId) {
+    const [academyCourse] = await db.select({ id: courses.id }).from(courses).where(and(eq(courses.id, requiredAcademyCourseId), eq(courses.status, "published"))).limit(1);
+    if (!academyCourse) {
+      redirectPartnerError(formData, "/partner/expeditions", "academy-course-missing");
+    }
+  }
 
   const [existing] = await db.select({ id: expeditions.id }).from(expeditions).where(eq(expeditions.slug, slug)).limit(1);
 
@@ -3766,6 +3784,7 @@ export async function createPartnerExpeditionAction(formData: FormData) {
       summary,
       imageUrl,
       relatedCampaignId,
+      requiredAcademyCourseId,
       metadata,
       status: "draft",
       publishedAt: null,

@@ -1548,6 +1548,7 @@ export async function getExpeditionDetail(slug: string) {
       summary: expeditions.summary,
       metadata: expeditions.metadata,
       relatedCampaignId: expeditions.relatedCampaignId,
+      requiredAcademyCourseId: expeditions.requiredAcademyCourseId,
       relatedCampaignSlug: campaigns.slug,
       relatedCampaignTitle: campaigns.title,
       relatedCampaignSummary: campaigns.summary,
@@ -1572,7 +1573,7 @@ export async function getExpeditionDetail(slug: string) {
     return null;
   }
 
-  const [departures, relatedSites, updateRows, evidenceRows, courseRows, relatedExpeditionRows, reviewRows, participantSummaryRows, travelerMediaRows] = await Promise.all([
+  const [departures, relatedSites, updateRows, evidenceRows, courseRows, relatedExpeditionRows, reviewRows, participantSummaryRows, travelerMediaRows, requiredAcademyCourseRows] = await Promise.all([
     db
       .select({
         id: expeditionDepartures.id,
@@ -1646,7 +1647,11 @@ export async function getExpeditionDetail(slug: string) {
       })
       .from(expeditionBookings)
       .where(and(eq(expeditionBookings.expeditionId, row.id), inArray(expeditionBookings.status, ["confirmed", "completed"]))),
-    getPublishedExpeditionMedia(row.id)
+    getPublishedExpeditionMedia(row.id),
+    row.requiredAcademyCourseId
+      ? db.select({ id: courses.id, title: courses.title, slug: courses.slug, summary: courses.summary, imageUrl: courses.imageUrl, trackKey: courses.trackKey, fieldReadiness: courses.fieldReadiness })
+          .from(courses).where(and(eq(courses.id, row.requiredAcademyCourseId), eq(courses.status, "published"))).limit(1)
+      : Promise.resolve([])
   ]);
 
   const mappedDepartures = departures.map((departure) => {
@@ -1723,7 +1728,9 @@ export async function getExpeditionDetail(slug: string) {
     ? [{ title: updateRows[0].title, date: (updateRows[0].publishedAt ?? updateRows[0].createdAt).toISOString(), body: updateRows[0].body }]
     : [];
   const durationLabel = toExpeditionCard(row).duration;
+  const requiredAcademyCourse = requiredAcademyCourseRows[0] ?? null;
   const selectedPreparationCourse =
+    requiredAcademyCourse ??
     courseRows.find((course) => course.title.toLowerCase().includes("coral")) ??
     courseRows.find((course) => course.title.toLowerCase().includes("ocean")) ??
     courseRows[0] ??
@@ -1864,6 +1871,7 @@ export async function getExpeditionDetail(slug: string) {
     travelInfo: expeditionMetadata.travelInfo,
     team: expeditionMetadata.team,
     preparationCourse: expeditionMetadata.preparationCourse,
+    requiredAcademyCourse,
     reviewCategories: publicReviewCategories,
     reviews: publicReviews,
     tripUpdates: expeditionMetadata.tripUpdates.map((update) => ({ ...update, date: metadataDate(update.date) })),
@@ -2539,6 +2547,10 @@ export async function getCourseDetail(slug: string, userId?: string) {
       summary: courses.summary,
       description: courses.description,
       imageUrl: courses.imageUrl,
+      trackKey: courses.trackKey,
+      fieldReadiness: courses.fieldReadiness,
+      relatedExpeditionId: courses.relatedExpeditionId,
+      relatedCampaignId: courses.relatedCampaignId,
       status: courses.status
     })
     .from(courses)
@@ -2589,6 +2601,16 @@ export async function getCourseDetail(slug: string, userId?: string) {
   ]);
 
   const enrollment = enrollmentRows[0] ?? null;
+  const [relatedExpeditionRows, relatedCampaignRows] = await Promise.all([
+    course.relatedExpeditionId
+      ? db.select({ id: expeditions.id, title: expeditions.title, slug: expeditions.slug, summary: expeditions.summary, region: expeditions.region, imageUrl: expeditions.imageUrl })
+          .from(expeditions).where(and(eq(expeditions.id, course.relatedExpeditionId), eq(expeditions.status, "published"))).limit(1)
+      : Promise.resolve([]),
+    course.relatedCampaignId
+      ? db.select({ id: campaigns.id, title: campaigns.title, slug: campaigns.slug, summary: campaigns.summary, region: campaigns.region, imageUrl: campaigns.imageUrl })
+          .from(campaigns).where(and(eq(campaigns.id, course.relatedCampaignId), eq(campaigns.status, "published"))).limit(1)
+      : Promise.resolve([])
+  ]);
   const [progressRows, certificateRows, attemptRows, savedCourseRows, assessmentQuestionRows] = await Promise.all([
     enrollment
       ? db
@@ -2761,7 +2783,9 @@ export async function getCourseDetail(slug: string, userId?: string) {
     enrollment,
     certificate: certificateRows[0] ?? null,
     attempt: assessmentsForUi[0]?.attempt ?? null,
-    isSaved: savedCourseRows[0]?.status === "active"
+    isSaved: savedCourseRows[0]?.status === "active",
+    relatedExpedition: relatedExpeditionRows[0] ?? null,
+    relatedCampaign: relatedCampaignRows[0] ?? null
   };
 }
 
@@ -9243,6 +9267,11 @@ export async function getPartnerPortalData(userId?: string) {
   const expeditionScope = organizationIds === null ? sql`true` : organizationIds.length > 0 ? inArray(campaigns.organizationId, organizationIds) : sql`false`;
   const teamOrganizationScope = organizationIds === null ? sql`true` : organizationIds.length > 0 ? inArray(organizationTeamMembers.organizationId, organizationIds) : sql`false`;
   const destinationRows = await getDestinationOptions();
+  const academyCourseRows = await db
+    .select({ id: courses.id, title: courses.title, slug: courses.slug, trackKey: courses.trackKey, fieldReadiness: courses.fieldReadiness })
+    .from(courses)
+    .where(eq(courses.status, "published"))
+    .orderBy(asc(courses.title));
 
   const [
     organizationRows,
@@ -9431,6 +9460,7 @@ export async function getPartnerPortalData(userId?: string) {
         publishedAt: expeditions.publishedAt,
         updatedAt: expeditions.updatedAt,
         relatedCampaignId: expeditions.relatedCampaignId,
+        requiredAcademyCourseId: expeditions.requiredAcademyCourseId,
         relatedCampaignTitle: campaigns.title,
         organizationId: campaigns.organizationId,
         partner: organizations.name,
@@ -9633,6 +9663,7 @@ export async function getPartnerPortalData(userId?: string) {
       detailMetadata: ReturnType<typeof normalizeExpeditionDetailMetadata> | null;
       marketplaceMetadata: ReturnType<typeof normalizeExpeditionMarketplaceMetadata> | null;
       relatedCampaignId: string | null;
+      requiredAcademyCourseId: string | null;
       relatedCampaignTitle: string | null;
       organizationId: string | null;
       partner: string | null;
@@ -9709,6 +9740,7 @@ export async function getPartnerPortalData(userId?: string) {
         detailMetadata: null,
         marketplaceMetadata: null,
         relatedCampaignId: row.relatedCampaignId,
+        requiredAcademyCourseId: row.requiredAcademyCourseId,
         relatedCampaignTitle: row.relatedCampaignTitle,
         organizationId: row.organizationId,
         partner: row.partner,
@@ -9884,6 +9916,7 @@ export async function getPartnerPortalData(userId?: string) {
     campaignTimelinePhases: campaignTimelineRows,
     organizationTeamMembers: organizationTeamRows,
     expeditions: Array.from(expeditionsById.values()),
+    academyCourses: academyCourseRows,
     evidence: evidenceRows.map((item) => {
       const reviewEvents = (evidenceReviewEventsById.get(item.id) ?? []).filter((event) => event.visibility !== "internal");
       const stage = evidenceStage(item.metadata, item.evidenceType);
@@ -10225,6 +10258,10 @@ export async function getAdminAcademyData() {
         description: courses.description,
         status: courses.status,
         imageUrl: courses.imageUrl,
+        trackKey: courses.trackKey,
+        fieldReadiness: courses.fieldReadiness,
+        relatedExpeditionId: courses.relatedExpeditionId,
+        relatedCampaignId: courses.relatedCampaignId,
         publishedAt: courses.publishedAt,
         createdAt: courses.createdAt,
         updatedAt: courses.updatedAt
@@ -10388,6 +10425,17 @@ export async function getAdminAcademyData() {
       certificateCount: toNumber(certificateByCourse.get(course.id)?.total)
     }))
   };
+}
+
+export async function getAcademyActionOptions() {
+  const [expeditionRows, campaignRows] = await Promise.all([
+    db.select({ id: expeditions.id, title: expeditions.title, region: expeditions.region })
+      .from(expeditions).where(eq(expeditions.status, "published")).orderBy(asc(expeditions.title)),
+    db.select({ id: campaigns.id, title: campaigns.title, region: campaigns.region })
+      .from(campaigns).where(eq(campaigns.status, "published")).orderBy(asc(campaigns.title))
+  ]);
+
+  return { expeditions: expeditionRows, campaigns: campaignRows };
 }
 
 export async function getAdminAcademyCourse(courseId: string) {

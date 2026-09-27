@@ -29,6 +29,10 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { and, eq } from "drizzle-orm";
+
+import { db } from "@/db/client";
+import { courseCertificates } from "@/db/schema";
 
 import { ExpeditionMobileBookingBar } from "@/components/expedition-booking-card";
 import { JsonLd } from "@/components/json-ld";
@@ -248,6 +252,10 @@ export default async function ExpeditionDetailPage({
     }
   ];
   const saveState = sessionUser ? await getExpeditionSaveState(sessionUser.id, expedition.slug) : null;
+  const prerequisiteCertificate = sessionUser && expedition.requiredAcademyCourse
+    ? (await db.select({ id: courseCertificates.id }).from(courseCertificates).where(and(eq(courseCertificates.userId, sessionUser.id), eq(courseCertificates.courseId, expedition.requiredAcademyCourse.id))).limit(1))[0] ?? null
+    : null;
+  const academyEligibility = !expedition.requiredAcademyCourse ? "not_required" as const : prerequisiteCertificate ? "eligible" as const : "learning_required" as const;
   const ownReferralCode = sessionUser ? referralCodeForUser(sessionUser.id) : null;
   const rawIncomingReferralCode = (query?.ref ?? "")
     .trim()
@@ -270,7 +278,9 @@ export default async function ExpeditionDetailPage({
     expeditionPath,
     referralCode: incomingReferralCode,
     displayCurrency,
-    locale: localeTag(locale)
+    locale: localeTag(locale),
+    academyEligibility,
+    requiredAcademyCourse: expedition.requiredAcademyCourse
   };
   const tabs = [
     { id: "exchange", label: "The Exchange" },
@@ -459,6 +469,14 @@ export default async function ExpeditionDetailPage({
           <DetailDivider />
           <section id="availability" tabIndex={-1} className="scroll-mt-36 py-14 outline-none">
             <SectionHeader title="Availability" />
+            {expedition.requiredAcademyCourse ? (
+              <div className={cn("mt-7 rounded-md border p-5", academyEligibility === "eligible" ? "border-kelp-500/25 bg-kelp-100/45" : "border-sand-400/40 bg-sand-50")}>
+                <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
+                  <div><p className="text-xs font-bold uppercase tracking-[0.14em] text-ocean-900/54">{academyEligibility === "eligible" ? "Eligible" : "Learning required"}</p><h3 className="mt-1 text-xl font-bold text-ocean-900">{expedition.requiredAcademyCourse.title}</h3><p className="mt-2 max-w-2xl text-sm leading-6 text-ocean-900/62">{academyEligibility === "eligible" ? "Your Terumbu Academy certificate satisfies this expedition prerequisite." : "Complete this Terumbu Academy course and earn its certificate before booking."}</p></div>
+                  {academyEligibility !== "eligible" ? <ButtonLink href={"/academy/courses/" + expedition.requiredAcademyCourse.slug} className="shrink-0 rounded-full">Complete course first</ButtonLink> : null}
+                </div>
+              </div>
+            ) : null}
             <div className="mt-10 grid gap-10 lg:grid-cols-[minmax(0,1fr)_0.42fr] lg:items-start">
               <div>
                 {monthAvailability.length > 0 ? (
@@ -520,7 +538,7 @@ export default async function ExpeditionDetailPage({
                           location={departure.meetingPoint ?? expedition.region}
                           description={`${expedition.summary} — Terumbu.eco conservation expedition`}
                         />
-                        <CheckoutLink departureId={departure.id} />
+                        {academyEligibility === "learning_required" && expedition.requiredAcademyCourse ? <ButtonLink href={"/academy/courses/" + expedition.requiredAcademyCourse.slug} className="rounded-full">Complete course first</ButtonLink> : <CheckoutLink departureId={departure.id} />}
                       </div>
                       ) : (
                         <form action={submitExpeditionInterestRequestAction} className="grid gap-2 rounded-md border border-ocean-900/10 bg-ocean-50 p-3">

@@ -19,11 +19,13 @@ import {
   adminAuditLogs,
   assessmentAttempts,
   assessmentChoices,
+  campaigns,
   assessmentQuestions,
   courseAssessments,
   courseCertificates,
   courseEnrollments,
   courseLessons,
+  expeditions,
   courses,
   impactPassportItems,
   impactPassports,
@@ -105,6 +107,20 @@ async function courseImageFromForm(formData: FormData) {
   }
 
   return upload.dataUrl;
+}
+
+async function validateAcademyActionTargets(relatedExpeditionId: string | null, relatedCampaignId: string | null) {
+  const [expeditionRows, campaignRows] = await Promise.all([
+    relatedExpeditionId
+      ? db.select({ id: expeditions.id }).from(expeditions).where(and(eq(expeditions.id, relatedExpeditionId), eq(expeditions.status, "published"))).limit(1)
+      : Promise.resolve([]),
+    relatedCampaignId
+      ? db.select({ id: campaigns.id }).from(campaigns).where(and(eq(campaigns.id, relatedCampaignId), eq(campaigns.status, "published"))).limit(1)
+      : Promise.resolve([])
+  ]);
+
+  if (relatedExpeditionId && !expeditionRows[0]) redirect("/admin/academy?error=action-target");
+  if (relatedCampaignId && !campaignRows[0]) redirect("/admin/academy?error=action-target");
 }
 
 async function courseBySlug(slug: string) {
@@ -475,12 +491,18 @@ export async function createAcademyCourseAction(formData: FormData) {
   const slug = slugify(formText(formData, "slug") || title);
   const summary = formText(formData, "summary");
   const status = courseStatusFromForm(formData);
+  const trackKey = formText(formData, "trackKey") || null;
+  const fieldReadiness = formData.get("fieldReadiness") === "on";
+  const relatedExpeditionId = formText(formData, "relatedExpeditionId") || null;
+  const relatedCampaignId = formText(formData, "relatedCampaignId") || null;
   const imageUrl = await courseImageFromForm(formData);
   const now = new Date();
 
   if (!title || !summary) {
     redirect("/admin/academy?error=course");
   }
+
+  await validateAcademyActionTargets(relatedExpeditionId, relatedCampaignId);
 
   const [course] = await db
     .insert(courses)
@@ -492,6 +514,10 @@ export async function createAcademyCourseAction(formData: FormData) {
       summary,
       description: formText(formData, "description") || null,
       imageUrl,
+      trackKey,
+      fieldReadiness,
+      relatedExpeditionId,
+      relatedCampaignId,
       status,
       publishedAt: status === "published" ? now : null,
       updatedAt: now
@@ -503,7 +529,7 @@ export async function createAcademyCourseAction(formData: FormData) {
     action: "academy.course.created",
     entityType: "course",
     entityId: course.id,
-    metadata: { title, status }
+    metadata: { title, status, trackKey, fieldReadiness, relatedExpeditionId, relatedCampaignId }
   });
 
   redirect(`/admin/academy/courses/${course.id}?saved=course`);
@@ -516,6 +542,10 @@ export async function updateAcademyCourseAction(formData: FormData) {
   const slug = slugify(formText(formData, "slug") || title);
   const summary = formText(formData, "summary");
   const status = courseStatusFromForm(formData);
+  const trackKey = formText(formData, "trackKey") || null;
+  const fieldReadiness = formData.get("fieldReadiness") === "on";
+  const relatedExpeditionId = formText(formData, "relatedExpeditionId") || null;
+  const relatedCampaignId = formText(formData, "relatedCampaignId") || null;
   const uploadedImageUrl = await courseImageFromForm(formData);
   const now = new Date();
 
@@ -529,6 +559,12 @@ export async function updateAcademyCourseAction(formData: FormData) {
     redirect("/admin/academy?error=course");
   }
 
+  await validateAcademyActionTargets(relatedExpeditionId, relatedCampaignId);
+
+  if (status !== "published") {
+    await db.update(expeditions).set({ requiredAcademyCourseId: null, updatedAt: now }).where(eq(expeditions.requiredAcademyCourseId, courseId));
+  }
+
   await db
     .update(courses)
     .set({
@@ -539,6 +575,10 @@ export async function updateAcademyCourseAction(formData: FormData) {
       summary,
       description: formText(formData, "description") || null,
       imageUrl: uploadedImageUrl ?? course.imageUrl,
+      trackKey,
+      fieldReadiness,
+      relatedExpeditionId,
+      relatedCampaignId,
       status,
       publishedAt: status === "published" ? now : null,
       updatedAt: now
@@ -550,7 +590,7 @@ export async function updateAcademyCourseAction(formData: FormData) {
     action: "academy.course.updated",
     entityType: "course",
     entityId: courseId,
-    metadata: { title, status }
+    metadata: { title, status, trackKey, fieldReadiness, relatedExpeditionId, relatedCampaignId }
   });
 
   redirect(`/admin/academy/courses/${courseId}?saved=course`);

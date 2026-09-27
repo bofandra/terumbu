@@ -12,6 +12,7 @@ export const metadata = {
 export const dynamic = "force-dynamic";
 
 const errorMessages: Record<string, string> = {
+  "academy-course-missing": "Choose a published Academy course for the expedition prerequisite.",
   "campaign-missing": "Choose an existing related campaign.",
   "destination-missing": "Choose a published destination managed by Terumbu.",
   "expedition-invalid": "Enter a title, slug, region, duration, price, summary, and related campaign.",
@@ -45,7 +46,7 @@ export default async function NewPartnerExpeditionPage({ searchParams }: NewPart
       {errorMessage ? (
         <p className="rounded-lg border border-coral-700/20 bg-coral-100 px-4 py-3 text-sm font-bold text-coral-700">{errorMessage}</p>
       ) : null}
-      <PartnerExpeditionCreateForm campaigns={data.campaigns} destinations={data.destinations} canManageExpeditions={data.capabilities.canManageExpeditions} />
+      <PartnerExpeditionCreateForm campaigns={data.campaigns} academyCourses={data.academyCourses} destinations={data.destinations} canManageExpeditions={data.capabilities.canManageExpeditions} />
     </div>
   );
 }

@@ -12,7 +12,7 @@ import { MetricValue } from "@/components/ui/metric-value";
 import { createAcademyCourseAction } from "@/lib/academy-actions";
 import { observeAdminDataLoader } from "@/lib/admin-observability";
 import { requireRole } from "@/lib/auth";
-import { getAdminAcademyPage, type AdminAcademyFilters } from "@/lib/queries";
+import { getAcademyActionOptions, getAdminAcademyPage, type AdminAcademyFilters } from "@/lib/queries";
 import { cn } from "@/lib/utils";
 
 export const metadata = { title: "Admin Academy" };
@@ -21,7 +21,7 @@ export const dynamic = "force-dynamic";
 const pathname = "/admin/academy";
 const courseStatuses = ["draft", "published", "archived"];
 const savedMessages: Record<string, string> = { course: "Course saved." };
-const errorMessages: Record<string, string> = { course: "Enter a title and summary for the course.", "image-size": "Uploaded image is too large.", "image-type": "Upload a supported image file." };
+const errorMessages: Record<string, string> = { "action-target": "Choose a currently published expedition or donation recommendation.", course: "Enter a title and summary for the course.", "image-size": "Uploaded image is too large.", "image-type": "Upload a supported image file." };
 
 type AdminAcademyPageProps = { searchParams?: Promise<AdminAcademyFilters & { error?: string; saved?: string }> };
 type AdminAcademyData = Awaited<ReturnType<typeof getAdminAcademyPage>>;
@@ -55,7 +55,10 @@ function SummaryMetric({ label, value, icon: Icon }: { label: string; value: str
 export default async function AdminAcademyPage({ searchParams }: AdminAcademyPageProps) {
   await requireRole(["admin"], pathname);
   const params = await searchParams;
-  const data = await observeAdminDataLoader("admin.academy.directory", () => getAdminAcademyPage(params));
+  const [data, actionOptions] = await Promise.all([
+    observeAdminDataLoader("admin.academy.directory", () => getAdminAcademyPage(params)),
+    getAcademyActionOptions()
+  ]);
   const savedMessage = params?.saved ? savedMessages[String(params.saved)] : null;
   const errorMessage = params?.error ? errorMessages[String(params.error)] : null;
   const baseParams = listParams(data);
@@ -95,6 +98,10 @@ export default async function AdminAcademyPage({ searchParams }: AdminAcademyPag
         <Field label="Upload image"><input name="imageFile" type="file" accept="image/png,image/jpeg,image/webp,image/gif" className={adminInputClassName} /></Field>
         <Field label="Summary" className="md:col-span-2"><textarea name="summary" className={adminTextareaClassName} placeholder="Short catalog summary" required /></Field>
         <Field label="Description" className="md:col-span-2 xl:col-span-4"><textarea name="description" className={adminTextareaClassName} placeholder="Longer course description" /></Field>
+        <Field label="Learning track"><select name="trackKey" defaultValue="" className={adminSelectClassName}><option value="">No learning track</option><option value="coral-conservation">Coral conservation</option><option value="mangrove-restoration">Mangrove restoration</option><option value="marine-monitoring">Marine monitoring</option><option value="community-conservation">Community conservation</option></select></Field>
+        <Field label="Recommended expedition"><select name="relatedExpeditionId" defaultValue="" className={adminSelectClassName}><option value="">No expedition recommendation</option>{actionOptions.expeditions.map((expedition) => <option key={expedition.id} value={expedition.id}>{expedition.title} — {expedition.region}</option>)}</select></Field>
+        <Field label="Recommended donation"><select name="relatedCampaignId" defaultValue="" className={adminSelectClassName}><option value="">No donation recommendation</option>{actionOptions.campaigns.map((campaign) => <option key={campaign.id} value={campaign.id}>{campaign.title} — {campaign.region}</option>)}</select></Field>
+        <label className="flex items-center gap-3 rounded-lg border border-kelp-700/20 bg-kelp-100/40 p-3 text-sm font-bold text-ocean-900"><input name="fieldReadiness" type="checkbox" className="size-4 accent-kelp-700" />Field-readiness course</label>
       </div>
       <Button type="submit" className="mt-4 rounded-lg"><Plus className="size-4" aria-hidden="true" />Create Course</Button>
     </form>

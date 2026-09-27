@@ -40,6 +40,8 @@ type ExpeditionBookingCardProps = {
   referralCode?: string | null;
   displayCurrency?: DisplayCurrency;
   locale?: string;
+  academyEligibility?: "not_required" | "eligible" | "learning_required";
+  requiredAcademyCourse?: { title: string; slug: string } | null;
 };
 
 function participantTotal(adults: number, students: number, children: number) {
@@ -121,7 +123,9 @@ export function ExpeditionBookingCard({
   expeditionPath,
   referralCode,
   displayCurrency = "USD",
-  locale = "en-US"
+  locale = "en-US",
+  academyEligibility = "not_required",
+  requiredAcademyCourse = null
 }: ExpeditionBookingCardProps) {
   const firstBookableDeparture = departures.find((departure) => departure.status === "open" && departure.availableSeats > 0) ?? departures[0] ?? null;
   const [selectedDepartureId, setSelectedDepartureId] = useState(firstBookableDeparture?.id ?? null);
@@ -241,7 +245,9 @@ export function ExpeditionBookingCard({
         </div>
       </div>
 
-      {bookingDisabled ? (
+      {academyEligibility === "learning_required" && requiredAcademyCourse ? (
+        <div className="mt-5 rounded-xl border border-sand-400/40 bg-sand-50 p-4"><p className="text-xs font-bold uppercase tracking-[0.12em] text-ocean-900/54">Learning required</p><p className="mt-1 font-bold text-ocean-900">{requiredAcademyCourse.title}</p><Link href={"/academy/courses/" + requiredAcademyCourse.slug} className="mt-3 flex min-h-12 w-full items-center justify-center rounded-full bg-kelp-500 px-5 text-sm font-bold text-white shadow-soft hover:bg-kelp-700">Complete course first</Link></div>
+      ) : bookingDisabled ? (
         <button type="button" disabled className="mt-5 flex min-h-12 w-full items-center justify-center rounded-full bg-ocean-900/20 px-5 text-sm font-bold text-white">
           Select Available Date
         </button>
@@ -314,10 +320,11 @@ export function ExpeditionMobileBookingBar(props: ExpeditionBookingCardProps) {
           ) : null}
           <p className="truncate text-xs text-ocean-900/54">{firstDeparture ? `${firstDeparture.dateRangeLabel} · ${firstDeparture.availableSeats} places left` : "Dates pending"}</p>
         </div>
-        <a href="#availability" className="inline-flex min-h-12 shrink-0 items-center gap-2 rounded-full bg-kelp-500 px-5 text-sm font-bold text-white shadow-soft">
-          Reserve / Apply
-          <ArrowRight size={17} aria-hidden="true" />
-        </a>
+        {props.academyEligibility === "learning_required" && props.requiredAcademyCourse ? (
+          <Link href={"/academy/courses/" + props.requiredAcademyCourse.slug} className="inline-flex min-h-12 shrink-0 items-center gap-2 rounded-full bg-kelp-500 px-5 text-sm font-bold text-white shadow-soft">Complete course first<ArrowRight size={17} aria-hidden="true" /></Link>
+        ) : (
+          <a href="#availability" className="inline-flex min-h-12 shrink-0 items-center gap-2 rounded-full bg-kelp-500 px-5 text-sm font-bold text-white shadow-soft">Reserve / Apply<ArrowRight size={17} aria-hidden="true" /></a>
+        )}
       </div>
     </div>
   );
