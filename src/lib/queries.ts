@@ -325,7 +325,8 @@ export async function getImpactStats(): Promise<ImpactStatData[]> {
       metadata: sponsoredEcosystems.metadata,
       plantedAt: sponsoredEcosystems.plantedAt
     })
-    .from(sponsoredEcosystems);
+    .from(sponsoredEcosystems)
+    .where(inArray(sponsoredEcosystems.status, ["sponsored", "growing", "planted", "monitored"]));
 
   const [heroSummary] = await db
     .select({
