@@ -129,10 +129,10 @@ export async function processDueDonationSubscriptions(input: {
         })
         .returning({ id: donations.id });
 
-      donationId = donationId;
+      donationId = donation.id;
 
       await tx.insert(paymentTransactions).values({
-        donationId: donationId,
+        donationId: donation.id,
         paymentMethodId: subscription.paymentMethodId,
         provider: providerResult.provider,
         providerReference: providerResult.providerReference,
@@ -152,7 +152,7 @@ export async function processDueDonationSubscriptions(input: {
       });
 
       const transition = await transitionDonationPayment(tx as unknown as typeof db, {
-        donationId: donationId,
+        donationId: donation.id,
         nextStatus: providerResult.status,
         providerReference: providerResult.providerReference,
         paymentMethodId: subscription.paymentMethodId,
