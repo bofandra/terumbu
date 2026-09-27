@@ -968,6 +968,7 @@ export async function getCampaignDetail(slug: string) {
       })
       .from(donations)
       .leftJoin(paymentTransactions, eq(paymentTransactions.donationId, donations.id))
+      .leftJoin(sponsoredEcosystems, eq(sponsoredEcosystems.donationId, donations.id))
       .where(and(eq(donations.campaignId, row.id), eq(donations.status, "paid")))
       .orderBy(desc(donations.createdAt))
       .limit(6),
