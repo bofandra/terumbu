@@ -33,7 +33,10 @@ assert_seo_detail() {
 
   if ! grep -Fqi 'application/ld+json' <<<"${body}"; then
     echo "SEO debug: ${path} response bytes=${#body}" >&2
-    grep -Eio '<script[^>]*>|application/ld[^< ]*|<link[^>]+canonical[^>]*>' <<<"${body}" | head -n 20 >&2 || true
+    echo "SEO debug: response markers:" >&2
+    grep -Eio '<script[^>]*>|application/ld[^< ]*|<link[^>]+canonical[^>]*>|campaign_view|restore-raja-ampat-reefs|schema\.org' <<<"${body}" | head -n 40 >&2 || true
+    echo "SEO debug: JSON-LD may be deferred by React streaming; checking full response is complete." >&2
+    grep -Fqi '</html>' <<<"${body}" || fail "${path} returned incomplete streamed HTML"
     fail "${path} is missing JSON-LD"
   fi
   grep -Fqi 'rel="canonical"' <<<"${body}" || fail "${path} is missing a canonical link"
