@@ -326,7 +326,7 @@ export async function getImpactStats(): Promise<ImpactStatData[]> {
       plantedAt: sponsoredEcosystems.plantedAt
     })
     .from(sponsoredEcosystems)
-    .where(inArray(sponsoredEcosystems.status, ["sponsored", "growing", "planted", "monitored"]));
+    .where(inArray(sponsoredEcosystems.status, ["planted", "monitored"]));
 
   const [heroSummary] = await db
     .select({
@@ -338,7 +338,7 @@ export async function getImpactStats(): Promise<ImpactStatData[]> {
   const mangroves = plantedEcosystemUnits(ecosystemRows, "seedlings");
 
   return [
-    { label: "Corals restored", value: formatCompact(corals), tone: "coral" },
+    { label: "Corals planted", value: formatCompact(corals), tone: "coral" },
     { label: "Mangroves planted", value: formatCompact(mangroves), tone: "kelp" },
     { label: "Ocean heroes", value: formatCompact(heroSummary?.total ?? 0), tone: "ocean" },
     { label: "Raised for conservation", value: formatCurrency(toNumber(donationSummary?.total)), tone: "sand" }
@@ -4043,7 +4043,7 @@ export async function getDashboardData(userId: string) {
       contributed: number;
       supportedUnits: number;
     }>())
-  ).map(([, site]) => ({ ...site, supportedUnits: Math.max(site.supportedUnits, donationAmountByCampaign.has(site.campaignSlug) ? 1 : 0) }));
+  ).map(([, site]) => site);
 
   const coralCards = activeEcosystemRows.map((ecosystem) => {
     const quantity = ecosystemQuantity(ecosystem.metadata);
@@ -4307,9 +4307,9 @@ export async function getDashboardData(userId: string) {
       .slice(0, 6)
       .map((evidence) => ({
         id: `verified-evidence-${evidence.id}`,
-        category: "Verified impact",
+        category: "Verified campaign evidence",
         title: evidence.title,
-        description: `${evidence.campaignTitle} · verified campaign outcome`,
+        description: `${evidence.campaignTitle} · verified campaign-level field evidence`,
         occurredAt: evidence.verifiedAt ?? evidence.createdAt,
         href: `/campaigns/${evidence.campaignSlug}#evidence`
       })),
@@ -4342,7 +4342,7 @@ export async function getDashboardData(userId: string) {
     .slice(0, 6)
     .map((evidence) => ({
       notificationCode: `supported-campaign-evidence-${evidence.id}`,
-      category: "Verified impact",
+      category: "Verified campaign evidence",
       title: evidence.title,
       message: `${evidence.campaignTitle} has new verified field evidence.`,
       href: `/campaigns/${evidence.campaignSlug}#evidence`,
