@@ -849,6 +849,11 @@ export async function transitionExpeditionBookingPayment(
     .where(eq(expeditionBookings.id, booking.id));
 
   if (wasPaid && !isPaid) {
+    // A payment reversal invalidates any previously verified completion.
+    // Keep reviews/media as historical records, but remove the Passport claim
+    // and move the booking out of completed/confirmed state.
+    await deleteExpeditionPassportItem(database, booking.id);
+
     await database
       .update(expeditionDepartures)
       .set({
