@@ -3483,6 +3483,13 @@ export async function updatePartnerExpeditionAction(formData: FormData) {
 
   const region = requestedRegion || destination.name;
 
+  if (requiredAcademyCourseId) {
+    const [academyCourse] = await db.select({ id: courses.id }).from(courses).where(and(eq(courses.id, requiredAcademyCourseId), eq(courses.status, "published"))).limit(1);
+    if (!academyCourse) {
+      redirectPartnerError(formData, "/partner/expeditions", "academy-course-missing");
+    }
+  }
+
   const [existingSlug] = await db.select({ id: expeditions.id }).from(expeditions).where(eq(expeditions.slug, slug)).limit(1);
 
   if (existingSlug && existingSlug.id !== expeditionId) {
