@@ -36,7 +36,7 @@ export default async function DashboardImpactPage() {
       : null;
   const summary = [
     { label: "Total donated", value: formatCurrency(data.summary.totalDonated), icon: Heart },
-    { label: "Corals sponsored", value: data.summary.coralFragments.toLocaleString("id-ID"), icon: Waves },
+    { label: "Coral units supported", value: data.summary.coralFragments.toLocaleString("id-ID"), icon: Waves },
     { label: "Carbon", value: data.summary.carbonKg > 0 ? `${data.summary.carbonKg.toLocaleString("id-ID", { maximumFractionDigits: 1 })} kg CO2e` : "Pending", icon: Waves },
     { label: "Field activities", value: String(data.summary.fieldActivities), icon: MapPinned },
     { label: "Certificates", value: String(data.summary.certificates), icon: Award }
@@ -47,7 +47,7 @@ export default async function DashboardImpactPage() {
       <header className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
         <div>
           <p className="text-sm font-bold uppercase tracking-[0.16em] text-coral-700">My Impact</p>
-          <h1 className="mt-2 text-3xl font-bold tracking-normal text-ocean-900">Your conservation footprint</h1>
+          <h1 className="mt-2 text-3xl font-bold tracking-normal text-ocean-900">Your conservation support and verified activity</h1>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-ocean-900/62">
             One timeline for your contributions, sponsorship monitoring, expedition participation, verified campaign outcomes, learning, and Impact Passport records.
           </p>
