@@ -3929,6 +3929,7 @@ export async function getDashboardData(userId: string) {
   const recommendedCourse = courseRows.find((course) => !enrolledCourseSlugs.has(course.slug)) ?? null;
   const continueLearning = enrollmentsWithProgress.find((enrollment) => enrollment.status === "active" || enrollment.progressPercent < 100) ?? null;
 
+  const dashboardSavedCampaignPaidMetrics = await paidCampaignMetricsBySlug(savedCampaignRows.map((row) => row.slug));
   const activeEcosystemStatuses = new Set(["sponsored", "growing", "planted", "monitored"]);
   const activeEcosystemRows = ecosystemRows.filter((ecosystem) => activeEcosystemStatuses.has(ecosystem.status));
 
@@ -4620,7 +4621,7 @@ export async function getDashboardData(userId: string) {
     unreadNotificationCount: notifications.filter((notification) => notification.unread).length,
     monthlyReport,
     savedCampaigns: savedCampaignRows.map((row) => ({
-      ...toCampaignCard(row),
+      ...campaignCardWithPaidMetrics(row, dashboardSavedCampaignPaidMetrics),
       savedAt: row.savedAt
     })),
     savedExpeditions: savedExpeditionRows.map((row) => ({
