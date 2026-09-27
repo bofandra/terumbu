@@ -29,7 +29,7 @@ import {
 } from "@/lib/academy-actions";
 import { observeAdminDataLoader } from "@/lib/admin-observability";
 import { requireRole } from "@/lib/auth";
-import { getAdminAcademyCourse } from "@/lib/queries";
+import { getAcademyActionOptions, getAdminAcademyCourse } from "@/lib/queries";
 
 export const metadata = {
   title: "Manage Academy Course"
@@ -330,7 +330,7 @@ export default async function AdminAcademyCoursePage({ params, searchParams }: A
   const { courseId } = await params;
   await requireRole(["admin"], `/admin/academy/courses/${courseId}`);
   const query = await searchParams;
-  const course = await observeAdminDataLoader("admin.academy.course", () => getAdminAcademyCourse(courseId));
+  const [course, actionOptions] = await Promise.all([\n    observeAdminDataLoader("admin.academy.course", () => getAdminAcademyCourse(courseId)),\n    getAcademyActionOptions()\n  ]);
 
   if (!course) {
     notFound();
@@ -451,6 +451,27 @@ export default async function AdminAcademyCoursePage({ params, searchParams }: A
               <CourseStatusSelect defaultValue={course.status} />
             </Field>
           </div>
+          <div className="grid gap-3 lg:grid-cols-3">
+            <Field label="Learning track">
+              <input name="trackKey" defaultValue={course.trackKey ?? ""} className={adminInputClassName} placeholder="coral-conservation" />
+            </Field>
+            <Field label="Recommended expedition">
+              <select name="relatedExpeditionId" defaultValue={course.relatedExpeditionId ?? ""} className={adminSelectClassName}>
+                <option value="">No expedition recommendation</option>
+                {actionOptions.expeditions.map((expedition) => <option key={expedition.id} value={expedition.id}>{expedition.title} — {expedition.region}</option>)}
+              </select>
+            </Field>
+            <Field label="Recommended donation">
+              <select name="relatedCampaignId" defaultValue={course.relatedCampaignId ?? ""} className={adminSelectClassName}>
+                <option value="">No donation recommendation</option>
+                {actionOptions.campaigns.map((campaign) => <option key={campaign.id} value={campaign.id}>{campaign.title} — {campaign.region}</option>)}
+              </select>
+            </Field>
+          </div>
+          <label className="flex items-center gap-3 rounded-lg border border-kelp-700/20 bg-kelp-100/40 p-3 text-sm font-bold text-ocean-900">
+            <input name="fieldReadiness" type="checkbox" defaultChecked={course.fieldReadiness} className="size-4 accent-kelp-700" />
+            Completing this course grants field-readiness recognition
+          </label>
           <Field label="Replace image">
             <input name="imageFile" type="file" accept="image/png,image/jpeg,image/webp,image/gif" className={adminInputClassName} />
           </Field>
