@@ -3461,6 +3461,7 @@ export async function updatePartnerExpeditionAction(formData: FormData) {
   const currency = normalizeCurrency(formData.get("currency"));
   const summary = formText(formData, "summary");
   const relatedCampaignId = nullableText(formData, "relatedCampaignId");
+  const requiredAcademyCourseId = nullableText(formData, "requiredAcademyCourseId");
   const requestedStatus = formText(formData, "status");
 
   if (!expeditionId || !title || !slug || !destinationId || !durationDays || !basePrice || !summary || !relatedCampaignId) {
@@ -3550,6 +3551,7 @@ export async function updatePartnerExpeditionAction(formData: FormData) {
       summary,
       imageUrl,
       relatedCampaignId,
+      requiredAcademyCourseId,
       metadata,
       status,
       publishedAt: status === "completed" ? existingExpedition.publishedAt ?? new Date() : status === existingExpedition.status ? existingExpedition.publishedAt : null,
@@ -3697,6 +3699,7 @@ export async function createPartnerExpeditionAction(formData: FormData) {
   const currency = normalizeCurrency(formData.get("currency"));
   const summary = formText(formData, "summary");
   const relatedCampaignId = nullableText(formData, "relatedCampaignId");
+  const requiredAcademyCourseId = nullableText(formData, "requiredAcademyCourseId");
 
   if (!title || !slug || !destinationId || !durationDays || !basePrice || !summary || !relatedCampaignId) {
     redirectPartnerError(formData, "/partner/expeditions", "expedition-invalid");
@@ -3766,6 +3769,7 @@ export async function createPartnerExpeditionAction(formData: FormData) {
       summary,
       imageUrl,
       relatedCampaignId,
+      requiredAcademyCourseId,
       metadata,
       status: "draft",
       publishedAt: null,

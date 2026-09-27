@@ -643,6 +643,7 @@ export const expeditions = pgTable("expeditions", {
   summary: text("summary").notNull(),
   imageUrl: text("image_url"),
   relatedCampaignId: uuid("related_campaign_id").references(() => campaigns.id, { onDelete: "set null" }),
+  requiredAcademyCourseId: uuid("required_academy_course_id"),
   metadata: jsonb("metadata"),
   status: expeditionStatus("status").default("draft").notNull(),
   publishedAt: timestamp("published_at", { withTimezone: true }),
@@ -651,7 +652,8 @@ export const expeditions = pgTable("expeditions", {
 }, (table) => ({
   slugIdx: uniqueIndex("expeditions_slug_idx").on(table.slug),
   statusIdx: index("expeditions_status_idx").on(table.status),
-  destinationIdx: index("expeditions_destination_idx").on(table.destinationId)
+  destinationIdx: index("expeditions_destination_idx").on(table.destinationId),
+  requiredAcademyCourseIdx: index("expeditions_required_academy_course_idx").on(table.requiredAcademyCourseId)
 }));
 
 export const userSavedExpeditions = pgTable("user_saved_expeditions", {

@@ -9,6 +9,7 @@ import { db } from "@/db/client";
 import {
   campaigns,
   campaignImpactTargets,
+  courseCertificates,
   corporateAccounts,
   corporateEmployees,
   donations,
@@ -286,6 +287,7 @@ export async function bookExpeditionAction(formData: FormData) {
       expeditionId: expeditions.id,
       expeditionTitle: expeditions.title,
       expeditionSlug: expeditions.slug,
+      requiredAcademyCourseId: expeditions.requiredAcademyCourseId,
       basePrice: expeditions.basePrice,
       currency: expeditions.currency,
       capacity: expeditionDepartures.capacity,
@@ -313,6 +315,15 @@ export async function bookExpeditionAction(formData: FormData) {
 
   if (!departure || !availability?.canBook) {
     redirect(`${nextPath}?error=availability`);
+  }
+
+  if (departure.requiredAcademyCourseId) {
+    if (!sessionUser) {
+      redirect(`/login?next=${encodeURIComponent(nextPath)}&reason=academy-prerequisite`);
+    }
+    const [certificate] = await db.select({ id: courseCertificates.id }).from(courseCertificates)
+      .where(and(eq(courseCertificates.userId, sessionUser.id), eq(courseCertificates.courseId, departure.requiredAcademyCourseId))).limit(1);
+    if (!certificate) redirect(`${nextPath}?error=learning_required`);
   }
 
   if (idempotencyKey) {

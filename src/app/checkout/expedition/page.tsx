@@ -77,6 +77,8 @@ export default async function ExpeditionCheckoutPage({ searchParams }: Expeditio
           <p className="mt-4 rounded-xl border border-coral-500/20 bg-coral-100 px-4 py-3 text-sm font-semibold text-coral-700">
             {params.error === "availability"
               ? "That departure is no longer available for the requested seats."
+              : params.error === "learning_required"
+                ? "Complete the required Terumbu Academy course and earn its certificate before booking this expedition."
               : params.error === "attribution"
                 ? "Choose Personal or a company you belong to."
                 : params.error === "payment_proof"

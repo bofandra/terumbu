@@ -9259,6 +9259,11 @@ export async function getPartnerPortalData(userId?: string) {
   const expeditionScope = organizationIds === null ? sql`true` : organizationIds.length > 0 ? inArray(campaigns.organizationId, organizationIds) : sql`false`;
   const teamOrganizationScope = organizationIds === null ? sql`true` : organizationIds.length > 0 ? inArray(organizationTeamMembers.organizationId, organizationIds) : sql`false`;
   const destinationRows = await getDestinationOptions();
+  const academyCourseRows = await db
+    .select({ id: courses.id, title: courses.title, slug: courses.slug, trackKey: courses.trackKey, fieldReadiness: courses.fieldReadiness })
+    .from(courses)
+    .where(eq(courses.status, "published"))
+    .orderBy(asc(courses.title));
 
   const [
     organizationRows,
@@ -9447,6 +9452,7 @@ export async function getPartnerPortalData(userId?: string) {
         publishedAt: expeditions.publishedAt,
         updatedAt: expeditions.updatedAt,
         relatedCampaignId: expeditions.relatedCampaignId,
+        requiredAcademyCourseId: expeditions.requiredAcademyCourseId,
         relatedCampaignTitle: campaigns.title,
         organizationId: campaigns.organizationId,
         partner: organizations.name,
@@ -9649,6 +9655,7 @@ export async function getPartnerPortalData(userId?: string) {
       detailMetadata: ReturnType<typeof normalizeExpeditionDetailMetadata> | null;
       marketplaceMetadata: ReturnType<typeof normalizeExpeditionMarketplaceMetadata> | null;
       relatedCampaignId: string | null;
+      requiredAcademyCourseId: string | null;
       relatedCampaignTitle: string | null;
       organizationId: string | null;
       partner: string | null;
@@ -9725,6 +9732,7 @@ export async function getPartnerPortalData(userId?: string) {
         detailMetadata: null,
         marketplaceMetadata: null,
         relatedCampaignId: row.relatedCampaignId,
+        requiredAcademyCourseId: row.requiredAcademyCourseId,
         relatedCampaignTitle: row.relatedCampaignTitle,
         organizationId: row.organizationId,
         partner: row.partner,
@@ -9900,6 +9908,7 @@ export async function getPartnerPortalData(userId?: string) {
     campaignTimelinePhases: campaignTimelineRows,
     organizationTeamMembers: organizationTeamRows,
     expeditions: Array.from(expeditionsById.values()),
+    academyCourses: academyCourseRows,
     evidence: evidenceRows.map((item) => {
       const reviewEvents = (evidenceReviewEventsById.get(item.id) ?? []).filter((event) => event.visibility !== "internal");
       const stage = evidenceStage(item.metadata, item.evidenceType);

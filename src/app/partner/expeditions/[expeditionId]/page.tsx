@@ -73,6 +73,7 @@ export default async function PartnerExpeditionDetailPage({ params, searchParams
       ) : null}
       <PartnerExpeditionDetailWorkspace
         campaigns={data.campaigns}
+        academyCourses={data.academyCourses}
         destinations={data.destinations}
         expedition={expedition}
         canManageExpeditions={data.capabilities.canManageExpeditions}

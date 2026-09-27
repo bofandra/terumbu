@@ -23,6 +23,7 @@ import { formatCurrency } from "@/lib/utils";
 type Expedition = PartnerPortalData["expeditions"][number];
 type Campaign = PartnerPortalData["campaigns"][number];
 type Destination = PartnerPortalData["destinations"][number];
+type AcademyCourse = PartnerPortalData["academyCourses"][number];
 
 const departureStatuses = ["open", "waitlist", "full", "private_group", "cancelled"];
 const categoryLabelOptions = ["Coral Restoration Expedition", "Reef Monitoring Expedition", "Marine Conservation Expedition", "Community Conservation Expedition"];
@@ -490,11 +491,13 @@ function DetailFields({ detail, marketplace }: { detail: ExpeditionDetailMetadat
 function ExpeditionDetailForm({
   expedition,
   campaigns,
+  academyCourses,
   destinations,
   returnTo
 }: {
   expedition: Expedition;
   campaigns: Campaign[];
+  academyCourses: AcademyCourse[];
   destinations: Destination[];
   returnTo: string;
 }) {
@@ -577,6 +580,14 @@ function ExpeditionDetailForm({
                   <option key={campaign.id} value={campaign.id}>
                     {campaign.title} / {campaign.status}
                   </option>
+                ))}
+              </select>
+            </Field>
+            <Field label="Academy prerequisite" help="Optional. Travelers must hold this course certificate before booking.">
+              <select name="requiredAcademyCourseId" defaultValue={expedition.requiredAcademyCourseId ?? ""} className={inputClassName}>
+                <option value="">No Academy prerequisite</option>
+                {academyCourses.map((course) => (
+                  <option key={course.id} value={course.id}>{course.title}{course.fieldReadiness ? " · Field readiness" : ""}</option>
                 ))}
               </select>
             </Field>
@@ -874,12 +885,14 @@ export function PartnerExpeditionWorkspace({
 
 export function PartnerExpeditionDetailWorkspace({
   campaigns,
+  academyCourses,
   destinations,
   expedition,
   canManageExpeditions,
   defaultTabId
 }: {
   campaigns: Campaign[];
+  academyCourses: AcademyCourse[];
   destinations: Destination[];
   expedition: Expedition;
   canManageExpeditions: boolean;
@@ -990,7 +1003,7 @@ export function PartnerExpeditionDetailWorkspace({
         </div>
 
         {canManageExpeditions ? (
-          <ExpeditionDetailForm expedition={expedition} campaigns={campaigns} destinations={destinations} returnTo={contentReturnTo} />
+          <ExpeditionDetailForm expedition={expedition} campaigns={campaigns} academyCourses={academyCourses} destinations={destinations} returnTo={contentReturnTo} />
         ) : (
           <div className="rounded-lg border border-ocean-900/10 bg-white p-5 text-sm font-semibold text-ocean-900/62">
             Your partner role can view this expedition but cannot edit its public content.
