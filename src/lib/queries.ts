@@ -3855,7 +3855,11 @@ export async function getDashboardData(userId: string) {
     }
   }
   for (const booking of bookingRows) {
-    const bucket = trendByKey.get(monthKey(booking.bookedAt));
+    if (booking.status !== "completed") continue;
+    const completedAt = getMetadataString(booking.bookingMetadata, "completedAt");
+    const activityDate = completedAt ? new Date(completedAt) : booking.endsAt;
+    if (Number.isNaN(activityDate.getTime())) continue;
+    const bucket = trendByKey.get(monthKey(activityDate));
     if (bucket) {
       bucket.activities += 1;
     }
@@ -4024,12 +4028,10 @@ export async function getDashboardData(userId: string) {
   });
 
 
-  const upcomingBooking =
-    bookingRows
-      .filter((booking) => booking.startsAt >= now)
-      .sort((a, b) => a.startsAt.getTime() - b.startsAt.getTime())[0] ??
-    bookingRows.sort((a, b) => b.startsAt.getTime() - a.startsAt.getTime())[0] ??
-    null;
+  const upcomingBookings = bookingRows
+    .filter((booking) => booking.status === "confirmed" && booking.paymentStatus === "paid" && booking.startsAt >= now)
+    .sort((a, b) => a.startsAt.getTime() - b.startsAt.getTime());
+  const upcomingBooking = upcomingBookings[0] ?? null;
   const preparationChecklist = upcomingBooking
     ? [
         { label: "Payment completed", complete: upcomingBooking.paymentStatus === "paid" },
@@ -4483,14 +4485,14 @@ export async function getDashboardData(userId: string) {
       coralFragments,
       carbonKg,
       seedlings,
-      fieldActivities: bookingRows.length,
+      fieldActivities: bookingRows.filter((booking) => booking.status === "completed").length,
       certificates: certificateRows.length,
       campaignsSupported: campaignContributions.length,
       healthyCorals,
       monitoringCorals,
       completedCourses,
       volunteerHours,
-      upcomingTrips: bookingRows.filter((booking) => booking.startsAt >= now).length
+      upcomingTrips: upcomingBookings.length
     },
     trend: trendBuckets,
     latestImpactUpdate,
