@@ -1636,9 +1636,17 @@ export async function getExpeditionDetail(slug: string) {
         reviewerDisplayName: profiles.displayName
       })
       .from(expeditionReviews)
+      .innerJoin(expeditionBookings, eq(expeditionReviews.bookingId, expeditionBookings.id))
       .leftJoin(users, eq(expeditionReviews.userId, users.id))
       .leftJoin(profiles, eq(profiles.userId, users.id))
-      .where(and(eq(expeditionReviews.expeditionId, row.id), eq(expeditionReviews.status, "published")))
+      .where(
+        and(
+          eq(expeditionReviews.expeditionId, row.id),
+          eq(expeditionReviews.status, "published"),
+          eq(expeditionBookings.status, "completed"),
+          eq(expeditionBookings.paymentStatus, "paid")
+        )
+      )
       .orderBy(desc(expeditionReviews.createdAt))
       .limit(24),
     db
