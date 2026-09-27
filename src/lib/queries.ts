@@ -993,7 +993,12 @@ export async function getCampaignDetail(slug: string) {
       })
       .from(sponsoredEcosystems)
       .leftJoin(impactSites, eq(sponsoredEcosystems.impactSiteId, impactSites.id))
-      .where(eq(sponsoredEcosystems.campaignId, row.id))
+      .where(
+        and(
+          eq(sponsoredEcosystems.campaignId, row.id),
+          inArray(sponsoredEcosystems.status, ["sponsored", "growing", "planted", "monitored"])
+        )
+      )
       .orderBy(desc(sponsoredEcosystems.lastUpdatedAt))
       .limit(6),
     db
