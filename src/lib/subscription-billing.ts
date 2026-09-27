@@ -106,6 +106,9 @@ export async function processDueDonationSubscriptions(input: {
       .returning({ id: donations.id });
 
     if (!claimedDonation) {
+      // Another worker already owns or completed this billing cycle. The
+      // idempotency key is also forwarded to the provider, so a later recovery
+      // path can safely reconcile a stale claim without issuing a second charge.
       summary.skipped += 1;
       continue;
     }
