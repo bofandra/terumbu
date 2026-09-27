@@ -20,6 +20,7 @@ import {
   userSavedExpeditions,
   users
 } from "@/db/schema";
+import { trackEvent } from "@/lib/analytics";
 import { requireRole, requireUser, safeRedirectPath } from "@/lib/auth";
 import { getMetadataNumber, toNumber } from "@/lib/domain";
 import { sendTransactionalEmail } from "@/lib/email";
@@ -147,6 +148,16 @@ export async function saveCampaignAction(formData: FormData) {
     now
   });
 
+  await trackEvent({
+    distinctId: `user:${user.id}`,
+    event: "campaign_saved",
+    properties: {
+      campaignId: campaign.id,
+      campaignSlug: campaign.slug,
+      saved: true
+    }
+  });
+
   redirect(`${next}?saved=project`);
 }
 
@@ -200,6 +211,16 @@ export async function saveExpeditionAction(formData: FormData) {
         updatedAt: now
       }
     });
+
+  await trackEvent({
+    distinctId: `user:${user.id}`,
+    event: "expedition_saved",
+    properties: {
+      expeditionId: expedition.id,
+      expeditionSlug: expedition.slug,
+      saved: true
+    }
+  });
 
   redirect(pathWithQuery(next, "saved=expedition"));
 }
@@ -269,6 +290,16 @@ export async function followCampaignAction(formData: FormData) {
     sourceType: "campaign",
     sourceId: campaign.id,
     now
+  });
+
+  await trackEvent({
+    distinctId: `user:${user.id}`,
+    event: "campaign_followed",
+    properties: {
+      campaignId: campaign.id,
+      campaignSlug: campaign.slug,
+      frequency: safeFrequency
+    }
   });
 
   redirect(`${next}?saved=follow`);

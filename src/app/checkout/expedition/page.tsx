@@ -1,5 +1,6 @@
 import { randomBytes } from "node:crypto";
 
+import { AnalyticsEvent } from "@/components/analytics-event";
 import { Button, ButtonLink } from "@/components/ui/button";
 import { getSessionUser } from "@/lib/auth";
 import { secondaryPriceLabel } from "@/lib/currency-display";
@@ -37,6 +38,7 @@ export default async function ExpeditionCheckoutPage({ searchParams }: Expeditio
   const filteredOptions = params?.expedition ? options.filter((option) => option.expeditionSlug === params.expedition) : options;
   const visibleOptions = filteredOptions.length > 0 ? filteredOptions : options;
   const selectedDeparture = params?.departure ?? visibleOptions[0]?.departureId;
+  const selectedOption = visibleOptions.find((option) => option.departureId === selectedDeparture) ?? visibleOptions[0] ?? null;
   const selectedParticipants = Math.max(1, Math.min(12, Number(params?.participants ?? 1) || 1));
   const idempotencyKey = `expedition-${randomBytes(12).toString("hex")}`;
 
@@ -62,6 +64,16 @@ export default async function ExpeditionCheckoutPage({ searchParams }: Expeditio
 
   return (
     <main className="min-h-screen bg-sand-50 px-4 py-12 sm:px-6 lg:px-8">
+      <AnalyticsEvent
+        event="expedition_checkout_started"
+        properties={{
+          departureId: selectedDeparture ?? null,
+          expeditionSlug: selectedOption?.expeditionSlug ?? null,
+          participantsCount: selectedParticipants,
+          hasReferral: Boolean(params?.ref),
+          authenticated: Boolean(user)
+        }}
+      />
       <section className="mx-auto max-w-2xl rounded-2xl bg-white p-6 shadow-soft">
         <p className="text-sm font-bold uppercase tracking-[0.16em] text-coral-700">Booking</p>
         <h1 className="mt-3 text-3xl font-bold tracking-normal text-ocean-900">Reserve expedition seats</h1>

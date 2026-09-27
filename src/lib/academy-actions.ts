@@ -32,6 +32,7 @@ import {
   lessonProgress,
   userSavedCourses
 } from "@/db/schema";
+import { trackEvent } from "@/lib/analytics";
 import { requireRole, requireUser } from "@/lib/auth";
 import { safeRedirectPath } from "@/lib/auth";
 import { readUploadedImageAsDataUrl } from "@/lib/storage";
@@ -207,6 +208,15 @@ export async function enrollCourseAction(formData: FormData) {
         .onConflictDoNothing({
           target: [lessonProgress.enrollmentId, lessonProgress.lessonId]
         });
+    }
+  });
+
+  await trackEvent({
+    distinctId: `user:${user.id}`,
+    event: "academy_course_enrolled",
+    properties: {
+      courseId: course.id,
+      courseSlug: course.slug
     }
   });
 

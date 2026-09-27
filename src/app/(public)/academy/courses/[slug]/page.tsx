@@ -24,6 +24,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import { AnalyticsEvent } from "@/components/analytics-event";
 import { JsonLd } from "@/components/json-ld";
 import { Button, ButtonLink } from "@/components/ui/button";
 import { ProgressMeter } from "@/components/ui/progress-meter";
@@ -302,6 +303,14 @@ export default async function CourseDetailPage({ params }: { params: Promise<{ s
 
   return (
     <>
+      <AnalyticsEvent
+        event="academy_course_view"
+        properties={{
+          courseId: course.id,
+          courseSlug: course.slug,
+          authenticated: Boolean(user)
+        }}
+      />
       <JsonLd data={courseStructuredData} />
       <section className="relative overflow-hidden bg-ocean-900 text-white">
         {course.imageUrl ? <Image src={course.imageUrl} alt="" fill priority className="object-cover opacity-[0.38]" sizes="100vw" /> : null}
