@@ -66,13 +66,15 @@ function Stepper({
   hint,
   value,
   onChange,
-  disabled
+  disabled,
+  decreaseDisabled = false
 }: {
   label: string;
   hint: string;
   value: number;
   onChange: (value: number) => void;
   disabled?: boolean;
+  decreaseDisabled?: boolean;
 }) {
   return (
     <div className="flex items-center justify-between gap-3">
@@ -84,7 +86,7 @@ function Stepper({
         <button
           type="button"
           className="flex size-8 items-center justify-center rounded-full border border-ocean-900/14 text-ocean-900 transition hover:border-coral-500 disabled:opacity-35"
-          disabled={disabled || value <= 0}
+          disabled={disabled || decreaseDisabled || value <= 0}
           aria-label={`Decrease ${label}`}
           onClick={() => onChange(Math.max(0, value - 1))}
         >
@@ -134,7 +136,7 @@ export function ExpeditionBookingCard({
   const [children, setChildren] = useState(0);
   const participants = participantTotal(adults, students, children);
   const selectedDeparture = departures.find((departure) => departure.id === selectedDepartureId) ?? firstBookableDeparture;
-  const participantsWithinCapacity = selectedDeparture ? participants <= selectedDeparture.availableSeats : false;
+  const participantsWithinCapacity = selectedDeparture ? participants > 0 && participants <= selectedDeparture.availableSeats : false;
   const bookingDisabled = !selectedDeparture || selectedDeparture.availableSeats <= 0 || !participantsWithinCapacity || selectedDeparture.status !== "open";
   const total = useMemo(() => price * participants + equipmentRental + platformFee, [equipmentRental, participants, platformFee, price]);
   const href = checkoutHref(selectedDeparture?.id ?? null, participants, referralCode);
@@ -171,11 +173,15 @@ export function ExpeditionBookingCard({
         </div>
         <div className="mt-3 grid gap-2">
           {departures.length > 0 ? (
-            departures.map((departure) => (
+            departures.map((departure) => {
+              const isBookable = departure.status === "open" && departure.availableSeats > 0;
+
+              return (
               <label
                 key={departure.id}
                 className={cn(
-                  "grid cursor-pointer grid-cols-[auto_minmax(0,1fr)] gap-3 rounded-xl border p-3 text-sm transition",
+                  "grid grid-cols-[auto_minmax(0,1fr)] gap-3 rounded-xl border p-3 text-sm transition",
+                  isBookable ? "cursor-pointer" : "cursor-not-allowed opacity-60",
                   selectedDepartureId === departure.id ? "border-coral-500 bg-coral-100/35 ring-2 ring-coral-200/70" : "border-ocean-900/12 hover:border-coral-500"
                 )}
               >
@@ -184,6 +190,7 @@ export function ExpeditionBookingCard({
                   name="departure"
                   value={departure.id}
                   checked={selectedDepartureId === departure.id}
+                  disabled={!isBookable}
                   onChange={() => setSelectedDepartureId(departure.id)}
                   className="mt-1 size-4 accent-coral-500"
                 />
@@ -197,7 +204,8 @@ export function ExpeditionBookingCard({
                   <span className="min-w-0 break-words font-bold text-ocean-900 [overflow-wrap:anywhere] sm:text-right">{formatCurrency(price, currency)}</span>
                 </span>
               </label>
-            ))
+              );
+            })
           ) : (
             <div className="rounded-xl border border-dashed border-ocean-900/16 bg-sand-50 p-4">
               <p className="font-bold text-ocean-900">No public departures are currently scheduled.</p>
@@ -210,9 +218,9 @@ export function ExpeditionBookingCard({
       <div className="mt-5">
         <p className="font-bold text-ocean-900">2. Participants</p>
         <div className="mt-3 grid gap-3">
-          <Stepper label="Adults" hint="16+ years" value={adults} onChange={setAdults} disabled={bookingDisabled && !selectedDeparture} />
-          <Stepper label="Students" hint="Student ID required" value={students} onChange={setStudents} disabled={bookingDisabled && !selectedDeparture} />
-          <Stepper label="Children" hint="8-15 years" value={children} onChange={setChildren} disabled={bookingDisabled && !selectedDeparture} />
+          <Stepper label="Adults" hint="16+ years" value={adults} onChange={setAdults} disabled={bookingDisabled && !selectedDeparture} decreaseDisabled={participants <= 1 && adults > 0} />
+          <Stepper label="Students" hint="Student ID required" value={students} onChange={setStudents} disabled={bookingDisabled && !selectedDeparture} decreaseDisabled={participants <= 1 && students > 0} />
+          <Stepper label="Children" hint="8-15 years" value={children} onChange={setChildren} disabled={bookingDisabled && !selectedDeparture} decreaseDisabled={participants <= 1 && children > 0} />
         </div>
         {!participantsWithinCapacity && selectedDeparture ? (
           <p className="mt-3 rounded-xl bg-coral-100 px-3 py-2 text-xs font-bold text-coral-700">
