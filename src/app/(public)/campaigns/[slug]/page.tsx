@@ -26,7 +26,6 @@ import { CampaignUpdatesEvidence } from "@/components/campaign-updates-evidence"
 import { ExpeditionCard } from "@/components/expedition-card";
 import { AnalyticsEvent } from "@/components/analytics-event";
 import { ImpactMapPreview } from "@/components/impact-map-preview";
-import { JsonLd } from "@/components/json-ld";
 import { SectionHeading } from "@/components/section-heading";
 import { Button, ButtonLink } from "@/components/ui/button";
 import { MetricValue } from "@/components/ui/metric-value";
@@ -296,7 +295,11 @@ export default async function CampaignDetailPage({ params }: { params: Promise<{
           campaignSlug: campaign.slug
         }}
       />
-      <JsonLd data={campaignStructuredData} />
+      <script
+        type="application/ld+json"
+        suppressHydrationWarning
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(campaignStructuredData).replace(/</g, "\\u003c") }}
+      />
       <section className="bg-white">
         <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
           <nav className="flex flex-wrap items-center gap-2 text-sm font-semibold text-ocean-900/58" aria-label="Breadcrumb">
