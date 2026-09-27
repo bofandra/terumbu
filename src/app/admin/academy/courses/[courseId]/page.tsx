@@ -456,7 +456,14 @@ export default async function AdminAcademyCoursePage({ params, searchParams }: A
           </div>
           <div className="grid gap-3 lg:grid-cols-3">
             <Field label="Learning track">
-              <input name="trackKey" defaultValue={course.trackKey ?? ""} className={adminInputClassName} placeholder="coral-conservation" />
+              <select name="trackKey" defaultValue={course.trackKey ?? ""} className={adminSelectClassName}>
+                <option value="">No learning track</option>
+                {course.trackKey && !["coral-conservation", "mangrove-restoration", "marine-monitoring", "community-conservation"].includes(course.trackKey) ? <option value={course.trackKey}>{course.trackKey.replace(/-/g, " ")}</option> : null}
+                <option value="coral-conservation">Coral conservation</option>
+                <option value="mangrove-restoration">Mangrove restoration</option>
+                <option value="marine-monitoring">Marine monitoring</option>
+                <option value="community-conservation">Community conservation</option>
+              </select>
             </Field>
             <Field label="Recommended expedition">
               <select name="relatedExpeditionId" defaultValue={course.relatedExpeditionId ?? ""} className={adminSelectClassName}>
