@@ -3858,6 +3858,9 @@ export async function getDashboardData(userId: string) {
   const recommendedCourse = courseRows.find((course) => !enrolledCourseSlugs.has(course.slug)) ?? null;
   const continueLearning = enrollmentsWithProgress.find((enrollment) => enrollment.status === "active" || enrollment.progressPercent < 100) ?? null;
 
+  const activeEcosystemStatuses = new Set(["sponsored", "growing", "planted", "monitored"]);
+  const activeEcosystemRows = ecosystemRows.filter((ecosystem) => activeEcosystemStatuses.has(ecosystem.status));
+
   const months = Array.from({ length: 6 }, (_, index) => addMonths(now, index - 5));
   const trendBuckets = months.map((month) => ({
     key: monthKey(month),
@@ -3875,7 +3878,7 @@ export async function getDashboardData(userId: string) {
       bucket.contributions += toNumber(donation.amount);
     }
   }
-  for (const ecosystem of ecosystemRows) {
+  for (const ecosystem of activeEcosystemRows) {
     const activityDate = ecosystem.plantedAt ?? ecosystem.lastUpdatedAt;
     const bucket = activityDate ? trendByKey.get(monthKey(activityDate)) : null;
     if (bucket) {
@@ -3937,7 +3940,7 @@ export async function getDashboardData(userId: string) {
       };
 
       existing.contributed += toNumber(site.amount);
-      existing.supportedUnits += ecosystemRows
+      existing.supportedUnits += activeEcosystemRows
         .filter((ecosystem) => ecosystem.campaignSlug === site.campaignSlug)
         .reduce((total, ecosystem) => total + ecosystemQuantity(ecosystem.metadata), 0);
       sites.set(key, existing);
@@ -3970,7 +3973,7 @@ export async function getDashboardData(userId: string) {
     }>())
   ).map(([, site]) => ({ ...site, supportedUnits: Math.max(site.supportedUnits, donationAmountByCampaign.has(site.campaignSlug) ? 1 : 0) }));
 
-  const coralCards = ecosystemRows.map((ecosystem) => {
+  const coralCards = activeEcosystemRows.map((ecosystem) => {
     const quantity = ecosystemQuantity(ecosystem.metadata);
     const survivalRate = getMetadataNumber(ecosystem.metadata, "survivalRate");
     const evidenceStream = buildCoralEvidenceStream(ecosystem.impactSiteId ? evidenceByImpactSite.get(ecosystem.impactSiteId) ?? [] : []);
