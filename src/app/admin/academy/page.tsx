@@ -21,7 +21,7 @@ export const dynamic = "force-dynamic";
 const pathname = "/admin/academy";
 const courseStatuses = ["draft", "published", "archived"];
 const savedMessages: Record<string, string> = { course: "Course saved." };
-const errorMessages: Record<string, string> = { course: "Enter a title and summary for the course.", "image-size": "Uploaded image is too large.", "image-type": "Upload a supported image file." };
+const errorMessages: Record<string, string> = { "action-target": "Choose a currently published expedition or donation recommendation.", course: "Enter a title and summary for the course.", "image-size": "Uploaded image is too large.", "image-type": "Upload a supported image file." };
 
 type AdminAcademyPageProps = { searchParams?: Promise<AdminAcademyFilters & { error?: string; saved?: string }> };
 type AdminAcademyData = Awaited<ReturnType<typeof getAdminAcademyPage>>;
