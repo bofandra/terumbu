@@ -330,7 +330,10 @@ export default async function AdminAcademyCoursePage({ params, searchParams }: A
   const { courseId } = await params;
   await requireRole(["admin"], `/admin/academy/courses/${courseId}`);
   const query = await searchParams;
-  const [course, actionOptions] = await Promise.all([\n    observeAdminDataLoader("admin.academy.course", () => getAdminAcademyCourse(courseId)),\n    getAcademyActionOptions()\n  ]);
+  const [course, actionOptions] = await Promise.all([
+    observeAdminDataLoader("admin.academy.course", () => getAdminAcademyCourse(courseId)),
+    getAcademyActionOptions()
+  ]);
 
   if (!course) {
     notFound();

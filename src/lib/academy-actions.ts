@@ -475,6 +475,10 @@ export async function createAcademyCourseAction(formData: FormData) {
   const slug = slugify(formText(formData, "slug") || title);
   const summary = formText(formData, "summary");
   const status = courseStatusFromForm(formData);
+  const trackKey = formText(formData, "trackKey") || null;
+  const fieldReadiness = formData.get("fieldReadiness") === "on";
+  const relatedExpeditionId = formText(formData, "relatedExpeditionId") || null;
+  const relatedCampaignId = formText(formData, "relatedCampaignId") || null;
   const imageUrl = await courseImageFromForm(formData);
   const now = new Date();
 
@@ -492,6 +496,10 @@ export async function createAcademyCourseAction(formData: FormData) {
       summary,
       description: formText(formData, "description") || null,
       imageUrl,
+      trackKey,
+      fieldReadiness,
+      relatedExpeditionId,
+      relatedCampaignId,
       status,
       publishedAt: status === "published" ? now : null,
       updatedAt: now
@@ -503,7 +511,7 @@ export async function createAcademyCourseAction(formData: FormData) {
     action: "academy.course.created",
     entityType: "course",
     entityId: course.id,
-    metadata: { title, status }
+    metadata: { title, status, trackKey, fieldReadiness, relatedExpeditionId, relatedCampaignId }
   });
 
   redirect(`/admin/academy/courses/${course.id}?saved=course`);
