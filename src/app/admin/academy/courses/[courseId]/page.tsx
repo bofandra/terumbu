@@ -51,6 +51,7 @@ const savedMessages: Record<string, string> = {
 };
 
 const errorMessages: Record<string, string> = {
+  "action-target": "Choose a currently published expedition or donation recommendation.",
   assessment: "Choose a course and enter assessment details.",
   "assessment-duplicate": "Use a unique assessment slug for this course.",
   "assessment-delete": "Confirm assessment removal before submitting.",
