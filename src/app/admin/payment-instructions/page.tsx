@@ -14,7 +14,7 @@ type PageProps = {
 export default async function AdminPaymentInstructionsPage({ searchParams }: PageProps) {
   const [instructions, params] = await Promise.all([
     getDonationPaymentInstructions(),
-    searchParams ?? Promise.resolve({})
+    searchParams ?? Promise.resolve<{ saved?: string; error?: string }>({})
   ]);
 
   return (

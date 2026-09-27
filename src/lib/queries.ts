@@ -912,7 +912,8 @@ export async function getCampaignDetail(slug: string) {
     budgetRows,
     timelineRows,
     teamRows,
-    impactTargetRows
+    impactTargetRows,
+    activityRows
   ] = await Promise.all([
     db
       .select({
@@ -957,7 +958,13 @@ export async function getCampaignDetail(slug: string) {
         currency: donations.currency,
         message: donations.message,
         createdAt: donations.createdAt,
-        transactionPayload: paymentTransactions.payload
+        transactionPayload: paymentTransactions.payload,
+        sponsoredCode: sponsoredEcosystems.code,
+        sponsoredLabel: sponsoredEcosystems.label,
+        sponsoredStatus: sponsoredEcosystems.status,
+        sponsoredPlantedAt: sponsoredEcosystems.plantedAt,
+        sponsoredLastUpdatedAt: sponsoredEcosystems.lastUpdatedAt,
+        sponsoredMetadata: sponsoredEcosystems.metadata
       })
       .from(donations)
       .leftJoin(paymentTransactions, eq(paymentTransactions.donationId, donations.id))
@@ -1052,7 +1059,21 @@ export async function getCampaignDetail(slug: string) {
       })
       .from(campaignImpactTargets)
       .where(eq(campaignImpactTargets.campaignId, row.id))
-      .orderBy(asc(campaignImpactTargets.sortOrder), asc(campaignImpactTargets.label))
+      .orderBy(asc(campaignImpactTargets.sortOrder), asc(campaignImpactTargets.label)),
+    db
+      .select({
+        id: campaignActivities.id,
+        title: campaignActivities.title,
+        activityType: campaignActivities.activityType,
+        verificationStatus: campaignActivities.verificationStatus,
+        verifiedAt: campaignActivities.verifiedAt,
+        publishedAt: campaignActivities.publishedAt,
+        sourceEvidenceId: campaignActivities.sourceEvidenceId,
+        metadata: campaignActivities.metadata
+      })
+      .from(campaignActivities)
+      .where(and(eq(campaignActivities.campaignId, row.id), eq(campaignActivities.visibilityStatus, "published")))
+      .orderBy(desc(campaignActivities.publishedAt), desc(campaignActivities.createdAt))
   ]);
   const budgetLineItems = budgetRows.map((item) => ({
     ...item,
@@ -1108,7 +1129,21 @@ export async function getCampaignDetail(slug: string) {
     }),
     updates,
     sites,
-    evidence
+    evidence,
+    traceability: {
+      paidFunding: row.raisedAmount ? toNumber(row.raisedAmount) : 0,
+      plannedBudget: budgetLineItems.reduce((total, item) => total + item.amount, 0),
+      recordedSpend: budgetLineItems.reduce((total, item) => total + item.spentAmount, 0),
+      evidencedSpend: evidence.reduce((total, item) => total + evidenceFinanceSpendAmount(item.metadata), 0),
+      publishedActivities: activityRows.length,
+      verifiedActivities: activityRows.filter((item) => item.verificationStatus === "verified").length,
+      verifiedEvidence: evidence.length,
+      latestVerifiedAt:
+        evidence
+          .map((item) => item.verifiedAt)
+          .filter((value): value is Date => Boolean(value))
+          .sort((a, b) => b.getTime() - a.getTime())[0] ?? null
+    }
   };
 }
 
@@ -2374,6 +2409,7 @@ export async function getAcademyHomeData(userId?: string) {
     };
   });
 
+
   const upcomingBooking = upcomingBookingRows[0] ?? null;
   const preparationModules = upcomingBooking
     ? [
@@ -3258,13 +3294,20 @@ export async function getDashboardData(userId: string) {
         message: donations.message,
         createdAt: donations.createdAt,
         receiptNumber: donationReceipts.receiptNumber,
-        transactionPayload: paymentTransactions.payload
+        transactionPayload: paymentTransactions.payload,
+        sponsoredCode: sponsoredEcosystems.code,
+        sponsoredLabel: sponsoredEcosystems.label,
+        sponsoredStatus: sponsoredEcosystems.status,
+        sponsoredPlantedAt: sponsoredEcosystems.plantedAt,
+        sponsoredLastUpdatedAt: sponsoredEcosystems.lastUpdatedAt,
+        sponsoredMetadata: sponsoredEcosystems.metadata
       })
       .from(donations)
       .innerJoin(campaigns, eq(donations.campaignId, campaigns.id))
       .innerJoin(organizations, eq(campaigns.organizationId, organizations.id))
       .leftJoin(donationReceipts, eq(donationReceipts.donationId, donations.id))
       .leftJoin(paymentTransactions, eq(paymentTransactions.donationId, donations.id))
+      .leftJoin(sponsoredEcosystems, eq(sponsoredEcosystems.donationId, donations.id))
       .where(eq(donations.userId, userId))
       .orderBy(desc(donations.createdAt)),
     db
@@ -3312,6 +3355,7 @@ export async function getDashboardData(userId: string) {
         endsAt: expeditionDepartures.endsAt,
         departureStatus: expeditionDepartures.status,
         departureMetadata: expeditionDepartures.metadata,
+        relatedCampaignId: expeditions.relatedCampaignId,
         reviewId: expeditionReviews.id,
         reviewRating: expeditionReviews.rating,
         reviewTitle: expeditionReviews.title,
@@ -3594,6 +3638,68 @@ export async function getDashboardData(userId: string) {
     donationAmountByCampaign.set(donation.campaignSlug, (donationAmountByCampaign.get(donation.campaignSlug) ?? 0) + toNumber(donation.amount));
   }
 
+  const donationImpactJourneys = donationRows.map((donation) => {
+    const contributionIntent = getMetadataString(donation.transactionPayload, "contributionIntent") ?? "one-time";
+    const isIndividualSponsorship = contributionIntent === "coral" && Boolean(donation.sponsoredCode);
+    const campaignUpdates = updateRows.filter((update) => update.campaignId === donation.campaignId);
+    const campaignEvidence = evidenceRows.filter(
+      (evidence) => evidence.campaignId === donation.campaignId && evidence.verificationStatus === "verified"
+    );
+    const latestUpdate = campaignUpdates[0] ?? null;
+    const latestEvidence = campaignEvidence[0] ?? null;
+    const estimatedFragments =
+      getMetadataNumber(donation.transactionPayload, "sponsoredFragments") ||
+      getMetadataNumber(donation.sponsoredMetadata, "fragments");
+    const estimatedCarbonKg = getMetadataNumber(donation.transactionPayload, "carbonKg");
+    const estimatedImpact =
+      estimatedFragments > 0
+        ? `${estimatedFragments.toLocaleString("id-ID")} coral fragments supported`
+        : estimatedCarbonKg > 0
+          ? `${estimatedCarbonKg.toLocaleString("id-ID")} kg CO2e estimated support`
+          : null;
+
+    return {
+      donationId: donation.id,
+      campaignSlug: donation.campaignSlug,
+      campaignTitle: donation.campaignTitle,
+      campaignImageUrl: donation.campaignImageUrl,
+      amount: toNumber(donation.amount),
+      currency: donation.currency,
+      donatedAt: donation.createdAt,
+      paymentStatus: donation.status,
+      receiptNumber: donation.receiptNumber,
+      journeyType: isIndividualSponsorship ? "individual_sponsorship" as const : "pooled_campaign" as const,
+      estimatedImpact,
+      latestUpdate: latestUpdate
+        ? {
+            id: latestUpdate.id,
+            title: latestUpdate.title,
+            occurredAt: latestUpdate.publishedAt ?? latestUpdate.createdAt,
+            href: `/campaigns/${donation.campaignSlug}/updates/${latestUpdate.id}`
+          }
+        : null,
+      verifiedOutcome: latestEvidence
+        ? {
+            title: latestEvidence.title,
+            occurredAt: latestEvidence.verifiedAt ?? latestEvidence.createdAt,
+            href: `/campaigns/${donation.campaignSlug}#evidence`,
+            evidenceCode: latestEvidence.evidenceCode
+          }
+        : null,
+      sponsorship: isIndividualSponsorship
+        ? {
+            code: donation.sponsoredCode!,
+            label: donation.sponsoredLabel!,
+            status: donation.sponsoredStatus!,
+            plantedAt: donation.sponsoredPlantedAt,
+            lastUpdatedAt: donation.sponsoredLastUpdatedAt,
+            fragments: getMetadataNumber(donation.sponsoredMetadata, "fragments"),
+            survivalRate: getMetadataNumber(donation.sponsoredMetadata, "survivalRate")
+          }
+        : null
+    };
+  });
+
   const campaignContributions = Array.from(
     paidDonations.reduce((contributions, donation) => {
       const existing = contributions.get(donation.campaignSlug);
@@ -3841,6 +3947,59 @@ export async function getDashboardData(userId: string) {
     };
   });
 
+  const expeditionImpactJourneys = bookingRows.map((booking) => {
+    const relatedUpdates = booking.relatedCampaignId
+      ? updateRows.filter((update) => update.campaignId === booking.relatedCampaignId)
+      : [];
+    const relatedEvidence = booking.relatedCampaignId
+      ? evidenceRows.filter(
+          (evidence) => evidence.campaignId === booking.relatedCampaignId && evidence.verificationStatus === "verified"
+        )
+      : [];
+    const latestUpdate = relatedUpdates[0] ?? null;
+    const latestEvidence = relatedEvidence[0] ?? null;
+    const participationCompleted = booking.status === "completed";
+
+    return {
+      bookingId: booking.id,
+      bookingCode: booking.bookingCode,
+      expeditionTitle: booking.expeditionTitle,
+      expeditionSlug: booking.expeditionSlug,
+      startsAt: booking.startsAt,
+      endsAt: booking.endsAt,
+      bookingStatus: booking.status,
+      paymentStatus: booking.paymentStatus,
+      preparationComplete: [
+        getMetadataString(booking.bookingMetadata, "waiverAccepted") === "true",
+        getMetadataString(booking.bookingMetadata, "emergencyContactComplete") === "true",
+        getMetadataString(booking.bookingMetadata, "briefingCompleted") === "true"
+      ].filter(Boolean).length,
+      preparationTotal: 3,
+      participationCompleted,
+      completedAt: participationCompleted ? booking.endsAt : null,
+      relatedCampaignId: booking.relatedCampaignId,
+      latestFieldActivity: latestUpdate
+        ? {
+            id: latestUpdate.id,
+            title: latestUpdate.title,
+            occurredAt: latestUpdate.publishedAt ?? latestUpdate.createdAt,
+            href: `/campaigns/${latestUpdate.campaignSlug}/updates/${latestUpdate.id}`
+          }
+        : null,
+      verifiedOutcome: latestEvidence
+        ? {
+            id: latestEvidence.id,
+            title: latestEvidence.title,
+            evidenceCode: latestEvidence.evidenceCode,
+            occurredAt: latestEvidence.verifiedAt ?? latestEvidence.createdAt,
+            href: `/campaigns/${latestEvidence.campaignSlug}#evidence`
+          }
+        : null,
+      passportEligible: participationCompleted && booking.paymentStatus === "paid"
+    };
+  });
+
+
   const upcomingBooking =
     bookingRows
       .filter((booking) => booking.startsAt >= now)
@@ -4003,7 +4162,50 @@ export async function getDashboardData(userId: string) {
     .slice(0, 8);
 
   const preferences = deliverySettings;
+  const supportedCampaignUpdateNotifications = updateRows.slice(0, 6).map((update) => ({
+    notificationCode: `supported-campaign-update-${update.id}`,
+    category: "Supported campaign",
+    title: update.title,
+    message: `${update.campaignTitle} published a new field activity for a campaign you support.`,
+    href: `/campaigns/${update.campaignSlug}/updates/${update.id}`,
+    sourceType: "supported_campaign_update",
+    sourceId: update.id,
+    timestamp: update.publishedAt ?? update.createdAt,
+    enabled: preferences.campaignUpdates
+  }));
+  const supportedEvidenceNotifications = evidenceRows
+    .filter((evidence) => evidence.verificationStatus === "verified")
+    .slice(0, 6)
+    .map((evidence) => ({
+      notificationCode: `supported-campaign-evidence-${evidence.id}`,
+      category: "Verified impact",
+      title: evidence.title,
+      message: `${evidence.campaignTitle} has new verified field evidence.`,
+      href: `/campaigns/${evidence.campaignSlug}#evidence`,
+      sourceType: "supported_campaign_evidence",
+      sourceId: evidence.id,
+      timestamp: evidence.verifiedAt ?? evidence.createdAt,
+      enabled: preferences.evidenceAlerts
+    }));
+  const sponsorshipMonitoringNotifications = ecosystemRows
+        .filter((ecosystem): ecosystem is typeof ecosystem & { lastUpdatedAt: Date } => ecosystem.lastUpdatedAt !== null)
+    .slice(0, 6)
+    .map((ecosystem) => ({
+      notificationCode: `sponsorship-monitoring-${ecosystem.code}-${ecosystem.lastUpdatedAt.getTime()}`,
+      category: "Sponsorship monitoring",
+      title: ecosystem.label,
+      message: `${ecosystem.label} has a new monitoring update.`,
+      href: `/campaigns/${ecosystem.campaignSlug}#evidence`,
+      sourceType: "sponsored_ecosystem",
+      sourceId: null,
+      timestamp: ecosystem.lastUpdatedAt,
+      enabled: preferences.evidenceAlerts
+    }));
+
   const notificationCandidates = [
+    ...supportedCampaignUpdateNotifications,
+    ...supportedEvidenceNotifications,
+    ...sponsorshipMonitoringNotifications,
     ...followedUpdateRows.slice(0, 4).map((update) => ({
       notificationCode: `follow-update-${update.id}`,
       category: "Followed campaigns",
@@ -4235,7 +4437,9 @@ export async function getDashboardData(userId: string) {
     latestImpactUpdate,
     personalMapSites,
     campaignContributions,
+    donationImpactJourneys,
     coralCards,
+    expeditionImpactJourneys,
     upcomingExpedition,
     academy: {
       enrollments: enrollmentsWithProgress,

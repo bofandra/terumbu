@@ -1,4 +1,4 @@
-import { BookmarkX, Download, Heart } from "lucide-react";
+import { BookmarkX, CheckCircle2, Download, Heart, MapPin, ShieldCheck, Sprout } from "lucide-react";
 import Link from "next/link";
 
 import { CampaignCard } from "@/components/campaign-card";
@@ -102,6 +102,85 @@ export default async function DashboardDonationsPage({ searchParams }: Dashboard
             Save campaigns from a campaign detail page and they will appear here, even after a campaign expires.
           </p>
         ) : null}
+      </section>
+
+      <section className="mt-6 rounded-2xl border border-ocean-900/10 bg-white p-5 shadow-soft">
+        <p className="text-sm font-bold uppercase tracking-[0.16em] text-coral-700">My impact journey</p>
+        <h2 className="mt-2 text-2xl font-bold tracking-normal text-ocean-900">From contribution to field outcome</h2>
+        <p className="mt-2 max-w-3xl text-sm leading-6 text-ocean-900/62">
+          Pooled donations follow the campaign&apos;s verified outcomes without claiming that your exact funds paid for one specific activity. Individual sponsorships can follow the sponsored record created for your contribution.
+        </p>
+        <div className="mt-6 grid gap-5">
+          {data.donationImpactJourneys.map((journey) => (
+            <article key={journey.donationId} className="rounded-2xl border border-ocean-900/10 bg-sand-50 p-5">
+              <div className="flex flex-col justify-between gap-3 md:flex-row md:items-start">
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-[0.14em] text-kelp-700">
+                    {journey.journeyType === "individual_sponsorship" ? "Individual sponsorship" : "Pooled campaign contribution"}
+                  </p>
+                  <Link href={`/campaigns/${journey.campaignSlug}`} className="mt-2 block text-xl font-bold text-ocean-900 hover:text-coral-700">
+                    {journey.campaignTitle}
+                  </Link>
+                  <p className="mt-1 text-sm text-ocean-900/56">{journey.donatedAt.toLocaleDateString("id-ID", { dateStyle: "medium" })}</p>
+                </div>
+                <p className="font-bold text-ocean-900">{formatCurrency(journey.amount, journey.currency)}</p>
+              </div>
+
+              <div className="mt-5 grid gap-3 md:grid-cols-4">
+                <div className="rounded-xl bg-white p-4 ring-1 ring-ocean-900/10">
+                  <CheckCircle2 size={18} className="text-kelp-600" aria-hidden="true" />
+                  <p className="mt-2 text-sm font-bold text-ocean-900">Contribution</p>
+                  <p className="mt-1 text-xs leading-5 text-ocean-900/58">{journey.paymentStatus === "paid" ? "Payment verified" : `Payment ${journey.paymentStatus}`}</p>
+                </div>
+                <div className="rounded-xl bg-white p-4 ring-1 ring-ocean-900/10">
+                  <Sprout size={18} className="text-kelp-600" aria-hidden="true" />
+                  <p className="mt-2 text-sm font-bold text-ocean-900">Estimated impact</p>
+                  <p className="mt-1 text-xs leading-5 text-ocean-900/58">{journey.estimatedImpact ?? "Impact estimate will appear when the campaign model supports it."}</p>
+                </div>
+                <div className="rounded-xl bg-white p-4 ring-1 ring-ocean-900/10">
+                  <MapPin size={18} className="text-kelp-600" aria-hidden="true" />
+                  <p className="mt-2 text-sm font-bold text-ocean-900">Field activity</p>
+                  {journey.latestUpdate ? (
+                    <Link href={journey.latestUpdate.href} className="mt-1 block text-xs font-semibold leading-5 text-coral-700 hover:text-coral-500">{journey.latestUpdate.title}</Link>
+                  ) : (
+                    <p className="mt-1 text-xs leading-5 text-ocean-900/58">Waiting for partner field activity.</p>
+                  )}
+                </div>
+                <div className="rounded-xl bg-white p-4 ring-1 ring-ocean-900/10">
+                  <ShieldCheck size={18} className="text-kelp-600" aria-hidden="true" />
+                  <p className="mt-2 text-sm font-bold text-ocean-900">Verified outcome</p>
+                  {journey.verifiedOutcome ? (
+                    <Link href={journey.verifiedOutcome.href} className="mt-1 block text-xs font-semibold leading-5 text-coral-700 hover:text-coral-500">{journey.verifiedOutcome.title}</Link>
+                  ) : (
+                    <p className="mt-1 text-xs leading-5 text-ocean-900/58">No verified campaign evidence yet.</p>
+                  )}
+                </div>
+              </div>
+
+              {journey.sponsorship ? (
+                <div className="mt-4 rounded-xl border border-kelp-500/20 bg-white p-4">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <p className="font-bold text-ocean-900">{journey.sponsorship.label}</p>
+                    <span className="rounded-full bg-kelp-100 px-3 py-1 text-xs font-bold text-kelp-700">{journey.sponsorship.status}</span>
+                  </div>
+                  <p className="mt-1 text-xs font-semibold text-ocean-900/52">Sponsorship ID: {journey.sponsorship.code}</p>
+                  <div className="mt-3 flex flex-wrap gap-4 text-sm text-ocean-900/64">
+                    {journey.sponsorship.fragments > 0 ? <span>{journey.sponsorship.fragments.toLocaleString("id-ID")} fragments</span> : null}
+                    {journey.sponsorship.plantedAt ? <span>Planted {journey.sponsorship.plantedAt.toLocaleDateString("id-ID", { dateStyle: "medium" })}</span> : null}
+                    {journey.sponsorship.survivalRate > 0 ? <span>{journey.sponsorship.survivalRate}% survival rate</span> : null}
+                  </div>
+                </div>
+              ) : (
+                <p className="mt-4 rounded-xl bg-ocean-50 p-3 text-xs leading-5 text-ocean-900/58">
+                  Campaign-level outcome: this contribution participates in pooled funding. Field evidence is linked to the campaign, not assigned to this donation as an exclusive outcome.
+                </p>
+              )}
+            </article>
+          ))}
+          {data.donationImpactJourneys.length === 0 ? (
+            <p className="rounded-xl border border-dashed border-ocean-900/14 p-4 text-sm font-semibold text-ocean-900/62">Your impact journey starts after your first donation.</p>
+          ) : null}
+        </div>
       </section>
 
       <section className="mt-6 grid gap-4">

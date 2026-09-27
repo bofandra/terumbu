@@ -744,6 +744,44 @@ export default async function CampaignDetailPage({ params }: { params: Promise<{
               </article>
             </div>
 
+            <article className="mt-8 rounded-2xl border border-kelp-500/20 bg-kelp-100/40 p-6 shadow-soft">
+              <SectionHeading eyebrow="Traceability" title="From supporter funds to verified field records">
+                This view separates money received, partner-recorded spending, published field activity, and evidence that passed platform review. It does not claim that every rupiah or dollar is individually attributable to one evidence file.
+              </SectionHeading>
+              <div className="mt-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                {[
+                  [formatCurrency(campaign.traceability.paidFunding, campaign.currency), "Paid funding", "Confirmed supporter contributions"],
+                  [formatCurrency(campaign.traceability.recordedSpend, campaign.currency), "Recorded spend", "Partner budget utilization"],
+                  [campaign.traceability.publishedActivities.toLocaleString("id-ID"), "Field activities", "Published campaign activity records"],
+                  [campaign.traceability.verifiedEvidence.toLocaleString("id-ID"), "Verified evidence", "Evidence approved through review"]
+                ].map(([value, label, support]) => (
+                  <div key={label} className="rounded-xl bg-white p-4 ring-1 ring-ocean-900/10">
+                    <MetricValue className="text-ocean-900">{value}</MetricValue>
+                    <p className="mt-1 text-sm font-bold text-ocean-900">{label}</p>
+                    <p className="mt-1 text-xs leading-5 text-ocean-900/52">{support}</p>
+                  </div>
+                ))}
+              </div>
+              <div className="mt-5 grid gap-3 text-sm md:grid-cols-3">
+                <div className="rounded-xl bg-white p-4 ring-1 ring-ocean-900/10">
+                  <p className="font-bold text-ocean-900">Budget coverage</p>
+                  <p className="mt-1 text-ocean-900/62">{formatCurrency(campaign.traceability.recordedSpend, campaign.currency)} recorded against {formatCurrency(campaign.traceability.plannedBudget, campaign.currency)} planned.</p>
+                </div>
+                <div className="rounded-xl bg-white p-4 ring-1 ring-ocean-900/10">
+                  <p className="font-bold text-ocean-900">Evidence-linked spend</p>
+                  <p className="mt-1 text-ocean-900/62">{formatCurrency(campaign.traceability.evidencedSpend, campaign.currency)} is explicitly referenced in verified evidence metadata.</p>
+                </div>
+                <div className="rounded-xl bg-white p-4 ring-1 ring-ocean-900/10">
+                  <p className="font-bold text-ocean-900">Latest verification</p>
+                  <p className="mt-1 text-ocean-900/62">{campaign.traceability.latestVerifiedAt ? formatDateLabel(campaign.traceability.latestVerifiedAt) : "No verified evidence yet"}</p>
+                </div>
+              </div>
+              <div className="mt-5 flex flex-wrap gap-3">
+                <ButtonLink href="#updates" tone="secondary">View field activity</ButtonLink>
+                <ButtonLink href="#evidence" tone="light">View verified evidence</ButtonLink>
+              </div>
+            </article>
+
             <article className="mt-8 rounded-2xl border border-ocean-900/10 bg-white p-6 shadow-soft">
               <SectionHeading title="Funding record">
                 Funding values combine the campaign goal with paid supporter contributions.

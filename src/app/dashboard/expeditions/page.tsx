@@ -1,6 +1,6 @@
 import Link from "next/link";
 import Image from "next/image";
-import { ArrowRight, BookmarkX, CalendarDays, Heart, RefreshCw, Star } from "lucide-react";
+import { ArrowRight, BookmarkX, CalendarDays, CheckCircle2, Heart, MapPin, RefreshCw, ShieldCheck, Star } from "lucide-react";
 
 import { ExpeditionCalendarActions } from "@/components/expedition-calendar-actions";
 import { submitExpeditionMediaAction } from "@/lib/expedition-media-actions";
@@ -281,6 +281,56 @@ export default async function DashboardExpeditionsPage({ searchParams }: Dashboa
           </div>
         </section>
       ) : null}
+
+      <section className="mt-6 rounded-2xl border border-ocean-900/10 bg-white p-5 shadow-soft">
+        <p className="text-sm font-bold uppercase tracking-[0.16em] text-coral-700">My expedition journey</p>
+        <h2 className="mt-2 text-2xl font-bold tracking-normal text-ocean-900">From booking to verified impact</h2>
+        <p className="mt-2 max-w-3xl text-sm leading-6 text-ocean-900/62">
+          Your booking and completed participation are personal records. Conservation results remain expedition or campaign outcomes unless an activity is explicitly recorded for an individual participant.
+        </p>
+        <div className="mt-5 grid gap-4">
+          {data.expeditionImpactJourneys.map((journey) => (
+            <article key={journey.bookingId} className="rounded-2xl border border-ocean-900/10 bg-sand-50 p-5">
+              <div className="flex flex-col justify-between gap-2 sm:flex-row sm:items-start">
+                <div>
+                  <Link href={`/expeditions/${journey.expeditionSlug}`} className="text-xl font-bold text-ocean-900 hover:text-coral-700">{journey.expeditionTitle}</Link>
+                  <p className="mt-1 text-xs font-semibold text-ocean-900/52">{journey.bookingCode} · {journey.startsAt.toLocaleDateString("id-ID", { dateStyle: "medium" })}</p>
+                </div>
+                <span className={`w-fit rounded-full px-3 py-1 text-xs font-bold ${statusClass(journey.bookingStatus)}`}>{journey.bookingStatus}</span>
+              </div>
+              <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+                <div className="rounded-xl bg-white p-4 ring-1 ring-ocean-900/10">
+                  <CheckCircle2 size={18} className="text-kelp-600" aria-hidden="true" />
+                  <p className="mt-2 text-sm font-bold text-ocean-900">Booking & payment</p>
+                  <p className="mt-1 text-xs leading-5 text-ocean-900/58">{journey.paymentStatus === "paid" ? "Payment verified" : `Payment ${journey.paymentStatus}`}</p>
+                </div>
+                <div className="rounded-xl bg-white p-4 ring-1 ring-ocean-900/10">
+                  <CalendarDays size={18} className="text-kelp-600" aria-hidden="true" />
+                  <p className="mt-2 text-sm font-bold text-ocean-900">Preparation</p>
+                  <p className="mt-1 text-xs leading-5 text-ocean-900/58">{journey.preparationComplete}/{journey.preparationTotal} preparation items complete</p>
+                </div>
+                <div className="rounded-xl bg-white p-4 ring-1 ring-ocean-900/10">
+                  <CheckCircle2 size={18} className="text-kelp-600" aria-hidden="true" />
+                  <p className="mt-2 text-sm font-bold text-ocean-900">Participation</p>
+                  <p className="mt-1 text-xs leading-5 text-ocean-900/58">{journey.participationCompleted ? "Completed and confirmed" : journey.endsAt > new Date() ? "Expedition not completed yet" : "Awaiting partner confirmation"}</p>
+                </div>
+                <div className="rounded-xl bg-white p-4 ring-1 ring-ocean-900/10">
+                  <MapPin size={18} className="text-kelp-600" aria-hidden="true" />
+                  <p className="mt-2 text-sm font-bold text-ocean-900">Field activity</p>
+                  {journey.latestFieldActivity ? <Link href={journey.latestFieldActivity.href} className="mt-1 block text-xs font-semibold leading-5 text-coral-700">{journey.latestFieldActivity.title}</Link> : <p className="mt-1 text-xs leading-5 text-ocean-900/58">{journey.relatedCampaignId ? "Waiting for published field activity." : "No related conservation campaign."}</p>}
+                </div>
+                <div className="rounded-xl bg-white p-4 ring-1 ring-ocean-900/10">
+                  <ShieldCheck size={18} className="text-kelp-600" aria-hidden="true" />
+                  <p className="mt-2 text-sm font-bold text-ocean-900">Verified impact</p>
+                  {journey.verifiedOutcome ? <Link href={journey.verifiedOutcome.href} className="mt-1 block text-xs font-semibold leading-5 text-coral-700">{journey.verifiedOutcome.title}</Link> : <p className="mt-1 text-xs leading-5 text-ocean-900/58">No verified outcome yet.</p>}
+                </div>
+              </div>
+              {journey.passportEligible ? <p className="mt-4 rounded-xl bg-kelp-100 p-3 text-xs font-semibold leading-5 text-kelp-700">Participation completed. This expedition is eligible for your Impact Passport record.</p> : null}
+            </article>
+          ))}
+          {data.expeditionImpactJourneys.length === 0 ? <p className="rounded-xl border border-dashed border-ocean-900/14 p-4 text-sm font-semibold text-ocean-900/62">Your expedition journey starts after your first booking.</p> : null}
+        </div>
+      </section>
 
       <section className="mt-6 grid gap-4">
         {data.bookings.map((booking) => {
