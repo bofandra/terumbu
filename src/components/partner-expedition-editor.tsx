@@ -66,10 +66,12 @@ function optionsWithCurrentValues(options: string[], values: string[]) {
 
 export function PartnerExpeditionCreateForm({
   campaigns,
+  academyCourses,
   destinations,
   canManageExpeditions
 }: {
   campaigns: Campaign[];
+  academyCourses: AcademyCourse[];
   destinations: Destination[];
   canManageExpeditions: boolean;
 }) {
@@ -130,6 +132,14 @@ export function PartnerExpeditionCreateForm({
                 <option key={campaign.id} value={campaign.id}>
                   {campaign.title} / {campaign.status}
                 </option>
+              ))}
+            </select>
+          </Field>
+          <Field label="Academy prerequisite" help="Optional. Travelers must hold this course certificate before booking.">
+            <select name="requiredAcademyCourseId" defaultValue="" className={inputClassName}>
+              <option value="">No Academy prerequisite</option>
+              {academyCourses.map((course) => (
+                <option key={course.id} value={course.id}>{course.title}{course.fieldReadiness ? " · Field readiness" : ""}</option>
               ))}
             </select>
           </Field>
