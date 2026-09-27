@@ -74,9 +74,17 @@ export async function getPublishedExpeditionMedia(expeditionId: string) {
       travelerUserName: users.name
     })
     .from(expeditionMediaSubmissions)
+    .innerJoin(expeditionBookings, eq(expeditionMediaSubmissions.bookingId, expeditionBookings.id))
     .leftJoin(users, eq(expeditionMediaSubmissions.userId, users.id))
     .leftJoin(profiles, eq(profiles.userId, users.id))
-    .where(and(eq(expeditionMediaSubmissions.expeditionId, expeditionId), eq(expeditionMediaSubmissions.status, "published")))
+    .where(
+      and(
+        eq(expeditionMediaSubmissions.expeditionId, expeditionId),
+        eq(expeditionMediaSubmissions.status, "published"),
+        eq(expeditionBookings.status, "completed"),
+        eq(expeditionBookings.paymentStatus, "paid")
+      )
+    )
     .orderBy(desc(expeditionMediaSubmissions.createdAt))
     .limit(12);
 }
