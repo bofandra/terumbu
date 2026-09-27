@@ -4107,7 +4107,50 @@ export async function getDashboardData(userId: string) {
     .slice(0, 8);
 
   const preferences = deliverySettings;
+  const supportedCampaignUpdateNotifications = updateRows.slice(0, 6).map((update) => ({
+    notificationCode: `supported-campaign-update-${update.id}`,
+    category: "Supported campaign",
+    title: update.title,
+    message: `${update.campaignTitle} published a new field activity for a campaign you support.`,
+    href: `/campaigns/${update.campaignSlug}/updates/${update.id}`,
+    sourceType: "supported_campaign_update",
+    sourceId: update.id,
+    timestamp: update.publishedAt ?? update.createdAt,
+    enabled: preferences.campaignUpdates
+  }));
+  const supportedEvidenceNotifications = evidenceRows
+    .filter((evidence) => evidence.verificationStatus === "verified")
+    .slice(0, 6)
+    .map((evidence) => ({
+      notificationCode: `supported-campaign-evidence-${evidence.id}`,
+      category: "Verified impact",
+      title: evidence.title,
+      message: `${evidence.campaignTitle} has new verified field evidence.`,
+      href: `/campaigns/${evidence.campaignSlug}#evidence`,
+      sourceType: "supported_campaign_evidence",
+      sourceId: evidence.id,
+      timestamp: evidence.verifiedAt ?? evidence.createdAt,
+      enabled: preferences.evidenceAlerts
+    }));
+  const sponsorshipMonitoringNotifications = ecosystemRows
+    .filter((ecosystem) => Boolean(ecosystem.lastUpdatedAt))
+    .slice(0, 6)
+    .map((ecosystem) => ({
+      notificationCode: `sponsorship-monitoring-${ecosystem.code}-${ecosystem.lastUpdatedAt.getTime()}`,
+      category: "Sponsorship monitoring",
+      title: ecosystem.label,
+      message: `${ecosystem.label} has a new monitoring update.`,
+      href: `/campaigns/${ecosystem.campaignSlug}#evidence`,
+      sourceType: "sponsored_ecosystem",
+      sourceId: null,
+      timestamp: ecosystem.lastUpdatedAt,
+      enabled: preferences.evidenceAlerts
+    }));
+
   const notificationCandidates = [
+    ...supportedCampaignUpdateNotifications,
+    ...supportedEvidenceNotifications,
+    ...sponsorshipMonitoringNotifications,
     ...followedUpdateRows.slice(0, 4).map((update) => ({
       notificationCode: `follow-update-${update.id}`,
       category: "Followed campaigns",
