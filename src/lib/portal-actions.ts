@@ -33,6 +33,8 @@ import {
   paymentOperations,
   profiles,
   projectEvidence,
+  restorationBatchAllocations,
+  restorationBatches,
   roles,
   sponsoredEcosystemEvents,
   sponsoredEcosystems,
@@ -93,6 +95,7 @@ import {
 } from "@/lib/expedition-marketplace";
 import { canCancelExpeditionBooking, canCompleteExpeditionBooking } from "@/lib/expedition-booking-lifecycle";
 import { canTransitionSponsoredEcosystem, normalizeSponsoredEcosystemOperationalStatus, sponsoredEcosystemTransitionRequiresReason } from "@/lib/sponsored-ecosystem-lifecycle";
+import { canTransitionRestorationBatch, normalizeRestorationBatchStatus, validRestorationAllocationUnits } from "@/lib/restoration-batches";
 import { buildPassportNumber, normalizeCurrency, parseCarbonKgPerUsd } from "@/lib/impact-calculations";
 import {
   normalizePartnerOrganizationRole,
@@ -4151,6 +4154,85 @@ export async function updateImpactSettingsAction(formData: FormData) {
 export async function updateAdminCampaignAction(formData: FormData) {
   await requireRole(["admin"], "/admin/campaigns");
   redirectAdminCampaignError("partner-owned", formData);
+}
+
+export async function createRestorationBatchAction(formData: FormData) {
+  const user = await requirePartnerRole("/partner/impact-sites");
+  const impactSiteId = formText(formData, "impactSiteId");
+  const title = formText(formData, "title");
+  const plannedAtValue = formText(formData, "plannedAt");
+  const fallbackPath = safeRedirectPath(formText(formData, "returnTo"), "/partner/impact-sites");
+
+  if (!impactSiteId || !title) redirectPartnerError(formData, fallbackPath, "restoration-batch-invalid");
+  const site = await requirePartnerImpactSiteAccess(user.id, impactSiteId, formData, fallbackPath, "impact-site:manage");
+  const code = `RB-${Date.now().toString(36).toUpperCase()}-${randomBytes(3).toString("hex").toUpperCase()}`;
+
+  await db.insert(restorationBatches).values({
+    campaignId: site.campaignId,
+    impactSiteId: site.id,
+    code,
+    title,
+    status: "planned",
+    plannedAt: plannedAtValue ? new Date(plannedAtValue) : null,
+    createdByUserId: user.id
+  });
+  redirect(fallbackPath);
+}
+
+export async function allocateSponsorshipToRestorationBatchAction(formData: FormData) {
+  const user = await requirePartnerRole("/partner/impact-sites");
+  const batchId = formText(formData, "batchId");
+  const sponsoredEcosystemId = formText(formData, "sponsoredEcosystemId");
+  const unitCount = Number(formText(formData, "unitCount"));
+  const fallbackPath = safeRedirectPath(formText(formData, "returnTo"), "/partner/impact-sites");
+  if (!batchId || !sponsoredEcosystemId) redirectPartnerError(formData, fallbackPath, "restoration-allocation-invalid");
+
+  const [batch] = await db.select().from(restorationBatches).where(eq(restorationBatches.id, batchId)).limit(1);
+  const [ecosystem] = await db.select().from(sponsoredEcosystems).where(eq(sponsoredEcosystems.id, sponsoredEcosystemId)).limit(1);
+  if (!batch || !ecosystem || batch.campaignId !== ecosystem.campaignId || batch.impactSiteId !== ecosystem.impactSiteId) {
+    redirectPartnerError(formData, fallbackPath, "restoration-allocation-mismatch");
+  }
+  await requireCampaignAccess(user.id, batch.campaignId, formData, fallbackPath, "impact-site:manage");
+  const metadata = ecosystem.metadata && typeof ecosystem.metadata === "object" ? ecosystem.metadata as Record<string, unknown> : {};
+  const sponsorshipUnits = Number(metadata.fragments ?? metadata.seedlings ?? 0);
+  if (!validRestorationAllocationUnits(unitCount, sponsorshipUnits)) redirectPartnerError(formData, fallbackPath, "restoration-allocation-units");
+
+  await db.insert(restorationBatchAllocations).values({
+    batchId: batch.id,
+    sponsoredEcosystemId: ecosystem.id,
+    unitCount: String(unitCount),
+    allocatedByUserId: user.id
+  });
+  redirect(fallbackPath);
+}
+
+export async function transitionRestorationBatchAction(formData: FormData) {
+  const user = await requirePartnerRole("/partner/impact-sites");
+  const batchId = formText(formData, "batchId");
+  const nextStatus = normalizeRestorationBatchStatus(formText(formData, "status"));
+  const fallbackPath = safeRedirectPath(formText(formData, "returnTo"), "/partner/impact-sites");
+  if (!batchId || !nextStatus) redirectPartnerError(formData, fallbackPath, "restoration-transition-invalid");
+
+  const [batch] = await db.select().from(restorationBatches).where(eq(restorationBatches.id, batchId)).limit(1);
+  if (!batch) redirectPartnerError(formData, fallbackPath, "restoration-batch-missing");
+  await requireCampaignAccess(user.id, batch.campaignId, formData, fallbackPath, "impact-site:manage");
+  const current = normalizeRestorationBatchStatus(batch.status);
+  if (!current || !canTransitionRestorationBatch(current, nextStatus)) redirectPartnerError(formData, fallbackPath, "restoration-transition-invalid");
+
+  if (nextStatus === "monitored") {
+    const [evidence] = await db.select({ id: projectEvidence.id }).from(projectEvidence)
+      .where(and(eq(projectEvidence.restorationBatchId, batch.id), eq(projectEvidence.verificationStatus, "verified"))).limit(1);
+    if (!evidence) redirectPartnerError(formData, fallbackPath, "restoration-monitoring-evidence");
+  }
+
+  const now = new Date();
+  await db.update(restorationBatches).set({
+    status: nextStatus,
+    plantedAt: nextStatus === "planted" ? now : batch.plantedAt,
+    monitoredAt: nextStatus === "monitored" ? now : batch.monitoredAt,
+    updatedAt: now
+  }).where(and(eq(restorationBatches.id, batch.id), eq(restorationBatches.status, current)));
+  redirect(fallbackPath);
 }
 
 export async function transitionSponsoredEcosystemAction(formData: FormData) {
