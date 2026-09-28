@@ -2441,7 +2441,8 @@ export async function updatePartnerCampaignAction(formData: FormData) {
       ecosystemType: impactSites.ecosystemType
     })
     .from(impactSites)
-    .where(eq(impactSites.campaignId, campaignId))
+    .innerJoin(campaignImpactSites, eq(impactSites.id, campaignImpactSites.impactSiteId))
+    .where(eq(campaignImpactSites.campaignId, campaignId))
     .orderBy(asc(impactSites.createdAt))
     .limit(1);
 
