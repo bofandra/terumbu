@@ -11,6 +11,7 @@ import {
   campaignUpdates,
   campaigns,
   campaignImpactTargets,
+  campaignImpactSites,
   campaignFollowSubscriptions,
   campaignMediaItems,
   campaignTimelinePhases,
@@ -1374,13 +1375,15 @@ async function destinationDirectory(status?: string): Promise<DestinationDirecto
         id: impactSites.id
       })
       .from(impactSites)
-      .innerJoin(campaigns, eq(impactSites.campaignId, campaigns.id))
+      .innerJoin(campaignImpactSites, eq(impactSites.id, campaignImpactSites.impactSiteId))
+      .innerJoin(campaigns, eq(campaignImpactSites.campaignId, campaigns.id))
       .where(
         and(
           inArray(impactSites.destinationId, destinationIds),
           inArray(campaigns.status, ["published", "funded", "completed"])
         )
       )
+      .groupBy(impactSites.destinationId, impactSites.id)
   ]);
 
   const expeditionsByDestination = new Map<string, typeof expeditionRows>();
@@ -2071,11 +2074,12 @@ export async function getImpactMapSites(campaignId?: string): Promise<ImpactSite
       verification: organizations.verification
     })
     .from(impactSites)
-    .leftJoin(campaigns, eq(impactSites.campaignId, campaigns.id))
+    .innerJoin(campaignImpactSites, eq(impactSites.id, campaignImpactSites.impactSiteId))
+    .innerJoin(campaigns, eq(campaignImpactSites.campaignId, campaigns.id))
     .leftJoin(organizations, eq(campaigns.organizationId, organizations.id))
     .where(
       campaignId
-        ? eq(impactSites.campaignId, campaignId)
+        ? eq(campaignImpactSites.campaignId, campaignId)
         : inArray(campaigns.status, ["published", "funded", "completed"])
     )
     .orderBy(asc(impactSites.name));
@@ -9579,7 +9583,7 @@ export async function getPartnerPortalData(userId?: string) {
     db
       .select({
         id: impactSites.id,
-        campaignId: impactSites.campaignId,
+        campaignId: campaignImpactSites.campaignId,
         destinationId: impactSites.destinationId,
         name: impactSites.name,
         type: impactSites.ecosystemType,
@@ -9591,7 +9595,8 @@ export async function getPartnerPortalData(userId?: string) {
         campaignSlug: campaigns.slug
       })
       .from(impactSites)
-      .innerJoin(campaigns, eq(impactSites.campaignId, campaigns.id))
+      .innerJoin(campaignImpactSites, eq(impactSites.id, campaignImpactSites.impactSiteId))
+      .innerJoin(campaigns, eq(campaignImpactSites.campaignId, campaigns.id))
       .where(campaignScope)
       .orderBy(asc(impactSites.name)),
     db

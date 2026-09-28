@@ -12,6 +12,7 @@ import {
   campaignActivities,
   campaignBudgetLineItems,
   campaignImpactTargets,
+  campaignImpactSites,
   campaignMediaItems,
   campaignTimelinePhases,
   campaignUpdates,
@@ -24,6 +25,7 @@ import {
   evidenceReviewEvents,
   expeditionBookings,
   expeditionDepartures,
+  expeditionImpactSites,
   expeditions,
   impactPassports,
   impactSites,
@@ -2355,27 +2357,22 @@ export async function createPartnerCampaignAction(formData: FormData) {
         metadata: { source: "partner_campaign_create", campaignId: campaign.id, name: newImpactSiteValues.name }
       });
     } else if (existingImpactSite) {
-      const [site] = await tx
-        .insert(impactSites)
-        .values({
-          campaignId: campaign.id,
-          name: existingImpactSite.name,
-          ecosystemType: existingImpactSite.ecosystemType,
-          region: existingImpactSite.region,
-          latitude: existingImpactSite.latitude,
-          longitude: existingImpactSite.longitude,
-          metadata: existingImpactSite.metadata
-        })
-        .returning({ id: impactSites.id });
-
-      linkedImpactSiteId = site.id;
+      linkedImpactSiteId = existingImpactSite.id;
 
       await tx.insert(adminAuditLogs).values({
         actorUserId: user.id,
         action: "impact_site.linked",
         entityType: "impact_site",
-        entityId: site.id,
-        metadata: { source: "partner_campaign_create", campaignId: campaign.id, copiedFromImpactSiteId: existingImpactSite.id, name: existingImpactSite.name }
+        entityId: existingImpactSite.id,
+        metadata: { source: "partner_campaign_create", campaignId: campaign.id, reusedImpactSiteId: existingImpactSite.id, name: existingImpactSite.name }
+      });
+    }
+
+    if (linkedImpactSiteId) {
+      await tx.insert(campaignImpactSites).values({
+        campaignId: campaign.id,
+        impactSiteId: linkedImpactSiteId,
+        isPrimary: true
       });
     }
 
@@ -2444,7 +2441,8 @@ export async function updatePartnerCampaignAction(formData: FormData) {
       ecosystemType: impactSites.ecosystemType
     })
     .from(impactSites)
-    .where(eq(impactSites.campaignId, campaignId))
+    .innerJoin(campaignImpactSites, eq(impactSites.id, campaignImpactSites.impactSiteId))
+    .where(eq(campaignImpactSites.campaignId, campaignId))
     .orderBy(asc(impactSites.createdAt))
     .limit(1);
 
@@ -3577,6 +3575,23 @@ export async function updatePartnerExpeditionAction(formData: FormData) {
     redirectPartnerError(formData, "/partner/expeditions", "expedition-missing");
   }
 
+  const expeditionSites = await db
+    .select({ impactSiteId: campaignImpactSites.impactSiteId, isPrimary: campaignImpactSites.isPrimary })
+    .from(campaignImpactSites)
+    .innerJoin(impactSites, eq(campaignImpactSites.impactSiteId, impactSites.id))
+    .where(and(eq(campaignImpactSites.campaignId, relatedCampaignId), eq(impactSites.destinationId, destinationId)));
+
+  await db.delete(expeditionImpactSites).where(eq(expeditionImpactSites.expeditionId, expeditionId));
+  if (expeditionSites.length > 0) {
+    await db.insert(expeditionImpactSites).values(
+      expeditionSites.map((site) => ({
+        expeditionId,
+        impactSiteId: site.impactSiteId,
+        isPrimary: site.isPrimary
+      }))
+    );
+  }
+
   await db.insert(adminAuditLogs).values({
     actorUserId: user.id,
     action: "partner_expedition.updated",
@@ -3796,6 +3811,22 @@ export async function createPartnerExpeditionAction(formData: FormData) {
       updatedAt: new Date()
     })
     .returning({ id: expeditions.id });
+
+  const expeditionSites = await db
+    .select({ impactSiteId: campaignImpactSites.impactSiteId, isPrimary: campaignImpactSites.isPrimary })
+    .from(campaignImpactSites)
+    .innerJoin(impactSites, eq(campaignImpactSites.impactSiteId, impactSites.id))
+    .where(and(eq(campaignImpactSites.campaignId, relatedCampaignId), eq(impactSites.destinationId, destinationId)));
+
+  if (expeditionSites.length > 0) {
+    await db.insert(expeditionImpactSites).values(
+      expeditionSites.map((site) => ({
+        expeditionId: expedition.id,
+        impactSiteId: site.impactSiteId,
+        isPrimary: site.isPrimary
+      }))
+    );
+  }
 
   await db.insert(adminAuditLogs).values({
     actorUserId: user.id,
