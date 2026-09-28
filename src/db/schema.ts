@@ -497,6 +497,7 @@ export const projectEvidence = pgTable("project_evidence", {
   id: uuid("id").defaultRandom().primaryKey(),
   campaignId: uuid("campaign_id").notNull().references(() => campaigns.id, { onDelete: "cascade" }),
   impactSiteId: uuid("impact_site_id").references(() => impactSites.id, { onDelete: "set null" }),
+  restorationBatchId: uuid("restoration_batch_id").references(() => restorationBatches.id, { onDelete: "set null" }),
   uploadedByUserId: uuid("uploaded_by_user_id").references(() => users.id, { onDelete: "set null" }),
   evidenceCode: varchar("evidence_code", { length: 120 }).notNull(),
   title: varchar("title", { length: 220 }).notNull(),
@@ -629,6 +630,39 @@ export const sponsoredEcosystems = pgTable("sponsored_ecosystems", {
   codeIdx: uniqueIndex("sponsored_ecosystems_code_idx").on(table.code),
   donationIdx: uniqueIndex("sponsored_ecosystems_donation_idx").on(table.donationId),
   userIdx: index("sponsored_ecosystems_user_idx").on(table.userId)
+}));
+
+export const restorationBatches = pgTable("restoration_batches", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  campaignId: uuid("campaign_id").notNull().references(() => campaigns.id, { onDelete: "cascade" }),
+  impactSiteId: uuid("impact_site_id").notNull().references(() => impactSites.id, { onDelete: "cascade" }),
+  code: varchar("code", { length: 100 }).notNull(),
+  title: varchar("title", { length: 220 }).notNull(),
+  status: varchar("status", { length: 40 }).default("planned").notNull(),
+  plannedAt: timestamp("planned_at", { withTimezone: true }),
+  plantedAt: timestamp("planted_at", { withTimezone: true }),
+  monitoredAt: timestamp("monitored_at", { withTimezone: true }),
+  createdByUserId: uuid("created_by_user_id").references(() => users.id, { onDelete: "set null" }),
+  metadata: jsonb("metadata"),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull()
+}, (table) => ({
+  codeIdx: uniqueIndex("restoration_batches_code_idx").on(table.code),
+  campaignIdx: index("restoration_batches_campaign_idx").on(table.campaignId),
+  siteIdx: index("restoration_batches_site_idx").on(table.impactSiteId),
+  statusIdx: index("restoration_batches_status_idx").on(table.status)
+}));
+
+export const restorationBatchAllocations = pgTable("restoration_batch_allocations", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  batchId: uuid("batch_id").notNull().references(() => restorationBatches.id, { onDelete: "cascade" }),
+  sponsoredEcosystemId: uuid("sponsored_ecosystem_id").notNull().references(() => sponsoredEcosystems.id, { onDelete: "cascade" }),
+  unitCount: numeric("unit_count", { precision: 14, scale: 2 }).notNull(),
+  allocatedByUserId: uuid("allocated_by_user_id").references(() => users.id, { onDelete: "set null" }),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull()
+}, (table) => ({
+  batchIdx: index("restoration_batch_allocations_batch_idx").on(table.batchId),
+  ecosystemIdx: uniqueIndex("restoration_batch_allocations_ecosystem_idx").on(table.sponsoredEcosystemId)
 }));
 
 export const sponsoredEcosystemEvents = pgTable("sponsored_ecosystem_events", {
