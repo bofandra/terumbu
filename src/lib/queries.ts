@@ -1209,7 +1209,6 @@ export async function getCampaignDetail(slug: string) {
       contributionIntent: getMetadataString(donation.transactionPayload, "contributionIntent") ?? "one-time",
       sponsoredFragments: getMetadataNumber(donation.transactionPayload, "sponsoredFragments")
     })),
-    restorationBatches: restorationBatchRows,
     sponsoredEcosystems: sponsoredRows.map((ecosystem) => ({
       code: ecosystem.code,
       label: ecosystem.label,
