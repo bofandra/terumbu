@@ -9633,7 +9633,9 @@ export async function getPartnerPortalData(userId?: string) {
       .orderBy(asc(impactSites.name)),
     db
       .select({
+        id: sponsoredEcosystems.id,
         campaignId: sponsoredEcosystems.campaignId,
+        impactSiteId: sponsoredEcosystems.impactSiteId,
         code: sponsoredEcosystems.code,
         label: sponsoredEcosystems.label,
         status: sponsoredEcosystems.status,
