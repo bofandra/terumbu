@@ -728,7 +728,7 @@ export function PartnerImpactSiteManagement({
                   {restorationBatches.filter((batch) => batch.impactSiteId === site.id).map((batch) => {
                     const allocations = restorationBatchAllocations.filter((allocation) => allocation.batchId === batch.id);
                     const allocatedIds = new Set(restorationBatchAllocations.map((allocation) => allocation.sponsoredEcosystemId));
-                    const eligible = sponsoredEcosystems.filter((ecosystem) => ecosystem.campaignId === site.campaignId && ecosystem.siteName === site.name && !allocatedIds.has(ecosystem.code));
+                    const eligible = sponsoredEcosystems.filter((ecosystem) => ecosystem.campaignId === site.campaignId && ecosystem.impactSiteId === site.id && !allocatedIds.has(ecosystem.id));
                     const nextStatus = batch.status === "planned" ? "planted" : batch.status === "planted" ? "monitored" : null;
                     return (
                       <div key={batch.id} className="rounded-lg border border-ocean-900/10 p-3">
@@ -736,13 +736,13 @@ export function PartnerImpactSiteManagement({
                           <div><p className="font-bold text-ocean-900">{batch.title}</p><p className="text-xs font-semibold text-ocean-900/50">{batch.code} · {allocations.reduce((sum, item) => sum + item.unitCount, 0)} allocated units</p></div>
                           <StatusBadge value={batch.status} />
                         </div>
-                        {canManageImpactSites && batch.status === "planned" && sponsoredEcosystems.filter((ecosystem) => ecosystem.campaignId === site.campaignId && ecosystem.siteName === site.name).length > 0 ? (
+                        {canManageImpactSites && batch.status === "planned" && eligible.length > 0 ? (
                           <form action={allocateSponsorshipToRestorationBatchAction} className="mt-3 grid gap-2 sm:grid-cols-[1fr_120px_auto]">
                             <input type="hidden" name="batchId" value={batch.id} />
                             <input type="hidden" name="returnTo" value="/partner/impact-sites?saved=restoration-allocation-created" />
                             <select name="sponsoredEcosystemId" className={inputClassName} required>
                               <option value="">Choose sponsorship</option>
-                              {sponsoredEcosystems.filter((ecosystem) => ecosystem.campaignId === site.campaignId && ecosystem.siteName === site.name).map((ecosystem) => <option key={ecosystem.code} value={ecosystem.code}>{ecosystem.code} · {ecosystem.label}</option>)}
+                              {eligible.map((ecosystem) => <option key={ecosystem.id} value={ecosystem.id}>{ecosystem.code} · {ecosystem.label}</option>)}
                             </select>
                             <input name="unitCount" type="number" min="0.01" step="0.01" placeholder="Units" className={inputClassName} required />
                             <Button type="submit">Allocate</Button>
