@@ -631,6 +631,22 @@ export const sponsoredEcosystems = pgTable("sponsored_ecosystems", {
   userIdx: index("sponsored_ecosystems_user_idx").on(table.userId)
 }));
 
+export const sponsoredEcosystemEvents = pgTable("sponsored_ecosystem_events", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  sponsoredEcosystemId: uuid("sponsored_ecosystem_id").notNull().references(() => sponsoredEcosystems.id, { onDelete: "cascade" }),
+  actorUserId: uuid("actor_user_id").references(() => users.id, { onDelete: "set null" }),
+  fromStatus: varchar("from_status", { length: 80 }).notNull(),
+  toStatus: varchar("to_status", { length: 80 }).notNull(),
+  source: varchar("source", { length: 80 }).default("portal").notNull(),
+  reason: text("reason"),
+  metadata: jsonb("metadata"),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull()
+}, (table) => ({
+  ecosystemIdx: index("sponsored_ecosystem_events_ecosystem_idx").on(table.sponsoredEcosystemId),
+  actorIdx: index("sponsored_ecosystem_events_actor_idx").on(table.actorUserId),
+  createdAtIdx: index("sponsored_ecosystem_events_created_at_idx").on(table.createdAt)
+}));
+
 export const expeditions = pgTable("expeditions", {
   id: uuid("id").defaultRandom().primaryKey(),
   title: varchar("title", { length: 220 }).notNull(),
