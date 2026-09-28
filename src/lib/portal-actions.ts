@@ -34,6 +34,7 @@ import {
   profiles,
   projectEvidence,
   roles,
+  sponsoredEcosystemEvents,
   sponsoredEcosystems,
   userRoles,
   users
@@ -91,6 +92,7 @@ import {
   type ExpeditionMarketplaceMetadata
 } from "@/lib/expedition-marketplace";
 import { canCancelExpeditionBooking, canCompleteExpeditionBooking } from "@/lib/expedition-booking-lifecycle";
+import { canTransitionSponsoredEcosystem, normalizeSponsoredEcosystemOperationalStatus, sponsoredEcosystemTransitionRequiresReason } from "@/lib/sponsored-ecosystem-lifecycle";
 import { buildPassportNumber, normalizeCurrency, parseCarbonKgPerUsd } from "@/lib/impact-calculations";
 import {
   normalizePartnerOrganizationRole,
@@ -4149,6 +4151,73 @@ export async function updateImpactSettingsAction(formData: FormData) {
 export async function updateAdminCampaignAction(formData: FormData) {
   await requireRole(["admin"], "/admin/campaigns");
   redirectAdminCampaignError("partner-owned", formData);
+}
+
+export async function transitionSponsoredEcosystemAction(formData: FormData) {
+  const user = await requirePartnerRole("/partner/impact-sites");
+  const ecosystemId = formText(formData, "ecosystemId");
+  const nextStatus = normalizeSponsoredEcosystemOperationalStatus(formText(formData, "status"));
+  const reason = formText(formData, "reason");
+  const fallbackPath = safeRedirectPath(formText(formData, "returnTo"), "/partner/impact-sites");
+
+  if (!ecosystemId || !nextStatus) {
+    redirectPartnerError(formData, fallbackPath, "ecosystem-transition");
+  }
+
+  const [ecosystem] = await db
+    .select({
+      id: sponsoredEcosystems.id,
+      campaignId: sponsoredEcosystems.campaignId,
+      status: sponsoredEcosystems.status,
+      plantedAt: sponsoredEcosystems.plantedAt
+    })
+    .from(sponsoredEcosystems)
+    .where(eq(sponsoredEcosystems.id, ecosystemId))
+    .limit(1);
+
+  if (!ecosystem) {
+    redirectPartnerError(formData, fallbackPath, "ecosystem-missing");
+  }
+
+  await requireCampaignAccess(user.id, ecosystem.campaignId, formData, fallbackPath, "impact-site:manage");
+
+  const currentStatus = normalizeSponsoredEcosystemOperationalStatus(ecosystem.status);
+  if (!currentStatus || !canTransitionSponsoredEcosystem(currentStatus, nextStatus)) {
+    redirectPartnerError(formData, fallbackPath, "ecosystem-transition");
+  }
+
+  if (sponsoredEcosystemTransitionRequiresReason(currentStatus, nextStatus) && !reason) {
+    redirectPartnerError(formData, fallbackPath, "ecosystem-transition-reason");
+  }
+
+  const now = new Date();
+  await db.transaction(async (tx) => {
+    const [updated] = await tx
+      .update(sponsoredEcosystems)
+      .set({
+        status: nextStatus,
+        plantedAt: nextStatus === "planted" && !ecosystem.plantedAt ? now : ecosystem.plantedAt,
+        lastUpdatedAt: now
+      })
+      .where(and(eq(sponsoredEcosystems.id, ecosystem.id), eq(sponsoredEcosystems.status, currentStatus)))
+      .returning({ id: sponsoredEcosystems.id });
+
+    if (!updated) {
+      return;
+    }
+
+    await tx.insert(sponsoredEcosystemEvents).values({
+      sponsoredEcosystemId: ecosystem.id,
+      actorUserId: user.id,
+      fromStatus: currentStatus,
+      toStatus: nextStatus,
+      source: "partner_portal",
+      reason: reason || null,
+      metadata: { campaignId: ecosystem.campaignId }
+    });
+  });
+
+  redirect(fallbackPath);
 }
 
 export async function updateImpactSiteVerificationAction(formData: FormData) {
