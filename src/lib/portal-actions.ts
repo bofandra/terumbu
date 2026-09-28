@@ -4194,6 +4194,10 @@ export async function allocateSponsorshipToRestorationBatchAction(formData: Form
     redirectPartnerError(formData, fallbackPath, "restoration-allocation-mismatch");
   }
   await requireCampaignAccess(user.id, batch.campaignId, formData, fallbackPath, "impact-site:manage");
+  if (batch.status !== "planned" || ecosystem.status === "reversed") {
+    redirectPartnerError(formData, fallbackPath, "restoration-allocation-state");
+  }
+
   const metadata = ecosystem.metadata && typeof ecosystem.metadata === "object" ? ecosystem.metadata as Record<string, unknown> : {};
   const sponsorshipUnits = Number(metadata.fragments ?? metadata.seedlings ?? 0);
   if (!validRestorationAllocationUnits(unitCount, sponsorshipUnits)) redirectPartnerError(formData, fallbackPath, "restoration-allocation-units");
@@ -4219,6 +4223,12 @@ export async function transitionRestorationBatchAction(formData: FormData) {
   await requireCampaignAccess(user.id, batch.campaignId, formData, fallbackPath, "impact-site:manage");
   const current = normalizeRestorationBatchStatus(batch.status);
   if (!current || !canTransitionRestorationBatch(current, nextStatus)) redirectPartnerError(formData, fallbackPath, "restoration-transition-invalid");
+
+  if (nextStatus === "planted") {
+    const [allocation] = await db.select({ id: restorationBatchAllocations.id }).from(restorationBatchAllocations)
+      .where(eq(restorationBatchAllocations.batchId, batch.id)).limit(1);
+    if (!allocation) redirectPartnerError(formData, fallbackPath, "restoration-allocation-required");
+  }
 
   if (nextStatus === "monitored") {
     const [evidence] = await db.select({ id: projectEvidence.id }).from(projectEvidence)
@@ -4551,6 +4561,7 @@ export async function createCampaignActivityAction(formData: FormData) {
   const financeSpendAmount = parseOptionalAmount(formData.get("financeSpendAmount"));
   const financeSpendCurrency = normalizeCampaignCurrency(formData.get("financeSpendCurrency"), "USD");
   const attachmentUrl = await imageFromForm(formData, "imageFile", "/partner/activity");
+  const restorationBatchId = nullableText(formData, "restorationBatchId");
   const hasLegacyActivityUse = rawActivityUse !== null;
   const shouldPublish = hasLegacyActivityUse ? activityUse === "public_update" || activityUse === "update_and_evidence" : true;
   const shouldSubmitEvidence = hasLegacyActivityUse ? activityUse === "evidence" || activityUse === "update_and_evidence" : Boolean(attachmentUrl);
@@ -4581,6 +4592,21 @@ export async function createCampaignActivityAction(formData: FormData) {
   }
 
   const impactSiteId = linkedImpactSite.id;
+
+  let restorationBatch: { id: string; impactSiteId: string } | null = null;
+  if (restorationBatchId) {
+    const [batch] = await db
+      .select({ id: restorationBatches.id, campaignId: restorationBatches.campaignId, impactSiteId: restorationBatches.impactSiteId })
+      .from(restorationBatches)
+      .where(eq(restorationBatches.id, restorationBatchId))
+      .limit(1);
+
+    if (!batch || batch.campaignId !== campaignId || batch.impactSiteId !== impactSiteId) {
+      redirectPartnerError(formData, "/partner/activity", "restoration-batch-invalid");
+    }
+    restorationBatch = batch;
+  }
+
   const now = new Date();
   const storageProvider = attachmentUrl?.startsWith("data:image/") ? "database_inline" : attachmentUrl ? getEvidenceStorageProvider() : null;
   const generatedActivityCode = activityCode();
@@ -4613,6 +4639,7 @@ export async function createCampaignActivityAction(formData: FormData) {
         .values({
           campaignId,
           impactSiteId,
+          restorationBatchId: restorationBatch?.id ?? null,
           uploadedByUserId: user.id,
           evidenceCode: generatedEvidenceCode,
           title,
