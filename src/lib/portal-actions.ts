@@ -25,6 +25,7 @@ import {
   evidenceReviewEvents,
   expeditionBookings,
   expeditionDepartures,
+  expeditionImpactSites,
   expeditions,
   impactPassports,
   impactSites,
@@ -3573,6 +3574,23 @@ export async function updatePartnerExpeditionAction(formData: FormData) {
     redirectPartnerError(formData, "/partner/expeditions", "expedition-missing");
   }
 
+  const expeditionSites = await db
+    .select({ impactSiteId: campaignImpactSites.impactSiteId, isPrimary: campaignImpactSites.isPrimary })
+    .from(campaignImpactSites)
+    .innerJoin(impactSites, eq(campaignImpactSites.impactSiteId, impactSites.id))
+    .where(and(eq(campaignImpactSites.campaignId, relatedCampaignId), eq(impactSites.destinationId, destinationId)));
+
+  await db.delete(expeditionImpactSites).where(eq(expeditionImpactSites.expeditionId, expeditionId));
+  if (expeditionSites.length > 0) {
+    await db.insert(expeditionImpactSites).values(
+      expeditionSites.map((site) => ({
+        expeditionId,
+        impactSiteId: site.impactSiteId,
+        isPrimary: site.isPrimary
+      }))
+    );
+  }
+
   await db.insert(adminAuditLogs).values({
     actorUserId: user.id,
     action: "partner_expedition.updated",
@@ -3792,6 +3810,22 @@ export async function createPartnerExpeditionAction(formData: FormData) {
       updatedAt: new Date()
     })
     .returning({ id: expeditions.id });
+
+  const expeditionSites = await db
+    .select({ impactSiteId: campaignImpactSites.impactSiteId, isPrimary: campaignImpactSites.isPrimary })
+    .from(campaignImpactSites)
+    .innerJoin(impactSites, eq(campaignImpactSites.impactSiteId, impactSites.id))
+    .where(and(eq(campaignImpactSites.campaignId, relatedCampaignId), eq(impactSites.destinationId, destinationId)));
+
+  if (expeditionSites.length > 0) {
+    await db.insert(expeditionImpactSites).values(
+      expeditionSites.map((site) => ({
+        expeditionId: expedition.id,
+        impactSiteId: site.impactSiteId,
+        isPrimary: site.isPrimary
+      }))
+    );
+  }
 
   await db.insert(adminAuditLogs).values({
     actorUserId: user.id,
