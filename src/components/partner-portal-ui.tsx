@@ -28,10 +28,13 @@ import {
   partnerCampaignStatuses
 } from "@/lib/campaign-content";
 import {
+  allocateSponsorshipToRestorationBatchAction,
   createCampaignActivityAction,
   createPartnerImpactSiteAction,
+  createRestorationBatchAction,
   createPartnerCampaignAction,
   deletePartnerImpactSiteAction,
+  transitionRestorationBatchAction,
   updatePartnerImpactSiteAction
 } from "@/lib/portal-actions";
 import type { getPartnerPortalData } from "@/lib/queries";
@@ -49,6 +52,7 @@ type CampaignEvidence = PartnerPortalData["evidence"][number];
 type CampaignImpactSite = PartnerPortalData["impactSites"][number];
 type CampaignSponsorship = PartnerPortalData["sponsoredEcosystems"][number];
 type RestorationBatch = PartnerPortalData["restorationBatches"][number];
+type RestorationBatchAllocation = PartnerPortalData["restorationBatchAllocations"][number];
 type CampaignDonation = PartnerPortalData["donorActivity"][number];
 type CampaignMediaItem = PartnerPortalData["campaignMediaItems"][number];
 type CampaignBudgetLineItem = PartnerPortalData["campaignBudgetLineItems"][number];
@@ -625,11 +629,17 @@ export function PartnerImpactSiteManagement({
   campaigns,
   destinations,
   impactSites,
+  sponsoredEcosystems,
+  restorationBatches,
+  restorationBatchAllocations,
   canManageImpactSites
 }: {
   campaigns: Campaign[];
   destinations: Destination[];
   impactSites: CampaignImpactSite[];
+  sponsoredEcosystems: CampaignSponsorship[];
+  restorationBatches: RestorationBatch[];
+  restorationBatchAllocations: RestorationBatchAllocation[];
   canManageImpactSites: boolean;
 }) {
   const canSubmit = campaigns.length > 0 && destinations.length > 0 && canManageImpactSites;
@@ -689,6 +699,12 @@ export function PartnerImpactSiteManagement({
                   <p>{site.latestSurvey ? `Latest survey ${site.latestSurvey}` : "Survey date pending"}</p>
                   <p>{site.latitude.toFixed(6)}, {site.longitude.toFixed(6)}</p>
                 </div>
+              </div>
+
+              <div className="border-t border-ocean-900/10 bg-white p-4">
+                <div className="flex items-center justify-between gap-3"><div><h4 className="text-sm font-bold text-ocean-900">Restoration batches</h4><p className="mt-1 text-xs font-semibold text-ocean-900/55">Track field delivery by batch and attribute it to sponsorships for this exact impact site.</p></div><span className="text-xs font-bold text-ocean-900/50">{restorationBatches.filter((batch) => batch.impactSiteId === site.id).length} batches</span></div>
+                {canManageImpactSites ? <form action={createRestorationBatchAction} className="mt-4 grid gap-3 rounded-lg border border-ocean-900/10 bg-ocean-50 p-3"><input type="hidden" name="impactSiteId" value={site.id} /><input type="hidden" name="returnTo" value="/partner/impact-sites?saved=restoration-batch-created" /><Field label="New batch title" required><input name="title" placeholder="September 2026 planting batch" className={inputClassName} required /></Field><Field label="Planned field date"><input name="plannedAt" type="date" className={inputClassName} /></Field><Button type="submit" className="w-fit"><Plus className="size-4" aria-hidden="true" />Create Batch</Button></form> : null}
+                <div className="mt-4 grid gap-3">{restorationBatches.filter((batch) => batch.impactSiteId === site.id).map((batch) => { const allocations = restorationBatchAllocations.filter((allocation) => allocation.batchId === batch.id); const allocatedIds = new Set(restorationBatchAllocations.map((allocation) => allocation.sponsoredEcosystemId)); const eligible = sponsoredEcosystems.filter((ecosystem) => ecosystem.campaignId === site.campaignId && ecosystem.impactSiteId === site.id && !allocatedIds.has(ecosystem.id)); const nextStatus = batch.status === "planned" ? "planted" : batch.status === "planted" ? "monitored" : null; return <div key={batch.id} className="rounded-lg border border-ocean-900/10 p-3"><div className="flex flex-wrap items-start justify-between gap-2"><div><p className="font-bold text-ocean-900">{batch.title}</p><p className="text-xs font-semibold text-ocean-900/50">{batch.code} · {allocations.reduce((sum, item) => sum + item.unitCount, 0)} allocated units</p></div><StatusBadge value={batch.status} /></div>{canManageImpactSites && batch.status === "planned" && eligible.length > 0 ? <form action={allocateSponsorshipToRestorationBatchAction} className="mt-3 grid gap-2 sm:grid-cols-[1fr_120px_auto]"><input type="hidden" name="batchId" value={batch.id} /><input type="hidden" name="returnTo" value="/partner/impact-sites?saved=restoration-allocation-created" /><select name="sponsoredEcosystemId" className={inputClassName} required><option value="">Choose sponsorship</option>{eligible.map((ecosystem) => <option key={ecosystem.id} value={ecosystem.id}>{ecosystem.code} · {ecosystem.label}</option>)}</select><input name="unitCount" type="number" min="0.01" step="0.01" placeholder="Units" className={inputClassName} required /><Button type="submit">Allocate</Button></form> : null}{allocations.length ? <p className="mt-3 text-xs font-semibold text-ocean-900/55">{allocations.length} sponsorship allocation{allocations.length === 1 ? "" : "s"} linked</p> : null}{canManageImpactSites && nextStatus ? <form action={transitionRestorationBatchAction} className="mt-3"><input type="hidden" name="batchId" value={batch.id} /><input type="hidden" name="status" value={nextStatus} /><input type="hidden" name="returnTo" value="/partner/impact-sites?saved=restoration-batch-transitioned" /><Button type="submit" className="w-fit">{nextStatus === "planted" ? "Record planting" : "Record monitoring"}</Button>{nextStatus === "monitored" ? <p className="mt-2 text-xs font-semibold text-ocean-900/50">Requires verified evidence linked to this exact batch.</p> : null}</form> : null}</div>; })}</div>
               </div>
 
               {canManageImpactSites ? (
