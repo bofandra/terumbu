@@ -1569,7 +1569,7 @@ export async function getDestinationConservationData(destinationId: string) {
       and rb.status = 'monitored'
   `);
 
-  const verified = verifiedRows.rows[0];
+  const verified = verifiedRows[0];
 
   return {
     campaigns: campaignRows,
