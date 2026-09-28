@@ -12,6 +12,7 @@ import {
   campaignActivities,
   campaignBudgetLineItems,
   campaignImpactTargets,
+  campaignImpactSites,
   campaignMediaItems,
   campaignTimelinePhases,
   campaignUpdates,
@@ -2355,27 +2356,22 @@ export async function createPartnerCampaignAction(formData: FormData) {
         metadata: { source: "partner_campaign_create", campaignId: campaign.id, name: newImpactSiteValues.name }
       });
     } else if (existingImpactSite) {
-      const [site] = await tx
-        .insert(impactSites)
-        .values({
-          campaignId: campaign.id,
-          name: existingImpactSite.name,
-          ecosystemType: existingImpactSite.ecosystemType,
-          region: existingImpactSite.region,
-          latitude: existingImpactSite.latitude,
-          longitude: existingImpactSite.longitude,
-          metadata: existingImpactSite.metadata
-        })
-        .returning({ id: impactSites.id });
-
-      linkedImpactSiteId = site.id;
+      linkedImpactSiteId = existingImpactSite.id;
 
       await tx.insert(adminAuditLogs).values({
         actorUserId: user.id,
         action: "impact_site.linked",
         entityType: "impact_site",
-        entityId: site.id,
-        metadata: { source: "partner_campaign_create", campaignId: campaign.id, copiedFromImpactSiteId: existingImpactSite.id, name: existingImpactSite.name }
+        entityId: existingImpactSite.id,
+        metadata: { source: "partner_campaign_create", campaignId: campaign.id, reusedImpactSiteId: existingImpactSite.id, name: existingImpactSite.name }
+      });
+    }
+
+    if (linkedImpactSiteId) {
+      await tx.insert(campaignImpactSites).values({
+        campaignId: campaign.id,
+        impactSiteId: linkedImpactSiteId,
+        isPrimary: true
       });
     }
 
