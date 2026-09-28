@@ -366,6 +366,18 @@ export const impactSites = pgTable("impact_sites", {
   destinationIdx: index("impact_sites_destination_idx").on(table.destinationId)
 }));
 
+export const campaignImpactSites = pgTable("campaign_impact_sites", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  campaignId: uuid("campaign_id").notNull().references(() => campaigns.id, { onDelete: "cascade" }),
+  impactSiteId: uuid("impact_site_id").notNull().references(() => impactSites.id, { onDelete: "cascade" }),
+  isPrimary: boolean("is_primary").default(false).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull()
+}, (table) => ({
+  campaignIdx: index("campaign_impact_sites_campaign_idx").on(table.campaignId),
+  siteIdx: index("campaign_impact_sites_site_idx").on(table.impactSiteId),
+  campaignSiteIdx: uniqueIndex("campaign_impact_sites_unique_idx").on(table.campaignId, table.impactSiteId)
+}));
+
 export const donationSubscriptions = pgTable("donation_subscriptions", {
   id: uuid("id").defaultRandom().primaryKey(),
   campaignId: uuid("campaign_id").notNull().references(() => campaigns.id),
@@ -704,6 +716,18 @@ export const expeditions = pgTable("expeditions", {
   statusIdx: index("expeditions_status_idx").on(table.status),
   destinationIdx: index("expeditions_destination_idx").on(table.destinationId),
   requiredAcademyCourseIdx: index("expeditions_required_academy_course_idx").on(table.requiredAcademyCourseId)
+}));
+
+export const expeditionImpactSites = pgTable("expedition_impact_sites", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  expeditionId: uuid("expedition_id").notNull().references(() => expeditions.id, { onDelete: "cascade" }),
+  impactSiteId: uuid("impact_site_id").notNull().references(() => impactSites.id, { onDelete: "cascade" }),
+  isPrimary: boolean("is_primary").default(false).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull()
+}, (table) => ({
+  expeditionIdx: index("expedition_impact_sites_expedition_idx").on(table.expeditionId),
+  siteIdx: index("expedition_impact_sites_site_idx").on(table.impactSiteId),
+  expeditionSiteIdx: uniqueIndex("expedition_impact_sites_unique_idx").on(table.expeditionId, table.impactSiteId)
 }));
 
 export const userSavedExpeditions = pgTable("user_saved_expeditions", {
