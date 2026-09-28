@@ -2670,20 +2670,16 @@ export async function createPartnerImpactSiteAction(formData: FormData) {
 
   values.region = values.region || destination.name;
 
-  const [existingSite] = await db
-    .select({ id: impactSites.id })
-    .from(impactSites)
-    .where(eq(impactSites.campaignId, campaignId))
-    .limit(1);
-
-  if (existingSite) {
-    redirectPartnerError(formData, "/partner/impact-sites", "impact-site-exists");
-  }
-
   const [site] = await db
     .insert(impactSites)
     .values(values)
     .returning({ id: impactSites.id });
+
+  await db.insert(campaignImpactSites).values({
+    campaignId,
+    impactSiteId: site.id,
+    isPrimary: false
+  });
 
   await db.insert(adminAuditLogs).values({
     actorUserId: user.id,
@@ -2727,20 +2723,17 @@ export async function updatePartnerImpactSiteAction(formData: FormData) {
       : {};
   values.metadata.verification = normalizeImpactSiteVerificationStatus(existingMetadata.verification) as typeof values.metadata.verification;
 
-  const [conflictingSite] = await db
-    .select({ id: impactSites.id })
-    .from(impactSites)
-    .where(and(eq(impactSites.campaignId, campaignId), ne(impactSites.id, impactSiteId)))
-    .limit(1);
+  await db.transaction(async (tx) => {
+    await tx
+      .update(impactSites)
+      .set(values)
+      .where(eq(impactSites.id, impactSiteId));
 
-  if (conflictingSite) {
-    redirectPartnerError(formData, "/partner/impact-sites", "impact-site-exists");
-  }
-
-  await db
-    .update(impactSites)
-    .set(values)
-    .where(eq(impactSites.id, impactSiteId));
+    await tx
+      .insert(campaignImpactSites)
+      .values({ campaignId, impactSiteId, isPrimary: false })
+      .onConflictDoNothing();
+  });
 
   await db.insert(adminAuditLogs).values({
     actorUserId: user.id,
@@ -2756,37 +2749,46 @@ export async function updatePartnerImpactSiteAction(formData: FormData) {
 export async function deletePartnerImpactSiteAction(formData: FormData) {
   const user = await requirePartnerRole( "/partner");
   const impactSiteId = formText(formData, "impactSiteId");
+  const campaignId = formText(formData, "campaignId");
   const confirmed = formData.get("confirmDelete") === "delete";
 
-  if (!impactSiteId || !confirmed) {
+  if (!impactSiteId || !campaignId || !confirmed) {
     redirectPartnerError(formData, "/partner/impact-sites", "impact-site-delete");
   }
 
   const site = await requirePartnerImpactSiteAccess(user.id, impactSiteId, formData, "/partner/impact-sites", "impact-site:manage");
-  const campaignId = site.campaignId;
+  await requireCampaignAccess(user.id, campaignId, formData, "/partner/impact-sites", "impact-site:manage");
 
-  if (!campaignId) {
-    redirectPartnerError(formData, "/partner/impact-sites", "impact-site-missing");
-  }
+  const linkedSites = await db
+    .select({ id: campaignImpactSites.id })
+    .from(campaignImpactSites)
+    .where(eq(campaignImpactSites.campaignId, campaignId));
 
-  const [replacementSite] = await db
-    .select({ id: impactSites.id })
-    .from(impactSites)
-    .where(and(eq(impactSites.campaignId, campaignId), ne(impactSites.id, impactSiteId)))
-    .limit(1);
-
-  if (!replacementSite) {
+  if (linkedSites.length <= 1) {
     redirectPartnerError(formData, "/partner/impact-sites", "impact-site-required");
   }
 
-  await db.delete(impactSites).where(eq(impactSites.id, impactSiteId));
+  const [usage] = await db
+    .select({ total: sql<number>`count(*)::int` })
+    .from(campaignImpactSites)
+    .where(eq(campaignImpactSites.impactSiteId, impactSiteId));
+
+  await db.transaction(async (tx) => {
+    await tx
+      .delete(campaignImpactSites)
+      .where(and(eq(campaignImpactSites.campaignId, campaignId), eq(campaignImpactSites.impactSiteId, impactSiteId)));
+
+    if (Number(usage?.total ?? 0) <= 1) {
+      await tx.delete(impactSites).where(eq(impactSites.id, impactSiteId));
+    }
+  });
 
   await db.insert(adminAuditLogs).values({
     actorUserId: user.id,
-    action: "impact_site.deleted",
+    action: Number(usage?.total ?? 0) <= 1 ? "impact_site.deleted" : "impact_site.unlinked",
     entityType: "impact_site",
     entityId: impactSiteId,
-    metadata: { source: "partner_portal", campaignId: site.campaignId, name: site.name }
+    metadata: { source: "partner_portal", campaignId, name: site.name }
   });
 
   redirectPartnerSaved(formData, "/partner/impact-sites", "impact-site-deleted");
