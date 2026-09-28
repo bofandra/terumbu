@@ -4165,6 +4165,7 @@ export async function createRestorationBatchAction(formData: FormData) {
 
   if (!impactSiteId || !title) redirectPartnerError(formData, fallbackPath, "restoration-batch-invalid");
   const site = await requirePartnerImpactSiteAccess(user.id, impactSiteId, formData, fallbackPath, "impact-site:manage");
+  if (!site.campaignId) redirectPartnerError(formData, fallbackPath, "campaign-missing");
   const code = `RB-${Date.now().toString(36).toUpperCase()}-${randomBytes(3).toString("hex").toUpperCase()}`;
 
   await db.insert(restorationBatches).values({
