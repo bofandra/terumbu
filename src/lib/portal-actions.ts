@@ -4613,20 +4613,9 @@ export async function createCampaignActivityAction(formData: FormData) {
 
   await requireCampaignAccess(user.id, campaignId, formData, "/partner/activity", "activity:create");
 
-  const [linkedImpactSite] = await db
-    .select({ id: impactSites.id })
-    .from(impactSites)
-    .where(eq(impactSites.campaignId, campaignId))
-    .orderBy(asc(impactSites.createdAt))
-    .limit(1);
-
-  if (!linkedImpactSite) {
-    redirectPartnerError(formData, "/partner/activity", "impact-site-required");
-  }
-
-  const impactSiteId = linkedImpactSite.id;
-
+  const requestedImpactSiteId = nullableText(formData, "impactSiteId");
   let restorationBatch: { id: string; impactSiteId: string } | null = null;
+
   if (restorationBatchId) {
     const [batch] = await db
       .select({ id: restorationBatches.id, campaignId: restorationBatches.campaignId, impactSiteId: restorationBatches.impactSiteId })
@@ -4634,10 +4623,29 @@ export async function createCampaignActivityAction(formData: FormData) {
       .where(eq(restorationBatches.id, restorationBatchId))
       .limit(1);
 
-    if (!batch || batch.campaignId !== campaignId || batch.impactSiteId !== impactSiteId) {
+    if (!batch || batch.campaignId !== campaignId) {
       redirectPartnerError(formData, "/partner/activity", "restoration-batch-invalid");
     }
     restorationBatch = batch;
+  }
+
+  const impactSiteId = restorationBatch?.impactSiteId ?? requestedImpactSiteId;
+  if (!impactSiteId) {
+    redirectPartnerError(formData, "/partner/activity", "impact-site-required");
+  }
+
+  const [linkedImpactSite] = await db
+    .select({ id: campaignImpactSites.id })
+    .from(campaignImpactSites)
+    .where(and(eq(campaignImpactSites.campaignId, campaignId), eq(campaignImpactSites.impactSiteId, impactSiteId)))
+    .limit(1);
+
+  if (!linkedImpactSite) {
+    redirectPartnerError(formData, "/partner/activity", "impact-site-required");
+  }
+
+  if (restorationBatch && requestedImpactSiteId && requestedImpactSiteId !== restorationBatch.impactSiteId) {
+    redirectPartnerError(formData, "/partner/activity", "restoration-batch-invalid");
   }
 
   const now = new Date();
