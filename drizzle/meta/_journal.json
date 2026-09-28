@@ -246,6 +246,20 @@
       "when": 1790557200000,
       "tag": "0034_expedition_academy_prerequisite",
       "breakpoints": true
+    },
+    {
+      "idx": 35,
+      "version": "7",
+      "when": 1790643600000,
+      "tag": "0035_sponsored_ecosystem_lifecycle_audit",
+      "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "7",
+      "when": 1790730000000,
+      "tag": "0036_restoration_batches",
+      "breakpoints": true
     }
   ]
 }
