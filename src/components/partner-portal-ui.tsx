@@ -48,6 +48,7 @@ type CampaignUpdate = PartnerPortalData["updates"][number];
 type CampaignEvidence = PartnerPortalData["evidence"][number];
 type CampaignImpactSite = PartnerPortalData["impactSites"][number];
 type CampaignSponsorship = PartnerPortalData["sponsoredEcosystems"][number];
+type RestorationBatch = PartnerPortalData["restorationBatches"][number];
 type CampaignDonation = PartnerPortalData["donorActivity"][number];
 type CampaignMediaItem = PartnerPortalData["campaignMediaItems"][number];
 type CampaignBudgetLineItem = PartnerPortalData["campaignBudgetLineItems"][number];
@@ -851,18 +852,21 @@ export function CampaignList({
 export function CampaignActivityForm({
   campaigns,
   impactSite,
+  restorationBatches = [],
   canCreateActivity,
   lockedCampaignId,
   redirectTo = "/partner/campaigns"
 }: {
   campaigns: Campaign[];
   impactSite?: CampaignImpactSite | null;
+  restorationBatches?: RestorationBatch[];
   canCreateActivity: boolean;
   lockedCampaignId?: string;
   redirectTo?: string;
 }) {
   const lockedCampaign = lockedCampaignId ? campaigns.find((campaign) => campaign.id === lockedCampaignId) ?? null : campaigns[0] ?? null;
   const hasImpactSite = Boolean(impactSite);
+  const availableBatches = restorationBatches.filter((batch) => batch.campaignId === lockedCampaign?.id && batch.impactSiteId === impactSite?.id);
   const canSubmit = Boolean(lockedCampaign) && canCreateActivity && hasImpactSite;
 
   return (
@@ -916,6 +920,15 @@ export function CampaignActivityForm({
             </span>
           </Field>
         </div>
+
+        <Field label="Restoration batch" help="Select a batch when this attachment is field evidence for planting or monitoring.">
+          <select name="restorationBatchId" defaultValue="" className={inputClassName} disabled={!canSubmit}>
+            <option value="">General campaign activity / no batch</option>
+            {availableBatches.map((batch) => (
+              <option key={batch.id} value={batch.id}>{batch.code} · {batch.title} · {labelize(batch.status)}</option>
+            ))}
+          </select>
+        </Field>
 
         <Field label="Update / proof title" required>
           <input name="title" placeholder="Field progress, monitoring report, or milestone update" className={inputClassName} disabled={!canSubmit} required />
