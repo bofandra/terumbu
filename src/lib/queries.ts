@@ -10025,6 +10025,20 @@ export async function getPartnerPortalData(userId?: string) {
     );
   }
 
+  const restorationBatchRows = await db
+    .select({
+      id: restorationBatches.id,
+      campaignId: restorationBatches.campaignId,
+      impactSiteId: restorationBatches.impactSiteId,
+      code: restorationBatches.code,
+      title: restorationBatches.title,
+      status: restorationBatches.status
+    })
+    .from(restorationBatches)
+    .innerJoin(campaigns, eq(restorationBatches.campaignId, campaigns.id))
+    .where(campaignScope)
+    .orderBy(desc(restorationBatches.createdAt));
+
   const evidenceReviewEventsById = await getEvidenceReviewEventsByEvidenceIds(evidenceRows.map((item) => item.id));
   const mediaCounts = new Map<string, number>();
   const budgetCounts = new Map<string, number>();
@@ -10127,6 +10141,7 @@ export async function getPartnerPortalData(userId?: string) {
       latestSurvey: getMetadataString(site.metadata, "latestSurvey"),
       verification: getMetadataString(site.metadata, "verification") ?? "basic"
     })),
+    restorationBatches: restorationBatchRows,
     sponsoredEcosystems: sponsoredRows.map((ecosystem) => ({
       ...ecosystem,
       fragments: getMetadataNumber(ecosystem.metadata, "fragments"),
