@@ -57,6 +57,8 @@ import {
   paymentTransactions,
   profiles,
   projectEvidence,
+  restorationBatchAllocations,
+  restorationBatches,
   sessions,
   roles,
   sponsoredEcosystems,
@@ -320,45 +322,43 @@ export async function getImpactStats(): Promise<ImpactStatData[]> {
     .from(donations)
     .where(eq(donations.status, "paid"));
 
-  const ecosystemRows = await db
+  const batchUnits = await db
     .select({
-      impactSiteId: sponsoredEcosystems.impactSiteId,
+      status: restorationBatches.status,
       metadata: sponsoredEcosystems.metadata,
-      plantedAt: sponsoredEcosystems.plantedAt
+      unitCount: restorationBatchAllocations.unitCount,
+      batchId: restorationBatches.id
     })
-    .from(sponsoredEcosystems)
-    .where(inArray(sponsoredEcosystems.status, ["planted", "monitored"]));
+    .from(restorationBatchAllocations)
+    .innerJoin(restorationBatches, eq(restorationBatchAllocations.batchId, restorationBatches.id))
+    .innerJoin(sponsoredEcosystems, eq(restorationBatchAllocations.sponsoredEcosystemId, sponsoredEcosystems.id))
+    .where(inArray(restorationBatches.status, ["planted", "monitored"]));
 
-  const verifiedSiteRows = await db
-    .selectDistinct({ impactSiteId: projectEvidence.impactSiteId })
+  const verifiedBatchRows = await db
+    .selectDistinct({ batchId: projectEvidence.restorationBatchId })
     .from(projectEvidence)
-    .where(and(eq(projectEvidence.verificationStatus, "verified"), isNotNull(projectEvidence.impactSiteId)));
+    .where(and(eq(projectEvidence.verificationStatus, "verified"), isNotNull(projectEvidence.restorationBatchId)));
 
-  const verifiedSiteIds = new Set(
-    verifiedSiteRows
-      .map((row) => row.impactSiteId)
-      .filter((impactSiteId): impactSiteId is string => Boolean(impactSiteId))
+  const verifiedBatchIds = new Set(
+    verifiedBatchRows.map((row) => row.batchId).filter((batchId): batchId is string => Boolean(batchId))
   );
-  const fieldVerifiedEcosystemRows = ecosystemRows.filter(
-    (ecosystem) => ecosystem.impactSiteId && verifiedSiteIds.has(ecosystem.impactSiteId)
-  );
+  const verifiedBatchUnits = batchUnits.filter((row) => verifiedBatchIds.has(row.batchId));
 
-  const [heroSummary] = await db
-    .select({
-      total: sql<number>`count(${users.id})`
-    })
-    .from(users);
+  const [heroSummary] = await db.select({ total: sql<number>`count(${users.id})` }).from(users);
 
-  const reportedCorals = plantedEcosystemUnits(ecosystemRows, "fragments");
-  const reportedMangroves = plantedEcosystemUnits(ecosystemRows, "seedlings");
-  const verifiedCorals = plantedEcosystemUnits(fieldVerifiedEcosystemRows, "fragments");
-  const verifiedMangroves = plantedEcosystemUnits(fieldVerifiedEcosystemRows, "seedlings");
+  const unitsByKind = (rows: typeof batchUnits, kind: "fragments" | "seedlings") =>
+    rows.reduce((sum, row) => {
+      const metadata = row.metadata && typeof row.metadata === "object" ? row.metadata as Record<string, unknown> : {};
+      const originalUnits = Number(metadata[kind] ?? 0);
+      const allocatedUnits = Number(row.unitCount);
+      return sum + (originalUnits > 0 && Number.isFinite(allocatedUnits) ? allocatedUnits : 0);
+    }, 0);
 
   return [
-    { label: "Corals reported planted", value: formatCompact(reportedCorals), tone: "coral" },
-    { label: "Corals field verified", value: formatCompact(verifiedCorals), tone: "ocean" },
-    { label: "Mangroves reported planted", value: formatCompact(reportedMangroves), tone: "kelp" },
-    { label: "Mangroves field verified", value: formatCompact(verifiedMangroves), tone: "ocean" },
+    { label: "Corals reported planted", value: formatCompact(unitsByKind(batchUnits, "fragments")), tone: "coral" },
+    { label: "Corals field verified", value: formatCompact(unitsByKind(verifiedBatchUnits, "fragments")), tone: "ocean" },
+    { label: "Mangroves reported planted", value: formatCompact(unitsByKind(batchUnits, "seedlings")), tone: "kelp" },
+    { label: "Mangroves field verified", value: formatCompact(unitsByKind(verifiedBatchUnits, "seedlings")), tone: "ocean" },
     { label: "Ocean heroes", value: formatCompact(heroSummary?.total ?? 0), tone: "ocean" },
     { label: "Raised for conservation", value: formatCurrency(toNumber(donationSummary?.total)), tone: "sand" }
   ];
