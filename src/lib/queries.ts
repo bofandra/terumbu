@@ -6971,6 +6971,41 @@ export async function getAdminOperationsData() {
       .orderBy(asc(campaigns.title)),
     db
       .select({
+        id: restorationBatches.id,
+        campaignId: restorationBatches.campaignId,
+        impactSiteId: restorationBatches.impactSiteId,
+        code: restorationBatches.code,
+        title: restorationBatches.title,
+        status: restorationBatches.status,
+        plannedAt: restorationBatches.plannedAt,
+        plantedAt: restorationBatches.plantedAt,
+        monitoredAt: restorationBatches.monitoredAt,
+        createdAt: restorationBatches.createdAt,
+        siteName: impactSites.name,
+        campaignTitle: campaigns.title
+      })
+      .from(restorationBatches)
+      .innerJoin(campaigns, eq(restorationBatches.campaignId, campaigns.id))
+      .innerJoin(impactSites, eq(restorationBatches.impactSiteId, impactSites.id))
+      .where(campaignScope)
+      .orderBy(desc(restorationBatches.createdAt)),
+    db
+      .select({
+        id: restorationBatchAllocations.id,
+        batchId: restorationBatchAllocations.batchId,
+        sponsoredEcosystemId: restorationBatchAllocations.sponsoredEcosystemId,
+        unitCount: restorationBatchAllocations.unitCount,
+        code: sponsoredEcosystems.code,
+        label: sponsoredEcosystems.label
+      })
+      .from(restorationBatchAllocations)
+      .innerJoin(restorationBatches, eq(restorationBatchAllocations.batchId, restorationBatches.id))
+      .innerJoin(campaigns, eq(restorationBatches.campaignId, campaigns.id))
+      .innerJoin(sponsoredEcosystems, eq(restorationBatchAllocations.sponsoredEcosystemId, sponsoredEcosystems.id))
+      .where(campaignScope)
+      .orderBy(desc(restorationBatchAllocations.createdAt)),
+    db
+      .select({
         id: expeditions.id,
         title: expeditions.title,
         slug: expeditions.slug,
@@ -9449,6 +9484,8 @@ export async function getPartnerPortalData(userId?: string) {
     activityRows,
     siteRows,
     sponsoredRows,
+    restorationBatchRows,
+    restorationAllocationRows,
     expeditionRows,
     expeditionBookingCountRows,
     expeditionBookingRows,
@@ -10131,6 +10168,11 @@ export async function getPartnerPortalData(userId?: string) {
       ...ecosystem,
       fragments: getMetadataNumber(ecosystem.metadata, "fragments"),
       survivalRate: getMetadataNumber(ecosystem.metadata, "survivalRate")
+    })),
+    restorationBatches: restorationBatchRows,
+    restorationBatchAllocations: restorationAllocationRows.map((allocation) => ({
+      ...allocation,
+      unitCount: toNumber(allocation.unitCount)
     })),
     donorActivity: donorRows.map((donation) => ({
       ...donation,
