@@ -8,7 +8,7 @@ import { AnalyticsEvent } from "@/components/analytics-event";
 import { ExpeditionCard } from "@/components/expedition-card";
 import { JsonLd } from "@/components/json-ld";
 import { destinationMonthLabels } from "@/lib/destination-content";
-import { getExpeditionCards, getPublishedDestinationBySlug } from "@/lib/queries";
+import { getDestinationConservationData, getExpeditionCards, getPublishedDestinationBySlug } from "@/lib/queries";
 import { getPreferredDisplayCurrency, getPreferredLocale, localeTag } from "@/lib/user-preferences";
 import { formatCurrency } from "@/lib/utils";
 
@@ -51,8 +51,9 @@ export default async function DestinationPage({ params }: { params: Promise<{ sl
 
   if (!destination) notFound();
 
-  const [expeditions, locale, displayCurrency] = await Promise.all([
+  const [expeditions, conservation, locale, displayCurrency] = await Promise.all([
     getExpeditionCards({ destinationId: destination.id }),
+    getDestinationConservationData(destination.id),
     getPreferredLocale(),
     getPreferredDisplayCurrency()
   ]);
@@ -206,6 +207,62 @@ export default async function DestinationPage({ params }: { params: Promise<{ sl
             </ul>
           </article>
         ) : null}
+      </section>
+
+      <section className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+        <div className="rounded-2xl border border-ocean-900/10 bg-ocean-950 p-6 text-white shadow-soft">
+          <p className="text-sm font-bold uppercase tracking-[0.14em] text-kelp-300">Field-verified conservation</p>
+          <h2 className="mt-2 text-3xl font-bold">Impact grounded in monitored field work</h2>
+          <p className="mt-3 max-w-3xl text-sm leading-6 text-white/68">
+            These figures are calculated from restoration batches at this destination that reached monitored status and have verified evidence.
+          </p>
+          <div className="mt-6 grid gap-3 sm:grid-cols-3">
+            <div className="rounded-xl bg-white/10 p-4">
+              <p className="text-xs font-bold uppercase tracking-[0.1em] text-white/54">Monitored batches</p>
+              <p className="mt-2 text-2xl font-bold">{conservation.verifiedImpact.monitoredBatchCount.toLocaleString("id-ID")}</p>
+            </div>
+            <div className="rounded-xl bg-white/10 p-4">
+              <p className="text-xs font-bold uppercase tracking-[0.1em] text-white/54">Verified evidence</p>
+              <p className="mt-2 text-2xl font-bold">{conservation.verifiedImpact.verifiedEvidenceCount.toLocaleString("id-ID")}</p>
+            </div>
+            <div className="rounded-xl bg-white/10 p-4">
+              <p className="text-xs font-bold uppercase tracking-[0.1em] text-white/54">Verified allocated units</p>
+              <p className="mt-2 text-2xl font-bold">{conservation.verifiedImpact.allocatedUnitCount.toLocaleString("id-ID")}</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-8">
+          <p className="text-sm font-bold uppercase tracking-[0.14em] text-coral-700">Conservation programs</p>
+          <h2 className="mt-2 text-3xl font-bold text-ocean-900">Campaigns active across {destination.name}</h2>
+          {conservation.campaigns.length > 0 ? (
+            <div className="mt-6 grid gap-4 md:grid-cols-2">
+              {conservation.campaigns.map((campaign) => (
+                <Link key={campaign.id} href={`/campaigns/${campaign.slug}`} className="group rounded-xl border border-ocean-900/10 bg-white p-5 shadow-soft transition hover:-translate-y-0.5">
+                  <p className="text-xs font-bold uppercase tracking-[0.1em] text-kelp-700">{campaign.category}</p>
+                  <h3 className="mt-2 text-xl font-bold text-ocean-900 group-hover:text-coral-700">{campaign.title}</h3>
+                  <p className="mt-2 text-sm leading-6 text-ocean-900/62">{campaign.summary}</p>
+                  <p className="mt-4 text-xs font-bold text-ocean-900/48">{campaign.partner} · {campaign.status}</p>
+                </Link>
+              ))}
+            </div>
+          ) : (
+            <p className="mt-5 rounded-xl border border-dashed border-ocean-900/14 bg-white p-5 text-sm font-semibold text-ocean-900/54">No public conservation campaigns are linked to this destination yet.</p>
+          )}
+        </div>
+
+        <div className="mt-8">
+          <p className="text-sm font-bold uppercase tracking-[0.14em] text-coral-700">Field locations</p>
+          <h2 className="mt-2 text-3xl font-bold text-ocean-900">Impact sites in {destination.name}</h2>
+          <div className="mt-6 grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+            {conservation.impactSites.map((site) => (
+              <article key={site.id} className="rounded-xl border border-ocean-900/10 bg-white p-4">
+                <p className="font-bold text-ocean-900">{site.name}</p>
+                <p className="mt-1 text-sm font-semibold text-ocean-900/58">{site.ecosystemType} · {site.region}</p>
+              </article>
+            ))}
+          </div>
+        </div>
       </section>
 
       <section id="expeditions" className="mx-auto max-w-7xl px-4 pb-14 pt-8 sm:px-6 lg:px-8">

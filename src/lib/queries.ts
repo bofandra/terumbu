@@ -1492,6 +1492,96 @@ export async function getPublishedDestinationBySlug(slug: string) {
   return destinations.find((destination) => destination.slug === slug) ?? null;
 }
 
+export async function getDestinationConservationData(destinationId: string) {
+  const campaignRows = await db
+    .select({
+      id: campaigns.id,
+      slug: campaigns.slug,
+      title: campaigns.title,
+      summary: campaigns.summary,
+      category: campaigns.category,
+      imageUrl: campaigns.imageUrl,
+      status: campaigns.status,
+      partner: organizations.name
+    })
+    .from(campaignImpactSites)
+    .innerJoin(impactSites, eq(campaignImpactSites.impactSiteId, impactSites.id))
+    .innerJoin(campaigns, eq(campaignImpactSites.campaignId, campaigns.id))
+    .innerJoin(organizations, eq(campaigns.organizationId, organizations.id))
+    .where(
+      and(
+        eq(impactSites.destinationId, destinationId),
+        inArray(campaigns.status, ["published", "funded", "completed"])
+      )
+    )
+    .groupBy(
+      campaigns.id,
+      campaigns.slug,
+      campaigns.title,
+      campaigns.summary,
+      campaigns.category,
+      campaigns.imageUrl,
+      campaigns.status,
+      organizations.name
+    )
+    .orderBy(desc(campaigns.publishedAt));
+
+  const siteRows = await db
+    .select({
+      id: impactSites.id,
+      name: impactSites.name,
+      ecosystemType: impactSites.ecosystemType,
+      region: impactSites.region,
+      latitude: impactSites.latitude,
+      longitude: impactSites.longitude
+    })
+    .from(impactSites)
+    .where(eq(impactSites.destinationId, destinationId))
+    .orderBy(asc(impactSites.name));
+
+  const verifiedRows = await db.execute<{
+    monitored_batch_count: number;
+    verified_evidence_count: number;
+    allocated_unit_count: string;
+  }>(sql`
+    select
+      count(distinct rb.id)::int as monitored_batch_count,
+      count(distinct pe.id)::int as verified_evidence_count,
+      coalesce((
+        select sum(rba.unit_count)
+        from restoration_batch_allocations rba
+        join restoration_batches rb2 on rb2.id = rba.batch_id
+        join impact_sites site2 on site2.id = rb2.impact_site_id
+        where site2.destination_id = ${destinationId}
+          and rb2.status = 'monitored'
+          and exists (
+            select 1 from project_evidence pe2
+            where pe2.restoration_batch_id = rb2.id
+              and pe2.verification_status = 'verified'
+          )
+      ), 0)::text as allocated_unit_count
+    from restoration_batches rb
+    join impact_sites site on site.id = rb.impact_site_id
+    join project_evidence pe
+      on pe.restoration_batch_id = rb.id
+      and pe.verification_status = 'verified'
+    where site.destination_id = ${destinationId}
+      and rb.status = 'monitored'
+  `);
+
+  const verified = verifiedRows.rows[0];
+
+  return {
+    campaigns: campaignRows,
+    impactSites: siteRows,
+    verifiedImpact: {
+      monitoredBatchCount: Number(verified?.monitored_batch_count ?? 0),
+      verifiedEvidenceCount: Number(verified?.verified_evidence_count ?? 0),
+      allocatedUnitCount: toNumber(verified?.allocated_unit_count)
+    }
+  };
+}
+
 export async function getAdminDestinations() {
   return destinationDirectory();
 }

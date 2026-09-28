@@ -710,13 +710,14 @@ export function PartnerImpactSiteManagement({
                     <form action={deletePartnerImpactSiteAction} className="mt-5 border-t border-ocean-900/10 pt-4">
                       <input type="hidden" name="redirectTo" value="/partner/impact-sites" />
                       <input type="hidden" name="impactSiteId" value={site.id} />
+                      <input type="hidden" name="campaignId" value={site.campaignId} />
                       <label className="flex items-start gap-2 text-sm font-bold text-ocean-900">
                         <input name="confirmDelete" type="checkbox" value="delete" className="mt-1 size-4 accent-coral-500" required />
-                        Delete this site and detach linked field records from the site.
+                        Remove this site from this campaign. The location is preserved when another campaign still uses it.
                       </label>
                       <Button type="submit" className="mt-3 w-fit bg-coral-500 hover:bg-coral-700">
                         <Trash2 className="size-4" aria-hidden="true" />
-                        Delete Site
+                        Remove Site
                       </Button>
                     </form>
                   </div>
@@ -851,22 +852,22 @@ export function CampaignList({
 
 export function CampaignActivityForm({
   campaigns,
-  impactSite,
+  impactSites = [],
   restorationBatches = [],
   canCreateActivity,
   lockedCampaignId,
   redirectTo = "/partner/campaigns"
 }: {
   campaigns: Campaign[];
-  impactSite?: CampaignImpactSite | null;
+  impactSites?: CampaignImpactSite[];
   restorationBatches?: RestorationBatch[];
   canCreateActivity: boolean;
   lockedCampaignId?: string;
   redirectTo?: string;
 }) {
   const lockedCampaign = lockedCampaignId ? campaigns.find((campaign) => campaign.id === lockedCampaignId) ?? null : campaigns[0] ?? null;
-  const hasImpactSite = Boolean(impactSite);
-  const availableBatches = restorationBatches.filter((batch) => batch.campaignId === lockedCampaign?.id && batch.impactSiteId === impactSite?.id);
+  const hasImpactSite = impactSites.length > 0;
+  const availableBatches = restorationBatches.filter((batch) => batch.campaignId === lockedCampaign?.id);
   const canSubmit = Boolean(lockedCampaign) && canCreateActivity && hasImpactSite;
 
   return (
@@ -877,7 +878,7 @@ export function CampaignActivityForm({
           <h2 className="text-xl font-bold tracking-normal text-ocean-900">Add campaign update or proof</h2>
           <p className="mt-1 text-sm font-semibold text-ocean-900/58">
             {canCreateActivity
-              ? "This activity is attached automatically to this campaign and its impact site."
+              ? "Choose the field location for this update or evidence. Restoration-batch evidence must match the selected site."
               : "Your partner role can review project activity, but cannot submit new proof."}
           </p>
         </div>
@@ -912,20 +913,20 @@ export function CampaignActivityForm({
               </span>
             )}
           </Field>
-          <Field label="Impact site">
-            <span className={`flex min-h-11 items-center rounded-lg border px-3 text-sm font-bold ${
-              impactSite ? "border-ocean-900/10 bg-ocean-50 text-ocean-900" : "border-coral-700/20 bg-coral-100/40 text-coral-700"
-            }`}>
-              {impactSite ? `${impactSite.name} / ${impactSite.region}` : "No impact site linked"}
-            </span>
-          </Field>
-        </div>
+          <Field label="Impact site" required>
+            <select name="impactSiteId" defaultValue="" className={inputClassName} disabled={!canSubmit} required>
+              <option value="">Choose field location...</option>
+              {impactSites.map((site) => (
+                <option key={site.id} value={site.id}>{site.name} · {site.type} · {site.region}</option>
+              ))}
+            </select>
+          </Field>       </div>
 
         <Field label="Restoration batch" help="Select a batch when this attachment is field evidence for planting or monitoring.">
           <select name="restorationBatchId" defaultValue="" className={inputClassName} disabled={!canSubmit}>
             <option value="">General campaign activity / no batch</option>
             {availableBatches.map((batch) => (
-              <option key={batch.id} value={batch.id}>{batch.code} · {batch.title} · {labelize(batch.status)}</option>
+              <option key={batch.id} value={batch.id}>{batch.code} · {batch.title} · {impactSites.find((site) => site.id === batch.impactSiteId)?.name ?? "Site"} · {labelize(batch.status)}</option>
             ))}
           </select>
         </Field>
