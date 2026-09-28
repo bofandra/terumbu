@@ -11,7 +11,10 @@ export const dynamic = "force-dynamic";
 const statusMessages: Record<string, string> = {
   "impact-site-created": "Impact site created.",
   "impact-site-deleted": "Impact site deleted.",
-  "impact-site-updated": "Impact site updated."
+  "impact-site-updated": "Impact site updated.",
+  "restoration-batch-created": "Restoration batch created.",
+  "restoration-allocation-created": "Sponsorship allocated to the restoration batch.",
+  "restoration-batch-transitioned": "Restoration batch status updated."
 };
 
 const errorMessages: Record<string, string> = {
@@ -22,7 +25,14 @@ const errorMessages: Record<string, string> = {
   "impact-site-missing": "Impact site record was not found.",
   "impact-site-exists": "This campaign already has an impact site. Manage the existing site instead of adding another.",
   "impact-site-required": "A campaign must keep one impact site, so the last linked site cannot be deleted.",
-  "partner-permission": "Your partner role cannot manage impact sites."
+  "partner-permission": "Your partner role cannot manage impact sites.",
+  "restoration-batch-invalid": "Choose an impact site and enter a batch title.",
+  "restoration-batch-missing": "Restoration batch was not found.",
+  "restoration-allocation-invalid": "Choose a batch and sponsorship to allocate.",
+  "restoration-allocation-mismatch": "The sponsorship must belong to the same campaign and impact site as the batch.",
+  "restoration-allocation-units": "Allocation units must be greater than zero and cannot exceed the sponsored units.",
+  "restoration-transition-invalid": "That restoration batch status transition is not allowed.",
+  "restoration-monitoring-evidence": "Verified evidence linked to this exact batch is required before monitoring can be recorded."
 };
 
 type PartnerImpactSitesPageProps = {
@@ -51,6 +61,9 @@ export default async function PartnerImpactSitesPage({ searchParams }: PartnerIm
         campaigns={data.campaigns}
         destinations={data.destinations}
         impactSites={data.impactSites}
+        sponsoredEcosystems={data.sponsoredEcosystems}
+        restorationBatches={data.restorationBatches}
+        restorationBatchAllocations={data.restorationBatchAllocations}
         canManageImpactSites={data.capabilities.canManageImpactSites}
       />
     </div>
