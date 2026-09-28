@@ -710,13 +710,14 @@ export function PartnerImpactSiteManagement({
                     <form action={deletePartnerImpactSiteAction} className="mt-5 border-t border-ocean-900/10 pt-4">
                       <input type="hidden" name="redirectTo" value="/partner/impact-sites" />
                       <input type="hidden" name="impactSiteId" value={site.id} />
+                      <input type="hidden" name="campaignId" value={site.campaignId} />
                       <label className="flex items-start gap-2 text-sm font-bold text-ocean-900">
                         <input name="confirmDelete" type="checkbox" value="delete" className="mt-1 size-4 accent-coral-500" required />
-                        Delete this site and detach linked field records from the site.
+                        Remove this site from this campaign. The location is preserved when another campaign still uses it.
                       </label>
                       <Button type="submit" className="mt-3 w-fit bg-coral-500 hover:bg-coral-700">
                         <Trash2 className="size-4" aria-hidden="true" />
-                        Delete Site
+                        Remove Site
                       </Button>
                     </form>
                   </div>
