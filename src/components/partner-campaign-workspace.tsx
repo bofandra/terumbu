@@ -434,7 +434,7 @@ export function PartnerCampaignWorkspace({
 
           <CampaignActivityForm
             campaigns={[campaign]}
-            impactSite={campaignImpactSites[0] ?? null}
+            impactSites={campaignImpactSites}
             restorationBatches={data.restorationBatches.filter((batch) => batch.campaignId === campaign.id)}
             canCreateActivity={data.capabilities.canCreateActivity}
             lockedCampaignId={campaign.id}
