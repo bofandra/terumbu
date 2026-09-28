@@ -9583,7 +9583,7 @@ export async function getPartnerPortalData(userId?: string) {
     db
       .select({
         id: impactSites.id,
-        campaignId: impactSites.campaignId,
+        campaignId: campaignImpactSites.campaignId,
         destinationId: impactSites.destinationId,
         name: impactSites.name,
         type: impactSites.ecosystemType,
