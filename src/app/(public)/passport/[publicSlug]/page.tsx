@@ -97,6 +97,43 @@ function passportItemSourceHref(item: PassportItem) {
   return item.evidenceUrl;
 }
 
+function metadataImpactSiteNames(metadata: unknown) {
+  if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) return [];
+
+  const value = (metadata as Record<string, unknown>).impactSites;
+  if (!Array.isArray(value)) return [];
+
+  return value
+    .map((site) => site && typeof site === "object" && !Array.isArray(site) ? (site as Record<string, unknown>).name : null)
+    .filter((name): name is string => typeof name === "string" && name.length > 0);
+}
+
+function ExpeditionContext({ item }: { item: PassportItem }) {
+  if (item.itemType !== "expedition") return null;
+
+  const destinationName = metadataString(item.metadata, "destinationName");
+  const destinationSlug = metadataString(item.metadata, "destinationSlug");
+  const campaignTitle = metadataString(item.metadata, "campaignTitle");
+  const campaignSlug = metadataString(item.metadata, "campaignSlug");
+  const siteNames = metadataImpactSiteNames(item.metadata);
+
+  if (!destinationName && !campaignTitle && siteNames.length === 0) return null;
+
+  return (
+    <div className="mt-3 flex flex-wrap gap-2 text-xs font-bold">
+      {destinationName ? (
+        destinationSlug ? <Link href={`/destinations/${destinationSlug}`} className="rounded-full bg-ocean-50 px-2 py-1 text-ocean-900 hover:text-coral-700">{destinationName}</Link>
+          : <span className="rounded-full bg-ocean-50 px-2 py-1 text-ocean-900">{destinationName}</span>
+      ) : null}
+      {campaignTitle ? (
+        campaignSlug ? <Link href={`/campaigns/${campaignSlug}`} className="rounded-full bg-kelp-100 px-2 py-1 text-kelp-700 hover:text-coral-700">{campaignTitle}</Link>
+          : <span className="rounded-full bg-kelp-100 px-2 py-1 text-kelp-700">{campaignTitle}</span>
+      ) : null}
+      {siteNames.map((name) => <span key={name} className="rounded-full bg-sand-100 px-2 py-1 text-ocean-900/70">{name}</span>)}
+    </div>
+  );
+}
+
 function metadataNumber(metadata: unknown, key: string) {
   if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) {
     return 0;
@@ -413,6 +450,7 @@ export default async function PublicPassportPage({ params, searchParams }: Publi
                     <p className="text-xs font-bold uppercase tracking-[0.12em] text-coral-700">{activityTypeLabel(item.itemType)}</p>
                     <h3 className="mt-1 font-bold text-ocean-900">{item.title}</h3>
                     <p className="mt-1 text-sm leading-6 text-ocean-900/58">{item.description ?? "Verified activity added to this Impact Passport."}</p>
+                    <ExpeditionContext item={item} />
                     <div className="mt-3 flex flex-wrap gap-2 text-xs font-bold">
                       <span className="rounded-full bg-kelp-100 px-2 py-1 text-kelp-700">{metadataString(item.metadata, "verificationStatus") ?? "Verified by Terumbu.eco"}</span>
                       {passport.evidenceConsent !== "hide_evidence" && passportItemSourceHref(item) ? (
@@ -580,6 +618,7 @@ function RecordSection({
               <div>
                 <p className="font-bold text-ocean-900">{item.title}</p>
                 <p className="mt-1 text-xs leading-5 text-ocean-900/56">{item.description ?? `${activityTypeLabel(item.itemType)} record.`}</p>
+                <ExpeditionContext item={item} />
                 <p className="mt-2 text-xs font-bold text-kelp-700">Verified · {shortDate(item.occurredAt)}</p>
               </div>
             </div>
