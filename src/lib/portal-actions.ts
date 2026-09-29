@@ -97,7 +97,7 @@ import {
 } from "@/lib/expedition-marketplace";
 import { canCancelExpeditionBooking, canCompleteExpeditionBooking } from "@/lib/expedition-booking-lifecycle";
 import { canTransitionSponsoredEcosystem, normalizeSponsoredEcosystemOperationalStatus, sponsoredEcosystemTransitionRequiresReason } from "@/lib/sponsored-ecosystem-lifecycle";
-import { canTransitionRestorationBatch, normalizeRestorationBatchStatus, validRestorationAllocationUnits } from "@/lib/restoration-batches";
+import { canAllocateSponsorshipToRestorationBatch, canTransitionRestorationBatch, normalizeRestorationBatchStatus, restorationTransitionPrerequisiteSatisfied, validRestorationAllocationUnits } from "@/lib/restoration-batches";
 import { buildPassportNumber, normalizeCurrency, parseCarbonKgPerUsd } from "@/lib/impact-calculations";
 import {
   normalizePartnerOrganizationRole,
@@ -4223,11 +4223,25 @@ export async function allocateSponsorshipToRestorationBatchAction(formData: Form
 
   const [batch] = await db.select().from(restorationBatches).where(eq(restorationBatches.id, batchId)).limit(1);
   const [ecosystem] = await db.select().from(sponsoredEcosystems).where(eq(sponsoredEcosystems.id, sponsoredEcosystemId)).limit(1);
-  if (!batch || !ecosystem || batch.campaignId !== ecosystem.campaignId || batch.impactSiteId !== ecosystem.impactSiteId) {
+  if (!batch || !ecosystem) {
     redirectPartnerError(formData, fallbackPath, "restoration-allocation-mismatch");
   }
   await requireCampaignAccess(user.id, batch.campaignId, formData, fallbackPath, "impact-site:manage");
-  if (batch.status !== "planned" || ecosystem.status === "reversed") {
+  const [existingAllocation] = await db.select({ id: restorationBatchAllocations.id }).from(restorationBatchAllocations)
+    .where(eq(restorationBatchAllocations.sponsoredEcosystemId, ecosystem.id)).limit(1);
+  const allocationMatches = batch.campaignId === ecosystem.campaignId && batch.impactSiteId === ecosystem.impactSiteId;
+  if (!allocationMatches) {
+    redirectPartnerError(formData, fallbackPath, "restoration-allocation-mismatch");
+  }
+  if (!canAllocateSponsorshipToRestorationBatch({
+    batchStatus: batch.status,
+    sponsorshipStatus: ecosystem.status,
+    batchCampaignId: batch.campaignId,
+    batchImpactSiteId: batch.impactSiteId,
+    sponsorshipCampaignId: ecosystem.campaignId,
+    sponsorshipImpactSiteId: ecosystem.impactSiteId,
+    alreadyAllocated: Boolean(existingAllocation)
+  })) {
     redirectPartnerError(formData, fallbackPath, "restoration-allocation-state");
   }
 
@@ -4260,13 +4274,17 @@ export async function transitionRestorationBatchAction(formData: FormData) {
   if (nextStatus === "planted") {
     const [allocation] = await db.select({ id: restorationBatchAllocations.id }).from(restorationBatchAllocations)
       .where(eq(restorationBatchAllocations.batchId, batch.id)).limit(1);
-    if (!allocation) redirectPartnerError(formData, fallbackPath, "restoration-allocation-required");
+    if (!restorationTransitionPrerequisiteSatisfied("planted", { hasAllocation: Boolean(allocation), hasVerifiedEvidence: false })) {
+      redirectPartnerError(formData, fallbackPath, "restoration-allocation-required");
+    }
   }
 
   if (nextStatus === "monitored") {
     const [evidence] = await db.select({ id: projectEvidence.id }).from(projectEvidence)
       .where(and(eq(projectEvidence.restorationBatchId, batch.id), eq(projectEvidence.verificationStatus, "verified"))).limit(1);
-    if (!evidence) redirectPartnerError(formData, fallbackPath, "restoration-monitoring-evidence");
+    if (!restorationTransitionPrerequisiteSatisfied("monitored", { hasAllocation: true, hasVerifiedEvidence: Boolean(evidence) })) {
+      redirectPartnerError(formData, fallbackPath, "restoration-monitoring-evidence");
+    }
   }
 
   const now = new Date();
