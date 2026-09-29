@@ -1569,7 +1569,7 @@ export async function getDestinationConservationData(destinationId: string) {
       and rb.status = 'monitored'
   `);
 
-  const verified = verifiedRows.rows[0];
+  const verified = verifiedRows[0];
 
   return {
     campaigns: campaignRows,
@@ -9691,7 +9691,9 @@ export async function getPartnerPortalData(userId?: string) {
       .orderBy(asc(impactSites.name)),
     db
       .select({
+        id: sponsoredEcosystems.id,
         campaignId: sponsoredEcosystems.campaignId,
+        impactSiteId: sponsoredEcosystems.impactSiteId,
         code: sponsoredEcosystems.code,
         label: sponsoredEcosystems.label,
         status: sponsoredEcosystems.status,
@@ -10134,6 +10136,15 @@ export async function getPartnerPortalData(userId?: string) {
     .where(campaignScope)
     .orderBy(desc(restorationBatches.createdAt));
 
+  const restorationAllocationRows = await db
+    .select({ id: restorationBatchAllocations.id, batchId: restorationBatchAllocations.batchId, sponsoredEcosystemId: restorationBatchAllocations.sponsoredEcosystemId, unitCount: restorationBatchAllocations.unitCount, code: sponsoredEcosystems.code, label: sponsoredEcosystems.label })
+    .from(restorationBatchAllocations)
+    .innerJoin(restorationBatches, eq(restorationBatchAllocations.batchId, restorationBatches.id))
+    .innerJoin(campaigns, eq(restorationBatches.campaignId, campaigns.id))
+    .innerJoin(sponsoredEcosystems, eq(restorationBatchAllocations.sponsoredEcosystemId, sponsoredEcosystems.id))
+    .where(campaignScope)
+    .orderBy(desc(restorationBatchAllocations.createdAt));
+
   const evidenceReviewEventsById = await getEvidenceReviewEventsByEvidenceIds(evidenceRows.map((item) => item.id));
   const mediaCounts = new Map<string, number>();
   const budgetCounts = new Map<string, number>();
@@ -10237,6 +10248,7 @@ export async function getPartnerPortalData(userId?: string) {
       verification: getMetadataString(site.metadata, "verification") ?? "basic"
     })),
     restorationBatches: restorationBatchRows,
+    restorationBatchAllocations: restorationAllocationRows.map((allocation) => ({ ...allocation, unitCount: toNumber(allocation.unitCount) })),
     sponsoredEcosystems: sponsoredRows.map((ecosystem) => ({
       ...ecosystem,
       fragments: getMetadataNumber(ecosystem.metadata, "fragments"),
