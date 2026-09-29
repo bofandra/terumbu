@@ -764,6 +764,7 @@ export async function ensureCompletedExpeditionPassportItem(
       destinationId: expeditions.destinationId,
       destinationSlug: destinations.slug,
       destinationName: destinations.name,
+      expeditionId: expeditions.id,
       campaignId: expeditions.relatedCampaignId,
       campaignSlug: campaigns.slug,
       campaignTitle: campaigns.title
@@ -783,10 +784,18 @@ export async function ensureCompletedExpeditionPassportItem(
     })
     .from(expeditionImpactSites)
     .innerJoin(impactSites, eq(expeditionImpactSites.impactSiteId, impactSites.id))
-    .where(eq(expeditionImpactSites.expeditionId, expeditionContext ? sql`(select id from ${expeditions} where ${expeditions.slug} = ${booking.expeditionSlug} limit 1)` : booking.id));
+    .where(eq(expeditionImpactSites.expeditionId, expeditionContext?.expeditionId ?? booking.id));
 
   const context: CompletedExpeditionPassportContext | null = expeditionContext
-    ? { ...expeditionContext, impactSites: impactSiteRows }
+    ? {
+        destinationId: expeditionContext.destinationId,
+        destinationSlug: expeditionContext.destinationSlug,
+        destinationName: expeditionContext.destinationName,
+        campaignId: expeditionContext.campaignId,
+        campaignSlug: expeditionContext.campaignSlug,
+        campaignTitle: expeditionContext.campaignTitle,
+        impactSites: impactSiteRows
+      }
     : null;
 
   await database
