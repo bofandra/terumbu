@@ -6,12 +6,14 @@ import { db } from "@/db/client";
 import {
   campaigns,
   campaignImpactTargets,
+  destinations,
   donationReceipts,
   donations,
   donationSubscriptions,
   expeditionBookingPayments,
   expeditionBookings,
   expeditionDepartures,
+  expeditionImpactSites,
   expeditions,
   impactPassportItems,
   impactPassports,
@@ -693,6 +695,41 @@ export async function transitionDonationPayment(
   };
 }
 
+export type CompletedExpeditionPassportContext = {
+  destinationId: string | null;
+  destinationSlug: string | null;
+  destinationName: string | null;
+  campaignId: string | null;
+  campaignSlug: string | null;
+  campaignTitle: string | null;
+  impactSites: Array<{ id: string; name: string; region: string; isPrimary: boolean }>;
+};
+
+export function completedExpeditionPassportMetadata(input: {
+  expeditionSlug: string;
+  participantsCount: number;
+  completedByUserId?: string | null;
+  completionSource?: string;
+  completedAt: Date;
+  context?: CompletedExpeditionPassportContext | null;
+}) {
+  return {
+    expeditionSlug: input.expeditionSlug,
+    participantsCount: input.participantsCount,
+    completionSource: input.completionSource ?? "system",
+    completedByUserId: input.completedByUserId ?? null,
+    completedAt: input.completedAt.toISOString(),
+    destinationId: input.context?.destinationId ?? null,
+    destinationSlug: input.context?.destinationSlug ?? null,
+    destinationName: input.context?.destinationName ?? null,
+    campaignId: input.context?.campaignId ?? null,
+    campaignSlug: input.context?.campaignSlug ?? null,
+    campaignTitle: input.context?.campaignTitle ?? null,
+    impactSiteIds: input.context?.impactSites.map((site) => site.id) ?? [],
+    impactSites: input.context?.impactSites ?? []
+  };
+}
+
 export async function ensureCompletedExpeditionPassportItem(
   database: DatabaseLike,
   booking: {
@@ -721,6 +758,37 @@ export async function ensureCompletedExpeditionPassportItem(
     return;
   }
 
+  const completedAt = booking.completedAt ?? new Date();
+  const [expeditionContext] = await database
+    .select({
+      destinationId: expeditions.destinationId,
+      destinationSlug: destinations.slug,
+      destinationName: destinations.name,
+      campaignId: expeditions.relatedCampaignId,
+      campaignSlug: campaigns.slug,
+      campaignTitle: campaigns.title
+    })
+    .from(expeditions)
+    .leftJoin(destinations, eq(expeditions.destinationId, destinations.id))
+    .leftJoin(campaigns, eq(expeditions.relatedCampaignId, campaigns.id))
+    .where(eq(expeditions.slug, booking.expeditionSlug))
+    .limit(1);
+
+  const impactSiteRows = await database
+    .select({
+      id: impactSites.id,
+      name: impactSites.name,
+      region: impactSites.region,
+      isPrimary: expeditionImpactSites.isPrimary
+    })
+    .from(expeditionImpactSites)
+    .innerJoin(impactSites, eq(expeditionImpactSites.impactSiteId, impactSites.id))
+    .where(eq(expeditionImpactSites.expeditionId, expeditionContext ? sql`(select id from ${expeditions} where ${expeditions.slug} = ${booking.expeditionSlug} limit 1)` : booking.id));
+
+  const context: CompletedExpeditionPassportContext | null = expeditionContext
+    ? { ...expeditionContext, impactSites: impactSiteRows }
+    : null;
+
   await database
     .insert(impactPassportItems)
     .values({
@@ -730,14 +798,15 @@ export async function ensureCompletedExpeditionPassportItem(
       itemType: "expedition",
       title: `Completed ${booking.expeditionTitle}`,
       description: `${booking.participantsCount.toLocaleString("id-ID")} participant expedition completed.`,
-      occurredAt: booking.completedAt ?? new Date(),
-      metadata: {
+      occurredAt: completedAt,
+      metadata: completedExpeditionPassportMetadata({
         expeditionSlug: booking.expeditionSlug,
         participantsCount: booking.participantsCount,
-        completionSource: booking.completionSource ?? "system",
-        completedByUserId: booking.completedByUserId ?? null,
-        completedAt: (booking.completedAt ?? new Date()).toISOString()
-      }
+        completionSource: booking.completionSource,
+        completedByUserId: booking.completedByUserId,
+        completedAt,
+        context
+      })
     })
     .onConflictDoNothing({
       target: [impactPassportItems.passportId, impactPassportItems.sourceType, impactPassportItems.sourceId]
