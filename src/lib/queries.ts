@@ -43,6 +43,7 @@ import {
   expeditionBookings,
   expeditionDepartures,
   expeditionInterestRequests,
+  expeditionImpactSites,
   expeditionReviews,
   expeditions,
   impactPassportItems,
@@ -3473,6 +3474,7 @@ export async function getDashboardData(userId: string) {
     evidenceRowsRaw,
     passportItemRows,
     personalSiteRows,
+    expeditionSiteRows,
     courseRows,
     passportPreview,
     savedCampaignRows,
@@ -3730,6 +3732,29 @@ export async function getDashboardData(userId: string) {
       .innerJoin(campaigns, eq(impactSites.campaignId, campaigns.id))
       .innerJoin(donations, and(eq(donations.campaignId, campaigns.id), eq(donations.userId, userId)))
       .where(eq(donations.status, "paid"))
+      .orderBy(asc(impactSites.name)),
+    db
+      .select({
+        id: impactSites.id,
+        name: impactSites.name,
+        type: impactSites.ecosystemType,
+        region: impactSites.region,
+        latitude: impactSites.latitude,
+        longitude: impactSites.longitude,
+        metadata: impactSites.metadata,
+        campaignId: campaigns.id,
+        campaignSlug: campaigns.slug,
+        campaignTitle: campaigns.title,
+        expeditionTitle: expeditions.title,
+        expeditionSlug: expeditions.slug,
+        isPrimary: expeditionImpactSites.isPrimary
+      })
+      .from(expeditionBookings)
+      .innerJoin(expeditions, eq(expeditionBookings.expeditionId, expeditions.id))
+      .innerJoin(expeditionImpactSites, eq(expeditionImpactSites.expeditionId, expeditions.id))
+      .innerJoin(impactSites, eq(expeditionImpactSites.impactSiteId, impactSites.id))
+      .innerJoin(campaigns, eq(impactSites.campaignId, campaigns.id))
+      .where(and(eq(expeditionBookings.userId, userId), eq(expeditionBookings.status, "completed"), eq(expeditionBookings.paymentStatus, "paid")))
       .orderBy(asc(impactSites.name)),
     db
       .select({
@@ -4094,7 +4119,7 @@ export async function getDashboardData(userId: string) {
   }
 
   const personalMapSites = Array.from(
-    personalSiteRows.reduce((sites, site) => {
+    [...personalSiteRows, ...expeditionSiteRows.map((site) => ({ ...site, amount: "0" }))].reduce((sites, site) => {
       const key = `${site.campaignSlug}:${site.name}`;
       const evidence = evidenceByImpactSite.get(site.id) ?? [];
       const before = evidence.find((item) => item.stage === "before") ?? null;
@@ -4121,10 +4146,17 @@ export async function getDashboardData(userId: string) {
         monitoringHistory: monitoringHistoryForEvidence(evidence),
         evidence,
         contributed: 0,
-        supportedUnits: 0
+        supportedUnits: 0,
+        expeditionVisits: 0,
+        expeditionTitles: [] as string[]
       };
 
       existing.contributed += toNumber(site.amount);
+      const expeditionTitle = "expeditionTitle" in site && typeof site.expeditionTitle === "string" ? site.expeditionTitle : null;
+      if (expeditionTitle) {
+        existing.expeditionVisits += 1;
+        if (!existing.expeditionTitles.includes(expeditionTitle)) existing.expeditionTitles.push(expeditionTitle);
+      }
       existing.supportedUnits += activeEcosystemRows
         .filter((ecosystem) => ecosystem.campaignSlug === site.campaignSlug)
         .reduce((total, ecosystem) => total + ecosystemQuantity(ecosystem.metadata), 0);
@@ -4155,6 +4187,8 @@ export async function getDashboardData(userId: string) {
       evidence: EvidenceSourceData[];
       contributed: number;
       supportedUnits: number;
+      expeditionVisits: number;
+      expeditionTitles: string[];
     }>())
   ).map(([, site]) => site);
 

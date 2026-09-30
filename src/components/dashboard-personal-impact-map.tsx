@@ -21,6 +21,8 @@ type PersonalImpactSite = ImpactSiteData & {
   campaignTitle: string;
   contributed: number;
   supportedUnits: number;
+  expeditionVisits: number;
+  expeditionTitles: string[];
 };
 
 type DashboardPersonalImpactMapProps = {
@@ -195,8 +197,14 @@ export function DashboardPersonalImpactMap({
                 trackClassName="bg-white"
               />
               <div className="mt-5 grid gap-2 text-sm font-semibold text-ocean-900/68">
-                <span className="min-w-0 break-words [overflow-wrap:anywhere]">{formatCurrency(selectedSite.contributed)} contributed here</span>
-                <span>{selectedSite.supportedUnits.toLocaleString("id-ID")} supported restoration units</span>
+                {selectedSite.contributed > 0 ? <span className="min-w-0 break-words [overflow-wrap:anywhere]">{formatCurrency(selectedSite.contributed)} contributed here</span> : null}
+                {selectedSite.supportedUnits > 0 ? <span>{selectedSite.supportedUnits.toLocaleString("id-ID")} supported restoration units</span> : null}
+                {selectedSite.expeditionVisits > 0 ? (
+                  <span>
+                    Visited through {selectedSite.expeditionVisits.toLocaleString("id-ID")} completed expedition{selectedSite.expeditionVisits === 1 ? "" : "s"}
+                    {selectedSite.expeditionTitles.length > 0 ? ` · ${selectedSite.expeditionTitles.join(", ")}` : ""}
+                  </span>
+                ) : null}
               </div>
               <Link href={`/campaigns/${selectedSite.campaignSlug}`} className="mt-5 inline-flex text-sm font-bold text-coral-700 hover:text-coral-500">
                 View my impact here
