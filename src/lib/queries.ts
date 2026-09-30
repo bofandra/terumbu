@@ -4152,9 +4152,10 @@ export async function getDashboardData(userId: string) {
       };
 
       existing.contributed += toNumber(site.amount);
-      if ("expeditionTitle" in site && site.expeditionTitle) {
+      const expeditionTitle = "expeditionTitle" in site && typeof site.expeditionTitle === "string" ? site.expeditionTitle : null;
+      if (expeditionTitle) {
         existing.expeditionVisits += 1;
-        if (!existing.expeditionTitles.includes(site.expeditionTitle)) existing.expeditionTitles.push(site.expeditionTitle);
+        if (!existing.expeditionTitles.includes(expeditionTitle)) existing.expeditionTitles.push(expeditionTitle);
       }
       existing.supportedUnits += activeEcosystemRows
         .filter((ecosystem) => ecosystem.campaignSlug === site.campaignSlug)
