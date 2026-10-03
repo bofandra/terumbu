@@ -48,49 +48,41 @@ export function SiteHeader({
   const labels =
     locale === "id"
       ? {
-          donations: "Donasi",
-          expeditions: "Ekspedisi",
-          destinations: "Destinasi",
-          academy: "Akademi",
-          impactMap: "Peta Dampak",
-          about: "Tentang",
+          explore: "Jelajahi",
+          support: "Dukung",
+          impact: "Dampak",
+          learn: "Belajar",
           dashboard: "Dasbor",
           myImpact: "Dampak Saya",
           settings: "Pengaturan akun",
           logout: "Keluar",
           login: "Masuk",
-          apply: "Terapkan"
+          join: "Gabung"
         }
       : {
-          donations: "Donations",
-          expeditions: "Expeditions",
-          destinations: "Destinations",
-          academy: "Academy",
-          impactMap: "Impact Map",
-          about: "About",
+          explore: "Explore",
+          support: "Support",
+          impact: "Impact",
+          learn: "Learn",
           dashboard: "Dashboard",
           myImpact: "My Impact",
           settings: "Account settings",
           logout: "Log out",
           login: "Login",
-          apply: "Apply"
+          join: "Join"
         };
   const localizedNavItems = navItems.map((item) => ({
     ...item,
     label:
-      item.href === "/campaigns"
-        ? labels.donations
-        : item.href === "/expeditions"
-          ? labels.expeditions
-          : item.href === "/destinations"
-          ? labels.destinations
-          : item.href === "/academy"
-            ? labels.academy
-            : item.href === "/impact-map"
-              ? labels.impactMap
-              : item.href === "/about"
-                ? labels.about
-                : item.label
+      item.href === "/expeditions"
+        ? labels.explore
+        : item.href === "/campaigns"
+          ? labels.support
+          : item.href === "/impact-map"
+            ? labels.impact
+            : item.href === "/academy"
+              ? labels.learn
+              : item.label
   }));
 
   function updatePreferences(formData: FormData) {
@@ -132,18 +124,29 @@ export function SiteHeader({
 
         <div className="hidden items-center gap-2 xl:flex">
           <form action={updatePreferences} className="flex items-center gap-1 rounded-full border border-white/15 bg-white/8 p-1">
-            <select name="locale" defaultValue={locale} aria-label="Language" className="rounded-full bg-transparent px-2 py-2 text-xs font-bold text-white outline-none">
+            <select
+              name="locale"
+              defaultValue={locale}
+              aria-label="Language"
+              disabled={isPending}
+              onChange={(event) => event.currentTarget.form?.requestSubmit()}
+              className="rounded-full bg-transparent px-2 py-2 text-xs font-bold text-white outline-none disabled:opacity-60"
+            >
               <option value="en" className="text-ocean-900">EN</option>
               <option value="id" className="text-ocean-900">ID</option>
             </select>
-            <select name="currency" defaultValue={displayCurrency} aria-label="Display currency" className="rounded-full bg-transparent px-2 py-2 text-xs font-bold text-white outline-none">
+            <select
+              name="currency"
+              defaultValue={displayCurrency}
+              aria-label="Display currency"
+              disabled={isPending}
+              onChange={(event) => event.currentTarget.form?.requestSubmit()}
+              className="rounded-full bg-transparent px-2 py-2 text-xs font-bold text-white outline-none disabled:opacity-60"
+            >
               {["USD", "EUR", "IDR", "JPY"].map((currency) => (
                 <option key={currency} value={currency} className="text-ocean-900">{currency}</option>
               ))}
             </select>
-            <button type="submit" disabled={isPending} className="rounded-full bg-white/12 px-2.5 py-2 text-xs font-bold text-white hover:bg-white/20 disabled:opacity-50">
-              {isPending ? "…" : labels.apply}
-            </button>
           </form>
           {user ? (
             <details className="group relative">
@@ -180,14 +183,22 @@ export function SiteHeader({
               </div>
             </details>
           ) : (
-            <Link
-              href="/login"
-              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full px-4 py-2 text-sm font-semibold text-white/82 transition hover:bg-white/10 hover:text-white"
-              aria-label="Login"
-            >
-              <UserCircle size={19} aria-hidden="true" />
-              {labels.login}
-            </Link>
+            <div className="flex items-center gap-1">
+              <Link
+                href="/login"
+                className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full px-3 py-2 text-sm font-semibold text-white/82 transition hover:bg-white/10 hover:text-white"
+                aria-label={labels.login}
+              >
+                <UserCircle size={18} aria-hidden="true" />
+                {labels.login}
+              </Link>
+              <Link
+                href="/signup"
+                className="inline-flex min-h-11 items-center justify-center rounded-full bg-coral-500 px-4 py-2 text-sm font-bold text-white transition hover:bg-coral-700"
+              >
+                {labels.join}
+              </Link>
+            </div>
           )}
         </div>
 
@@ -201,19 +212,30 @@ export function SiteHeader({
       </div>
 
       {isOpen ? (
-        <div className="border-t border-white/10 bg-ocean-900 px-4 py-5 lg:hidden">
+        <div className="border-t border-white/10 bg-ocean-900 px-4 py-5 xl:hidden">
           <nav className="grid gap-2" aria-label="Mobile navigation">
-            <form action={updatePreferences} className="mb-3 grid grid-cols-[1fr_1fr_auto] gap-2 rounded-xl border border-white/12 bg-white/8 p-2">
-              <select name="locale" defaultValue={locale} aria-label="Language" className="min-h-10 rounded-lg bg-white px-2 text-sm font-bold text-ocean-900">
+            <form action={updatePreferences} className="mb-3 grid grid-cols-2 gap-2 rounded-xl border border-white/12 bg-white/8 p-2">
+              <select
+                name="locale"
+                defaultValue={locale}
+                aria-label="Language"
+                disabled={isPending}
+                onChange={(event) => event.currentTarget.form?.requestSubmit()}
+                className="min-h-10 rounded-lg bg-white px-2 text-sm font-bold text-ocean-900 disabled:opacity-60"
+              >
                 <option value="en">English</option>
                 <option value="id">Indonesia</option>
               </select>
-              <select name="currency" defaultValue={displayCurrency} aria-label="Display currency" className="min-h-10 rounded-lg bg-white px-2 text-sm font-bold text-ocean-900">
+              <select
+                name="currency"
+                defaultValue={displayCurrency}
+                aria-label="Display currency"
+                disabled={isPending}
+                onChange={(event) => event.currentTarget.form?.requestSubmit()}
+                className="min-h-10 rounded-lg bg-white px-2 text-sm font-bold text-ocean-900 disabled:opacity-60"
+              >
                 {["USD", "EUR", "IDR", "JPY"].map((currency) => <option key={currency} value={currency}>{currency}</option>)}
               </select>
-              <button type="submit" disabled={isPending} className="rounded-lg bg-kelp-500 px-3 text-xs font-bold text-white">
-                {isPending ? "…" : labels.apply}
-              </button>
             </form>
             {localizedNavItems.map((item) => (
               <Link
@@ -252,13 +274,22 @@ export function SiteHeader({
                 </div>
               </div>
             ) : (
-              <Link
-                href="/login"
-                className="rounded-xl px-3 py-3 text-sm font-semibold text-white/88 hover:bg-white/10"
-                onClick={() => setIsOpen(false)}
-              >
-                {labels.login}
-              </Link>
+              <div className="mt-2 grid grid-cols-2 gap-2">
+                <Link
+                  href="/login"
+                  className="rounded-xl px-3 py-3 text-center text-sm font-semibold text-white/88 hover:bg-white/10"
+                  onClick={() => setIsOpen(false)}
+                >
+                  {labels.login}
+                </Link>
+                <Link
+                  href="/signup"
+                  className="rounded-xl bg-coral-500 px-3 py-3 text-center text-sm font-bold text-white hover:bg-coral-700"
+                  onClick={() => setIsOpen(false)}
+                >
+                  {labels.join}
+                </Link>
+              </div>
             )}
           </nav>
         </div>
