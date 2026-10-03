@@ -51,7 +51,7 @@ export function ExpeditionCard({ expedition, displayCurrency = "USD", locale = "
           </span>
           <span className="inline-flex items-center gap-1.5">
             <Clock size={16} aria-hidden="true" />
-            {expedition.durationDays} {isIndonesian ? "hari" : "days"}
+            {expedition.duration}
           </span>
           <span className="inline-flex items-center gap-1.5">
             <Users size={16} aria-hidden="true" />
