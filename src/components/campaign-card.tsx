@@ -20,7 +20,7 @@ export function CampaignCard({ campaign }: CampaignCardProps) {
         {campaign.imageUrl ? (
           <Image
             src={campaign.imageUrl}
-            alt=""
+            alt={`${campaign.title} — ${campaign.region}`}
             width={800}
             height={450}
             unoptimized
