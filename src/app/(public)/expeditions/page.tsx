@@ -36,7 +36,7 @@ export default async function ExpeditionsPage({ searchParams }: ExpeditionsPageP
   return (
     <main className="bg-mist-50">
       <section className="border-b border-ocean-900/10 bg-white">
-        <div className="mx-auto grid max-w-7xl gap-8 px-4 py-12 sm:px-6 lg:grid-cols-[minmax(0,1fr)_360px] lg:px-8">
+        <div className="mx-auto grid max-w-7xl gap-6 px-4 py-8 sm:px-6 lg:grid-cols-[minmax(0,1fr)_340px] lg:px-8">
           <div>
             <p className="inline-flex items-center gap-2 rounded-full bg-kelp-100 px-3 py-1 text-sm font-bold text-kelp-700">
               <Leaf className="size-4" aria-hidden="true" />
@@ -48,7 +48,7 @@ export default async function ExpeditionsPage({ searchParams }: ExpeditionsPageP
             <p className="mt-4 max-w-2xl text-base leading-7 text-ocean-900/66 sm:text-lg">
               {messages.intro}
             </p>
-            <div className="mt-7 grid gap-3 sm:grid-cols-3">
+            <div className="mt-6 flex flex-wrap gap-x-5 gap-y-2">
               {[
                 { label: messages.verifiedPartners, icon: ShieldCheck },
                 { label: messages.impactTrips, icon: Compass },
@@ -57,7 +57,7 @@ export default async function ExpeditionsPage({ searchParams }: ExpeditionsPageP
                 const Icon = item.icon;
 
                 return (
-                  <span key={item.label} className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-ocean-900/10 bg-white px-3 text-sm font-bold text-ocean-900 shadow-sm">
+                  <span key={item.label} className="inline-flex items-center gap-2 text-sm font-bold text-ocean-900/72">
                     <Icon className="size-4 text-kelp-500" aria-hidden="true" />
                     {item.label}
                   </span>
@@ -65,7 +65,7 @@ export default async function ExpeditionsPage({ searchParams }: ExpeditionsPageP
               })}
             </div>
           </div>
-          <form action="/expeditions" className="rounded-xl border border-ocean-900/10 bg-mist-50 p-4 shadow-sm">
+          <form action="/expeditions" className="rounded-xl border border-ocean-900/10 bg-mist-50 p-4">
             <p className="text-sm font-bold text-ocean-900">Start searching</p>
             <div className="mt-3 grid gap-3">
               <label className="relative">
