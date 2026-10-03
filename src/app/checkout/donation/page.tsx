@@ -87,16 +87,18 @@ export default async function DonationCheckoutPage({ searchParams }: DonationChe
               Coral sponsorship creates a sponsored ecosystem record after admin verifies your payment proof.
             </p>
           ) : null}
-          <label className="grid min-w-0 gap-2 text-sm font-semibold text-ocean-900">
-            Campaign
-            <select name="campaignSlug" defaultValue={selectedCampaign} className="w-full min-w-0 rounded-xl border border-ocean-900/14 px-4 py-3 outline-none focus:border-coral-500">
-              {campaigns.map((campaign) => (
-                <option key={campaign.slug} value={campaign.slug}>
-                  {campaign.title}
-                </option>
-              ))}
-            </select>
-          </label>
+          <input type="hidden" name="campaignSlug" value={selectedCampaignData?.slug ?? selectedCampaign ?? ""} />
+          <div className="grid gap-2 text-sm font-semibold text-ocean-900">
+            <span>Campaign</span>
+            <div className="flex min-w-0 items-center justify-between gap-3 rounded-xl border border-ocean-900/14 bg-sand-50 px-4 py-3">
+              <span className="min-w-0 break-words font-bold text-ocean-900 [overflow-wrap:anywhere]">
+                {selectedCampaignData?.title ?? "Selected campaign"}
+              </span>
+              <ButtonLink href="/campaigns" tone="ghost" className="min-h-9 shrink-0 px-3 py-1.5 text-xs">
+                Change
+              </ButtonLink>
+            </div>
+          </div>
           <DonationAmountFields amounts={donationAmounts} defaultAmount={selectedAmount} currency={selectedCurrency} defaultCustomAmount={customAmount} />
           <label className="grid min-w-0 gap-2 text-sm font-semibold text-ocean-900">
             Name

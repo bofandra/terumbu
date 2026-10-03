@@ -58,6 +58,12 @@ export async function createDonationAction(formData: FormData) {
   const idempotencyKey = String(formData.get("idempotencyKey") ?? "").trim() || null;
   const paymentReference = String(formData.get("paymentReference") ?? "").trim();
   const sessionUser = await getSessionUser();
+  const checkoutParams = new URLSearchParams();
+  if (campaignSlug) checkoutParams.set("campaign", campaignSlug);
+  if (amount > 0) checkoutParams.set("amount", String(amount));
+  if (contributionIntent !== "one-time") checkoutParams.set("intent", contributionIntent);
+  const checkoutPath = `/checkout/donation${checkoutParams.size > 0 ? `?${checkoutParams.toString()}` : ""}`;
+  const checkoutErrorPath = (error: string) => `${checkoutPath}${checkoutPath.includes("?") ? "&" : "?"}error=${encodeURIComponent(error)}`;
 
   const [campaign] = await db
     .select({
@@ -74,7 +80,7 @@ export async function createDonationAction(formData: FormData) {
     .limit(1);
 
   if (!campaign) {
-    redirect("/checkout/donation?error=campaign");
+    redirect(checkoutErrorPath("campaign"));
   }
 
   const impactTargetRows = await db
@@ -95,7 +101,7 @@ export async function createDonationAction(formData: FormData) {
   const minimumAmount = minimumDonationAmount(campaignCurrency);
 
   if (!campaignSlug || amount < minimumAmount || !donorName || !donorEmail) {
-    redirect("/checkout/donation?error=invalid");
+    redirect(checkoutErrorPath("invalid"));
   }
 
   if (idempotencyKey) {
@@ -117,7 +123,7 @@ export async function createDonationAction(formData: FormData) {
   const proofError = paymentProofUploadError(proofUpload);
 
   if (proofError) {
-    redirect("/checkout/donation?error=payment_proof");
+    redirect(checkoutErrorPath("payment_proof"));
   }
 
   const providerReference = randomReference("MANUAL-DONATION");

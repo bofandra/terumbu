@@ -31,8 +31,10 @@ import { SectionHeading } from "@/components/section-heading";
 import { Button, ButtonLink } from "@/components/ui/button";
 import { MetricValue } from "@/components/ui/metric-value";
 import { VerificationExplainer } from "@/components/verification-explainer";
+import { getSessionUser } from "@/lib/auth";
 import { evidenceAnchorId, evidenceSourceHref, evidenceStage, evidenceStageLabel, getMetadataNumberOrString, getMetadataString, suggestedDonationAmounts } from "@/lib/domain";
-import { getCampaignCards, getCampaignDetail, getCourses, getExpeditionCards } from "@/lib/queries";
+import { getCampaignCards, getCampaignDetail, getCampaignRetentionState, getCourses, getExpeditionCards } from "@/lib/queries";
+import { followCampaignAction, unfollowCampaignAction } from "@/lib/retention-actions";
 import { formatCurrency } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
@@ -142,18 +144,29 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   };
 }
 
-export default async function CampaignDetailPage({ params }: { params: Promise<{ slug: string }> }) {
+export default async function CampaignDetailPage({
+  params,
+  searchParams
+}: {
+  params: Promise<{ slug: string }>;
+  searchParams?: Promise<{ saved?: string; error?: string }>;
+}) {
   const { slug } = await params;
-  const campaign = await getCampaignDetail(slug);
+  const [query, campaign, sessionUser] = await Promise.all([
+    searchParams,
+    getCampaignDetail(slug),
+    getSessionUser()
+  ]);
 
   if (!campaign) {
     notFound();
   }
 
-  const [allExpeditions, courses, relatedCampaignRows] = await Promise.all([
+  const [allExpeditions, courses, relatedCampaignRows, retentionState] = await Promise.all([
     getExpeditionCards(),
     getCourses(),
-    getCampaignCards(6, campaign.category)
+    getCampaignCards(6, campaign.category),
+    sessionUser ? getCampaignRetentionState(sessionUser.id, campaign.slug) : Promise.resolve(null)
   ]);
   const progress = campaign.goal > 0 ? Math.min(100, Math.round((campaign.raised / campaign.goal) * 100)) : 0;
   const impactFunded = campaign.goal > 0 ? Math.round((campaign.raised / campaign.goal) * campaign.impactTarget) : 0;
@@ -283,6 +296,17 @@ export default async function CampaignDetailPage({ params }: { params: Promise<{
     .sort((first, second) => (second.date?.getTime() ?? 0) - (first.date?.getTime() ?? 0))
     .slice(0, 6);
   const sponsorAmount = donationAmounts[1] ?? donationAmounts[0] ?? 0;
+  const retentionMessage =
+    query?.saved === "project"
+      ? retentionState?.isSaved
+        ? "Campaign saved to your dashboard."
+        : "Campaign removed from your saved projects."
+      : query?.saved === "follow"
+        ? retentionState?.isFollowing
+          ? "You are now following campaign activity."
+          : "Campaign activity follow was removed."
+        : null;
+  const retentionError = query?.error === "campaign" ? "We could not update this campaign preference." : null;
 
   return (
     <main className="pb-24 lg:pb-0">
@@ -305,6 +329,16 @@ export default async function CampaignDetailPage({ params }: { params: Promise<{
             <span className="text-ocean-900">{campaign.title}</span>
           </nav>
 
+          {retentionMessage ? (
+            <div className="mt-6 rounded-2xl border border-kelp-500/20 bg-kelp-100 px-5 py-4 text-sm font-bold text-kelp-700" role="status">
+              {retentionMessage}
+            </div>
+          ) : null}
+          {retentionError ? (
+            <div className="mt-6 rounded-2xl border border-coral-500/20 bg-coral-100 px-5 py-4 text-sm font-bold text-coral-700" role="alert">
+              {retentionError}
+            </div>
+          ) : null}
           {disabledReason ? (
             <div className="mt-6 rounded-2xl border border-coral-500/20 bg-coral-100 px-5 py-4 text-sm font-bold text-coral-700">
               {disabledReason}
@@ -391,23 +425,40 @@ export default async function CampaignDetailPage({ params }: { params: Promise<{
                 carbonKgPerUsd={campaign.carbonKgPerUsd}
                 oneTimeAmounts={donationAmounts}
                 disabledReason={disabledReason}
-                isAuthenticated={false}
-                isSaved={false}
+                isAuthenticated={Boolean(sessionUser)}
+                isSaved={retentionState?.isSaved ?? false}
                 campaignPath={campaignPath}
               />
 
               <div className="rounded-2xl border border-ocean-900/10 bg-white p-5 shadow-soft">
                 <p className="text-sm font-bold uppercase tracking-[0.16em] text-coral-700">Keep this project close</p>
                 <p className="mt-3 text-sm leading-6 text-ocean-900/62">
-                  Save the campaign to your dashboard or follow partner field activity as it is published.
+                  {sessionUser
+                    ? retentionState?.isFollowing
+                      ? `You are following this campaign with ${retentionState.followFrequency ?? "weekly"} activity updates.`
+                      : "Follow partner field activity and new evidence as it is published."
+                    : "Sign in to save this campaign and follow partner field activity as it is published."}
                 </p>
                 <div className="mt-5 grid gap-3">
-                  <ButtonLink href={`/login?next=${encodeURIComponent(campaignPath)}`} tone="secondary" className="w-full">
-                    Sign in to Save
-                  </ButtonLink>
-                  <ButtonLink href={`/login?next=${encodeURIComponent(campaignPath)}`} className="w-full">
-                    Sign in to Follow
-                  </ButtonLink>
+                  {sessionUser ? (
+                    <>
+                      <form action={retentionState?.isFollowing ? unfollowCampaignAction : followCampaignAction}>
+                        <input type="hidden" name="campaignSlug" value={campaign.slug} />
+                        <input type="hidden" name="next" value={campaignPath} />
+                        {!retentionState?.isFollowing ? <input type="hidden" name="frequency" value="weekly" /> : null}
+                        <Button type="submit" tone={retentionState?.isFollowing ? "secondary" : "primary"} className="w-full">
+                          {retentionState?.isFollowing ? "Stop Following" : "Follow Weekly Updates"}
+                        </Button>
+                      </form>
+                      <ButtonLink href="/dashboard/saved" tone="secondary" className="w-full">
+                        Manage Saved Projects
+                      </ButtonLink>
+                    </>
+                  ) : (
+                    <ButtonLink href={`/login?next=${encodeURIComponent(campaignPath)}`} className="w-full">
+                      Sign in to Follow
+                    </ButtonLink>
+                  )}
                 </div>
               </div>
 
@@ -829,9 +880,27 @@ export default async function CampaignDetailPage({ params }: { params: Promise<{
                   ) : null}
                 </>
               )}
-              <ButtonLink href={`/login?next=${encodeURIComponent(campaignPath)}`} tone="ghost" className="border border-white/24 text-white hover:bg-white/10">
-                Follow Activity
-              </ButtonLink>            </div>
+              {sessionUser ? (
+                retentionState?.isFollowing ? (
+                  <ButtonLink href="/dashboard/saved" tone="ghost" className="border border-white/24 text-white hover:bg-white/10">
+                    Following Activity
+                  </ButtonLink>
+                ) : (
+                  <form action={followCampaignAction}>
+                    <input type="hidden" name="campaignSlug" value={campaign.slug} />
+                    <input type="hidden" name="next" value={campaignPath} />
+                    <input type="hidden" name="frequency" value="weekly" />
+                    <Button type="submit" tone="ghost" className="border border-white/24 text-white hover:bg-white/10">
+                      Follow Activity
+                    </Button>
+                  </form>
+                )
+              ) : (
+                <ButtonLink href={`/login?next=${encodeURIComponent(campaignPath)}`} tone="ghost" className="border border-white/24 text-white hover:bg-white/10">
+                  Follow Activity
+                </ButtonLink>
+              )}
+            </div>
           </section>
         </div>
 

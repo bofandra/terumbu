@@ -48,12 +48,14 @@ function participantTotal(adults: number, students: number, children: number) {
   return adults + students + children;
 }
 
-function checkoutHref(departureId: string | null, participants: number, referralCode?: string | null) {
-  const params = new URLSearchParams();
+function checkoutHref(expeditionSlug: string, departureId: string | null, participants: number, referralCode?: string | null) {
+  const params = new URLSearchParams({
+    expedition: expeditionSlug,
+    participants: String(Math.max(1, participants))
+  });
   if (departureId) {
     params.set("departure", departureId);
   }
-  params.set("participants", String(Math.max(1, participants)));
   if (referralCode) {
     params.set("ref", referralCode);
   }
@@ -139,7 +141,7 @@ export function ExpeditionBookingCard({
   const participantsWithinCapacity = selectedDeparture ? participants > 0 && participants <= selectedDeparture.availableSeats : false;
   const bookingDisabled = !selectedDeparture || selectedDeparture.availableSeats <= 0 || !participantsWithinCapacity || selectedDeparture.status !== "open";
   const total = useMemo(() => price * participants + equipmentRental + platformFee, [equipmentRental, participants, platformFee, price]);
-  const href = checkoutHref(selectedDeparture?.id ?? null, participants, referralCode);
+  const href = checkoutHref(slug, selectedDeparture?.id ?? null, participants, referralCode);
   const secondaryPrice = secondaryPriceLabel(price, currency, displayCurrency, locale);
   const secondaryTotal = secondaryPriceLabel(total, currency, displayCurrency, locale);
 
@@ -313,25 +315,47 @@ export function ExpeditionBookingCard({
 }
 
 export function ExpeditionMobileBookingBar(props: ExpeditionBookingCardProps) {
-  const firstDeparture = props.departures.find((departure) => departure.status === "open" && departure.availableSeats > 0) ?? props.departures[0];
+  const bookableDeparture = props.departures.find((departure) => departure.status === "open" && departure.availableSeats > 0) ?? null;
+  const firstDeparture = bookableDeparture ?? props.departures[0] ?? null;
+  const isIndonesian = (props.locale ?? "en-US").toLowerCase().startsWith("id");
+  const secondaryPrice = secondaryPriceLabel(props.price, props.currency, props.displayCurrency ?? "USD", props.locale ?? "en-US");
 
   return (
     <div className="fixed inset-x-0 bottom-0 z-40 border-t border-ocean-900/10 bg-white/96 p-3 shadow-soft backdrop-blur lg:hidden">
       <div className="mx-auto flex max-w-lg items-center justify-between gap-3">
         <div className="min-w-0">
-          <p className="text-xs font-semibold text-ocean-900/54">From</p>
-          <p className="min-w-0 break-words font-bold text-ocean-900 [overflow-wrap:anywhere]">{formatCurrency(props.price, props.currency)} / person</p>
-          {secondaryPriceLabel(props.price, props.currency, props.displayCurrency ?? "USD", props.locale ?? "en-US") ? (
+          <p className="text-xs font-semibold text-ocean-900/54">{isIndonesian ? "Mulai dari" : "From"}</p>
+          <p className="min-w-0 break-words font-bold text-ocean-900 [overflow-wrap:anywhere]">
+            {formatCurrency(props.price, props.currency)} / {isIndonesian ? "orang" : "person"}
+          </p>
+          {secondaryPrice ? (
             <p className="text-xs font-bold text-kelp-700">
-              {secondaryPriceLabel(props.price, props.currency, props.displayCurrency ?? "USD", props.locale ?? "en-US")} estimated
+              {secondaryPrice} {isIndonesian ? "estimasi" : "estimated"}
             </p>
           ) : null}
-          <p className="truncate text-xs text-ocean-900/54">{firstDeparture ? `${firstDeparture.dateRangeLabel} · ${firstDeparture.availableSeats} places left` : "Dates pending"}</p>
+          <p className="truncate text-xs text-ocean-900/54">
+            {firstDeparture
+              ? `${firstDeparture.dateRangeLabel} · ${firstDeparture.availableSeats} ${isIndonesian ? "tempat tersisa" : "places left"}`
+              : isIndonesian
+                ? "Tanggal belum tersedia"
+                : "Dates pending"}
+          </p>
         </div>
         {props.academyEligibility === "learning_required" && props.requiredAcademyCourse ? (
-          <Link href={"/academy/courses/" + props.requiredAcademyCourse.slug} className="inline-flex min-h-12 shrink-0 items-center gap-2 rounded-full bg-kelp-500 px-5 text-sm font-bold text-white shadow-soft">Complete course first<ArrowRight size={17} aria-hidden="true" /></Link>
+          <Link href={"/academy/courses/" + props.requiredAcademyCourse.slug} className="inline-flex min-h-12 shrink-0 items-center gap-2 rounded-full bg-kelp-500 px-5 text-sm font-bold text-white shadow-soft">
+            {isIndonesian ? "Selesaikan kursus" : "Complete course first"}
+            <ArrowRight size={17} aria-hidden="true" />
+          </Link>
+        ) : bookableDeparture ? (
+          <a href="#availability" className="inline-flex min-h-12 shrink-0 items-center gap-2 rounded-full bg-kelp-500 px-5 text-sm font-bold text-white shadow-soft">
+            {isIndonesian ? "Pilih tanggal" : "Reserve / Apply"}
+            <ArrowRight size={17} aria-hidden="true" />
+          </a>
         ) : (
-          <a href="#availability" className="inline-flex min-h-12 shrink-0 items-center gap-2 rounded-full bg-kelp-500 px-5 text-sm font-bold text-white shadow-soft">Reserve / Apply<ArrowRight size={17} aria-hidden="true" /></a>
+          <a href={props.questionHref ?? "#ask-question"} className="inline-flex min-h-12 shrink-0 items-center gap-2 rounded-full bg-ocean-900 px-5 text-sm font-bold text-white shadow-soft">
+            {isIndonesian ? "Tanya jadwal" : "Ask about dates"}
+            <ArrowRight size={17} aria-hidden="true" />
+          </a>
         )}
       </div>
     </div>
