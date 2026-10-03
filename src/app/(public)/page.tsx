@@ -24,29 +24,6 @@ import { getPreferredDisplayCurrency, getPreferredLocale, localeTag, t } from "@
 
 export const dynamic = "force-dynamic";
 
-const journey = [
-  {
-    title: "Fund verified work",
-    description: "Choose campaigns backed by partner checks, field activity, and transparent funding goals.",
-    icon: HeartHandshake
-  },
-  {
-    title: "Visit the field",
-    description: "Join conservation expeditions that connect travel with measurable restoration activity.",
-    icon: Compass
-  },
-  {
-    title: "Learn the science",
-    description: "Build practical knowledge through Academy tracks linked to real projects and destinations.",
-    icon: BookOpen
-  },
-  {
-    title: "Track your impact",
-    description: "Collect donations, courses, fieldwork, and certificates in a shareable Impact Passport.",
-    icon: BadgeCheck
-  }
-];
-
 const fallbackHeroImageUrl =
   "https://images.unsplash.com/photo-1544551763-46a013bb70d5?auto=format&fit=crop&w=2400&q=85";
 
@@ -85,11 +62,17 @@ export default async function HomePage() {
   ]);
   const messages = t(locale);
   const localeName = localeTag(locale);
+  const journey = [
+    { title: messages.home.journeyFundTitle, description: messages.home.journeyFundDescription, icon: HeartHandshake },
+    { title: messages.home.journeyVisitTitle, description: messages.home.journeyVisitDescription, icon: Compass },
+    { title: messages.home.journeyLearnTitle, description: messages.home.journeyLearnDescription, icon: BookOpen },
+    { title: messages.home.journeyTrackTitle, description: messages.home.journeyTrackDescription, icon: BadgeCheck }
+  ];
   const heroImageUrl = fieldUpdate?.imageUrl ?? fallbackHeroImageUrl;
 
   return (
     <>
-      <section className="relative flex min-h-screen items-center overflow-hidden bg-ocean-900">
+      <section className="relative flex min-h-[calc(100svh-5rem)] items-center overflow-hidden bg-ocean-900">
         <div
           className="absolute inset-0 bg-cover bg-center"
           style={{
@@ -115,21 +98,21 @@ export default async function HomePage() {
               <label className="relative">
                 <span className="sr-only">Where in Indonesia?</span>
                 <MapPinned className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-ocean-900/45" aria-hidden="true" />
-                <input name="destination" placeholder="Where in Indonesia?" className="min-h-12 w-full rounded-xl border-0 bg-white pl-9 pr-3 text-sm font-semibold text-ocean-900 outline-none ring-1 ring-white/20 focus:ring-2 focus:ring-coral-300" />
+                <input name="destination" placeholder={messages.home.destinationPlaceholder} className="min-h-12 w-full rounded-xl border-0 bg-white pl-9 pr-3 text-sm font-semibold text-ocean-900 outline-none ring-1 ring-white/20 focus:ring-2 focus:ring-coral-300" />
               </label>
               <label className="relative">
                 <span className="sr-only">What do you want to do?</span>
                 <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-ocean-900/45" aria-hidden="true" />
-                <input name="q" placeholder="Reef, wildlife, community..." className="min-h-12 w-full rounded-xl border-0 bg-white pl-9 pr-3 text-sm font-semibold text-ocean-900 outline-none ring-1 ring-white/20 focus:ring-2 focus:ring-coral-300" />
+                <input name="q" placeholder={messages.home.activityPlaceholder} className="min-h-12 w-full rounded-xl border-0 bg-white pl-9 pr-3 text-sm font-semibold text-ocean-900 outline-none ring-1 ring-white/20 focus:ring-2 focus:ring-coral-300" />
               </label>
               <button type="submit" className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-coral-500 px-5 text-sm font-bold text-white hover:bg-coral-700">
-                Search trips <ArrowRight size={17} aria-hidden="true" />
+                {messages.home.searchTrips} <ArrowRight size={17} aria-hidden="true" />
               </button>
             </form>
             <div className="mt-4 flex flex-wrap items-center gap-4 text-sm font-semibold text-white/78">
-              <span className="inline-flex items-center gap-2"><CalendarDays size={16} aria-hidden="true" /> Flexible dates</span>
-              <span>Verified local partners</span>
-              <span>Impact evidence after your trip</span>
+              <span className="inline-flex items-center gap-2"><CalendarDays size={16} aria-hidden="true" /> {messages.home.flexibleDates}</span>
+              <span>{messages.home.verifiedPartners}</span>
+              <span>{messages.home.evidenceAfterTrip}</span>
             </div>
             <div className="mt-7 flex flex-wrap items-center gap-4 text-sm font-semibold text-white/82">
               {reviewSummary ? (
@@ -147,7 +130,7 @@ export default async function HomePage() {
               ) : null}
               <span className="inline-flex items-center gap-2">
                 <Users size={16} aria-hidden="true" />
-                Travelers, donors, volunteers, and learners
+                {messages.home.audience}
               </span>
             </div>
           </div>
@@ -155,13 +138,13 @@ export default async function HomePage() {
           {fieldUpdate ? (
             <div className="hidden items-end lg:flex">
               <div className="w-full rounded-2xl border border-white/20 bg-white/12 p-5 text-white backdrop-blur-xl">
-                <p className="text-sm font-bold uppercase tracking-[0.16em] text-coral-100">Field update</p>
+                <p className="text-sm font-bold uppercase tracking-[0.16em] text-coral-100">{messages.home.fieldUpdate}</p>
                 <p className="mt-4 text-2xl font-bold tracking-normal">{fieldUpdate.title}</p>
                 <ProgressMeter value={fieldUpdate.progress} label={`${fieldUpdate.title} progress`} className="mt-6 h-3" trackClassName="bg-white/18" />
                 <p className="mt-4 text-sm leading-6 text-white/72">{fieldUpdate.description}</p>
                 <ButtonLink href="/impact-map" tone="ghost" className="mt-6 border border-white/24 text-white hover:bg-white/10">
                   <PlayCircle size={18} aria-hidden="true" />
-                  Watch impact
+                  {messages.home.watchImpact}
                 </ButtonLink>
               </div>
             </div>
@@ -174,11 +157,11 @@ export default async function HomePage() {
       <section className="bg-white py-20">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="flex flex-col justify-between gap-6 md:flex-row md:items-end">
-            <SectionHeading eyebrow="Featured expeditions" title="Go beyond sightseeing">
-              Join field experiences with local conservation teams, clear logistics, verified partners, and impact you can carry into your Impact Passport.
+            <SectionHeading eyebrow={messages.home.featuredEyebrow} title={messages.home.featuredTitle}>
+              {messages.home.featuredDescription}
             </SectionHeading>
             <ButtonLink href="/expeditions" tone="secondary">
-              Explore Trips
+              {messages.home.exploreTrips}
             </ButtonLink>
           </div>
           <div className="mt-10">
@@ -189,16 +172,16 @@ export default async function HomePage() {
 
       <section className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8">
         <div className="flex flex-col justify-between gap-6 md:flex-row md:items-end">
-          <SectionHeading eyebrow="Support from anywhere" title="Can’t travel yet? Fund the next conservation milestone">
-            Back a verified project now, then follow field activity and evidence as the work progresses.
+          <SectionHeading eyebrow={messages.home.supportEyebrow} title={messages.home.supportTitle}>
+            {messages.home.supportDescription}
           </SectionHeading>
           <ButtonLink href="/campaigns" tone="secondary">
-            View Campaigns
+            {messages.home.viewCampaigns}
           </ButtonLink>
         </div>
         <div className="mt-10 grid gap-6 lg:grid-cols-3">
           {campaigns.map((campaign) => (
-            <CampaignCard key={campaign.slug} campaign={campaign} />
+            <CampaignCard key={campaign.slug} campaign={campaign} locale={locale} />
           ))}
         </div>
       </section>
@@ -206,8 +189,8 @@ export default async function HomePage() {
 
 
       <section className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8">
-        <SectionHeading eyebrow="Impact map" title="Field activity should be visible, not hidden in reports">
-          Browse restoration sites, cleanup routes, learning hubs, activity records, and the progress behind every claim.
+        <SectionHeading eyebrow={messages.home.impactMapEyebrow} title={messages.home.impactMapTitle}>
+          {messages.home.impactMapDescription}
         </SectionHeading>
         <div className="mt-10">
           <ImpactMapPreview sites={impactSites} />
@@ -216,7 +199,7 @@ export default async function HomePage() {
 
       <section className="bg-ocean-50 py-20">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <SectionHeading eyebrow="How it works" title="Discover → travel → contribute → verify → share" />
+          <SectionHeading eyebrow={messages.home.howEyebrow} title={messages.home.howTitle} />
           <div className="mt-10 grid gap-5 md:grid-cols-2 lg:grid-cols-4">
             {journey.map((item) => {
               const Icon = item.icon;
@@ -237,8 +220,8 @@ export default async function HomePage() {
 
       <section className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8">
         <div className="grid gap-10 lg:grid-cols-[0.9fr_1.1fr] lg:items-center">
-          <SectionHeading eyebrow="Digital Impact Passport" title="Your trip should leave more than photos">
-            Donations, field expeditions, sponsored ecosystems, learning, volunteer hours, and certificates become a verified conservation record you can keep and share.
+          <SectionHeading eyebrow={messages.home.passportEyebrow} title={messages.home.passportTitle}>
+            {messages.home.passportDescription}
           </SectionHeading>
           <PassportPreview passport={passport?.preview ?? fallbackPassport} />
         </div>

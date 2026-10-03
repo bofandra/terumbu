@@ -28,7 +28,7 @@ export default async function PublicLayout({ children }: Readonly<{ children: Re
         }
       />
       <main>{children}</main>
-      <SiteFooter />
+      <SiteFooter locale={locale} />
     </>
   );
 }

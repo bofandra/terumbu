@@ -5,14 +5,32 @@ import Link from "next/link";
 import { ButtonLink } from "@/components/ui/button";
 import { ProgressMeter } from "@/components/ui/progress-meter";
 import type { CampaignCardData } from "@/lib/domain";
+import type { SupportedLocale } from "@/lib/user-preferences";
 import { formatCurrency } from "@/lib/utils";
 
 type CampaignCardProps = {
   campaign: CampaignCardData;
+  locale?: SupportedLocale;
 };
 
-export function CampaignCard({ campaign }: CampaignCardProps) {
+export function CampaignCard({ campaign, locale = "en" }: CampaignCardProps) {
   const progress = Math.round((campaign.raised / campaign.goal) * 100);
+  const labels =
+    locale === "id"
+      ? {
+          funded: "terdanai",
+          daysLeft: "hari lagi",
+          raisedOf: "terkumpul dari",
+          donate: "Donasi",
+          progress: "progres pendanaan"
+        }
+      : {
+          funded: "funded",
+          daysLeft: "days left",
+          raisedOf: "raised of",
+          donate: "Donate",
+          progress: "funding progress"
+        };
 
   return (
     <article className="overflow-hidden rounded-2xl border border-ocean-900/10 bg-white shadow-soft">
@@ -20,7 +38,7 @@ export function CampaignCard({ campaign }: CampaignCardProps) {
         {campaign.imageUrl ? (
           <Image
             src={campaign.imageUrl}
-            alt=""
+            alt={`${campaign.title} — ${campaign.region}`}
             width={800}
             height={450}
             unoptimized
@@ -53,19 +71,19 @@ export function CampaignCard({ campaign }: CampaignCardProps) {
 
         <div className="mt-5">
           <div className="flex items-center justify-between text-sm">
-            <span className="font-bold text-ocean-900">{progress}% funded</span>
-            <span className="text-ocean-900/60">{campaign.daysLeft} days left</span>
+            <span className="font-bold text-ocean-900">{progress}% {labels.funded}</span>
+            <span className="text-ocean-900/60">{campaign.daysLeft} {labels.daysLeft}</span>
           </div>
-          <ProgressMeter value={progress} label={`${campaign.title} funding progress`} className="mt-2 h-3" trackClassName="bg-ocean-50" />
+          <ProgressMeter value={progress} label={`${campaign.title} ${labels.progress}`} className="mt-2 h-3" trackClassName="bg-ocean-50" />
           <p className="mt-3 min-w-0 break-words text-sm text-ocean-900/68 [overflow-wrap:anywhere]">
-            <span className="font-bold text-ocean-900">{formatCurrency(campaign.raised, campaign.currency)}</span> raised of{" "}
+            <span className="font-bold text-ocean-900">{formatCurrency(campaign.raised, campaign.currency)}</span> {labels.raisedOf}{" "}
             {formatCurrency(campaign.goal, campaign.currency)}
           </p>
           <p className="mt-1 text-sm text-ocean-900/68">{campaign.impact}</p>
         </div>
 
         <ButtonLink href={`/campaigns/${campaign.slug}`} tone="donation" className="mt-5 w-full">
-          Donate
+          {labels.donate}
         </ButtonLink>
       </div>
     </article>
