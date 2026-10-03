@@ -145,9 +145,9 @@ function DetailDivider() {
   return <hr className="border-ocean-900/10" />;
 }
 
-function CheckoutLink({ departureId }: { departureId: string }) {
+function CheckoutLink({ expeditionSlug, departureId }: { expeditionSlug: string; departureId: string }) {
   return (
-    <ButtonLink href={`/checkout/expedition?departure=${departureId}`} className="rounded-full">
+    <ButtonLink href={`/checkout/expedition?expedition=${encodeURIComponent(expeditionSlug)}&departure=${encodeURIComponent(departureId)}`} className="rounded-full">
       Select Date
       <ArrowRight size={17} aria-hidden="true" />
     </ButtonLink>
@@ -548,7 +548,7 @@ export default async function ExpeditionDetailPage({
                           location={departure.meetingPoint ?? expedition.region}
                           description={`${expedition.summary} — Terumbu.eco conservation expedition`}
                         />
-                        {academyEligibility === "learning_required" && expedition.requiredAcademyCourse ? <ButtonLink href={"/academy/courses/" + expedition.requiredAcademyCourse.slug} className="rounded-full">Complete course first</ButtonLink> : <CheckoutLink departureId={departure.id} />}
+                        {academyEligibility === "learning_required" && expedition.requiredAcademyCourse ? <ButtonLink href={"/academy/courses/" + expedition.requiredAcademyCourse.slug} className="rounded-full">Complete course first</ButtonLink> : <CheckoutLink expeditionSlug={expedition.slug} departureId={departure.id} />}
                       </div>
                       ) : (
                         <form action={submitExpeditionInterestRequestAction} className="grid gap-2 rounded-md border border-ocean-900/10 bg-ocean-50 p-3">
