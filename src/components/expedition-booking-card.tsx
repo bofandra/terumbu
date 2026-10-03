@@ -48,12 +48,14 @@ function participantTotal(adults: number, students: number, children: number) {
   return adults + students + children;
 }
 
-function checkoutHref(departureId: string | null, participants: number, referralCode?: string | null) {
-  const params = new URLSearchParams();
+function checkoutHref(expeditionSlug: string, departureId: string | null, participants: number, referralCode?: string | null) {
+  const params = new URLSearchParams({
+    expedition: expeditionSlug,
+    participants: String(Math.max(1, participants))
+  });
   if (departureId) {
     params.set("departure", departureId);
   }
-  params.set("participants", String(Math.max(1, participants)));
   if (referralCode) {
     params.set("ref", referralCode);
   }
@@ -139,7 +141,7 @@ export function ExpeditionBookingCard({
   const participantsWithinCapacity = selectedDeparture ? participants > 0 && participants <= selectedDeparture.availableSeats : false;
   const bookingDisabled = !selectedDeparture || selectedDeparture.availableSeats <= 0 || !participantsWithinCapacity || selectedDeparture.status !== "open";
   const total = useMemo(() => price * participants + equipmentRental + platformFee, [equipmentRental, participants, platformFee, price]);
-  const href = checkoutHref(selectedDeparture?.id ?? null, participants, referralCode);
+  const href = checkoutHref(slug, selectedDeparture?.id ?? null, participants, referralCode);
   const secondaryPrice = secondaryPriceLabel(price, currency, displayCurrency, locale);
   const secondaryTotal = secondaryPriceLabel(total, currency, displayCurrency, locale);
 
