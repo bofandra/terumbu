@@ -181,7 +181,7 @@ export default async function HomePage() {
         </div>
         <div className="mt-10 grid gap-6 lg:grid-cols-3">
           {campaigns.map((campaign) => (
-            <CampaignCard key={campaign.slug} campaign={campaign} />
+            <CampaignCard key={campaign.slug} campaign={campaign} locale={locale} />
           ))}
         </div>
       </section>
