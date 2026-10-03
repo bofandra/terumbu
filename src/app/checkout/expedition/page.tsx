@@ -113,7 +113,7 @@ export default async function ExpeditionCheckoutPage({ searchParams }: Expeditio
           errorLearning: "Complete the required Terumbu Academy course and earn its certificate before booking this expedition.",
           errorAttribution: "Choose Personal or a company you belong to.",
           errorProof: "Upload payment proof as JPG, PNG, WebP, or GIF up to 1.5 MB.",
-          errorGeneric: labels.errorGeneric,
+          errorGeneric: "Check departure availability, contact details, and payment proof.",
           departure: "Departure",
           seats: "seats",
           contactName: "Contact name",
@@ -205,7 +205,7 @@ export default async function ExpeditionCheckoutPage({ searchParams }: Expeditio
                 ? labels.errorAttribution
                 : params.error === "payment_proof"
                   ? labels.errorProof
-                  : "Check departure availability, contact details, and payment proof."}
+                  : labels.errorGeneric}
           </p>
         ) : null}
         <form action={bookExpeditionAction} className="mt-6 grid min-w-0 gap-4">
