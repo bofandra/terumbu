@@ -204,6 +204,8 @@ export function SiteHeader({
 
         <button
           aria-label="Toggle menu"
+          aria-expanded={isOpen}
+          aria-controls="public-mobile-navigation"
           className="flex size-11 items-center justify-center rounded-full text-white xl:hidden"
           onClick={() => setIsOpen((value) => !value)}
         >
@@ -212,7 +214,7 @@ export function SiteHeader({
       </div>
 
       {isOpen ? (
-        <div className="border-t border-white/10 bg-ocean-900 px-4 py-5 xl:hidden">
+        <div id="public-mobile-navigation" className="border-t border-white/10 bg-ocean-900 px-4 py-5 xl:hidden">
           <nav className="grid gap-2" aria-label="Mobile navigation">
             <form action={updatePreferences} className="mb-3 grid grid-cols-2 gap-2 rounded-xl border border-white/12 bg-white/8 p-2">
               <select
