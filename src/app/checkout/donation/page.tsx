@@ -170,7 +170,7 @@ export default async function DonationCheckoutPage({ searchParams }: DonationChe
             </div>
           </div>
 
-          <DonationAmountFields amounts={donationAmounts} defaultAmount={selectedAmount} currency={selectedCurrency} defaultCustomAmount={customAmount} />
+          <DonationAmountFields amounts={donationAmounts} defaultAmount={selectedAmount} currency={selectedCurrency} defaultCustomAmount={customAmount} locale={locale} />
 
           <label className="grid min-w-0 gap-2 text-sm font-semibold text-ocean-900">
             {labels.name}
