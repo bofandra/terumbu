@@ -1,6 +1,13 @@
 import Link from "next/link";
 
-import { navItems } from "@/lib/data";
+const platformLinks = [
+  { label: "Explore expeditions", href: "/expeditions" },
+  { label: "Support projects", href: "/campaigns" },
+  { label: "Impact map", href: "/impact-map" },
+  { label: "Academy", href: "/academy" },
+  { label: "Destinations", href: "/destinations" },
+  { label: "About Terumbu", href: "/about" }
+];
 
 export function SiteFooter() {
   return (
@@ -18,7 +25,7 @@ export function SiteFooter() {
           <div>
             <h2 className="text-sm font-semibold text-ocean-900">Platform</h2>
             <ul className="mt-4 space-y-3 text-sm text-ocean-900/68">
-              {navItems.map((item) => (
+              {platformLinks.map((item) => (
                 <li key={item.href}>
                   <Link href={item.href} className="hover:text-ocean-900">
                     {item.label}
@@ -30,28 +37,17 @@ export function SiteFooter() {
           <div>
             <h2 className="text-sm font-semibold text-ocean-900">Account</h2>
             <ul className="mt-4 space-y-3 text-sm text-ocean-900/68">
-              <li>
-                <Link href="/dashboard" className="hover:text-ocean-900">
-                  Dashboard
-                </Link>
-              </li>
-              <li>
-                <Link href="/dashboard/impact" className="hover:text-ocean-900">
-                  My Impact
-                </Link>
-              </li>
-              <li>
-                <Link href="/corporate/dashboard" className="hover:text-ocean-900">
-                  Corporate
-                </Link>
-              </li>
+              <li><Link href="/signup" className="hover:text-ocean-900">Join Terumbu</Link></li>
+              <li><Link href="/dashboard" className="hover:text-ocean-900">Dashboard</Link></li>
+              <li><Link href="/dashboard/impact" className="hover:text-ocean-900">My Impact</Link></li>
+              <li><Link href="/corporate/dashboard" className="hover:text-ocean-900">Corporate</Link></li>
             </ul>
           </div>
           <div>
             <h2 className="text-sm font-semibold text-ocean-900">Trust</h2>
             <ul className="mt-4 space-y-3 text-sm text-ocean-900/68">
               <li>Verified partners</li>
-              <li>Activity library</li>
+              <li>Field evidence</li>
               <li>Financial transparency</li>
             </ul>
           </div>
