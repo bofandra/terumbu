@@ -27,6 +27,26 @@ function formatShortDate(value: Date, locale: SupportedLocale) {
   });
 }
 
+function localizeStatus(value: string, locale: SupportedLocale) {
+  if (locale !== "id") {
+    return value.replaceAll("_", " ");
+  }
+
+  const labels: Record<string, string> = {
+    paid: "dibayar",
+    confirmed: "dikonfirmasi",
+    completed: "selesai",
+    pending: "menunggu",
+    failed: "gagal",
+    cancelled: "dibatalkan",
+    refunded: "direfund",
+    published: "dipublikasikan",
+    verified: "terverifikasi"
+  };
+
+  return labels[value] ?? value.replaceAll("_", " ");
+}
+
 function localizeTimelineItem<T extends { category: string; title: string; description: string }>(
   item: T,
   locale: SupportedLocale
@@ -48,7 +68,7 @@ function localizeTimelineItem<T extends { category: string; title: string; descr
     title = title.replace(/^Booked /, "Booking ");
     const parts = description.split(" booking · ");
     if (parts.length === 2) {
-      description = `${parts[0]} · ${parts[1]}`;
+      description = `${localizeStatus(parts[0], locale)} · ${parts[1]}`;
     }
   } else if (item.category === "Expedition") {
     title = title.replace(/^Completed /, "Selesai: ");
@@ -67,7 +87,7 @@ function localizeTimelineItem<T extends { category: string; title: string; descr
     description = description.replace("Verified activity added to your Impact Passport.", "Aktivitas terverifikasi ditambahkan ke Impact Passport-mu.");
   }
 
-  return { ...item, title, description };
+  return { ...item, title, description } as T;
 }
 
 function timelineCategoryLabel(category: string, locale: SupportedLocale) {
@@ -234,7 +254,7 @@ export default async function DashboardImpactPage() {
         {passportUrl ? (
           <PassportShareButtons
             url={passportUrl}
-            title={`${data.profile?.displayName ?? "My"} ${labels.passportTitle}`}
+            title={`${data.profile?.displayName ?? (isIndonesian ? "Saya" : "My")} ${labels.passportTitle}`}
             locale={locale}
           />
         ) : null}
