@@ -19,7 +19,15 @@ function formatMetricValue(metric: TrendMetric, value: number, locale: Supported
   return metric === "contributions" ? formatCurrency(value) : value.toLocaleString(locale === "id" ? "id-ID" : "en-US");
 }
 
-export function DashboardImpactTrend({ trend, locale = "en" }: { trend: TrendPoint[]; locale?: SupportedLocale }) {
+export function DashboardImpactTrend({
+  trend,
+  locale = "en",
+  mode = "impact"
+}: {
+  trend: TrendPoint[];
+  locale?: SupportedLocale;
+  mode?: "impact" | "activity";
+}) {
   const labels =
     locale === "id"
       ? {
@@ -40,8 +48,8 @@ export function DashboardImpactTrend({ trend, locale = "en" }: { trend: TrendPoi
             { value: "1y", label: "1 tahun" },
             { value: "all", label: "Semua" }
           ],
-          eyebrow: "Tren dampak",
-          title: "Perkembangan dari waktu ke waktu",
+          eyebrow: mode === "activity" ? "Tren aktivitas" : "Tren dampak",
+          title: mode === "activity" ? "Aksimu dari waktu ke waktu" : "Perkembangan dari waktu ke waktu",
           metricAria: "Metrik tren dampak",
           trend: "tren",
           latest: "Nilai terbaru",
@@ -67,8 +75,8 @@ export function DashboardImpactTrend({ trend, locale = "en" }: { trend: TrendPoi
             { value: "1y", label: "1 year" },
             { value: "all", label: "All time" }
           ],
-          eyebrow: "Impact trend",
-          title: "Momentum over time",
+          eyebrow: mode === "activity" ? "Activity trend" : "Impact trend",
+          title: mode === "activity" ? "Your actions over time" : "Momentum over time",
           metricAria: "Impact trend metric",
           trend: "trend",
           latest: "Latest value",
