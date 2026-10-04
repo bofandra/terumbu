@@ -27,14 +27,10 @@ function formatShortDate(value: Date, locale: SupportedLocale) {
   });
 }
 
-function localizeTimelineItem(
-  item: {
-    category: string;
-    title: string;
-    description: string;
-  },
+function localizeTimelineItem<T extends { category: string; title: string; description: string }>(
+  item: T,
   locale: SupportedLocale
-) {
+): T {
   if (locale !== "id") {
     return item;
   }
