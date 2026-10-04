@@ -371,6 +371,9 @@ export function DashboardShell({
           </form>
 
           <div className="flex items-center gap-2 sm:gap-3">
+            <Link href="/dashboard/search" aria-label={labels.search} className="flex size-11 items-center justify-center rounded-full hover:bg-ocean-50 xl:hidden">
+              <Search size={19} aria-hidden="true" />
+            </Link>
             <Link href="/dashboard/notifications" aria-label={labels.notifications} className="relative flex size-11 items-center justify-center rounded-full hover:bg-ocean-50">
               <Bell size={19} aria-hidden="true" />
               {notificationBadge ? <span className="absolute right-1.5 top-1.5 min-w-5 rounded-full bg-coral-500 px-1 text-center text-[10px] font-bold leading-5 text-white">{notificationBadge}</span> : null}

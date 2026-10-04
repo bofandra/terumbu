@@ -111,13 +111,19 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
           viewPassport: "Lihat Passport",
           shareProgress: "Bagikan Progres",
           copied: "Tautan disalin",
-          shareText: "Lihat progres konservasi terverifikasi saya di Terumbu.eco.",
+          shareText: "Lihat catatan aktivitas konservasi saya di Terumbu.eco.",
           myImpact: "Dampak Saya",
           welcome: "Selamat datang di Terumbu.eco",
           startJourney: "Mulai perjalanan konservasimu",
-          supportCampaign: "Dukung Kampanye",
-          sponsorImpact: "Sponsor Dampak",
-          startCourse: "Mulai Kursus Gratis",
+          onboardingBody: "Tidak perlu melakukan semuanya sekaligus. Mulai dari belajar dasar, lalu pilih proyek atau pengalaman lapangan yang paling relevan bagimu.",
+          recommendedStart: "Mulai dari sini",
+          step: "Langkah",
+          learnFirst: "Pelajari dasar konservasi",
+          learnFirstBody: "Mulai dari kursus gratis agar kamu memahami konteks proyek dan dampak sebelum berkontribusi.",
+          exploreProject: "Pilih proyek yang ingin didukung",
+          exploreProjectBody: "Bandingkan kampanye berdasarkan lokasi, target, transparansi, dan evidence yang tersedia.",
+          exploreTrip: "Jelajahi pengalaman lapangan",
+          exploreTripBody: "Lihat ekspedisi konservasi, jadwal, persyaratan, dan dampak kampanye yang terhubung.",
           totalDonated: "Total Donasi",
           acrossCampaigns: "kampanye didukung",
           thisMonth: "bulan ini",
@@ -218,13 +224,19 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
           viewPassport: "View Passport",
           shareProgress: "Share Progress",
           copied: "Link copied",
-          shareText: "See my verified conservation progress on Terumbu.eco.",
+          shareText: "See my conservation activity record on Terumbu.eco.",
           myImpact: "My Impact",
           welcome: "Welcome to Terumbu.eco",
           startJourney: "Start your conservation journey",
-          supportCampaign: "Support a Campaign",
-          sponsorImpact: "Sponsor Impact",
-          startCourse: "Start a Free Course",
+          onboardingBody: "You do not need to do everything at once. Start with the basics, then choose the project or field experience that matters most to you.",
+          recommendedStart: "Start here",
+          step: "Step",
+          learnFirst: "Learn the conservation basics",
+          learnFirstBody: "Start with a free course so you understand project context and impact before contributing.",
+          exploreProject: "Choose a project to support",
+          exploreProjectBody: "Compare campaigns by location, goals, transparency, and available evidence.",
+          exploreTrip: "Explore a field experience",
+          exploreTripBody: "Review conservation expeditions, dates, requirements, and their connected campaign outcomes.",
           totalDonated: "Total Donated",
           acrossCampaigns: "campaigns supported",
           thisMonth: "this month",
@@ -336,10 +348,11 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
     shareToken: passportShareToken
   });
   const isNewUser =
-    data.summary.totalDonated === 0 &&
-    data.summary.coralFragments === 0 &&
-    data.summary.fieldActivities === 0 &&
-    data.summary.certificates === 0;
+    data.campaignContributions.length === 0 &&
+    data.bookings.length === 0 &&
+    data.academy.enrollments.length === 0 &&
+    data.coralCards.length === 0 &&
+    data.certificates.length === 0;
   const metricCards = [
     {
       label: labels.totalDonated,
@@ -375,9 +388,9 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
     }
   ];
   const starterActions = [
-    { label: labels.supportCampaign, href: "/campaigns", icon: Heart },
-    { label: labels.sponsorImpact, href: "/campaigns", icon: Waves },
-    { label: labels.startCourse, href: "/academy", icon: BookOpen }
+    { step: 1, label: labels.learnFirst, description: labels.learnFirstBody, href: "/academy", icon: BookOpen, recommended: true },
+    { step: 2, label: labels.exploreProject, description: labels.exploreProjectBody, href: "/campaigns", icon: Heart, recommended: false },
+    { step: 3, label: labels.exploreTrip, description: labels.exploreTripBody, href: "/expeditions", icon: MapPinned, recommended: false }
   ];
   const savedMessage = params?.saved ? labels.saved : null;
   const errorMessage = params?.error ? labels.error : null;
@@ -427,14 +440,38 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
         <section className="mt-6 rounded-2xl border border-dashed border-ocean-900/18 bg-white p-6 shadow-soft">
           <p className="text-sm font-bold uppercase tracking-[0.16em] text-coral-700">{labels.welcome}</p>
           <h2 className="mt-2 text-2xl font-bold tracking-normal text-ocean-900">{labels.startJourney}</h2>
-          <div className="mt-5 grid gap-3 md:grid-cols-3">
+          <p className="mt-2 max-w-3xl text-sm leading-6 text-ocean-900/62">{labels.onboardingBody}</p>
+          <div className="mt-5 grid gap-3 lg:grid-cols-3">
             {starterActions.map((action) => {
               const Icon = action.icon;
 
               return (
-                <Link key={action.label} href={action.href} className="flex min-h-24 items-center gap-3 rounded-xl border border-ocean-900/10 bg-sand-50 p-4 font-bold text-ocean-900 hover:border-coral-500">
-                  <Icon size={22} aria-hidden="true" className="text-coral-500" />
-                  {action.label}
+                <Link
+                  key={action.label}
+                  href={action.href}
+                  className={cn(
+                    "group rounded-xl border p-5 transition",
+                    action.recommended
+                      ? "border-kelp-500/30 bg-kelp-100/45 hover:border-kelp-500"
+                      : "border-ocean-900/10 bg-sand-50 hover:border-coral-500"
+                  )}
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="flex size-10 items-center justify-center rounded-full bg-white text-coral-500">
+                      <Icon size={20} aria-hidden="true" />
+                    </span>
+                    <span className="text-xs font-bold uppercase tracking-[0.12em] text-ocean-900/46">
+                      {labels.step} {action.step}
+                    </span>
+                  </div>
+                  {action.recommended ? (
+                    <span className="mt-4 inline-flex rounded-full bg-kelp-500 px-3 py-1 text-xs font-bold text-white">{labels.recommendedStart}</span>
+                  ) : null}
+                  <h3 className="mt-3 font-bold text-ocean-900 group-hover:text-coral-700">{action.label}</h3>
+                  <p className="mt-2 text-sm leading-6 text-ocean-900/60">{action.description}</p>
+                  <span className="mt-4 inline-flex items-center gap-2 text-sm font-bold text-coral-700">
+                    {action.label} <ArrowRight size={15} aria-hidden="true" />
+                  </span>
                 </Link>
               );
             })}
