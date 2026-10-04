@@ -203,8 +203,7 @@ export default async function DashboardDonationsPage({ searchParams }: Dashboard
                 </Button>
               </form>
             </article>
-            );
-          })}
+          ))}
         </div>
         {data.savedCampaigns.length === 0 ? (
           <p className="mt-4 rounded-xl border border-dashed border-ocean-900/14 bg-sand-50 p-4 text-sm font-semibold text-ocean-900/62">
@@ -311,7 +310,8 @@ export default async function DashboardDonationsPage({ searchParams }: Dashboard
                 </p>
               )}
             </article>
-          ))}
+            );
+          })}
           {data.donationImpactJourneys.length === 0 ? (
             <p className="rounded-xl border border-dashed border-ocean-900/14 p-4 text-sm font-semibold text-ocean-900/62">{labels.journeyEmpty}</p>
           ) : null}
