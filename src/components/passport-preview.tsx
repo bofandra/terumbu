@@ -4,6 +4,7 @@ import Link from "next/link";
 import { MetricValue } from "@/components/ui/metric-value";
 import { ProgressMeter } from "@/components/ui/progress-meter";
 import type { PassportPreviewData } from "@/lib/domain";
+import type { SupportedLocale } from "@/lib/user-preferences";
 
 const iconByLabel = {
   Donations: Leaf,
@@ -14,15 +15,40 @@ const iconByLabel = {
 
 type PassportPreviewProps = {
   passport: PassportPreviewData;
+  locale?: SupportedLocale;
 };
 
-export function PassportPreview({ passport }: PassportPreviewProps) {
+export function PassportPreview({ passport, locale = "en" }: PassportPreviewProps) {
   const progress = Math.min(100, Math.round((passport.xp / passport.xpTarget) * 100));
+  const numberLocale = locale === "id" ? "id-ID" : "en-US";
+  const labels =
+    locale === "id"
+      ? {
+          passport: "Impact Passport",
+          xpToChampion: "XP menuju Ocean Champion",
+          viewPublic: "Lihat passport publik",
+          latest: "Aktivitas terverifikasi terbaru",
+          latestEmpty: "Aktivitas terverifikasi akan muncul setelah donasi, pembelajaran, atau ekspedisi pertama.",
+          statLabels: {
+            Donations: "Donasi",
+            Corals: "Restorasi",
+            "Field activities": "Aktivitas lapangan",
+            Certificates: "Sertifikat"
+          } as Record<string, string>
+        }
+      : {
+          passport: "Impact Passport",
+          xpToChampion: "XP to Ocean Champion",
+          viewPublic: "View public passport",
+          latest: "Latest verified activity",
+          latestEmpty: "Verified activity will appear here after the first donation, lesson, or expedition.",
+          statLabels: {} as Record<string, string>
+        };
 
   return (
     <div className="grid gap-5 lg:grid-cols-[0.75fr_1.25fr]">
       <div className="rounded-2xl bg-ocean-900 p-6 text-white shadow-soft">
-        <p className="text-sm font-bold uppercase tracking-[0.16em] text-coral-300">Impact Passport</p>
+        <p className="text-sm font-bold uppercase tracking-[0.16em] text-coral-300">{labels.passport}</p>
         <div className="mt-8 flex items-center gap-4">
           <div className="flex size-16 items-center justify-center rounded-full bg-coral-500 text-xl font-bold">
             {passport.initials}
@@ -34,10 +60,10 @@ export function PassportPreview({ passport }: PassportPreviewProps) {
         </div>
         <ProgressMeter value={progress} label={`${passport.displayName} XP progress`} className="mt-8 h-3" trackClassName="bg-white/14" />
         <p className="mt-3 text-sm text-white/72">
-          {passport.xp.toLocaleString("id-ID")} / {passport.xpTarget.toLocaleString("id-ID")} XP to Ocean Champion
+          {passport.xp.toLocaleString(numberLocale)} / {passport.xpTarget.toLocaleString(numberLocale)} {labels.xpToChampion}
         </p>
         <Link href={passport.href} className="mt-5 inline-flex text-sm font-bold text-coral-100 hover:text-white">
-          {passport.ctaLabel ?? "View public passport"}
+          {passport.ctaLabel ?? labels.viewPublic}
         </Link>
       </div>
 
@@ -50,15 +76,15 @@ export function PassportPreview({ passport }: PassportPreviewProps) {
               <div key={item.label} className="min-w-0 rounded-xl border border-ocean-900/10 bg-sand-50 p-4">
                 <Icon className="text-coral-500" size={22} aria-hidden="true" />
                 <MetricValue className="mt-4 text-ocean-900">{item.value}</MetricValue>
-                <p className="mt-1 text-sm font-medium text-ocean-900/62">{item.label}</p>
+                <p className="mt-1 text-sm font-medium text-ocean-900/62">{labels.statLabels[item.label] ?? item.label}</p>
               </div>
             );
           })}
         </div>
         <div className="mt-5 rounded-xl border border-dashed border-ocean-900/20 p-4">
-          <p className="font-bold text-ocean-900">{passport.latestActivity?.title ?? "Latest verified activity"}</p>
+          <p className="font-bold text-ocean-900">{passport.latestActivity?.title ?? labels.latest}</p>
           <p className="mt-2 text-sm leading-6 text-ocean-900/68">
-            {passport.latestActivity?.description ?? "Verified activity will appear here after the first donation, lesson, or expedition."}
+            {passport.latestActivity?.description ?? labels.latestEmpty}
           </p>
         </div>
       </div>
