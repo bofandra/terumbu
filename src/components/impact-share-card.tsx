@@ -1,8 +1,6 @@
 "use client";
 
 import { Download, Share2 } from "lucide-react";
-import { useMemo } from "react";
-
 import type { SupportedLocale } from "@/lib/user-preferences";
 
 type ImpactShareCardProps = {
@@ -46,7 +44,7 @@ export function ImpactShareCard({
           restorationUnits: "UNIT RESTORASI SPONSORSHIP",
           fieldParticipation: "PARTISIPASI LAPANGAN",
           certificates: "SERTIFIKAT",
-          tagline: "${escapeXml(labels.tagline)}",
+          tagline: "Travel. Restore. Leave an Impact.",
           disclosure: "Kartu ini merangkum aktivitas user dan catatan Terumbu; outcome kampanye tidak diklaim sebagai atribusi individual.",
           shareable: "Kartu aktivitas yang dapat dibagikan",
           passport: "Impact Passport",
@@ -60,10 +58,10 @@ export function ImpactShareCard({
       : {
           shareText: `See ${displayName}'s conservation activity record on Terumbu.eco — ${coralCount.toLocaleString(numberLocale)} sponsored restoration units, ${fieldActivities.toLocaleString(numberLocale)} field participations, and ${certificates.toLocaleString(numberLocale)} certificates.`,
           verifiedRecord: "TERUMBU.ECO • ACTIVITY RECORD",
-          totalDonated: "${escapeXml(labels.totalDonated)}",
+          totalDonated: "TOTAL DONATED",
           restorationUnits: "SPONSORED RESTORATION UNITS",
           fieldParticipation: "FIELD PARTICIPATION",
-          certificates: "${escapeXml(labels.certificates)}",
+          certificates: "CERTIFICATES",
           tagline: "Travel. Restore. Leave an Impact.",
           disclosure: "This card summarizes user activity and Terumbu records; campaign outcomes are not claimed as individually attributable.",
           shareable: "Shareable activity card",
