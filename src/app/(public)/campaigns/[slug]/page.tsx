@@ -438,14 +438,14 @@ export default async function CampaignDetailPage({
       .map((update) => ({
         src: update.imageUrl!,
         caption: update.title,
-        provenance: `Project update · ${formatDateLabel(update.publishedAt)}`
+        provenance: `${labels.projectUpdate} · ${formatDateLabel(update.publishedAt, locale)}`
       })),
     ...campaign.evidence
       .filter((item) => isImageUrl(item.fileUrl))
       .map((item) => ({
         src: item.fileUrl,
         caption: item.title,
-        provenance: `${item.evidenceType} · ${item.verificationStatus} · ${formatDateLabel(item.createdAt)}`
+        provenance: `${item.evidenceType} · ${item.verificationStatus} · ${formatDateLabel(item.createdAt, locale)}`
       }))
   ];
   const persistedMediaItems = campaign.mediaGallery
@@ -453,7 +453,7 @@ export default async function CampaignDetailPage({
     .map((item) => ({
       src: item.fileUrl,
       caption: item.caption || item.altText || item.title,
-      provenance: item.provenance || `${item.mediaType} · partner managed`
+      provenance: item.provenance || `${item.mediaType} · ${labels.partnerManaged}`
     }));
   const mediaItems = persistedMediaItems.length > 0 ? persistedMediaItems : fallbackMediaItems;
   const updateItems = campaign.updates.map((update) => ({
@@ -461,8 +461,8 @@ export default async function CampaignDetailPage({
     title: update.title,
     body: update.body,
     imageUrl: update.imageUrl,
-    dateLabel: formatDateLabel(update.publishedAt),
-    category: updateCategory(update.title, update.body),
+    dateLabel: formatDateLabel(update.publishedAt, locale),
+    category: updateCategory(update.title, update.body, locale),
     responsibleTeam: campaign.partner,
     href: `/campaigns/${campaign.slug}/updates/${update.id}`
   }));
@@ -475,10 +475,10 @@ export default async function CampaignDetailPage({
     fileUrl: item.fileUrl,
     verificationStatus: item.verificationStatus,
     stageLabel: evidenceStageLabel(evidenceStage(item.metadata, item.evidenceType)),
-    dateLabel: formatDateLabel(item.createdAt),
+    dateLabel: formatDateLabel(item.createdAt, locale),
     locationLabel: item.siteName ? `${item.siteName}, ${item.siteRegion ?? campaign.region}` : campaign.sites[0]?.name ?? campaign.region,
     observation: getMetadataString(item.metadata, "observation") ?? getMetadataString(item.metadata, "summary"),
-    metricLabel: getMetadataString(item.metadata, "metricLabel") ?? (getMetadataNumberOrString(item.metadata, "survivalRate") ? "Survival rate" : null),
+    metricLabel: getMetadataString(item.metadata, "metricLabel") ?? (getMetadataNumberOrString(item.metadata, "survivalRate") ? labels.survivalRate : null),
     metricValue: getMetadataNumberOrString(item.metadata, "metricValue") ?? (getMetadataNumberOrString(item.metadata, "survivalRate") ? `${getMetadataNumberOrString(item.metadata, "survivalRate")}%` : null),
     sourceHref: evidenceSourceHref(campaign.slug, item.evidenceCode) ?? item.fileUrl
   }));
@@ -531,14 +531,14 @@ export default async function CampaignDetailPage({
       title: update.title,
       detail: update.body,
       date: update.publishedAt,
-      label: "Update"
+      label: labels.milestoneUpdate
     })),
     ...campaign.evidence.map((item) => ({
       key: `evidence-${item.title}-${item.createdAt.toISOString()}`,
       title: item.title,
       detail: `${item.evidenceType} / ${item.verificationStatus}`,
       date: item.createdAt,
-      label: "Activity"
+      label: labels.milestoneActivity
     }))
   ]
     .sort((first, second) => (second.date?.getTime() ?? 0) - (first.date?.getTime() ?? 0))
@@ -606,7 +606,7 @@ export default async function CampaignDetailPage({
                   category={campaign.category}
                   region={campaign.region}
                   imageUrl={campaign.imageUrl}
-                  updatedLabel={`${(campaign.updates.length + campaign.evidence.length).toLocaleString("id-ID")} activity records`}
+                  updatedLabel={`${(campaign.updates.length + campaign.evidence.length).toLocaleString(numberLocale)} activity records`}
                   verificationLabel={campaign.verification}
                   mediaItems={mediaItems}
                 />
@@ -720,9 +720,9 @@ export default async function CampaignDetailPage({
                 <p className="text-sm font-bold uppercase tracking-[0.16em] text-kelp-700">Impact at a glance</p>
                 <div className="mt-5 grid gap-4">
                   {[
-                    [Waves, campaign.impactTarget.toLocaleString("id-ID"), `${campaign.impactUnit} target`],
-                    [ClipboardCheck, (campaign.updates.length + campaign.evidence.length).toLocaleString("id-ID"), "Activity records"],
-                    [Users, campaign.donors.toLocaleString("id-ID"), "Paid supporters"]
+                    [Waves, campaign.impactTarget.toLocaleString(numberLocale), `${campaign.impactUnit} target`],
+                    [ClipboardCheck, (campaign.updates.length + campaign.evidence.length).toLocaleString(numberLocale), "Activity records"],
+                    [Users, campaign.donors.toLocaleString(numberLocale), "Paid supporters"]
                   ].map(([Icon, value, label]) => (
                     <div key={label as string} className="flex min-w-0 items-center gap-3 border-b border-ocean-900/10 pb-4 last:border-b-0 last:pb-0">
                       <Icon className="text-coral-500" size={24} aria-hidden="true" />
@@ -810,10 +810,10 @@ export default async function CampaignDetailPage({
                   <div className="mt-5 grid gap-3 text-sm font-semibold text-ocean-900/68">
                     {(campaign.impactTargets.length > 0
                       ? campaign.impactTargets.map((target) => `${target.target.toLocaleString("id-ID", { maximumFractionDigits: 2 })} ${target.unit}`)
-                      : [`${campaign.impactTarget.toLocaleString("id-ID")} ${campaign.impactUnit}`]
+                      : [`${campaign.impactTarget.toLocaleString(numberLocale)} ${campaign.impactUnit}`]
                     ).concat([
-                      `${campaign.sites.length.toLocaleString("id-ID")} linked impact sites`,
-                      `${(campaign.updates.length + campaign.evidence.length).toLocaleString("id-ID")} activity records`
+                      `${campaign.sites.length.toLocaleString(numberLocale)} linked impact sites`,
+                      `${(campaign.updates.length + campaign.evidence.length).toLocaleString(numberLocale)} activity records`
                     ]).map((item) => (
                       <span key={item} className="inline-flex items-center gap-2">
                         <CheckCircle2 className="text-kelp-500" size={17} aria-hidden="true" />
@@ -826,10 +826,10 @@ export default async function CampaignDetailPage({
                   <p className="text-sm font-bold uppercase tracking-[0.16em] text-coral-300">Public verification records</p>
                   <div className="mt-5 grid gap-3 text-sm font-semibold text-white/74">
                     {[
-                      `${verifiedEvidenceCount.toLocaleString("id-ID")} verified activity records`,
-                      `${(campaign.updates.length + campaign.evidence.length).toLocaleString("id-ID")} total activity records`,
-                      `${campaign.sponsoredEcosystems.length.toLocaleString("id-ID")} sponsorship records`,
-                      `${campaign.donorActivity.length.toLocaleString("id-ID")} recent paid donor records`
+                      `${verifiedEvidenceCount.toLocaleString(numberLocale)} verified activity records`,
+                      `${(campaign.updates.length + campaign.evidence.length).toLocaleString(numberLocale)} total activity records`,
+                      `${campaign.sponsoredEcosystems.length.toLocaleString(numberLocale)} sponsorship records`,
+                      `${campaign.donorActivity.length.toLocaleString(numberLocale)} recent paid donor records`
                     ].map((item) => (
                       <span key={item} className="inline-flex items-center gap-2">
                         <ShieldCheck className="text-kelp-100" size={17} aria-hidden="true" />
@@ -871,7 +871,7 @@ export default async function CampaignDetailPage({
                       <div className="mt-5 grid gap-3 text-sm text-white/72">
                         {[
                           ["Location", sponsoredPreview.siteName ?? sponsoredPreview.region ?? campaign.region],
-                          ["Fragments", sponsoredPreview.fragments.toLocaleString("id-ID")],
+                          ["Fragments", sponsoredPreview.fragments.toLocaleString(numberLocale)],
                           ["Planted", formatDateLabel(sponsoredPreview.plantedAt)],
                           ["Status", sponsoredPreview.status],
                           ["Last Update", formatDateLabel(sponsoredPreview.lastUpdatedAt)]
@@ -1011,9 +1011,9 @@ export default async function CampaignDetailPage({
                 <div className="mt-5 grid gap-3 text-sm font-semibold text-ocean-900/68">
                   {[
                     [`Partner verification: ${campaign.verification}`, "Organization verification level"],
-                    [`${(campaign.updates.length + campaign.evidence.length).toLocaleString("id-ID")} activity records`, "Campaign activity submitted"],
-                    [`${verifiedEvidenceCount.toLocaleString("id-ID")} verified activity records`, "Activity approved by admin review"],
-                    [`${campaign.sites.length.toLocaleString("id-ID")} impact sites`, "Campaign-linked field locations"]
+                    [`${(campaign.updates.length + campaign.evidence.length).toLocaleString(numberLocale)} activity records`, "Campaign activity submitted"],
+                    [`${verifiedEvidenceCount.toLocaleString(numberLocale)} verified activity records`, "Activity approved by admin review"],
+                    [`${campaign.sites.length.toLocaleString(numberLocale)} impact sites`, "Campaign-linked field locations"]
                   ].map(([value, label]) => (
                     <span key={label} className="inline-flex items-center gap-2">
                       <ShieldCheck className="text-kelp-500" size={17} aria-hidden="true" />
@@ -1038,8 +1038,8 @@ export default async function CampaignDetailPage({
                 {[
                   [formatCurrency(campaign.traceability.paidFunding, campaign.currency), "Paid funding", "Confirmed supporter contributions"],
                   [formatCurrency(campaign.traceability.recordedSpend, campaign.currency), "Recorded spend", "Partner budget utilization"],
-                  [campaign.traceability.publishedActivities.toLocaleString("id-ID"), "Field activities", "Published campaign activity records"],
-                  [campaign.traceability.verifiedEvidence.toLocaleString("id-ID"), "Verified evidence", "Evidence approved through review"]
+                  [campaign.traceability.publishedActivities.toLocaleString(numberLocale), "Field activities", "Published campaign activity records"],
+                  [campaign.traceability.verifiedEvidence.toLocaleString(numberLocale), "Verified evidence", "Evidence approved through review"]
                 ].map(([value, label, support]) => (
                   <div key={label} className="rounded-xl bg-white p-4 ring-1 ring-ocean-900/10">
                     <MetricValue className="text-ocean-900">{value}</MetricValue>
@@ -1077,7 +1077,7 @@ export default async function CampaignDetailPage({
                   [formatCurrency(campaign.goal, campaign.currency), "Campaign goal"],
                   [formatCurrency(campaign.raised, campaign.currency), "Raised"],
                   [formatCurrency(Math.max(0, campaign.goal - campaign.raised), campaign.currency), "Remaining"],
-                  [campaign.donors.toLocaleString("id-ID"), "Paid supporters"]
+                  [campaign.donors.toLocaleString(numberLocale), "Paid supporters"]
                 ].map(([value, label]) => (
                   <div key={label} className="min-w-0 rounded-xl bg-sand-50 p-4">
                     <MetricValue className="text-ocean-900">{value}</MetricValue>
@@ -1161,7 +1161,7 @@ export default async function CampaignDetailPage({
         <aside className="grid h-fit gap-5 xl:sticky xl:top-40">
           <div className="rounded-2xl border border-ocean-900/10 bg-white p-5 shadow-soft">
             <p className="text-sm font-bold uppercase tracking-[0.16em] text-coral-700">Donor community</p>
-            <p className="mt-3 min-w-0 break-words text-2xl font-bold tracking-normal text-ocean-900 [overflow-wrap:anywhere]">{campaign.donors.toLocaleString("id-ID")} supporters</p>
+            <p className="mt-3 min-w-0 break-words text-2xl font-bold tracking-normal text-ocean-900 [overflow-wrap:anywhere]">{campaign.donors.toLocaleString(numberLocale)} supporters</p>
             <div className="mt-5 grid gap-3 text-sm text-ocean-900/66">
               {campaign.donorActivity.length > 0 ? (
                 campaign.donorActivity.map((activity) => {
@@ -1169,7 +1169,7 @@ export default async function CampaignDetailPage({
                   const label =
                     activity.contributionIntent === "coral"
                       ? activity.sponsoredFragments > 0
-                        ? `${donor} sponsored ${activity.sponsoredFragments.toLocaleString("id-ID")} coral fragments`
+                        ? `${donor} sponsored ${activity.sponsoredFragments.toLocaleString(numberLocale)} coral fragments`
                         : `${donor} sponsored this campaign`
                       : `${donor} supported this campaign`;
 
