@@ -7,6 +7,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { calculateDonationImpact, currencyMinorStep, formatImpactQuantity, minimumDonationAmount, type CampaignImpactLineInput } from "@/lib/impact-calculations";
 import { removeSavedCampaignAction, saveCampaignAction } from "@/lib/retention-actions";
+import type { SupportedLocale } from "@/lib/user-preferences";
 import { formatCurrency } from "@/lib/utils";
 
 type DonationMode = "one-time" | "coral";
@@ -28,6 +29,7 @@ type CampaignDonationCardProps = {
   isAuthenticated?: boolean;
   isSaved?: boolean;
   campaignPath?: string;
+  locale?: SupportedLocale;
 };
 
 function roundedCurrency(value: number, currency: string) {
@@ -45,7 +47,8 @@ function impactText(
   impactUnit: string,
   impactUnitCost: string | number | null | undefined,
   impactTargets: CampaignImpactLineInput[] | null | undefined,
-  carbonKgPerUsd: number | null | undefined
+  carbonKgPerUsd: number | null | undefined,
+  locale: SupportedLocale
 ) {
   const impact = calculateDonationImpact({
     amount,
@@ -68,19 +71,27 @@ function impactText(
           .join(" + ")
       : impact.impactUnitCount > 0
         ? `${formatImpactQuantity(impact.impactUnitCount)} ${impact.impactUnit}`
-        : `this ${impactUnit} target`;
+        : locale === "id" ? `target ${impactUnit} ini` : `this ${impactUnit} target`;
   const hasCarbonLine = activeBreakdown.some((line) => line.impactType === "carbon");
   const carbonLabel = hasCarbonLine
     ? ""
     : impact.carbonKg == null
-      ? "Carbon calculation is pending admin setup."
-      : `${formatImpactQuantity(impact.carbonKg)} kg CO2e calculated.`;
+      ? locale === "id"
+        ? "Perhitungan karbon menunggu konfigurasi admin."
+        : "Carbon calculation is pending admin setup."
+      : locale === "id"
+        ? `${formatImpactQuantity(impact.carbonKg)} kg CO2e terhitung.`
+        : `${formatImpactQuantity(impact.carbonKg)} kg CO2e calculated.`;
 
   if (mode === "coral") {
-    return `${formatCurrency(amount, currency)} sponsors approximately ${impactLabel}.${carbonLabel ? ` ${carbonLabel}` : ""}`;
+    return locale === "id"
+      ? `${formatCurrency(amount, currency)} dapat mensponsori sekitar ${impactLabel}.${carbonLabel ? ` ${carbonLabel}` : ""}`
+      : `${formatCurrency(amount, currency)} sponsors approximately ${impactLabel}.${carbonLabel ? ` ${carbonLabel}` : ""}`;
   }
 
-  return `${formatCurrency(amount, currency)} can support approximately ${impactLabel}.${carbonLabel ? ` ${carbonLabel}` : ""}`;
+  return locale === "id"
+    ? `${formatCurrency(amount, currency)} dapat mendukung sekitar ${impactLabel}.${carbonLabel ? ` ${carbonLabel}` : ""}`
+    : `${formatCurrency(amount, currency)} can support approximately ${impactLabel}.${carbonLabel ? ` ${carbonLabel}` : ""}`;
 }
 
 function checkoutHref(campaignSlug: string, mode: DonationMode, amount: number) {
@@ -140,8 +151,72 @@ export function CampaignDonationCard({
   disabledReason = null,
   isAuthenticated = false,
   isSaved = false,
-  campaignPath = `/campaigns/${campaignSlug}`
+  campaignPath = `/campaigns/${campaignSlug}`,
+  locale = "en"
 }: CampaignDonationCardProps) {
+  const labels =
+    locale === "id"
+      ? {
+          title: "Dukung Kampanye Ini",
+          oneTime: "Sekali donasi",
+          sponsor: "Sponsor dampak",
+          otherAmount: "Nominal lain",
+          otherHelp: "Masukkan nominal berbeda",
+          customAmount: "Nominal khusus",
+          customPlaceholder: "Masukkan nominal lain",
+          preview: "Masukkan nominal untuk melihat perkiraan dampak.",
+          continue: "Lanjut ke Donasi",
+          minimum: "Minimum",
+          saved: "Tersimpan",
+          save: "Simpan Kampanye",
+          removeSavedAria: "Hapus kampanye tersimpan",
+          saveAria: "Simpan kampanye",
+          signInSave: "Masuk untuk Menyimpan",
+          linkCopied: "Tautan Disalin",
+          shared: "Dibagikan",
+          copyFailed: "Gagal Menyalin",
+          share: "Bagikan Kampanye",
+          shareTitle: "Dukung kampanye Terumbu ini",
+          shareText: "Lihat kampanye konservasi ini di Terumbu.eco.",
+          paymentOutside: "Pembayaran dilakukan di luar website",
+          verifiedPartner: "Mitra pelaksana terverifikasi",
+          transparentBudget: "Anggaran proyek transparan",
+          proofVerification: "Bukti pembayaran diverifikasi manual",
+          funded: "terdanai",
+          donateNow: "Donasi Sekarang",
+          closeSelector: "Tutup pilihan donasi"
+        }
+      : {
+          title: "Support This Campaign",
+          oneTime: "One-time",
+          sponsor: "Sponsor impact",
+          otherAmount: "Other amount",
+          otherHelp: "Enter another amount",
+          customAmount: "Custom Amount",
+          customPlaceholder: "Enter another amount",
+          preview: "Enter an amount to preview your impact.",
+          continue: "Continue to Donation",
+          minimum: "Minimum",
+          saved: "Saved",
+          save: "Save Campaign",
+          removeSavedAria: "Remove saved campaign",
+          saveAria: "Save campaign",
+          signInSave: "Sign in to Save",
+          linkCopied: "Link Copied",
+          shared: "Shared",
+          copyFailed: "Copy Failed",
+          share: "Share Campaign",
+          shareTitle: "Support this Terumbu campaign",
+          shareText: "View this conservation campaign on Terumbu.eco.",
+          paymentOutside: "Payment happens outside the website",
+          verifiedPartner: "Verified implementing partner",
+          transparentBudget: "Transparent project budget",
+          proofVerification: "Manual proof verification",
+          funded: "funded",
+          donateNow: "Donate Now",
+          closeSelector: "Close donation selector"
+        };
+
   const minimumAmount = minimumDonationAmount(currency);
   const fallbackAmount = roundedCurrency(Math.max(1, goal) * 0.0005, currency);
   const [mode, setMode] = useState<DonationMode>("one-time");
@@ -165,7 +240,7 @@ export function CampaignDonationCard({
   const impactPackages = useMemo(
     () =>
       [1, 5, 10].map((units) => ({
-        label: `${units.toLocaleString("id-ID")} ${packageUnit}`,
+        label: `${units.toLocaleString(locale === "id" ? "id-ID" : "en-US")} ${packageUnit}`,
         amount: roundedCurrency(costPerUnit * units, currency)
       })),
     [costPerUnit, currency, packageUnit]
@@ -222,8 +297,8 @@ export function CampaignDonationCard({
     };
     const shareUrl = new URL(campaignPath, window.location.origin).toString();
     const shareData = {
-      title: "Support this Terumbu campaign",
-      text: "View this conservation campaign on Terumbu.eco.",
+      title: labels.shareTitle,
+      text: labels.shareText,
       url: shareUrl
     };
 
@@ -258,20 +333,20 @@ export function CampaignDonationCard({
 
   const shareLabel =
     shareStatus === "copied"
-      ? "Link Copied"
+      ? labels.linkCopied
       : shareStatus === "shared"
-        ? "Shared"
+        ? labels.shared
         : shareStatus === "error"
-          ? "Copy Failed"
-          : "Share Campaign";
+          ? labels.copyFailed
+          : labels.share;
 
   const card = (
     <div className="rounded-2xl border border-ocean-900/10 bg-white p-6 shadow-soft">
-      <p className="text-2xl font-bold tracking-normal text-ocean-900">Support This Campaign</p>
+      <p className="text-2xl font-bold tracking-normal text-ocean-900">{labels.title}</p>
       <div className="mt-5 grid grid-cols-2 rounded-xl border border-ocean-900/10 bg-sand-50 p-1 text-xs font-bold sm:text-sm">
         {[
-          ["one-time", "One-time"],
-          ["coral", "Sponsor impact"]
+          ["one-time", labels.oneTime],
+          ["coral", labels.sponsor]
         ].map(([value, label]) => (
           <button
             key={value}
@@ -318,19 +393,19 @@ export function CampaignDonationCard({
             setIsCustomAmountSelected(true);
           }}
         >
-          Other amount
-          <span className="mt-1 block text-xs font-semibold text-ocean-900/56">Enter another amount</span>
+          {labels.otherAmount}
+          <span className="mt-1 block text-xs font-semibold text-ocean-900/56">{labels.otherHelp}</span>
         </button>
       </div>
 
       {isCustomAmountSelected ? (
         <label className="mt-4 grid min-w-0 gap-2 text-sm font-semibold text-ocean-900">
-          Custom Amount
+          {labels.customAmount}
           <input
             inputMode="numeric"
             value={customAmount}
             onChange={(event) => setCustomAmount(event.target.value)}
-            placeholder="Enter another amount"
+            placeholder={labels.customPlaceholder}
             className="w-full min-w-0 rounded-xl border border-ocean-900/14 px-4 py-3 outline-none focus:border-coral-500"
           />
         </label>
@@ -341,8 +416,8 @@ export function CampaignDonationCard({
           <HeartHandshake className="mt-0.5 shrink-0 text-coral-500" size={22} aria-hidden="true" />
           <p className="text-sm leading-6 text-ocean-900/76">
             {hasValidDonationAmount
-              ? impactText(mode, amount, currency, goal, impactTarget, impactUnit, impactUnitCost, impactTargets, carbonKgPerUsd)
-              : "Enter an amount to preview your impact."}
+              ? impactText(mode, amount, currency, goal, impactTarget, impactUnit, impactUnitCost, impactTargets, carbonKgPerUsd, locale)
+              : labels.preview}
           </p>
         </div>
       </div>
@@ -355,7 +430,7 @@ export function CampaignDonationCard({
         <>
           {hasValidDonationAmount ? (
             <Link href={href} className="mt-5 inline-flex min-h-12 w-full items-center justify-center rounded-full bg-coral-500 px-5 py-3 text-sm font-bold text-white shadow-soft transition hover:bg-coral-700">
-              Continue to Donation
+              {labels.continue}
             </Link>
           ) : (
             <button
@@ -363,7 +438,7 @@ export function CampaignDonationCard({
               disabled
               className="mt-5 inline-flex min-h-12 w-full cursor-not-allowed items-center justify-center rounded-full bg-ocean-900/18 px-5 py-3 text-sm font-bold text-ocean-900/50"
             >
-              Minimum {formatCurrency(minimumAmount, currency)}
+              {labels.minimum} {formatCurrency(minimumAmount, currency)}
             </button>
           )}
         </>
@@ -376,11 +451,11 @@ export function CampaignDonationCard({
             <input type="hidden" name="next" value={campaignPath} />
             <button
               type="submit"
-              aria-label={isSaved ? "Remove saved campaign" : "Save campaign"}
+              aria-label={isSaved ? labels.removeSavedAria : labels.saveAria}
               className="inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-full text-ocean-900/68 transition hover:bg-ocean-50 hover:text-ocean-900"
             >
               <Bookmark size={16} aria-hidden="true" fill={isSaved ? "currentColor" : "none"} />
-              {isSaved ? "Saved" : "Save Campaign"}
+              {isSaved ? labels.saved : labels.save}
             </button>
           </form>
         ) : (
@@ -389,7 +464,7 @@ export function CampaignDonationCard({
             className="inline-flex min-h-10 items-center justify-center gap-2 rounded-full text-ocean-900/68 transition hover:bg-ocean-50 hover:text-ocean-900"
           >
             <Bookmark size={16} aria-hidden="true" />
-            Sign in to Save
+            {labels.signInSave}
           </Link>
         )}
         <button
@@ -404,10 +479,10 @@ export function CampaignDonationCard({
 
       <div className="mt-5 grid gap-3 border-t border-ocean-900/10 pt-5 text-sm text-ocean-900/68">
         {[
-          [LockKeyhole, "Payment happens outside the website"],
-          [ShieldCheck, "Verified implementing partner"],
-          [CheckCircle2, "Transparent project budget"],
-          [CheckCircle2, "Manual proof verification"]
+          [LockKeyhole, labels.paymentOutside],
+          [ShieldCheck, labels.verifiedPartner],
+          [CheckCircle2, labels.transparentBudget],
+          [CheckCircle2, labels.proofVerification]
         ].map(([Icon, label]) => (
           <span key={label as string} className="inline-flex items-center gap-2">
             <Icon className="text-kelp-500" size={16} aria-hidden="true" />
@@ -425,17 +500,17 @@ export function CampaignDonationCard({
         <div className="mx-auto flex max-w-7xl items-center justify-between gap-3">
           <div>
             <p className="text-sm font-bold text-ocean-900">{raisedLabel}</p>
-            <p className="text-xs font-semibold text-ocean-900/58">{progress}% funded</p>
+            <p className="text-xs font-semibold text-ocean-900/58">{progress}% {labels.funded}</p>
           </div>
           <Button type="button" tone="donation" disabled={Boolean(disabledReason)} onClick={() => setIsSheetOpen(true)}>
-            Donate Now
+            {labels.donateNow}
           </Button>
         </div>
       </div>
 
       {isSheetOpen ? (
         <div className="fixed inset-0 z-50 bg-ocean-900/54 p-4 lg:hidden">
-          <button className="absolute inset-0 h-full w-full cursor-default" aria-label="Close donation selector" type="button" onClick={() => setIsSheetOpen(false)} />
+          <button className="absolute inset-0 h-full w-full cursor-default" aria-label={labels.closeSelector} type="button" onClick={() => setIsSheetOpen(false)} />
           <div className="absolute inset-x-0 bottom-0 max-h-[88vh] overflow-y-auto rounded-t-3xl bg-sand-50 p-4">
             <div className="mx-auto mb-4 h-1.5 w-16 rounded-full bg-ocean-900/18" />
             {card}
