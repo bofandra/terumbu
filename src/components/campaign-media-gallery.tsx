@@ -4,6 +4,8 @@ import { Camera, CheckCircle2, ImageOff, MapPin, X } from "lucide-react";
 import Image from "next/image";
 import { useState } from "react";
 
+import type { SupportedLocale } from "@/lib/user-preferences";
+
 type CampaignMediaGalleryProps = {
   title: string;
   category: string;
@@ -11,6 +13,7 @@ type CampaignMediaGalleryProps = {
   imageUrl: string | null;
   updatedLabel?: string;
   verificationLabel?: string;
+  locale?: SupportedLocale;
   mediaItems?: Array<{
     src: string;
     caption: string;
@@ -23,13 +26,42 @@ export function CampaignMediaGallery({
   category,
   region,
   imageUrl,
-  updatedLabel = "Updated recently",
-  verificationLabel = "Verified campaign",
+  updatedLabel,
+  verificationLabel,
+  locale = "en",
   mediaItems = []
 }: CampaignMediaGalleryProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const labels =
+    locale === "id"
+      ? {
+          updated: "Diperbarui baru-baru ini",
+          verified: "Kampanye terverifikasi",
+          mainImage: "gambar utama kampanye",
+          media: "Media kampanye",
+          empty: `Gambar kampanye dan aktivitas akan muncul setelah mitra mempublikasikan media untuk ${category} di ${region}.`,
+          restorationSite: "lokasi restorasi kampanye",
+          viewAll: "Lihat semua",
+          images: "gambar",
+          gallery: "Galeri kampanye",
+          close: "Tutup galeri"
+        }
+      : {
+          updated: "Updated recently",
+          verified: "Verified campaign",
+          mainImage: "main campaign image",
+          media: "Campaign media",
+          empty: `Campaign and activity images will appear here after partners publish media for ${category} in ${region}.`,
+          restorationSite: "campaign restoration site",
+          viewAll: "View all",
+          images: "images",
+          gallery: "Campaign gallery",
+          close: "Close gallery"
+        };
+  const resolvedUpdatedLabel = updatedLabel ?? labels.updated;
+  const resolvedVerificationLabel = verificationLabel ?? labels.verified;
   const galleryItems = [
-    ...(imageUrl ? [{ src: imageUrl, caption: `${title} main campaign image`, provenance: "Campaign media" }] : []),
+    ...(imageUrl ? [{ src: imageUrl, caption: `${title} ${labels.mainImage}`, provenance: labels.media }] : []),
     ...mediaItems
   ].filter((item, index, items) => items.findIndex((candidate) => candidate.src === item.src) === index);
   const galleryImages = galleryItems.slice(0, 3);
@@ -40,7 +72,7 @@ export function CampaignMediaGallery({
         <ImageOff className="mx-auto text-coral-500" size={30} aria-hidden="true" />
         <h2 className="mt-4 text-xl font-bold tracking-normal text-ocean-900">{title}</h2>
         <p className="mt-2 text-sm leading-6 text-ocean-900/62">
-          Campaign and activity images will appear here after partners publish media for {category} in {region}.
+          {labels.empty}
         </p>
       </div>
     );
@@ -51,7 +83,7 @@ export function CampaignMediaGallery({
       <div className="relative min-h-[360px] overflow-hidden rounded-2xl bg-ocean-900 shadow-soft">
         <Image
           src={galleryImages[0].src}
-          alt={`${title} campaign restoration site`}
+          alt={`${title} ${labels.restorationSite}`}
           fill
           priority
           unoptimized
@@ -61,14 +93,14 @@ export function CampaignMediaGallery({
         <div className="absolute inset-0 bg-gradient-to-t from-ocean-900/76 via-transparent to-ocean-900/18" />
         <span className="absolute left-5 top-5 inline-flex items-center gap-2 rounded-full bg-kelp-500 px-4 py-2 text-sm font-bold text-white shadow-soft">
           <CheckCircle2 size={17} aria-hidden="true" />
-          {verificationLabel}
+          {resolvedVerificationLabel}
         </span>
         <div className="absolute bottom-5 left-5 right-5 flex flex-wrap items-center justify-between gap-3 text-sm font-bold text-white">
           <span className="inline-flex items-center gap-2">
             <MapPin size={17} aria-hidden="true" />
             {region}
           </span>
-          <span>{updatedLabel}</span>
+          <span>{resolvedUpdatedLabel}</span>
         </div>
       </div>
 
@@ -94,7 +126,7 @@ export function CampaignMediaGallery({
             className="inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl bg-white px-4 py-2 text-sm font-bold text-ocean-900 shadow-soft ring-1 ring-ocean-900/10 transition hover:ring-coral-500"
           >
             <Camera size={17} aria-hidden="true" />
-            View all {galleryItems.length} images
+            {labels.viewAll} {galleryItems.length} {labels.images}
           </button>
         </div>
       ) : null}
@@ -104,10 +136,10 @@ export function CampaignMediaGallery({
           <div className="mx-auto max-w-6xl rounded-2xl bg-white p-5 shadow-soft">
             <div className="flex items-start justify-between gap-4">
               <div>
-                <p className="text-sm font-bold uppercase tracking-[0.16em] text-coral-700">Campaign gallery</p>
+                <p className="text-sm font-bold uppercase tracking-[0.16em] text-coral-700">{labels.gallery}</p>
                 <h2 className="mt-2 text-2xl font-bold tracking-normal text-ocean-900">{title}</h2>
               </div>
-              <button type="button" className="flex size-10 items-center justify-center rounded-full hover:bg-ocean-50" aria-label="Close gallery" onClick={() => setIsOpen(false)}>
+              <button type="button" className="flex size-10 items-center justify-center rounded-full hover:bg-ocean-50" aria-label={labels.close} onClick={() => setIsOpen(false)}>
                 <X size={20} aria-hidden="true" />
               </button>
             </div>
