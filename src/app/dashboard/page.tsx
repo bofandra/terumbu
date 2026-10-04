@@ -29,6 +29,7 @@ import { ProgressMeter } from "@/components/ui/progress-meter";
 import { requireUser } from "@/lib/auth";
 import { publicPassportShareUrl } from "@/lib/passport-sharing";
 import { getDashboardData } from "@/lib/queries";
+import { getPreferredLocale } from "@/lib/user-preferences";
 import {
   markAllNotificationsReadAction,
   markNotificationReadAction
@@ -44,12 +45,20 @@ export const dynamic = "force-dynamic";
 const fallbackHeroImage =
   "https://images.unsplash.com/photo-1582967788606-a171c1080cb0?auto=format&fit=crop&w=1600&q=80";
 
-function formatDate(value: Date | null | undefined) {
-  return value ? value.toLocaleDateString("id-ID", { dateStyle: "medium" }) : "Pending";
+function formatDate(value: Date | null | undefined, locale: "en" | "id") {
+  return value
+    ? value.toLocaleDateString(locale === "id" ? "id-ID" : "en-US", { dateStyle: "medium" })
+    : locale === "id"
+      ? "Menunggu"
+      : "Pending";
 }
 
-function formatShortDate(value: Date | null | undefined) {
-  return value ? value.toLocaleDateString("id-ID", { day: "2-digit", month: "short", year: "numeric" }) : "Pending";
+function formatShortDate(value: Date | null | undefined, locale: "en" | "id") {
+  return value
+    ? value.toLocaleDateString(locale === "id" ? "id-ID" : "en-US", { day: "2-digit", month: "short", year: "numeric" })
+    : locale === "id"
+      ? "Menunggu"
+      : "Pending";
 }
 
 function levelTarget(heroLevel: number) {
@@ -87,7 +96,228 @@ type DashboardPageProps = {
 export default async function DashboardPage({ searchParams }: DashboardPageProps) {
   const params = await searchParams;
   const user = await requireUser("/dashboard");
-  const data = await getDashboardData(user.id);
+  const [data, locale] = await Promise.all([
+    getDashboardData(user.id),
+    getPreferredLocale()
+  ]);
+  const isIndonesian = locale === "id";
+  const numberLocale = isIndonesian ? "id-ID" : "en-US";
+  const labels =
+    isIndonesian
+      ? {
+          greeting: "Halo",
+          title: "Dampakmu saat ini",
+          subtitle: "Lihat kontribusi, aktivitas lapangan, pembelajaran, dan ekspedisi yang membentuk perjalanan konservasimu.",
+          viewPassport: "Lihat Passport",
+          shareProgress: "Bagikan Progres",
+          copied: "Tautan disalin",
+          shareText: "Lihat progres konservasi terverifikasi saya di Terumbu.eco.",
+          myImpact: "Dampak Saya",
+          welcome: "Selamat datang di Terumbu.eco",
+          startJourney: "Mulai perjalanan konservasimu",
+          supportCampaign: "Dukung Kampanye",
+          sponsorImpact: "Sponsor Dampak",
+          startCourse: "Mulai Kursus Gratis",
+          totalDonated: "Total Donasi",
+          acrossCampaigns: "kampanye didukung",
+          thisMonth: "bulan ini",
+          noContributionMonth: "Belum ada kontribusi bulan ini",
+          restorationSponsored: "Unit Restorasi Disponsori",
+          sponsoredRecords: "catatan sponsorship",
+          seeImpactRecords: "Lihat catatan di Dampak Saya",
+          noSponsored: "Belum ada sponsorship",
+          expeditionsCompleted: "Ekspedisi Selesai",
+          upcomingTrip: "trip mendatang",
+          next: "Berikutnya",
+          noBooking: "Belum ada booking",
+          coursesCompleted: "Kursus Selesai",
+          certificatesEarned: "sertifikat diperoleh",
+          keepLearning: "Lanjut belajar",
+          recommendationsReady: "Rekomendasi kursus tersedia",
+          impactLevel: "Perjalanan & level",
+          levelProgress: "Progres level Ocean Hero",
+          xpToChampion: "XP menuju Ocean Champion",
+          exclusiveBadge: "Badge eksklusif",
+          earlyTrip: "Akses awal trip",
+          partnerRewards: "Benefit mitra",
+          latestUpdate: "Pembaruan dampak terbaru",
+          noFieldActivity: "Belum ada aktivitas lapangan baru",
+          new: "Baru",
+          status: "Status",
+          viewFullUpdate: "Lihat pembaruan lengkap",
+          noUpdateBody: "Kami akan memberi tahu saat tim proyek mempublikasikan laporan monitoring berikutnya.",
+          notifications: "Notifikasi",
+          whatChanged: "Perubahan terbaru",
+          markAllRead: "Tandai semua dibaca",
+          unread: "Belum dibaca",
+          markRead: "Tandai dibaca",
+          notificationsEmpty: "Notifikasi akan muncul setelah ada aktivitas akun, donasi, ekspedisi, atau sertifikat.",
+          upcomingExpedition: "Ekspedisi mendatang",
+          noUpcoming: "Belum ada ekspedisi mendatang",
+          manage: "Kelola",
+          participant: "peserta",
+          startsIn: "Mulai dalam",
+          days: "hari",
+          done: "Selesai",
+          pending: "Menunggu",
+          manageBooking: "Kelola Booking",
+          preparationGuide: "Panduan Persiapan",
+          tripEmpty: "Jelajahi trip konservasi yang terhubung dengan proyek yang kamu dukung.",
+          findExpedition: "Cari ekspedisi",
+          contributions: "Kontribusiku",
+          across: "di",
+          campaigns: "kampanye",
+          viewAllDonations: "Lihat semua donasi",
+          campaign: "Kampanye",
+          myContribution: "Kontribusiku",
+          latestUpdateColumn: "Pembaruan terbaru",
+          receipt: "Kuitansi",
+          monthly: "per bulan",
+          newUpdate: "Pembaruan baru",
+          noNewUpdate: "Belum ada pembaruan",
+          contributionEmpty: "Riwayat kontribusi kampanye akan muncul setelah donasi berbayar pertamamu.",
+          academyProgress: "Progres Academy",
+          startLearning: "Mulai belajar",
+          goAcademy: "Buka Academy",
+          module: "Modul",
+          of: "dari",
+          complete: "selesai",
+          minRemaining: "menit tersisa",
+          continueLearning: "Lanjut Belajar",
+          startCourseAction: "Mulai kursus",
+          savedCourses: "Kursus tersimpan",
+          viewAll: "Lihat semua",
+          completed: "Selesai",
+          certificates: "Sertifikat",
+          inProgress: "Berjalan",
+          impactTimeline: "Timeline dampak",
+          recentActivity: "Aktivitas terbaru",
+          viewAllActivity: "Lihat semua aktivitas",
+          achievements: "Pencapaian",
+          earned: "Diperoleh",
+          completeWord: "selesai",
+          continueImpact: "Lanjutkan dampakmu",
+          monthlyReport: "Laporan bulanan",
+          generated: "Dibuat",
+          contributionsReport: "Kontribusi",
+          fieldActivity: "Aktivitas lapangan",
+          coralsMonitored: "Restorasi dimonitor",
+          generatedAt: "Dibuat",
+          downloadPdf: "Unduh PDF",
+          profilePassport: "Profil dan passport",
+          profileCompleteness: "Kelengkapan profil",
+          missing: "Kurang",
+          profileReady: "Profil siap",
+          saved: "Dashboard diperbarui.",
+          error: "Aksi dashboard tidak dapat diselesaikan."
+        }
+      : {
+          greeting: "Welcome back",
+          title: "Your impact now",
+          subtitle: "See the contributions, field activity, learning, and expeditions shaping your conservation journey.",
+          viewPassport: "View Passport",
+          shareProgress: "Share Progress",
+          copied: "Link copied",
+          shareText: "See my verified conservation progress on Terumbu.eco.",
+          myImpact: "My Impact",
+          welcome: "Welcome to Terumbu.eco",
+          startJourney: "Start your conservation journey",
+          supportCampaign: "Support a Campaign",
+          sponsorImpact: "Sponsor Impact",
+          startCourse: "Start a Free Course",
+          totalDonated: "Total Donated",
+          acrossCampaigns: "campaigns supported",
+          thisMonth: "this month",
+          noContributionMonth: "No contribution this month",
+          restorationSponsored: "Restoration Units Sponsored",
+          sponsoredRecords: "sponsorship records",
+          seeImpactRecords: "See records in My Impact",
+          noSponsored: "No sponsorship yet",
+          expeditionsCompleted: "Expeditions Completed",
+          upcomingTrip: "upcoming trip",
+          next: "Next",
+          noBooking: "No booking yet",
+          coursesCompleted: "Courses Completed",
+          certificatesEarned: "certificates earned",
+          keepLearning: "Keep learning",
+          recommendationsReady: "Course recommendations ready",
+          impactLevel: "Journey & level",
+          levelProgress: "Ocean Hero level progress",
+          xpToChampion: "XP to reach Ocean Champion",
+          exclusiveBadge: "Exclusive badge",
+          earlyTrip: "Early trip access",
+          partnerRewards: "Partner rewards",
+          latestUpdate: "Latest impact update",
+          noFieldActivity: "No new field activity yet",
+          new: "New",
+          status: "Status",
+          viewFullUpdate: "View full update",
+          noUpdateBody: "We will notify you when a project team publishes the next monitoring report.",
+          notifications: "Notifications",
+          whatChanged: "What changed",
+          markAllRead: "Mark all read",
+          unread: "Unread",
+          markRead: "Mark read",
+          notificationsEmpty: "Notifications will appear here after account, donation, expedition, or certificate activity.",
+          upcomingExpedition: "Upcoming expedition",
+          noUpcoming: "No upcoming expedition",
+          manage: "Manage",
+          participant: "participant",
+          startsIn: "Starts in",
+          days: "days",
+          done: "Done",
+          pending: "Pending",
+          manageBooking: "Manage Booking",
+          preparationGuide: "Preparation Guide",
+          tripEmpty: "Explore conservation trips connected to projects you support.",
+          findExpedition: "Find an expedition",
+          contributions: "My contributions",
+          across: "across",
+          campaigns: "campaigns",
+          viewAllDonations: "View all donations",
+          campaign: "Campaign",
+          myContribution: "My contribution",
+          latestUpdateColumn: "Latest update",
+          receipt: "Receipt",
+          monthly: "monthly",
+          newUpdate: "New update",
+          noNewUpdate: "No new update",
+          contributionEmpty: "Your campaign contribution rows will appear here after your first paid donation.",
+          academyProgress: "Academy progress",
+          startLearning: "Start learning",
+          goAcademy: "Go to Academy",
+          module: "Module",
+          of: "of",
+          complete: "complete",
+          minRemaining: "min remaining",
+          continueLearning: "Continue Learning",
+          startCourseAction: "Start course",
+          savedCourses: "Saved courses",
+          viewAll: "View all",
+          completed: "Completed",
+          certificates: "Certificates",
+          inProgress: "In progress",
+          impactTimeline: "Impact timeline",
+          recentActivity: "Recent activity",
+          viewAllActivity: "View all activity",
+          achievements: "Achievements",
+          earned: "Earned",
+          completeWord: "complete",
+          continueImpact: "Continue your impact",
+          monthlyReport: "Monthly report",
+          generated: "Generated",
+          contributionsReport: "Contributions",
+          fieldActivity: "Field activity",
+          coralsMonitored: "Corals monitored",
+          generatedAt: "Generated",
+          downloadPdf: "Download PDF",
+          profilePassport: "Profile and passport",
+          profileCompleteness: "Profile completeness",
+          missing: "Missing",
+          profileReady: "Profile ready",
+          saved: "Dashboard updated.",
+          error: "We could not complete that dashboard action."
+        };
   const displayName = data.profile?.displayName ?? user.displayName ?? user.name ?? "Ocean Hero";
   const firstName = displayName.split(" ")[0] ?? "Ocean";
   const heroLevel = data.profile?.heroLevel ?? user.heroLevel ?? 1;
@@ -112,45 +342,45 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
     data.summary.certificates === 0;
   const metricCards = [
     {
-      label: "Total Donated",
+      label: labels.totalDonated,
       value: formatCurrency(data.summary.totalDonated),
-      support: `Across ${data.summary.campaignsSupported.toLocaleString("id-ID")} campaigns`,
-      delta: data.monthlyReport.contributions > 0 ? `${formatCurrency(data.monthlyReport.contributions)} this month` : "No contribution this month",
+      support: `${data.summary.campaignsSupported.toLocaleString(numberLocale)} ${labels.acrossCampaigns}`,
+      delta: data.monthlyReport.contributions > 0 ? `${formatCurrency(data.monthlyReport.contributions)} ${labels.thisMonth}` : labels.noContributionMonth,
       icon: Heart,
       tone: "bg-ocean-700 text-white"
     },
     {
-      label: "Coral Fragments Sponsored",
-      value: data.summary.coralFragments.toLocaleString("id-ID"),
-      support: `${data.coralCards.length.toLocaleString("id-ID")} sponsored ecosystem record${data.coralCards.length === 1 ? "" : "s"}`,
-      delta: data.coralCards.length > 0 ? "See records in My Impact" : "No sponsored ecosystem yet",
+      label: labels.restorationSponsored,
+      value: data.summary.coralFragments.toLocaleString(numberLocale),
+      support: `${data.coralCards.length.toLocaleString(numberLocale)} ${labels.sponsoredRecords}`,
+      delta: data.coralCards.length > 0 ? labels.seeImpactRecords : labels.noSponsored,
       icon: Waves,
       tone: "bg-kelp-500 text-white"
     },
     {
-      label: "Expeditions Completed",
-      value: data.summary.fieldActivities.toLocaleString("id-ID"),
-      support: `${data.summary.upcomingTrips.toLocaleString("id-ID")} upcoming trip`,
-      delta: data.upcomingExpedition ? `Next: ${formatShortDate(data.upcomingExpedition.startsAt)}` : "No booking yet",
+      label: labels.expeditionsCompleted,
+      value: data.summary.fieldActivities.toLocaleString(numberLocale),
+      support: `${data.summary.upcomingTrips.toLocaleString(numberLocale)} ${labels.upcomingTrip}`,
+      delta: data.upcomingExpedition ? `${labels.next}: ${formatShortDate(data.upcomingExpedition.startsAt, locale)}` : labels.noBooking,
       icon: MapPinned,
       tone: "bg-credential-700 text-white"
     },
     {
-      label: "Courses Completed",
-      value: data.summary.completedCourses.toLocaleString("id-ID"),
-      support: `${data.summary.certificates.toLocaleString("id-ID")} certificates earned`,
-      delta: data.academy.continueLearning ? "Keep learning" : "Course recommendations ready",
+      label: labels.coursesCompleted,
+      value: data.summary.completedCourses.toLocaleString(numberLocale),
+      support: `${data.summary.certificates.toLocaleString(numberLocale)} ${labels.certificatesEarned}`,
+      delta: data.academy.continueLearning ? labels.keepLearning : labels.recommendationsReady,
       icon: BookOpen,
       tone: "bg-coral-500 text-white"
     }
   ];
   const starterActions = [
-    { label: "Support a Campaign", href: "/campaigns", icon: Heart },
-    { label: "Sponsor a Coral", href: "/campaigns", icon: Waves },
-    { label: "Start a Free Course", href: "/academy", icon: BookOpen }
+    { label: labels.supportCampaign, href: "/campaigns", icon: Heart },
+    { label: labels.sponsorImpact, href: "/campaigns", icon: Waves },
+    { label: labels.startCourse, href: "/academy", icon: BookOpen }
   ];
-  const savedMessage = params?.saved ? "Dashboard updated." : null;
-  const errorMessage = params?.error ? "We could not complete that dashboard action." : null;
+  const savedMessage = params?.saved ? labels.saved : null;
+  const errorMessage = params?.error ? labels.error : null;
 
   return (
     <main className="mx-auto max-w-[1440px] px-4 py-6 sm:px-6 lg:px-8">
