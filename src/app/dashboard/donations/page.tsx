@@ -152,115 +152,142 @@ export default async function DashboardDonationsPage({ searchParams }: Dashboard
   return (
     <main className="mx-auto max-w-5xl px-4 py-8 sm:px-6 lg:px-8">
       <header>
-        <p className="text-sm font-bold uppercase tracking-[0.16em] text-coral-700">Donations</p>
-        <h1 className="mt-2 text-3xl font-bold tracking-normal text-ocean-900">Contributions and manual payment verification</h1>
+        <p className="text-sm font-bold uppercase tracking-[0.16em] text-coral-700">{labels.donations}</p>
+        <h1 className="mt-2 text-3xl font-bold tracking-normal text-ocean-900">{labels.title}</h1>
         <p className="mt-3 max-w-2xl text-sm leading-6 text-ocean-900/62">
-          Payments are made outside the website. Receipts and impact records appear after an admin verifies your uploaded payment proof.
+          {labels.subtitle}
         </p>
       </header>
 
       {params?.saved ? (
-        <p className="mt-5 rounded-2xl border border-kelp-500/20 bg-kelp-100 px-4 py-3 text-sm font-bold text-kelp-700">Donation request saved.</p>
+        <p className="mt-5 rounded-2xl border border-kelp-500/20 bg-kelp-100 px-4 py-3 text-sm font-bold text-kelp-700">{labels.savedMessage}</p>
       ) : null}
       {params?.error ? (
-        <p className="mt-5 rounded-2xl border border-coral-500/20 bg-coral-100 px-4 py-3 text-sm font-bold text-coral-700">{donationError}</p>
+        <p className="mt-5 rounded-2xl border border-coral-500/20 bg-coral-100 px-4 py-3 text-sm font-bold text-coral-700">{labels.donationError}</p>
       ) : null}
 
       <section className="mt-6 rounded-2xl border border-ocean-900/10 bg-white p-5 shadow-soft">
         <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
           <div>
-            <h2 className="text-2xl font-bold tracking-normal text-ocean-900">Donate to a project</h2>
-            <p className="mt-1 text-sm font-semibold text-ocean-900/58">Choose one of the latest verified campaigns and continue to donation.</p>
+            <h2 className="text-2xl font-bold tracking-normal text-ocean-900">{labels.exploreTitle}</h2>
+            <p className="mt-1 text-sm font-semibold text-ocean-900/58">{labels.exploreBody}</p>
           </div>
           <ButtonLink href="/campaigns" tone="secondary">
-            Browse all
+            {labels.browseAll}
           </ButtonLink>
         </div>
         <div className="mt-5 grid gap-5 lg:grid-cols-3">
           {highlightedCampaigns.map((campaign) => (
-            <CampaignCard key={campaign.slug} campaign={campaign} />
+            <CampaignCard key={campaign.slug} campaign={campaign} locale={locale} />
           ))}
         </div>
       </section>
 
       <section className="mt-6 rounded-2xl border border-ocean-900/10 bg-white p-5 shadow-soft">
         <div>
-          <h2 className="text-2xl font-bold tracking-normal text-ocean-900">Saved campaigns</h2>
+          <h2 className="text-2xl font-bold tracking-normal text-ocean-900">{labels.savedCampaigns}</h2>
           <p className="mt-1 text-sm font-semibold text-ocean-900/58">
-            {data.savedCampaigns.length.toLocaleString("id-ID")} saved campaign{data.savedCampaigns.length === 1 ? "" : "s"}.
+            {data.savedCampaigns.length.toLocaleString(numberLocale)} {labels.savedCampaign}{data.savedCampaigns.length === 1 ? "" : isIndonesian ? "" : "s"}.
           </p>
         </div>
         <div className="mt-5 grid gap-5 md:grid-cols-2">
           {data.savedCampaigns.map((campaign) => (
             <article key={campaign.slug} className="grid gap-3">
-              <CampaignCard campaign={campaign} />
+              <CampaignCard campaign={campaign} locale={locale} />
               <form action={removeSavedCampaignAction}>
                 <input type="hidden" name="campaignSlug" value={campaign.slug} />
                 <input type="hidden" name="next" value="/dashboard/donations" />
                 <Button type="submit" tone="light" className="w-full">
                   <BookmarkX size={16} aria-hidden="true" />
-                  Remove saved campaign
+                  {labels.removeSaved}
                 </Button>
               </form>
             </article>
-          ))}
+            );
+          })}
         </div>
         {data.savedCampaigns.length === 0 ? (
           <p className="mt-4 rounded-xl border border-dashed border-ocean-900/14 bg-sand-50 p-4 text-sm font-semibold text-ocean-900/62">
-            Save campaigns from a campaign detail page and they will appear here, even after a campaign expires.
+            {labels.savedEmpty}
           </p>
         ) : null}
       </section>
 
       <section className="mt-6 rounded-2xl border border-ocean-900/10 bg-white p-5 shadow-soft">
-        <p className="text-sm font-bold uppercase tracking-[0.16em] text-coral-700">My impact journey</p>
-        <h2 className="mt-2 text-2xl font-bold tracking-normal text-ocean-900">From contribution to field outcome</h2>
+        <p className="text-sm font-bold uppercase tracking-[0.16em] text-coral-700">{labels.journeyEyebrow}</p>
+        <h2 className="mt-2 text-2xl font-bold tracking-normal text-ocean-900">{labels.journeyTitle}</h2>
         <p className="mt-2 max-w-3xl text-sm leading-6 text-ocean-900/62">
-          Pooled donations follow the campaign&apos;s verified outcomes without claiming that your exact funds paid for one specific activity. Individual sponsorships can follow the sponsored record created for your contribution.
+          {labels.journeyBody}
         </p>
         <div className="mt-6 grid gap-5">
-          {data.donationImpactJourneys.map((journey) => (
+          {data.donationImpactJourneys.map((journey) => {
+            const currentStage = journey.verifiedOutcome ? 4 : journey.latestUpdate ? 3 : journey.paymentStatus === "paid" ? 2 : 1;
+            const journeySteps = [labels.stepContribution, labels.stepEstimate, labels.stepField, labels.stepVerified];
+
+            return (
             <article key={journey.donationId} className="rounded-2xl border border-ocean-900/10 bg-sand-50 p-5">
               <div className="flex flex-col justify-between gap-3 md:flex-row md:items-start">
                 <div>
                   <p className="text-xs font-bold uppercase tracking-[0.14em] text-kelp-700">
-                    {journey.journeyType === "individual_sponsorship" ? "Individual sponsorship" : "Pooled campaign contribution"}
+                    {journey.journeyType === "individual_sponsorship" ? labels.sponsorship : labels.pooled}
                   </p>
                   <Link href={`/campaigns/${journey.campaignSlug}`} className="mt-2 block text-xl font-bold text-ocean-900 hover:text-coral-700">
                     {journey.campaignTitle}
                   </Link>
-                  <p className="mt-1 text-sm text-ocean-900/56">{journey.donatedAt.toLocaleDateString("id-ID", { dateStyle: "medium" })}</p>
+                  <p className="mt-1 text-sm text-ocean-900/56">{journey.donatedAt.toLocaleDateString(dateLocale, { dateStyle: "medium" })}</p>
                 </div>
                 <p className="font-bold text-ocean-900">{formatCurrency(journey.amount, journey.currency)}</p>
               </div>
 
-              <div className="mt-5 grid gap-3 md:grid-cols-4">
+              <div className="mt-5 rounded-xl border border-ocean-900/10 bg-white p-4">
+                <div className="flex items-center justify-between gap-3">
+                  <p className="text-xs font-bold uppercase tracking-[0.12em] text-ocean-900/52">{labels.currentStage}</p>
+                  <span className="rounded-full bg-kelp-100 px-3 py-1 text-xs font-bold text-kelp-700">{currentStage}/4</span>
+                </div>
+                <div className="mt-4 grid grid-cols-4 gap-2" aria-label={`${labels.currentStage}: ${currentStage} / 4`}>
+                  {journeySteps.map((step, index) => {
+                    const stage = index + 1;
+                    const completed = stage <= currentStage;
+
+                    return (
+                      <div key={step} className="min-w-0 text-center">
+                        <div className={`mx-auto flex size-8 items-center justify-center rounded-full text-xs font-bold ${completed ? "bg-kelp-500 text-white" : "bg-ocean-50 text-ocean-900/42"}`}>
+                          {completed ? <CheckCircle2 size={15} aria-hidden="true" /> : stage}
+                        </div>
+                        <p className={`mt-2 text-[11px] font-bold leading-4 ${completed ? "text-ocean-900" : "text-ocean-900/46"}`}>{step}</p>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="mt-4 grid gap-3 md:grid-cols-4">
                 <div className="rounded-xl bg-white p-4 ring-1 ring-ocean-900/10">
                   <CheckCircle2 size={18} className="text-kelp-600" aria-hidden="true" />
-                  <p className="mt-2 text-sm font-bold text-ocean-900">Contribution</p>
-                  <p className="mt-1 text-xs leading-5 text-ocean-900/58">{journey.paymentStatus === "paid" ? "Payment verified" : `Payment ${journey.paymentStatus}`}</p>
+                  <p className="mt-2 text-sm font-bold text-ocean-900">{labels.stepContribution}</p>
+                  <p className="mt-1 text-xs leading-5 text-ocean-900/58">{journey.paymentStatus === "paid" ? labels.paymentVerified : `${labels.payment} ${journey.paymentStatus}`}</p>
                 </div>
                 <div className="rounded-xl bg-white p-4 ring-1 ring-ocean-900/10">
                   <Sprout size={18} className="text-kelp-600" aria-hidden="true" />
-                  <p className="mt-2 text-sm font-bold text-ocean-900">Estimated impact</p>
-                  <p className="mt-1 text-xs leading-5 text-ocean-900/58">{journey.estimatedImpact ?? "Impact estimate will appear when the campaign model supports it."}</p>
+                  <p className="mt-2 text-sm font-bold text-ocean-900">{labels.stepEstimate}</p>
+                  <p className="mt-1 text-xs leading-5 text-ocean-900/58">{journey.estimatedImpact ?? labels.estimatePending}</p>
                 </div>
                 <div className="rounded-xl bg-white p-4 ring-1 ring-ocean-900/10">
                   <MapPin size={18} className="text-kelp-600" aria-hidden="true" />
-                  <p className="mt-2 text-sm font-bold text-ocean-900">Field activity</p>
+                  <p className="mt-2 text-sm font-bold text-ocean-900">{labels.stepField}</p>
                   {journey.latestUpdate ? (
                     <Link href={journey.latestUpdate.href} className="mt-1 block text-xs font-semibold leading-5 text-coral-700 hover:text-coral-500">{journey.latestUpdate.title}</Link>
                   ) : (
-                    <p className="mt-1 text-xs leading-5 text-ocean-900/58">Waiting for partner field activity.</p>
+                    <p className="mt-1 text-xs leading-5 text-ocean-900/58">{labels.waitingField}</p>
                   )}
                 </div>
                 <div className="rounded-xl bg-white p-4 ring-1 ring-ocean-900/10">
                   <ShieldCheck size={18} className="text-kelp-600" aria-hidden="true" />
-                  <p className="mt-2 text-sm font-bold text-ocean-900">Verified outcome</p>
+                  <p className="mt-2 text-sm font-bold text-ocean-900">{labels.stepVerified}</p>
                   {journey.verifiedOutcome ? (
                     <Link href={journey.verifiedOutcome.href} className="mt-1 block text-xs font-semibold leading-5 text-coral-700 hover:text-coral-500">{journey.verifiedOutcome.title}</Link>
                   ) : (
-                    <p className="mt-1 text-xs leading-5 text-ocean-900/58">No verified campaign evidence yet.</p>
+                    <p className="mt-1 text-xs leading-5 text-ocean-900/58">{labels.noVerified}</p>
                   )}
                 </div>
               </div>
@@ -271,28 +298,28 @@ export default async function DashboardDonationsPage({ searchParams }: Dashboard
                     <p className="font-bold text-ocean-900">{journey.sponsorship.label}</p>
                     <span className="rounded-full bg-kelp-100 px-3 py-1 text-xs font-bold text-kelp-700">{journey.sponsorship.status}</span>
                   </div>
-                  <p className="mt-1 text-xs font-semibold text-ocean-900/52">Sponsorship ID: {journey.sponsorship.code}</p>
+                  <p className="mt-1 text-xs font-semibold text-ocean-900/52">{labels.sponsorshipId}: {journey.sponsorship.code}</p>
                   <div className="mt-3 flex flex-wrap gap-4 text-sm text-ocean-900/64">
-                    {journey.sponsorship.fragments > 0 ? <span>{journey.sponsorship.fragments.toLocaleString("id-ID")} fragments</span> : null}
-                    {journey.sponsorship.plantedAt ? <span>Planted {journey.sponsorship.plantedAt.toLocaleDateString("id-ID", { dateStyle: "medium" })}</span> : null}
-                    {journey.sponsorship.survivalRate > 0 ? <span>{journey.sponsorship.survivalRate}% survival rate</span> : null}
+                    {journey.sponsorship.fragments > 0 ? <span>{journey.sponsorship.fragments.toLocaleString(numberLocale)} {labels.fragments}</span> : null}
+                    {journey.sponsorship.plantedAt ? <span>{labels.planted} {journey.sponsorship.plantedAt.toLocaleDateString(dateLocale, { dateStyle: "medium" })}</span> : null}
+                    {journey.sponsorship.survivalRate > 0 ? <span>{journey.sponsorship.survivalRate}% {labels.survivalRate}</span> : null}
                   </div>
                 </div>
               ) : (
                 <p className="mt-4 rounded-xl bg-ocean-50 p-3 text-xs leading-5 text-ocean-900/58">
-                  Campaign-level outcome: this contribution participates in pooled funding. Field evidence is linked to the campaign, not assigned to this donation as an exclusive outcome.
+                  {labels.pooledNote}
                 </p>
               )}
             </article>
           ))}
           {data.donationImpactJourneys.length === 0 ? (
-            <p className="rounded-xl border border-dashed border-ocean-900/14 p-4 text-sm font-semibold text-ocean-900/62">Your impact journey starts after your first donation.</p>
+            <p className="rounded-xl border border-dashed border-ocean-900/14 p-4 text-sm font-semibold text-ocean-900/62">{labels.journeyEmpty}</p>
           ) : null}
         </div>
       </section>
 
       <section className="mt-6 grid gap-4">
-        <h2 className="text-2xl font-bold tracking-normal text-ocean-900">Donation history</h2>
+        <h2 className="text-2xl font-bold tracking-normal text-ocean-900">{labels.history}</h2>
         {data.donations.map((donation) => (
           <article key={donation.id} className="rounded-2xl border border-ocean-900/10 bg-white p-5 shadow-soft">
             <div className="flex flex-col justify-between gap-4 md:flex-row md:items-start">
@@ -303,7 +330,7 @@ export default async function DashboardDonationsPage({ searchParams }: Dashboard
                 <div>
                   <h2 className="text-xl font-bold tracking-normal text-ocean-900">{donation.campaignTitle}</h2>
                   <p className="mt-1 text-sm text-ocean-900/58">
-                    {donation.createdAt.toLocaleDateString("id-ID", { dateStyle: "medium" })}
+                    {donation.createdAt.toLocaleDateString(dateLocale, { dateStyle: "medium" })}
                   </p>
                   {donation.receiptNumber ? (
                     <Link href={`/dashboard/donations/${donation.id}/receipt`} download className="mt-3 inline-flex items-center gap-1 text-sm font-bold text-coral-700 hover:text-coral-500">
@@ -312,7 +339,7 @@ export default async function DashboardDonationsPage({ searchParams }: Dashboard
                     </Link>
                   ) : (
                     <p className="mt-3 text-sm text-ocean-900/62">
-                      {donation.status === "pending" ? "Receipt pending admin verification" : "Receipt pending"}
+                      {donation.status === "pending" ? labels.receiptPendingVerify : labels.receiptPending}
                     </p>
                   )}
                 </div>
@@ -323,15 +350,15 @@ export default async function DashboardDonationsPage({ searchParams }: Dashboard
                 {donation.status === "paid" ? (
                   <details className="relative mt-3">
                     <summary className="inline-flex min-h-9 cursor-pointer list-none items-center rounded-full border border-coral-500/30 px-3 text-xs font-bold text-coral-700 hover:border-coral-500">
-                      Request refund
+                      {labels.refund}
                     </summary>
                     <form action={requestDonationRefundAction} className="absolute right-0 z-20 mt-2 grid w-72 gap-2 rounded-xl border border-ocean-900/10 bg-white p-3 text-left shadow-soft">
                       <input type="hidden" name="donationId" value={donation.id} />
                       <label className="grid gap-1 text-xs font-bold text-ocean-900">
-                        Reason
-                        <textarea name="reason" className="min-h-20 rounded-lg border border-ocean-900/14 px-3 py-2 text-sm font-semibold" placeholder="Tell us why you need a refund." required />
+                        {labels.reason}
+                        <textarea name="reason" className="min-h-20 rounded-lg border border-ocean-900/14 px-3 py-2 text-sm font-semibold" placeholder={labels.refundPlaceholder} required />
                       </label>
-                      <Button type="submit" tone="secondary">Submit refund request</Button>
+                      <Button type="submit" tone="secondary">{labels.submitRefund}</Button>
                     </form>
                   </details>
                 ) : null}
@@ -342,33 +369,33 @@ export default async function DashboardDonationsPage({ searchParams }: Dashboard
         {data.donations.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-ocean-900/14 bg-white p-6 shadow-soft">
             <Heart size={30} aria-hidden="true" className="text-coral-500" />
-            <p className="mt-4 text-xl font-bold text-ocean-900">No donation records yet.</p>
+            <p className="mt-4 text-xl font-bold text-ocean-900">{labels.noDonation}</p>
             <p className="mt-2 max-w-xl text-sm leading-6 text-ocean-900/62">
-              Support a verified project and upload your payment proof to start your first manual verification record.
+              {labels.noDonationBody}
             </p>
             <Link href="/campaigns" className="mt-4 inline-flex text-sm font-bold text-coral-700 hover:text-coral-500">
-              Browse verified campaigns
+              {labels.browseVerified}
             </Link>
           </div>
         ) : null}
       </section>
 
       <section className="mt-6 rounded-2xl border border-ocean-900/10 bg-white p-5 shadow-soft">
-        <p className="text-sm font-bold uppercase tracking-[0.16em] text-coral-700">Payment verification</p>
-        <h2 className="mt-2 text-2xl font-bold tracking-normal text-ocean-900">Recent verification activity</h2>
+        <p className="text-sm font-bold uppercase tracking-[0.16em] text-coral-700">{labels.verification}</p>
+        <h2 className="mt-2 text-2xl font-bold tracking-normal text-ocean-900">{labels.verificationTitle}</h2>
         <div className="mt-5 grid gap-3">
           {verificationOperations.map((operation) => (
             <div key={operation.id} className="flex flex-col justify-between gap-2 rounded-xl border border-ocean-900/10 bg-sand-50 p-4 sm:flex-row sm:items-center">
               <div>
                 <p className="font-bold capitalize text-ocean-900">{operation.operationType.replaceAll("_", " ")}</p>
                 <p className="mt-1 text-xs font-semibold text-ocean-900/56">
-                  {operation.operationCode} · {operation.createdAt.toLocaleDateString("id-ID", { dateStyle: "medium" })}
+                  {operation.operationCode} · {operation.createdAt.toLocaleDateString(dateLocale, { dateStyle: "medium" })}
                 </p>
               </div>
               <span className={`w-fit rounded-full px-3 py-1 text-xs font-bold ${statusClass(operation.status)}`}>{operation.status}</span>
             </div>
           ))}
-          {verificationOperations.length === 0 ? <p className="rounded-xl border border-dashed border-ocean-900/14 p-4 text-sm font-semibold text-ocean-900/62">No payment verification activity yet.</p> : null}
+          {verificationOperations.length === 0 ? <p className="rounded-xl border border-dashed border-ocean-900/14 p-4 text-sm font-semibold text-ocean-900/62">{labels.noVerification}</p> : null}
         </div>
       </section>
     </main>
