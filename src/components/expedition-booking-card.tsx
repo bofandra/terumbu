@@ -131,6 +131,81 @@ export function ExpeditionBookingCard({
   academyEligibility = "not_required",
   requiredAcademyCourse = null
 }: ExpeditionBookingCardProps) {
+  const isIndonesian = locale.toLowerCase().startsWith("id");
+  const labels =
+    isIndonesian
+      ? {
+          from: "Mulai dari",
+          perPerson: "per orang",
+          estimated: "estimasi",
+          included: "Pajak dan kontribusi konservasi sudah termasuk.",
+          departure: "1. Keberangkatan",
+          seatsLeft: "tempat tersisa",
+          placesLeft: "tempat tersisa",
+          full: "Penuh",
+          noDepartures: "Belum ada keberangkatan publik yang dijadwalkan.",
+          similar: "Lihat ekspedisi serupa",
+          participants: "2. Peserta",
+          adults: "Dewasa",
+          adultHint: "16+ tahun",
+          students: "Pelajar",
+          studentHint: "Kartu pelajar diperlukan",
+          children: "Anak",
+          childHint: "8–15 tahun",
+          capacity: "Keberangkatan ini hanya memiliki",
+          capacitySuffix: "tempat tersedia.",
+          participantWord: "peserta",
+          equipment: "Sewa peralatan",
+          fees: "Biaya platform dan pembayaran",
+          total: "Total",
+          learningRequired: "Kursus diwajibkan",
+          completeCourse: "Selesaikan kursus",
+          selectDate: "Pilih Tanggal Tersedia",
+          reserve: "Reservasi / Daftar",
+          ask: "Ajukan Pertanyaan",
+          removeSavedAria: "Hapus ekspedisi tersimpan",
+          saveAria: "Simpan ekspedisi",
+          saved: "Tersimpan",
+          save: "Simpan",
+          signInSave: "Masuk untuk Menyimpan",
+          contributionPrefix: "per peserta mendukung program konservasi terkait. Tempat hanya ditahan selama proses checkout."
+        }
+      : {
+          from: "From",
+          perPerson: "per person",
+          estimated: "estimated",
+          included: "Taxes and conservation contribution included.",
+          departure: "1. Departure",
+          seatsLeft: "seats left",
+          placesLeft: "places left",
+          full: "Full",
+          noDepartures: "No public departures are currently scheduled.",
+          similar: "View similar expeditions",
+          participants: "2. Participants",
+          adults: "Adults",
+          adultHint: "16+ years",
+          students: "Students",
+          studentHint: "Student ID required",
+          children: "Children",
+          childHint: "8-15 years",
+          capacity: "This departure only has",
+          capacitySuffix: "seats available.",
+          participantWord: "participants",
+          equipment: "Equipment rental",
+          fees: "Platform and payment fees",
+          total: "Total",
+          learningRequired: "Learning required",
+          completeCourse: "Complete course first",
+          selectDate: "Select Available Date",
+          reserve: "Reserve / Apply",
+          ask: "Ask a Question",
+          removeSavedAria: "Remove saved expedition",
+          saveAria: "Save expedition",
+          saved: "Saved",
+          save: "Save",
+          signInSave: "Sign in to Save",
+          contributionPrefix: "per participant supports the associated conservation program. Seats are held during checkout only."
+        };
   const firstBookableDeparture = departures.find((departure) => departure.status === "open" && departure.availableSeats > 0) ?? departures[0] ?? null;
   const [selectedDepartureId, setSelectedDepartureId] = useState(firstBookableDeparture?.id ?? null);
   const [adults, setAdults] = useState(1);
@@ -155,21 +230,21 @@ export function ExpeditionBookingCard({
       )}
     >
       <div className="border-b border-ocean-900/10 pb-4">
-        <p className="text-sm font-semibold text-ocean-900/58">From</p>
+        <p className="text-sm font-semibold text-ocean-900/58">{labels.from}</p>
         <MetricValue className="mt-1 text-2xl text-ocean-900 sm:text-3xl">
           {formatCurrency(price, currency)}
-          <span className="block text-base font-semibold text-ocean-900/58">per person</span>
+          <span className="block text-base font-semibold text-ocean-900/58">{labels.perPerson}</span>
         </MetricValue>
-        {secondaryPrice ? <p className="mt-1 text-sm font-bold text-kelp-700">{secondaryPrice} estimated</p> : null}
-        <p className="mt-2 text-sm font-semibold text-ocean-900/58">Taxes and conservation contribution included.</p>
+        {secondaryPrice ? <p className="mt-1 text-sm font-bold text-kelp-700">{secondaryPrice} {labels.estimated}</p> : null}
+        <p className="mt-2 text-sm font-semibold text-ocean-900/58">{labels.included}</p>
       </div>
 
       <div className="mt-5">
         <div className="flex items-center justify-between gap-3">
-          <p className="font-bold text-ocean-900">1. Departure</p>
+          <p className="font-bold text-ocean-900">{labels.departure}</p>
           {selectedDeparture ? (
             <span className={cn("rounded-full px-2.5 py-1 text-xs font-bold", selectedDeparture.availableSeats <= 4 ? "bg-coral-100 text-coral-700" : "bg-kelp-100 text-kelp-700")}>
-              {selectedDeparture.availableSeats} seats left
+              {selectedDeparture.availableSeats} {labels.seatsLeft}
             </span>
           ) : null}
         </div>
@@ -200,7 +275,7 @@ export function ExpeditionBookingCard({
                   <span className="min-w-0">
                     <span className="block font-bold text-ocean-900">{departure.dateRangeLabel}</span>
                     <span className={cn("mt-1 block text-xs font-bold", departure.availableSeats <= 4 ? "text-coral-700" : "text-kelp-700")}>
-                      {departure.availableSeats > 0 ? `${departure.availableSeats} places left · ${departure.statusLabel}` : "Full"}
+                      {departure.availableSeats > 0 ? `${departure.availableSeats} ${labels.placesLeft} · ${departure.statusLabel}` : labels.full}
                     </span>
                   </span>
                   <span className="min-w-0 break-words font-bold text-ocean-900 [overflow-wrap:anywhere] sm:text-right">{formatCurrency(price, currency)}</span>
@@ -210,23 +285,23 @@ export function ExpeditionBookingCard({
             })
           ) : (
             <div className="rounded-xl border border-dashed border-ocean-900/16 bg-sand-50 p-4">
-              <p className="font-bold text-ocean-900">No public departures are currently scheduled.</p>
-              <Link href="/expeditions" className="mt-2 inline-flex text-sm font-bold text-coral-700">View similar expeditions</Link>
+              <p className="font-bold text-ocean-900">{labels.noDepartures}</p>
+              <Link href="/expeditions" className="mt-2 inline-flex text-sm font-bold text-coral-700">{labels.similar}</Link>
             </div>
           )}
         </div>
       </div>
 
       <div className="mt-5">
-        <p className="font-bold text-ocean-900">2. Participants</p>
+        <p className="font-bold text-ocean-900">{labels.participants}</p>
         <div className="mt-3 grid gap-3">
-          <Stepper label="Adults" hint="16+ years" value={adults} onChange={setAdults} disabled={bookingDisabled && !selectedDeparture} decreaseDisabled={participants <= 1 && adults > 0} />
-          <Stepper label="Students" hint="Student ID required" value={students} onChange={setStudents} disabled={bookingDisabled && !selectedDeparture} decreaseDisabled={participants <= 1 && students > 0} />
-          <Stepper label="Children" hint="8-15 years" value={children} onChange={setChildren} disabled={bookingDisabled && !selectedDeparture} decreaseDisabled={participants <= 1 && children > 0} />
+          <Stepper label={labels.adults} hint={labels.adultHint} value={adults} onChange={setAdults} disabled={bookingDisabled && !selectedDeparture} decreaseDisabled={participants <= 1 && adults > 0} />
+          <Stepper label={labels.students} hint={labels.studentHint} value={students} onChange={setStudents} disabled={bookingDisabled && !selectedDeparture} decreaseDisabled={participants <= 1 && students > 0} />
+          <Stepper label={labels.children} hint={labels.childHint} value={children} onChange={setChildren} disabled={bookingDisabled && !selectedDeparture} decreaseDisabled={participants <= 1 && children > 0} />
         </div>
         {!participantsWithinCapacity && selectedDeparture ? (
           <p className="mt-3 rounded-xl bg-coral-100 px-3 py-2 text-xs font-bold text-coral-700">
-            This departure only has {selectedDeparture.availableSeats} seats available.
+            {labels.capacity} {selectedDeparture.availableSeats} {labels.capacitySuffix}
           </p>
         ) : null}
       </div>
@@ -234,19 +309,19 @@ export function ExpeditionBookingCard({
       <div className="mt-5 border-t border-ocean-900/10 pt-4">
         <div className="grid gap-2 text-sm">
           <div className="flex justify-between gap-3">
-            <span className="min-w-0 text-ocean-900/62">{participants} participants x {formatCurrency(price, currency)}</span>
+            <span className="min-w-0 text-ocean-900/62">{participants} {labels.participantWord} x {formatCurrency(price, currency)}</span>
             <span className="min-w-0 break-words text-right font-bold text-ocean-900 [overflow-wrap:anywhere]">{formatCurrency(price * participants, currency)}</span>
           </div>
           <div className="flex justify-between gap-3">
-            <span className="text-ocean-900/62">Equipment rental</span>
+            <span className="text-ocean-900/62">{labels.equipment}</span>
             <span className="min-w-0 break-words text-right font-bold text-ocean-900 [overflow-wrap:anywhere]">{formatCurrency(equipmentRental, currency)}</span>
           </div>
           <div className="flex justify-between gap-3">
-            <span className="text-ocean-900/62">Platform and payment fees</span>
+            <span className="text-ocean-900/62">{labels.fees}</span>
             <span className="min-w-0 break-words text-right font-bold text-ocean-900 [overflow-wrap:anywhere]">{formatCurrency(platformFee, currency)}</span>
           </div>
           <div className="flex justify-between gap-3 border-t border-ocean-900/10 pt-3 text-lg">
-            <span className="font-bold text-ocean-900">Total</span>
+            <span className="font-bold text-ocean-900">{labels.total}</span>
             <span className="min-w-0 break-words text-right font-bold text-ocean-900 [overflow-wrap:anywhere]">
               {formatCurrency(total, currency)}
               {secondaryTotal ? <span className="mt-0.5 block text-xs font-bold text-kelp-700">{secondaryTotal}</span> : null}
@@ -256,14 +331,14 @@ export function ExpeditionBookingCard({
       </div>
 
       {academyEligibility === "learning_required" && requiredAcademyCourse ? (
-        <div className="mt-5 rounded-xl border border-sand-400/40 bg-sand-50 p-4"><p className="text-xs font-bold uppercase tracking-[0.12em] text-ocean-900/54">Learning required</p><p className="mt-1 font-bold text-ocean-900">{requiredAcademyCourse.title}</p><Link href={"/academy/courses/" + requiredAcademyCourse.slug} className="mt-3 flex min-h-12 w-full items-center justify-center rounded-full bg-kelp-500 px-5 text-sm font-bold text-white shadow-soft hover:bg-kelp-700">Complete course first</Link></div>
+        <div className="mt-5 rounded-xl border border-sand-400/40 bg-sand-50 p-4"><p className="text-xs font-bold uppercase tracking-[0.12em] text-ocean-900/54">{labels.learningRequired}</p><p className="mt-1 font-bold text-ocean-900">{requiredAcademyCourse.title}</p><Link href={"/academy/courses/" + requiredAcademyCourse.slug} className="mt-3 flex min-h-12 w-full items-center justify-center rounded-full bg-kelp-500 px-5 text-sm font-bold text-white shadow-soft hover:bg-kelp-700">{labels.completeCourse}</Link></div>
       ) : bookingDisabled ? (
         <button type="button" disabled className="mt-5 flex min-h-12 w-full items-center justify-center rounded-full bg-ocean-900/20 px-5 text-sm font-bold text-white">
-          Select Available Date
+          {labels.selectDate}
         </button>
       ) : (
         <Link href={href} className="mt-5 flex min-h-12 w-full items-center justify-center rounded-full bg-kelp-500 px-5 text-sm font-bold text-white shadow-soft hover:bg-kelp-700">
-          Reserve / Apply
+          {labels.reserve}
         </Link>
       )}
       <div className="mt-3 grid grid-cols-2 gap-2">
@@ -273,7 +348,7 @@ export function ExpeditionBookingCard({
           onClick={onQuestionClick}
         >
           <HelpCircle size={16} aria-hidden="true" />
-          Ask a Question
+          {labels.ask}
         </Link>
         {isAuthenticated ? (
           <form action={isSaved ? removeSavedExpeditionAction : saveExpeditionAction}>
@@ -281,11 +356,11 @@ export function ExpeditionBookingCard({
             <input type="hidden" name="next" value={expeditionPath ?? `/expeditions/${slug}`} />
             <button
               type="submit"
-              aria-label={isSaved ? "Remove saved expedition" : "Save expedition"}
+              aria-label={isSaved ? labels.removeSavedAria : labels.saveAria}
               className="flex min-h-10 w-full items-center justify-center gap-2 rounded-full text-sm font-bold text-coral-700 hover:bg-coral-100"
             >
               <Heart size={16} aria-hidden="true" fill={isSaved ? "currentColor" : "none"} />
-              {isSaved ? "Saved" : "Save"}
+              {isSaved ? labels.saved : labels.save}
             </button>
           </form>
         ) : (
@@ -294,7 +369,7 @@ export function ExpeditionBookingCard({
             className="flex min-h-10 items-center justify-center gap-2 rounded-full text-sm font-bold text-coral-700 hover:bg-coral-100"
           >
             <Heart size={16} aria-hidden="true" />
-            Sign in to Save
+            {labels.signInSave}
           </Link>
         )}
       </div>
@@ -308,7 +383,7 @@ export function ExpeditionBookingCard({
         ))}
       </div>
       <p className="mt-4 border-t border-ocean-900/10 pt-4 text-xs font-semibold leading-5 text-ocean-900/62">
-        {formatCurrency(conservationContribution, currency)} per participant supports the associated conservation program. Seats are held during checkout only.
+        {formatCurrency(conservationContribution, currency)} {labels.contributionPrefix}
       </p>
     </aside>
   );

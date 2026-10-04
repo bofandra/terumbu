@@ -8,6 +8,7 @@ type ExpeditionShareButtonsProps = {
   title: string;
   referralCode?: string | null;
   compact?: boolean;
+  locale?: "en" | "id";
 };
 
 function buildShareUrl(slug: string, referralCode?: string | null) {
@@ -24,7 +25,25 @@ function buildShareUrl(slug: string, referralCode?: string | null) {
   return url.toString();
 }
 
-export function ExpeditionShareButtons({ slug, title, referralCode, compact = false }: ExpeditionShareButtonsProps) {
+export function ExpeditionShareButtons({ slug, title, referralCode, compact = false, locale = "en" }: ExpeditionShareButtonsProps) {
+  const labels =
+    locale === "id"
+      ? {
+          shareTrip: "Bagikan trip",
+          copied: "Disalin",
+          copyInvite: "Salin tautan undangan",
+          referral: "Pelacakan referral aktif",
+          shareText: `Ikut saya di ${title} bersama Terumbu.eco — perjalanan dengan tujuan konservasi terverifikasi.`,
+          whatsappText: `Ikut saya di ${title} bersama Terumbu.eco`
+        }
+      : {
+          shareTrip: "Share trip",
+          copied: "Copied",
+          copyInvite: "Copy invite link",
+          referral: "Referral tracking on",
+          shareText: `Join me on ${title} with Terumbu.eco — travel with a verified conservation purpose.`,
+          whatsappText: `Join me on ${title} with Terumbu.eco`
+        };
   const [copied, setCopied] = useState(false);
   const relativeUrl = useMemo(
     () => `/expeditions/${slug}${referralCode ? `?ref=${encodeURIComponent(referralCode)}` : ""}`,
@@ -33,7 +52,7 @@ export function ExpeditionShareButtons({ slug, title, referralCode, compact = fa
 
   async function share() {
     const url = buildShareUrl(slug, referralCode);
-    const text = `Join me on ${title} with Terumbu.eco — travel with a verified conservation purpose.`;
+    const text = labels.shareText;
 
     if (navigator.share) {
       await navigator.share({ title, text, url });
@@ -59,7 +78,7 @@ export function ExpeditionShareButtons({ slug, title, referralCode, compact = fa
 
   function whatsappHref() {
     const url = buildShareUrl(slug, referralCode);
-    const text = encodeURIComponent(`Join me on ${title} with Terumbu.eco — ${url}`);
+    const text = encodeURIComponent(`${labels.whatsappText} — ${url}`);
 
     return `https://wa.me/?text=${text}`;
   }
@@ -72,7 +91,7 @@ export function ExpeditionShareButtons({ slug, title, referralCode, compact = fa
     <div className="flex flex-wrap gap-2">
       <button type="button" onClick={() => void share()} className={buttonClass}>
         <Share2 size={16} aria-hidden="true" />
-        Share trip
+        {labels.shareTrip}
       </button>
       <a href={whatsappHref()} target="_blank" rel="noreferrer" className={buttonClass}>
         <MessageCircle size={16} aria-hidden="true" />
@@ -80,12 +99,12 @@ export function ExpeditionShareButtons({ slug, title, referralCode, compact = fa
       </a>
       <button type="button" onClick={() => void copyLink()} className={buttonClass}>
         {copied ? <Send size={16} aria-hidden="true" /> : <Copy size={16} aria-hidden="true" />}
-        {copied ? "Copied" : "Copy invite link"}
+        {copied ? labels.copied : labels.copyInvite}
       </button>
       {referralCode ? (
         <span className="inline-flex min-h-10 items-center gap-2 rounded-full bg-kelp-100 px-3 text-xs font-bold text-kelp-700" title={relativeUrl}>
           <Users size={14} aria-hidden="true" />
-          Referral tracking on
+          {labels.referral}
         </span>
       ) : null}
     </div>

@@ -18,6 +18,7 @@ type ExpeditionSectionTabsProps = {
   expeditionPath: string;
   primaryActionHref: string;
   primaryActionLabel: string;
+  locale?: "en" | "id";
 };
 
 export function ExpeditionSectionTabs({
@@ -27,9 +28,24 @@ export function ExpeditionSectionTabs({
   isSaved,
   expeditionPath,
   primaryActionHref,
-  primaryActionLabel
+  primaryActionLabel,
+  locale = "en"
 }: ExpeditionSectionTabsProps) {
   const [activeId, setActiveId] = useState(tabs[0]?.id ?? "");
+  const labels =
+    locale === "id"
+      ? {
+          nav: "Bagian ekspedisi",
+          removeSaved: "Hapus ekspedisi tersimpan",
+          save: "Simpan ekspedisi",
+          signInSave: "Masuk untuk menyimpan ekspedisi"
+        }
+      : {
+          nav: "Expedition sections",
+          removeSaved: "Remove saved expedition",
+          save: "Save expedition",
+          signInSave: "Sign in to save expedition"
+        };
 
   function handlePrimaryActionClick(event: MouseEvent<HTMLAnchorElement>) {
     if (!primaryActionHref.startsWith("#")) {
@@ -78,7 +94,7 @@ export function ExpeditionSectionTabs({
   }, [tabs]);
 
   return (
-    <nav className="sticky top-20 z-30 border-y border-ocean-900/10 bg-white/96 backdrop-blur" aria-label="Expedition sections">
+    <nav className="sticky top-20 z-30 border-y border-ocean-900/10 bg-white/96 backdrop-blur" aria-label={labels.nav}>
       <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
         <div className="flex min-h-20 min-w-0 items-center gap-7 overflow-x-auto">
           {tabs.map((tab) => (
@@ -101,7 +117,7 @@ export function ExpeditionSectionTabs({
               <input type="hidden" name="next" value={expeditionPath} />
               <button
                 type="submit"
-                aria-label={isSaved ? "Remove saved expedition" : "Save expedition"}
+                aria-label={isSaved ? labels.removeSaved : labels.save}
                 className="flex size-14 items-center justify-center rounded-full border border-ocean-900/14 bg-white text-sky-700 shadow-sm transition hover:border-sky-600 hover:text-sky-800"
               >
                 <Heart size={24} aria-hidden="true" fill={isSaved ? "currentColor" : "none"} />
@@ -110,7 +126,7 @@ export function ExpeditionSectionTabs({
           ) : (
             <Link
               href={`/login?next=${encodeURIComponent(expeditionPath)}`}
-              aria-label="Sign in to save expedition"
+              aria-label={labels.signInSave}
               className="flex size-14 items-center justify-center rounded-full border border-ocean-900/14 bg-white text-sky-700 shadow-sm transition hover:border-sky-600 hover:text-sky-800"
             >
               <Heart size={24} aria-hidden="true" />
