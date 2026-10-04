@@ -938,7 +938,7 @@ export default async function CampaignDetailPage({
                 {labels.impactMapBody}
               </SectionHeading>
               <div className="mt-8">
-                <ImpactMapPreview sites={campaign.sites} />
+                <ImpactMapPreview sites={campaign.sites} locale={locale} />
               </div>
             </div>
           </section>
