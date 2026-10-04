@@ -20,30 +20,37 @@ import { usePathname, useSearchParams } from "next/navigation";
 import { useEffect, useState, type MouseEvent, type ReactNode } from "react";
 
 import { logoutAction } from "@/lib/auth-actions";
+import type { SupportedLocale } from "@/lib/user-preferences";
 import { cn } from "@/lib/utils";
 
-const dashboardNav = [
-  { label: "Overview", href: "/dashboard", icon: Home },
-  { label: "My Impact", href: "/dashboard/impact", icon: MapPinned },
-  { label: "Donations", href: "/dashboard/donations", icon: Heart },
-  { label: "Expeditions", href: "/dashboard/expeditions", icon: ShieldQuestion },
-  { label: "Referrals", href: "/dashboard/referrals", icon: UsersRound },
-  { label: "Academy", href: "/dashboard/academy", icon: BookOpen }
-];
+const dashboardNavBase = [
+  { key: "overview", href: "/dashboard", icon: Home },
+  { key: "impact", href: "/dashboard/impact", icon: MapPinned },
+  { key: "donations", href: "/dashboard/donations", icon: Heart },
+  { key: "expeditions", href: "/dashboard/expeditions", icon: ShieldQuestion },
+  { key: "academy", href: "/dashboard/academy", icon: BookOpen },
+  { key: "referrals", href: "/dashboard/referrals", icon: UsersRound }
+] as const;
 
-const accountNav = [
-  { label: "Notifications", href: "/dashboard/notifications", icon: Bell },
-  { label: "Account Settings", href: "/dashboard/settings", icon: Settings },
-  { label: "Help & Support", href: "/dashboard/support", icon: HelpCircle }
-];
+const accountNavBase = [
+  { key: "notifications", href: "/dashboard/notifications", icon: Bell },
+  { key: "settings", href: "/dashboard/settings", icon: Settings },
+  { key: "support", href: "/dashboard/support", icon: HelpCircle }
+] as const;
 
-const mobileNav = [
-  { label: "Home", href: "/dashboard", icon: Home },
-  { label: "Impact", href: "/dashboard/impact", icon: MapPinned },
-  { label: "Expeditions", href: "/dashboard/expeditions", icon: ShieldQuestion },
-  { label: "Explore", href: "/campaigns", icon: Search },
-  { label: "Profile", href: "/dashboard/impact", icon: UserCircle }
-];
+const mobileNavBase = [
+  { key: "home", href: "/dashboard", icon: Home },
+  { key: "impact", href: "/dashboard/impact", icon: MapPinned },
+  { key: "expeditions", href: "/dashboard/expeditions", icon: ShieldQuestion },
+  { key: "explore", href: "/campaigns", icon: Search },
+  { key: "profile", href: "/dashboard/impact", icon: UserCircle }
+] as const;
+
+type DashboardNavItem = {
+  label: string;
+  href: string;
+  icon: typeof Home;
+};
 
 function splitHref(href: string) {
   const [path, hash] = href.split("#");
@@ -62,9 +69,9 @@ function idFromHash(hash: string) {
   }
 }
 
-function getCurrentLabel(pathname: string, currentHash: string) {
+function getCurrentLabel(pathname: string, currentHash: string, dashboardNav: DashboardNavItem[], accountNav: DashboardNavItem[], fallback: string, searchLabel: string) {
   if (pathname === "/dashboard/search") {
-    return "Search Results";
+    return searchLabel;
   }
 
   if (currentHash) {
@@ -83,10 +90,10 @@ function getCurrentLabel(pathname: string, currentHash: string) {
     const { path, hash } = splitHref(item.href);
 
     return !hash && (pathname === path || (path !== "/dashboard" && pathname.startsWith(`${path}/`)));
-  })?.label ?? "Overview";
+  })?.label ?? fallback;
 }
 
-function hasActiveHashItem(pathname: string, currentHash: string) {
+function hasActiveHashItem(pathname: string, currentHash: string, dashboardNav: DashboardNavItem[], accountNav: DashboardNavItem[]) {
   return Boolean(
     currentHash &&
       [...dashboardNav, ...accountNav].some((item) => {
@@ -97,14 +104,14 @@ function hasActiveHashItem(pathname: string, currentHash: string) {
   );
 }
 
-function isActiveHref(pathname: string, currentHash: string, href: string) {
+function isActiveHref(pathname: string, currentHash: string, href: string, dashboardNav: DashboardNavItem[], accountNav: DashboardNavItem[]) {
   const { path, hash } = splitHref(href);
 
   if (hash) {
     return pathname === path && currentHash === hash;
   }
 
-  if (hasActiveHashItem(pathname, currentHash) && pathname === path) {
+  if (hasActiveHashItem(pathname, currentHash, dashboardNav, accountNav) && pathname === path) {
     return false;
   }
 
@@ -122,11 +129,79 @@ function initialsForDisplayName(displayName: string) {
   return initials || "OH";
 }
 
-export function DashboardShell({ children, displayName, unreadNotificationCount = 0 }: { children: ReactNode; displayName: string; unreadNotificationCount?: number }) {
+export function DashboardShell({
+  children,
+  displayName,
+  unreadNotificationCount = 0,
+  locale = "en"
+}: {
+  children: ReactNode;
+  displayName: string;
+  unreadNotificationCount?: number;
+  locale?: SupportedLocale;
+}) {
+  const labels =
+    locale === "id"
+      ? {
+          overview: "Ringkasan",
+          impact: "Dampak Saya",
+          donations: "Donasi",
+          expeditions: "Ekspedisi",
+          referrals: "Referral",
+          academy: "Academy",
+          notifications: "Notifikasi",
+          settings: "Pengaturan Akun",
+          support: "Bantuan & Dukungan",
+          home: "Beranda",
+          explore: "Jelajah",
+          profile: "Profil",
+          searchResults: "Hasil Pencarian",
+          dashboard: "Dashboard",
+          helpTitle: "Butuh bantuan?",
+          helpBody: "Kami siap membantu kamu memperbesar dampak.",
+          contact: "Hubungi Dukungan",
+          openNav: "Buka navigasi",
+          search: "Cari di dashboard",
+          searchPlaceholder: "Cari apa saja...",
+          viewImpact: "Lihat Dampak Saya",
+          accountSettings: "Pengaturan akun",
+          logout: "Keluar",
+          role: "Ocean Hero"
+        }
+      : {
+          overview: "Overview",
+          impact: "My Impact",
+          donations: "Donations",
+          expeditions: "Expeditions",
+          referrals: "Referrals",
+          academy: "Academy",
+          notifications: "Notifications",
+          settings: "Account Settings",
+          support: "Help & Support",
+          home: "Home",
+          explore: "Explore",
+          profile: "Profile",
+          searchResults: "Search Results",
+          dashboard: "Dashboard",
+          helpTitle: "Need Help?",
+          helpBody: "We are here to help you make bigger impact.",
+          contact: "Contact Support",
+          openNav: "Open navigation",
+          search: "Search dashboard",
+          searchPlaceholder: "Search anything...",
+          viewImpact: "View My Impact",
+          accountSettings: "Account settings",
+          logout: "Log out",
+          role: "Ocean Hero"
+        };
+  const navLabels = labels as Record<string, string>;
+  const dashboardNav: DashboardNavItem[] = dashboardNavBase.map((item) => ({ ...item, label: navLabels[item.key] }));
+  const accountNav: DashboardNavItem[] = accountNavBase.map((item) => ({ ...item, label: navLabels[item.key] }));
+  const mobileNav: DashboardNavItem[] = mobileNavBase.map((item) => ({ ...item, label: navLabels[item.key] }));
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const [currentHash, setCurrentHash] = useState("");
-  const currentLabel = getCurrentLabel(pathname, currentHash);
+  const currentLabel = getCurrentLabel(pathname, currentHash, dashboardNav, accountNav, labels.overview, labels.searchResults);
   const initials = initialsForDisplayName(displayName);
   const notificationBadge = unreadNotificationCount > 0 ? String(Math.min(unreadNotificationCount, 99)) : null;
   const currentSearch = pathname === "/dashboard/search" ? searchParams.get("q") ?? "" : "";
@@ -202,7 +277,7 @@ export function DashboardShell({ children, displayName, unreadNotificationCount 
         <nav className="mt-8 grid gap-2">
           {dashboardNav.map((item) => {
             const Icon = item.icon;
-            const isActive = isActiveHref(pathname, currentHash, item.href);
+            const isActive = isActiveHref(pathname, currentHash, item.href, dashboardNav, accountNav);
 
             return (
               <Link
@@ -227,7 +302,7 @@ export function DashboardShell({ children, displayName, unreadNotificationCount 
           <nav className="grid gap-1.5">
             {accountNav.map((item) => {
               const Icon = item.icon;
-              const isActive = isActiveHref(pathname, currentHash, item.href);
+              const isActive = isActiveHref(pathname, currentHash, item.href, dashboardNav, accountNav);
 
               return (
                 <Link
@@ -244,7 +319,7 @@ export function DashboardShell({ children, displayName, unreadNotificationCount 
                     <Icon size={18} aria-hidden="true" />
                     {item.label}
                   </span>
-                  {item.label === "Notifications" && notificationBadge ? <span className="rounded-full bg-coral-500 px-2 py-0.5 text-[11px] text-white">{notificationBadge}</span> : null}
+                  {item.href === "/dashboard/notifications" && notificationBadge ? <span className="rounded-full bg-coral-500 px-2 py-0.5 text-[11px] text-white">{notificationBadge}</span> : null}
                 </Link>
               );
             })}
@@ -253,10 +328,10 @@ export function DashboardShell({ children, displayName, unreadNotificationCount 
 
         <div className="mt-auto rounded-2xl border border-white/16 bg-white/8 p-5">
           <HelpCircle size={28} aria-hidden="true" />
-          <p className="mt-3 font-bold">Need Help?</p>
-          <p className="mt-2 text-sm leading-6 text-white/64">We are here to help you make bigger impact.</p>
+          <p className="mt-3 font-bold">{labels.helpTitle}</p>
+          <p className="mt-2 text-sm leading-6 text-white/64">{labels.helpBody}</p>
           <Link href="mailto:support@terumbu.eco" className="mt-4 inline-flex min-h-10 items-center rounded-full bg-coral-500 px-4 text-sm font-bold text-white">
-            Contact Support
+            {labels.contact}
           </Link>
         </div>
       </aside>
@@ -265,13 +340,13 @@ export function DashboardShell({ children, displayName, unreadNotificationCount 
         <header className="sticky top-0 z-40 flex min-h-20 items-center justify-between gap-4 border-b border-ocean-900/10 bg-white/92 px-4 backdrop-blur sm:px-6 lg:px-8">
           <div className="flex min-w-0 items-center gap-3">
             <details className="relative lg:hidden">
-              <summary aria-label="Open navigation" className="flex size-11 cursor-pointer list-none items-center justify-center rounded-full bg-ocean-50 text-ocean-900">
+              <summary aria-label={labels.openNav} className="flex size-11 cursor-pointer list-none items-center justify-center rounded-full bg-ocean-50 text-ocean-900">
                 <Menu size={19} aria-hidden="true" />
               </summary>
               <div className="absolute left-0 mt-3 w-72 rounded-2xl border border-ocean-900/10 bg-white p-2 shadow-soft">
                 {[...dashboardNav, ...accountNav].map((item) => {
                   const Icon = item.icon;
-                  const badge = item.label === "Notifications" ? notificationBadge : null;
+                  const badge = item.href === "/dashboard/notifications" ? notificationBadge : null;
 
                   return (
                     <Link key={`${item.label}:${item.href}`} href={item.href} onClick={handleDashboardLinkClick(item.href)} className="flex items-center justify-between rounded-xl px-3 py-2 text-sm font-bold text-ocean-900 hover:bg-ocean-50">
@@ -286,19 +361,19 @@ export function DashboardShell({ children, displayName, unreadNotificationCount 
               </div>
             </details>
             <div className="min-w-0">
-              <p className="text-xs font-bold uppercase tracking-[0.16em] text-coral-700">Dashboard</p>
+              <p className="text-xs font-bold uppercase tracking-[0.16em] text-coral-700">{labels.dashboard}</p>
               <p className="truncate text-lg font-bold tracking-normal text-ocean-900 sm:text-xl">{currentLabel}</p>
             </div>
           </div>
 
           <form action="/dashboard/search" method="get" className="hidden min-h-11 w-full max-w-sm items-center gap-3 rounded-full border border-ocean-900/12 bg-white px-4 text-sm font-semibold text-ocean-900/54 shadow-soft xl:flex">
             <Search size={18} aria-hidden="true" />
-            <label htmlFor="dashboard-search" className="sr-only">Search dashboard</label>
-            <input id="dashboard-search" name="q" type="search" defaultValue={currentSearch} className="w-full min-w-0 bg-transparent outline-none placeholder:text-ocean-900/42" placeholder="Search anything..." />
+            <label htmlFor="dashboard-search" className="sr-only">{labels.search}</label>
+            <input id="dashboard-search" name="q" type="search" defaultValue={currentSearch} className="w-full min-w-0 bg-transparent outline-none placeholder:text-ocean-900/42" placeholder={labels.searchPlaceholder} />
           </form>
 
           <div className="flex items-center gap-2 sm:gap-3">
-            <Link href="/dashboard/notifications" aria-label="Notifications" className="relative flex size-11 items-center justify-center rounded-full hover:bg-ocean-50">
+            <Link href="/dashboard/notifications" aria-label={labels.notifications} className="relative flex size-11 items-center justify-center rounded-full hover:bg-ocean-50">
               <Bell size={19} aria-hidden="true" />
               {notificationBadge ? <span className="absolute right-1.5 top-1.5 min-w-5 rounded-full bg-coral-500 px-1 text-center text-[10px] font-bold leading-5 text-white">{notificationBadge}</span> : null}
             </Link>
@@ -307,20 +382,20 @@ export function DashboardShell({ children, displayName, unreadNotificationCount 
                 <span className="flex size-11 items-center justify-center rounded-full bg-ocean-900 text-sm font-bold text-white">{initials}</span>
                 <span className="hidden min-w-0 text-left sm:block">
                   <span className="block max-w-32 truncate text-sm font-bold text-ocean-900">{displayName}</span>
-                  <span className="block text-xs font-semibold text-ocean-900/54">Ocean Hero</span>
+                  <span className="block text-xs font-semibold text-ocean-900/54">{labels.role}</span>
                 </span>
               </summary>
               <div className="absolute right-0 mt-3 w-64 rounded-2xl border border-ocean-900/10 bg-white p-2 shadow-soft">
                 <Link href="/dashboard/impact" className="block rounded-xl px-3 py-2 text-sm font-bold text-ocean-900 hover:bg-ocean-50">
-                  View My Impact
+                  {labels.viewImpact}
                 </Link>
                 <Link href="/dashboard/settings" className="block rounded-xl px-3 py-2 text-sm font-bold text-ocean-900 hover:bg-ocean-50">
-                  Account settings
+                  {labels.accountSettings}
                 </Link>
                 <form action={logoutAction}>
                   <button type="submit" className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-sm font-bold text-coral-700 hover:bg-coral-100">
                     <LogOut size={16} aria-hidden="true" />
-                    Log out
+                    {labels.logout}
                   </button>
                 </form>
               </div>
@@ -334,7 +409,7 @@ export function DashboardShell({ children, displayName, unreadNotificationCount 
         <div className="mx-auto grid max-w-md grid-cols-5 gap-1">
           {mobileNav.map((item) => {
             const Icon = item.icon;
-            const isActive = isActiveHref(pathname, currentHash, item.href);
+            const isActive = isActiveHref(pathname, currentHash, item.href, dashboardNav, accountNav);
 
             return (
               <Link
