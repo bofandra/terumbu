@@ -283,12 +283,6 @@ export default async function ExpeditionDetailPage({
     academyEligibility,
     requiredAcademyCourse: expedition.requiredAcademyCourse
   };
-  const tabs = [
-    { id: "exchange", label: "The Exchange" },
-    ...(expedition.galleryImages.length > 0 ? [{ id: "photos", label: `Photos (${expedition.galleryImages.length})` }] : []),
-    { id: "host", label: "Your Host" },
-    ...(expedition.route.mapEmbedUrl.trim() ? [{ id: "map", label: "Map" }] : [])
-  ];
   const requestNextPath = `${expeditionPath}#availability`;
   const questionNextPath = `${expeditionPath}#ask-question`;
   const offerFacts = buildExpeditionOfferFacts(expedition.marketplace);
@@ -353,6 +347,33 @@ export default async function ExpeditionDetailPage({
       expedition.impact.summary.trim() ||
       expedition.impact.targets.length > 0
   );
+  const isIndonesian = locale === "id";
+  const hasBookableDeparture = expedition.departures.some((departure) => departure.canBook);
+  const tabs = [
+    { id: "availability", label: isIndonesian ? "Jadwal" : "Availability" },
+    ...(hasExperienceDetails ? [{ id: "experience", label: isIndonesian ? "Pengalaman" : "Experience" }] : []),
+    ...(hasImpact ? [{ id: "impact", label: isIndonesian ? "Dampak" : "Impact" }] : []),
+    { id: "host", label: isIndonesian ? "Mitra" : "Host" },
+    ...(hasMap ? [{ id: "map", label: isIndonesian ? "Peta" : "Map" }] : [])
+  ];
+  const primaryActionHref =
+    academyEligibility === "learning_required" && expedition.requiredAcademyCourse
+      ? `/academy/courses/${expedition.requiredAcademyCourse.slug}`
+      : hasBookableDeparture
+        ? "#availability"
+        : "#ask-question";
+  const primaryActionLabel =
+    academyEligibility === "learning_required" && expedition.requiredAcademyCourse
+      ? isIndonesian
+        ? "Selesaikan kursus"
+        : "Complete course"
+      : hasBookableDeparture
+        ? isIndonesian
+          ? "Pilih tanggal"
+          : "Reserve / Apply"
+        : isIndonesian
+          ? "Tanya jadwal"
+          : "Ask about dates";
 
   return (
     <>
@@ -420,14 +441,22 @@ export default async function ExpeditionDetailPage({
           </div>
         </section>
 
-        <ExpeditionSectionTabs tabs={tabs} slug={expedition.slug} isAuthenticated={Boolean(sessionUser)} isSaved={saveState?.isSaved ?? false} expeditionPath={expeditionPath} />
+        <ExpeditionSectionTabs
+          tabs={tabs}
+          slug={expedition.slug}
+          isAuthenticated={Boolean(sessionUser)}
+          isSaved={saveState?.isSaved ?? false}
+          expeditionPath={expeditionPath}
+          primaryActionHref={primaryActionHref}
+          primaryActionLabel={primaryActionLabel}
+        />
 
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           {savedBannerMessage ? <p className="mt-8 rounded-md border border-kelp-500/20 bg-kelp-100 px-4 py-3 text-sm font-bold text-kelp-700">{savedBannerMessage}</p> : null}
           {errorBannerMessage ? <p className="mt-8 rounded-md border border-coral-500/20 bg-coral-100 px-4 py-3 text-sm font-bold text-coral-700">{errorBannerMessage}</p> : null}
 
           {offerFacts.length > 0 ? (
-            <section id="exchange" className="scroll-mt-36 py-14">
+            <section id="exchange" className="scroll-mt-36 py-10 sm:py-14">
               <SectionHeader title="What you offer" learnHref={hasExperienceDetails ? "#experience" : undefined} />
               <FactGrid facts={offerFacts} iconFor={offerIcon} />
             </section>
@@ -436,7 +465,7 @@ export default async function ExpeditionDetailPage({
           {expedition.marketplace.additionalFee ? (
             <>
               <DetailDivider />
-              <section className="py-14">
+              <section className="py-10 sm:py-14">
                 <SectionHeader title="Additional fee required" body="This host charges an additional local fee to support the sustainability of the project and the quality of the experience for travelers." />
                 <div className="mt-8 grid gap-8 lg:grid-cols-[0.35fr_0.28fr_1fr]">
                   <div>
@@ -469,7 +498,7 @@ export default async function ExpeditionDetailPage({
           {benefitFacts.length > 0 ? (
             <>
               <DetailDivider />
-              <section className="py-14">
+              <section className="py-10 sm:py-14">
                 <SectionHeader title="What you get" learnHref={hasExperienceDetails ? "#experience" : undefined} />
                 <FactGrid facts={benefitFacts} iconFor={benefitIcon} />
               </section>
@@ -477,7 +506,7 @@ export default async function ExpeditionDetailPage({
           ) : null}
 
           <DetailDivider />
-          <section id="availability" tabIndex={-1} className="scroll-mt-36 py-14 outline-none">
+          <section id="availability" tabIndex={-1} className="scroll-mt-36 py-10 sm:py-14 outline-none">
             <SectionHeader title="Availability" />
             {expedition.requiredAcademyCourse ? (
               <div className={cn("mt-7 rounded-md border p-5", academyEligibility === "eligible" ? "border-kelp-500/25 bg-kelp-100/45" : "border-sand-400/40 bg-sand-50")}>
@@ -610,7 +639,7 @@ export default async function ExpeditionDetailPage({
           {hasExperienceDetails ? (
             <>
           <DetailDivider />
-          <section id="experience" className="scroll-mt-36 py-14">
+          <section id="experience" className="scroll-mt-36 py-10 sm:py-14">
             <SectionHeader title="The Experience" learnHref={expedition.galleryImages.length > 0 ? "#photos" : undefined} />
             <div className="mt-8 grid gap-12 lg:grid-cols-[0.58fr_0.42fr]">
               <div>
@@ -650,7 +679,7 @@ export default async function ExpeditionDetailPage({
           {hasTravelPlanning ? (
             <>
           <DetailDivider />
-          <section id="travel-planning" className="scroll-mt-36 py-14">
+          <section id="travel-planning" className="scroll-mt-36 py-10 sm:py-14">
             <SectionHeader
               title="Plan your trip"
               body="Practical travel information for international visitors. Confirm nationality-specific entry rules and insurance coverage before purchasing transport."
@@ -702,7 +731,7 @@ export default async function ExpeditionDetailPage({
           {sdgFacts.length > 0 ? (
             <>
           <DetailDivider />
-          <section className="py-14">
+          <section className="py-10 sm:py-14">
             <SectionHeader title="UN Sustainable Development Goals" body="Goals shown here are derived only from host-provided details or recorded impact targets." learnHref={hasImpact ? "#impact" : undefined} />
             <div className="mt-10 grid gap-x-12 gap-y-10 md:grid-cols-2">
               {sdgFacts.map((goal) => (
@@ -725,7 +754,7 @@ export default async function ExpeditionDetailPage({
           {expedition.galleryImages.length > 0 ? (
             <>
           <DetailDivider />
-          <section id="photos" className="scroll-mt-36 py-14">
+          <section id="photos" className="scroll-mt-36 py-10 sm:py-14">
             <SectionHeader title={`Photos (${expedition.galleryImages.length})`} />
             <div className="mt-9 grid gap-1 sm:grid-cols-2 lg:grid-cols-4">
               {expedition.galleryImages.map((image, index) => (
@@ -744,7 +773,7 @@ export default async function ExpeditionDetailPage({
           {expedition.travelerMedia.length > 0 ? (
             <>
               <DetailDivider />
-              <section id="traveler-moments" className="scroll-mt-36 py-14">
+              <section id="traveler-moments" className="scroll-mt-36 py-10 sm:py-14">
                 <SectionHeader
                   title="Traveler moments"
                   body="Media submitted by completed participants and reviewed by Terumbu before publication."
@@ -784,7 +813,7 @@ export default async function ExpeditionDetailPage({
           ) : null}
 
           <DetailDivider />
-          <section id="host" className="scroll-mt-36 py-14">
+          <section id="host" className="scroll-mt-36 py-10 sm:py-14">
             <SectionHeader title="About the host" />
             <div className="mt-10 grid gap-10 lg:grid-cols-[0.5fr_0.5fr] lg:items-center">
               <div className="grid gap-8 sm:grid-cols-[180px_minmax(0,1fr)]">
@@ -814,7 +843,7 @@ export default async function ExpeditionDetailPage({
           {expedition.relatedExpeditions.length > 0 ? (
             <>
               <DetailDivider />
-              <section className="py-14">
+              <section className="py-10 sm:py-14">
                 <SectionHeader title="More experiences of this host" />
                 <div className="mt-9 grid gap-6 md:grid-cols-2">
                   {expedition.relatedExpeditions.map((item) => (
@@ -828,7 +857,7 @@ export default async function ExpeditionDetailPage({
           {hasMap ? (
             <>
           <DetailDivider />
-          <section id="map" className="scroll-mt-36 py-14">
+          <section id="map" className="scroll-mt-36 py-10 sm:py-14">
             <SectionHeader title="Map" body={expedition.route.privacyNote || undefined} />
             <div className="mt-8 overflow-hidden rounded-md border border-ocean-900/10 bg-ocean-50">
               <iframe title={expedition.route.mapTitle || `${expedition.title} map`} className="h-[420px] w-full border-0 lg:h-[560px]" loading="lazy" src={expedition.route.mapEmbedUrl} />
@@ -841,7 +870,7 @@ export default async function ExpeditionDetailPage({
           {hasImpact ? (
             <>
           <DetailDivider />
-          <section id="impact" className="scroll-mt-36 py-14">
+          <section id="impact" className="scroll-mt-36 py-10 sm:py-14">
             <SectionHeader title="Terumbu conservation impact" body={`${formatCurrency(expedition.impact.conservationContribution, expedition.currency)} from each booking supports the associated conservation program. ${expedition.impact.summary}`} />
             <div className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
               {expedition.impact.targets.map((target) => (
@@ -873,7 +902,7 @@ export default async function ExpeditionDetailPage({
           ) : null}
 
           <DetailDivider />
-          <section id="ask-question" className="scroll-mt-36 py-14">
+          <section id="ask-question" className="scroll-mt-36 py-10 sm:py-14">
             <SectionHeader title="Message the expedition team" body="Send a question through Terumbu.eco. Admins and the verified expedition partner can review it from their website inbox and follow up by email." />
             {questionSavedMessage ? <p className="mt-5 rounded-md border border-kelp-500/20 bg-kelp-100 px-4 py-3 text-sm font-bold text-kelp-700">{questionSavedMessage}</p> : null}
             {questionErrorMessage ? <p className="mt-5 rounded-md border border-coral-500/20 bg-coral-100 px-4 py-3 text-sm font-bold text-coral-700">{questionErrorMessage}</p> : null}
@@ -909,7 +938,7 @@ export default async function ExpeditionDetailPage({
           </section>
 
           <DetailDivider />
-          <section id="reviews" className="scroll-mt-36 py-14">
+          <section id="reviews" className="scroll-mt-36 py-10 sm:py-14">
             <SectionHeader title="Reviews" />
             <div className="mt-8 grid gap-6 lg:grid-cols-[0.3fr_0.7fr]">
               <div>
@@ -945,7 +974,7 @@ export default async function ExpeditionDetailPage({
           {expedition.faqs.length > 0 ? (
             <>
           <DetailDivider />
-          <section id="faq" className="scroll-mt-36 py-14">
+          <section id="faq" className="scroll-mt-36 py-10 sm:py-14">
             <SectionHeader title="Before you book" />
             <div className="mt-7 grid gap-3">
               {expedition.faqs.map(([question, answer]) => (
@@ -963,7 +992,7 @@ export default async function ExpeditionDetailPage({
           {expedition.sustainability.length > 0 ? (
             <>
           <DetailDivider />
-          <section className="py-14">
+          <section className="py-10 sm:py-14">
             <SectionHeader title="How we travel responsibly" />
             <div className="mt-7 grid gap-3 sm:grid-cols-2">
               {expedition.sustainability.map((item) => (
@@ -982,7 +1011,7 @@ export default async function ExpeditionDetailPage({
           {expedition.tripUpdates.length > 0 ? (
             <>
               <DetailDivider />
-              <section className="py-14">
+              <section className="py-10 sm:py-14">
                 <SectionHeader title="Trip activity" />
                 <div className="mt-7 grid gap-5 md:grid-cols-2">
                   {expedition.tripUpdates.map((update) => (
@@ -1009,7 +1038,7 @@ export default async function ExpeditionDetailPage({
           ) : null}
 
           <DetailDivider />
-          <section className="py-14">
+          <section className="py-10 sm:py-14">
             <SectionHeader title={expedition.finalCta.title} body={expedition.finalCta.body} />
             <div className="mt-7 flex flex-wrap gap-3">
               <ButtonLink href="#availability" className="rounded-full">{expedition.finalCta.primaryLabel}</ButtonLink>
