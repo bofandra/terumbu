@@ -67,39 +67,45 @@ function isImageUrl(value: string | null) {
   return value.startsWith("data:image/") || /\.(jpg|jpeg|png|webp|gif)(\?|$)/i.test(value);
 }
 
-function formatDateLabel(value: Date | null | undefined) {
-  return value?.toLocaleDateString("id-ID", { dateStyle: "medium" }) ?? "Pending";
+function formatDateLabel(value: Date | null | undefined, locale: "en" | "id" = "en") {
+  return value?.toLocaleDateString(locale === "id" ? "id-ID" : "en-US", { dateStyle: "medium" }) ?? (locale === "id" ? "Menunggu" : "Pending");
 }
 
-function formatDateRangeLabel(startsAt: Date | null | undefined, endsAt: Date | null | undefined) {
+function formatDateRangeLabel(startsAt: Date | null | undefined, endsAt: Date | null | undefined, locale: "en" | "id" = "en") {
   if (startsAt && endsAt) {
-    return `${formatDateLabel(startsAt)} - ${formatDateLabel(endsAt)}`;
+    return `${formatDateLabel(startsAt, locale)} - ${formatDateLabel(endsAt, locale)}`;
   }
 
-  return startsAt ? formatDateLabel(startsAt) : endsAt ? formatDateLabel(endsAt) : "Schedule pending";
+  return startsAt
+    ? formatDateLabel(startsAt, locale)
+    : endsAt
+      ? formatDateLabel(endsAt, locale)
+      : locale === "id"
+        ? "Jadwal menunggu"
+        : "Schedule pending";
 }
 
-function updateCategory(title: string, body: string) {
+function updateCategory(title: string, body: string, locale: "en" | "id" = "en") {
   const value = `${title} ${body}`.toLowerCase();
 
   if (value.includes("monitor")) {
-    return "Monitoring";
+    return locale === "id" ? "Monitoring" : "Monitoring";
   }
 
   if (value.includes("school") || value.includes("community")) {
-    return "Community stories";
+    return locale === "id" ? "Cerita komunitas" : "Community stories";
   }
 
   if (value.includes("budget") || value.includes("fund")) {
-    return "Financial reports";
+    return locale === "id" ? "Laporan finansial" : "Financial reports";
   }
 
-  return "Field activities";
+  return locale === "id" ? "Aktivitas lapangan" : "Field activities";
 }
 
-function publicDonorName(value: string | null) {
+function publicDonorName(value: string | null, locale: "en" | "id" = "en") {
   if (!value) {
-    return "Anonymous supporter";
+    return locale === "id" ? "Pendukung anonim" : "Anonymous supporter";
   }
 
   if (/^(pt|cv|yayasan|koperasi)\b/i.test(value)) {
