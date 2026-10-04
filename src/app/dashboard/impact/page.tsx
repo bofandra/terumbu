@@ -348,7 +348,7 @@ export default async function DashboardImpactPage() {
       </section>
 
       <section className="mt-6">
-        <DashboardPersonalImpactMap sites={data.personalMapSites} fullMapHref="/impact-map" locale={locale} />
+        <DashboardPersonalImpactMap sites={data.personalMapSites} fullMapHref="/impact-map" locale={locale} context="connected" />
       </section>
 
       <section className="mt-6">
