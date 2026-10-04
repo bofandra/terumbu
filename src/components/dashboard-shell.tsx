@@ -28,11 +28,11 @@ const dashboardNavBase = [
   { key: "impact", href: "/dashboard/impact", icon: MapPinned },
   { key: "donations", href: "/dashboard/donations", icon: Heart },
   { key: "expeditions", href: "/dashboard/expeditions", icon: ShieldQuestion },
-  { key: "academy", href: "/dashboard/academy", icon: BookOpen },
-  { key: "referrals", href: "/dashboard/referrals", icon: UsersRound }
+  { key: "academy", href: "/dashboard/academy", icon: BookOpen }
 ] as const;
 
 const accountNavBase = [
+  { key: "referrals", href: "/dashboard/referrals", icon: UsersRound },
   { key: "notifications", href: "/dashboard/notifications", icon: Bell },
   { key: "settings", href: "/dashboard/settings", icon: Settings },
   { key: "support", href: "/dashboard/support", icon: HelpCircle }
@@ -42,8 +42,8 @@ const mobileNavBase = [
   { key: "home", href: "/dashboard", icon: Home },
   { key: "impact", href: "/dashboard/impact", icon: MapPinned },
   { key: "expeditions", href: "/dashboard/expeditions", icon: ShieldQuestion },
-  { key: "explore", href: "/campaigns", icon: Search },
-  { key: "profile", href: "/dashboard/impact", icon: UserCircle }
+  { key: "academy", href: "/dashboard/academy", icon: BookOpen },
+  { key: "account", href: "/dashboard/settings", icon: UserCircle }
 ] as const;
 
 type DashboardNavItem = {
@@ -153,8 +153,7 @@ export function DashboardShell({
           settings: "Pengaturan Akun",
           support: "Bantuan & Dukungan",
           home: "Beranda",
-          explore: "Jelajah",
-          profile: "Profil",
+          account: "Akun",
           searchResults: "Hasil Pencarian",
           dashboard: "Dashboard",
           helpTitle: "Butuh bantuan?",
@@ -179,8 +178,7 @@ export function DashboardShell({
           settings: "Account Settings",
           support: "Help & Support",
           home: "Home",
-          explore: "Explore",
-          profile: "Profile",
+          account: "Account",
           searchResults: "Search Results",
           dashboard: "Dashboard",
           helpTitle: "Need Help?",
@@ -330,7 +328,7 @@ export function DashboardShell({
           <HelpCircle size={28} aria-hidden="true" />
           <p className="mt-3 font-bold">{labels.helpTitle}</p>
           <p className="mt-2 text-sm leading-6 text-white/64">{labels.helpBody}</p>
-          <Link href="mailto:support@terumbu.eco" className="mt-4 inline-flex min-h-10 items-center rounded-full bg-coral-500 px-4 text-sm font-bold text-white">
+          <Link href="/dashboard/support" className="mt-4 inline-flex min-h-10 items-center rounded-full bg-coral-500 px-4 text-sm font-bold text-white">
             {labels.contact}
           </Link>
         </div>
