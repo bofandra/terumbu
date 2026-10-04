@@ -519,52 +519,93 @@ export default async function DashboardExpeditionsPage({ searchParams }: Dashboa
       ) : null}
 
       <section className="mt-6 rounded-2xl border border-ocean-900/10 bg-white p-5 shadow-soft">
-        <p className="text-sm font-bold uppercase tracking-[0.16em] text-coral-700">My expedition journey</p>
-        <h2 className="mt-2 text-2xl font-bold tracking-normal text-ocean-900">From booking to verified impact</h2>
+        <p className="text-sm font-bold uppercase tracking-[0.16em] text-coral-700">{labels.journeyEyebrow}</p>
+        <h2 className="mt-2 text-2xl font-bold tracking-normal text-ocean-900">{labels.journeyTitle}</h2>
         <p className="mt-2 max-w-3xl text-sm leading-6 text-ocean-900/62">
-          Your booking and completed participation are personal records. Conservation results remain expedition or campaign outcomes unless an activity is explicitly recorded for an individual participant.
+          {labels.journeyBody}
         </p>
         <div className="mt-5 grid gap-4">
-          {data.expeditionImpactJourneys.map((journey) => (
+          {data.expeditionImpactJourneys.map((journey) => {
+            const currentStage = journey.verifiedOutcome
+              ? 5
+              : journey.latestFieldActivity
+                ? 4
+                : journey.participationCompleted
+                  ? 3
+                  : journey.paymentStatus === "paid"
+                    ? 2
+                    : 1;
+            const journeySteps = [
+              labels.bookingPayment,
+              labels.preparation,
+              labels.participation,
+              labels.fieldActivity,
+              labels.verifiedImpact
+            ];
+
+            return (
             <article key={journey.bookingId} className="rounded-2xl border border-ocean-900/10 bg-sand-50 p-5">
               <div className="flex flex-col justify-between gap-2 sm:flex-row sm:items-start">
                 <div>
                   <Link href={`/expeditions/${journey.expeditionSlug}`} className="text-xl font-bold text-ocean-900 hover:text-coral-700">{journey.expeditionTitle}</Link>
-                  <p className="mt-1 text-xs font-semibold text-ocean-900/52">{journey.bookingCode} · {journey.startsAt.toLocaleDateString("id-ID", { dateStyle: "medium" })}</p>
+                  <p className="mt-1 text-xs font-semibold text-ocean-900/52">{journey.bookingCode} · {journey.startsAt.toLocaleDateString(dateLocale, { dateStyle: "medium" })}</p>
                 </div>
-                <span className={`w-fit rounded-full px-3 py-1 text-xs font-bold ${statusClass(journey.bookingStatus)}`}>{journey.bookingStatus}</span>
+                <span className={`w-fit rounded-full px-3 py-1 text-xs font-bold ${statusClass(journey.bookingStatus)}`}>{statusLabel(journey.bookingStatus, locale)}</span>
               </div>
-              <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+              <div className="mt-5 rounded-xl border border-ocean-900/10 bg-white p-4">
+                <div className="flex items-center justify-between gap-3">
+                  <p className="text-xs font-bold uppercase tracking-[0.12em] text-ocean-900/52">{labels.currentStage}</p>
+                  <span className="rounded-full bg-kelp-100 px-3 py-1 text-xs font-bold text-kelp-700">{currentStage}/5</span>
+                </div>
+                <div className="mt-4 grid grid-cols-5 gap-2" aria-label={`${labels.currentStage}: ${currentStage} / 5`}>
+                  {journeySteps.map((step, index) => {
+                    const stage = index + 1;
+                    const completed = stage <= currentStage;
+
+                    return (
+                      <div key={step} className="min-w-0 text-center">
+                        <div className={`mx-auto flex size-8 items-center justify-center rounded-full text-xs font-bold ${completed ? "bg-kelp-500 text-white" : "bg-ocean-50 text-ocean-900/42"}`}>
+                          {completed ? <CheckCircle2 size={15} aria-hidden="true" /> : stage}
+                        </div>
+                        <p className={`mt-2 text-[10px] font-bold leading-4 sm:text-[11px] ${completed ? "text-ocean-900" : "text-ocean-900/46"}`}>{step}</p>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
                 <div className="rounded-xl bg-white p-4 ring-1 ring-ocean-900/10">
                   <CheckCircle2 size={18} className="text-kelp-600" aria-hidden="true" />
-                  <p className="mt-2 text-sm font-bold text-ocean-900">Booking & payment</p>
-                  <p className="mt-1 text-xs leading-5 text-ocean-900/58">{journey.paymentStatus === "paid" ? "Payment verified" : `Payment ${journey.paymentStatus}`}</p>
+                  <p className="mt-2 text-sm font-bold text-ocean-900">{labels.bookingPayment}</p>
+                  <p className="mt-1 text-xs leading-5 text-ocean-900/58">{journey.paymentStatus === "paid" ? labels.paymentVerified : `${labels.payment} ${statusLabel(journey.paymentStatus, locale)}`}</p>
                 </div>
                 <div className="rounded-xl bg-white p-4 ring-1 ring-ocean-900/10">
                   <CalendarDays size={18} className="text-kelp-600" aria-hidden="true" />
-                  <p className="mt-2 text-sm font-bold text-ocean-900">Preparation</p>
-                  <p className="mt-1 text-xs leading-5 text-ocean-900/58">{journey.preparationComplete}/{journey.preparationTotal} preparation items complete</p>
+                  <p className="mt-2 text-sm font-bold text-ocean-900">{labels.preparation}</p>
+                  <p className="mt-1 text-xs leading-5 text-ocean-900/58">{journey.preparationComplete}/{journey.preparationTotal} {labels.prepComplete}</p>
                 </div>
                 <div className="rounded-xl bg-white p-4 ring-1 ring-ocean-900/10">
                   <CheckCircle2 size={18} className="text-kelp-600" aria-hidden="true" />
-                  <p className="mt-2 text-sm font-bold text-ocean-900">Participation</p>
-                  <p className="mt-1 text-xs leading-5 text-ocean-900/58">{journey.participationCompleted ? "Completed and confirmed" : journey.endsAt > new Date() ? "Expedition not completed yet" : "Awaiting partner confirmation"}</p>
+                  <p className="mt-2 text-sm font-bold text-ocean-900">{labels.participation}</p>
+                  <p className="mt-1 text-xs leading-5 text-ocean-900/58">{journey.participationCompleted ? labels.completedConfirmed : journey.endsAt > new Date() ? labels.notCompleted : labels.awaitingConfirmation}</p>
                 </div>
                 <div className="rounded-xl bg-white p-4 ring-1 ring-ocean-900/10">
                   <MapPin size={18} className="text-kelp-600" aria-hidden="true" />
-                  <p className="mt-2 text-sm font-bold text-ocean-900">Field activity</p>
-                  {journey.latestFieldActivity ? <Link href={journey.latestFieldActivity.href} className="mt-1 block text-xs font-semibold leading-5 text-coral-700">{journey.latestFieldActivity.title}</Link> : <p className="mt-1 text-xs leading-5 text-ocean-900/58">{journey.relatedCampaignId ? "Waiting for published field activity." : "No related conservation campaign."}</p>}
+                  <p className="mt-2 text-sm font-bold text-ocean-900">{labels.fieldActivity}</p>
+                  {journey.latestFieldActivity ? <Link href={journey.latestFieldActivity.href} className="mt-1 block text-xs font-semibold leading-5 text-coral-700">{journey.latestFieldActivity.title}</Link> : <p className="mt-1 text-xs leading-5 text-ocean-900/58">{journey.relatedCampaignId ? labels.waitingField : labels.noCampaign}</p>}
                 </div>
                 <div className="rounded-xl bg-white p-4 ring-1 ring-ocean-900/10">
                   <ShieldCheck size={18} className="text-kelp-600" aria-hidden="true" />
-                  <p className="mt-2 text-sm font-bold text-ocean-900">Verified impact</p>
-                  {journey.verifiedOutcome ? <Link href={journey.verifiedOutcome.href} className="mt-1 block text-xs font-semibold leading-5 text-coral-700">{journey.verifiedOutcome.title}</Link> : <p className="mt-1 text-xs leading-5 text-ocean-900/58">No verified outcome yet.</p>}
+                  <p className="mt-2 text-sm font-bold text-ocean-900">{labels.verifiedImpact}</p>
+                  {journey.verifiedOutcome ? <Link href={journey.verifiedOutcome.href} className="mt-1 block text-xs font-semibold leading-5 text-coral-700">{journey.verifiedOutcome.title}</Link> : <p className="mt-1 text-xs leading-5 text-ocean-900/58">{labels.noVerified}</p>}
                 </div>
               </div>
-              {journey.passportEligible ? <p className="mt-4 rounded-xl bg-kelp-100 p-3 text-xs font-semibold leading-5 text-kelp-700">Participation completed. This expedition is eligible for your Impact Passport record.</p> : null}
+              {journey.passportEligible ? <p className="mt-4 rounded-xl bg-kelp-100 p-3 text-xs font-semibold leading-5 text-kelp-700">{labels.passportEligible}</p> : null}
             </article>
-          ))}
-          {data.expeditionImpactJourneys.length === 0 ? <p className="rounded-xl border border-dashed border-ocean-900/14 p-4 text-sm font-semibold text-ocean-900/62">Your expedition journey starts after your first booking.</p> : null}
+            );
+          })}
+          {data.expeditionImpactJourneys.length === 0 ? <p className="rounded-xl border border-dashed border-ocean-900/14 p-4 text-sm font-semibold text-ocean-900/62">{labels.journeyEmpty}</p> : null}
         </div>
       </section>
 
