@@ -27,8 +27,10 @@ FROM node:24-alpine AS builder
 WORKDIR /app
 
 ARG DEPLOY_VERSION=local
+ARG NEXT_PUBLIC_APP_URL=https://terumbu.eco
 
 ENV NEXT_TELEMETRY_DISABLED=1
+ENV NEXT_PUBLIC_APP_URL=${NEXT_PUBLIC_APP_URL}
 
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
