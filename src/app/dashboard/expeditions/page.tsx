@@ -344,59 +344,59 @@ export default async function DashboardExpeditionsPage({ searchParams }: Dashboa
     <main className="mx-auto max-w-5xl px-4 py-8 sm:px-6 lg:px-8">
       <header className="flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
         <div>
-          <p className="text-sm font-bold uppercase tracking-[0.16em] text-coral-700">Expeditions</p>
-          <h1 className="mt-2 text-3xl font-bold tracking-normal text-ocean-900">Field activity bookings</h1>
+          <p className="text-sm font-bold uppercase tracking-[0.16em] text-coral-700">{labels.expeditions}</p>
+          <h1 className="mt-2 text-3xl font-bold tracking-normal text-ocean-900">{labels.title}</h1>
         </div>
-        <ButtonLink href="/expeditions">Browse expeditions</ButtonLink>
+        <ButtonLink href="/expeditions">{labels.browseExpeditions}</ButtonLink>
       </header>
 
       {params?.saved ? (
         <p className="mt-5 rounded-2xl border border-kelp-500/20 bg-kelp-100 px-4 py-3 text-sm font-bold text-kelp-700">
           {params.saved === "review"
-            ? "Thanks, your expedition review was submitted for moderation."
+            ? labels.savedReview
             : params.saved === "expedition"
-              ? "Saved expeditions updated."
+              ? labels.savedExpedition
               : params.saved === "media"
-                ? "Traveler media submitted for moderation."
+                ? labels.savedMedia
                 : params.saved === "reminder"
-                ? "Expedition reminder scheduled."
-                : params.saved === "reminder-cancelled"
-                  ? "Expedition reminder cancelled."
-                  : params.saved === "payment-recheck"
-                    ? "Payment recheck requested. Platform Admin will verify the booking payment."
-                    : params.saved === "booking-cancelled"
-                      ? "Unpaid booking cancelled."
-                      : "Booking billing changes saved."}
+                  ? labels.savedReminder
+                  : params.saved === "reminder-cancelled"
+                    ? labels.savedReminderCancelled
+                    : params.saved === "payment-recheck"
+                      ? labels.savedRecheck
+                      : params.saved === "booking-cancelled"
+                        ? labels.savedBookingCancelled
+                        : labels.savedBilling}
         </p>
       ) : null}
       {params?.error ? (
         <p className="mt-5 rounded-2xl border border-coral-500/20 bg-coral-100 px-4 py-3 text-sm font-bold text-coral-700">
           {params.error.startsWith("review")
-            ? "Reviews are available after expedition completion. Add a rating and at least 10 characters."
+            ? labels.errorReview
             : params.error === "availability"
-              ? "That departure no longer has enough available seats for payment recheck."
+              ? labels.errorAvailability
               : params.error === "expedition"
-                ? "Could not update that saved expedition."
+                ? labels.errorSaved
                 : params.error?.startsWith("media")
-                  ? "Traveler media can only be submitted for completed bookings. Upload a supported image under 1.5 MB or provide a valid HTTPS media URL."
+                  ? labels.errorMedia
                   : params.error === "reminder"
-                    ? "Could not schedule that reminder."
+                    ? labels.errorReminder
                     : params.error === "cancel"
-                      ? "This booking can no longer be cancelled from your dashboard."
+                      ? labels.errorCancel
                       : params.error === "refund"
-                        ? "Refund can only be requested for a paid booking before the expedition starts."
-                        : "Could not complete that booking billing action."}
+                        ? labels.errorRefund
+                        : labels.errorBilling}
         </p>
       ) : null}
 
       <section className="mt-6 rounded-2xl border border-ocean-900/10 bg-white p-5 shadow-soft">
         <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
           <div>
-            <h2 className="text-2xl font-bold tracking-normal text-ocean-900">Book a new expedition</h2>
-            <p className="mt-1 text-sm font-semibold text-ocean-900/58">Pick one of the latest field activities, or browse the full expedition catalog.</p>
+            <h2 className="text-2xl font-bold tracking-normal text-ocean-900">{labels.exploreTitle}</h2>
+            <p className="mt-1 text-sm font-semibold text-ocean-900/58">{labels.exploreBody}</p>
           </div>
           <ButtonLink href="/expeditions" tone="secondary">
-            Browse all
+            {labels.browseAll}
           </ButtonLink>
         </div>
         <div className="mt-4 flex snap-x gap-4 overflow-x-auto pb-2 lg:grid lg:grid-cols-3 lg:overflow-visible lg:pb-0">
@@ -418,7 +418,7 @@ export default async function DashboardExpeditionsPage({ searchParams }: Dashboa
                 <div className="mt-2 flex items-center justify-between gap-3 text-sm font-bold text-ocean-900">
                   <span>{formatCurrency(expedition.price, expedition.currency)}</span>
                   <span className="inline-flex items-center gap-1 text-coral-700">
-                    Detail <ArrowRight size={15} aria-hidden="true" />
+                    {labels.detail} <ArrowRight size={15} aria-hidden="true" />
                   </span>
                 </div>
               </div>
@@ -432,10 +432,10 @@ export default async function DashboardExpeditionsPage({ searchParams }: Dashboa
           <div>
             <h2 className="flex items-center gap-2 text-2xl font-bold tracking-normal text-ocean-900">
               <Heart size={22} aria-hidden="true" className="text-coral-500" />
-              Saved trips
+              {labels.savedTrips}
             </h2>
             <p className="mt-1 text-sm font-semibold text-ocean-900/58">
-              {data.savedExpeditions.length.toLocaleString("id-ID")} saved expedition{data.savedExpeditions.length === 1 ? "" : "s"}.
+              {data.savedExpeditions.length.toLocaleString(numberLocale)} {labels.savedTrip}{data.savedExpeditions.length === 1 ? "" : isIndonesian ? "" : "s"}.
             </p>
           </div>
         </div>
@@ -449,23 +449,23 @@ export default async function DashboardExpeditionsPage({ searchParams }: Dashboa
                     {expedition.title}
                   </Link>
                   <p className="mt-1 text-sm text-ocean-900/58">
-                    {expedition.region} · {expedition.duration} · from {formatCurrency(expedition.price, expedition.currency)}
+                    {expedition.region} · {expedition.duration} · {labels.from} {formatCurrency(expedition.price, expedition.currency)}
                   </p>
                   <p className="mt-2 text-xs font-semibold text-ocean-900/50">
-                    Saved {expedition.savedAt.toLocaleDateString("id-ID", { dateStyle: "medium" })}
+                    {labels.saved} {expedition.savedAt.toLocaleDateString(dateLocale, { dateStyle: "medium" })}
                   </p>
                 </div>
                 <div className="grid gap-2 sm:justify-items-end">
                   <form action={scheduleSavedExpeditionReminderAction} className="flex items-center gap-2">
                     <input type="hidden" name="expeditionSlug" value={expedition.slug} />
                     <select name="delayDays" defaultValue="7" className="min-h-9 rounded-full border border-ocean-900/10 bg-white px-3 text-xs font-bold text-ocean-900">
-                      <option value="3">Remind in 3 days</option>
-                      <option value="7">Remind in 7 days</option>
-                      <option value="14">Remind in 14 days</option>
-                      <option value="30">Remind in 30 days</option>
+                      <option value="3">{labels.remind3}</option>
+                      <option value="7">{labels.remind7}</option>
+                      <option value="14">{labels.remind14}</option>
+                      <option value="30">{labels.remind30}</option>
                     </select>
                     <button type="submit" className="min-h-9 rounded-full bg-kelp-500 px-3 text-xs font-bold text-white hover:bg-kelp-700">
-                      Remind me
+                      {labels.remindMe}
                     </button>
                   </form>
                   <form action={removeSavedExpeditionAction}>
@@ -473,11 +473,11 @@ export default async function DashboardExpeditionsPage({ searchParams }: Dashboa
                     <input type="hidden" name="next" value="/dashboard/expeditions" />
                     <button
                       type="submit"
-                      aria-label="Remove saved expedition"
+                      aria-label={labels.removeSavedAria}
                       className="inline-flex min-h-9 items-center gap-2 rounded-full border border-ocean-900/10 px-3 text-xs font-bold text-coral-700 hover:border-coral-500"
                     >
                       <BookmarkX size={14} aria-hidden="true" />
-                      Remove
+                      {labels.remove}
                     </button>
                   </form>
                 </div>
@@ -488,28 +488,28 @@ export default async function DashboardExpeditionsPage({ searchParams }: Dashboa
 
         {data.savedExpeditions.length === 0 ? (
           <p className="mt-4 rounded-xl border border-dashed border-ocean-900/14 bg-sand-50 p-4 text-sm font-semibold text-ocean-900/62">
-            Save expeditions from a trip page to compare them here before booking.
+            {labels.savedEmpty}
           </p>
         ) : null}
       </section>
 
       {reminders.length > 0 ? (
         <section className="mt-6 rounded-2xl border border-ocean-900/10 bg-white p-5 shadow-soft">
-          <h2 className="text-2xl font-bold tracking-normal text-ocean-900">Scheduled reminders</h2>
-          <p className="mt-1 text-sm font-semibold text-ocean-900/58">In-app and email reminders follow your expedition notification preference.</p>
+          <h2 className="text-2xl font-bold tracking-normal text-ocean-900">{labels.reminders}</h2>
+          <p className="mt-1 text-sm font-semibold text-ocean-900/58">{labels.remindersBody}</p>
           <div className="mt-4 grid gap-3">
             {reminders.map((reminder) => (
               <article key={reminder.id} className="flex flex-col justify-between gap-3 rounded-xl bg-sand-50 p-4 sm:flex-row sm:items-center">
                 <div>
                   <Link href={`/expeditions/${reminder.expeditionSlug}`} className="font-bold text-ocean-900 hover:text-coral-700">{reminder.expeditionTitle}</Link>
                   <p className="mt-1 text-sm text-ocean-900/58">
-                    Reminder {reminder.remindAt.toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short" })}
+                    {labels.reminder} {reminder.remindAt.toLocaleString(dateLocale, { dateStyle: "medium", timeStyle: "short" })}
                   </p>
                 </div>
                 <form action={cancelExpeditionReminderAction}>
                   <input type="hidden" name="reminderId" value={reminder.id} />
                   <button type="submit" className="min-h-9 rounded-full border border-ocean-900/10 px-3 text-xs font-bold text-coral-700 hover:border-coral-500">
-                    Cancel reminder
+                    {labels.cancelReminder}
                   </button>
                 </form>
               </article>
