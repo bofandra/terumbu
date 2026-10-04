@@ -35,19 +35,12 @@ import { getSessionUser } from "@/lib/auth";
 import { evidenceAnchorId, evidenceSourceHref, evidenceStage, evidenceStageLabel, getMetadataNumberOrString, getMetadataString, suggestedDonationAmounts } from "@/lib/domain";
 import { getCampaignCards, getCampaignDetail, getCampaignRetentionState, getCourses, getExpeditionCards } from "@/lib/queries";
 import { followCampaignAction, unfollowCampaignAction } from "@/lib/retention-actions";
+import { getPreferredLocale } from "@/lib/user-preferences";
 import { formatCurrency } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
 const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://terumbu.eco";
-
-const tabs = [
-  { label: "Overview", href: "#overview" },
-  { label: "Impact", href: "#impact" },
-  { label: "Records", href: "#records" },
-  { label: "Activity", href: "#updates" },
-  { label: "Transparency", href: "#transparency" }
-];
 
 function partnerTypeLabel(value: string) {
   return value
@@ -152,10 +145,11 @@ export default async function CampaignDetailPage({
   searchParams?: Promise<{ saved?: string; error?: string }>;
 }) {
   const { slug } = await params;
-  const [query, campaign, sessionUser] = await Promise.all([
+  const [query, campaign, sessionUser, locale] = await Promise.all([
     searchParams,
     getCampaignDetail(slug),
-    getSessionUser()
+    getSessionUser(),
+    getPreferredLocale()
   ]);
 
   if (!campaign) {
@@ -168,6 +162,14 @@ export default async function CampaignDetailPage({
     getCampaignCards(6, campaign.category),
     sessionUser ? getCampaignRetentionState(sessionUser.id, campaign.slug) : Promise.resolve(null)
   ]);
+  const isIndonesian = locale === "id";
+  const tabs = [
+    { label: isIndonesian ? "Ringkasan" : "Overview", href: "#overview" },
+    { label: isIndonesian ? "Dampak" : "Impact", href: "#impact" },
+    { label: isIndonesian ? "Bukti" : "Evidence", href: "#records" },
+    { label: isIndonesian ? "Aktivitas" : "Activity", href: "#updates" },
+    { label: isIndonesian ? "Transparansi" : "Transparency", href: "#transparency" }
+  ];
   const progress = campaign.goal > 0 ? Math.min(100, Math.round((campaign.raised / campaign.goal) * 100)) : 0;
   const impactFunded = campaign.goal > 0 ? Math.round((campaign.raised / campaign.goal) * campaign.impactTarget) : 0;
   const donationAmounts = suggestedDonationAmounts(campaign.goal, campaign.currency);
@@ -180,9 +182,13 @@ export default async function CampaignDetailPage({
   const campaignState = progress >= 100 ? "fully-funded" : campaign.daysLeft === 0 ? "ended" : "active";
   const disabledReason =
     campaignState === "fully-funded"
-      ? "Funding goal reached. Follow implementation activity or support a related campaign."
+      ? isIndonesian
+        ? "Target pendanaan telah tercapai. Ikuti aktivitas implementasi atau dukung kampanye terkait."
+        : "Funding goal reached. Follow implementation activity or support a related campaign."
       : campaignState === "ended"
-        ? "This campaign has ended. Latest reports and activity records remain available."
+        ? isIndonesian
+          ? "Kampanye ini telah berakhir. Laporan dan catatan aktivitas terbaru tetap dapat dilihat."
+          : "This campaign has ended. Latest reports and activity records remain available."
         : null;
   const fallbackMediaItems = [
     ...campaign.updates
@@ -299,14 +305,19 @@ export default async function CampaignDetailPage({
   const retentionMessage =
     query?.saved === "project"
       ? retentionState?.isSaved
-        ? "Campaign saved to your dashboard."
-        : "Campaign removed from your saved projects."
+        ? isIndonesian ? "Kampanye disimpan ke dashboard." : "Campaign saved to your dashboard."
+        : isIndonesian ? "Kampanye dihapus dari daftar tersimpan." : "Campaign removed from your saved projects."
       : query?.saved === "follow"
         ? retentionState?.isFollowing
-          ? "You are now following campaign activity."
-          : "Campaign activity follow was removed."
+          ? isIndonesian ? "Kamu sekarang mengikuti aktivitas kampanye." : "You are now following campaign activity."
+          : isIndonesian ? "Langganan aktivitas kampanye dihentikan." : "Campaign activity follow was removed."
         : null;
-  const retentionError = query?.error === "campaign" ? "We could not update this campaign preference." : null;
+  const retentionError =
+    query?.error === "campaign"
+      ? isIndonesian
+        ? "Preferensi kampanye tidak dapat diperbarui."
+        : "We could not update this campaign preference."
+      : null;
 
   return (
     <main className="pb-24 lg:pb-0">
@@ -414,7 +425,7 @@ export default async function CampaignDetailPage({
             <aside className="grid h-fit gap-6 xl:sticky xl:top-28">
               <CampaignDonationCard
                 campaignSlug={campaign.slug}
-                raisedLabel={`${formatCurrency(campaign.raised, campaign.currency)} raised`}
+                raisedLabel={`${formatCurrency(campaign.raised, campaign.currency)} ${isIndonesian ? "terkumpul" : "raised"}`}
                 progress={progress}
                 impactUnit={campaign.impactUnit}
                 impactTarget={campaign.impactTarget}
@@ -428,6 +439,7 @@ export default async function CampaignDetailPage({
                 isAuthenticated={Boolean(sessionUser)}
                 isSaved={retentionState?.isSaved ?? false}
                 campaignPath={campaignPath}
+                locale={locale}
               />
 
               <div className="rounded-2xl border border-ocean-900/10 bg-white p-5 shadow-soft">
@@ -487,8 +499,8 @@ export default async function CampaignDetailPage({
 
       <CampaignSectionTabs tabs={tabs} />
 
-      <section className="mx-auto grid max-w-7xl gap-8 px-4 py-16 sm:px-6 lg:px-8 xl:grid-cols-[1fr_340px]">
-        <div className="grid gap-16">
+      <section className="mx-auto grid max-w-7xl gap-8 px-4 py-12 sm:px-6 sm:py-16 lg:px-8 xl:grid-cols-[1fr_340px]">
+        <div className="grid gap-12 sm:gap-16">
           <section id="overview" className="scroll-mt-40">
             <SectionHeading eyebrow="Overview" title="Campaign story and public location records" />
             <div className="mt-8 grid gap-5">
