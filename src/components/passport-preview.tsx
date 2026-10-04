@@ -27,8 +27,10 @@ export function PassportPreview({ passport, locale = "en" }: PassportPreviewProp
           passport: "Impact Passport",
           xpToChampion: "XP menuju Ocean Champion",
           viewPublic: "Lihat passport publik",
-          latest: "Aktivitas terverifikasi terbaru",
-          latestEmpty: "Aktivitas terverifikasi akan muncul setelah donasi, pembelajaran, atau ekspedisi pertama.",
+          latest: "Catatan terbaru di passport",
+          latestEmpty: "Catatan passport akan muncul setelah donasi, pembelajaran, atau ekspedisi pertama.",
+          disclosure: "Impact Passport merangkum aktivitas dan catatan yang memenuhi syarat. Outcome kampanye tetap ditampilkan sebagai outcome kampanye, bukan atribusi personal langsung.",
+          progressAria: "progres XP",
           statLabels: {
             Donations: "Donasi",
             Corals: "Restorasi",
@@ -40,8 +42,10 @@ export function PassportPreview({ passport, locale = "en" }: PassportPreviewProp
           passport: "Impact Passport",
           xpToChampion: "XP to Ocean Champion",
           viewPublic: "View public passport",
-          latest: "Latest verified activity",
-          latestEmpty: "Verified activity will appear here after the first donation, lesson, or expedition.",
+          latest: "Latest passport record",
+          latestEmpty: "Passport records will appear here after the first donation, lesson, or expedition.",
+          disclosure: "Impact Passport summarizes eligible activity and records. Campaign outcomes remain campaign outcomes, not direct personal attribution.",
+          progressAria: "XP progress",
           statLabels: {} as Record<string, string>
         };
 
@@ -58,7 +62,7 @@ export function PassportPreview({ passport, locale = "en" }: PassportPreviewProp
             <p className="mt-1 text-sm text-white/68">{passport.levelLabel}</p>
           </div>
         </div>
-        <ProgressMeter value={progress} label={`${passport.displayName} XP progress`} className="mt-8 h-3" trackClassName="bg-white/14" />
+        <ProgressMeter value={progress} label={`${passport.displayName} ${labels.progressAria}`} className="mt-8 h-3" trackClassName="bg-white/14" />
         <p className="mt-3 text-sm text-white/72">
           {passport.xp.toLocaleString(numberLocale)} / {passport.xpTarget.toLocaleString(numberLocale)} {labels.xpToChampion}
         </p>
@@ -86,6 +90,7 @@ export function PassportPreview({ passport, locale = "en" }: PassportPreviewProp
           <p className="mt-2 text-sm leading-6 text-ocean-900/68">
             {passport.latestActivity?.description ?? labels.latestEmpty}
           </p>
+          <p className="mt-3 border-t border-ocean-900/10 pt-3 text-xs leading-5 text-ocean-900/52">{labels.disclosure}</p>
         </div>
       </div>
     </div>

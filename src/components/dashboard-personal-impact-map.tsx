@@ -31,6 +31,7 @@ type DashboardPersonalImpactMapProps = {
   fullMapHref?: string;
   fullMapLabel?: string;
   locale?: SupportedLocale;
+  context?: "personal" | "connected";
 };
 
 function pinPosition(site: PersonalImpactSite) {
@@ -65,7 +66,8 @@ export function DashboardPersonalImpactMap({
   sites,
   fullMapHref = "/dashboard/impact",
   fullMapLabel,
-  locale = "en"
+  locale = "en",
+  context = "personal"
 }: DashboardPersonalImpactMapProps) {
   const labels =
     locale === "id"
@@ -74,8 +76,8 @@ export function DashboardPersonalImpactMap({
           emptyTitle: "Peta dampakmu belum terisi",
           emptyBody: "Kampanye yang kamu dukung, sponsorship, ekspedisi, dan aktivitas lapangan terverifikasi akan muncul di sini sebagai zona perkiraan.",
           explore: "Jelajahi proyek",
-          eyebrow: "Peta dampakmu",
-          title: "Lokasi yang terhubung dengan aktivitasmu",
+          eyebrow: context === "connected" ? "Peta outcome terhubung" : "Peta dampakmu",
+          title: context === "connected" ? "Lokasi kampanye dan aktivitas yang terhubung denganmu" : "Lokasi yang terhubung dengan aktivitasmu",
           iframe: "Tampilan OpenStreetMap zona dampak pribadi di Indonesia",
           showImpact: "Tampilkan dampak saya di",
           privacy: "Lokasi ditampilkan secara perkiraan untuk melindungi area restorasi.",
@@ -89,12 +91,12 @@ export function DashboardPersonalImpactMap({
           activityFor: "aktivitas untuk",
           pendingActivity: "Aktivitas menunggu",
           progressAria: "persen melalui milestone saat ini",
-          contributed: "dikontribusikan di sini",
+          contributed: context === "connected" ? "kontribusi terhubung ke lokasi ini" : "dikontribusikan di sini",
           supportedUnits: "unit restorasi didukung",
           visitedThrough: "Dikunjungi melalui",
           completedExpedition: "ekspedisi selesai",
           completedExpeditions: "ekspedisi selesai",
-          viewImpact: "Lihat dampak saya di sini",
+          viewImpact: context === "connected" ? "Lihat kampanye terkait" : "Lihat dampak saya di sini",
           latestSource: "Sumber aktivitas terbaru",
           listView: "Tampilan daftar",
           sitesList: "Daftar lokasi dampak"
@@ -104,8 +106,8 @@ export function DashboardPersonalImpactMap({
           emptyTitle: "Your impact map is waiting",
           emptyBody: "Campaigns you support, sponsored corals, expeditions, and verified field activity will appear here as approximate zones.",
           explore: "Explore projects",
-          eyebrow: "Your impact map",
-          title: "Places connected to your activity",
+          eyebrow: context === "connected" ? "Connected outcome map" : "Your impact map",
+          title: context === "connected" ? "Campaign and activity locations connected to you" : "Places connected to your activity",
           iframe: "OpenStreetMap view of personal Indonesian impact zones",
           showImpact: "Show my impact at",
           privacy: "Locations are shown approximately to protect restoration areas.",
@@ -119,12 +121,12 @@ export function DashboardPersonalImpactMap({
           activityFor: "activity for",
           pendingActivity: "Activity pending",
           progressAria: "percent through its current milestone",
-          contributed: "contributed here",
+          contributed: context === "connected" ? "contribution connected to this location" : "contributed here",
           supportedUnits: "supported restoration units",
           visitedThrough: "Visited through",
           completedExpedition: "completed expedition",
           completedExpeditions: "completed expeditions",
-          viewImpact: "View my impact here",
+          viewImpact: context === "connected" ? "View connected campaign" : "View my impact here",
           latestSource: "Latest activity source",
           listView: "List view",
           sitesList: "Impact sites list view"

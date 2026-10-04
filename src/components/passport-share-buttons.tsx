@@ -3,6 +3,7 @@
 import { Copy, MessageCircle, Send, Share2 } from "lucide-react";
 
 import { PassportCopyButton } from "@/components/passport-copy-button";
+import type { SupportedLocale } from "@/lib/user-preferences";
 import { cn } from "@/lib/utils";
 
 type PassportShareButtonsProps = {
@@ -10,6 +11,7 @@ type PassportShareButtonsProps = {
   title: string;
   text?: string;
   tone?: "light" | "onDark";
+  locale?: SupportedLocale;
 };
 
 const toneClasses = {
@@ -30,8 +32,19 @@ function shareUrls(url: string, title: string, text: string) {
   };
 }
 
-export function PassportShareButtons({ url, title, text = "View this verified conservation profile on Terumbu.eco.", tone = "light" }: PassportShareButtonsProps) {
-  const urls = shareUrls(url, title, text);
+export function PassportShareButtons({ url, title, text, tone = "light", locale = "en" }: PassportShareButtonsProps) {
+  const labels =
+    locale === "id"
+      ? {
+          text: "Lihat profil aktivitas konservasi ini di Terumbu.eco.",
+          shareLink: "Bagikan tautan"
+        }
+      : {
+          text: "View this conservation activity profile on Terumbu.eco.",
+          shareLink: "Share link"
+        };
+  const resolvedText = text ?? labels.text;
+  const urls = shareUrls(url, title, resolvedText);
   const linkClassName = cn(
     "inline-flex min-h-11 items-center justify-center gap-2 rounded-full border px-4 py-2 text-sm font-bold transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-coral-500",
     toneClasses[tone]
@@ -47,7 +60,7 @@ export function PassportShareButtons({ url, title, text = "View this verified co
 
   return (
     <div className="flex flex-wrap gap-2">
-      <PassportCopyButton value={url} label="Share link" tone={tone} mode="share" shareTitle={title} shareText={text} />
+      <PassportCopyButton value={url} label={labels.shareLink} tone={tone} mode="share" shareTitle={title} shareText={resolvedText} />
       <a href={urls.facebook} target="_blank" rel="noreferrer" className={linkClassName}>
         <Share2 size={16} aria-hidden="true" />
         Facebook
