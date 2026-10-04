@@ -610,6 +610,7 @@ export default async function DashboardExpeditionsPage({ searchParams }: Dashboa
       </section>
 
       <section className="mt-6 grid gap-4">
+        <h2 className="text-2xl font-bold tracking-normal text-ocean-900">{labels.bookings}</h2>
         {data.bookings.map((booking) => {
           const reviewStatus = booking.reviewId ? normalizeExpeditionReviewStatus(booking.reviewStatus, "pending") : null;
 
@@ -623,13 +624,13 @@ export default async function DashboardExpeditionsPage({ searchParams }: Dashboa
                   <div>
                     <h2 className="text-xl font-bold tracking-normal text-ocean-900">{booking.expeditionTitle}</h2>
                     <p className="mt-1 text-sm text-ocean-900/58">
-                      {booking.startsAt.toLocaleDateString("id-ID", { dateStyle: "medium" })} · {booking.participantsCount} participant
+                      {booking.startsAt.toLocaleDateString(dateLocale, { dateStyle: "medium" })} · {booking.participantsCount} {labels.participant}
                     </p>
                     <div className="mt-4 flex flex-wrap gap-2 text-xs font-bold text-ocean-900/62">
                       <span className="rounded-full bg-sand-50 px-3 py-1">{booking.bookingCode}</span>
-                      <span className={`rounded-full px-3 py-1 ${statusClass(booking.status)}`}>{booking.status}</span>
-                      <span className={`rounded-full px-3 py-1 ${statusClass(booking.paymentStatus)}`}>{booking.paymentStatus}</span>
-                      <span className="rounded-full bg-ocean-50 px-3 py-1">{bookingAttributionLabel(booking.bookingMetadata)}</span>
+                      <span className={`rounded-full px-3 py-1 ${statusClass(booking.status)}`}>{statusLabel(booking.status, locale)}</span>
+                      <span className={`rounded-full px-3 py-1 ${statusClass(booking.paymentStatus)}`}>{statusLabel(booking.paymentStatus, locale)}</span>
+                      <span className="rounded-full bg-ocean-50 px-3 py-1">{bookingAttributionLabel(booking.bookingMetadata, labels.personal)}</span>
                       <span className="rounded-full bg-ocean-50 px-3 py-1">{formatCurrency(Number(booking.totalAmount), booking.currency)}</span>
                     </div>
                   </div>
@@ -640,7 +641,7 @@ export default async function DashboardExpeditionsPage({ searchParams }: Dashboa
                     startsAt={booking.startsAt}
                     endsAt={booking.endsAt}
                     location={booking.expeditionRegion}
-                    description={`Terumbu.eco expedition booking ${booking.bookingCode}`}
+                    description={`${labels.calendarDescription} ${booking.bookingCode}`}
                   />
                   {booking.canCancelBooking ? (
                     <>
@@ -648,13 +649,13 @@ export default async function DashboardExpeditionsPage({ searchParams }: Dashboa
                         <input type="hidden" name="bookingId" value={booking.id} />
                         <button className="inline-flex min-h-9 items-center gap-2 rounded-full border border-ocean-900/10 px-3 text-xs font-bold text-ocean-900 hover:border-coral-500" type="submit">
                           <RefreshCw size={14} aria-hidden="true" />
-                          Request recheck
+                          {labels.requestRecheck}
                         </button>
                       </form>
                       <form action={cancelOwnExpeditionBookingAction}>
                         <input type="hidden" name="bookingId" value={booking.id} />
                         <button className="inline-flex min-h-9 items-center gap-2 rounded-full border border-coral-500/30 px-3 text-xs font-bold text-coral-700 hover:border-coral-500" type="submit">
-                          Cancel booking
+                          {labels.cancelBooking}
                         </button>
                       </form>
                     </>
@@ -662,15 +663,15 @@ export default async function DashboardExpeditionsPage({ searchParams }: Dashboa
                   {booking.canRequestRefund ? (
                     <details className="relative">
                       <summary className="inline-flex min-h-9 cursor-pointer list-none items-center rounded-full border border-coral-500/30 px-3 text-xs font-bold text-coral-700 hover:border-coral-500">
-                        Request refund
+                        {labels.requestRefund}
                       </summary>
                       <form action={requestExpeditionRefundAction} className="absolute right-0 z-20 mt-2 grid w-72 gap-2 rounded-xl border border-ocean-900/10 bg-white p-3 shadow-soft">
                         <input type="hidden" name="bookingId" value={booking.id} />
                         <label className="grid gap-1 text-xs font-bold text-ocean-900">
-                          Reason
-                          <textarea name="reason" className="min-h-20 rounded-lg border border-ocean-900/14 px-3 py-2 text-sm font-semibold" placeholder="Tell us why you need a refund." required />
+                          {labels.reason}
+                          <textarea name="reason" className="min-h-20 rounded-lg border border-ocean-900/14 px-3 py-2 text-sm font-semibold" placeholder={labels.refundPlaceholder} required />
                         </label>
-                        <Button type="submit" tone="secondary">Submit refund request</Button>
+                        <Button type="submit" tone="secondary">{labels.submitRefund}</Button>
                       </form>
                     </details>
                   ) : null}
@@ -680,14 +681,14 @@ export default async function DashboardExpeditionsPage({ searchParams }: Dashboa
                 <div className="mt-5 rounded-2xl border border-ocean-900/10 bg-sand-50 p-4">
                   <div className="flex flex-col justify-between gap-3 md:flex-row md:items-start">
                     <div>
-                      <p className="font-bold text-ocean-900">{booking.reviewId ? "Your expedition review" : "Review this completed expedition"}</p>
-                      <p className="mt-1 text-sm text-ocean-900/62">{reviewStatusDescription(reviewStatus)}</p>
+                      <p className="font-bold text-ocean-900">{booking.reviewId ? labels.yourReview : labels.reviewCompleted}</p>
+                      <p className="mt-1 text-sm text-ocean-900/62">{reviewStatusDescription(reviewStatus, locale)}</p>
                     </div>
                     {booking.reviewId ? (
                       <div className="flex flex-wrap gap-2 md:justify-end">
                         {reviewStatus ? (
                           <span className={`inline-flex w-fit items-center rounded-full px-3 py-1 text-xs font-bold ${reviewStatusClass(reviewStatus)}`}>
-                            {expeditionReviewStatusLabel(reviewStatus)}
+                            {statusLabel(reviewStatus, locale)}
                           </span>
                         ) : null}
                         <span className="inline-flex w-fit items-center gap-1 rounded-full bg-ocean-50 px-3 py-1 text-xs font-bold text-ocean-700">
@@ -701,7 +702,7 @@ export default async function DashboardExpeditionsPage({ searchParams }: Dashboa
                     <input type="hidden" name="bookingId" value={booking.id} />
                     <div className="grid min-w-0 gap-3 md:grid-cols-[160px_minmax(0,1fr)]">
                       <label className="grid min-w-0 gap-1.5 text-sm font-bold text-ocean-900">
-                        Rating
+                        {labels.rating}
                         <select
                           name="rating"
                           defaultValue={String(booking.reviewRating ?? 5)}
@@ -710,53 +711,53 @@ export default async function DashboardExpeditionsPage({ searchParams }: Dashboa
                         >
                           {[5, 4, 3, 2, 1].map((rating) => (
                             <option key={rating} value={rating}>
-                              {rating} stars
+                              {rating} {labels.stars}
                             </option>
                           ))}
                         </select>
                       </label>
                       <label className="grid min-w-0 gap-1.5 text-sm font-bold text-ocean-900">
-                        Review title
+                        {labels.reviewTitle}
                         <input
                           name="title"
                           defaultValue={booking.reviewTitle ?? ""}
-                          placeholder="Purposeful and well-run"
+                          placeholder={labels.reviewTitlePlaceholder}
                           className="min-h-11 w-full min-w-0 rounded-lg border border-ocean-900/14 bg-white px-3 text-sm font-semibold text-ocean-900 outline-none placeholder:text-ocean-900/36 focus:border-coral-500"
                         />
                       </label>
                     </div>
                     <label className="grid min-w-0 gap-1.5 text-sm font-bold text-ocean-900">
-                      Review
+                      {labels.review}
                       <textarea
                         name="body"
                         defaultValue={booking.reviewBody ?? ""}
-                        placeholder="Share what future participants should know."
+                        placeholder={labels.reviewPlaceholder}
                         className="min-h-28 w-full min-w-0 rounded-lg border border-ocean-900/14 bg-white px-3 py-3 text-sm font-semibold text-ocean-900 outline-none placeholder:text-ocean-900/36 focus:border-coral-500"
                         required
                       />
                     </label>
                     <Button type="submit" className="w-fit">
                       <Star size={16} aria-hidden="true" />
-                      {booking.reviewId ? "Submit Updated Review" : "Submit Review"}
+                      {booking.reviewId ? labels.submitUpdatedReview : labels.submitReview}
                     </Button>
                   </form>
                 <div className="mt-5 border-t border-ocean-900/10 pt-5">
                   <div className="flex flex-col justify-between gap-2 sm:flex-row sm:items-end">
                     <div>
-                      <p className="font-bold text-ocean-900">Share traveler moments</p>
+                      <p className="font-bold text-ocean-900">{labels.travelerMoments}</p>
                       <p className="mt-1 text-sm text-ocean-900/62">
-                        Completed participants can submit photos or video links. Platform Admin reviews every submission before it appears publicly.
+                        {labels.travelerMomentsBody}
                       </p>
                     </div>
                     <span className="text-xs font-bold text-ocean-900/46">
-                      {(mediaByBooking.get(booking.id) ?? []).length} submitted
+                      {(mediaByBooking.get(booking.id) ?? []).length} {labels.submitted}
                     </span>
                   </div>
                   {(mediaByBooking.get(booking.id) ?? []).length > 0 ? (
                     <div className="mt-3 flex flex-wrap gap-2">
                       {(mediaByBooking.get(booking.id) ?? []).map((submission) => (
                         <span key={submission.id} className="rounded-full bg-ocean-50 px-3 py-1 text-xs font-bold text-ocean-900">
-                          {submission.mediaType} · {submission.status}
+                          {submission.mediaType === "photo" ? labels.photo : labels.videoLink} · {statusLabel(submission.status, locale)}
                         </span>
                       ))}
                     </div>
@@ -765,26 +766,26 @@ export default async function DashboardExpeditionsPage({ searchParams }: Dashboa
                     <input type="hidden" name="bookingId" value={booking.id} />
                     <div className="grid gap-3 sm:grid-cols-2">
                       <label className="grid gap-1.5 text-sm font-bold text-ocean-900">
-                        Media type
+                        {labels.mediaType}
                         <select name="mediaType" defaultValue="photo" className="min-h-11 rounded-lg border border-ocean-900/14 bg-white px-3 text-sm font-semibold">
-                          <option value="photo">Photo</option>
-                          <option value="video">Video link</option>
+                          <option value="photo">{labels.photo}</option>
+                          <option value="video">{labels.videoLink}</option>
                         </select>
                       </label>
                       <label className="grid gap-1.5 text-sm font-bold text-ocean-900">
-                        Photo upload
+                        {labels.photoUpload}
                         <input name="mediaFile" type="file" accept="image/png,image/jpeg,image/webp,image/gif" className="min-h-11 rounded-lg border border-ocean-900/14 bg-white px-3 py-2 text-sm" />
                       </label>
                     </div>
                     <label className="grid gap-1.5 text-sm font-bold text-ocean-900">
-                      Photo or video URL <span className="font-normal text-ocean-900/42">(optional for photo upload)</span>
+                      {labels.mediaUrl} <span className="font-normal text-ocean-900/42">{labels.mediaUrlOptional}</span>
                       <input name="mediaUrl" type="url" placeholder="https://..." className="min-h-11 rounded-lg border border-ocean-900/14 bg-white px-3 text-sm font-semibold" />
                     </label>
                     <label className="grid gap-1.5 text-sm font-bold text-ocean-900">
-                      Caption
-                      <textarea name="caption" placeholder="What was happening, and what did you learn?" className="min-h-20 rounded-lg border border-ocean-900/14 bg-white px-3 py-3 text-sm font-semibold" />
+                      {labels.caption}
+                      <textarea name="caption" placeholder={labels.captionPlaceholder} className="min-h-20 rounded-lg border border-ocean-900/14 bg-white px-3 py-3 text-sm font-semibold" />
                     </label>
-                    <Button type="submit" tone="secondary" className="w-fit">Submit for review</Button>
+                    <Button type="submit" tone="secondary" className="w-fit">{labels.submitForReview}</Button>
                   </form>
                 </div>
                 </div>
@@ -794,9 +795,9 @@ export default async function DashboardExpeditionsPage({ searchParams }: Dashboa
         })}
         {data.bookings.length === 0 ? (
           <div className="rounded-2xl border border-dashed border-ocean-900/14 bg-white p-6">
-            <p className="font-bold text-ocean-900">No expedition bookings yet.</p>
+            <p className="font-bold text-ocean-900">{labels.noBookings}</p>
             <Link href="/expeditions" className="mt-2 inline-flex text-sm font-bold text-coral-700">
-              Find your first conservation trip
+              {labels.findFirstTrip}
             </Link>
           </div>
         ) : null}
