@@ -17,6 +17,7 @@ import { expeditionReviewStatusLabel, normalizeExpeditionReviewStatus, type Expe
 import { Button, ButtonLink } from "@/components/ui/button";
 import { requireUser } from "@/lib/auth";
 import { getDashboardData, getExpeditionCards } from "@/lib/queries";
+import { getPreferredLocale, type SupportedLocale } from "@/lib/user-preferences";
 import { removeSavedExpeditionAction } from "@/lib/retention-actions";
 import { formatCurrency } from "@/lib/utils";
 
@@ -58,7 +59,28 @@ function reviewStatusClass(status: ExpeditionReviewStatus) {
 }
 
 
-function bookingAttributionLabel(metadata: unknown) {
+function statusLabel(status: string, locale: SupportedLocale) {
+  if (locale !== "id") {
+    return status.replaceAll("_", " ");
+  }
+
+  const labels: Record<string, string> = {
+    paid: "dibayar",
+    confirmed: "dikonfirmasi",
+    completed: "selesai",
+    failed: "gagal",
+    refunded: "direfund",
+    cancelled: "dibatalkan",
+    pending: "menunggu",
+    active: "aktif",
+    published: "dipublikasikan",
+    rejected: "ditolak"
+  };
+
+  return labels[status] ?? status.replaceAll("_", " ");
+}
+
+function bookingAttributionLabel(metadata: unknown, personalLabel: string) {
   const metadataObject = metadata && typeof metadata === "object" && !Array.isArray(metadata) ? (metadata as Record<string, unknown>) : {};
   const attribution =
     metadataObject.attribution && typeof metadataObject.attribution === "object" && !Array.isArray(metadataObject.attribution)
@@ -69,10 +91,26 @@ function bookingAttributionLabel(metadata: unknown) {
     return attribution.corporateAccountName;
   }
 
-  return "Personal";
+  return personalLabel;
 }
 
-function reviewStatusDescription(status: ExpeditionReviewStatus | null) {
+function reviewStatusDescription(status: ExpeditionReviewStatus | null, locale: SupportedLocale) {
+  if (locale === "id") {
+    if (status === "published") {
+      return "Review yang disetujui tampil di halaman publik ekspedisi sebagai review peserta yang terverifikasi.";
+    }
+
+    if (status === "rejected") {
+      return "Review belum disetujui. Edit lalu kirim ulang untuk moderasi.";
+    }
+
+    if (status === "pending") {
+      return "Review sedang menunggu moderasi admin Terumbu sebelum tampil publik.";
+    }
+
+    return "Kirim review untuk moderasi admin setelah ekspedisi selesai.";
+  }
+
   if (status === "published") {
     return "Your approved review appears on the expedition public page as a verified completed-participant review.";
   }
@@ -91,12 +129,210 @@ function reviewStatusDescription(status: ExpeditionReviewStatus | null) {
 export default async function DashboardExpeditionsPage({ searchParams }: DashboardExpeditionsPageProps) {
   const params = await searchParams;
   const user = await requireUser("/dashboard/expeditions");
-  const [data, highlightedExpeditions, reminders, mediaSubmissions] = await Promise.all([
+  const [data, highlightedExpeditions, reminders, mediaSubmissions, locale] = await Promise.all([
     getDashboardData(user.id),
     getExpeditionCards(3),
     getUserExpeditionReminders(user.id),
-    getUserExpeditionMediaSubmissions(user.id)
+    getUserExpeditionMediaSubmissions(user.id),
+    getPreferredLocale()
   ]);
+  const isIndonesian = locale === "id";
+  const numberLocale = isIndonesian ? "id-ID" : "en-US";
+  const dateLocale = numberLocale;
+  const labels =
+    isIndonesian
+      ? {
+          expeditions: "Ekspedisi",
+          title: "Dari booking ke dampak terverifikasi",
+          browseExpeditions: "Jelajahi ekspedisi",
+          savedReview: "Terima kasih, review ekspedisimu sudah dikirim untuk moderasi.",
+          savedExpedition: "Daftar ekspedisi tersimpan diperbarui.",
+          savedMedia: "Media perjalanan dikirim untuk moderasi.",
+          savedReminder: "Pengingat ekspedisi dijadwalkan.",
+          savedReminderCancelled: "Pengingat ekspedisi dibatalkan.",
+          savedRecheck: "Pemeriksaan ulang pembayaran diminta. Admin Platform akan memverifikasi pembayaran booking.",
+          savedBookingCancelled: "Booking yang belum dibayar dibatalkan.",
+          savedBilling: "Perubahan billing booking tersimpan.",
+          errorReview: "Review tersedia setelah ekspedisi selesai. Tambahkan rating dan minimal 10 karakter.",
+          errorAvailability: "Departure tersebut tidak lagi memiliki kursi yang cukup untuk pemeriksaan ulang pembayaran.",
+          errorSaved: "Ekspedisi tersimpan tidak dapat diperbarui.",
+          errorMedia: "Media perjalanan hanya dapat dikirim untuk booking yang sudah selesai. Unggah gambar yang didukung di bawah 1,5 MB atau URL media HTTPS yang valid.",
+          errorReminder: "Pengingat tidak dapat dijadwalkan.",
+          errorCancel: "Booking ini tidak lagi dapat dibatalkan dari dashboard.",
+          errorRefund: "Refund hanya dapat diminta untuk booking berbayar sebelum ekspedisi dimulai.",
+          errorBilling: "Aksi billing booking tidak dapat diselesaikan.",
+          journeyEyebrow: "Perjalanan ekspedisiku",
+          journeyTitle: "Status booking sampai dampak terverifikasi",
+          journeyBody: "Booking dan partisipasi yang selesai adalah catatan personalmu. Hasil konservasi tetap merupakan outcome ekspedisi atau kampanye kecuali aktivitas secara eksplisit dicatat untuk peserta individual.",
+          currentStage: "Tahap saat ini",
+          bookingPayment: "Booking & pembayaran",
+          preparation: "Persiapan",
+          participation: "Partisipasi",
+          fieldActivity: "Aktivitas lapangan",
+          verifiedImpact: "Dampak terverifikasi",
+          paymentVerified: "Pembayaran terverifikasi",
+          payment: "Pembayaran",
+          prepComplete: "item persiapan selesai",
+          completedConfirmed: "Selesai dan dikonfirmasi",
+          notCompleted: "Ekspedisi belum selesai",
+          awaitingConfirmation: "Menunggu konfirmasi mitra",
+          waitingField: "Menunggu aktivitas lapangan dipublikasikan.",
+          noCampaign: "Tidak ada kampanye konservasi terkait.",
+          noVerified: "Belum ada outcome terverifikasi.",
+          passportEligible: "Partisipasi selesai. Ekspedisi ini memenuhi syarat untuk catatan Impact Passport-mu.",
+          journeyEmpty: "Perjalanan ekspedisimu dimulai setelah booking pertama.",
+          bookings: "Booking ekspedisiku",
+          participant: "peserta",
+          personal: "Personal",
+          calendarDescription: "Booking ekspedisi Terumbu.eco",
+          requestRecheck: "Minta pemeriksaan ulang",
+          cancelBooking: "Batalkan booking",
+          requestRefund: "Ajukan refund",
+          reason: "Alasan",
+          refundPlaceholder: "Jelaskan alasan kamu membutuhkan refund.",
+          submitRefund: "Kirim permintaan refund",
+          yourReview: "Review ekspedisimu",
+          reviewCompleted: "Review ekspedisi yang selesai",
+          rating: "Rating",
+          stars: "bintang",
+          reviewTitle: "Judul review",
+          reviewTitlePlaceholder: "Bermakna dan dikelola dengan baik",
+          review: "Review",
+          reviewPlaceholder: "Bagikan hal yang perlu diketahui calon peserta.",
+          submitUpdatedReview: "Kirim Review Terbaru",
+          submitReview: "Kirim Review",
+          travelerMoments: "Bagikan momen perjalanan",
+          travelerMomentsBody: "Peserta yang sudah selesai dapat mengirim foto atau tautan video. Admin Platform meninjau setiap submission sebelum tampil publik.",
+          submitted: "dikirim",
+          mediaType: "Jenis media",
+          photo: "Foto",
+          videoLink: "Tautan video",
+          photoUpload: "Unggah foto",
+          mediaUrl: "URL foto atau video",
+          mediaUrlOptional: "(opsional jika mengunggah foto)",
+          caption: "Caption",
+          captionPlaceholder: "Apa yang sedang terjadi dan apa yang kamu pelajari?",
+          submitForReview: "Kirim untuk review",
+          noBookings: "Belum ada booking ekspedisi.",
+          findFirstTrip: "Cari trip konservasi pertamamu",
+          exploreEyebrow: "Jelajahi berikutnya",
+          exploreTitle: "Temukan ekspedisi lain",
+          exploreBody: "Pilih aktivitas lapangan terbaru atau jelajahi seluruh katalog ekspedisi.",
+          browseAll: "Jelajahi semua",
+          detail: "Detail",
+          savedTrips: "Trip tersimpan",
+          savedTrip: "ekspedisi tersimpan",
+          from: "mulai",
+          saved: "Disimpan",
+          remind3: "Ingatkan dalam 3 hari",
+          remind7: "Ingatkan dalam 7 hari",
+          remind14: "Ingatkan dalam 14 hari",
+          remind30: "Ingatkan dalam 30 hari",
+          remindMe: "Ingatkan saya",
+          remove: "Hapus",
+          removeSavedAria: "Hapus ekspedisi tersimpan",
+          savedEmpty: "Simpan ekspedisi dari halaman trip agar dapat dibandingkan sebelum booking.",
+          reminders: "Pengingat terjadwal",
+          remindersBody: "Pengingat in-app dan email mengikuti preferensi notifikasi ekspedisimu.",
+          reminder: "Pengingat",
+          cancelReminder: "Batalkan pengingat"
+        }
+      : {
+          expeditions: "Expeditions",
+          title: "From booking to verified impact",
+          browseExpeditions: "Browse expeditions",
+          savedReview: "Thanks, your expedition review was submitted for moderation.",
+          savedExpedition: "Saved expeditions updated.",
+          savedMedia: "Traveler media submitted for moderation.",
+          savedReminder: "Expedition reminder scheduled.",
+          savedReminderCancelled: "Expedition reminder cancelled.",
+          savedRecheck: "Payment recheck requested. Platform Admin will verify the booking payment.",
+          savedBookingCancelled: "Unpaid booking cancelled.",
+          savedBilling: "Booking billing changes saved.",
+          errorReview: "Reviews are available after expedition completion. Add a rating and at least 10 characters.",
+          errorAvailability: "That departure no longer has enough available seats for payment recheck.",
+          errorSaved: "Could not update that saved expedition.",
+          errorMedia: "Traveler media can only be submitted for completed bookings. Upload a supported image under 1.5 MB or provide a valid HTTPS media URL.",
+          errorReminder: "Could not schedule that reminder.",
+          errorCancel: "This booking can no longer be cancelled from your dashboard.",
+          errorRefund: "Refund can only be requested for a paid booking before the expedition starts.",
+          errorBilling: "Could not complete that booking billing action.",
+          journeyEyebrow: "My expedition journey",
+          journeyTitle: "Booking status to verified impact",
+          journeyBody: "Your booking and completed participation are personal records. Conservation results remain expedition or campaign outcomes unless an activity is explicitly recorded for an individual participant.",
+          currentStage: "Current stage",
+          bookingPayment: "Booking & payment",
+          preparation: "Preparation",
+          participation: "Participation",
+          fieldActivity: "Field activity",
+          verifiedImpact: "Verified impact",
+          paymentVerified: "Payment verified",
+          payment: "Payment",
+          prepComplete: "preparation items complete",
+          completedConfirmed: "Completed and confirmed",
+          notCompleted: "Expedition not completed yet",
+          awaitingConfirmation: "Awaiting partner confirmation",
+          waitingField: "Waiting for published field activity.",
+          noCampaign: "No related conservation campaign.",
+          noVerified: "No verified outcome yet.",
+          passportEligible: "Participation completed. This expedition is eligible for your Impact Passport record.",
+          journeyEmpty: "Your expedition journey starts after your first booking.",
+          bookings: "My expedition bookings",
+          participant: "participant",
+          personal: "Personal",
+          calendarDescription: "Terumbu.eco expedition booking",
+          requestRecheck: "Request recheck",
+          cancelBooking: "Cancel booking",
+          requestRefund: "Request refund",
+          reason: "Reason",
+          refundPlaceholder: "Tell us why you need a refund.",
+          submitRefund: "Submit refund request",
+          yourReview: "Your expedition review",
+          reviewCompleted: "Review this completed expedition",
+          rating: "Rating",
+          stars: "stars",
+          reviewTitle: "Review title",
+          reviewTitlePlaceholder: "Purposeful and well-run",
+          review: "Review",
+          reviewPlaceholder: "Share what future participants should know.",
+          submitUpdatedReview: "Submit Updated Review",
+          submitReview: "Submit Review",
+          travelerMoments: "Share traveler moments",
+          travelerMomentsBody: "Completed participants can submit photos or video links. Platform Admin reviews every submission before it appears publicly.",
+          submitted: "submitted",
+          mediaType: "Media type",
+          photo: "Photo",
+          videoLink: "Video link",
+          photoUpload: "Photo upload",
+          mediaUrl: "Photo or video URL",
+          mediaUrlOptional: "(optional for photo upload)",
+          caption: "Caption",
+          captionPlaceholder: "What was happening, and what did you learn?",
+          submitForReview: "Submit for review",
+          noBookings: "No expedition bookings yet.",
+          findFirstTrip: "Find your first conservation trip",
+          exploreEyebrow: "Explore next",
+          exploreTitle: "Discover another expedition",
+          exploreBody: "Pick one of the latest field activities or browse the full expedition catalog.",
+          browseAll: "Browse all",
+          detail: "Detail",
+          savedTrips: "Saved trips",
+          savedTrip: "saved expedition",
+          from: "from",
+          saved: "Saved",
+          remind3: "Remind in 3 days",
+          remind7: "Remind in 7 days",
+          remind14: "Remind in 14 days",
+          remind30: "Remind in 30 days",
+          remindMe: "Remind me",
+          remove: "Remove",
+          removeSavedAria: "Remove saved expedition",
+          savedEmpty: "Save expeditions from a trip page to compare them here before booking.",
+          reminders: "Scheduled reminders",
+          remindersBody: "In-app and email reminders follow your expedition notification preference.",
+          reminder: "Reminder",
+          cancelReminder: "Cancel reminder"
+        };
   const mediaByBooking = new Map<string, typeof mediaSubmissions>();
   for (const submission of mediaSubmissions) {
     const current = mediaByBooking.get(submission.bookingId) ?? [];
