@@ -14,11 +14,32 @@ type GalleryImage = {
 type ExpeditionHeroGalleryProps = {
   images: GalleryImage[];
   region: string;
+  locale?: "en" | "id";
 };
 
-export function ExpeditionHeroGallery({ images, region }: ExpeditionHeroGalleryProps) {
+export function ExpeditionHeroGallery({ images, region, locale = "en" }: ExpeditionHeroGalleryProps) {
   const [open, setOpen] = useState(false);
   const main = images[0];
+  const labels =
+    locale === "id"
+      ? {
+          viewAll: "Lihat semua",
+          photos: "foto",
+          noPhotos: "Foto belum ditambahkan",
+          dialog: "Galeri foto ekspedisi",
+          gallery: "Galeri ekspedisi",
+          provenance: "Gambar promosi dan aktivitas diberi label sumber/provenance.",
+          close: "Tutup galeri"
+        }
+      : {
+          viewAll: "View all",
+          photos: "photos",
+          noPhotos: "Photos not added yet",
+          dialog: "Expedition photo gallery",
+          gallery: "Expedition gallery",
+          provenance: "Promotional and activity-linked imagery is labeled with provenance.",
+          close: "Close gallery"
+        };
 
   return (
     <>
@@ -32,20 +53,20 @@ export function ExpeditionHeroGallery({ images, region }: ExpeditionHeroGalleryP
         <div className="absolute inset-0 bg-gradient-to-t from-ocean-900/18 via-transparent to-transparent" />
         <span className="absolute bottom-5 right-5 inline-flex min-h-11 items-center gap-2 rounded-full bg-white px-5 text-sm font-bold text-ocean-900 shadow-soft">
           <Camera size={16} aria-hidden="true" />
-          {main ? `View all ${images.length} photos` : "Photos not added yet"}
+          {main ? `${labels.viewAll} ${images.length} ${labels.photos}` : labels.noPhotos}
         </span>
         <span className="absolute left-4 top-4 rounded-full bg-white/92 px-3 py-1 text-xs font-bold text-ocean-900 shadow-sm">{region}</span>
       </button>
 
       {open ? (
-        <div className="fixed inset-0 z-50 overflow-y-auto bg-ocean-950/80 p-4 backdrop-blur" role="dialog" aria-modal="true" aria-label="Expedition photo gallery">
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-ocean-950/80 p-4 backdrop-blur" role="dialog" aria-modal="true" aria-label={labels.dialog}>
           <div className="mx-auto max-w-5xl rounded-2xl bg-white p-4 shadow-soft">
             <div className="flex items-center justify-between gap-4">
               <div>
-                <p className="text-sm font-bold uppercase tracking-[0.16em] text-coral-700">Expedition gallery</p>
-                <p className="mt-1 text-sm text-ocean-900/62">Promotional and activity-linked imagery is labeled with provenance.</p>
+                <p className="text-sm font-bold uppercase tracking-[0.16em] text-coral-700">{labels.gallery}</p>
+                <p className="mt-1 text-sm text-ocean-900/62">{labels.provenance}</p>
               </div>
-              <button type="button" className="flex size-10 items-center justify-center rounded-full bg-ocean-50" aria-label="Close gallery" onClick={() => setOpen(false)}>
+              <button type="button" className="flex size-10 items-center justify-center rounded-full bg-ocean-50" aria-label={labels.close} onClick={() => setOpen(false)}>
                 <X size={18} aria-hidden="true" />
               </button>
             </div>
