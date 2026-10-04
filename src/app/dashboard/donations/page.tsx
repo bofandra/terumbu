@@ -167,52 +167,6 @@ export default async function DashboardDonationsPage({ searchParams }: Dashboard
       ) : null}
 
       <section className="mt-6 rounded-2xl border border-ocean-900/10 bg-white p-5 shadow-soft">
-        <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
-          <div>
-            <h2 className="text-2xl font-bold tracking-normal text-ocean-900">{labels.exploreTitle}</h2>
-            <p className="mt-1 text-sm font-semibold text-ocean-900/58">{labels.exploreBody}</p>
-          </div>
-          <ButtonLink href="/campaigns" tone="secondary">
-            {labels.browseAll}
-          </ButtonLink>
-        </div>
-        <div className="mt-5 grid gap-5 lg:grid-cols-3">
-          {highlightedCampaigns.map((campaign) => (
-            <CampaignCard key={campaign.slug} campaign={campaign} locale={locale} />
-          ))}
-        </div>
-      </section>
-
-      <section className="mt-6 rounded-2xl border border-ocean-900/10 bg-white p-5 shadow-soft">
-        <div>
-          <h2 className="text-2xl font-bold tracking-normal text-ocean-900">{labels.savedCampaigns}</h2>
-          <p className="mt-1 text-sm font-semibold text-ocean-900/58">
-            {data.savedCampaigns.length.toLocaleString(numberLocale)} {labels.savedCampaign}{data.savedCampaigns.length === 1 ? "" : isIndonesian ? "" : "s"}.
-          </p>
-        </div>
-        <div className="mt-5 grid gap-5 md:grid-cols-2">
-          {data.savedCampaigns.map((campaign) => (
-            <article key={campaign.slug} className="grid gap-3">
-              <CampaignCard campaign={campaign} locale={locale} />
-              <form action={removeSavedCampaignAction}>
-                <input type="hidden" name="campaignSlug" value={campaign.slug} />
-                <input type="hidden" name="next" value="/dashboard/donations" />
-                <Button type="submit" tone="light" className="w-full">
-                  <BookmarkX size={16} aria-hidden="true" />
-                  {labels.removeSaved}
-                </Button>
-              </form>
-            </article>
-          ))}
-        </div>
-        {data.savedCampaigns.length === 0 ? (
-          <p className="mt-4 rounded-xl border border-dashed border-ocean-900/14 bg-sand-50 p-4 text-sm font-semibold text-ocean-900/62">
-            {labels.savedEmpty}
-          </p>
-        ) : null}
-      </section>
-
-      <section className="mt-6 rounded-2xl border border-ocean-900/10 bg-white p-5 shadow-soft">
         <p className="text-sm font-bold uppercase tracking-[0.16em] text-coral-700">{labels.journeyEyebrow}</p>
         <h2 className="mt-2 text-2xl font-bold tracking-normal text-ocean-900">{labels.journeyTitle}</h2>
         <p className="mt-2 max-w-3xl text-sm leading-6 text-ocean-900/62">
@@ -398,6 +352,53 @@ export default async function DashboardDonationsPage({ searchParams }: Dashboard
           {verificationOperations.length === 0 ? <p className="rounded-xl border border-dashed border-ocean-900/14 p-4 text-sm font-semibold text-ocean-900/62">{labels.noVerification}</p> : null}
         </div>
       </section>
+      <section className="mt-6 rounded-2xl border border-ocean-900/10 bg-white p-5 shadow-soft">
+        <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
+          <div>
+            <p className="text-sm font-bold uppercase tracking-[0.16em] text-coral-700">{labels.exploreEyebrow}</p>
+            <h2 className="mt-2 text-2xl font-bold tracking-normal text-ocean-900">{labels.exploreTitle}</h2>
+            <p className="mt-1 text-sm font-semibold text-ocean-900/58">{labels.exploreBody}</p>
+          </div>
+          <ButtonLink href="/campaigns" tone="secondary">
+            {labels.browseAll}
+          </ButtonLink>
+        </div>
+        <div className="mt-5 grid gap-5 lg:grid-cols-3">
+          {highlightedCampaigns.map((campaign) => (
+            <CampaignCard key={campaign.slug} campaign={campaign} locale={locale} />
+          ))}
+        </div>
+      </section>
+
+      <section className="mt-6 rounded-2xl border border-ocean-900/10 bg-white p-5 shadow-soft">
+        <div>
+          <h2 className="text-2xl font-bold tracking-normal text-ocean-900">{labels.savedCampaigns}</h2>
+          <p className="mt-1 text-sm font-semibold text-ocean-900/58">
+            {data.savedCampaigns.length.toLocaleString(numberLocale)} {labels.savedCampaign}{data.savedCampaigns.length === 1 ? "" : isIndonesian ? "" : "s"}.
+          </p>
+        </div>
+        <div className="mt-5 grid gap-5 md:grid-cols-2">
+          {data.savedCampaigns.map((campaign) => (
+            <article key={campaign.slug} className="grid gap-3">
+              <CampaignCard campaign={campaign} locale={locale} />
+              <form action={removeSavedCampaignAction}>
+                <input type="hidden" name="campaignSlug" value={campaign.slug} />
+                <input type="hidden" name="next" value="/dashboard/donations" />
+                <Button type="submit" tone="light" className="w-full">
+                  <BookmarkX size={16} aria-hidden="true" />
+                  {labels.removeSaved}
+                </Button>
+              </form>
+            </article>
+          ))}
+        </div>
+        {data.savedCampaigns.length === 0 ? (
+          <p className="mt-4 rounded-xl border border-dashed border-ocean-900/14 bg-sand-50 p-4 text-sm font-semibold text-ocean-900/62">
+            {labels.savedEmpty}
+          </p>
+        ) : null}
+      </section>
+
     </main>
   );
 }
