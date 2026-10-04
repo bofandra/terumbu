@@ -62,8 +62,8 @@ export const dynamic = "force-dynamic";
 
 const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://terumbu.eco";
 
-function formatDate(value: Date) {
-  return value.toLocaleDateString("id-ID", { dateStyle: "medium" });
+function formatDate(value: Date, locale: "en" | "id") {
+  return value.toLocaleDateString(locale === "id" ? "id-ID" : "en-US", { dateStyle: "medium" });
 }
 
 function stars(value: number) {
@@ -124,7 +124,17 @@ function FactGrid({ facts, iconFor }: { facts: ExpeditionFact[]; iconFor: (kind:
   );
 }
 
-function SectionHeader({ title, body, learnHref }: { title: string; body?: string; learnHref?: string }) {
+function SectionHeader({
+  title,
+  body,
+  learnHref,
+  learnLabel = "Learn more"
+}: {
+  title: string;
+  body?: string;
+  learnHref?: string;
+  learnLabel?: string;
+}) {
   return (
     <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
       <div>
@@ -133,7 +143,7 @@ function SectionHeader({ title, body, learnHref }: { title: string; body?: strin
       </div>
       {learnHref ? (
         <Link href={learnHref} className="inline-flex shrink-0 items-center gap-2 text-base font-bold text-sky-700 hover:text-sky-800">
-          Learn more
+          {learnLabel}
           <ArrowRight size={22} aria-hidden="true" />
         </Link>
       ) : null}
@@ -145,10 +155,18 @@ function DetailDivider() {
   return <hr className="border-ocean-900/10" />;
 }
 
-function CheckoutLink({ expeditionSlug, departureId }: { expeditionSlug: string; departureId: string }) {
+function CheckoutLink({
+  expeditionSlug,
+  departureId,
+  label = "Select Date"
+}: {
+  expeditionSlug: string;
+  departureId: string;
+  label?: string;
+}) {
   return (
     <ButtonLink href={`/checkout/expedition?expedition=${encodeURIComponent(expeditionSlug)}&departure=${encodeURIComponent(departureId)}`} className="rounded-full">
-      Select Date
+      {label}
       <ArrowRight size={17} aria-hidden="true" />
     </ButtonLink>
   );
@@ -285,39 +303,232 @@ export default async function ExpeditionDetailPage({
   };
   const requestNextPath = `${expeditionPath}#availability`;
   const questionNextPath = `${expeditionPath}#ask-question`;
-  const offerFacts = buildExpeditionOfferFacts(expedition.marketplace);
+  const isIndonesian = locale === "id";
+  const labels =
+    isIndonesian
+      ? {
+          learnMore: "Pelajari lebih lanjut",
+          selectDate: "Pilih Tanggal",
+          home: "Beranda",
+          expeditions: "Ekspedisi",
+          verifiedReviews: "ulasan peserta terverifikasi",
+          completedParticipants: "peserta selesai",
+          hostInfo: "Informasi disediakan oleh mitra ekspedisi untuk listing ini.",
+          whatYouOffer: "Kontribusi yang kamu berikan",
+          additionalFee: "Biaya tambahan",
+          additionalFeeBody: "Mitra mencantumkan biaya lokal tambahan untuk mendukung keberlanjutan proyek dan kualitas pengalaman peserta.",
+          amount: "Nominal",
+          feePaysFor: "Biaya digunakan untuk",
+          description: "Deskripsi",
+          whatYouGet: "Yang kamu dapatkan",
+          availability: "Ketersediaan",
+          eligible: "Memenuhi syarat",
+          learningRequired: "Kursus diwajibkan",
+          eligibleBody: "Sertifikat Terumbu Academy milikmu memenuhi prasyarat ekspedisi ini.",
+          learningBody: "Selesaikan kursus Terumbu Academy ini dan dapatkan sertifikat sebelum melakukan booking.",
+          completeCourse: "Selesaikan kursus",
+          noOpenMonths: "Belum ada bulan keberangkatan yang terbuka.",
+          stayAtLeast: "Durasi minimum",
+          stayUpTo: "Durasi maksimum",
+          placesRemaining: "tempat tersisa dari",
+          tripLeader: "Pemimpin trip",
+          meetingPoint: "Titik temu",
+          minimum: "Minimum",
+          participants: "peserta",
+          expeditionCalendarDescription: "ekspedisi konservasi Terumbu.eco",
+          name: "Nama",
+          email: "Email",
+          joinWaitlist: "Gabung daftar tunggu",
+          noDepartures: "Belum ada keberangkatan publik yang dijadwalkan.",
+          noDeparturesHelp: "Tinggalkan detail kontak dan kami akan menghubungimu saat tanggal baru tersedia.",
+          requestPrivate: "Minta keberangkatan privat",
+          privateHelp: "Untuk tim, keluarga, atau grup corporate yang membutuhkan jadwal khusus.",
+          privatePlaceholder: "Tanggal pilihan, profil grup, kebutuhan aksesibilitas",
+          experience: "Pengalaman",
+          askTeam: "+ Tanya tim ekspedisi",
+          requirements: "Persyaratan",
+          notIncluded: "Yang tidak termasuk",
+          planTrip: "Rencanakan perjalanan",
+          planTripBody: "Informasi perjalanan praktis untuk pengunjung internasional. Pastikan aturan masuk sesuai kewarganegaraan dan perlindungan asuransi sebelum membeli transportasi.",
+          nearestArrival: "Hub kedatangan terdekat",
+          localTime: "Waktu lokal",
+          connectivity: "Konektivitas",
+          travelInsurance: "Asuransi perjalanan",
+          travelerSupport: "Dukungan peserta",
+          arrivalTransfer: "Kedatangan & transfer",
+          visaGuidance: "Panduan visa & masuk",
+          packingHighlights: "Perlengkapan penting",
+          sdgTitle: "Tujuan Pembangunan Berkelanjutan PBB",
+          sdgBody: "Tujuan di bawah ini diturunkan hanya dari detail yang diberikan mitra atau target dampak yang tercatat.",
+          photos: "Foto",
+          travelerMoments: "Momen peserta",
+          travelerMomentsBody: "Media dikirim oleh peserta yang telah menyelesaikan ekspedisi dan ditinjau Terumbu sebelum dipublikasikan.",
+          travelerMomentAlt: "Momen peserta dari",
+          watchVideo: "Tonton video peserta",
+          verifiedParticipant: "Peserta selesai terverifikasi",
+          aboutHost: "Tentang mitra",
+          hostMoreTitle: "Ingin tahu lebih banyak tentang mitra ini?",
+          hostMoreBody: "Terumbu menampilkan informasi mitra terverifikasi, aktivitas ekspedisi, dan konteks konservasi sebelum kamu melakukan reservasi.",
+          moreHostExperiences: "Pengalaman lain dari mitra ini",
+          map: "Peta",
+          impactTitle: "Dampak konservasi Terumbu",
+          impactContribution: "dari setiap booking mendukung program konservasi terkait.",
+          funded: "terdanai",
+          viewCampaign: "Lihat Kampanye",
+          donate: "Donasi",
+          messageTeam: "Kirim pesan ke tim ekspedisi",
+          messageTeamBody: "Kirim pertanyaan melalui Terumbu.eco. Admin dan mitra ekspedisi terverifikasi dapat meninjaunya dari inbox website dan menindaklanjuti melalui email.",
+          yourName: "Nama kamu",
+          generalQuestion: "Pertanyaan umum ekspedisi",
+          questionPlaceholder: "Tanyakan itinerary, peralatan, kebutuhan akses, aktivitas konservasi, atau persyaratan booking.",
+          sendQuestion: "Kirim pertanyaan",
+          reviews: "Ulasan",
+          reviewCountSuffix: "ulasan peserta terverifikasi",
+          reviewsHelp: "Ulasan muncul setelah peserta menyelesaikan ekspedisi dan mengirim ulasan.",
+          noReviews: "Belum ada ulasan dari peserta yang telah menyelesaikan ekspedisi.",
+          beforeBook: "Sebelum booking",
+          responsibleTravel: "Cara kami bepergian secara bertanggung jawab",
+          codeConduct: "Baca Kode Etik Peserta",
+          tripActivity: "Aktivitas trip",
+          viewDocumentation: "Lihat dokumentasi ekspedisi",
+          savedUpdated: "Daftar ekspedisi tersimpan telah diperbarui.",
+          questionSent: "Terima kasih, pertanyaanmu sudah dikirim ke tim ekspedisi.",
+          requestCaptured: "Terima kasih, permintaan ekspedisimu sudah tercatat. Tim kami akan menindaklanjuti melalui email.",
+          savedError: "Ekspedisi tersimpan tidak dapat diperbarui.",
+          questionInvalid: "Tambahkan pertanyaan agar tim ekspedisi tahu apa yang perlu dijawab.",
+          requestError: "Permintaan ekspedisi tidak dapat disimpan. Tambahkan nama, email, lalu coba lagi.",
+          questionSaved: "Pertanyaanmu sudah masuk ke inbox website untuk admin Terumbu dan mitra ekspedisi.",
+          questionError: "Tulis pertanyaan sebelum mengirim."
+        }
+      : {
+          learnMore: "Learn more",
+          selectDate: "Select Date",
+          home: "Home",
+          expeditions: "Expeditions",
+          verifiedReviews: "verified reviews",
+          completedParticipants: "completed participants",
+          hostInfo: "Information provided by the expedition host for this listing.",
+          whatYouOffer: "What you offer",
+          additionalFee: "Additional fee required",
+          additionalFeeBody: "This host charges an additional local fee to support the sustainability of the project and the quality of the experience for travelers.",
+          amount: "Amount",
+          feePaysFor: "Fee pays for",
+          description: "Description",
+          whatYouGet: "What you get",
+          availability: "Availability",
+          eligible: "Eligible",
+          learningRequired: "Learning required",
+          eligibleBody: "Your Terumbu Academy certificate satisfies this expedition prerequisite.",
+          learningBody: "Complete this Terumbu Academy course and earn its certificate before booking.",
+          completeCourse: "Complete course first",
+          noOpenMonths: "No public months are open yet.",
+          stayAtLeast: "Stay at least",
+          stayUpTo: "Stay up to",
+          placesRemaining: "places remaining of",
+          tripLeader: "Trip leader",
+          meetingPoint: "Meeting point",
+          minimum: "Minimum",
+          participants: "participants",
+          expeditionCalendarDescription: "Terumbu.eco conservation expedition",
+          name: "Name",
+          email: "Email",
+          joinWaitlist: "Join Waitlist",
+          noDepartures: "No public departures are currently scheduled.",
+          noDeparturesHelp: "Leave your details and we will contact you when a new date opens.",
+          requestPrivate: "Request private departure",
+          privateHelp: "For teams, families, or corporate groups that need a custom schedule.",
+          privatePlaceholder: "Preferred dates, group profile, accessibility needs",
+          experience: "The Experience",
+          askTeam: "+ Ask the expedition team",
+          requirements: "Requirements",
+          notIncluded: "What's not included",
+          planTrip: "Plan your trip",
+          planTripBody: "Practical travel information for international visitors. Confirm nationality-specific entry rules and insurance coverage before purchasing transport.",
+          nearestArrival: "Nearest arrival hub",
+          localTime: "Local time",
+          connectivity: "Connectivity",
+          travelInsurance: "Travel insurance",
+          travelerSupport: "Traveler support",
+          arrivalTransfer: "Arrival & transfer",
+          visaGuidance: "Visa & entry guidance",
+          packingHighlights: "Packing highlights",
+          sdgTitle: "UN Sustainable Development Goals",
+          sdgBody: "Goals shown here are derived only from host-provided details or recorded impact targets.",
+          photos: "Photos",
+          travelerMoments: "Traveler moments",
+          travelerMomentsBody: "Media submitted by completed participants and reviewed by Terumbu before publication.",
+          travelerMomentAlt: "Traveler moment from",
+          watchVideo: "Watch traveler video",
+          verifiedParticipant: "Verified completed participant",
+          aboutHost: "About the host",
+          hostMoreTitle: "Want to know more about this host?",
+          hostMoreBody: "Terumbu shows verified partner information, expedition activity, and conservation context before you reserve.",
+          moreHostExperiences: "More experiences of this host",
+          map: "Map",
+          impactTitle: "Terumbu conservation impact",
+          impactContribution: "from each booking supports the associated conservation program.",
+          funded: "funded",
+          viewCampaign: "View Campaign",
+          donate: "Donate",
+          messageTeam: "Message the expedition team",
+          messageTeamBody: "Send a question through Terumbu.eco. Admins and the verified expedition partner can review it from their website inbox and follow up by email.",
+          yourName: "Your name",
+          generalQuestion: "General expedition question",
+          questionPlaceholder: "Ask about itinerary, equipment, access needs, conservation activities, or booking requirements.",
+          sendQuestion: "Send question",
+          reviews: "Reviews",
+          reviewCountSuffix: "verified participant reviews",
+          reviewsHelp: "Reviews appear after completed participants submit them.",
+          noReviews: "No completed-participant reviews yet.",
+          beforeBook: "Before you book",
+          responsibleTravel: "How we travel responsibly",
+          codeConduct: "Read Participant Code of Conduct",
+          tripActivity: "Trip activity",
+          viewDocumentation: "View expedition documentation",
+          savedUpdated: "Your saved expeditions were updated.",
+          questionSent: "Thanks, your question was sent to the expedition team.",
+          requestCaptured: "Thanks, your expedition request was captured. Our team will follow up by email.",
+          savedError: "We could not update that saved expedition.",
+          questionInvalid: "Add your question so the expedition team knows what to answer.",
+          requestError: "We could not save that expedition request. Add your name, email, and try again.",
+          questionSaved: "Your question is in the website inbox for Terumbu admins and the expedition partner.",
+          questionError: "Write your question before sending."
+        };
+  const offerFacts = buildExpeditionOfferFacts(expedition.marketplace, locale);
   const benefitFacts = buildExpeditionBenefitFacts({
     marketplace: expedition.marketplace,
     durationDays: expedition.durationDays,
     included: expedition.included,
-    hostVerificationLabel: expedition.hostedBy.verificationLabel
+    hostVerificationLabel: expedition.hostedBy.verificationLabel,
+    locale
   });
-  const monthAvailability = buildExpeditionMonthAvailability(expedition.departures);
-  const stayRange = buildExpeditionStayRange(expedition.durationDays, expedition.marketplace.travelLengthLabel);
+  const monthAvailability = buildExpeditionMonthAvailability(expedition.departures, 6, locale);
+  const stayRange = buildExpeditionStayRange(expedition.durationDays, expedition.marketplace.travelLengthLabel, locale);
   const sdgFacts = buildExpeditionSdgFacts({
     tags: expedition.tags,
     sustainability: expedition.sustainability,
-    impactTargets: expedition.impact.targets
+    impactTargets: expedition.impact.targets,
+    locale
   });
   const ratingLabel = expedition.reviewCount > 0
-    ? `${expedition.rating.toFixed(1)} (${expedition.reviewCount} verified reviews)`
-    : `${expedition.participantCount} completed participants`;
+    ? `${expedition.rating.toFixed(1)} (${expedition.reviewCount} ${labels.verifiedReviews})`
+    : `${expedition.participantCount} ${labels.completedParticipants}`;
   const savedBannerMessage = query?.saved === "expedition"
-    ? "Your saved expeditions were updated."
+    ? labels.savedUpdated
     : query?.saved === "interest-question"
-    ? "Thanks, your question was sent to the expedition team."
-    : query?.saved?.startsWith("interest")
-      ? "Thanks, your expedition request was captured. Our team will follow up by email."
-      : null;
+      ? labels.questionSent
+      : query?.saved?.startsWith("interest")
+        ? labels.requestCaptured
+        : null;
   const errorBannerMessage = query?.error === "expedition"
-    ? "We could not update that saved expedition."
+    ? labels.savedError
     : query?.error === "interest-question-invalid"
-    ? "Add your question so the expedition team knows what to answer."
-    : query?.error?.startsWith("interest")
-      ? "We could not save that expedition request. Add your name, email, and try again."
-      : null;
-  const questionSavedMessage = query?.saved === "interest-question" ? "Your question is in the website inbox for Terumbu admins and the expedition partner." : null;
-  const questionErrorMessage = query?.error === "interest-question-invalid" ? "Write your question before sending." : null;
+      ? labels.questionInvalid
+      : query?.error?.startsWith("interest")
+        ? labels.requestError
+        : null;
+  const questionSavedMessage = query?.saved === "interest-question" ? labels.questionSaved : null;
+  const questionErrorMessage = query?.error === "interest-question-invalid" ? labels.questionError : null;
   const legacyAutoBadges = new Set(["sustainable project", "higher approval", "higher chance of approval"]);
   const heroBadges = Array.from(new Set([...expedition.marketplace.badges, ...expedition.marketplace.highlights]))
     .filter((badge) => !legacyAutoBadges.has(badge.trim().toLowerCase()))
@@ -347,7 +558,6 @@ export default async function ExpeditionDetailPage({
       expedition.impact.summary.trim() ||
       expedition.impact.targets.length > 0
   );
-  const isIndonesian = locale === "id";
   const hasBookableDeparture = expedition.departures.some((departure) => departure.canBook);
   const tabs = [
     { id: "availability", label: isIndonesian ? "Jadwal" : "Availability" },
