@@ -89,15 +89,15 @@ export function ImpactShareCard({
       <text x="84" y="110" font-family="Arial, sans-serif" font-size="34" font-weight="700" fill="#a9e5d7">${escapeXml(labels.verifiedRecord)}</text>
       <text x="84" y="235" font-family="Arial, sans-serif" font-size="68" font-weight="700" fill="#ffffff">${name}</text>
       <text x="84" y="292" font-family="Arial, sans-serif" font-size="30" fill="#c8d8dc">${passport}</text>
-      <text x="84" y="425" font-family="Arial, sans-serif" font-size="28" fill="#c8d8dc">TOTAL DONATED</text>
+      <text x="84" y="425" font-family="Arial, sans-serif" font-size="28" fill="#c8d8dc">${escapeXml(labels.totalDonated)}</text>
       <text x="84" y="492" font-family="Arial, sans-serif" font-size="54" font-weight="700" fill="#ffffff">${donated}</text>
       <text x="84" y="650" font-family="Arial, sans-serif" font-size="54" font-weight="700" fill="#ffffff">${coralCount}</text>
       <text x="84" y="695" font-family="Arial, sans-serif" font-size="27" fill="#c8d8dc">${escapeXml(labels.restorationUnits)}</text>
       <text x="580" y="650" font-family="Arial, sans-serif" font-size="54" font-weight="700" fill="#ffffff">${fieldActivities}</text>
       <text x="580" y="695" font-family="Arial, sans-serif" font-size="27" fill="#c8d8dc">${escapeXml(labels.fieldParticipation)}</text>
       <text x="84" y="845" font-family="Arial, sans-serif" font-size="54" font-weight="700" fill="#ffffff">${certificates}</text>
-      <text x="84" y="890" font-family="Arial, sans-serif" font-size="27" fill="#c8d8dc">CERTIFICATES</text>
-      <text x="84" y="1080" font-family="Arial, sans-serif" font-size="44" font-weight="700" fill="#ffffff">Travel. Restore. Leave an Impact.</text>
+      <text x="84" y="890" font-family="Arial, sans-serif" font-size="27" fill="#c8d8dc">${escapeXml(labels.certificates)}</text>
+      <text x="84" y="1080" font-family="Arial, sans-serif" font-size="44" font-weight="700" fill="#ffffff">${escapeXml(labels.tagline)}</text>
       <text x="84" y="1140" font-family="Arial, sans-serif" font-size="27" fill="#a9e5d7">terumbu.eco</text>
       <text x="84" y="1260" font-family="Arial, sans-serif" font-size="21" fill="#8ea5aa">${escapeXml(labels.disclosure)}</text>
     </svg>`;
