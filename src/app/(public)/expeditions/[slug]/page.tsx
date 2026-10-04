@@ -432,7 +432,7 @@ export default async function ExpeditionDetailPage({
           expeditionCalendarDescription: "Terumbu.eco conservation expedition",
           name: "Name",
           email: "Email",
-          joinWaitlist: "Join Waitlist",
+          joinWaitlist: "{labels.joinWaitlist}",
           noDepartures: "No public departures are currently scheduled.",
           noDeparturesHelp: "Leave your details and we will contact you when a new date opens.",
           requestPrivate: "Request private departure",
@@ -601,9 +601,9 @@ export default async function ExpeditionDetailPage({
         <section className="border-b border-ocean-900/10 bg-white">
           <div className="mx-auto max-w-7xl px-4 pt-6 sm:px-6 lg:px-8">
             <nav className="flex flex-wrap items-center gap-2 text-sm font-semibold text-ocean-900/54" aria-label="Breadcrumb">
-              <Link href="/" className="hover:text-sky-700">Home</Link>
+              <Link href="/" className="hover:text-sky-700">{labels.home}</Link>
               <span>/</span>
-              <Link href="/expeditions" className="hover:text-sky-700">Expeditions</Link>
+              <Link href="/expeditions" className="hover:text-sky-700">{labels.expeditions}</Link>
               <span>/</span>
               <Link href={`/expeditions?destination=${encodeURIComponent(expedition.region)}`} className="hover:text-sky-700">{expedition.region}</Link>
             </nav>
@@ -626,7 +626,7 @@ export default async function ExpeditionDetailPage({
               <h1 className="mt-6 max-w-3xl text-4xl font-bold tracking-normal text-ocean-900 sm:text-5xl lg:text-[3.35rem] lg:leading-[1.15]">{expedition.title}</h1>
               <p className="mt-5 max-w-2xl text-lg leading-8 text-ocean-900/64">{expedition.summary}</p>
               <div className="mt-6">
-                <ExpeditionShareButtons slug={expedition.slug} title={expedition.title} referralCode={shareReferralCode} compact />
+                <ExpeditionShareButtons slug={expedition.slug} title={expedition.title} referralCode={shareReferralCode} compact locale={locale} />
               </div>
 
               <div className="mt-8 grid gap-6">
@@ -639,7 +639,7 @@ export default async function ExpeditionDetailPage({
                       <div>
                         <p className="text-lg font-bold text-ocean-900">{badge}</p>
                         <p className="mt-1 text-base leading-7 text-ocean-900/58">
-                          Information provided by the expedition host for this listing.
+                          {labels.hostInfo}
                         </p>
                       </div>
                     </div>
@@ -667,7 +667,7 @@ export default async function ExpeditionDetailPage({
 
           {offerFacts.length > 0 ? (
             <section id="exchange" className="scroll-mt-36 py-10 sm:py-14">
-              <SectionHeader title="What you offer" learnHref={hasExperienceDetails ? "#experience" : undefined} />
+              <SectionHeader title={labels.whatYouOffer} learnHref={hasExperienceDetails ? "#experience" : undefined} learnLabel={labels.learnMore} />
               <FactGrid facts={offerFacts} iconFor={offerIcon} />
             </section>
           ) : null}
@@ -676,17 +676,17 @@ export default async function ExpeditionDetailPage({
             <>
               <DetailDivider />
               <section className="py-10 sm:py-14">
-                <SectionHeader title="Additional fee required" body="This host charges an additional local fee to support the sustainability of the project and the quality of the experience for travelers." />
+                <SectionHeader title={labels.additionalFee} body={labels.additionalFeeBody} />
                 <div className="mt-8 grid gap-8 lg:grid-cols-[0.35fr_0.28fr_1fr]">
                   <div>
-                    <p className="text-lg font-bold text-ocean-900">Amount</p>
+                    <p className="text-lg font-bold text-ocean-900">{labels.amount}</p>
                     <p className="mt-6 text-4xl font-light text-sky-700">
                       {formatCurrency(expedition.marketplace.additionalFee.amount, expedition.marketplace.additionalFee.currency)}
                     </p>
                     <p className="mt-2 text-base text-ocean-900/58">{expedition.marketplace.additionalFee.period}</p>
                   </div>
                   <div>
-                    <p className="text-lg font-bold text-ocean-900">Fee pays for</p>
+                    <p className="text-lg font-bold text-ocean-900">{labels.feePaysFor}</p>
                     <ul className="mt-5 grid gap-2 text-base leading-7 text-ocean-900/62">
                       {expedition.marketplace.additionalFee.paysFor.map((item) => (
                         <li key={item} className="flex gap-2">
@@ -697,7 +697,7 @@ export default async function ExpeditionDetailPage({
                     </ul>
                   </div>
                   <div>
-                    <p className="text-lg font-bold text-ocean-900">Description</p>
+                    <p className="text-lg font-bold text-ocean-900">{labels.description}</p>
                     <p className="mt-5 max-w-3xl text-base leading-8 text-ocean-900/62">{expedition.marketplace.additionalFee.description}</p>
                   </div>
                 </div>
@@ -709,7 +709,7 @@ export default async function ExpeditionDetailPage({
             <>
               <DetailDivider />
               <section className="py-10 sm:py-14">
-                <SectionHeader title="What you get" learnHref={hasExperienceDetails ? "#experience" : undefined} />
+                <SectionHeader title={labels.whatYouGet} learnHref={hasExperienceDetails ? "#experience" : undefined} learnLabel={labels.learnMore} />
                 <FactGrid facts={benefitFacts} iconFor={benefitIcon} />
               </section>
             </>
@@ -717,12 +717,12 @@ export default async function ExpeditionDetailPage({
 
           <DetailDivider />
           <section id="availability" tabIndex={-1} className="scroll-mt-36 py-10 sm:py-14 outline-none">
-            <SectionHeader title="Availability" />
+            <SectionHeader title={labels.availability} />
             {expedition.requiredAcademyCourse ? (
               <div className={cn("mt-7 rounded-md border p-5", academyEligibility === "eligible" ? "border-kelp-500/25 bg-kelp-100/45" : "border-sand-400/40 bg-sand-50")}>
                 <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
-                  <div><p className="text-xs font-bold uppercase tracking-[0.14em] text-ocean-900/54">{academyEligibility === "eligible" ? "Eligible" : "Learning required"}</p><h3 className="mt-1 text-xl font-bold text-ocean-900">{expedition.requiredAcademyCourse.title}</h3><p className="mt-2 max-w-2xl text-sm leading-6 text-ocean-900/62">{academyEligibility === "eligible" ? "Your Terumbu Academy certificate satisfies this expedition prerequisite." : "Complete this Terumbu Academy course and earn its certificate before booking."}</p></div>
-                  {academyEligibility !== "eligible" ? <ButtonLink href={"/academy/courses/" + expedition.requiredAcademyCourse.slug} className="shrink-0 rounded-full">Complete course first</ButtonLink> : null}
+                  <div><p className="text-xs font-bold uppercase tracking-[0.14em] text-ocean-900/54">{academyEligibility === "eligible" ? labels.eligible : labels.learningRequired}</p><h3 className="mt-1 text-xl font-bold text-ocean-900">{expedition.requiredAcademyCourse.title}</h3><p className="mt-2 max-w-2xl text-sm leading-6 text-ocean-900/62">{academyEligibility === "eligible" ? labels.eligibleBody : labels.learningBody}</p></div>
+                  {academyEligibility !== "eligible" ? <ButtonLink href={"/academy/courses/" + expedition.requiredAcademyCourse.slug} className="shrink-0 rounded-full">{labels.completeCourse}</ButtonLink> : null}
                 </div>
               </div>
             ) : null}
@@ -744,16 +744,16 @@ export default async function ExpeditionDetailPage({
                     ))}
                   </div>
                 ) : (
-                  <p className="rounded-md border border-dashed border-ocean-900/16 bg-ocean-50 px-4 py-5 font-bold text-ocean-900">No public months are open yet.</p>
+                  <p className="rounded-md border border-dashed border-ocean-900/16 bg-ocean-50 px-4 py-5 font-bold text-ocean-900">{labels.noOpenMonths}</p>
                 )}
               </div>
               <div className="grid grid-cols-2 gap-8">
                 <div>
-                  <p className="text-lg font-bold text-ocean-900">Stay at least</p>
+                  <p className="text-lg font-bold text-ocean-900">{labels.stayAtLeast}</p>
                   <p className="mt-4 text-4xl font-light text-ocean-900/62">{stayRange.stayAtLeast}</p>
                 </div>
                 <div>
-                  <p className="text-lg font-bold text-ocean-900">Stay up to</p>
+                  <p className="text-lg font-bold text-ocean-900">{labels.stayUpTo}</p>
                   <p className="mt-4 text-4xl font-light text-ocean-900/62">{stayRange.stayUpTo}</p>
                 </div>
               </div>
@@ -766,12 +766,12 @@ export default async function ExpeditionDetailPage({
                     <div>
                       <p className="text-sm font-bold uppercase tracking-[0.12em] text-sky-700">{departure.dateRangeLabel}</p>
                       <h3 className="mt-2 text-2xl font-semibold tracking-normal text-ocean-900">
-                        {departure.availableSeats} of {departure.capacity} places remaining
+                        {departure.availableSeats} {labels.placesRemaining} {departure.capacity}
                       </h3>
                       <div className="mt-3 flex flex-wrap gap-x-5 gap-y-2 text-sm font-semibold text-ocean-900/58">
-                        {departure.guide ? <span>Trip leader: {departure.guide}</span> : null}
-                        {departure.meetingPoint ? <span>Meeting point: {departure.meetingPoint}</span> : null}
-                        {departure.minParticipants > 0 ? <span>Minimum {departure.minParticipants} participants</span> : null}
+                        {departure.guide ? <span>{labels.tripLeader}: {departure.guide}</span> : null}
+                        {departure.meetingPoint ? <span>{labels.meetingPoint}: {departure.meetingPoint}</span> : null}
+                        {departure.minParticipants > 0 ? <span>{labels.minimum} {departure.minParticipants} {labels.participants}</span> : null}
                       </div>
                     </div>
                     <div className="grid gap-3 lg:justify-items-end">
@@ -785,9 +785,9 @@ export default async function ExpeditionDetailPage({
                           startsAt={departure.startsAt}
                           endsAt={departure.endsAt}
                           location={departure.meetingPoint ?? expedition.region}
-                          description={`${expedition.summary} — Terumbu.eco conservation expedition`}
+                          description={`${expedition.summary} — ${labels.expeditionCalendarDescription}`}
                         />
-                        {academyEligibility === "learning_required" && expedition.requiredAcademyCourse ? <ButtonLink href={"/academy/courses/" + expedition.requiredAcademyCourse.slug} className="rounded-full">Complete course first</ButtonLink> : <CheckoutLink expeditionSlug={expedition.slug} departureId={departure.id} />}
+                        {academyEligibility === "learning_required" && expedition.requiredAcademyCourse ? <ButtonLink href={"/academy/courses/" + expedition.requiredAcademyCourse.slug} className="rounded-full">{labels.completeCourse}</ButtonLink> : <CheckoutLink expeditionSlug={expedition.slug} departureId={departure.id} label={labels.selectDate} />}
                       </div>
                       ) : (
                         <form action={submitExpeditionInterestRequestAction} className="grid gap-2 rounded-md border border-ocean-900/10 bg-ocean-50 p-3">
@@ -795,11 +795,11 @@ export default async function ExpeditionDetailPage({
                           <input type="hidden" name="expeditionId" value={expedition.id} />
                           <input type="hidden" name="departureId" value={departure.id} />
                           <input type="hidden" name="requestType" value="waitlist" />
-                          <input name="contactName" placeholder="Name" className="min-h-10 rounded-md border border-ocean-900/14 px-3 text-sm font-semibold outline-none focus:border-kelp-500" required />
-                          <input name="contactEmail" type="email" placeholder="Email" className="min-h-10 rounded-md border border-ocean-900/14 px-3 text-sm font-semibold outline-none focus:border-kelp-500" required />
+                          <input name="contactName" placeholder={labels.name} className="min-h-10 rounded-md border border-ocean-900/14 px-3 text-sm font-semibold outline-none focus:border-kelp-500" required />
+                          <input name="contactEmail" type="email" placeholder={labels.email} className="min-h-10 rounded-md border border-ocean-900/14 px-3 text-sm font-semibold outline-none focus:border-kelp-500" required />
                           <input name="participantsCount" type="hidden" value="1" />
                           <Button type="submit" tone="light" className="min-h-10 rounded-md">
-                            Join Waitlist
+                            {labels.joinWaitlist}
                           </Button>
                         </form>
                       )}
@@ -808,17 +808,17 @@ export default async function ExpeditionDetailPage({
                 ))
               ) : (
                 <article className="py-6">
-                  <p className="font-bold text-ocean-900">No public departures are currently scheduled.</p>
-                  <p className="mt-2 text-sm font-semibold text-ocean-900/58">Leave your details and we will contact you when a new date opens.</p>
+                  <p className="font-bold text-ocean-900">{labels.noDepartures}</p>
+                  <p className="mt-2 text-sm font-semibold text-ocean-900/58">{labels.noDeparturesHelp}</p>
                   <form action={submitExpeditionInterestRequestAction} className="mt-5 grid gap-3 rounded-md border border-ocean-900/10 bg-ocean-50 p-4 md:grid-cols-[1fr_1fr_120px_auto]">
                     <input type="hidden" name="next" value={requestNextPath} />
                     <input type="hidden" name="expeditionId" value={expedition.id} />
                     <input type="hidden" name="requestType" value="waitlist" />
-                    <input name="contactName" placeholder="Name" className="min-h-11 rounded-md border border-ocean-900/14 bg-white px-3 text-sm font-semibold outline-none focus:border-kelp-500" required />
-                    <input name="contactEmail" type="email" placeholder="Email" className="min-h-11 rounded-md border border-ocean-900/14 bg-white px-3 text-sm font-semibold outline-none focus:border-kelp-500" required />
+                    <input name="contactName" placeholder={labels.name} className="min-h-11 rounded-md border border-ocean-900/14 bg-white px-3 text-sm font-semibold outline-none focus:border-kelp-500" required />
+                    <input name="contactEmail" type="email" placeholder={labels.email} className="min-h-11 rounded-md border border-ocean-900/14 bg-white px-3 text-sm font-semibold outline-none focus:border-kelp-500" required />
                     <input name="participantsCount" type="number" min={1} max={12} defaultValue={1} className="min-h-11 rounded-md border border-ocean-900/14 bg-white px-3 text-sm font-semibold outline-none focus:border-kelp-500" required />
                     <Button type="submit" className="rounded-md">
-                      Join Waitlist
+                      {labels.joinWaitlist}
                     </Button>
                   </form>
                 </article>
@@ -830,18 +830,18 @@ export default async function ExpeditionDetailPage({
               <input type="hidden" name="expeditionId" value={expedition.id} />
               <input type="hidden" name="requestType" value="private_departure" />
               <div>
-                <p className="font-bold text-ocean-900">Request private departure</p>
-                <p className="mt-1 text-sm font-semibold text-ocean-900/58">For teams, families, or corporate groups that need a custom schedule.</p>
+                <p className="font-bold text-ocean-900">{labels.requestPrivate}</p>
+                <p className="mt-1 text-sm font-semibold text-ocean-900/58">{labels.privateHelp}</p>
               </div>
               <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-[1fr_1fr_130px_180px_minmax(0,1fr)]">
-                <input name="contactName" placeholder="Name" className="min-h-11 rounded-md border border-ocean-900/14 bg-white px-3 text-sm font-semibold outline-none focus:border-kelp-500" required />
-                <input name="contactEmail" type="email" placeholder="Email" className="min-h-11 rounded-md border border-ocean-900/14 bg-white px-3 text-sm font-semibold outline-none focus:border-kelp-500" required />
+                <input name="contactName" placeholder={labels.name} className="min-h-11 rounded-md border border-ocean-900/14 bg-white px-3 text-sm font-semibold outline-none focus:border-kelp-500" required />
+                <input name="contactEmail" type="email" placeholder={labels.email} className="min-h-11 rounded-md border border-ocean-900/14 bg-white px-3 text-sm font-semibold outline-none focus:border-kelp-500" required />
                 <input name="participantsCount" type="number" min={1} max={12} defaultValue={6} className="min-h-11 rounded-md border border-ocean-900/14 bg-white px-3 text-sm font-semibold outline-none focus:border-kelp-500" required />
                 <input name="preferredStartAt" type="date" className="min-h-11 rounded-md border border-ocean-900/14 bg-white px-3 text-sm font-semibold outline-none focus:border-kelp-500" />
-                <input name="message" placeholder="Preferred dates, group profile, accessibility needs" className="min-h-11 rounded-md border border-ocean-900/14 bg-white px-3 text-sm font-semibold outline-none focus:border-kelp-500" />
+                <input name="message" placeholder={labels.privatePlaceholder} className="min-h-11 rounded-md border border-ocean-900/14 bg-white px-3 text-sm font-semibold outline-none focus:border-kelp-500" />
               </div>
               <Button type="submit" tone="secondary" className="w-fit rounded-md">
-                Request private departure
+                {labels.requestPrivate}
               </Button>
             </form>
           </section>
@@ -850,7 +850,7 @@ export default async function ExpeditionDetailPage({
             <>
           <DetailDivider />
           <section id="experience" className="scroll-mt-36 py-10 sm:py-14">
-            <SectionHeader title="The Experience" learnHref={expedition.galleryImages.length > 0 ? "#photos" : undefined} />
+            <SectionHeader title={labels.experience} learnHref={expedition.galleryImages.length > 0 ? "#photos" : undefined} learnLabel={labels.learnMore} />
             <div className="mt-8 grid gap-12 lg:grid-cols-[0.58fr_0.42fr]">
               <div>
                 {expedition.overview.title ? <h3 className="text-2xl font-semibold tracking-normal text-ocean-900">{expedition.overview.title}</h3> : null}
@@ -860,12 +860,12 @@ export default async function ExpeditionDetailPage({
                   </p>
                 ))}
                 <Link href="#ask-question" className="mt-5 inline-flex items-center gap-1 text-base font-bold text-sky-700">
-                  + Ask the expedition team
+                  {labels.askTeam}
                 </Link>
               </div>
               <div className="grid gap-8">
                 <div>
-                  <p className="text-xl font-bold text-ocean-900">Requirements</p>
+                  <p className="text-xl font-bold text-ocean-900">{labels.requirements}</p>
                   <div className="mt-4 grid gap-3">
                     {expedition.requirements.slice(0, 4).map((item) => (
                       <p key={item} className="flex items-start gap-3 text-base leading-7 text-ocean-900/62">
@@ -876,7 +876,7 @@ export default async function ExpeditionDetailPage({
                   </div>
                 </div>
                 <div>
-                  <p className="text-xl font-bold text-ocean-900">What&apos;s not included</p>
+                  <p className="text-xl font-bold text-ocean-900">{labels.notIncluded}</p>
                   <p className="mt-4 text-base leading-8 text-ocean-900/62">{expedition.notIncluded.slice(0, 5).join(", ")}</p>
                 </div>
               </div>
@@ -891,17 +891,17 @@ export default async function ExpeditionDetailPage({
           <DetailDivider />
           <section id="travel-planning" className="scroll-mt-36 py-10 sm:py-14">
             <SectionHeader
-              title="Plan your trip"
-              body="Practical travel information for international visitors. Confirm nationality-specific entry rules and insurance coverage before purchasing transport."
+              title={labels.planTrip}
+              body={labels.planTripBody}
             />
             <div className="mt-8 grid gap-5 md:grid-cols-2 lg:grid-cols-3">
               {[
-                [Plane, "Nearest arrival hub", expedition.travelInfo.nearestAirport],
-                [MapPin, "Meeting point", expedition.travelInfo.meetingPoint],
-                [Clock, "Local time", expedition.travelInfo.localTimeZone],
-                [Wifi, "Connectivity", expedition.travelInfo.connectivity],
-                [ShieldCheck, "Travel insurance", expedition.travelInfo.insuranceGuidance],
-                [LifeBuoy, "Traveler support", expedition.travelInfo.supportContact]
+                [Plane, labels.nearestArrival, expedition.travelInfo.nearestAirport],
+                [MapPin, labels.meetingPoint, expedition.travelInfo.meetingPoint],
+                [Clock, labels.localTime, expedition.travelInfo.localTimeZone],
+                [Wifi, labels.connectivity, expedition.travelInfo.connectivity],
+                [ShieldCheck, labels.travelInsurance, expedition.travelInfo.insuranceGuidance],
+                [LifeBuoy, labels.travelerSupport, expedition.travelInfo.supportContact]
               ].filter(([, , value]) => typeof value === "string" && value.trim()).map(([Icon, label, value]) => {
                 const TravelIcon = Icon as LucideIcon;
                 return (
@@ -915,14 +915,14 @@ export default async function ExpeditionDetailPage({
             </div>
             <div className="mt-8 grid gap-6 lg:grid-cols-2">
               <div className="rounded-md border border-ocean-900/10 bg-white p-5">
-                <h3 className="text-xl font-bold text-ocean-900">Arrival & transfer</h3>
+                <h3 className="text-xl font-bold text-ocean-900">{labels.arrivalTransfer}</h3>
                 <p className="mt-4 text-sm leading-7 text-ocean-900/64">{expedition.travelInfo.airportTransfer}</p>
                 <p className="mt-3 text-sm leading-7 text-ocean-900/64">{expedition.travelInfo.arrivalGuidance}</p>
-                <h4 className="mt-5 font-bold text-ocean-900">Visa & entry guidance</h4>
+                <h4 className="mt-5 font-bold text-ocean-900">{labels.visaGuidance}</h4>
                 <p className="mt-2 text-sm leading-7 text-ocean-900/64">{expedition.travelInfo.visaGuidance}</p>
               </div>
               <div className="rounded-md border border-ocean-900/10 bg-white p-5">
-                <h3 className="text-xl font-bold text-ocean-900">Packing highlights</h3>
+                <h3 className="text-xl font-bold text-ocean-900">{labels.packingHighlights}</h3>
                 <ul className="mt-4 grid gap-2 text-sm leading-6 text-ocean-900/68 sm:grid-cols-2">
                   {expedition.travelInfo.packingHighlights.map((item) => (
                     <li key={item} className="flex items-start gap-2">
@@ -942,7 +942,7 @@ export default async function ExpeditionDetailPage({
             <>
           <DetailDivider />
           <section className="py-10 sm:py-14">
-            <SectionHeader title="UN Sustainable Development Goals" body="Goals shown here are derived only from host-provided details or recorded impact targets." learnHref={hasImpact ? "#impact" : undefined} />
+            <SectionHeader title={labels.sdgTitle} body={labels.sdgBody} learnHref={hasImpact ? "#impact" : undefined} learnLabel={labels.learnMore} />
             <div className="mt-10 grid gap-x-12 gap-y-10 md:grid-cols-2">
               {sdgFacts.map((goal) => (
                 <div key={goal.code} className="grid grid-cols-[132px_minmax(0,1fr)] gap-7">
@@ -965,7 +965,7 @@ export default async function ExpeditionDetailPage({
             <>
           <DetailDivider />
           <section id="photos" className="scroll-mt-36 py-10 sm:py-14">
-            <SectionHeader title={`Photos (${expedition.galleryImages.length})`} />
+            <SectionHeader title={`${labels.photos} (${expedition.galleryImages.length})`} />
             <div className="mt-9 grid gap-1 sm:grid-cols-2 lg:grid-cols-4">
               {expedition.galleryImages.map((image, index) => (
                 <figure key={`${image.src}-${image.label}`} className={cn("relative overflow-hidden bg-ocean-100", index === 0 ? "sm:col-span-2 sm:row-span-2" : "")}>
@@ -985,8 +985,8 @@ export default async function ExpeditionDetailPage({
               <DetailDivider />
               <section id="traveler-moments" className="scroll-mt-36 py-10 sm:py-14">
                 <SectionHeader
-                  title="Traveler moments"
-                  body="Media submitted by completed participants and reviewed by Terumbu before publication."
+                  title={labels.travelerMoments}
+                  body={labels.travelerMomentsBody}
                 />
                 <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                   {expedition.travelerMedia.map((item) => (
@@ -995,7 +995,7 @@ export default async function ExpeditionDetailPage({
                         <div className="relative h-64 bg-ocean-50">
                           <Image
                             src={item.mediaUrl}
-                            alt={item.caption ?? `Traveler moment from ${expedition.title}`}
+                            alt={item.caption ?? `${labels.travelerMomentAlt} ${expedition.title}`}
                             fill
                             unoptimized
                             className="object-cover"
@@ -1006,12 +1006,12 @@ export default async function ExpeditionDetailPage({
                         <a href={item.mediaUrl} target="_blank" rel="noreferrer" className="flex h-64 items-center justify-center bg-ocean-900 p-6 text-center font-bold text-white">
                           <span>
                             <PlayCircle className="mx-auto mb-3" size={34} aria-hidden="true" />
-                            Watch traveler video
+                            {labels.watchVideo}
                           </span>
                         </a>
                       )}
                       <div className="p-4">
-                        <p className="text-xs font-bold uppercase tracking-[0.12em] text-kelp-700">Verified completed participant</p>
+                        <p className="text-xs font-bold uppercase tracking-[0.12em] text-kelp-700">{labels.verifiedParticipant}</p>
                         <p className="mt-2 font-bold text-ocean-900">{item.travelerName}</p>
                         {item.caption ? <p className="mt-2 text-sm leading-6 text-ocean-900/62">{item.caption}</p> : null}
                       </div>
@@ -1024,7 +1024,7 @@ export default async function ExpeditionDetailPage({
 
           <DetailDivider />
           <section id="host" className="scroll-mt-36 py-10 sm:py-14">
-            <SectionHeader title="About the host" />
+            <SectionHeader title={labels.aboutHost} />
             <div className="mt-10 grid gap-10 lg:grid-cols-[0.5fr_0.5fr] lg:items-center">
               <div className="grid gap-8 sm:grid-cols-[180px_minmax(0,1fr)]">
                 <div>
@@ -1039,8 +1039,8 @@ export default async function ExpeditionDetailPage({
                 </div>
               </div>
               <div className="overflow-hidden rounded-md bg-sky-700 p-8 text-white">
-                <h3 className="text-2xl font-bold tracking-normal">Want to know more about this host?</h3>
-                <p className="mt-4 max-w-xl text-lg leading-8 text-white/82">Terumbu shows verified partner information, expedition activity, and conservation context before you reserve.</p>
+                <h3 className="text-2xl font-bold tracking-normal">{labels.hostMoreTitle}</h3>
+                <p className="mt-4 max-w-xl text-lg leading-8 text-white/82">{labels.hostMoreBody}</p>
                 {expedition.hostedBy.profileHref ? (
                   <Link href={expedition.hostedBy.profileHref} className="mt-7 inline-flex min-h-12 items-center rounded-full bg-kelp-500 px-7 text-base font-bold text-white hover:bg-kelp-700">
                     {expedition.hostedBy.profileLabel}
@@ -1054,7 +1054,7 @@ export default async function ExpeditionDetailPage({
             <>
               <DetailDivider />
               <section className="py-10 sm:py-14">
-                <SectionHeader title="More experiences of this host" />
+                <SectionHeader title={labels.moreHostExperiences} />
                 <div className="mt-9 grid gap-6 md:grid-cols-2">
                   {expedition.relatedExpeditions.map((item) => (
                     <ExpeditionCard key={item.slug} expedition={item} />
@@ -1068,7 +1068,7 @@ export default async function ExpeditionDetailPage({
             <>
           <DetailDivider />
           <section id="map" className="scroll-mt-36 py-10 sm:py-14">
-            <SectionHeader title="Map" body={expedition.route.privacyNote || undefined} />
+            <SectionHeader title={labels.map} body={expedition.route.privacyNote || undefined} />
             <div className="mt-8 overflow-hidden rounded-md border border-ocean-900/10 bg-ocean-50">
               <iframe title={expedition.route.mapTitle || `${expedition.title} map`} className="h-[420px] w-full border-0 lg:h-[560px]" loading="lazy" src={expedition.route.mapEmbedUrl} />
             </div>
@@ -1081,7 +1081,7 @@ export default async function ExpeditionDetailPage({
             <>
           <DetailDivider />
           <section id="impact" className="scroll-mt-36 py-10 sm:py-14">
-            <SectionHeader title="Terumbu conservation impact" body={`${formatCurrency(expedition.impact.conservationContribution, expedition.currency)} from each booking supports the associated conservation program. ${expedition.impact.summary}`} />
+            <SectionHeader title={labels.impactTitle} body={`${formatCurrency(expedition.impact.conservationContribution, expedition.currency)} ${labels.impactContribution} ${expedition.impact.summary}`} />
             <div className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
               {expedition.impact.targets.map((target) => (
                 <div key={target.label} className="border-l-2 border-kelp-500 pl-4">
@@ -1098,11 +1098,11 @@ export default async function ExpeditionDetailPage({
                 <div>
                   <p className="text-xs font-bold uppercase tracking-[0.14em] text-kelp-700">{expedition.associatedCampaign.verification}</p>
                   <h3 className="mt-1 text-xl font-bold text-ocean-900">{expedition.associatedCampaign.title}</h3>
-                  <p className="mt-2 text-sm leading-6 text-ocean-900/62">{expedition.associatedCampaign.progress}% funded &bull; {expedition.associatedCampaign.impact}</p>
+                  <p className="mt-2 text-sm leading-6 text-ocean-900/62">{expedition.associatedCampaign.progress}% {labels.funded} &bull; {expedition.associatedCampaign.impact}</p>
                 </div>
                 <div className="flex flex-wrap gap-2">
-                  <ButtonLink href={`/campaigns/${expedition.associatedCampaign.slug}`} tone="secondary">View Campaign</ButtonLink>
-                  <ButtonLink href={`/checkout/donation?campaign=${expedition.associatedCampaign.slug}`} tone="donation">Donate</ButtonLink>
+                  <ButtonLink href={`/campaigns/${expedition.associatedCampaign.slug}`} tone="secondary">{labels.viewCampaign}</ButtonLink>
+                  <ButtonLink href={`/checkout/donation?campaign=${expedition.associatedCampaign.slug}`} tone="donation">{labels.donate}</ButtonLink>
                 </div>
               </div>
             ) : null}
@@ -1113,7 +1113,7 @@ export default async function ExpeditionDetailPage({
 
           <DetailDivider />
           <section id="ask-question" className="scroll-mt-36 py-10 sm:py-14">
-            <SectionHeader title="Message the expedition team" body="Send a question through Terumbu.eco. Admins and the verified expedition partner can review it from their website inbox and follow up by email." />
+            <SectionHeader title={labels.messageTeam} body={labels.messageTeamBody} />
             {questionSavedMessage ? <p className="mt-5 rounded-md border border-kelp-500/20 bg-kelp-100 px-4 py-3 text-sm font-bold text-kelp-700">{questionSavedMessage}</p> : null}
             {questionErrorMessage ? <p className="mt-5 rounded-md border border-coral-500/20 bg-coral-100 px-4 py-3 text-sm font-bold text-coral-700">{questionErrorMessage}</p> : null}
             <form action={submitExpeditionInterestRequestAction} className="mt-8 grid gap-4 rounded-md border border-ocean-900/10 bg-ocean-50 p-4">
@@ -1122,11 +1122,11 @@ export default async function ExpeditionDetailPage({
               <input type="hidden" name="requestType" value="question" />
               <input type="hidden" name="participantsCount" value="1" />
               <div className="grid gap-3 sm:grid-cols-2">
-                <input name="contactName" placeholder="Your name" className="min-h-11 rounded-md border border-ocean-900/14 bg-white px-3 text-sm font-semibold outline-none focus:border-kelp-500" required />
+                <input name="contactName" placeholder={labels.yourName} className="min-h-11 rounded-md border border-ocean-900/14 bg-white px-3 text-sm font-semibold outline-none focus:border-kelp-500" required />
                 <input name="contactEmail" type="email" placeholder="you@example.com" className="min-h-11 rounded-md border border-ocean-900/14 bg-white px-3 text-sm font-semibold outline-none focus:border-kelp-500" required />
               </div>
               <select name="departureId" className="min-h-11 rounded-md border border-ocean-900/14 bg-white px-3 text-sm font-semibold outline-none focus:border-kelp-500">
-                <option value="">General expedition question</option>
+                <option value="">{labels.generalQuestion}</option>
                 {expedition.departures.map((departure) => (
                   <option key={departure.id} value={departure.id}>
                     {departure.dateRangeLabel} / {departure.statusLabel}
@@ -1136,25 +1136,25 @@ export default async function ExpeditionDetailPage({
               <textarea
                 name="message"
                 rows={5}
-                placeholder="Ask about itinerary, equipment, access needs, conservation activities, or booking requirements."
+                placeholder={labels.questionPlaceholder}
                 className="rounded-md border border-ocean-900/14 bg-white px-3 py-3 text-sm font-semibold leading-6 outline-none focus:border-kelp-500"
                 required
               />
               <Button type="submit" tone="secondary" className="w-fit rounded-md">
                 <MessageSquareText size={17} aria-hidden="true" />
-                Send question
+                {labels.sendQuestion}
               </Button>
             </form>
           </section>
 
           <DetailDivider />
           <section id="reviews" className="scroll-mt-36 py-10 sm:py-14">
-            <SectionHeader title="Reviews" />
+            <SectionHeader title={labels.reviews} />
             <div className="mt-8 grid gap-6 lg:grid-cols-[0.3fr_0.7fr]">
               <div>
                 <p className="text-5xl font-light text-ocean-900">{expedition.reviewCount > 0 ? expedition.rating.toFixed(1) : "-"}</p>
                 <p className="mt-2 text-sm font-semibold text-ocean-900/62">
-                  {expedition.reviewCount > 0 ? `${expedition.reviewCount} verified participant reviews` : "Reviews appear after completed participants submit them."}
+                  {expedition.reviewCount > 0 ? `${expedition.reviewCount} ${labels.reviewCountSuffix}` : labels.reviewsHelp}
                 </p>
               </div>
               <div className="grid gap-4">
@@ -1175,7 +1175,7 @@ export default async function ExpeditionDetailPage({
                     </article>
                   ))
                 ) : (
-                  <p className="rounded-md border border-dashed border-ocean-900/14 bg-ocean-50 p-5 font-bold text-ocean-900">No completed-participant reviews yet.</p>
+                  <p className="rounded-md border border-dashed border-ocean-900/14 bg-ocean-50 p-5 font-bold text-ocean-900">{labels.noReviews}</p>
                 )}
               </div>
             </div>
@@ -1185,7 +1185,7 @@ export default async function ExpeditionDetailPage({
             <>
           <DetailDivider />
           <section id="faq" className="scroll-mt-36 py-10 sm:py-14">
-            <SectionHeader title="Before you book" />
+            <SectionHeader title={labels.beforeBook} />
             <div className="mt-7 grid gap-3">
               {expedition.faqs.map(([question, answer]) => (
                 <details key={question} className="border-b border-ocean-900/10 py-4">
@@ -1203,7 +1203,7 @@ export default async function ExpeditionDetailPage({
             <>
           <DetailDivider />
           <section className="py-10 sm:py-14">
-            <SectionHeader title="How we travel responsibly" />
+            <SectionHeader title={labels.responsibleTravel} />
             <div className="mt-7 grid gap-3 sm:grid-cols-2">
               {expedition.sustainability.map((item) => (
                 <p key={item} className="flex items-start gap-2 text-sm font-semibold text-ocean-900/68">
@@ -1212,7 +1212,7 @@ export default async function ExpeditionDetailPage({
                 </p>
               ))}
             </div>
-            <Link href="/terms" className="mt-6 inline-flex text-sm font-bold text-sky-700">Read Participant Code of Conduct</Link>
+            <Link href="/terms" className="mt-6 inline-flex text-sm font-bold text-sky-700">{labels.codeConduct}</Link>
           </section>
 
             </>
@@ -1222,11 +1222,11 @@ export default async function ExpeditionDetailPage({
             <>
               <DetailDivider />
               <section className="py-10 sm:py-14">
-                <SectionHeader title="Trip activity" />
+                <SectionHeader title={labels.tripActivity} />
                 <div className="mt-7 grid gap-5 md:grid-cols-2">
                   {expedition.tripUpdates.map((update) => (
                     <article key={update.title} className="border-l-2 border-sky-700 pl-4">
-                      <p className="text-xs font-bold uppercase tracking-[0.12em] text-ocean-900/46">{formatDate(update.date)}</p>
+                      <p className="text-xs font-bold uppercase tracking-[0.12em] text-ocean-900/46">{formatDate(update.date, locale)}</p>
                       <p className="mt-2 font-bold text-ocean-900">{update.title}</p>
                       <p className="mt-2 text-sm leading-6 text-ocean-900/62">{update.body}</p>
                     </article>
@@ -1240,7 +1240,7 @@ export default async function ExpeditionDetailPage({
                     className="mt-6 inline-flex min-h-11 items-center gap-2 rounded-full border border-ocean-900/10 px-4 text-sm font-bold text-sky-700 hover:border-sky-600"
                   >
                     <ExternalLink size={16} aria-hidden="true" />
-                    View expedition documentation
+                    {labels.viewDocumentation}
                   </a>
                 ) : null}
               </section>
@@ -1255,7 +1255,7 @@ export default async function ExpeditionDetailPage({
               <ButtonLink href="#ask-question" tone="light" className="rounded-full border border-ocean-900/10">{expedition.finalCta.secondaryLabel}</ButtonLink>
             </div>
             <div className="mt-5">
-              <ExpeditionShareButtons slug={expedition.slug} title={expedition.title} referralCode={shareReferralCode} />
+              <ExpeditionShareButtons slug={expedition.slug} title={expedition.title} referralCode={shareReferralCode} locale={locale} />
             </div>
           </section>
         </div>
