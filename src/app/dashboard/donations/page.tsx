@@ -6,6 +6,7 @@ import { Button, ButtonLink } from "@/components/ui/button";
 import { requireUser } from "@/lib/auth";
 import { requestDonationRefundAction } from "@/lib/billing-actions";
 import { getBillingData, getCampaignCards, getDashboardData } from "@/lib/queries";
+import { getPreferredLocale } from "@/lib/user-preferences";
 import { removeSavedCampaignAction } from "@/lib/retention-actions";
 import { formatCurrency } from "@/lib/utils";
 
@@ -37,8 +38,115 @@ function statusClass(status: string) {
 export default async function DashboardDonationsPage({ searchParams }: DashboardDonationsPageProps) {
   const params = await searchParams;
   const user = await requireUser("/dashboard/donations");
-  const [data, billing, highlightedCampaigns] = await Promise.all([getDashboardData(user.id), getBillingData(user.id), getCampaignCards(3)]);
-  const donationError = "Could not complete that donation action.";
+  const [data, billing, highlightedCampaigns, locale] = await Promise.all([
+    getDashboardData(user.id),
+    getBillingData(user.id),
+    getCampaignCards(3),
+    getPreferredLocale()
+  ]);
+  const isIndonesian = locale === "id";
+  const numberLocale = isIndonesian ? "id-ID" : "en-US";
+  const dateLocale = numberLocale;
+  const labels =
+    isIndonesian
+      ? {
+          donations: "Donasi",
+          title: "Dari kontribusi ke dampak lapangan",
+          subtitle: "Pantau pembayaran, estimasi dampak, aktivitas lapangan, dan bukti terverifikasi dari kontribusimu.",
+          savedMessage: "Permintaan donasi tersimpan.",
+          donationError: "Aksi donasi tidak dapat diselesaikan.",
+          journeyEyebrow: "Perjalanan dampakku",
+          journeyTitle: "Status kontribusi sampai outcome terverifikasi",
+          journeyBody: "Donasi kolektif mengikuti outcome terverifikasi kampanye tanpa mengklaim bahwa dana spesifikmu membayar satu aktivitas tertentu. Sponsorship individual dapat mengikuti catatan sponsorship yang dibuat dari kontribusimu.",
+          sponsorship: "Sponsorship individual",
+          pooled: "Kontribusi kampanye kolektif",
+          currentStage: "Tahap saat ini",
+          stepContribution: "Kontribusi",
+          stepEstimate: "Estimasi dampak",
+          stepField: "Aktivitas lapangan",
+          stepVerified: "Outcome terverifikasi",
+          paymentVerified: "Pembayaran terverifikasi",
+          payment: "Pembayaran",
+          estimatePending: "Estimasi dampak akan muncul ketika model kampanye mendukungnya.",
+          waitingField: "Menunggu aktivitas lapangan dari mitra.",
+          noVerified: "Belum ada bukti kampanye terverifikasi.",
+          sponsorshipId: "ID sponsorship",
+          fragments: "fragmen",
+          planted: "Ditanam",
+          survivalRate: "tingkat survival",
+          pooledNote: "Outcome tingkat kampanye: kontribusi ini masuk ke pendanaan kolektif. Bukti lapangan terhubung ke kampanye dan tidak diklaim sebagai outcome eksklusif dari donasi ini.",
+          journeyEmpty: "Perjalanan dampakmu dimulai setelah donasi pertama.",
+          history: "Riwayat donasi",
+          receiptPendingVerify: "Kuitansi menunggu verifikasi admin",
+          receiptPending: "Kuitansi menunggu",
+          refund: "Ajukan refund",
+          reason: "Alasan",
+          refundPlaceholder: "Jelaskan alasan kamu membutuhkan refund.",
+          submitRefund: "Kirim permintaan refund",
+          noDonation: "Belum ada catatan donasi.",
+          noDonationBody: "Dukung proyek terverifikasi dan unggah bukti pembayaran untuk memulai catatan verifikasi pertamamu.",
+          browseVerified: "Jelajahi kampanye terverifikasi",
+          verification: "Verifikasi pembayaran",
+          verificationTitle: "Aktivitas verifikasi terbaru",
+          noVerification: "Belum ada aktivitas verifikasi pembayaran.",
+          exploreEyebrow: "Lanjutkan dukungan",
+          exploreTitle: "Temukan proyek lain",
+          exploreBody: "Pilih kampanye terverifikasi terbaru atau jelajahi seluruh katalog.",
+          browseAll: "Jelajahi semua",
+          savedCampaigns: "Kampanye tersimpan",
+          savedCampaign: "kampanye tersimpan",
+          removeSaved: "Hapus dari tersimpan",
+          savedEmpty: "Simpan kampanye dari halaman detail agar bisa dibandingkan dan dibuka kembali di sini."
+        }
+      : {
+          donations: "Donations",
+          title: "From contribution to field impact",
+          subtitle: "Track payment, estimated impact, field activity, and verified evidence from your contributions.",
+          savedMessage: "Donation request saved.",
+          donationError: "Could not complete that donation action.",
+          journeyEyebrow: "My impact journey",
+          journeyTitle: "Contribution status to verified outcome",
+          journeyBody: "Pooled donations follow the campaign's verified outcomes without claiming that your exact funds paid for one specific activity. Individual sponsorships can follow the sponsored record created for your contribution.",
+          sponsorship: "Individual sponsorship",
+          pooled: "Pooled campaign contribution",
+          currentStage: "Current stage",
+          stepContribution: "Contribution",
+          stepEstimate: "Estimated impact",
+          stepField: "Field activity",
+          stepVerified: "Verified outcome",
+          paymentVerified: "Payment verified",
+          payment: "Payment",
+          estimatePending: "Impact estimate will appear when the campaign model supports it.",
+          waitingField: "Waiting for partner field activity.",
+          noVerified: "No verified campaign evidence yet.",
+          sponsorshipId: "Sponsorship ID",
+          fragments: "fragments",
+          planted: "Planted",
+          survivalRate: "survival rate",
+          pooledNote: "Campaign-level outcome: this contribution participates in pooled funding. Field evidence is linked to the campaign, not assigned to this donation as an exclusive outcome.",
+          journeyEmpty: "Your impact journey starts after your first donation.",
+          history: "Donation history",
+          receiptPendingVerify: "Receipt pending admin verification",
+          receiptPending: "Receipt pending",
+          refund: "Request refund",
+          reason: "Reason",
+          refundPlaceholder: "Tell us why you need a refund.",
+          submitRefund: "Submit refund request",
+          noDonation: "No donation records yet.",
+          noDonationBody: "Support a verified project and upload your payment proof to start your first manual verification record.",
+          browseVerified: "Browse verified campaigns",
+          verification: "Payment verification",
+          verificationTitle: "Recent verification activity",
+          noVerification: "No payment verification activity yet.",
+          exploreEyebrow: "Continue supporting",
+          exploreTitle: "Discover another project",
+          exploreBody: "Choose one of the latest verified campaigns or browse the full catalog.",
+          browseAll: "Browse all",
+          savedCampaigns: "Saved campaigns",
+          savedCampaign: "saved campaign",
+          removeSaved: "Remove saved campaign",
+          savedEmpty: "Save campaigns from a campaign detail page to compare and revisit them here."
+        };
   const verificationOperations = billing.operations.filter((operation) => !operation.operationType.includes("refund")).slice(0, 6);
 
   return (
