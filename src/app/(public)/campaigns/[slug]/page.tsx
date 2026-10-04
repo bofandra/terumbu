@@ -67,39 +67,45 @@ function isImageUrl(value: string | null) {
   return value.startsWith("data:image/") || /\.(jpg|jpeg|png|webp|gif)(\?|$)/i.test(value);
 }
 
-function formatDateLabel(value: Date | null | undefined) {
-  return value?.toLocaleDateString("id-ID", { dateStyle: "medium" }) ?? "Pending";
+function formatDateLabel(value: Date | null | undefined, locale: "en" | "id" = "en") {
+  return value?.toLocaleDateString(locale === "id" ? "id-ID" : "en-US", { dateStyle: "medium" }) ?? (locale === "id" ? "Menunggu" : "Pending");
 }
 
-function formatDateRangeLabel(startsAt: Date | null | undefined, endsAt: Date | null | undefined) {
+function formatDateRangeLabel(startsAt: Date | null | undefined, endsAt: Date | null | undefined, locale: "en" | "id" = "en") {
   if (startsAt && endsAt) {
-    return `${formatDateLabel(startsAt)} - ${formatDateLabel(endsAt)}`;
+    return `${formatDateLabel(startsAt, locale)} - ${formatDateLabel(endsAt, locale)}`;
   }
 
-  return startsAt ? formatDateLabel(startsAt) : endsAt ? formatDateLabel(endsAt) : "Schedule pending";
+  return startsAt
+    ? formatDateLabel(startsAt, locale)
+    : endsAt
+      ? formatDateLabel(endsAt, locale)
+      : locale === "id"
+        ? "Jadwal menunggu"
+        : "Schedule pending";
 }
 
-function updateCategory(title: string, body: string) {
+function updateCategory(title: string, body: string, locale: "en" | "id" = "en") {
   const value = `${title} ${body}`.toLowerCase();
 
   if (value.includes("monitor")) {
-    return "Monitoring";
+    return locale === "id" ? "Monitoring" : "Monitoring";
   }
 
   if (value.includes("school") || value.includes("community")) {
-    return "Community stories";
+    return locale === "id" ? "Cerita komunitas" : "Community stories";
   }
 
   if (value.includes("budget") || value.includes("fund")) {
-    return "Financial reports";
+    return locale === "id" ? "Laporan finansial" : "Financial reports";
   }
 
-  return "Field activities";
+  return locale === "id" ? "Aktivitas lapangan" : "Field activities";
 }
 
-function publicDonorName(value: string | null) {
+function publicDonorName(value: string | null, locale: "en" | "id" = "en") {
   if (!value) {
-    return "Anonymous supporter";
+    return locale === "id" ? "Pendukung anonim" : "Anonymous supporter";
   }
 
   if (/^(pt|cv|yayasan|koperasi)\b/i.test(value)) {
@@ -163,12 +169,248 @@ export default async function CampaignDetailPage({
     sessionUser ? getCampaignRetentionState(sessionUser.id, campaign.slug) : Promise.resolve(null)
   ]);
   const isIndonesian = locale === "id";
+  const numberLocale = isIndonesian ? "id-ID" : "en-US";
+  const labels =
+    isIndonesian
+      ? {
+          home: "Beranda",
+          campaigns: "Kampanye",
+          activityRecords: "catatan aktivitas",
+          projectUpdate: "Pembaruan proyek",
+          partnerManaged: "dikelola mitra",
+          survivalRate: "Tingkat survival",
+          milestoneUpdate: "Pembaruan",
+          milestoneActivity: "Aktivitas",
+          implementedBy: "Dilaksanakan oleh",
+          projectsCompleted: "proyek selesai",
+          keepClose: "Pantau proyek ini",
+          following: "Kamu mengikuti kampanye ini dengan pembaruan aktivitas mingguan.",
+          followPrompt: "Ikuti aktivitas lapangan dan bukti baru saat dipublikasikan.",
+          guestFollowPrompt: "Masuk untuk menyimpan kampanye dan mengikuti aktivitas lapangan saat dipublikasikan.",
+          stopFollowing: "Berhenti Mengikuti",
+          followWeekly: "Ikuti Pembaruan Mingguan",
+          manageSaved: "Kelola Proyek Tersimpan",
+          signInFollow: "Masuk untuk Mengikuti",
+          impactGlance: "Dampak sekilas",
+          target: "target",
+          paidSupporters: "Pendukung berbayar",
+          overview: "Ringkasan",
+          overviewTitle: "Cerita kampanye dan lokasi publik",
+          story: "Cerita kampanye",
+          whyRegion: "Mengapa",
+          progress: "progres",
+          publicSitesPending: "Lokasi dampak publik akan tampil setelah lokasi mitra disetujui untuk dibagikan.",
+          recordedTargets: "Target kampanye tercatat",
+          linkedSites: "lokasi dampak terhubung",
+          publicVerification: "Catatan verifikasi publik",
+          verifiedRecords: "catatan aktivitas terverifikasi",
+          totalRecords: "total catatan aktivitas",
+          sponsorshipRecords: "catatan sponsorship",
+          recentDonors: "catatan donatur berbayar terbaru",
+          compareActivity: "Bandingkan aktivitas lapangan aktual",
+          actualSiteActivity: "Aktivitas aktual di lokasi",
+          beforeRecord: "Catatan awal",
+          latestRecord: "Catatan terbaru",
+          datePending: "tanggal menunggu",
+          sponsorshipRecord: "Catatan sponsorship",
+          sponsorshipBody: "Catatan sponsorship muncul setelah aktivitas sponsorship berbayar dikonfirmasi dan ditautkan ke kampanye.",
+          sponsorCampaign: "Sponsor Kampanye Ini",
+          recordId: "ID catatan",
+          location: "Lokasi",
+          fragments: "Fragmen",
+          planted: "Ditanam",
+          status: "Status",
+          lastUpdate: "Pembaruan terakhir",
+          evidenceEyebrow: "Bukti",
+          evidenceTitle: "Timeline dan bukti aktivitas kampanye",
+          deliverable: "Deliverable",
+          activityNote: "Catatan aktivitas",
+          noRecords: "Belum ada catatan aktivitas kampanye yang dipublikasikan.",
+          impactMap: "Peta lokasi dampak",
+          impactMapBody: "Zona restorasi, titik monitoring, dan catatan aktivitas ditampilkan dengan koordinat publik perkiraan ketika lokasi ekologis sensitif perlu dilindungi.",
+          activity: "Aktivitas",
+          activityTitle: "Aliran aktivitas lapangan",
+          activityBody: "Ikuti aktivitas lapangan, catatan monitoring, cerita komunitas, dan lampiran verifikasi saat kampanye melewati milestone.",
+          transparency: "Transparansi",
+          transparencyTitle: "Pelaksana program dan tata kelola dana",
+          partnerFallback: "Detail mitra akan tampil setelah profil organisasi dilengkapi.",
+          viewOrganization: "Lihat profil organisasi",
+          website: "Website",
+          governance: "Verifikasi dan tata kelola",
+          partnerVerification: "Verifikasi mitra",
+          organizationLevel: "Tingkat verifikasi organisasi",
+          submittedActivity: "Aktivitas kampanye yang dikirim",
+          adminApproved: "Aktivitas disetujui melalui review admin",
+          linkedLocations: "Lokasi lapangan yang terhubung ke kampanye",
+          traceability: "Ketertelusuran",
+          traceabilityTitle: "Dari dana pendukung ke catatan lapangan terverifikasi",
+          traceabilityBody: "Tampilan ini memisahkan dana yang diterima, pengeluaran yang dicatat mitra, aktivitas lapangan yang dipublikasikan, dan bukti yang lolos review platform. Ini tidak menyatakan bahwa setiap rupiah atau dolar dapat ditelusuri secara individual ke satu file bukti.",
+          paidFunding: "Pendanaan dibayar",
+          paidFundingSupport: "Kontribusi pendukung yang terkonfirmasi",
+          recordedSpend: "Pengeluaran tercatat",
+          recordedSpendSupport: "Pemanfaatan anggaran oleh mitra",
+          fieldActivities: "Aktivitas lapangan",
+          fieldActivitiesSupport: "Catatan aktivitas kampanye yang dipublikasikan",
+          verifiedEvidence: "Bukti terverifikasi",
+          verifiedEvidenceSupport: "Bukti yang disetujui melalui review",
+          budgetCoverage: "Cakupan anggaran",
+          recordedAgainst: "tercatat dari",
+          planned: "direncanakan",
+          evidenceSpend: "Pengeluaran terkait bukti",
+          evidenceSpendBody: "secara eksplisit dirujuk dalam metadata bukti terverifikasi.",
+          latestVerification: "Verifikasi terbaru",
+          noVerifiedEvidence: "Belum ada bukti terverifikasi",
+          viewFieldActivity: "Lihat aktivitas lapangan",
+          viewEvidence: "Lihat bukti terverifikasi",
+          fundingRecord: "Catatan pendanaan",
+          fundingRecordBody: "Nilai pendanaan menggabungkan target kampanye dengan kontribusi pendukung yang sudah dibayar.",
+          campaignGoal: "Target kampanye",
+          raised: "Terkumpul",
+          remaining: "Tersisa",
+          budgetItems: "Rincian anggaran",
+          spent: "terpakai",
+          finalCall: "Ajakan akhir",
+          helpRestore: "Bantu pulihkan",
+          finalBody: "Setiap kontribusi mendukung tim restorasi lokal, monitoring jangka panjang, dan ekosistem laut yang lebih sehat.",
+          followImplementation: "Ikuti Implementasi",
+          donateNow: "Donasi Sekarang",
+          sponsorCoral: "Sponsor Dampak",
+          followingActivity: "Mengikuti Aktivitas",
+          followActivity: "Ikuti Aktivitas",
+          donorCommunity: "Komunitas donatur",
+          supporters: "pendukung",
+          sponsoredFragments: "mensponsori",
+          coralFragments: "fragmen karang",
+          sponsoredCampaign: "mensponsori kampanye ini",
+          supportedCampaign: "mendukung kampanye ini",
+          donorEmpty: "Aktivitas donatur terbaru akan tampil setelah kontribusi berbayar tercatat.",
+          relatedExpedition: "Ekspedisi terkait",
+          learnBefore: "Belajar sebelum berpartisipasi",
+          relatedCampaigns: "Kampanye terkait",
+          relatedCampaignsTitle: "Program konservasi lain dalam kategori ini"
+        }
+      : {
+          home: "Home",
+          campaigns: "Campaigns",
+          activityRecords: "activity records",
+          projectUpdate: "Project update",
+          partnerManaged: "partner managed",
+          survivalRate: "Survival rate",
+          milestoneUpdate: "Update",
+          milestoneActivity: "Activity",
+          implementedBy: "Implemented by",
+          projectsCompleted: "projects completed",
+          keepClose: "Keep this project close",
+          following: "You are following this campaign with weekly activity updates.",
+          followPrompt: "Follow partner field activity and new evidence as it is published.",
+          guestFollowPrompt: "Sign in to save this campaign and follow partner field activity as it is published.",
+          stopFollowing: "Stop Following",
+          followWeekly: "Follow Weekly Updates",
+          manageSaved: "Manage Saved Projects",
+          signInFollow: "Sign in to Follow",
+          impactGlance: "Impact at a glance",
+          target: "target",
+          paidSupporters: "Paid supporters",
+          overview: "Overview",
+          overviewTitle: "Campaign story and public location records",
+          story: "Campaign story",
+          whyRegion: "Why",
+          progress: "progress",
+          publicSitesPending: "Public impact sites will appear after partner locations are approved for sharing.",
+          recordedTargets: "Recorded campaign targets",
+          linkedSites: "linked impact sites",
+          publicVerification: "Public verification records",
+          verifiedRecords: "verified activity records",
+          totalRecords: "total activity records",
+          sponsorshipRecords: "sponsorship records",
+          recentDonors: "recent paid donor records",
+          compareActivity: "Compare actual field activity",
+          actualSiteActivity: "Actual site activity from",
+          beforeRecord: "Before record",
+          latestRecord: "Latest record",
+          datePending: "date pending",
+          sponsorshipRecord: "Sponsorship record",
+          sponsorshipBody: "This sponsorship record appears after paid sponsorship activity is confirmed and linked to the campaign.",
+          sponsorCampaign: "Sponsor This Campaign",
+          recordId: "Record ID",
+          location: "Location",
+          fragments: "Fragments",
+          planted: "Planted",
+          status: "Status",
+          lastUpdate: "Last Update",
+          evidenceEyebrow: "Evidence",
+          evidenceTitle: "Campaign timeline and activity evidence",
+          deliverable: "Deliverable",
+          activityNote: "Activity note",
+          noRecords: "No campaign activity records have been published yet.",
+          impactMap: "Impact location map",
+          impactMapBody: "Restoration zones, monitoring points, and activity records are shown with approximate public coordinates where sensitive ecological locations require privacy.",
+          activity: "Activity",
+          activityTitle: "Field activity stream",
+          activityBody: "Follow field activities, monitoring notes, community stories, and review attachments as the campaign moves through milestones.",
+          transparency: "Transparency",
+          transparencyTitle: "Who implements this work and how funds are governed",
+          partnerFallback: "Partner details will appear after the organization profile is completed.",
+          viewOrganization: "View organization profile",
+          website: "Website",
+          governance: "Verification and governance",
+          partnerVerification: "Partner verification",
+          organizationLevel: "Organization verification level",
+          submittedActivity: "Campaign activity submitted",
+          adminApproved: "Activity approved by admin review",
+          linkedLocations: "Campaign-linked field locations",
+          traceability: "Traceability",
+          traceabilityTitle: "From supporter funds to verified field records",
+          traceabilityBody: "This view separates money received, partner-recorded spending, published field activity, and evidence that passed platform review. It does not claim that every rupiah or dollar is individually attributable to one evidence file.",
+          paidFunding: "Paid funding",
+          paidFundingSupport: "Confirmed supporter contributions",
+          recordedSpend: "Recorded spend",
+          recordedSpendSupport: "Partner budget utilization",
+          fieldActivities: "Field activities",
+          fieldActivitiesSupport: "Published campaign activity records",
+          verifiedEvidence: "Verified evidence",
+          verifiedEvidenceSupport: "Evidence approved through review",
+          budgetCoverage: "Budget coverage",
+          recordedAgainst: "recorded against",
+          planned: "planned",
+          evidenceSpend: "Evidence-linked spend",
+          evidenceSpendBody: "is explicitly referenced in verified evidence metadata.",
+          latestVerification: "Latest verification",
+          noVerifiedEvidence: "No verified evidence yet",
+          viewFieldActivity: "View field activity",
+          viewEvidence: "View verified evidence",
+          fundingRecord: "Funding record",
+          fundingRecordBody: "Funding values combine the campaign goal with paid supporter contributions.",
+          campaignGoal: "Campaign goal",
+          raised: "Raised",
+          remaining: "Remaining",
+          budgetItems: "Budget line items",
+          spent: "spent",
+          finalCall: "Final call",
+          helpRestore: "Help restore",
+          finalBody: "Every contribution supports local restoration teams, long-term monitoring, and healthier marine ecosystems.",
+          followImplementation: "Follow Implementation",
+          donateNow: "Donate Now",
+          sponsorCoral: "Sponsor impact",
+          followingActivity: "Following Activity",
+          followActivity: "Follow Activity",
+          donorCommunity: "Donor community",
+          supporters: "supporters",
+          sponsoredFragments: "sponsored",
+          coralFragments: "coral fragments",
+          sponsoredCampaign: "sponsored this campaign",
+          supportedCampaign: "supported this campaign",
+          donorEmpty: "Recent donor activity will appear after paid contributions are recorded.",
+          relatedExpedition: "Related expedition",
+          learnBefore: "Learn before you participate",
+          relatedCampaigns: "Related campaigns",
+          relatedCampaignsTitle: "More conservation work in this category"
+        };
   const tabs = [
-    { label: isIndonesian ? "Ringkasan" : "Overview", href: "#overview" },
+    { label: labels.overview, href: "#overview" },
     { label: isIndonesian ? "Dampak" : "Impact", href: "#impact" },
-    { label: isIndonesian ? "Bukti" : "Evidence", href: "#records" },
-    { label: isIndonesian ? "Aktivitas" : "Activity", href: "#updates" },
-    { label: isIndonesian ? "Transparansi" : "Transparency", href: "#transparency" }
+    { label: labels.evidenceEyebrow, href: "#records" },
+    { label: labels.transparency, href: "#transparency" }
   ];
   const progress = campaign.goal > 0 ? Math.min(100, Math.round((campaign.raised / campaign.goal) * 100)) : 0;
   const impactFunded = campaign.goal > 0 ? Math.round((campaign.raised / campaign.goal) * campaign.impactTarget) : 0;
@@ -196,14 +438,14 @@ export default async function CampaignDetailPage({
       .map((update) => ({
         src: update.imageUrl!,
         caption: update.title,
-        provenance: `Project update · ${formatDateLabel(update.publishedAt)}`
+        provenance: `${labels.projectUpdate} · ${formatDateLabel(update.publishedAt, locale)}`
       })),
     ...campaign.evidence
       .filter((item) => isImageUrl(item.fileUrl))
       .map((item) => ({
         src: item.fileUrl,
         caption: item.title,
-        provenance: `${item.evidenceType} · ${item.verificationStatus} · ${formatDateLabel(item.createdAt)}`
+        provenance: `${item.evidenceType} · ${item.verificationStatus} · ${formatDateLabel(item.createdAt, locale)}`
       }))
   ];
   const persistedMediaItems = campaign.mediaGallery
@@ -211,7 +453,7 @@ export default async function CampaignDetailPage({
     .map((item) => ({
       src: item.fileUrl,
       caption: item.caption || item.altText || item.title,
-      provenance: item.provenance || `${item.mediaType} · partner managed`
+      provenance: item.provenance || `${item.mediaType} · ${labels.partnerManaged}`
     }));
   const mediaItems = persistedMediaItems.length > 0 ? persistedMediaItems : fallbackMediaItems;
   const updateItems = campaign.updates.map((update) => ({
@@ -219,8 +461,8 @@ export default async function CampaignDetailPage({
     title: update.title,
     body: update.body,
     imageUrl: update.imageUrl,
-    dateLabel: formatDateLabel(update.publishedAt),
-    category: updateCategory(update.title, update.body),
+    dateLabel: formatDateLabel(update.publishedAt, locale),
+    category: updateCategory(update.title, update.body, locale),
     responsibleTeam: campaign.partner,
     href: `/campaigns/${campaign.slug}/updates/${update.id}`
   }));
@@ -233,10 +475,10 @@ export default async function CampaignDetailPage({
     fileUrl: item.fileUrl,
     verificationStatus: item.verificationStatus,
     stageLabel: evidenceStageLabel(evidenceStage(item.metadata, item.evidenceType)),
-    dateLabel: formatDateLabel(item.createdAt),
+    dateLabel: formatDateLabel(item.createdAt, locale),
     locationLabel: item.siteName ? `${item.siteName}, ${item.siteRegion ?? campaign.region}` : campaign.sites[0]?.name ?? campaign.region,
     observation: getMetadataString(item.metadata, "observation") ?? getMetadataString(item.metadata, "summary"),
-    metricLabel: getMetadataString(item.metadata, "metricLabel") ?? (getMetadataNumberOrString(item.metadata, "survivalRate") ? "Survival rate" : null),
+    metricLabel: getMetadataString(item.metadata, "metricLabel") ?? (getMetadataNumberOrString(item.metadata, "survivalRate") ? labels.survivalRate : null),
     metricValue: getMetadataNumberOrString(item.metadata, "metricValue") ?? (getMetadataNumberOrString(item.metadata, "survivalRate") ? `${getMetadataNumberOrString(item.metadata, "survivalRate")}%` : null),
     sourceHref: evidenceSourceHref(campaign.slug, item.evidenceCode) ?? item.fileUrl
   }));
@@ -289,14 +531,14 @@ export default async function CampaignDetailPage({
       title: update.title,
       detail: update.body,
       date: update.publishedAt,
-      label: "Update"
+      label: labels.milestoneUpdate
     })),
     ...campaign.evidence.map((item) => ({
       key: `evidence-${item.title}-${item.createdAt.toISOString()}`,
       title: item.title,
       detail: `${item.evidenceType} / ${item.verificationStatus}`,
       date: item.createdAt,
-      label: "Activity"
+      label: labels.milestoneActivity
     }))
   ]
     .sort((first, second) => (second.date?.getTime() ?? 0) - (first.date?.getTime() ?? 0))
@@ -318,6 +560,14 @@ export default async function CampaignDetailPage({
         ? "Preferensi kampanye tidak dapat diperbarui."
         : "We could not update this campaign preference."
       : null;
+  const followFrequency = retentionState?.followFrequency ?? "weekly";
+  const followFrequencyLabel = isIndonesian
+    ? followFrequency === "weekly"
+      ? "mingguan"
+      : followFrequency === "daily"
+        ? "harian"
+        : followFrequency
+    : followFrequency;
 
   return (
     <main className="pb-24 lg:pb-0">
@@ -330,10 +580,10 @@ export default async function CampaignDetailPage({
       />
       <section className="bg-white">
         <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
-          <nav className="flex flex-wrap items-center gap-2 text-sm font-semibold text-ocean-900/58" aria-label="Breadcrumb">
-            <Link href="/" className="hover:text-ocean-900">Home</Link>
+          <nav className="flex flex-wrap items-center gap-2 text-sm font-semibold text-ocean-900/58" aria-label={isIndonesian ? "Breadcrumb navigasi" : "Breadcrumb"}>
+            <Link href="/" className="hover:text-ocean-900">{labels.home}</Link>
             <ChevronRight size={15} aria-hidden="true" />
-            <Link href="/campaigns" className="hover:text-ocean-900">Campaigns</Link>
+            <Link href="/campaigns" className="hover:text-ocean-900">{labels.campaigns}</Link>
             <ChevronRight size={15} aria-hidden="true" />
             <Link href={`/campaigns?category=${encodeURIComponent(campaign.category)}`} className="hover:text-ocean-900">{campaign.category}</Link>
             <ChevronRight size={15} aria-hidden="true" />
@@ -364,8 +614,9 @@ export default async function CampaignDetailPage({
                   category={campaign.category}
                   region={campaign.region}
                   imageUrl={campaign.imageUrl}
-                  updatedLabel={`${(campaign.updates.length + campaign.evidence.length).toLocaleString("id-ID")} activity records`}
+                  updatedLabel={`${(campaign.updates.length + campaign.evidence.length).toLocaleString(numberLocale)} ${labels.activityRecords}`}
                   verificationLabel={campaign.verification}
+                  locale={locale}
                   mediaItems={mediaItems}
                 />
 
@@ -380,7 +631,7 @@ export default async function CampaignDetailPage({
                   <p className="mt-5 text-lg leading-8 text-ocean-900/68">{campaign.summary}</p>
 
                   <div className="mt-7 rounded-2xl border border-ocean-900/10 bg-sand-50 p-5">
-                    <p className="text-sm font-semibold text-ocean-900/62">Implemented by</p>
+                    <p className="text-sm font-semibold text-ocean-900/62">{labels.implementedBy}</p>
                     <div className="mt-3 flex items-center gap-4">
                       <span className="relative flex size-16 shrink-0 items-center justify-center overflow-hidden rounded-full bg-white text-lg font-black text-ocean-900 ring-1 ring-ocean-900/10">
                         {campaign.partnerLogoUrl ? (
@@ -394,9 +645,9 @@ export default async function CampaignDetailPage({
                           {campaign.partner}
                         </Link>
                         <p className="mt-1 text-sm text-ocean-900/60">
-                          {campaign.verification} · {campaign.partnerCampaignCount} projects completed
+                          {campaign.verification} · {campaign.partnerCampaignCount} {labels.projectsCompleted}
                         </p>
-                        <VerificationExplainer verificationLabel={campaign.verification} />
+                        <VerificationExplainer verificationLabel={campaign.verification} locale={locale} />
                       </div>
                     </div>
                     <div className="mt-4 flex flex-wrap gap-2">
@@ -419,6 +670,7 @@ export default async function CampaignDetailPage({
                 impactFunded={impactFunded}
                 impactUnit={campaign.impactUnit}
                 currency={campaign.currency}
+                locale={locale}
               />
             </div>
 
@@ -443,13 +695,15 @@ export default async function CampaignDetailPage({
               />
 
               <div className="rounded-2xl border border-ocean-900/10 bg-white p-5 shadow-soft">
-                <p className="text-sm font-bold uppercase tracking-[0.16em] text-coral-700">Keep this project close</p>
+                <p className="text-sm font-bold uppercase tracking-[0.16em] text-coral-700">{labels.keepClose}</p>
                 <p className="mt-3 text-sm leading-6 text-ocean-900/62">
                   {sessionUser
                     ? retentionState?.isFollowing
-                      ? `You are following this campaign with ${retentionState.followFrequency ?? "weekly"} activity updates.`
-                      : "Follow partner field activity and new evidence as it is published."
-                    : "Sign in to save this campaign and follow partner field activity as it is published."}
+                      ? isIndonesian
+                        ? `Kamu mengikuti kampanye ini dengan pembaruan aktivitas ${followFrequencyLabel}.`
+                        : `You are following this campaign with ${followFrequencyLabel} activity updates.`
+                      : labels.followPrompt
+                    : labels.guestFollowPrompt}
                 </p>
                 <div className="mt-5 grid gap-3">
                   {sessionUser ? (
@@ -459,28 +713,28 @@ export default async function CampaignDetailPage({
                         <input type="hidden" name="next" value={campaignPath} />
                         {!retentionState?.isFollowing ? <input type="hidden" name="frequency" value="weekly" /> : null}
                         <Button type="submit" tone={retentionState?.isFollowing ? "secondary" : "primary"} className="w-full">
-                          {retentionState?.isFollowing ? "Stop Following" : "Follow Weekly Updates"}
+                          {retentionState?.isFollowing ? labels.stopFollowing : labels.followWeekly}
                         </Button>
                       </form>
                       <ButtonLink href="/dashboard/saved" tone="secondary" className="w-full">
-                        Manage Saved Projects
+                        {labels.manageSaved}
                       </ButtonLink>
                     </>
                   ) : (
                     <ButtonLink href={`/login?next=${encodeURIComponent(campaignPath)}`} className="w-full">
-                      Sign in to Follow
+                      {labels.signInFollow}
                     </ButtonLink>
                   )}
                 </div>
               </div>
 
               <div className="rounded-2xl border border-ocean-900/10 bg-ocean-50 p-5 shadow-soft">
-                <p className="text-sm font-bold uppercase tracking-[0.16em] text-kelp-700">Impact at a glance</p>
+                <p className="text-sm font-bold uppercase tracking-[0.16em] text-kelp-700">{labels.impactGlance}</p>
                 <div className="mt-5 grid gap-4">
                   {[
-                    [Waves, campaign.impactTarget.toLocaleString("id-ID"), `${campaign.impactUnit} target`],
-                    [ClipboardCheck, (campaign.updates.length + campaign.evidence.length).toLocaleString("id-ID"), "Activity records"],
-                    [Users, campaign.donors.toLocaleString("id-ID"), "Paid supporters"]
+                    [Waves, campaign.impactTarget.toLocaleString(numberLocale), `${campaign.impactUnit} ${labels.target}`],
+                    [ClipboardCheck, (campaign.updates.length + campaign.evidence.length).toLocaleString(numberLocale), labels.activityRecords],
+                    [Users, campaign.donors.toLocaleString(numberLocale), labels.paidSupporters]
                   ].map(([Icon, value, label]) => (
                     <div key={label as string} className="flex min-w-0 items-center gap-3 border-b border-ocean-900/10 pb-4 last:border-b-0 last:pb-0">
                       <Icon className="text-coral-500" size={24} aria-hidden="true" />
@@ -497,38 +751,20 @@ export default async function CampaignDetailPage({
         </div>
       </section>
 
-      <CampaignSectionTabs tabs={tabs} />
+      <CampaignSectionTabs tabs={tabs} locale={locale} />
 
       <section className="mx-auto grid max-w-7xl gap-8 px-4 py-12 sm:px-6 sm:py-16 lg:px-8 xl:grid-cols-[1fr_340px]">
-        <div className="grid gap-12 sm:gap-16">
+        <div className="grid gap-10 sm:gap-14">
           <section id="overview" className="scroll-mt-40">
-            <SectionHeading eyebrow="Overview" title="Campaign story and public location records" />
+            <SectionHeading eyebrow={labels.overview} title={labels.overviewTitle} />
             <div className="mt-8 grid gap-5">
               <article className="rounded-2xl border border-ocean-900/10 bg-white p-6 shadow-soft">
-                <h2 className="text-2xl font-bold tracking-normal text-ocean-900">Campaign story</h2>
+                <h2 className="text-2xl font-bold tracking-normal text-ocean-900">{labels.story}</h2>
                 <p className="mt-4 leading-8 text-ocean-900/68">{story}</p>
               </article>
 
-              <article className="grid gap-6 rounded-2xl border border-ocean-900/10 bg-white p-6 shadow-soft lg:grid-cols-[0.9fr_1.1fr]">
-                <div>
-                  <h2 className="text-2xl font-bold tracking-normal text-ocean-900">Public campaign summary</h2>
-                  <p className="mt-4 leading-8 text-ocean-900/68">{campaign.summary}</p>
-                </div>
-                {campaign.imageUrl ? (
-                  <Image
-                    src={campaign.imageUrl}
-                    alt={`${campaign.title} campaign image`}
-                    width={760}
-                    height={440}
-                    unoptimized
-                    className="h-72 w-full rounded-xl object-cover"
-                    sizes="(min-width: 1024px) 44vw, 100vw"
-                  />
-                ) : null}
-              </article>
-
               <article className="rounded-2xl border border-ocean-900/10 bg-white p-6 shadow-soft">
-                <h2 className="text-2xl font-bold tracking-normal text-ocean-900">Why {campaign.region}</h2>
+                <h2 className="text-2xl font-bold tracking-normal text-ocean-900">{labels.whyRegion} {campaign.region}</h2>
                 {campaign.sites.length > 0 ? (
                   <div className="mt-4 grid gap-3 md:grid-cols-2">
                     {campaign.sites.map((site) => (
@@ -538,13 +774,13 @@ export default async function CampaignDetailPage({
                           {site.type} / {site.region}
                         </p>
                         <p className="mt-3 text-xs font-bold text-ocean-900/48">
-                          {site.progress}% progress / {site.evidenceCount} activity records
+                          {site.progress}% {labels.progress} / {site.evidenceCount} {labels.activityRecords}
                         </p>
                       </div>
                     ))}
                   </div>
                 ) : (
-                  <p className="mt-4 leading-8 text-ocean-900/68">Public impact sites will appear after partner locations are approved for sharing.</p>
+                  <p className="mt-4 leading-8 text-ocean-900/68">{labels.publicSitesPending}</p>
                 )}
               </article>
             </div>
@@ -560,18 +796,19 @@ export default async function CampaignDetailPage({
                 impactTargets={campaign.impactTargets}
                 currency={campaign.currency}
                 carbonKgPerUsd={campaign.carbonKgPerUsd}
+                locale={locale}
               />
 
               <article className="grid gap-5 lg:grid-cols-2">
                 <div className="rounded-2xl border border-ocean-900/10 bg-white p-6 shadow-soft">
-                  <p className="text-sm font-bold uppercase tracking-[0.16em] text-coral-700">Recorded campaign targets</p>
+                  <p className="text-sm font-bold uppercase tracking-[0.16em] text-coral-700">{labels.recordedTargets}</p>
                   <div className="mt-5 grid gap-3 text-sm font-semibold text-ocean-900/68">
                     {(campaign.impactTargets.length > 0
-                      ? campaign.impactTargets.map((target) => `${target.target.toLocaleString("id-ID", { maximumFractionDigits: 2 })} ${target.unit}`)
-                      : [`${campaign.impactTarget.toLocaleString("id-ID")} ${campaign.impactUnit}`]
+                      ? campaign.impactTargets.map((target) => `${target.target.toLocaleString(numberLocale, { maximumFractionDigits: 2 })} ${target.unit}`)
+                      : [`${campaign.impactTarget.toLocaleString(numberLocale)} ${campaign.impactUnit}`]
                     ).concat([
-                      `${campaign.sites.length.toLocaleString("id-ID")} linked impact sites`,
-                      `${(campaign.updates.length + campaign.evidence.length).toLocaleString("id-ID")} activity records`
+                      `${campaign.sites.length.toLocaleString(numberLocale)} ${labels.linkedSites}`,
+                      `${(campaign.updates.length + campaign.evidence.length).toLocaleString(numberLocale)} ${labels.activityRecords}`
                     ]).map((item) => (
                       <span key={item} className="inline-flex items-center gap-2">
                         <CheckCircle2 className="text-kelp-500" size={17} aria-hidden="true" />
@@ -581,13 +818,13 @@ export default async function CampaignDetailPage({
                   </div>
                 </div>
                 <div className="rounded-2xl border border-ocean-900/10 bg-ocean-900 p-6 text-white shadow-soft">
-                  <p className="text-sm font-bold uppercase tracking-[0.16em] text-coral-300">Public verification records</p>
+                  <p className="text-sm font-bold uppercase tracking-[0.16em] text-coral-300">{labels.publicVerification}</p>
                   <div className="mt-5 grid gap-3 text-sm font-semibold text-white/74">
                     {[
-                      `${verifiedEvidenceCount.toLocaleString("id-ID")} verified activity records`,
-                      `${(campaign.updates.length + campaign.evidence.length).toLocaleString("id-ID")} total activity records`,
-                      `${campaign.sponsoredEcosystems.length.toLocaleString("id-ID")} sponsorship records`,
-                      `${campaign.donorActivity.length.toLocaleString("id-ID")} recent paid donor records`
+                      `${verifiedEvidenceCount.toLocaleString(numberLocale)} ${labels.verifiedRecords}`,
+                      `${(campaign.updates.length + campaign.evidence.length).toLocaleString(numberLocale)} ${labels.totalRecords}`,
+                      `${campaign.sponsoredEcosystems.length.toLocaleString(numberLocale)} ${labels.sponsorshipRecords}`,
+                      `${campaign.donorActivity.length.toLocaleString(numberLocale)} ${labels.recentDonors}`
                     ].map((item) => (
                       <span key={item} className="inline-flex items-center gap-2">
                         <ShieldCheck className="text-kelp-100" size={17} aria-hidden="true" />
@@ -604,8 +841,8 @@ export default async function CampaignDetailPage({
                   afterImage={beforeAfterSite.beforeAfter.after.fileUrl}
                   beforeLabel={`${beforeAfterSite.name} / ${beforeAfterSite.beforeAfter.before.stageLabel}`}
                   afterLabel={`${beforeAfterSite.name} / ${beforeAfterSite.beforeAfter.after.stageLabel}`}
-                  controlLabel="Compare actual field activity"
-                  caption={`Actual site activity from ${beforeAfterSite.name}. Before record: ${beforeAfterSite.beforeAfter.before.surveyDate ?? "date pending"}. Latest record: ${beforeAfterSite.beforeAfter.after.surveyDate ?? "date pending"}.`}
+                  controlLabel={labels.compareActivity}
+                  caption={`${labels.actualSiteActivity} ${beforeAfterSite.name}. ${labels.beforeRecord}: ${beforeAfterSite.beforeAfter.before.surveyDate ?? labels.datePending}. ${labels.latestRecord}: ${beforeAfterSite.beforeAfter.after.surveyDate ?? labels.datePending}.`}
                 />
               ) : null}
 
@@ -613,26 +850,26 @@ export default async function CampaignDetailPage({
                 <article className="rounded-2xl border border-ocean-900/10 bg-white p-6 shadow-soft">
                   <div className="grid gap-6 lg:grid-cols-[0.9fr_1.1fr] lg:items-center">
                     <div>
-                      <p className="text-sm font-bold uppercase tracking-[0.16em] text-coral-700">Sponsorship record</p>
+                      <p className="text-sm font-bold uppercase tracking-[0.16em] text-coral-700">{labels.sponsorshipRecord}</p>
                       <h2 className="mt-3 text-2xl font-bold tracking-normal text-ocean-900">{sponsoredPreview.label}</h2>
                       <p className="mt-4 leading-7 text-ocean-900/68">
-                        This sponsorship record appears after paid sponsorship activity is confirmed and linked to the campaign.
+                        {labels.sponsorshipBody}
                       </p>
                       {sponsorAmount > 0 ? (
                         <ButtonLink href={`/checkout/donation?campaign=${campaign.slug}&amount=${sponsorAmount}&intent=coral`} tone="donation" className="mt-6">
-                          Sponsor This Campaign
+                          {labels.sponsorCampaign}
                         </ButtonLink>
                       ) : null}
                     </div>
                     <div className="rounded-2xl bg-ocean-900 p-5 text-white">
-                      <p className="text-xs font-bold uppercase tracking-[0.16em] text-coral-300">Record ID: {sponsoredPreview.code}</p>
+                      <p className="text-xs font-bold uppercase tracking-[0.16em] text-coral-300">{labels.recordId}: {sponsoredPreview.code}</p>
                       <div className="mt-5 grid gap-3 text-sm text-white/72">
                         {[
-                          ["Location", sponsoredPreview.siteName ?? sponsoredPreview.region ?? campaign.region],
-                          ["Fragments", sponsoredPreview.fragments.toLocaleString("id-ID")],
-                          ["Planted", formatDateLabel(sponsoredPreview.plantedAt)],
-                          ["Status", sponsoredPreview.status],
-                          ["Last Update", formatDateLabel(sponsoredPreview.lastUpdatedAt)]
+                          [labels.location, sponsoredPreview.siteName ?? sponsoredPreview.region ?? campaign.region],
+                          [labels.fragments, sponsoredPreview.fragments.toLocaleString(numberLocale)],
+                          [labels.planted, formatDateLabel(sponsoredPreview.plantedAt, locale)],
+                          [labels.status, sponsoredPreview.status],
+                          [labels.lastUpdate, formatDateLabel(sponsoredPreview.lastUpdatedAt, locale)]
                         ].map(([label, value]) => (
                           <div key={label} className="flex justify-between gap-4 border-b border-white/10 pb-3">
                             <span>{label}</span>
@@ -648,7 +885,7 @@ export default async function CampaignDetailPage({
           </section>
 
           <section id="records" className="scroll-mt-40">
-            <SectionHeading eyebrow="Records" title="Recorded campaign activity and location" />
+            <SectionHeading eyebrow={labels.evidenceEyebrow} title={labels.evidenceTitle} />
             <div className="mt-8 grid gap-5">
               {campaign.timelinePhases.length > 0 ? (
                 <div className="grid gap-4">
@@ -656,7 +893,7 @@ export default async function CampaignDetailPage({
                     <article key={phase.id} className="grid gap-5 rounded-2xl border border-ocean-900/10 bg-white p-5 shadow-soft md:grid-cols-[180px_1fr]">
                       <div>
                         <p className="text-sm font-bold uppercase tracking-[0.16em] text-coral-700">{phase.status.replace(/_/g, " ")}</p>
-                        <p className="mt-2 text-sm font-semibold text-ocean-900/58">{formatDateRangeLabel(phase.startsAt, phase.endsAt)}</p>
+                        <p className="mt-2 text-sm font-semibold text-ocean-900/58">{formatDateRangeLabel(phase.startsAt, phase.endsAt, locale)}</p>
                       </div>
                       <div>
                         <h2 className="flex items-center gap-2 text-xl font-bold tracking-normal text-ocean-900">
@@ -666,8 +903,8 @@ export default async function CampaignDetailPage({
                         {phase.description ? <p className="mt-4 text-sm leading-6 text-ocean-900/66">{phase.description}</p> : null}
                         {phase.deliverable || phase.evidenceNote ? (
                           <div className="mt-4 grid gap-3 text-sm font-semibold text-ocean-900/62 sm:grid-cols-2">
-                            {phase.deliverable ? <span className="rounded-xl bg-sand-50 p-3">Deliverable: {phase.deliverable}</span> : null}
-                            {phase.evidenceNote ? <span className="rounded-xl bg-ocean-50 p-3">Activity note: {phase.evidenceNote}</span> : null}
+                            {phase.deliverable ? <span className="rounded-xl bg-sand-50 p-3">{labels.deliverable}: {phase.deliverable}</span> : null}
+                            {phase.evidenceNote ? <span className="rounded-xl bg-ocean-50 p-3">{labels.activityNote}: {phase.evidenceNote}</span> : null}
                           </div>
                         ) : null}
                       </div>
@@ -681,7 +918,7 @@ export default async function CampaignDetailPage({
                   <article key={item.key} className="grid gap-5 rounded-2xl border border-ocean-900/10 bg-white p-5 shadow-soft md:grid-cols-[180px_1fr]">
                     <div>
                       <p className="text-sm font-bold uppercase tracking-[0.16em] text-coral-700">{item.label}</p>
-                      <p className="mt-2 text-sm font-semibold text-ocean-900/58">{formatDateLabel(item.date)}</p>
+                      <p className="mt-2 text-sm font-semibold text-ocean-900/58">{formatDateLabel(item.date, locale)}</p>
                     </div>
                     <div>
                       <h2 className="text-xl font-bold tracking-normal text-ocean-900">{item.title}</h2>
@@ -691,32 +928,32 @@ export default async function CampaignDetailPage({
                 ))
               ) : (
                 <article className="rounded-2xl border border-ocean-900/10 bg-white p-6 text-ocean-900/68 shadow-soft">
-                  No campaign activity records have been published yet.
+                  {labels.noRecords}
                 </article>
               )}
             </div>
 
             <div className="mt-10">
-              <SectionHeading title="Impact location map">
-                Restoration zones, monitoring points, and activity records are shown with approximate public coordinates where sensitive ecological locations require privacy.
+              <SectionHeading title={labels.impactMap}>
+                {labels.impactMapBody}
               </SectionHeading>
               <div className="mt-8">
-                <ImpactMapPreview sites={campaign.sites} />
+                <ImpactMapPreview sites={campaign.sites} locale={locale} />
               </div>
             </div>
           </section>
 
           <section id="updates" className="scroll-mt-40">
-            <SectionHeading eyebrow="Activity" title="Field activity stream">
-              Follow field activities, monitoring notes, community stories, and review attachments as the campaign moves through milestones.
+            <SectionHeading eyebrow={labels.activity} title={labels.activityTitle}>
+              {labels.activityBody}
             </SectionHeading>
             <div id="evidence" className="mt-8 scroll-mt-40">
-              <CampaignUpdatesEvidence updates={updateItems} evidence={evidenceItems} />
+              <CampaignUpdatesEvidence updates={updateItems} evidence={evidenceItems} locale={locale} />
             </div>
           </section>
 
           <section id="transparency" className="scroll-mt-40">
-            <SectionHeading eyebrow="Transparency" title="Who implements this work and how funds are governed" />
+            <SectionHeading eyebrow={labels.transparency} title={labels.transparencyTitle} />
             <div className="mt-8 grid gap-5 lg:grid-cols-2">
               <article className="rounded-2xl border border-ocean-900/10 bg-white p-6 shadow-soft">
                 <div className="flex items-center gap-4">
@@ -729,7 +966,7 @@ export default async function CampaignDetailPage({
                   </div>
                 </div>
                 <p className="mt-5 text-sm leading-6 text-ocean-900/68">
-                  {campaign.partnerDescription ?? "Partner details will appear after the organization profile is completed."}
+                  {campaign.partnerDescription ?? labels.partnerFallback}
                 </p>
                 {campaign.organizationTeam.length > 0 ? (
                   <div className="mt-5 grid gap-3">
@@ -755,23 +992,23 @@ export default async function CampaignDetailPage({
                   </div>
                 ) : null}
                 <div className="mt-5 flex flex-wrap gap-3">
-                  <ButtonLink href={`/partners/${campaign.partnerSlug}`} tone="secondary">View organization profile</ButtonLink>
+                  <ButtonLink href={`/partners/${campaign.partnerSlug}`} tone="secondary">{labels.viewOrganization}</ButtonLink>
                   {campaign.partnerWebsiteUrl ? (
                     <ButtonLink href={campaign.partnerWebsiteUrl} tone="ghost" target="_blank" rel="noreferrer">
-                      Website
+                      {labels.website}
                     </ButtonLink>
                   ) : null}
                 </div>
               </article>
 
               <article className="rounded-2xl border border-ocean-900/10 bg-white p-6 shadow-soft">
-                <p className="text-sm font-bold uppercase tracking-[0.16em] text-kelp-700">Verification and governance</p>
+                <p className="text-sm font-bold uppercase tracking-[0.16em] text-kelp-700">{labels.governance}</p>
                 <div className="mt-5 grid gap-3 text-sm font-semibold text-ocean-900/68">
                   {[
-                    [`Partner verification: ${campaign.verification}`, "Organization verification level"],
-                    [`${(campaign.updates.length + campaign.evidence.length).toLocaleString("id-ID")} activity records`, "Campaign activity submitted"],
-                    [`${verifiedEvidenceCount.toLocaleString("id-ID")} verified activity records`, "Activity approved by admin review"],
-                    [`${campaign.sites.length.toLocaleString("id-ID")} impact sites`, "Campaign-linked field locations"]
+                    [`${labels.partnerVerification}: ${campaign.verification}`, labels.organizationLevel],
+                    [`${(campaign.updates.length + campaign.evidence.length).toLocaleString(numberLocale)} ${labels.activityRecords}`, labels.submittedActivity],
+                    [`${verifiedEvidenceCount.toLocaleString(numberLocale)} ${labels.verifiedRecords}`, labels.adminApproved],
+                    [`${campaign.sites.length.toLocaleString(numberLocale)} ${labels.linkedSites}`, labels.linkedLocations]
                   ].map(([value, label]) => (
                     <span key={label} className="inline-flex items-center gap-2">
                       <ShieldCheck className="text-kelp-500" size={17} aria-hidden="true" />
@@ -783,21 +1020,21 @@ export default async function CampaignDetailPage({
                   ))}
                 </div>
                 <div className="mt-5">
-                  <VerificationExplainer verificationLabel={campaign.verification} />
+                  <VerificationExplainer verificationLabel={campaign.verification} locale={locale} />
                 </div>
               </article>
             </div>
 
             <article className="mt-8 rounded-2xl border border-kelp-500/20 bg-kelp-100/40 p-6 shadow-soft">
-              <SectionHeading eyebrow="Traceability" title="From supporter funds to verified field records">
-                This view separates money received, partner-recorded spending, published field activity, and evidence that passed platform review. It does not claim that every rupiah or dollar is individually attributable to one evidence file.
+              <SectionHeading eyebrow={labels.traceability} title={labels.traceabilityTitle}>
+                {labels.traceabilityBody}
               </SectionHeading>
               <div className="mt-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
                 {[
-                  [formatCurrency(campaign.traceability.paidFunding, campaign.currency), "Paid funding", "Confirmed supporter contributions"],
-                  [formatCurrency(campaign.traceability.recordedSpend, campaign.currency), "Recorded spend", "Partner budget utilization"],
-                  [campaign.traceability.publishedActivities.toLocaleString("id-ID"), "Field activities", "Published campaign activity records"],
-                  [campaign.traceability.verifiedEvidence.toLocaleString("id-ID"), "Verified evidence", "Evidence approved through review"]
+                  [formatCurrency(campaign.traceability.paidFunding, campaign.currency), labels.paidFunding, labels.paidFundingSupport],
+                  [formatCurrency(campaign.traceability.recordedSpend, campaign.currency), labels.recordedSpend, labels.recordedSpendSupport],
+                  [campaign.traceability.publishedActivities.toLocaleString(numberLocale), labels.fieldActivities, labels.fieldActivitiesSupport],
+                  [campaign.traceability.verifiedEvidence.toLocaleString(numberLocale), labels.verifiedEvidence, labels.verifiedEvidenceSupport]
                 ].map(([value, label, support]) => (
                   <div key={label} className="rounded-xl bg-white p-4 ring-1 ring-ocean-900/10">
                     <MetricValue className="text-ocean-900">{value}</MetricValue>
@@ -808,34 +1045,34 @@ export default async function CampaignDetailPage({
               </div>
               <div className="mt-5 grid gap-3 text-sm md:grid-cols-3">
                 <div className="rounded-xl bg-white p-4 ring-1 ring-ocean-900/10">
-                  <p className="font-bold text-ocean-900">Budget coverage</p>
-                  <p className="mt-1 text-ocean-900/62">{formatCurrency(campaign.traceability.recordedSpend, campaign.currency)} recorded against {formatCurrency(campaign.traceability.plannedBudget, campaign.currency)} planned.</p>
+                  <p className="font-bold text-ocean-900">{labels.budgetCoverage}</p>
+                  <p className="mt-1 text-ocean-900/62">{formatCurrency(campaign.traceability.recordedSpend, campaign.currency)} {labels.recordedAgainst} {formatCurrency(campaign.traceability.plannedBudget, campaign.currency)} {labels.planned}.</p>
                 </div>
                 <div className="rounded-xl bg-white p-4 ring-1 ring-ocean-900/10">
-                  <p className="font-bold text-ocean-900">Evidence-linked spend</p>
-                  <p className="mt-1 text-ocean-900/62">{formatCurrency(campaign.traceability.evidencedSpend, campaign.currency)} is explicitly referenced in verified evidence metadata.</p>
+                  <p className="font-bold text-ocean-900">{labels.evidenceSpend}</p>
+                  <p className="mt-1 text-ocean-900/62">{formatCurrency(campaign.traceability.evidencedSpend, campaign.currency)} {labels.evidenceSpendBody}</p>
                 </div>
                 <div className="rounded-xl bg-white p-4 ring-1 ring-ocean-900/10">
-                  <p className="font-bold text-ocean-900">Latest verification</p>
-                  <p className="mt-1 text-ocean-900/62">{campaign.traceability.latestVerifiedAt ? formatDateLabel(campaign.traceability.latestVerifiedAt) : "No verified evidence yet"}</p>
+                  <p className="font-bold text-ocean-900">{labels.latestVerification}</p>
+                  <p className="mt-1 text-ocean-900/62">{campaign.traceability.latestVerifiedAt ? formatDateLabel(campaign.traceability.latestVerifiedAt, locale) : labels.noVerifiedEvidence}</p>
                 </div>
               </div>
               <div className="mt-5 flex flex-wrap gap-3">
-                <ButtonLink href="#updates" tone="secondary">View field activity</ButtonLink>
-                <ButtonLink href="#evidence" tone="light">View verified evidence</ButtonLink>
+                <ButtonLink href="#updates" tone="secondary">{labels.viewFieldActivity}</ButtonLink>
+                <ButtonLink href="#evidence" tone="light">{labels.viewEvidence}</ButtonLink>
               </div>
             </article>
 
             <article className="mt-8 rounded-2xl border border-ocean-900/10 bg-white p-6 shadow-soft">
-              <SectionHeading title="Funding record">
-                Funding values combine the campaign goal with paid supporter contributions.
+              <SectionHeading title={labels.fundingRecord}>
+                {labels.fundingRecordBody}
               </SectionHeading>
               <div className="mt-8 grid gap-4 md:grid-cols-4">
                 {[
-                  [formatCurrency(campaign.goal, campaign.currency), "Campaign goal"],
-                  [formatCurrency(campaign.raised, campaign.currency), "Raised"],
-                  [formatCurrency(Math.max(0, campaign.goal - campaign.raised), campaign.currency), "Remaining"],
-                  [campaign.donors.toLocaleString("id-ID"), "Paid supporters"]
+                  [formatCurrency(campaign.goal, campaign.currency), labels.campaignGoal],
+                  [formatCurrency(campaign.raised, campaign.currency), labels.raised],
+                  [formatCurrency(Math.max(0, campaign.goal - campaign.raised), campaign.currency), labels.remaining],
+                  [campaign.donors.toLocaleString(numberLocale), labels.paidSupporters]
                 ].map(([value, label]) => (
                   <div key={label} className="min-w-0 rounded-xl bg-sand-50 p-4">
                     <MetricValue className="text-ocean-900">{value}</MetricValue>
@@ -848,10 +1085,10 @@ export default async function CampaignDetailPage({
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <h3 className="flex items-center gap-2 text-lg font-bold tracking-normal text-ocean-900">
                       <Coins className="size-5 text-kelp-600" aria-hidden="true" />
-                      Budget line items
+                      {labels.budgetItems}
                     </h3>
                     <p className="text-sm font-bold text-ocean-900/58">
-                      {formatCurrency(campaign.budgetUtilization.spent, campaign.currency)} spent / {formatCurrency(campaign.budgetUtilization.planned, campaign.currency)} planned
+                      {formatCurrency(campaign.budgetUtilization.spent, campaign.currency)} {labels.spent} / {formatCurrency(campaign.budgetUtilization.planned, campaign.currency)} {labels.planned}
                     </p>
                   </div>
                   <div className="mt-4 grid gap-3">
@@ -873,21 +1110,21 @@ export default async function CampaignDetailPage({
           </section>
 
           <section className="rounded-2xl bg-ocean-900 p-8 text-white shadow-soft">
-            <p className="text-sm font-bold uppercase tracking-[0.16em] text-coral-300">Final call</p>
-            <h2 className="mt-3 text-3xl font-bold tracking-normal">Help restore {campaign.region}</h2>
+            <p className="text-sm font-bold uppercase tracking-[0.16em] text-coral-300">{labels.finalCall}</p>
+            <h2 className="mt-3 text-3xl font-bold tracking-normal">{labels.helpRestore} {campaign.region}</h2>
             <p className="mt-4 max-w-2xl text-white/72">
-              Every contribution supports local restoration teams, long-term monitoring, and healthier marine ecosystems.
+              {labels.finalBody}
             </p>
-            <p className="mt-5 text-sm font-bold text-white/82">{progress}% funded · {formatCurrency(Math.max(0, campaign.goal - campaign.raised), campaign.currency)} remaining</p>
+            <p className="mt-5 text-sm font-bold text-white/82">{progress}% {isIndonesian ? "terdanai" : "funded"} · {formatCurrency(Math.max(0, campaign.goal - campaign.raised), campaign.currency)} {labels.remaining.toLowerCase()}</p>
             <div className="mt-6 flex flex-wrap gap-3">
               {disabledReason ? (
-                <ButtonLink href="#updates" tone="light">Follow Implementation</ButtonLink>
+                <ButtonLink href="#updates" tone="light">{labels.followImplementation}</ButtonLink>
               ) : (
                 <>
-                  <ButtonLink href={`/checkout/donation?campaign=${campaign.slug}`} tone="donation">Donate Now</ButtonLink>
+                  <ButtonLink href={`/checkout/donation?campaign=${campaign.slug}`} tone="donation">{labels.donateNow}</ButtonLink>
                   {sponsorAmount > 0 ? (
                     <ButtonLink href={`/checkout/donation?campaign=${campaign.slug}&amount=${sponsorAmount}&intent=coral`} className="bg-coral-500 text-white hover:bg-coral-700">
-                      Sponsor a Coral
+                      {labels.sponsorCoral}
                     </ButtonLink>
                   ) : null}
                 </>
@@ -895,7 +1132,7 @@ export default async function CampaignDetailPage({
               {sessionUser ? (
                 retentionState?.isFollowing ? (
                   <ButtonLink href="/dashboard/saved" tone="ghost" className="border border-white/24 text-white hover:bg-white/10">
-                    Following Activity
+                    {labels.followingActivity}
                   </ButtonLink>
                 ) : (
                   <form action={followCampaignAction}>
@@ -903,7 +1140,7 @@ export default async function CampaignDetailPage({
                     <input type="hidden" name="next" value={campaignPath} />
                     <input type="hidden" name="frequency" value="weekly" />
                     <Button type="submit" tone="ghost" className="border border-white/24 text-white hover:bg-white/10">
-                      Follow Activity
+                      {labels.followActivity}
                     </Button>
                   </form>
                 )
@@ -918,18 +1155,18 @@ export default async function CampaignDetailPage({
 
         <aside className="grid h-fit gap-5 xl:sticky xl:top-40">
           <div className="rounded-2xl border border-ocean-900/10 bg-white p-5 shadow-soft">
-            <p className="text-sm font-bold uppercase tracking-[0.16em] text-coral-700">Donor community</p>
-            <p className="mt-3 min-w-0 break-words text-2xl font-bold tracking-normal text-ocean-900 [overflow-wrap:anywhere]">{campaign.donors.toLocaleString("id-ID")} supporters</p>
+            <p className="text-sm font-bold uppercase tracking-[0.16em] text-coral-700">{labels.donorCommunity}</p>
+            <p className="mt-3 min-w-0 break-words text-2xl font-bold tracking-normal text-ocean-900 [overflow-wrap:anywhere]">{campaign.donors.toLocaleString(numberLocale)} {labels.supporters}</p>
             <div className="mt-5 grid gap-3 text-sm text-ocean-900/66">
               {campaign.donorActivity.length > 0 ? (
                 campaign.donorActivity.map((activity) => {
-                  const donor = publicDonorName(activity.donorName);
+                  const donor = publicDonorName(activity.donorName, locale);
                   const label =
                     activity.contributionIntent === "coral"
                       ? activity.sponsoredFragments > 0
-                        ? `${donor} sponsored ${activity.sponsoredFragments.toLocaleString("id-ID")} coral fragments`
-                        : `${donor} sponsored this campaign`
-                      : `${donor} supported this campaign`;
+                        ? `${donor} ${labels.sponsoredFragments} ${activity.sponsoredFragments.toLocaleString(numberLocale)} ${labels.coralFragments}`
+                        : `${donor} ${labels.sponsoredCampaign}`
+                      : `${donor} ${labels.supportedCampaign}`;
 
                   return (
                     <span key={`${activity.createdAt.toISOString()}-${activity.amount}`} className="rounded-xl bg-sand-50 p-3">
@@ -939,17 +1176,17 @@ export default async function CampaignDetailPage({
                   );
                 })
               ) : (
-                <span className="rounded-xl bg-sand-50 p-3">Recent donor activity will appear after paid contributions are recorded.</span>
+                <span className="rounded-xl bg-sand-50 p-3">{labels.donorEmpty}</span>
               )}
             </div>
           </div>
 
           {relatedExpeditions.length > 0 ? (
             <div className="rounded-2xl border border-ocean-900/10 bg-white p-5 shadow-soft">
-              <p className="text-sm font-bold uppercase tracking-[0.16em] text-coral-700">Related expedition</p>
+              <p className="text-sm font-bold uppercase tracking-[0.16em] text-coral-700">{labels.relatedExpedition}</p>
               <div className="mt-5">
                 {relatedExpeditions.map((expedition) => (
-                  <ExpeditionCard key={expedition.slug} expedition={expedition} />
+                  <ExpeditionCard key={expedition.slug} expedition={expedition} locale={isIndonesian ? "id-ID" : "en-US"} />
                 ))}
               </div>
             </div>
@@ -957,7 +1194,7 @@ export default async function CampaignDetailPage({
 
           {featuredCourses.length > 0 ? (
             <div className="rounded-2xl border border-ocean-900/10 bg-white p-5 shadow-soft">
-              <p className="text-sm font-bold uppercase tracking-[0.16em] text-coral-700">Learn before you participate</p>
+              <p className="text-sm font-bold uppercase tracking-[0.16em] text-coral-700">{labels.learnBefore}</p>
               <div className="mt-5 grid gap-3">
                 {featuredCourses.map((course) => (
                   <Link key={course.slug} href={`/academy/courses/${course.slug}`} className="rounded-xl bg-sand-50 p-4 transition hover:bg-ocean-50">
@@ -975,10 +1212,10 @@ export default async function CampaignDetailPage({
       {relatedCampaigns.length > 0 ? (
         <section className="bg-white py-16">
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-            <SectionHeading eyebrow="Related campaigns" title="More conservation work in this category" />
+            <SectionHeading eyebrow={labels.relatedCampaigns} title={labels.relatedCampaignsTitle} />
             <div className="mt-8 grid gap-6 lg:grid-cols-3">
               {relatedCampaigns.map((relatedCampaign) => (
-                <CampaignCard key={relatedCampaign.slug} campaign={relatedCampaign} />
+                <CampaignCard key={relatedCampaign.slug} campaign={relatedCampaign} locale={locale} />
               ))}
             </div>
           </div>

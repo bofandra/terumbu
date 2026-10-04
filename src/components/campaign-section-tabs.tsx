@@ -9,10 +9,12 @@ type CampaignSectionTabsProps = {
     label: string;
     href: string;
   }>;
+  locale?: "en" | "id";
 };
 
-export function CampaignSectionTabs({ tabs }: CampaignSectionTabsProps) {
+export function CampaignSectionTabs({ tabs, locale = "en" }: CampaignSectionTabsProps) {
   const [activeHref, setActiveHref] = useState(tabs[0]?.href ?? "");
+  const navLabel = locale === "id" ? "Bagian kampanye" : "Campaign sections";
 
   useEffect(() => {
     const sections = tabs
@@ -45,7 +47,7 @@ export function CampaignSectionTabs({ tabs }: CampaignSectionTabsProps) {
   }, [tabs]);
 
   return (
-    <nav className="sticky top-20 z-30 border-y border-ocean-900/10 bg-white/95 backdrop-blur" aria-label="Campaign sections">
+    <nav className="sticky top-20 z-30 border-y border-ocean-900/10 bg-white/95 backdrop-blur" aria-label={navLabel}>
       <div className="mx-auto flex max-w-7xl gap-2 overflow-x-auto px-4 sm:px-6 lg:px-8">
         {tabs.map((tab) => (
           <a

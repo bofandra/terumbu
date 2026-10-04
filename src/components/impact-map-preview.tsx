@@ -8,6 +8,7 @@ import { useMemo, useState } from "react";
 import { ProgressMeter } from "@/components/ui/progress-meter";
 import { isVisualEvidenceUrl } from "@/lib/coral-monitoring";
 import type { ImpactSiteData } from "@/lib/domain";
+import type { SupportedLocale } from "@/lib/user-preferences";
 import { cn } from "@/lib/utils";
 
 const indonesiaBounds = {
@@ -19,6 +20,7 @@ const indonesiaBounds = {
 
 type ImpactMapPreviewProps = {
   sites: ImpactSiteData[];
+  locale?: SupportedLocale;
 };
 
 function pinPosition(site: ImpactSiteData) {
@@ -49,18 +51,81 @@ function pinTone(type: string) {
   return "bg-white text-coral-500 ring-white/60";
 }
 
-export function ImpactMapPreview({ sites }: ImpactMapPreviewProps) {
-  const [activeFilter, setActiveFilter] = useState("All");
-  const [statusFilter, setStatusFilter] = useState("All");
+export function ImpactMapPreview({ sites, locale = "en" }: ImpactMapPreviewProps) {
+  const labels =
+    locale === "id"
+      ? {
+          all: "Semua",
+          verifiedActivity: "Aktivitas terverifikasi",
+          needsReview: "Perlu review",
+          verifyingTitle: "Lokasi dampak sedang diverifikasi",
+          verifyingBody: "Setelah catatan lapangan mitra disetujui, lokasi restorasi dan aktivitas akan muncul di sini.",
+          iframeTitle: "Tampilan OpenStreetMap lokasi konservasi Indonesia",
+          showDetails: "Tampilkan detail dampak untuk",
+          popover: "Ringkasan aktivitas",
+          pending: "Aktivitas menunggu",
+          liveMap: "Peta dampak",
+          verifiedSites: "Lokasi restorasi terverifikasi",
+          liveMapSuffix: "dan aktivitas lapangan dalam satu tampilan nasional.",
+          filters: "Filter peta",
+          milestone: "progres milestone",
+          activityRecords: "catatan aktivitas",
+          latestSurvey: "Survei terbaru",
+          monitoringPending: "Aktivitas monitoring menunggu",
+          before: "Sebelum",
+          after: "Sesudah",
+          activityFor: "aktivitas untuk",
+          latestActivity: "Aktivitas terbaru",
+          openSource: "Buka catatan sumber",
+          history: "Riwayat monitoring",
+          milestoneAria: "persen melalui milestone saat ini",
+          donate: "Donasi",
+          fullMap: "Lihat peta lengkap",
+          noMatch: "Tidak ada lokasi dampak yang sesuai dengan filter terpilih.",
+          verified: "terverifikasi",
+          inReview: "dalam review"
+        }
+      : {
+          all: "All",
+          verifiedActivity: "Verified activity",
+          needsReview: "Needs review",
+          verifyingTitle: "Impact sites are being verified",
+          verifyingBody: "Once partner field records are approved, restoration sites and activity will appear here.",
+          iframeTitle: "OpenStreetMap provider view of Indonesian conservation sites",
+          showDetails: "Show impact details for",
+          popover: "Activity popover",
+          pending: "Activity pending",
+          liveMap: "Live impact map",
+          verifiedSites: "Verified restoration sites",
+          liveMapSuffix: "field activity in one national view.",
+          filters: "Map filters",
+          milestone: "milestone progress",
+          activityRecords: "activity records",
+          latestSurvey: "Latest survey",
+          monitoringPending: "Monitoring activity pending",
+          before: "Before",
+          after: "After",
+          activityFor: "activity for",
+          latestActivity: "Latest activity",
+          openSource: "Open source record",
+          history: "Monitoring history",
+          milestoneAria: "percent through its current milestone",
+          donate: "Donate",
+          fullMap: "View full map",
+          noMatch: "No impact sites match the selected filters.",
+          verified: "verified",
+          inReview: "in review"
+        };
+  const [activeFilter, setActiveFilter] = useState<string>("all");
+  const [statusFilter, setStatusFilter] = useState<"all" | "verified" | "review">("all");
   const [selectedName, setSelectedName] = useState<string | null>(sites[0]?.name ?? null);
-  const filters = useMemo(() => ["All", ...Array.from(new Set(sites.map((site) => site.type)))], [sites]);
-  const statusFilters = ["All", "Verified activity", "Needs review"];
+  const typeFilters = useMemo(() => Array.from(new Set(sites.map((site) => site.type))), [sites]);
   const visibleSites = sites.filter((site) => {
-    const typeMatches = activeFilter === "All" || site.type === activeFilter;
+    const typeMatches = activeFilter === "all" || site.type === activeFilter;
     const statusMatches =
-      statusFilter === "All" ||
-      (statusFilter === "Verified activity" && site.verifiedEvidenceCount > 0) ||
-      (statusFilter === "Needs review" && site.pendingEvidenceCount > 0);
+      statusFilter === "all" ||
+      (statusFilter === "verified" && site.verifiedEvidenceCount > 0) ||
+      (statusFilter === "review" && site.pendingEvidenceCount > 0);
 
     return typeMatches && statusMatches;
   });
@@ -70,9 +135,9 @@ export function ImpactMapPreview({ sites }: ImpactMapPreviewProps) {
     return (
       <div className="rounded-2xl border border-ocean-900/10 bg-white p-8 text-center shadow-soft">
         <MapPin className="mx-auto text-coral-500" size={28} aria-hidden="true" />
-        <h3 className="mt-4 text-xl font-bold tracking-normal text-ocean-900">Impact sites are being verified</h3>
+        <h3 className="mt-4 text-xl font-bold tracking-normal text-ocean-900">{labels.verifyingTitle}</h3>
         <p className="mt-2 text-sm leading-6 text-ocean-900/64">
-          Once partner field records are approved, restoration sites and activity will appear here.
+          {labels.verifyingBody}
         </p>
       </div>
     );
@@ -82,7 +147,7 @@ export function ImpactMapPreview({ sites }: ImpactMapPreviewProps) {
     <div className="grid gap-5 lg:grid-cols-[1.25fr_0.75fr]">
       <div className="relative min-h-[420px] overflow-hidden rounded-2xl border border-ocean-900/10 bg-ocean-900 shadow-soft">
         <iframe
-          title="OpenStreetMap provider view of Indonesian conservation sites"
+          title={labels.iframeTitle}
           className="absolute inset-0 h-full w-full border-0 opacity-70"
           loading="lazy"
           src="https://www.openstreetmap.org/export/embed.html?bbox=94%2C-11%2C142%2C6&layer=mapnik"
@@ -96,7 +161,7 @@ export function ImpactMapPreview({ sites }: ImpactMapPreviewProps) {
             <button
               key={site.id}
               type="button"
-              aria-label={`Show impact details for ${site.name}`}
+              aria-label={`${labels.showDetails} ${site.name}`}
               title={site.name}
               className={cn(
                 "absolute z-10 -translate-x-1/2 -translate-y-1/2 rounded-full p-1 shadow-soft ring-4 transition hover:scale-110 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-coral-500",
@@ -118,18 +183,18 @@ export function ImpactMapPreview({ sites }: ImpactMapPreviewProps) {
             className="absolute z-20 max-w-[250px] -translate-x-1/2 translate-y-8 rounded-xl bg-white/95 p-3 text-left shadow-soft ring-1 ring-ocean-900/10 backdrop-blur"
             style={pinPosition(selectedSite)}
           >
-            <p className="text-xs font-bold uppercase tracking-[0.12em] text-coral-700">Activity popover</p>
+            <p className="text-xs font-bold uppercase tracking-[0.12em] text-coral-700">{labels.popover}</p>
             <p className="mt-1 text-sm font-bold text-ocean-900">{selectedSite.name}</p>
             <p className="mt-1 text-xs text-ocean-900/58">
-              {selectedSite.latestEvidence ? `${selectedSite.latestEvidence.stageLabel} / ${selectedSite.latestEvidence.verificationStatus}` : "Activity pending"}
+              {selectedSite.latestEvidence ? `${selectedSite.latestEvidence.stageLabel} / ${selectedSite.latestEvidence.verificationStatus}` : labels.pending}
             </p>
           </div>
         ) : null}
 
         <div className="absolute bottom-5 left-5 right-5 rounded-2xl bg-white/92 p-5 backdrop-blur">
-          <p className="text-sm font-bold uppercase tracking-[0.16em] text-coral-700">Live impact map</p>
+          <p className="text-sm font-bold uppercase tracking-[0.16em] text-coral-700">{labels.liveMap}</p>
           <p className="mt-2 max-w-xl text-2xl font-bold tracking-normal text-ocean-900">
-            {selectedSite ? selectedSite.name : "Verified restoration sites"}, field activity in one national view.
+            {selectedSite ? selectedSite.name : labels.verifiedSites}, {labels.liveMapSuffix}
           </p>
         </div>
       </div>
@@ -138,41 +203,45 @@ export function ImpactMapPreview({ sites }: ImpactMapPreviewProps) {
         <div className="grid gap-3">
           <p className="flex items-center gap-2 text-sm font-bold text-ocean-900">
             <SlidersHorizontal size={16} aria-hidden="true" />
-            Map filters
+            {labels.filters}
           </p>
           <div className="flex flex-wrap gap-2">
-            {filters.map((filter) => (
+            {[{ value: "all", label: labels.all }, ...typeFilters.map((type) => ({ value: type, label: type }))].map((filter) => (
               <button
-                key={filter}
+                key={filter.value}
                 type="button"
                 className={cn(
                   "rounded-full px-4 py-2 text-sm font-bold transition",
-                  filter === activeFilter ? "bg-ocean-900 text-white" : "bg-ocean-50 text-ocean-900 hover:bg-ocean-100"
+                  filter.value === activeFilter ? "bg-ocean-900 text-white" : "bg-ocean-50 text-ocean-900 hover:bg-ocean-100"
                 )}
                 onClick={() => {
-                  setActiveFilter(filter);
+                  setActiveFilter(filter.value);
                   setSelectedName(null);
                 }}
               >
-                {filter}
+                {filter.label}
               </button>
             ))}
           </div>
           <div className="flex flex-wrap gap-2">
-            {statusFilters.map((filter) => (
+            {[
+              { value: "all" as const, label: labels.all },
+              { value: "verified" as const, label: labels.verifiedActivity },
+              { value: "review" as const, label: labels.needsReview }
+            ].map((filter) => (
               <button
-                key={filter}
+                key={filter.value}
                 type="button"
                 className={cn(
                   "rounded-full px-4 py-2 text-sm font-bold transition",
-                  filter === statusFilter ? "bg-kelp-700 text-white" : "bg-kelp-100 text-kelp-700 hover:bg-kelp-200"
+                  filter.value === statusFilter ? "bg-kelp-700 text-white" : "bg-kelp-100 text-kelp-700 hover:bg-kelp-200"
                 )}
                 onClick={() => {
-                  setStatusFilter(filter);
+                  setStatusFilter(filter.value);
                   setSelectedName(null);
                 }}
               >
-                {filter}
+                {filter.label}
               </button>
             ))}
           </div>
@@ -193,14 +262,14 @@ export function ImpactMapPreview({ sites }: ImpactMapPreviewProps) {
             <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
               <div className="rounded-xl bg-white p-4">
                 <CheckCircle2 className="text-kelp-500" size={20} aria-hidden="true" />
-                <p className="mt-3 text-sm font-bold text-ocean-900">{selectedSite.progress}% milestone progress</p>
+                <p className="mt-3 text-sm font-bold text-ocean-900">{selectedSite.progress}% {labels.milestone}</p>
                 <p className="mt-1 text-xs leading-5 text-ocean-900/60">{selectedSite.verification}</p>
               </div>
               <div className="rounded-xl bg-white p-4">
                 <Camera className="text-coral-500" size={20} aria-hidden="true" />
-                <p className="mt-3 text-sm font-bold text-ocean-900">{selectedSite.evidenceCount} activity records</p>
+                <p className="mt-3 text-sm font-bold text-ocean-900">{selectedSite.evidenceCount} {labels.activityRecords}</p>
                 <p className="mt-1 text-xs leading-5 text-ocean-900/60">
-                  {selectedSite.latestSurvey ? `Latest survey: ${selectedSite.latestSurvey}` : "Monitoring activity pending"}
+                  {selectedSite.latestSurvey ? `${labels.latestSurvey}: ${selectedSite.latestSurvey}` : labels.monitoringPending}
                 </p>
               </div>
             </div>
@@ -208,14 +277,14 @@ export function ImpactMapPreview({ sites }: ImpactMapPreviewProps) {
             {selectedSite.beforeAfter ? (
               <div className="mt-5 grid gap-3 sm:grid-cols-2">
                 {[
-                  { label: "Before", evidence: selectedSite.beforeAfter.before },
-                  { label: "After", evidence: selectedSite.beforeAfter.after }
+                  { label: labels.before, evidence: selectedSite.beforeAfter.before },
+                  { label: labels.after, evidence: selectedSite.beforeAfter.after }
                 ].map(({ label, evidence }) => (
                   <div key={label} className="overflow-hidden rounded-xl bg-white">
                     {evidence && isVisualEvidenceUrl(evidence.fileUrl) ? (
                       <Image
                         src={evidence.fileUrl}
-                        alt={`${label} activity for ${selectedSite.name}`}
+                        alt={`${label} ${labels.activityFor} ${selectedSite.name}`}
                         width={360}
                         height={220}
                         unoptimized
@@ -238,7 +307,7 @@ export function ImpactMapPreview({ sites }: ImpactMapPreviewProps) {
 
             {selectedSite.latestEvidence ? (
               <div className="mt-5 rounded-xl bg-white p-4">
-                <p className="text-xs font-bold uppercase tracking-[0.12em] text-coral-700">Latest activity</p>
+                <p className="text-xs font-bold uppercase tracking-[0.12em] text-coral-700">{labels.latestActivity}</p>
                 <h3 className="mt-2 font-bold text-ocean-900">{selectedSite.latestEvidence.title}</h3>
                 <p className="mt-2 text-xs leading-5 text-ocean-900/60">
                   {selectedSite.latestEvidence.stageLabel} / {selectedSite.latestEvidence.verificationStatus}
@@ -247,7 +316,7 @@ export function ImpactMapPreview({ sites }: ImpactMapPreviewProps) {
                     : ""}
                 </p>
                 <Link href={selectedSite.latestEvidence.sourceHref} className="mt-3 inline-flex items-center gap-1 text-sm font-bold text-coral-700 hover:text-coral-500">
-                  Open source record
+                  {labels.openSource}
                   <ExternalLink size={14} aria-hidden="true" />
                 </Link>
               </div>
@@ -255,7 +324,7 @@ export function ImpactMapPreview({ sites }: ImpactMapPreviewProps) {
 
             {selectedSite.monitoringHistory.length > 0 ? (
               <div className="mt-5">
-                <p className="text-sm font-bold text-ocean-900">Monitoring history</p>
+                <p className="text-sm font-bold text-ocean-900">{labels.history}</p>
                 <ol className="mt-3 space-y-3">
                   {selectedSite.monitoringHistory.map((event) => (
                     <li key={event.id} className="border-l-2 border-ocean-100 pl-3">
@@ -271,7 +340,7 @@ export function ImpactMapPreview({ sites }: ImpactMapPreviewProps) {
 
             <ProgressMeter
               value={selectedSite.progress}
-              label={`${selectedSite.name} is ${selectedSite.progress} percent through its current milestone.`}
+              label={`${selectedSite.name} ${selectedSite.progress} ${labels.milestoneAria}.`}
               className="mt-5 h-2"
               indicatorClassName="bg-kelp-500"
               trackClassName="bg-white"
@@ -283,13 +352,13 @@ export function ImpactMapPreview({ sites }: ImpactMapPreviewProps) {
                 className="inline-flex min-h-10 items-center justify-center gap-2 rounded-full bg-coral-500 px-4 py-2 text-sm font-bold text-white transition hover:bg-coral-700"
               >
                 <HeartHandshake size={16} aria-hidden="true" />
-                Donate
+                {labels.donate}
               </Link>
               <Link
                 href="/impact-map"
                 className="inline-flex min-h-10 items-center justify-center rounded-full bg-white px-4 py-2 text-sm font-bold text-ocean-900 ring-1 ring-ocean-900/10 transition hover:ring-coral-500"
               >
-                View full map
+                {labels.fullMap}
               </Link>
             </div>
           </div>
@@ -297,7 +366,7 @@ export function ImpactMapPreview({ sites }: ImpactMapPreviewProps) {
 
         {visibleSites.length === 0 ? (
           <div className="mt-6 rounded-xl border border-dashed border-ocean-900/14 bg-sand-50 p-5 text-sm font-semibold text-ocean-900/62">
-            No impact sites match the selected filters.
+            {labels.noMatch}
           </div>
         ) : null}
 
@@ -322,16 +391,16 @@ export function ImpactMapPreview({ sites }: ImpactMapPreviewProps) {
                 </span>
               </div>
               <p className="mt-2 text-xs font-semibold text-ocean-900/58">
-                {site.verification} · {site.verifiedEvidenceCount} verified · {site.pendingEvidenceCount} in review
+                {site.verification} · {site.verifiedEvidenceCount} {labels.verified} · {site.pendingEvidenceCount} {labels.inReview}
               </p>
               <ProgressMeter
                 value={site.progress}
-                label={`${site.name} is ${site.progress} percent through its current milestone.`}
+                label={`${site.name} ${site.progress} ${labels.milestoneAria}.`}
                 className="mt-4 h-2"
                 indicatorClassName="bg-kelp-500"
                 trackClassName="bg-ocean-50"
               />
-              <p className="mt-2 text-xs font-semibold text-ocean-900/60">{site.progress}% milestone progress</p>
+              <p className="mt-2 text-xs font-semibold text-ocean-900/60">{site.progress}% {labels.milestone}</p>
             </button>
           ))}
         </div>
