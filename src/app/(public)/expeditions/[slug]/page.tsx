@@ -600,7 +600,7 @@ export default async function ExpeditionDetailPage({
       <main className="bg-white pb-24">
         <section className="border-b border-ocean-900/10 bg-white">
           <div className="mx-auto max-w-7xl px-4 pt-6 sm:px-6 lg:px-8">
-            <nav className="flex flex-wrap items-center gap-2 text-sm font-semibold text-ocean-900/54" aria-label="Breadcrumb">
+            <nav className="flex flex-wrap items-center gap-2 text-sm font-semibold text-ocean-900/54" aria-label={isIndonesian ? "Breadcrumb navigasi" : "Breadcrumb"}>
               <Link href="/" className="hover:text-sky-700">{labels.home}</Link>
               <span>/</span>
               <Link href="/expeditions" className="hover:text-sky-700">{labels.expeditions}</Link>
@@ -610,7 +610,7 @@ export default async function ExpeditionDetailPage({
           </div>
 
           <div className="mx-auto grid max-w-7xl gap-10 px-4 py-10 sm:px-6 lg:grid-cols-[0.98fr_1fr] lg:items-start lg:px-8">
-            <ExpeditionHeroGallery images={expedition.galleryImages} region={expedition.region} />
+            <ExpeditionHeroGallery images={expedition.galleryImages} region={expedition.region} locale={locale} />
 
             <div className="min-w-0 lg:pt-1">
               <p className="text-lg font-semibold text-ocean-900/72">
@@ -659,6 +659,7 @@ export default async function ExpeditionDetailPage({
           expeditionPath={expeditionPath}
           primaryActionHref={primaryActionHref}
           primaryActionLabel={primaryActionLabel}
+          locale={locale}
         />
 
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
@@ -1057,7 +1058,7 @@ export default async function ExpeditionDetailPage({
                 <SectionHeader title={labels.moreHostExperiences} />
                 <div className="mt-9 grid gap-6 md:grid-cols-2">
                   {expedition.relatedExpeditions.map((item) => (
-                    <ExpeditionCard key={item.slug} expedition={item} />
+                    <ExpeditionCard key={item.slug} expedition={item} displayCurrency={displayCurrency} locale={localeTag(locale)} />
                   ))}
                 </div>
               </section>
