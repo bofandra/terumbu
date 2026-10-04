@@ -13,7 +13,7 @@ import {
   retryExpeditionPaymentAction
 } from "@/lib/billing-actions";
 import { submitExpeditionReviewAction } from "@/lib/expedition-review-actions";
-import { expeditionReviewStatusLabel, normalizeExpeditionReviewStatus, type ExpeditionReviewStatus } from "@/lib/expedition-reviews";
+import { normalizeExpeditionReviewStatus, type ExpeditionReviewStatus } from "@/lib/expedition-reviews";
 import { Button, ButtonLink } from "@/components/ui/button";
 import { requireUser } from "@/lib/auth";
 import { getDashboardData, getExpeditionCards } from "@/lib/queries";
@@ -390,135 +390,6 @@ export default async function DashboardExpeditionsPage({ searchParams }: Dashboa
       ) : null}
 
       <section className="mt-6 rounded-2xl border border-ocean-900/10 bg-white p-5 shadow-soft">
-        <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
-          <div>
-            <h2 className="text-2xl font-bold tracking-normal text-ocean-900">{labels.exploreTitle}</h2>
-            <p className="mt-1 text-sm font-semibold text-ocean-900/58">{labels.exploreBody}</p>
-          </div>
-          <ButtonLink href="/expeditions" tone="secondary">
-            {labels.browseAll}
-          </ButtonLink>
-        </div>
-        <div className="mt-4 flex snap-x gap-4 overflow-x-auto pb-2 lg:grid lg:grid-cols-3 lg:overflow-visible lg:pb-0">
-          {highlightedExpeditions.map((expedition) => (
-            <Link
-              key={expedition.slug}
-              href={`/expeditions/${expedition.slug}`}
-              className="group grid min-w-[280px] snap-start overflow-hidden rounded-xl border border-ocean-900/10 bg-sand-50 text-left transition hover:border-coral-500 sm:min-w-[320px] lg:min-w-0"
-            >
-              <div className="relative h-40 bg-ocean-900">
-                {expedition.imageUrl ? (
-                  <Image src={expedition.imageUrl} alt="" fill className="object-cover transition group-hover:scale-[1.02]" sizes="(min-width: 1024px) 300px, 80vw" />
-                ) : null}
-              </div>
-              <div className="grid gap-2 p-4">
-                <p className="text-xs font-bold uppercase tracking-[0.14em] text-coral-700">{expedition.region}</p>
-                <h3 className="text-lg font-bold tracking-normal text-ocean-900 group-hover:text-coral-700">{expedition.title}</h3>
-                <p className="line-clamp-2 text-sm leading-6 text-ocean-900/62">{expedition.summary}</p>
-                <div className="mt-2 flex items-center justify-between gap-3 text-sm font-bold text-ocean-900">
-                  <span>{formatCurrency(expedition.price, expedition.currency)}</span>
-                  <span className="inline-flex items-center gap-1 text-coral-700">
-                    {labels.detail} <ArrowRight size={15} aria-hidden="true" />
-                  </span>
-                </div>
-              </div>
-            </Link>
-          ))}
-        </div>
-      </section>
-
-      <section className="mt-6 rounded-2xl border border-ocean-900/10 bg-white p-5 shadow-soft">
-        <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
-          <div>
-            <h2 className="flex items-center gap-2 text-2xl font-bold tracking-normal text-ocean-900">
-              <Heart size={22} aria-hidden="true" className="text-coral-500" />
-              {labels.savedTrips}
-            </h2>
-            <p className="mt-1 text-sm font-semibold text-ocean-900/58">
-              {data.savedExpeditions.length.toLocaleString(numberLocale)} {labels.savedTrip}{data.savedExpeditions.length === 1 ? "" : isIndonesian ? "" : "s"}.
-            </p>
-          </div>
-        </div>
-
-        <div className="mt-4 grid gap-3 md:grid-cols-2">
-          {data.savedExpeditions.map((expedition) => (
-            <article key={expedition.slug} className="rounded-xl border border-ocean-900/10 bg-sand-50 p-4">
-              <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-start">
-                <div>
-                  <Link href={`/expeditions/${expedition.slug}`} className="font-bold text-ocean-900 hover:text-coral-700">
-                    {expedition.title}
-                  </Link>
-                  <p className="mt-1 text-sm text-ocean-900/58">
-                    {expedition.region} · {expedition.duration} · {labels.from} {formatCurrency(expedition.price, expedition.currency)}
-                  </p>
-                  <p className="mt-2 text-xs font-semibold text-ocean-900/50">
-                    {labels.saved} {expedition.savedAt.toLocaleDateString(dateLocale, { dateStyle: "medium" })}
-                  </p>
-                </div>
-                <div className="grid gap-2 sm:justify-items-end">
-                  <form action={scheduleSavedExpeditionReminderAction} className="flex items-center gap-2">
-                    <input type="hidden" name="expeditionSlug" value={expedition.slug} />
-                    <select name="delayDays" defaultValue="7" className="min-h-9 rounded-full border border-ocean-900/10 bg-white px-3 text-xs font-bold text-ocean-900">
-                      <option value="3">{labels.remind3}</option>
-                      <option value="7">{labels.remind7}</option>
-                      <option value="14">{labels.remind14}</option>
-                      <option value="30">{labels.remind30}</option>
-                    </select>
-                    <button type="submit" className="min-h-9 rounded-full bg-kelp-500 px-3 text-xs font-bold text-white hover:bg-kelp-700">
-                      {labels.remindMe}
-                    </button>
-                  </form>
-                  <form action={removeSavedExpeditionAction}>
-                    <input type="hidden" name="expeditionSlug" value={expedition.slug} />
-                    <input type="hidden" name="next" value="/dashboard/expeditions" />
-                    <button
-                      type="submit"
-                      aria-label={labels.removeSavedAria}
-                      className="inline-flex min-h-9 items-center gap-2 rounded-full border border-ocean-900/10 px-3 text-xs font-bold text-coral-700 hover:border-coral-500"
-                    >
-                      <BookmarkX size={14} aria-hidden="true" />
-                      {labels.remove}
-                    </button>
-                  </form>
-                </div>
-              </div>
-            </article>
-          ))}
-        </div>
-
-        {data.savedExpeditions.length === 0 ? (
-          <p className="mt-4 rounded-xl border border-dashed border-ocean-900/14 bg-sand-50 p-4 text-sm font-semibold text-ocean-900/62">
-            {labels.savedEmpty}
-          </p>
-        ) : null}
-      </section>
-
-      {reminders.length > 0 ? (
-        <section className="mt-6 rounded-2xl border border-ocean-900/10 bg-white p-5 shadow-soft">
-          <h2 className="text-2xl font-bold tracking-normal text-ocean-900">{labels.reminders}</h2>
-          <p className="mt-1 text-sm font-semibold text-ocean-900/58">{labels.remindersBody}</p>
-          <div className="mt-4 grid gap-3">
-            {reminders.map((reminder) => (
-              <article key={reminder.id} className="flex flex-col justify-between gap-3 rounded-xl bg-sand-50 p-4 sm:flex-row sm:items-center">
-                <div>
-                  <Link href={`/expeditions/${reminder.expeditionSlug}`} className="font-bold text-ocean-900 hover:text-coral-700">{reminder.expeditionTitle}</Link>
-                  <p className="mt-1 text-sm text-ocean-900/58">
-                    {labels.reminder} {reminder.remindAt.toLocaleString(dateLocale, { dateStyle: "medium", timeStyle: "short" })}
-                  </p>
-                </div>
-                <form action={cancelExpeditionReminderAction}>
-                  <input type="hidden" name="reminderId" value={reminder.id} />
-                  <button type="submit" className="min-h-9 rounded-full border border-ocean-900/10 px-3 text-xs font-bold text-coral-700 hover:border-coral-500">
-                    {labels.cancelReminder}
-                  </button>
-                </form>
-              </article>
-            ))}
-          </div>
-        </section>
-      ) : null}
-
-      <section className="mt-6 rounded-2xl border border-ocean-900/10 bg-white p-5 shadow-soft">
         <p className="text-sm font-bold uppercase tracking-[0.16em] text-coral-700">{labels.journeyEyebrow}</p>
         <h2 className="mt-2 text-2xl font-bold tracking-normal text-ocean-900">{labels.journeyTitle}</h2>
         <p className="mt-2 max-w-3xl text-sm leading-6 text-ocean-900/62">
@@ -802,6 +673,136 @@ export default async function DashboardExpeditionsPage({ searchParams }: Dashboa
           </div>
         ) : null}
       </section>
+      <section className="mt-6 rounded-2xl border border-ocean-900/10 bg-white p-5 shadow-soft">
+        <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
+          <div>
+            <p className="text-sm font-bold uppercase tracking-[0.16em] text-coral-700">{labels.exploreEyebrow}</p>
+            <h2 className="mt-2 text-2xl font-bold tracking-normal text-ocean-900">{labels.exploreTitle}</h2>
+            <p className="mt-1 text-sm font-semibold text-ocean-900/58">{labels.exploreBody}</p>
+          </div>
+          <ButtonLink href="/expeditions" tone="secondary">
+            {labels.browseAll}
+          </ButtonLink>
+        </div>
+        <div className="mt-4 flex snap-x gap-4 overflow-x-auto pb-2 lg:grid lg:grid-cols-3 lg:overflow-visible lg:pb-0">
+          {highlightedExpeditions.map((expedition) => (
+            <Link
+              key={expedition.slug}
+              href={`/expeditions/${expedition.slug}`}
+              className="group grid min-w-[280px] snap-start overflow-hidden rounded-xl border border-ocean-900/10 bg-sand-50 text-left transition hover:border-coral-500 sm:min-w-[320px] lg:min-w-0"
+            >
+              <div className="relative h-40 bg-ocean-900">
+                {expedition.imageUrl ? (
+                  <Image src={expedition.imageUrl} alt="" fill className="object-cover transition group-hover:scale-[1.02]" sizes="(min-width: 1024px) 300px, 80vw" />
+                ) : null}
+              </div>
+              <div className="grid gap-2 p-4">
+                <p className="text-xs font-bold uppercase tracking-[0.14em] text-coral-700">{expedition.region}</p>
+                <h3 className="text-lg font-bold tracking-normal text-ocean-900 group-hover:text-coral-700">{expedition.title}</h3>
+                <p className="line-clamp-2 text-sm leading-6 text-ocean-900/62">{expedition.summary}</p>
+                <div className="mt-2 flex items-center justify-between gap-3 text-sm font-bold text-ocean-900">
+                  <span>{formatCurrency(expedition.price, expedition.currency)}</span>
+                  <span className="inline-flex items-center gap-1 text-coral-700">
+                    {labels.detail} <ArrowRight size={15} aria-hidden="true" />
+                  </span>
+                </div>
+              </div>
+            </Link>
+          ))}
+        </div>
+      </section>
+
+      <section className="mt-6 rounded-2xl border border-ocean-900/10 bg-white p-5 shadow-soft">
+        <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
+          <div>
+            <h2 className="flex items-center gap-2 text-2xl font-bold tracking-normal text-ocean-900">
+              <Heart size={22} aria-hidden="true" className="text-coral-500" />
+              {labels.savedTrips}
+            </h2>
+            <p className="mt-1 text-sm font-semibold text-ocean-900/58">
+              {data.savedExpeditions.length.toLocaleString(numberLocale)} {labels.savedTrip}{data.savedExpeditions.length === 1 ? "" : isIndonesian ? "" : "s"}.
+            </p>
+          </div>
+        </div>
+
+        <div className="mt-4 grid gap-3 md:grid-cols-2">
+          {data.savedExpeditions.map((expedition) => (
+            <article key={expedition.slug} className="rounded-xl border border-ocean-900/10 bg-sand-50 p-4">
+              <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-start">
+                <div>
+                  <Link href={`/expeditions/${expedition.slug}`} className="font-bold text-ocean-900 hover:text-coral-700">
+                    {expedition.title}
+                  </Link>
+                  <p className="mt-1 text-sm text-ocean-900/58">
+                    {expedition.region} · {expedition.duration} · {labels.from} {formatCurrency(expedition.price, expedition.currency)}
+                  </p>
+                  <p className="mt-2 text-xs font-semibold text-ocean-900/50">
+                    {labels.saved} {expedition.savedAt.toLocaleDateString(dateLocale, { dateStyle: "medium" })}
+                  </p>
+                </div>
+                <div className="grid gap-2 sm:justify-items-end">
+                  <form action={scheduleSavedExpeditionReminderAction} className="flex items-center gap-2">
+                    <input type="hidden" name="expeditionSlug" value={expedition.slug} />
+                    <select name="delayDays" defaultValue="7" className="min-h-9 rounded-full border border-ocean-900/10 bg-white px-3 text-xs font-bold text-ocean-900">
+                      <option value="3">{labels.remind3}</option>
+                      <option value="7">{labels.remind7}</option>
+                      <option value="14">{labels.remind14}</option>
+                      <option value="30">{labels.remind30}</option>
+                    </select>
+                    <button type="submit" className="min-h-9 rounded-full bg-kelp-500 px-3 text-xs font-bold text-white hover:bg-kelp-700">
+                      {labels.remindMe}
+                    </button>
+                  </form>
+                  <form action={removeSavedExpeditionAction}>
+                    <input type="hidden" name="expeditionSlug" value={expedition.slug} />
+                    <input type="hidden" name="next" value="/dashboard/expeditions" />
+                    <button
+                      type="submit"
+                      aria-label={labels.removeSavedAria}
+                      className="inline-flex min-h-9 items-center gap-2 rounded-full border border-ocean-900/10 px-3 text-xs font-bold text-coral-700 hover:border-coral-500"
+                    >
+                      <BookmarkX size={14} aria-hidden="true" />
+                      {labels.remove}
+                    </button>
+                  </form>
+                </div>
+              </div>
+            </article>
+          ))}
+        </div>
+
+        {data.savedExpeditions.length === 0 ? (
+          <p className="mt-4 rounded-xl border border-dashed border-ocean-900/14 bg-sand-50 p-4 text-sm font-semibold text-ocean-900/62">
+            {labels.savedEmpty}
+          </p>
+        ) : null}
+      </section>
+
+      {reminders.length > 0 ? (
+        <section className="mt-6 rounded-2xl border border-ocean-900/10 bg-white p-5 shadow-soft">
+          <h2 className="text-2xl font-bold tracking-normal text-ocean-900">{labels.reminders}</h2>
+          <p className="mt-1 text-sm font-semibold text-ocean-900/58">{labels.remindersBody}</p>
+          <div className="mt-4 grid gap-3">
+            {reminders.map((reminder) => (
+              <article key={reminder.id} className="flex flex-col justify-between gap-3 rounded-xl bg-sand-50 p-4 sm:flex-row sm:items-center">
+                <div>
+                  <Link href={`/expeditions/${reminder.expeditionSlug}`} className="font-bold text-ocean-900 hover:text-coral-700">{reminder.expeditionTitle}</Link>
+                  <p className="mt-1 text-sm text-ocean-900/58">
+                    {labels.reminder} {reminder.remindAt.toLocaleString(dateLocale, { dateStyle: "medium", timeStyle: "short" })}
+                  </p>
+                </div>
+                <form action={cancelExpeditionReminderAction}>
+                  <input type="hidden" name="reminderId" value={reminder.id} />
+                  <button type="submit" className="min-h-9 rounded-full border border-ocean-900/10 px-3 text-xs font-bold text-coral-700 hover:border-coral-500">
+                    {labels.cancelReminder}
+                  </button>
+                </form>
+              </article>
+            ))}
+          </div>
+        </section>
+      ) : null}
+
     </main>
   );
 }
