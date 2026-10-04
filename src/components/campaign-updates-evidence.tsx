@@ -5,6 +5,7 @@ import Link from "next/link";
 import { ExternalLink } from "lucide-react";
 import { useMemo, useState } from "react";
 
+import type { SupportedLocale } from "@/lib/user-preferences";
 import { cn } from "@/lib/utils";
 
 export type CampaignUpdateItem = {
@@ -38,6 +39,7 @@ export type CampaignEvidenceItem = {
 type CampaignUpdatesEvidenceProps = {
   updates: CampaignUpdateItem[];
   evidence: CampaignEvidenceItem[];
+  locale?: SupportedLocale;
 };
 
 function isImageUrl(value: string) {
@@ -67,7 +69,28 @@ function FilterButton({
   );
 }
 
-export function CampaignUpdatesEvidence({ updates, evidence }: CampaignUpdatesEvidenceProps) {
+export function CampaignUpdatesEvidence({ updates, evidence, locale = "en" }: CampaignUpdatesEvidenceProps) {
+  const labels =
+    locale === "id"
+      ? {
+          all: "Semua",
+          publicNote: "Catatan publik",
+          reviewAttachment: "Lampiran verifikasi",
+          activity: "Aktivitas",
+          source: "Catatan sumber",
+          file: "File",
+          empty: "Belum ada catatan aktivitas yang sesuai dengan filter ini."
+        }
+      : {
+          all: "All",
+          publicNote: "Public note",
+          reviewAttachment: "Review attachment",
+          activity: "Activity",
+          source: "Source record",
+          file: "File",
+          empty: "No activity records match this filter yet."
+        };
+  type ActivityKind = "update" | "evidence";
   const activity = useMemo(
     () => [
       ...updates.map((update) => ({
@@ -78,7 +101,7 @@ export function CampaignUpdatesEvidence({ updates, evidence }: CampaignUpdatesEv
         imageUrl: update.imageUrl,
         dateLabel: update.dateLabel,
         tag: update.category,
-        kind: "Public note",
+        kind: "update" as ActivityKind,
         href: update.href,
         fileUrl: undefined,
         locationLabel: update.responsibleTeam,
@@ -95,7 +118,7 @@ export function CampaignUpdatesEvidence({ updates, evidence }: CampaignUpdatesEv
         imageUrl: isImageUrl(item.fileUrl) ? item.fileUrl : null,
         dateLabel: item.dateLabel,
         tag: item.evidenceType,
-        kind: "Review attachment",
+        kind: "evidence" as ActivityKind,
         href: item.sourceHref,
         fileUrl: item.fileUrl,
         locationLabel: item.locationLabel,
@@ -107,16 +130,20 @@ export function CampaignUpdatesEvidence({ updates, evidence }: CampaignUpdatesEv
     ],
     [updates, evidence]
   );
-  const filters = ["All", "Public note", "Review attachment"];
-  const [activityFilter, setActivityFilter] = useState("All");
-  const visibleActivity = activityFilter === "All" ? activity : activity.filter((item) => item.kind === activityFilter);
+  const filters: Array<{ value: "all" | ActivityKind; label: string }> = [
+    { value: "all", label: labels.all },
+    { value: "update", label: labels.publicNote },
+    { value: "evidence", label: labels.reviewAttachment }
+  ];
+  const [activityFilter, setActivityFilter] = useState<"all" | ActivityKind>("all");
+  const visibleActivity = activityFilter === "all" ? activity : activity.filter((item) => item.kind === activityFilter);
 
   return (
     <div>
       <div className="flex flex-wrap gap-2">
         {filters.map((filter) => (
-          <FilterButton key={filter} active={filter === activityFilter} onClick={() => setActivityFilter(filter)}>
-            {filter}
+          <FilterButton key={filter.value} active={filter.value === activityFilter} onClick={() => setActivityFilter(filter.value)}>
+            {filter.label}
           </FilterButton>
         ))}
       </div>
@@ -128,7 +155,7 @@ export function CampaignUpdatesEvidence({ updates, evidence }: CampaignUpdatesEv
               {item.imageUrl ? (
                 <Image
                   src={item.imageUrl}
-                  alt={`${item.title} activity image`}
+                  alt={`${item.title} — ${labels.activity}`}
                   width={440}
                   height={300}
                   unoptimized
@@ -136,12 +163,12 @@ export function CampaignUpdatesEvidence({ updates, evidence }: CampaignUpdatesEv
                   sizes="(min-width: 768px) 220px, 100vw"
                 />
               ) : (
-                <div className="flex h-48 items-center justify-center rounded-xl bg-ocean-50 text-sm font-bold text-ocean-900/58">Activity</div>
+                <div className="flex h-48 items-center justify-center rounded-xl bg-ocean-50 text-sm font-bold text-ocean-900/58">{labels.activity}</div>
               )}
               <div>
                 <div className="flex flex-wrap items-center gap-2">
                   <p className="text-xs font-bold uppercase tracking-[0.14em] text-coral-700">
-                    {item.dateLabel} · {item.kind}
+                    {item.dateLabel} · {item.kind === "update" ? labels.publicNote : labels.reviewAttachment}
                   </p>
                   <span className="rounded-full bg-ocean-50 px-2 py-1 text-xs font-bold text-ocean-900">{item.tag}</span>
                   {item.status ? <span className="rounded-full bg-kelp-100 px-2 py-1 text-xs font-bold text-kelp-700">{item.status}</span> : null}
@@ -160,11 +187,11 @@ export function CampaignUpdatesEvidence({ updates, evidence }: CampaignUpdatesEv
                 ) : null}
                 <div className="mt-4 flex flex-wrap gap-3">
                   <Link href={item.href} className="inline-flex items-center gap-1 text-sm font-bold text-coral-700 hover:text-coral-500">
-                    Source record
+                    {labels.source}
                   </Link>
                   {item.fileUrl ? (
                     <Link href={item.fileUrl} className="inline-flex items-center gap-1 text-sm font-bold text-ocean-900/62 hover:text-coral-500">
-                      File
+                      {labels.file}
                       <ExternalLink size={14} aria-hidden="true" />
                     </Link>
                   ) : null}
@@ -174,7 +201,7 @@ export function CampaignUpdatesEvidence({ updates, evidence }: CampaignUpdatesEv
             </article>
           ))
         ) : (
-          <div className="rounded-2xl border border-ocean-900/10 bg-white p-6 text-ocean-900/68 shadow-soft">No activity records match this filter yet.</div>
+          <div className="rounded-2xl border border-ocean-900/10 bg-white p-6 text-ocean-900/68 shadow-soft">{labels.empty}</div>
         )}
       </div>
     </div>
