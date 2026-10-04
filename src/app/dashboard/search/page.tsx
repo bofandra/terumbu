@@ -108,8 +108,8 @@ export default async function DashboardSearchPage({ searchParams }: DashboardSea
           searchAria: "Cari di dashboard",
           placeholder: "Cari donasi, sponsorship, kursus, trip...",
           search: "Cari",
+          resultFor: "hasil untuk",
           resultsFor: "hasil untuk",
-          result: "hasil",
           back: "Kembali ke ringkasan",
           noMatch: "Tidak ada record dashboard yang cocok.",
           noMatchBody: "Coba nama kampanye, kode sponsorship, nomor kuitansi, judul kursus, kode booking, atau kategori notifikasi.",
@@ -177,8 +177,8 @@ export default async function DashboardSearchPage({ searchParams }: DashboardSea
           searchAria: "Search dashboard",
           placeholder: "Search donations, sponsorships, courses, trips...",
           search: "Search",
+          resultFor: "result for",
           resultsFor: "results for",
-          result: "result",
           back: "Back to overview",
           noMatch: "No dashboard records matched that search.",
           noMatchBody: "Try a campaign name, sponsorship code, receipt number, course title, booking code, or notification category.",
@@ -551,7 +551,7 @@ export default async function DashboardSearchPage({ searchParams }: DashboardSea
         <section className="mt-6">
           <div className="flex items-center justify-between gap-3">
             <h2 className="text-xl font-bold tracking-normal text-ocean-900">
-              {dedupedResults.length.toLocaleString(numberLocale)} {dedupedResults.length === 1 ? labels.result : labels.resultsFor} <span className="break-all">“{params?.q}”</span>
+              {dedupedResults.length.toLocaleString(numberLocale)} {dedupedResults.length === 1 ? labels.resultFor : labels.resultsFor} <span className="break-all">“{params?.q}”</span>
             </h2>
             <Link href="/dashboard" className="text-sm font-bold text-coral-700 hover:text-coral-500">
               {labels.back}
