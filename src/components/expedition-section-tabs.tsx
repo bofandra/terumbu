@@ -16,22 +16,37 @@ type ExpeditionSectionTabsProps = {
   isAuthenticated: boolean;
   isSaved: boolean;
   expeditionPath: string;
+  primaryActionHref: string;
+  primaryActionLabel: string;
 };
 
-export function ExpeditionSectionTabs({ tabs, slug, isAuthenticated, isSaved, expeditionPath }: ExpeditionSectionTabsProps) {
+export function ExpeditionSectionTabs({
+  tabs,
+  slug,
+  isAuthenticated,
+  isSaved,
+  expeditionPath,
+  primaryActionHref,
+  primaryActionLabel
+}: ExpeditionSectionTabsProps) {
   const [activeId, setActiveId] = useState(tabs[0]?.id ?? "");
 
-  function handleApplyClick(event: MouseEvent<HTMLAnchorElement>) {
-    event.preventDefault();
-
-    const target = document.getElementById("availability");
-    if (!target) {
-      window.location.hash = "availability";
+  function handlePrimaryActionClick(event: MouseEvent<HTMLAnchorElement>) {
+    if (!primaryActionHref.startsWith("#")) {
       return;
     }
 
-    if (window.location.hash !== "#availability") {
-      window.history.pushState(null, "", "#availability");
+    event.preventDefault();
+    const targetId = primaryActionHref.slice(1);
+    const target = document.getElementById(targetId);
+
+    if (!target) {
+      window.location.hash = targetId;
+      return;
+    }
+
+    if (window.location.hash !== primaryActionHref) {
+      window.history.pushState(null, "", primaryActionHref);
     }
 
     target.focus({ preventScroll: true });
@@ -102,11 +117,11 @@ export function ExpeditionSectionTabs({ tabs, slug, isAuthenticated, isSaved, ex
             </Link>
           )}
           <a
-            href="#availability"
-            onClick={handleApplyClick}
+            href={primaryActionHref}
+            onClick={handlePrimaryActionClick}
             className="inline-flex min-h-14 items-center justify-center gap-3 rounded-full bg-kelp-500 px-8 text-lg font-bold text-white shadow-soft transition hover:bg-kelp-700"
           >
-            Reserve / Apply
+            {primaryActionLabel}
             <ArrowRight size={24} aria-hidden="true" />
           </a>
         </div>
