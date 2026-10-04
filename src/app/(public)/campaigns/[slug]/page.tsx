@@ -560,6 +560,14 @@ export default async function CampaignDetailPage({
         ? "Preferensi kampanye tidak dapat diperbarui."
         : "We could not update this campaign preference."
       : null;
+  const followFrequency = retentionState?.followFrequency ?? "weekly";
+  const followFrequencyLabel = isIndonesian
+    ? followFrequency === "weekly"
+      ? "mingguan"
+      : followFrequency === "daily"
+        ? "harian"
+        : followFrequency
+    : followFrequency;
 
   return (
     <main className="pb-24 lg:pb-0">
@@ -572,10 +580,10 @@ export default async function CampaignDetailPage({
       />
       <section className="bg-white">
         <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
-          <nav className="flex flex-wrap items-center gap-2 text-sm font-semibold text-ocean-900/58" aria-label="Breadcrumb">
-            <Link href="/" className="hover:text-ocean-900">Home</Link>
+          <nav className="flex flex-wrap items-center gap-2 text-sm font-semibold text-ocean-900/58" aria-label={isIndonesian ? "Breadcrumb navigasi" : "Breadcrumb"}>
+            <Link href="/" className="hover:text-ocean-900">{labels.home}</Link>
             <ChevronRight size={15} aria-hidden="true" />
-            <Link href="/campaigns" className="hover:text-ocean-900">Campaigns</Link>
+            <Link href="/campaigns" className="hover:text-ocean-900">{labels.campaigns}</Link>
             <ChevronRight size={15} aria-hidden="true" />
             <Link href={`/campaigns?category=${encodeURIComponent(campaign.category)}`} className="hover:text-ocean-900">{campaign.category}</Link>
             <ChevronRight size={15} aria-hidden="true" />
@@ -606,8 +614,9 @@ export default async function CampaignDetailPage({
                   category={campaign.category}
                   region={campaign.region}
                   imageUrl={campaign.imageUrl}
-                  updatedLabel={`${(campaign.updates.length + campaign.evidence.length).toLocaleString(numberLocale)} activity records`}
+                  updatedLabel={`${(campaign.updates.length + campaign.evidence.length).toLocaleString(numberLocale)} ${labels.activityRecords}`}
                   verificationLabel={campaign.verification}
+                  locale={locale}
                   mediaItems={mediaItems}
                 />
 
@@ -622,7 +631,7 @@ export default async function CampaignDetailPage({
                   <p className="mt-5 text-lg leading-8 text-ocean-900/68">{campaign.summary}</p>
 
                   <div className="mt-7 rounded-2xl border border-ocean-900/10 bg-sand-50 p-5">
-                    <p className="text-sm font-semibold text-ocean-900/62">Implemented by</p>
+                    <p className="text-sm font-semibold text-ocean-900/62">{labels.implementedBy}</p>
                     <div className="mt-3 flex items-center gap-4">
                       <span className="relative flex size-16 shrink-0 items-center justify-center overflow-hidden rounded-full bg-white text-lg font-black text-ocean-900 ring-1 ring-ocean-900/10">
                         {campaign.partnerLogoUrl ? (
@@ -636,9 +645,9 @@ export default async function CampaignDetailPage({
                           {campaign.partner}
                         </Link>
                         <p className="mt-1 text-sm text-ocean-900/60">
-                          {campaign.verification} · {campaign.partnerCampaignCount} projects completed
+                          {campaign.verification} · {campaign.partnerCampaignCount} {labels.projectsCompleted}
                         </p>
-                        <VerificationExplainer verificationLabel={campaign.verification} />
+                        <VerificationExplainer verificationLabel={campaign.verification} locale={locale} />
                       </div>
                     </div>
                     <div className="mt-4 flex flex-wrap gap-2">
@@ -661,6 +670,7 @@ export default async function CampaignDetailPage({
                 impactFunded={impactFunded}
                 impactUnit={campaign.impactUnit}
                 currency={campaign.currency}
+                locale={locale}
               />
             </div>
 
@@ -685,13 +695,15 @@ export default async function CampaignDetailPage({
               />
 
               <div className="rounded-2xl border border-ocean-900/10 bg-white p-5 shadow-soft">
-                <p className="text-sm font-bold uppercase tracking-[0.16em] text-coral-700">Keep this project close</p>
+                <p className="text-sm font-bold uppercase tracking-[0.16em] text-coral-700">{labels.keepClose}</p>
                 <p className="mt-3 text-sm leading-6 text-ocean-900/62">
                   {sessionUser
                     ? retentionState?.isFollowing
-                      ? `You are following this campaign with ${retentionState.followFrequency ?? "weekly"} activity updates.`
-                      : "Follow partner field activity and new evidence as it is published."
-                    : "Sign in to save this campaign and follow partner field activity as it is published."}
+                      ? isIndonesian
+                        ? `Kamu mengikuti kampanye ini dengan pembaruan aktivitas ${followFrequencyLabel}.`
+                        : `You are following this campaign with ${followFrequencyLabel} activity updates.`
+                      : labels.followPrompt
+                    : labels.guestFollowPrompt}
                 </p>
                 <div className="mt-5 grid gap-3">
                   {sessionUser ? (
@@ -701,28 +713,28 @@ export default async function CampaignDetailPage({
                         <input type="hidden" name="next" value={campaignPath} />
                         {!retentionState?.isFollowing ? <input type="hidden" name="frequency" value="weekly" /> : null}
                         <Button type="submit" tone={retentionState?.isFollowing ? "secondary" : "primary"} className="w-full">
-                          {retentionState?.isFollowing ? "Stop Following" : "Follow Weekly Updates"}
+                          {retentionState?.isFollowing ? labels.stopFollowing : labels.followWeekly}
                         </Button>
                       </form>
                       <ButtonLink href="/dashboard/saved" tone="secondary" className="w-full">
-                        Manage Saved Projects
+                        {labels.manageSaved}
                       </ButtonLink>
                     </>
                   ) : (
                     <ButtonLink href={`/login?next=${encodeURIComponent(campaignPath)}`} className="w-full">
-                      Sign in to Follow
+                      {labels.signInFollow}
                     </ButtonLink>
                   )}
                 </div>
               </div>
 
               <div className="rounded-2xl border border-ocean-900/10 bg-ocean-50 p-5 shadow-soft">
-                <p className="text-sm font-bold uppercase tracking-[0.16em] text-kelp-700">Impact at a glance</p>
+                <p className="text-sm font-bold uppercase tracking-[0.16em] text-kelp-700">{labels.impactGlance}</p>
                 <div className="mt-5 grid gap-4">
                   {[
-                    [Waves, campaign.impactTarget.toLocaleString(numberLocale), `${campaign.impactUnit} target`],
-                    [ClipboardCheck, (campaign.updates.length + campaign.evidence.length).toLocaleString(numberLocale), "Activity records"],
-                    [Users, campaign.donors.toLocaleString(numberLocale), "Paid supporters"]
+                    [Waves, campaign.impactTarget.toLocaleString(numberLocale), `${campaign.impactUnit} ${labels.target}`],
+                    [ClipboardCheck, (campaign.updates.length + campaign.evidence.length).toLocaleString(numberLocale), labels.activityRecords],
+                    [Users, campaign.donors.toLocaleString(numberLocale), labels.paidSupporters]
                   ].map(([Icon, value, label]) => (
                     <div key={label as string} className="flex min-w-0 items-center gap-3 border-b border-ocean-900/10 pb-4 last:border-b-0 last:pb-0">
                       <Icon className="text-coral-500" size={24} aria-hidden="true" />
@@ -739,38 +751,20 @@ export default async function CampaignDetailPage({
         </div>
       </section>
 
-      <CampaignSectionTabs tabs={tabs} />
+      <CampaignSectionTabs tabs={tabs} locale={locale} />
 
       <section className="mx-auto grid max-w-7xl gap-8 px-4 py-12 sm:px-6 sm:py-16 lg:px-8 xl:grid-cols-[1fr_340px]">
-        <div className="grid gap-12 sm:gap-16">
+        <div className="grid gap-10 sm:gap-14">
           <section id="overview" className="scroll-mt-40">
-            <SectionHeading eyebrow="Overview" title="Campaign story and public location records" />
+            <SectionHeading eyebrow={labels.overview} title={labels.overviewTitle} />
             <div className="mt-8 grid gap-5">
               <article className="rounded-2xl border border-ocean-900/10 bg-white p-6 shadow-soft">
-                <h2 className="text-2xl font-bold tracking-normal text-ocean-900">Campaign story</h2>
+                <h2 className="text-2xl font-bold tracking-normal text-ocean-900">{labels.story}</h2>
                 <p className="mt-4 leading-8 text-ocean-900/68">{story}</p>
               </article>
 
-              <article className="grid gap-6 rounded-2xl border border-ocean-900/10 bg-white p-6 shadow-soft lg:grid-cols-[0.9fr_1.1fr]">
-                <div>
-                  <h2 className="text-2xl font-bold tracking-normal text-ocean-900">Public campaign summary</h2>
-                  <p className="mt-4 leading-8 text-ocean-900/68">{campaign.summary}</p>
-                </div>
-                {campaign.imageUrl ? (
-                  <Image
-                    src={campaign.imageUrl}
-                    alt={`${campaign.title} campaign image`}
-                    width={760}
-                    height={440}
-                    unoptimized
-                    className="h-72 w-full rounded-xl object-cover"
-                    sizes="(min-width: 1024px) 44vw, 100vw"
-                  />
-                ) : null}
-              </article>
-
               <article className="rounded-2xl border border-ocean-900/10 bg-white p-6 shadow-soft">
-                <h2 className="text-2xl font-bold tracking-normal text-ocean-900">Why {campaign.region}</h2>
+                <h2 className="text-2xl font-bold tracking-normal text-ocean-900">{labels.whyRegion} {campaign.region}</h2>
                 {campaign.sites.length > 0 ? (
                   <div className="mt-4 grid gap-3 md:grid-cols-2">
                     {campaign.sites.map((site) => (
@@ -780,13 +774,13 @@ export default async function CampaignDetailPage({
                           {site.type} / {site.region}
                         </p>
                         <p className="mt-3 text-xs font-bold text-ocean-900/48">
-                          {site.progress}% progress / {site.evidenceCount} activity records
+                          {site.progress}% {labels.progress} / {site.evidenceCount} {labels.activityRecords}
                         </p>
                       </div>
                     ))}
                   </div>
                 ) : (
-                  <p className="mt-4 leading-8 text-ocean-900/68">Public impact sites will appear after partner locations are approved for sharing.</p>
+                  <p className="mt-4 leading-8 text-ocean-900/68">{labels.publicSitesPending}</p>
                 )}
               </article>
             </div>
