@@ -386,27 +386,27 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
     <main className="mx-auto max-w-[1440px] px-4 py-6 sm:px-6 lg:px-8">
       <header className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
         <div>
-          <p className="text-sm font-bold uppercase tracking-[0.16em] text-coral-700">Good morning, {firstName}</p>
-          <h1 className="mt-2 text-3xl font-bold tracking-normal text-ocean-900">Your impact overview</h1>
-          <p className="mt-2 max-w-2xl text-sm leading-6 text-ocean-900/62">Your actions are restoring our ocean through verified contributions, field activity, learning, and expedition activity.</p>
+          <p className="text-sm font-bold uppercase tracking-[0.16em] text-coral-700">{labels.greeting}, {firstName}</p>
+          <h1 className="mt-2 text-3xl font-bold tracking-normal text-ocean-900">{labels.title}</h1>
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-ocean-900/62">{labels.subtitle}</p>
         </div>
         <div className="flex flex-wrap gap-2">
           <ButtonLink href={passportHref} tone="secondary">
             <FileBadge size={17} aria-hidden="true" />
-            View Passport
+            {labels.viewPassport}
           </ButtonLink>
           {canSharePassport ? (
             <PassportCopyButton
               value={passportShareUrl}
-              label="Share Progress"
-              copiedLabel="Link copied"
+              label={labels.shareProgress}
+              copiedLabel={labels.copied}
               shareTitle={`${displayName}'s Terumbu.eco progress`}
-              shareText="See my verified conservation progress on Terumbu.eco."
+              shareText={labels.shareText}
             />
           ) : (
             <ButtonLink href="/dashboard/impact" tone="light">
               <Share2 size={17} aria-hidden="true" />
-              My Impact
+              {labels.myImpact}
             </ButtonLink>
           )}
         </div>
@@ -425,8 +425,8 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
 
       {isNewUser ? (
         <section className="mt-6 rounded-2xl border border-dashed border-ocean-900/18 bg-white p-6 shadow-soft">
-          <p className="text-sm font-bold uppercase tracking-[0.16em] text-coral-700">Welcome to Terumbu.eco</p>
-          <h2 className="mt-2 text-2xl font-bold tracking-normal text-ocean-900">Start your conservation journey</h2>
+          <p className="text-sm font-bold uppercase tracking-[0.16em] text-coral-700">{labels.welcome}</p>
+          <h2 className="mt-2 text-2xl font-bold tracking-normal text-ocean-900">{labels.startJourney}</h2>
           <div className="mt-5 grid gap-3 md:grid-cols-3">
             {starterActions.map((action) => {
               const Icon = action.icon;
@@ -442,56 +442,57 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
         </section>
       ) : null}
 
-      <section className="mt-6 grid gap-4 xl:grid-cols-[1.35fr_1fr]">
+      <section className="mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4" aria-label={labels.title}>
+        {metricCards.map((item) => {
+          const Icon = item.icon;
+
+          return (
+            <article key={item.label} className="min-w-0 rounded-2xl border border-ocean-900/10 bg-white p-5 shadow-soft">
+              <div className={cn("flex size-12 items-center justify-center rounded-full", item.tone)}>
+                <Icon size={22} aria-hidden="true" />
+              </div>
+              <MetricValue className="mt-4 text-ocean-900">{item.value}</MetricValue>
+              <h2 className="mt-1 text-sm font-bold text-ocean-900">{item.label}</h2>
+              <p className="mt-2 text-sm text-ocean-900/58">{item.support}</p>
+              <p className="mt-3 border-t border-ocean-900/10 pt-3 text-xs font-bold text-kelp-700">{item.delta}</p>
+            </article>
+          );
+        })}
+      </section>
+
+      <section className="mt-6">
         <div
-          className="relative min-h-[280px] overflow-hidden rounded-2xl bg-ocean-900 p-6 text-white shadow-soft"
-          style={{ backgroundImage: `linear-gradient(90deg, rgba(7,52,63,0.9), rgba(7,52,63,0.38)), url('${fallbackHeroImage}')`, backgroundSize: "cover", backgroundPosition: "center" }}
+          className="relative min-h-[220px] overflow-hidden rounded-2xl bg-ocean-900 p-6 text-white shadow-soft"
+          style={{ backgroundImage: `linear-gradient(90deg, rgba(7,52,63,0.92), rgba(7,52,63,0.46)), url('${fallbackHeroImage}')`, backgroundSize: "cover", backgroundPosition: "center" }}
         >
-          <div className="relative z-10 max-w-2xl">
-            <div className="flex items-center gap-4">
-              <div className="flex size-20 items-center justify-center rounded-2xl border border-coral-300/60 bg-coral-500/18">
-                <Trophy size={42} aria-hidden="true" className="text-coral-200" />
+          <div className="relative z-10 max-w-3xl">
+            <p className="text-sm font-bold uppercase tracking-[0.16em] text-coral-200">{labels.impactLevel}</p>
+            <div className="mt-4 flex items-center gap-4">
+              <div className="flex size-16 items-center justify-center rounded-2xl border border-coral-300/60 bg-coral-500/18">
+                <Trophy size={34} aria-hidden="true" className="text-coral-200" />
               </div>
               <div>
-                <p className="text-2xl font-bold tracking-normal">Ocean Hero - Level {heroLevel}</p>
-                <p className="mt-1 text-sm text-white/68">{xp.toLocaleString("id-ID")} / {xpTarget.toLocaleString("id-ID")} XP</p>
+                <p className="text-2xl font-bold tracking-normal">Ocean Hero · Level {heroLevel}</p>
+                <p className="mt-1 text-sm text-white/68">{xp.toLocaleString(numberLocale)} / {xpTarget.toLocaleString(numberLocale)} XP</p>
               </div>
             </div>
-            <ProgressMeter value={xpProgress} label="Ocean Hero level progress" className="mt-6 h-3" indicatorClassName="bg-kelp-400" trackClassName="bg-white/18" />
-            <p className="mt-3 text-sm font-semibold text-white/78">{xpRemaining.toLocaleString("id-ID")} XP to reach Ocean Champion</p>
-            <div className="mt-6 grid gap-3 text-sm font-semibold text-white/78 sm:grid-cols-3">
+            <ProgressMeter value={xpProgress} label={labels.levelProgress} className="mt-5 h-3" indicatorClassName="bg-kelp-400" trackClassName="bg-white/18" />
+            <p className="mt-3 text-sm font-semibold text-white/78">{xpRemaining.toLocaleString(numberLocale)} {labels.xpToChampion}</p>
+            <div className="mt-5 flex flex-wrap gap-x-6 gap-y-2 text-sm font-semibold text-white/78">
               <span className="flex items-center gap-2">
                 <ShieldCheck size={17} aria-hidden="true" className="text-kelp-300" />
-                Exclusive badge
+                {labels.exclusiveBadge}
               </span>
               <span className="flex items-center gap-2">
                 <CalendarDays size={17} aria-hidden="true" className="text-kelp-300" />
-                Early trip access
+                {labels.earlyTrip}
               </span>
               <span className="flex items-center gap-2">
                 <Sparkles size={17} aria-hidden="true" className="text-kelp-300" />
-                Partner rewards
+                {labels.partnerRewards}
               </span>
             </div>
           </div>
-        </div>
-
-        <div className="grid gap-4 sm:grid-cols-2">
-          {metricCards.map((item) => {
-            const Icon = item.icon;
-
-            return (
-              <article key={item.label} className="min-w-0 rounded-2xl border border-ocean-900/10 bg-white p-5 shadow-soft">
-                <div className={cn("flex size-14 items-center justify-center rounded-full", item.tone)}>
-                  <Icon size={24} aria-hidden="true" />
-                </div>
-                <MetricValue className="mt-5 text-ocean-900">{item.value}</MetricValue>
-                <h2 className="mt-1 text-sm font-bold text-ocean-900">{item.label}</h2>
-                <p className="mt-3 text-sm text-ocean-900/58">{item.support}</p>
-                <p className="mt-4 border-t border-ocean-900/10 pt-3 text-xs font-bold text-kelp-700">{item.delta}</p>
-              </article>
-            );
-          })}
         </div>
       </section>
 
