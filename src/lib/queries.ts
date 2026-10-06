@@ -2219,11 +2219,12 @@ export async function getImpactMapSites(campaignId?: string): Promise<ImpactSite
       .groupBy(projectEvidence.impactSiteId)
   ]);
 
-  const pendingEvidenceBySite = new Map(
-    pendingEvidenceRows
-      .filter((item): item is typeof item & { impactSiteId: string } => Boolean(item.impactSiteId))
-      .map((item) => [item.impactSiteId, Number(item.total)])
-  );
+  const pendingEvidenceBySite = new Map<string, number>();
+  for (const item of pendingEvidenceRows) {
+    if (item.impactSiteId) {
+      pendingEvidenceBySite.set(item.impactSiteId, Number(item.total));
+    }
+  }
 
   const evidenceBySite = evidenceRows.reduce((grouped, evidence) => {
     if (!evidence.impactSiteId) {
