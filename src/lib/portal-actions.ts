@@ -655,6 +655,16 @@ function parseOptionalDate(value: FormDataEntryValue | null) {
 }
 
 async function imageFromForm(formData: FormData, uploadKey: string, redirectPath: string) {
+  const upload = await readUploadedImageAsDataUrl(formData.get(uploadKey));
+
+  if (upload.error) {
+    redirectPartnerError(formData, redirectPath, `image-${upload.error}`);
+  }
+
+  return upload.dataUrl;
+}
+
+async function publicImageFromForm(formData: FormData, uploadKey: string, redirectPath: string) {
   const upload = await storeUploadedPublicImage(formData.get(uploadKey));
 
   if (upload.error) {
@@ -2204,7 +2214,7 @@ export async function createPartnerCampaignAction(formData: FormData) {
   const goalAmount = parseIdrAmount(formData.get("goalAmount"));
   const currency = normalizeCampaignCurrency(formData.get("currency"), "USD");
   const status = isAdmin ? campaignStatusFromForm(formData.get("status")) : partnerCampaignStatusFromForm(formData.get("status"));
-  const imageUrl = await imageFromForm(formData, "imageFile", "/partner/campaigns/new");
+  const imageUrl = await publicImageFromForm(formData, "imageFile", "/partner/campaigns/new");
   const endsAt = parseOptionalDate(formData.get("endsAt"));
   const requestedImpactLinkMode = formText(formData, "impactLinkMode");
   const impactLinkMode = requestedImpactLinkMode === "new" || requestedImpactLinkMode === "existing" ? requestedImpactLinkMode : null;
@@ -2400,7 +2410,7 @@ export async function updatePartnerCampaignAction(formData: FormData) {
   const goalAmount = parseIdrAmount(formData.get("goalAmount"));
   const currency = normalizeCampaignCurrency(formData.get("currency"), "USD");
   const requestedStatus = campaignStatusFromForm(formData.get("status"));
-  const uploadedImageUrl = await imageFromForm(formData, "imageFile", "/partner/campaigns");
+  const uploadedImageUrl = await publicImageFromForm(formData, "imageFile", "/partner/campaigns");
   const endsAt = parseOptionalDate(formData.get("endsAt"));
   const removeImage = formData.get("removeImage") === "on";
 
