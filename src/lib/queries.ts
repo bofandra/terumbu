@@ -11565,7 +11565,8 @@ export async function getAdminExpeditionPaymentsPage(params: AdminExpeditionPaym
       bookedAt: expeditionBookings.bookedAt,
       expeditionTitle: expeditions.title,
       expeditionSlug: expeditions.slug,
-      providerReference: expeditionBookingPayments.providerReference
+      providerReference: expeditionBookingPayments.providerReference,
+      paymentPayload: expeditionBookingPayments.payload
     })
     .from(expeditionBookings)
     .innerJoin(expeditions, eq(expeditionBookings.expeditionId, expeditions.id))
