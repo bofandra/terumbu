@@ -50,6 +50,7 @@ ENV TERUMBU_DEPLOY_VERSION="${DEPLOY_VERSION}"
 LABEL org.opencontainers.image.revision="${DEPLOY_VERSION}"
 
 RUN addgroup -S nextjs && adduser -S nextjs -G nextjs
+RUN mkdir -p /app/data/corporate-reports && chown -R nextjs:nextjs /app/data
 
 COPY --from=builder --chown=nextjs:nextjs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nextjs /app/.next/static ./.next/static
