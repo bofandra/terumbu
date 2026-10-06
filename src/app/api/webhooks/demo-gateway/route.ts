@@ -1,5 +1,3 @@
-import { createHmac, timingSafeEqual } from "node:crypto";
-
 import { eq } from "drizzle-orm";
 import { NextResponse, type NextRequest } from "next/server";
 
@@ -8,6 +6,7 @@ import {
   expeditionBookingPayments,
   paymentTransactions
 } from "@/db/schema";
+import { demoGatewayWebhookSecret, isValidDemoGatewayWebhookSignature } from "@/lib/demo-gateway-webhook";
 import { transitionDonationPayment, transitionExpeditionBookingPayment } from "@/lib/payment-workflows";
 
 type WebhookPayload = {
@@ -15,29 +14,16 @@ type WebhookPayload = {
   status?: "paid" | "failed" | "expired" | "refunded";
 };
 
-function isValidSignature(body: string, signature: string | null) {
-  const secret = process.env.DEMO_GATEWAY_WEBHOOK_SECRET;
-
-  if (!secret) {
-    return true;
-  }
-
-  if (!signature) {
-    return false;
-  }
-
-  const expected = createHmac("sha256", secret).update(body).digest("hex");
-  const expectedBuffer = Buffer.from(expected, "hex");
-  const signatureBuffer = Buffer.from(signature, "hex");
-
-  return expectedBuffer.length === signatureBuffer.length && timingSafeEqual(expectedBuffer, signatureBuffer);
-}
-
 export async function POST(request: NextRequest) {
   const body = await request.text();
   const signature = request.headers.get("x-terumbu-signature");
+  const webhookSecret = demoGatewayWebhookSecret();
 
-  if (!isValidSignature(body, signature)) {
+  if (!webhookSecret) {
+    return NextResponse.json({ error: "Demo gateway webhook is not configured." }, { status: 503 });
+  }
+
+  if (!isValidDemoGatewayWebhookSignature(body, signature, webhookSecret)) {
     return NextResponse.json({ error: "Invalid webhook signature." }, { status: 401 });
   }
 
