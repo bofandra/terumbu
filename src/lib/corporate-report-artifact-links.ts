@@ -115,6 +115,10 @@ export function normalizeCorporateReportArtifactKey(value: string | null | undef
   return corporateReportArtifactKeys.includes(value as CorporateReportArtifactKey) ? (value as CorporateReportArtifactKey) : null;
 }
 
+export function isPublicCorporateReportArtifactKey(key: CorporateReportArtifactKey) {
+  return key === "pdf";
+}
+
 function manifestFiles(manifest: unknown) {
   if (!isRecord(manifest) || !Array.isArray(manifest.files)) {
     return [];
