@@ -11,7 +11,7 @@ import {
   users
 } from "@/db/schema";
 import { requireRole } from "@/lib/auth";
-import { readUploadedImageAsDataUrl } from "@/lib/storage";
+import { storeUploadedPublicImage } from "@/lib/storage";
 
 function textValue(value: FormDataEntryValue | null, maxLength: number) {
   return String(value ?? "")
@@ -47,7 +47,7 @@ async function writeAdminAuditLog(input: {
 }
 
 async function corporateLogoFromForm(formData: FormData) {
-  const upload = await readUploadedImageAsDataUrl(formData.get("logoFile"));
+  const upload = await storeUploadedPublicImage(formData.get("logoFile"));
 
   if (upload.error) {
     redirect(`/admin/corporate?error=image-${upload.error}`);
@@ -173,7 +173,7 @@ export async function updateCorporateAccountAction(formData: FormData) {
   const accountId = textValue(formData.get("corporateAccountId"), 80);
   const name = textValue(formData.get("accountName"), 180);
   const slug = toSlug(textValue(formData.get("accountSlug"), 180) || name);
-  const upload = await readUploadedImageAsDataUrl(formData.get("logoFile"));
+  const upload = await storeUploadedPublicImage(formData.get("logoFile"));
 
   if (upload.error) {
     corporateRedirect(formData, "error", `image-${upload.error}`);
