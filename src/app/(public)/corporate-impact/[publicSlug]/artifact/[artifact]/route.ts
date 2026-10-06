@@ -4,37 +4,35 @@ import { and, eq } from "drizzle-orm";
 import { notFound } from "next/navigation";
 
 import { db } from "@/db/client";
-import { corporatePermissions, corporatePrograms, corporateReportExports } from "@/db/schema";
-import { requireUser } from "@/lib/auth";
+import { corporateReportExports } from "@/db/schema";
 import {
   corporateReportArtifactContentType,
   corporateReportArtifactDisposition,
   corporateReportArtifactLocalPaths,
   corporateReportArtifactSourceUrl,
+  isPublicCorporateReportArtifactKey,
   normalizeCorporateReportArtifactKey
 } from "@/lib/corporate-report-artifact-links";
 
 export const dynamic = "force-dynamic";
 
-type CorporateReportArtifactRouteProps = {
+type PublicCorporateReportArtifactRouteProps = {
   params: Promise<{
-    reportId: string;
+    publicSlug: string;
     artifact: string;
   }>;
 };
 
-export async function GET(_request: Request, { params }: CorporateReportArtifactRouteProps) {
-  const user = await requireUser("/corporate");
-  const { reportId, artifact } = await params;
+export async function GET(_request: Request, { params }: PublicCorporateReportArtifactRouteProps) {
+  const { publicSlug, artifact } = await params;
   const artifactKey = normalizeCorporateReportArtifactKey(artifact);
 
-  if (!artifactKey) {
+  if (!artifactKey || !isPublicCorporateReportArtifactKey(artifactKey)) {
     notFound();
   }
 
   const [report] = await db
     .select({
-      id: corporateReportExports.id,
       exportCode: corporateReportExports.exportCode,
       fileUrl: corporateReportExports.fileUrl,
       previewUrl: corporateReportExports.previewUrl,
@@ -43,12 +41,12 @@ export async function GET(_request: Request, { params }: CorporateReportArtifact
       metadata: corporateReportExports.metadata
     })
     .from(corporateReportExports)
-    .innerJoin(corporatePrograms, eq(corporateReportExports.programId, corporatePrograms.id))
-    .innerJoin(
-      corporatePermissions,
-      and(eq(corporatePermissions.corporateAccountId, corporatePrograms.corporateAccountId), eq(corporatePermissions.userId, user.id))
+    .where(
+      and(
+        eq(corporateReportExports.publicSlug, publicSlug),
+        eq(corporateReportExports.status, "published")
+      )
     )
-    .where(eq(corporateReportExports.id, reportId))
     .limit(1);
 
   if (!report) {
@@ -69,8 +67,7 @@ export async function GET(_request: Request, { params }: CorporateReportArtifact
       artifactFile = await readFile(localPath);
       break;
     } catch {
-      // Try the next compatible storage location. Legacy public paths are
-      // supported only as a migration fallback for previously generated reports.
+      // Legacy published reports can fall back to the bundled public artifact.
     }
   }
 
@@ -80,9 +77,10 @@ export async function GET(_request: Request, { params }: CorporateReportArtifact
 
   return new Response(new Uint8Array(artifactFile), {
     headers: {
-      "Cache-Control": "private, no-store",
+      "Cache-Control": "public, max-age=300",
       "Content-Disposition": corporateReportArtifactDisposition(report.exportCode, artifactKey),
-      "Content-Type": corporateReportArtifactContentType(artifactKey)
+      "Content-Type": corporateReportArtifactContentType(artifactKey),
+      "X-Content-Type-Options": "nosniff"
     }
   });
 }

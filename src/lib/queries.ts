@@ -81,7 +81,10 @@ import {
 } from "@/lib/academy-assessment";
 import { adminListOffset, adminPaginationMeta, parseAdminListQuery } from "@/lib/admin-list-query";
 import { campaignBudgetUtilization, campaignContentCompleteness, campaignStatuses, impactSiteVerificationStatuses } from "@/lib/campaign-content";
-import { corporateReportArtifactSourceUrl } from "@/lib/corporate-report-artifact-links";
+import {
+  corporateReportArtifactSourceUrl,
+  publicCorporateReportArtifactRoute
+} from "@/lib/corporate-report-artifact-links";
 import {
   destinationArrivalHubs,
   destinationMonthArray,
@@ -6521,6 +6524,8 @@ export async function getPublicCorporateImpactReport(publicSlug: string) {
     report: {
       ...report,
       pdfUrl: corporateReportArtifactSourceUrl(reportArtifactSource, "pdf")
+        ? publicCorporateReportArtifactRoute(report.publicSlug!, "pdf")
+        : null
     },
     portfolio,
     evidence,
