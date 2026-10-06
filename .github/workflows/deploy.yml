@@ -45,10 +45,68 @@ jobs:
       - name: Build
         run: npm run build
 
+  e2e:
+    name: Critical-path E2E
+    runs-on: ubuntu-24.04
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: terumbu_e2e
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d terumbu_e2e"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/terumbu_e2e
+      DEMO_ROLE_PASSWORD: TerumbuE2E2026!
+      SESSION_COOKIE_SECURE: "false"
+      NEXT_PUBLIC_APP_URL: http://127.0.0.1:3100
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Prepare E2E database from production migrations
+        run: |
+          npm run db:migrate
+          npm run db:seed
+          npm run db:seed-role-users
+
+      - name: Run critical-path E2E
+        run: npm run test:e2e
+
+      - name: Upload E2E diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-diagnostics
+          path: |
+            playwright-report
+            test-results
+          if-no-files-found: ignore
+          retention-days: 7
+
   deploy:
     name: Deploy to VPS
     runs-on: ubuntu-24.04
-    needs: verify
+    needs: [verify, e2e]
     if: github.ref == 'refs/heads/main'
     environment: production
     steps:

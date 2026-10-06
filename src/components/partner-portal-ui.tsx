@@ -887,7 +887,7 @@ export function CampaignActivityForm({
   const canSubmit = Boolean(lockedCampaign) && canCreateActivity && hasImpactSite;
 
   return (
-    <form action={createCampaignActivityAction} encType="multipart/form-data" data-testid="partner-activity-form" className="rounded-lg border border-ocean-900/10 bg-white p-5 shadow-soft">
+    <form action={createCampaignActivityAction} data-testid="partner-activity-form" className="rounded-lg border border-ocean-900/10 bg-white p-5 shadow-soft">
       <input type="hidden" name="redirectTo" value={redirectTo} />
       <div className="flex items-center justify-between gap-3">
         <div>
@@ -938,6 +938,17 @@ export function CampaignActivityForm({
             </select>
           </Field>       </div>
 
+        <Field
+          label="Publishing mode"
+          help="Evidence-only files stay private during review. Combined submissions publish the update but keep the evidence object private until it is verified."
+        >
+          <select name="activityUse" defaultValue="public_update" className={inputClassName} disabled={!canSubmit} required>
+            <option value="public_update">Public update only</option>
+            <option value="evidence">Evidence only — private until verified</option>
+            <option value="update_and_evidence">Public update + private evidence</option>
+          </select>
+        </Field>
+
         <Field label="Restoration batch" help="Select a batch when this attachment is field evidence for planting or monitoring.">
           <select name="restorationBatchId" defaultValue="" className={inputClassName} disabled={!canSubmit}>
             <option value="">General campaign activity / no batch</option>
@@ -961,7 +972,7 @@ export function CampaignActivityForm({
               <option value="field_report">Field report</option>
             </select>
           </Field>
-          <Field label="Upload evidence" help={`${partnerImageUploadHelp} Optional; an uploaded file enters project verification review.`}>
+          <Field label="Upload image / evidence" help={`${partnerImageUploadHelp} Required for evidence modes; evidence objects remain private until verified.`}>
             <input name="imageFile" type="file" accept="image/png,image/jpeg,image/webp,image/gif" className={inputClassName} disabled={!canSubmit} />
           </Field>
         </div>
@@ -995,7 +1006,7 @@ export function CampaignActivityForm({
       </div>
       <Button type="submit" className="mt-5" disabled={!canSubmit}>
         <ClipboardList className="size-4" aria-hidden="true" />
-        Save update
+        Save campaign activity
       </Button>
     </form>
   );
