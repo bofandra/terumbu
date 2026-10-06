@@ -25,7 +25,7 @@ function trimmed(value: string | undefined) {
   return value?.trim() || "";
 }
 
-export function r2StorageConfiguration(env: NodeJS.ProcessEnv = process.env): R2StorageConfiguration {
+export function r2StorageConfiguration(env: Record<string, string | undefined> = process.env): R2StorageConfiguration {
   const values = Object.fromEntries(R2_ENV_KEYS.map((key) => [key, trimmed(env[key])])) as Record<(typeof R2_ENV_KEYS)[number], string>;
   const configuredCount = R2_ENV_KEYS.filter((key) => values[key]).length;
   const missing = R2_ENV_KEYS.filter((key) => !values[key]);
