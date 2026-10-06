@@ -1,5 +1,8 @@
 import path from "node:path";
 
+const PRIVATE_REPORT_PREFIX = "private://corporate-reports/";
+const LEGACY_PUBLIC_REPORT_PREFIX = "/generated/corporate-reports/";
+
 export const corporateReportArtifactKeys = ["preview", "data", "evidence", "pdf", "workbook", "portfolio-csv", "evidence-csv", "manifest"] as const;
 
 export type CorporateReportArtifactKey = (typeof corporateReportArtifactKeys)[number];
@@ -173,6 +176,24 @@ export function corporateReportArtifactRoute(reportId: string, key: CorporateRep
   return `/corporate/reports/${encodeURIComponent(reportId)}/artifact/${key}`;
 }
 
+export function publicCorporateReportArtifactRoute(publicSlug: string, key: CorporateReportArtifactKey) {
+  return `/corporate-impact/${encodeURIComponent(publicSlug)}/artifact/${key}`;
+}
+
+export function corporateReportArtifactStorageRoot() {
+  return path.join(process.cwd(), "data", "corporate-reports");
+}
+
+export function corporateReportArtifactStorageUrl(filename: string) {
+  const safeFilename = path.basename(filename);
+
+  if (!safeFilename || safeFilename !== filename || safeFilename === "." || safeFilename === "..") {
+    throw new Error("Invalid corporate report artifact filename.");
+  }
+
+  return `${PRIVATE_REPORT_PREFIX}${encodeURIComponent(safeFilename)}`;
+}
+
 function safeFilenamePart(value: string) {
   return value
     .toLowerCase()
@@ -198,28 +219,60 @@ export function corporateReportArtifactDisposition(exportCode: string, key: Corp
   return `${definition.disposition}; filename="${filename}"`;
 }
 
-export function corporateReportArtifactLocalPath(url: string | null | undefined) {
-  if (!url || !url.startsWith("/generated/corporate-reports/")) {
-    return null;
-  }
+function safeResolvedPath(root: string, relativePath: string) {
+  const resolvedPath = path.join(root, relativePath);
+  const relation = path.relative(root, resolvedPath);
 
-  let decodedPath = "";
-
-  try {
-    decodedPath = decodeURIComponent(url.split("?")[0] ?? "");
-  } catch {
-    return null;
-  }
-
-  const relativePath = decodedPath.replace(/^\/+/, "");
-  const publicRoot = path.join(process.cwd(), "public");
-  const reportsRoot = path.join(publicRoot, "generated", "corporate-reports");
-  const resolvedPath = path.join(publicRoot, relativePath);
-  const relation = path.relative(reportsRoot, resolvedPath);
-
-  if (relation.startsWith("..") || path.isAbsolute(relation)) {
+  if (!relativePath || relation.startsWith("..") || path.isAbsolute(relation)) {
     return null;
   }
 
   return resolvedPath;
+}
+
+export function corporateReportArtifactLocalPaths(url: string | null | undefined) {
+  if (!url) {
+    return [];
+  }
+
+  if (url.startsWith(PRIVATE_REPORT_PREFIX)) {
+    const encodedFilename = url.slice(PRIVATE_REPORT_PREFIX.length).split("?")[0] ?? "";
+    let filename = "";
+
+    try {
+      filename = decodeURIComponent(encodedFilename);
+    } catch {
+      return [];
+    }
+
+    if (!filename || filename.includes("/") || filename.includes("\\") || filename === "." || filename === "..") {
+      return [];
+    }
+
+    const privatePath = safeResolvedPath(corporateReportArtifactStorageRoot(), filename);
+    return privatePath ? [privatePath] : [];
+  }
+
+  if (!url.startsWith(LEGACY_PUBLIC_REPORT_PREFIX)) {
+    return [];
+  }
+
+  const encodedRelativePath = url.slice(LEGACY_PUBLIC_REPORT_PREFIX.length).split("?")[0] ?? "";
+  let relativePath = "";
+
+  try {
+    relativePath = decodeURIComponent(encodedRelativePath);
+  } catch {
+    return [];
+  }
+
+  const privatePath = safeResolvedPath(corporateReportArtifactStorageRoot(), relativePath);
+  const legacyPublicRoot = path.join(process.cwd(), "public", "generated", "corporate-reports");
+  const legacyPublicPath = safeResolvedPath(legacyPublicRoot, relativePath);
+
+  return [privatePath, legacyPublicPath].filter((value): value is string => Boolean(value));
+}
+
+export function corporateReportArtifactLocalPath(url: string | null | undefined) {
+  return corporateReportArtifactLocalPaths(url)[0] ?? null;
 }
