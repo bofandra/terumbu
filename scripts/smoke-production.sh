@@ -55,11 +55,25 @@ assert_sitemap_path() {
   grep -Fq "${path}" <<<"${sitemap}" || fail "sitemap.xml is missing ${path}"
 }
 
+assert_security_headers() {
+  local response_headers
+  response_headers="$(curl --max-time 10 -fsS -D - -o /dev/null "${BASE_URL}/")" || fail "unable to read security headers"
+
+  grep -Eiq '^x-content-type-options:[[:space:]]*nosniff\r?$' <<<"${response_headers}" || fail "missing X-Content-Type-Options: nosniff"
+  grep -Eiq '^x-frame-options:[[:space:]]*DENY\r?$' <<<"${response_headers}" || fail "missing X-Frame-Options: DENY"
+  grep -Eiq '^referrer-policy:[[:space:]]*strict-origin-when-cross-origin\r?$' <<<"${response_headers}" || fail "missing strict Referrer-Policy"
+  grep -Eiq "^content-security-policy:.*frame-ancestors 'none'" <<<"${response_headers}" || fail "CSP does not deny framing"
+  grep -Eiq "^content-security-policy:.*object-src 'none'" <<<"${response_headers}" || fail "CSP does not block object content"
+  echo "Security headers OK" >&2
+}
+
 health="$(curl --max-time 10 -fsS "${BASE_URL}/api/health")" || fail "/api/health is unavailable"
 grep -q '"status":"ok"' <<<"${health}" || fail "/api/health did not report ok"
 if [ -n "${EXPECTED_VERSION}" ]; then
   grep -q "\"version\":\"${EXPECTED_VERSION}\"" <<<"${health}" || fail "running version does not match ${EXPECTED_VERSION}"
 fi
+
+assert_security_headers
 
 assert_public_page "/" >/dev/null
 campaigns="$(assert_public_page "/campaigns")"
