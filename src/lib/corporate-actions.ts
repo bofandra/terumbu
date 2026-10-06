@@ -52,6 +52,10 @@ import {
   type CorporateReportArtifactInput
 } from "@/lib/corporate-report-artifacts";
 import {
+  corporateReportArtifactStorageRoot,
+  corporateReportArtifactStorageUrl
+} from "@/lib/corporate-report-artifact-links";
+import {
   buildCorporateReportArtifactManifest,
   corporateReportFormatLabel,
   corporateReportTypeLabel,
@@ -564,9 +568,10 @@ async function writeReportArtifacts(input: {
   data: NonNullable<Awaited<ReturnType<typeof getCorporateDashboardData>>>;
 }) {
   const generatedAt = new Date();
-  const folder = path.join(process.cwd(), "public", "generated", "corporate-reports");
+  const folder = corporateReportArtifactStorageRoot();
   const baseName = input.exportCode.toLowerCase();
-  const pdfUrl = `/generated/corporate-reports/${baseName}.pdf`;
+  const pdfFilename = `${baseName}.pdf`;
+  const pdfUrl = corporateReportArtifactStorageUrl(pdfFilename);
   const artifactInput: CorporateReportArtifactInput = {
     exportCode: input.exportCode,
     reportTypeLabel: corporateReportTypeLabel(input.reportType),
@@ -605,7 +610,7 @@ async function writeReportArtifacts(input: {
   });
 
   await mkdir(folder, { recursive: true });
-  await writeFile(path.join(folder, `${baseName}.pdf`), buildCorporateReportPdf(artifactInput));
+  await writeFile(path.join(folder, pdfFilename), buildCorporateReportPdf(artifactInput));
 
   return {
     fileUrl: pdfUrl,
@@ -762,9 +767,10 @@ export async function createCorporateActivityPdfReportAction(formData: FormData)
     .where(and(eq(corporateReportExports.programId, context.programId), eq(corporateReportExports.reportType, activityScope)));
   const artifactVersion = nextArtifactVersion(Number(existingCount ?? 0));
   const code = `TRB-${activityScope === "donations" ? "DON" : "EXP"}-${generatedAt.getUTCFullYear()}-${randomBytes(4).toString("hex").toUpperCase()}`;
-  const folder = path.join(process.cwd(), "public", "generated", "corporate-reports");
+  const folder = corporateReportArtifactStorageRoot();
   const baseName = code.toLowerCase();
-  const pdfUrl = `/generated/corporate-reports/${baseName}.pdf`;
+  const pdfFilename = `${baseName}.pdf`;
+  const pdfUrl = corporateReportArtifactStorageUrl(pdfFilename);
 
   let finalReportInput: CorporateActivityReportInput | null = null;
 
@@ -828,7 +834,7 @@ export async function createCorporateActivityPdfReportAction(formData: FormData)
   }
 
   await mkdir(folder, { recursive: true });
-  await writeFile(path.join(folder, `${baseName}.pdf`), buildCorporateActivityReportPdf(finalReportInput));
+  await writeFile(path.join(folder, pdfFilename), buildCorporateActivityReportPdf(finalReportInput));
 
   const [report] = await db
     .insert(corporateReportExports)
