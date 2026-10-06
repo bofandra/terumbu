@@ -107,7 +107,7 @@ import {
 import { ensureCompletedExpeditionPassportItem, recordPaymentOperation, transitionDonationPayment, transitionExpeditionBookingPayment } from "@/lib/payment-workflows";
 import { upsertCarbonKgPerUsd } from "@/lib/platform-settings";
 import { processDueDonationSubscriptions } from "@/lib/subscription-billing";
-import { getEvidenceStorageProvider, readUploadedImageAsDataUrl } from "@/lib/storage";
+import { getEvidenceStorageProvider, readUploadedImageAsDataUrl, storeUploadedPublicImage } from "@/lib/storage";
 import { formatCurrency } from "@/lib/utils";
 
 function evidenceCode() {
@@ -655,7 +655,7 @@ function parseOptionalDate(value: FormDataEntryValue | null) {
 }
 
 async function imageFromForm(formData: FormData, uploadKey: string, redirectPath: string) {
-  const upload = await readUploadedImageAsDataUrl(formData.get(uploadKey));
+  const upload = await storeUploadedPublicImage(formData.get(uploadKey));
 
   if (upload.error) {
     redirectPartnerError(formData, redirectPath, `image-${upload.error}`);
@@ -665,7 +665,7 @@ async function imageFromForm(formData: FormData, uploadKey: string, redirectPath
 }
 
 async function uploadedPartnerImage(formData: FormData, key: string, redirectPath = "/partner/expeditions") {
-  const upload = await readUploadedImageAsDataUrl(formData.get(key));
+  const upload = await storeUploadedPublicImage(formData.get(key));
 
   if (upload.error) {
     redirectPartnerError(formData, redirectPath, `image-${upload.error}`);
@@ -678,7 +678,7 @@ async function uploadedPartnerImages(formData: FormData, key: string, redirectPa
   const uploads: Array<string | null> = [];
 
   for (const value of formData.getAll(key)) {
-    const upload = await readUploadedImageAsDataUrl(value);
+    const upload = await storeUploadedPublicImage(value);
 
     if (upload.error) {
       redirectPartnerError(formData, redirectPath, `image-${upload.error}`);
@@ -761,7 +761,7 @@ async function destinationFormValues(formData: FormData, existingHeroImageUrl: s
   const arrivalHubs = destinationArrivalHubsFromForm(formData);
   const travelNotes = formLines(formData, "travelNotes");
   const responsibleTravelNotes = formLines(formData, "responsibleTravelNotes");
-  const upload = await readUploadedImageAsDataUrl(formData.get("heroFile"));
+  const upload = await storeUploadedPublicImage(formData.get("heroFile"));
 
   if (upload.error) {
     redirectAdminDestinationError(`image-${upload.error}`, formData, ["heroFile"]);
@@ -1459,7 +1459,7 @@ async function syncPartnerRoleForUser(userId: string) {
 }
 
 async function campaignContentImageFromForm(formData: FormData, fallbackPath: string) {
-  const upload = await readUploadedImageAsDataUrl(formData.get("fileUpload"));
+  const upload = await storeUploadedPublicImage(formData.get("fileUpload"));
 
   if (upload.error) {
     redirectCampaignContentError(formData, fallbackPath, `image-${upload.error}`);
@@ -1469,7 +1469,7 @@ async function campaignContentImageFromForm(formData: FormData, fallbackPath: st
 }
 
 async function campaignContentPortraitFromForm(formData: FormData, fallbackPath: string) {
-  const upload = await readUploadedImageAsDataUrl(formData.get("imageFile"));
+  const upload = await storeUploadedPublicImage(formData.get("imageFile"));
 
   if (upload.error) {
     redirectCampaignContentError(formData, fallbackPath, `image-${upload.error}`);
@@ -1479,7 +1479,7 @@ async function campaignContentPortraitFromForm(formData: FormData, fallbackPath:
 }
 
 async function logoFromAdminPartnerForm(formData: FormData) {
-  const upload = await readUploadedImageAsDataUrl(formData.get("logoFile"));
+  const upload = await storeUploadedPublicImage(formData.get("logoFile"));
 
   if (upload.error) {
     redirectAdminPartnerError(`image-${upload.error}`, formData, ["logoFile"]);
