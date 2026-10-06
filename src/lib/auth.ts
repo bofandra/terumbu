@@ -1,6 +1,4 @@
-import { randomBytes } from "node:crypto";
-
-import { and, eq, gt } from "drizzle-orm";
+import { and, eq, gt, inArray } from "drizzle-orm";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
@@ -8,6 +6,7 @@ import { db } from "@/db/client";
 import { corporatePermissions, profiles, roles, sessions, userRoles, users } from "@/db/schema";
 import { defaultAuthenticatedPathForAccount, forbiddenRedirectPath, internalRedirectPath, REGULAR_ACCOUNT_HOME } from "@/lib/account-destinations";
 import { shouldUseSecureSessionCookie } from "@/lib/session-cookie";
+import { newSessionToken, sessionTokenLookupCandidates, storedSessionToken } from "@/lib/session-token";
 export { createPasswordHash, verifyPassword } from "@/lib/password";
 
 const SESSION_COOKIE = "terumbu_session";
@@ -23,12 +22,12 @@ export type SessionUser = {
 };
 
 export async function createSession(userId: string) {
-  const token = randomBytes(32).toString("hex");
+  const token = newSessionToken();
   const expiresAt = new Date(Date.now() + SESSION_MAX_AGE_SECONDS * 1000);
 
   await db.insert(sessions).values({
     userId,
-    sessionToken: token,
+    sessionToken: storedSessionToken(token),
     expiresAt
   });
 
@@ -51,6 +50,12 @@ export async function getSessionUser(): Promise<SessionUser | null> {
     return null;
   }
 
+  const tokenCandidates = sessionTokenLookupCandidates(token);
+
+  if (tokenCandidates.length === 0) {
+    return null;
+  }
+
   const [sessionUser] = await db
     .select({
       id: users.id,
@@ -63,7 +68,7 @@ export async function getSessionUser(): Promise<SessionUser | null> {
     .from(sessions)
     .innerJoin(users, eq(sessions.userId, users.id))
     .leftJoin(profiles, eq(profiles.userId, users.id))
-    .where(and(eq(sessions.sessionToken, token), gt(sessions.expiresAt, new Date())))
+    .where(and(inArray(sessions.sessionToken, tokenCandidates), gt(sessions.expiresAt, new Date())))
     .limit(1);
 
   return sessionUser ?? null;
@@ -150,7 +155,11 @@ export async function destroyCurrentSession() {
   const token = cookieStore.get(SESSION_COOKIE)?.value;
 
   if (token) {
-    await db.delete(sessions).where(eq(sessions.sessionToken, token));
+    const tokenCandidates = sessionTokenLookupCandidates(token);
+
+    if (tokenCandidates.length > 0) {
+      await db.delete(sessions).where(inArray(sessions.sessionToken, tokenCandidates));
+    }
   }
 
   cookieStore.delete(SESSION_COOKIE);
