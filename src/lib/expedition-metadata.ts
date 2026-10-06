@@ -1,3 +1,4 @@
+import { safeEmbedUrl, safeImageUrl, safeNavigationUrl } from "@/lib/safe-url";
 import { formatCurrency } from "@/lib/utils";
 
 export type ExpeditionGalleryImage = {
@@ -263,7 +264,7 @@ export function normalizeExpeditionDetailMetadata(metadata: unknown, defaults: E
   return {
     categoryLabel: text(source.categoryLabel, defaults.categoryLabel),
     activitySummary: text(source.activitySummary, defaults.activitySummary),
-    documentationUrl: typeof source.documentationUrl === "string" ? source.documentationUrl.trim() : defaults.documentationUrl,
+    documentationUrl: safeNavigationUrl(source.documentationUrl, defaults.documentationUrl),
     rating: numberValue(source.rating, defaults.rating),
     reviewCount: numberValue(source.reviewCount, defaults.reviewCount),
     participantCount: numberValue(source.participantCount, defaults.participantCount),
@@ -274,7 +275,7 @@ export function normalizeExpeditionDetailMetadata(metadata: unknown, defaults: E
     tags: textArray(source.tags, defaults.tags),
     quickFacts: pairArray(source.quickFacts, defaults.quickFacts),
     galleryImages: objectArray(source.galleryImages, defaults.galleryImages, (item, itemFallback) => ({
-      src: text(item.src, itemFallback.src),
+      src: safeImageUrl(item.src, itemFallback.src) ?? "",
       label: text(item.label, itemFallback.label),
       caption: text(item.caption, itemFallback.caption),
       provenance: text(item.provenance, itemFallback.provenance)
@@ -282,7 +283,7 @@ export function normalizeExpeditionDetailMetadata(metadata: unknown, defaults: E
     hostedBy: {
       title: text(hostedBy.title, defaults.hostedBy.title),
       verificationLabel: text(hostedBy.verificationLabel, defaults.hostedBy.verificationLabel),
-      profileHref: typeof hostedBy.profileHref === "string" ? hostedBy.profileHref.trim() : defaults.hostedBy.profileHref,
+      profileHref: safeNavigationUrl(hostedBy.profileHref, defaults.hostedBy.profileHref),
       profileLabel: text(hostedBy.profileLabel, defaults.hostedBy.profileLabel)
     },
     overview: {
@@ -331,7 +332,7 @@ export function normalizeExpeditionDetailMetadata(metadata: unknown, defaults: E
     route: {
       title: text(route.title, defaults.route.title),
       mapTitle: text(route.mapTitle, defaults.route.mapTitle),
-      mapEmbedUrl: text(route.mapEmbedUrl, defaults.route.mapEmbedUrl),
+      mapEmbedUrl: safeEmbedUrl(route.mapEmbedUrl, defaults.route.mapEmbedUrl),
       privacyNote: text(route.privacyNote, defaults.route.privacyNote),
       sidebarTitle: text(route.sidebarTitle, defaults.route.sidebarTitle),
       sidebarNote: text(route.sidebarNote, defaults.route.sidebarNote),
@@ -364,8 +365,8 @@ export function normalizeExpeditionDetailMetadata(metadata: unknown, defaults: E
     preparationCourse: {
       title: text(preparationCourse.title, defaults.preparationCourse.title),
       summary: text(preparationCourse.summary, defaults.preparationCourse.summary),
-      imageUrl: typeof preparationCourse.imageUrl === "string" && preparationCourse.imageUrl.trim() ? preparationCourse.imageUrl.trim() : defaults.preparationCourse.imageUrl,
-      href: text(preparationCourse.href, defaults.preparationCourse.href),
+      imageUrl: safeImageUrl(preparationCourse.imageUrl, defaults.preparationCourse.imageUrl),
+      href: safeNavigationUrl(preparationCourse.href, defaults.preparationCourse.href),
       ctaLabel: text(preparationCourse.ctaLabel, defaults.preparationCourse.ctaLabel)
     },
     reviewCategories: objectArray(source.reviewCategories, defaults.reviewCategories, (item, itemFallback) => ({
