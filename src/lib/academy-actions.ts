@@ -35,7 +35,7 @@ import {
 import { trackEvent } from "@/lib/analytics";
 import { requireRole, requireUser } from "@/lib/auth";
 import { safeRedirectPath } from "@/lib/auth";
-import { readUploadedImageAsDataUrl } from "@/lib/storage";
+import { storeUploadedPublicImage } from "@/lib/storage";
 
 function certificateSlug(courseSlug: string) {
   return `${courseSlug}-${randomBytes(4).toString("hex")}`;
@@ -101,7 +101,7 @@ function pathWithQuery(path: string, query: string) {
 }
 
 async function courseImageFromForm(formData: FormData) {
-  const upload = await readUploadedImageAsDataUrl(formData.get("imageFile"));
+  const upload = await storeUploadedPublicImage(formData.get("imageFile"));
 
   if (upload.error) {
     redirect(`/admin/academy?error=image-${upload.error}`);
