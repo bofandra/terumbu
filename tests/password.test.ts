@@ -8,6 +8,8 @@ test("password hashes verify only the original password", () => {
 
   assert.equal(verifyPassword("TerumbuDemo2026!", hash), true);
   assert.equal(verifyPassword("wrong-password", hash), false);
+  assert.equal(verifyPassword("anything", null), false);
+  assert.equal(verifyPassword("anything", "malformed"), false);
 });
 
 test("invalid stored password hashes are rejected", () => {
