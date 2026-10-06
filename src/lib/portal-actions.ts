@@ -4815,7 +4815,7 @@ export async function createCampaignUpdateAction(formData: FormData) {
 export async function submitEvidenceAction(formData: FormData) {
   const campaignId = formText(formData, "campaignId");
 
-  formData.set("activityUse", "update_and_evidence");
+  formData.set("activityUse", "evidence");
   formData.set("redirectTo", campaignId ? `/partner/campaigns/${campaignId}?tab=activity` : "/partner/campaigns");
 
   if (!formText(formData, "body")) {
