@@ -12,6 +12,7 @@ import {
   corporateReportArtifactSourceUrl,
   corporateReportArtifactStorageRoot,
   corporateReportArtifactStorageUrl,
+  isPublicCorporateReportArtifactKey,
   normalizeCorporateReportArtifactKey,
   publicCorporateReportArtifactRoute
 } from "../src/lib/corporate-report-artifact-links";
@@ -48,6 +49,8 @@ test("corporate report artifact helpers resolve top-level, manifest, and metadat
 test("corporate report artifact helpers normalize keys, routes, names, and local paths", () => {
   assert.equal(normalizeCorporateReportArtifactKey("pdf"), "pdf");
   assert.equal(normalizeCorporateReportArtifactKey("zip"), null);
+  assert.equal(isPublicCorporateReportArtifactKey("pdf"), true);
+  assert.equal(isPublicCorporateReportArtifactKey("evidence"), false);
   assert.equal(corporateReportArtifactRoute("report 1", "pdf"), "/corporate/reports/report%201/artifact/pdf");
   assert.equal(publicCorporateReportArtifactRoute("public report", "pdf"), "/corporate-impact/public%20report/artifact/pdf");
   assert.equal(corporateReportArtifactFilename("TRB/ESG 2026 ABCD", "workbook"), "trb-esg-2026-abcd-workbook.xlsx");
