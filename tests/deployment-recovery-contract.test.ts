@@ -35,3 +35,11 @@ test("production smoke suite verifies baseline security headers", () => {
   assert.match(smokeScript, /frame-ancestors 'none'/);
   assert.match(smokeScript, /object-src 'none'/);
 });
+
+test("production smoke script remains a single coherent suite", () => {
+  const smokeScript = readFileSync(path.join(process.cwd(), "scripts", "smoke-production.sh"), "utf8");
+
+  assert.equal((smokeScript.match(/health="\$\(curl --max-time 10 -fsS/g) ?? []).length, 1);
+  assert.equal((smokeScript.match(/Production smoke suite passed\./g) ?? []).length, 1);
+  assert.equal((smokeScript.match(/assert_security_headers\(\)/g) ?? []).length, 1);
+});
