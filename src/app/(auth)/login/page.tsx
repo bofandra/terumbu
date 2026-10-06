@@ -44,9 +44,15 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
           </p>
         ) : null}
 
+        {params?.error === "rate_limit" ? (
+          <p className="mt-4 rounded-xl border border-coral-500/20 bg-coral-100 px-4 py-3 text-sm font-semibold text-coral-700">
+            Too many failed login attempts from this client. Try again in about 15 minutes.
+          </p>
+        ) : null}
+
         {params?.error === "unverified" ? (
           <div className="mt-4 rounded-xl border border-coral-500/20 bg-coral-100 px-4 py-3">
-            <p className="text-sm font-semibold text-coral-700">Verify your email before logging in. A verification email has been sent.</p>
+            <p className="text-sm font-semibold text-coral-700">Verify your email before logging in. Verification emails are rate-limited to protect your account.</p>
             <form action={requestVerificationEmailAction} className="mt-3 grid min-w-0 gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">
               <input type="hidden" name="next" value={nextPath} />
               <input
