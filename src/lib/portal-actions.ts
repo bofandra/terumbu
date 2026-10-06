@@ -4826,13 +4826,12 @@ export async function submitEvidenceAction(formData: FormData) {
 }
 
 export async function reviseEvidenceAction(formData: FormData) {
-  const user = await requirePartnerRole( "/partner/activity");
+  const user = await requirePartnerRole("/partner/activity");
   const evidenceId = formText(formData, "evidenceId");
   const title = formText(formData, "title");
   const body = formText(formData, "body");
-  const attachmentUrl = await imageFromForm(formData, "imageFile", "/partner/activity");
 
-  if (!evidenceId || !title || !attachmentUrl) {
+  if (!evidenceId || !title) {
     redirectPartnerError(formData, "/partner/activity", "evidence-revision");
   }
 
@@ -4859,8 +4858,18 @@ export async function reviseEvidenceAction(formData: FormData) {
     redirectPartnerError(formData, "/partner/activity", "evidence-state");
   }
 
+  const attachmentUpload = await storeUploadedPrivateImage(formData.get("imageFile"), {
+    namespace: "evidence",
+    appUrl: `/private-media/evidence/${evidence.evidenceCode}`
+  });
+
+  if (attachmentUpload.error || !attachmentUpload.dataUrl) {
+    redirectPartnerError(formData, "/partner/activity", attachmentUpload.error ? `image-${attachmentUpload.error}` : "evidence-revision");
+  }
+
+  const attachmentUrl = attachmentUpload.dataUrl;
   const now = new Date();
-  const storageProvider = attachmentUrl.startsWith("data:image/") ? "database_inline" : getEvidenceStorageProvider();
+  const storageProvider = attachmentUpload.storageProvider ?? "local_demo";
   const reviewAction = evidenceReviewActionForTransition({
     fromStatus: evidence.verificationStatus,
     toStatus: "submitted"
@@ -4884,7 +4893,9 @@ export async function reviseEvidenceAction(formData: FormData) {
         metadata: {
           observation: body || null,
           revisedAt: now.toISOString(),
-          revisedByUserId: user.id
+          revisedByUserId: user.id,
+          storageObjectKey: attachmentUpload.objectKey ?? null,
+          storageContentType: attachmentUpload.contentType ?? null
         }
       })
       .where(eq(projectEvidence.id, evidenceId));
@@ -4897,7 +4908,13 @@ export async function reviseEvidenceAction(formData: FormData) {
         mediaUrl: attachmentUrl,
         verificationStatus: "submitted",
         verifiedAt: null,
-        storageProvider
+        storageProvider,
+        metadata: {
+          evidenceCode: evidence.evidenceCode,
+          revisedAt: now.toISOString(),
+          storageObjectKey: attachmentUpload.objectKey ?? null,
+          storageContentType: attachmentUpload.contentType ?? null
+        }
       })
       .where(eq(campaignActivities.sourceEvidenceId, evidenceId));
 
