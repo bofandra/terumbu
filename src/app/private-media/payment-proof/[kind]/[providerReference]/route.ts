@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 
 import { db } from "@/db/client";
 import {
@@ -44,14 +44,14 @@ export async function GET(
           await db
             .select({ payload: paymentTransactions.payload })
             .from(paymentTransactions)
-            .where(eq(paymentTransactions.providerReference, providerReference))
+            .where(and(eq(paymentTransactions.provider, "manual_external"), eq(paymentTransactions.providerReference, providerReference)))
             .limit(1)
         )[0]
       : (
           await db
             .select({ payload: expeditionBookingPayments.payload })
             .from(expeditionBookingPayments)
-            .where(eq(expeditionBookingPayments.providerReference, providerReference))
+            .where(and(eq(expeditionBookingPayments.provider, "manual_external"), eq(expeditionBookingPayments.providerReference, providerReference)))
             .limit(1)
         )[0];
 
