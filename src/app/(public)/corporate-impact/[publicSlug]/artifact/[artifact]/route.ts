@@ -10,6 +10,7 @@ import {
   corporateReportArtifactDisposition,
   corporateReportArtifactLocalPaths,
   corporateReportArtifactSourceUrl,
+  isPublicCorporateReportArtifactKey,
   normalizeCorporateReportArtifactKey
 } from "@/lib/corporate-report-artifact-links";
 
@@ -26,7 +27,7 @@ export async function GET(_request: Request, { params }: PublicCorporateReportAr
   const { publicSlug, artifact } = await params;
   const artifactKey = normalizeCorporateReportArtifactKey(artifact);
 
-  if (artifactKey !== "pdf") {
+  if (!artifactKey || !isPublicCorporateReportArtifactKey(artifactKey)) {
     notFound();
   }
 
