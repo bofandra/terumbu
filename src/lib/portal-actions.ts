@@ -4622,11 +4622,11 @@ export async function createCampaignActivityAction(formData: FormData) {
   const financeSpendAmount = parseOptionalAmount(formData.get("financeSpendAmount"));
   const financeSpendCurrency = normalizeCampaignCurrency(formData.get("financeSpendCurrency"), "USD");
   const restorationBatchId = nullableText(formData, "restorationBatchId");
-  const hasLegacyActivityUse = rawActivityUse !== null;
-  const shouldPublish = hasLegacyActivityUse ? activityUse === "public_update" || activityUse === "update_and_evidence" : true;
+  const hasExplicitActivityUse = rawActivityUse !== null;
+  const shouldPublish = hasExplicitActivityUse ? activityUse === "public_update" || activityUse === "update_and_evidence" : true;
   const rawImage = formData.get("imageFile");
   const hasImageUpload = Boolean(rawImage && typeof rawImage !== "string" && rawImage.size > 0);
-  const shouldSubmitEvidence = hasLegacyActivityUse ? activityUse === "evidence" || activityUse === "update_and_evidence" : hasImageUpload;
+  const shouldSubmitEvidence = hasExplicitActivityUse ? activityUse === "evidence" || activityUse === "update_and_evidence" : hasImageUpload;
   const hasFinanceInput = Boolean(financeCategoryInput || financeSpendAmount);
 
   if (
@@ -4634,7 +4634,7 @@ export async function createCampaignActivityAction(formData: FormData) {
     !title ||
     !body ||
     (shouldSubmitEvidence && !hasImageUpload) ||
-    (hasFinanceInput && (!hasImageUpload || !financeCategory || !financeSpendAmount))
+    (hasFinanceInput && (!shouldSubmitEvidence || !hasImageUpload || !financeCategory || !financeSpendAmount))
   ) {
     redirectPartnerError(formData, "/partner/activity", "activity");
   }
@@ -4642,22 +4642,42 @@ export async function createCampaignActivityAction(formData: FormData) {
   await requireCampaignAccess(user.id, campaignId, formData, "/partner/activity", "activity:create");
 
   const generatedEvidenceCode = shouldSubmitEvidence ? evidenceCode() : null;
-  const attachmentUpload = shouldPublish
-    ? await storeUploadedPublicImage(rawImage)
-    : generatedEvidenceCode
+  const emptyUpload = {
+    dataUrl: null,
+    error: null,
+    storageProvider: null,
+    objectKey: null,
+    contentType: null
+  } as const;
+
+  // Public updates and reviewable evidence intentionally use separate objects.
+  // A combined submission therefore cannot expose the private evidence object
+  // through the public campaign update URL before verification.
+  const evidenceUpload =
+    shouldSubmitEvidence && generatedEvidenceCode
       ? await storeUploadedPrivateImage(rawImage, {
           namespace: "evidence",
           appUrl: `/private-media/evidence/${generatedEvidenceCode}`
         })
-      : { dataUrl: null, error: null, storageProvider: null, objectKey: null, contentType: null };
+      : emptyUpload;
 
-  if (attachmentUpload.error) {
-    redirectPartnerError(formData, "/partner/activity", `image-${attachmentUpload.error}`);
+  if (evidenceUpload.error) {
+    redirectPartnerError(formData, "/partner/activity", `image-${evidenceUpload.error}`);
   }
 
-  const attachmentUrl = attachmentUpload.dataUrl;
+  const publicUpload =
+    shouldPublish && hasImageUpload
+      ? await storeUploadedPublicImage(rawImage)
+      : emptyUpload;
 
-  if ((shouldSubmitEvidence && !attachmentUrl) || (hasFinanceInput && !attachmentUrl)) {
+  if (publicUpload.error) {
+    redirectPartnerError(formData, "/partner/activity", `image-${publicUpload.error}`);
+  }
+
+  const publicAttachmentUrl = publicUpload.dataUrl;
+  const evidenceAttachmentUrl = evidenceUpload.dataUrl;
+
+  if ((shouldSubmitEvidence && !evidenceAttachmentUrl) || (hasFinanceInput && !evidenceAttachmentUrl)) {
     redirectPartnerError(formData, "/partner/activity", "activity");
   }
 
@@ -4697,7 +4717,9 @@ export async function createCampaignActivityAction(formData: FormData) {
   }
 
   const now = new Date();
-  const storageProvider = attachmentUpload.storageProvider ?? null;
+  const activityUpload = shouldPublish ? publicUpload : evidenceUpload;
+  const activityAttachmentUrl = shouldPublish ? publicAttachmentUrl : evidenceAttachmentUrl;
+  const storageProvider = activityUpload.storageProvider ?? null;
   const generatedActivityCode = activityCode();
 
   await db.transaction(async (tx) => {
@@ -4711,7 +4733,7 @@ export async function createCampaignActivityAction(formData: FormData) {
           campaignId,
           title,
           body,
-          imageUrl: attachmentUrl,
+          imageUrl: publicAttachmentUrl,
           publishedAt: now
         })
         .returning({ id: campaignUpdates.id });
@@ -4719,7 +4741,7 @@ export async function createCampaignActivityAction(formData: FormData) {
       sourceUpdateId = update.id;
     }
 
-    if (shouldSubmitEvidence && attachmentUrl && generatedEvidenceCode) {
+    if (shouldSubmitEvidence && evidenceAttachmentUrl && generatedEvidenceCode) {
       const [evidence] = await tx
         .insert(projectEvidence)
         .values({
@@ -4730,15 +4752,15 @@ export async function createCampaignActivityAction(formData: FormData) {
           evidenceCode: generatedEvidenceCode,
           title,
           evidenceType,
-          fileUrl: attachmentUrl,
-          storageProvider: storageProvider ?? "local_demo",
+          fileUrl: evidenceAttachmentUrl,
+          storageProvider: evidenceUpload.storageProvider ?? "local_demo",
           verificationStatus: "submitted",
           metadata: {
             activityCode: generatedActivityCode,
             observation: body || null,
             submittedFrom: "partner_activity",
-            storageObjectKey: attachmentUpload.objectKey ?? null,
-            storageContentType: attachmentUpload.contentType ?? null,
+            storageObjectKey: evidenceUpload.objectKey ?? null,
+            storageContentType: evidenceUpload.contentType ?? null,
             ...(financeCategory && financeSpendAmount
               ? {
                   financeCategory,
@@ -4777,18 +4799,20 @@ export async function createCampaignActivityAction(formData: FormData) {
       title,
       body: body || null,
       activityType: shouldPublish && shouldSubmitEvidence ? "field_report" : shouldSubmitEvidence ? evidenceType : "field_note",
-      mediaUrl: attachmentUrl,
+      mediaUrl: activityAttachmentUrl,
       evidenceType: shouldSubmitEvidence ? evidenceType : null,
       visibilityStatus: shouldPublish ? "published" : "evidence_only",
       verificationStatus: shouldSubmitEvidence ? "submitted" : null,
       storageProvider,
       publishedAt: shouldPublish ? now : null,
       metadata: {
-        activityUse: hasLegacyActivityUse ? activityUse : shouldSubmitEvidence ? "field_activity_with_attachment" : "field_activity",
+        activityUse: hasExplicitActivityUse ? activityUse : shouldSubmitEvidence ? "update_and_evidence" : "public_update",
         evidenceCode: generatedEvidenceCode,
         submittedFrom: "partner_portal",
-        storageObjectKey: attachmentUpload.objectKey ?? null,
-        storageContentType: attachmentUpload.contentType ?? null,
+        storageObjectKey: activityUpload.objectKey ?? null,
+        storageContentType: activityUpload.contentType ?? null,
+        publicStorageObjectKey: publicUpload.objectKey ?? null,
+        evidenceStorageObjectKey: evidenceUpload.objectKey ?? null,
         ...(financeCategory && financeSpendAmount
           ? {
               financeCategory,
