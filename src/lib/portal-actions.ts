@@ -4842,7 +4842,8 @@ export async function reviseEvidenceAction(formData: FormData) {
       impactSiteId: projectEvidence.impactSiteId,
       evidenceCode: projectEvidence.evidenceCode,
       evidenceType: projectEvidence.evidenceType,
-      verificationStatus: projectEvidence.verificationStatus
+      verificationStatus: projectEvidence.verificationStatus,
+      metadata: projectEvidence.metadata
     })
     .from(projectEvidence)
     .where(eq(projectEvidence.id, evidenceId))
@@ -4891,6 +4892,7 @@ export async function reviseEvidenceAction(formData: FormData) {
         rejectionReason: null,
         updatedAt: now,
         metadata: {
+          ...metadataObject(evidence.metadata),
           observation: body || null,
           revisedAt: now.toISOString(),
           revisedByUserId: user.id,
@@ -4908,13 +4910,7 @@ export async function reviseEvidenceAction(formData: FormData) {
         mediaUrl: attachmentUrl,
         verificationStatus: "submitted",
         verifiedAt: null,
-        storageProvider,
-        metadata: {
-          evidenceCode: evidence.evidenceCode,
-          revisedAt: now.toISOString(),
-          storageObjectKey: attachmentUpload.objectKey ?? null,
-          storageContentType: attachmentUpload.contentType ?? null
-        }
+        storageProvider
       })
       .where(eq(campaignActivities.sourceEvidenceId, evidenceId));
 
