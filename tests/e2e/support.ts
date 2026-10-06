@@ -54,7 +54,8 @@ export async function campaignFixture(slug = "restore-raja-ampat-reefs") {
         s.id as site_id,
         c.title as campaign_title
       from campaigns c
-      join impact_sites s on s.campaign_id = c.id
+      join campaign_impact_sites cis on cis.campaign_id = c.id
+      join impact_sites s on s.id = cis.impact_site_id
       where c.slug = ${slug}
       order by s.id
       limit 1
