@@ -83,9 +83,9 @@ jobs:
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
 
-      - name: Prepare E2E database
+      - name: Prepare E2E database from production migrations
         run: |
-          npm run db:push -- --force
+          npm run db:migrate
           npm run db:seed
           npm run db:seed-role-users
 
