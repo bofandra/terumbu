@@ -887,7 +887,7 @@ export function CampaignActivityForm({
   const canSubmit = Boolean(lockedCampaign) && canCreateActivity && hasImpactSite;
 
   return (
-    <form action={createCampaignActivityAction} encType="multipart/form-data" data-testid="partner-activity-form" className="rounded-lg border border-ocean-900/10 bg-white p-5 shadow-soft">
+    <form action={createCampaignActivityAction} data-testid="partner-activity-form" className="rounded-lg border border-ocean-900/10 bg-white p-5 shadow-soft">
       <input type="hidden" name="redirectTo" value={redirectTo} />
       <div className="flex items-center justify-between gap-3">
         <div>
