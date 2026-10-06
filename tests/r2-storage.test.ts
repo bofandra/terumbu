@@ -2,10 +2,13 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  privateMediaObjectKey,
   publicMediaAppUrl,
   publicMediaObjectKey,
   publicR2ObjectUrl,
+  r2CredentialsConfiguration,
   r2StorageConfiguration,
+  signedR2GetRequest,
   signedR2PutRequest
 } from "../src/lib/r2-storage";
 
@@ -16,6 +19,17 @@ const configuredEnv = {
   CLOUDFLARE_R2_SECRET_ACCESS_KEY: "secret-key",
   CLOUDFLARE_R2_PUBLIC_BASE_URL: "https://media.terumbu.example/"
 };
+
+test("R2 credentials can configure private storage without a public base URL", () => {
+  const credentials = r2CredentialsConfiguration({
+    CLOUDFLARE_R2_ACCOUNT_ID: configuredEnv.CLOUDFLARE_R2_ACCOUNT_ID,
+    CLOUDFLARE_R2_BUCKET: configuredEnv.CLOUDFLARE_R2_BUCKET,
+    CLOUDFLARE_R2_ACCESS_KEY_ID: configuredEnv.CLOUDFLARE_R2_ACCESS_KEY_ID,
+    CLOUDFLARE_R2_SECRET_ACCESS_KEY: configuredEnv.CLOUDFLARE_R2_SECRET_ACCESS_KEY
+  });
+
+  assert.equal(credentials.status, "configured");
+});
 
 test("R2 configuration is disabled only when no R2 values are present", () => {
   assert.equal(r2StorageConfiguration({}).status, "disabled");
@@ -41,12 +55,14 @@ test("R2 configuration requires an HTTPS public base URL", () => {
   }
 });
 
-test("public media keys and app URLs are stable and content-type aware", () => {
+test("public and private media keys are isolated by prefix", () => {
   const now = new Date("2026-10-06T16:30:00.000Z");
-  const key = publicMediaObjectKey("image/webp", now, "abc123");
+  const publicKey = publicMediaObjectKey("image/webp", now, "abc123");
+  const privateKey = privateMediaObjectKey("payment-proof", "image/png", now, "proof123");
 
-  assert.equal(key, "public-media/2026/10/06/abc123.webp");
-  assert.equal(publicMediaAppUrl(key), "/media/public-media/2026/10/06/abc123.webp");
+  assert.equal(publicKey, "public-media/2026/10/06/abc123.webp");
+  assert.equal(publicMediaAppUrl(publicKey), "/media/public-media/2026/10/06/abc123.webp");
+  assert.equal(privateKey, "private-media/payment-proof/2026/10/06/proof123.png");
 });
 
 test("R2 public object URL uses the configured public domain", () => {
@@ -79,4 +95,23 @@ test("R2 PUT signing is deterministic and does not expose the secret", () => {
   assert.equal(request.headers["x-amz-date"], "20261006T163000Z");
   assert.match(request.headers.Authorization, /^AWS4-HMAC-SHA256 Credential=access-key\/20261006\/auto\/s3\/aws4_request,/);
   assert.ok(!request.headers.Authorization.includes("secret-key"));
+});
+
+
+test("R2 GET signing supports private objects without a public URL", () => {
+  const credentials = r2CredentialsConfiguration(configuredEnv);
+  assert.equal(credentials.status, "configured");
+  if (credentials.status !== "configured") return;
+
+  const request = signedR2GetRequest(credentials.config, {
+    objectKey: "private-media/evidence/2026/10/06/evidence123.webp",
+    now: new Date("2026-10-06T16:30:00.000Z")
+  });
+
+  assert.equal(
+    request.url,
+    "https://account123.r2.cloudflarestorage.com/terumbu-media/private-media/evidence/2026/10/06/evidence123.webp"
+  );
+  assert.equal(request.headers["x-amz-date"], "20261006T163000Z");
+  assert.match(request.headers.Authorization, /^AWS4-HMAC-SHA256 Credential=access-key\/20261006\/auto\/s3\/aws4_request,/);
 });

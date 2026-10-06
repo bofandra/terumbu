@@ -17,6 +17,10 @@ type PageProps = {
   searchParams?: Promise<AdminExpeditionPaymentFilters & { saved?: string; error?: string }>;
 };
 
+function objectValue(value: unknown) {
+  return value && typeof value === "object" && !Array.isArray(value) ? (value as Record<string, unknown>) : {};
+}
+
 export default async function AdminExpeditionPaymentsPage({ searchParams }: PageProps) {
   await requireRole(["admin"], pathname);
   const params = (await searchParams) ?? {};
@@ -56,6 +60,8 @@ export default async function AdminExpeditionPaymentsPage({ searchParams }: Page
           const mandatoryRefund =
             operationMetadata.source === "operator_cancellation" ||
             operationMetadata.source === "partner_departure_cancellation";
+          const paymentPayload = objectValue(booking.paymentPayload);
+          const proofUrl = typeof paymentPayload.paymentProofUrl === "string" ? paymentPayload.paymentProofUrl : null;
           return (
             <article key={booking.id} className="rounded-lg border border-ocean-900/10 bg-white p-5 shadow-soft">
               <div className="flex flex-col justify-between gap-3 lg:flex-row lg:items-start">
@@ -73,6 +79,11 @@ export default async function AdminExpeditionPaymentsPage({ searchParams }: Page
                     {booking.providerReference ? ` · Ref ${booking.providerReference}` : ""}
                   </p>
                 </div>
+                {proofUrl ? (
+                  <a href={proofUrl} target="_blank" rel="noreferrer" className="text-sm font-bold text-coral-700 hover:text-coral-500">
+                    Open payment proof
+                  </a>
+                ) : null}
               </div>
 
               {isRefund && operation ? (

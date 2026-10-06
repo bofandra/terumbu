@@ -35,7 +35,7 @@ import { trackEvent } from "@/lib/analytics";
 import { sendTransactionalEmail } from "@/lib/email";
 import { expeditionDepartureAvailability } from "@/lib/expedition-booking-lifecycle";
 import { calculateDonationImpact, minimumDonationAmount, normalizeCurrency } from "@/lib/impact-calculations";
-import { readUploadedImageAsDataUrl } from "@/lib/storage";
+import { storeUploadedPrivateImage } from "@/lib/storage";
 import {
   recordPaymentOperation,
   transitionExpeditionBookingPayment
@@ -119,14 +119,17 @@ export async function createDonationAction(formData: FormData) {
     }
   }
 
-  const proofUpload = await readUploadedImageAsDataUrl(formData.get("paymentProofFile"));
+  const providerReference = randomReference("MANUAL-DONATION");
+  const proofUpload = await storeUploadedPrivateImage(formData.get("paymentProofFile"), {
+    namespace: "payment-proof",
+    appUrl: `/private-media/payment-proof/donation/${providerReference}`
+  });
   const proofError = paymentProofUploadError(proofUpload);
 
   if (proofError) {
     redirect(checkoutErrorPath("payment_proof"));
   }
 
-  const providerReference = randomReference("MANUAL-DONATION");
   const now = new Date();
   const impact = calculateDonationImpact({
     amount,
@@ -152,6 +155,9 @@ export async function createDonationAction(formData: FormData) {
       allocatedAmount: Number(line.allocatedAmount.toFixed(2))
     })),
     paymentProofUrl: proofUpload.dataUrl,
+    paymentProofObjectKey: proofUpload.objectKey ?? null,
+    paymentProofContentType: proofUpload.contentType ?? null,
+    paymentProofStorageProvider: proofUpload.storageProvider ?? null,
     paymentReference: paymentReference || null,
     submittedAt,
     verificationStatus: "submitted",
@@ -347,7 +353,11 @@ export async function bookExpeditionAction(formData: FormData) {
     }
   }
 
-  const proofUpload = await readUploadedImageAsDataUrl(formData.get("paymentProofFile"));
+  const providerReference = randomReference("MANUAL-EXPEDITION");
+  const proofUpload = await storeUploadedPrivateImage(formData.get("paymentProofFile"), {
+    namespace: "payment-proof",
+    appUrl: `/private-media/payment-proof/expedition/${providerReference}`
+  });
   const proofError = paymentProofUploadError(proofUpload);
 
   if (proofError) {
@@ -355,10 +365,12 @@ export async function bookExpeditionAction(formData: FormData) {
   }
 
   const now = new Date();
-  const providerReference = randomReference("MANUAL-EXPEDITION");
   const manualPaymentMetadata = {
     method: "manual_external",
     paymentProofUrl: proofUpload.dataUrl,
+    paymentProofObjectKey: proofUpload.objectKey ?? null,
+    paymentProofContentType: proofUpload.contentType ?? null,
+    paymentProofStorageProvider: proofUpload.storageProvider ?? null,
     paymentReference: paymentReference || null,
     submittedAt: now.toISOString(),
     verificationStatus: "submitted"
