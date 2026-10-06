@@ -35,7 +35,7 @@ services:
     ports:
       - "${TERUMBU_APP_PORT:-3100}:3000"
     volumes:
-      - terumbu_generated_reports:/app/public/generated/corporate-reports
+      - terumbu_generated_reports:/app/data/corporate-reports
     depends_on:
       postgres:
         condition: service_healthy
