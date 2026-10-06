@@ -114,10 +114,14 @@ On push to `main`, GitHub Actions:
 6. SSHes into the VPS.
 7. Clones or updates `/home/ubuntu/terumbu/repo`.
 8. Starts the internal PostgreSQL container.
-9. Runs `npm run db:migrate` in a one-shot Docker Compose migration container on the VPS.
-10. Rebuilds the web image with the Git commit SHA as `DEPLOY_VERSION`.
-11. Force-recreates the `terumbu-web` container from that freshly built image.
-12. Health-checks the deployed version and runs the production smoke suite before declaring deployment successful.
+9. Creates a compressed PostgreSQL `pg_dump` under `/home/ubuntu/terumbu/backups` before any migration runs, keeps the latest 7 backups, and aborts if the backup is missing or empty.
+10. Runs `npm run db:migrate` in a one-shot Docker Compose migration container on the VPS.
+11. Rebuilds the web image with the Git commit SHA as `DEPLOY_VERSION`.
+12. Force-recreates the `terumbu-web` container from that freshly built image.
+13. Health-checks the deployed version and runs the production smoke suite before declaring deployment successful.
+14. If the new container fails to start, reports the wrong revision, fails health checks, or fails smoke tests, the deploy script attempts to rebuild and restore the previously running application revision.
+
+Application rollback intentionally does **not** restore the database automatically. The pre-migration dump is retained for controlled database recovery because automatic database restoration could discard writes made after the backup.
 
 The deploy script intentionally force-recreates only the Terumbu web container so the compiled Next.js bundle cannot remain stale after a successful deploy.
 
@@ -149,3 +153,22 @@ Optional Docker check:
 ```bash
 docker compose --env-file deploy/.env.example -f deploy/docker-compose.yml build
 ```
+
+
+## Database Recovery
+
+Automatic deploy backups are stored on the VPS at:
+
+```text
+/home/ubuntu/terumbu/backups/terumbu-postgres-<UTC timestamp>-<commit>.dump
+```
+
+The directory is mode `700`, backup files are mode `600`, and the deploy script retains the 7 newest dumps.
+
+To inspect available backups:
+
+```bash
+ls -lh /home/ubuntu/terumbu/backups
+```
+
+Database restore is intentionally a manual incident-recovery operation. Stop or isolate writes first, verify the intended backup, and use PostgreSQL `pg_restore` against the correct database rather than letting deployment automation overwrite live data.
