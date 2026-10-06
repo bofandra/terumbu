@@ -69,12 +69,16 @@ Optional secrets:
 
 - `TERUMBU_DATABASE_URL`: full database URL. If omitted, Actions builds one for the internal Compose PostgreSQL service.
 - `NEXT_PUBLIC_MAPBOX_TOKEN`
+- `CLOUDFLARE_R2_ACCESS_KEY_ID`
+- `CLOUDFLARE_R2_SECRET_ACCESS_KEY`
 - `MIDTRANS_SERVER_KEY`
 - `MIDTRANS_CLIENT_KEY`
 - `XENDIT_SECRET_KEY`
+- `DEMO_GATEWAY_WEBHOOK_SECRET`
 - `RESEND_API_KEY`
 - `RESEND_FROM_EMAIL`
 - `POSTHOG_KEY`
+- `CRON_SECRET`: optional; deployment generates a random value when omitted.
 
 Optional repository variables:
 
@@ -83,7 +87,16 @@ Optional repository variables:
 - `SESSION_COOKIE_SECURE`: optional override, set `true` for HTTPS-only cookies or `false` for plain HTTP. If omitted, Terumbu infers this from `NEXT_PUBLIC_APP_URL`.
 - `TERUMBU_POSTGRES_DB`: default `terumbu`
 - `TERUMBU_POSTGRES_USER`: default `terumbu`
+- `CLOUDFLARE_R2_ACCOUNT_ID`
+- `CLOUDFLARE_R2_BUCKET`
+- `CLOUDFLARE_R2_PUBLIC_BASE_URL`
+- `SUPPORT_EMAIL`: defaults in the app to `support@terumbu.eco`
+- `NEXT_PUBLIC_SUPPORT_WHATSAPP_URL`
 - `POSTHOG_HOST`: default `https://app.posthog.com`
+- `ADMIN_QUERY_WARN_MS`: default `750`
+- `NEXT_PUBLIC_FX_USD_EUR`, `NEXT_PUBLIC_FX_USD_IDR`, and `NEXT_PUBLIC_FX_USD_JPY`: optional display-rate overrides.
+
+To enable Cloudflare R2, configure all five R2 values together: account ID, bucket, access key ID, secret access key, and public base URL. The workflow rejects a partial R2 configuration so production cannot silently enter a half-configured storage state. Account ID, bucket, and public base URL may be stored as either repository variables or secrets; access credentials must be repository secrets.
 
 ## CI/CD Flow
 
@@ -95,17 +108,16 @@ On push to `main`, GitHub Actions:
 
 1. Checks out the repository.
 2. Installs dependencies with `npm ci`.
-3. Runs `npm run typecheck`.
-4. Runs `npm run lint`.
-5. Runs `npm run build`.
-6. Uploads the production `.env` to `/home/ubuntu/terumbu/.env`.
-7. SSHes into the VPS.
-8. Clones or updates `/home/ubuntu/terumbu/repo`.
-9. Starts the internal PostgreSQL container.
-10. Runs `npm run db:migrate` in a one-shot Docker Compose migration container on the VPS.
-11. Rebuilds the web image with the Git commit SHA as `DEPLOY_VERSION`.
-12. Force-recreates the `terumbu-web` container from that freshly built image.
-13. Health-checks `http://127.0.0.1:3100/` on the VPS.
+3. Runs `npm run typecheck`, `npm run lint`, `npm test`, and `npm run build`.
+4. In parallel, builds a fresh PostgreSQL database from `npm run db:migrate`, seeds deterministic fixtures, and runs the Playwright critical-path E2E suite.
+5. Uploads the production `.env` to `/home/ubuntu/terumbu/.env`.
+6. SSHes into the VPS.
+7. Clones or updates `/home/ubuntu/terumbu/repo`.
+8. Starts the internal PostgreSQL container.
+9. Runs `npm run db:migrate` in a one-shot Docker Compose migration container on the VPS.
+10. Rebuilds the web image with the Git commit SHA as `DEPLOY_VERSION`.
+11. Force-recreates the `terumbu-web` container from that freshly built image.
+12. Health-checks the deployed version and runs the production smoke suite before declaring deployment successful.
 
 The deploy script intentionally force-recreates only the Terumbu web container so the compiled Next.js bundle cannot remain stale after a successful deploy.
 
