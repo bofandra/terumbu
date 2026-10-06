@@ -60,3 +60,23 @@ test("empty marketplace does not create unsupported facts", () => {
   assert.deepEqual(buildExpeditionBenefitFacts({ marketplace: m, durationDays: 4, included: [], hostVerificationLabel: "" }).map((x) => x.kind), ["stay"]);
   assert.deepEqual(buildExpeditionSdgFacts({ tags: [], sustainability: [], impactTargets: [] }), []);
 });
+
+test("expedition normalization strips unsafe public URLs before rendering", () => {
+  const n = normalizeExpeditionDetailMetadata({
+    documentationUrl: "javascript:alert(1)",
+    galleryImages: [{ src: "javascript:alert(2)", label: "Unsafe", caption: "", provenance: "" }],
+    hostedBy: { profileHref: "data:text/html,boom" },
+    route: { mapEmbedUrl: "javascript:parent.alert(1)" },
+    preparationCourse: {
+      imageUrl: "data:text/html;base64,aGVsbG8=",
+      href: "javascript:alert(3)"
+    }
+  }, detailDefaults());
+
+  assert.equal(n.documentationUrl, "");
+  assert.equal(n.galleryImages[0]?.src, "");
+  assert.equal(n.hostedBy.profileHref, "");
+  assert.equal(n.route.mapEmbedUrl, "");
+  assert.equal(n.preparationCourse.imageUrl, null);
+  assert.equal(n.preparationCourse.href, "");
+});
