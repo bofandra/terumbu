@@ -15,6 +15,7 @@ const {
   assessmentChoices,
   assessmentQuestions,
   campaignActivities,
+  campaignImpactSites,
   campaignBudgetLineItems,
   campaignUpdates,
   campaigns,
@@ -884,6 +885,32 @@ async function seed() {
         latitude: sql`excluded.latitude`,
         longitude: sql`excluded.longitude`,
         metadata: sql`excluded.metadata`
+      }
+    });
+
+  await db
+    .insert(campaignImpactSites)
+    .values([
+      {
+        campaignId: campaignBySlug.get("restore-raja-ampat-reefs")!,
+        impactSiteId: ids.impactSiteRajaAmpat,
+        isPrimary: true
+      },
+      {
+        campaignId: campaignBySlug.get("mangrove-shield-bali")!,
+        impactSiteId: ids.impactSiteBali,
+        isPrimary: true
+      },
+      {
+        campaignId: campaignBySlug.get("cleanup-komodo-coast")!,
+        impactSiteId: ids.impactSiteKomodo,
+        isPrimary: true
+      }
+    ])
+    .onConflictDoUpdate({
+      target: [campaignImpactSites.campaignId, campaignImpactSites.impactSiteId],
+      set: {
+        isPrimary: sql`excluded.is_primary`
       }
     });
 
