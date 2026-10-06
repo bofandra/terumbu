@@ -9,7 +9,7 @@ import { requireUser } from "@/lib/auth";
 import {
   corporateReportArtifactContentType,
   corporateReportArtifactDisposition,
-  corporateReportArtifactLocalPath,
+  corporateReportArtifactLocalPaths,
   corporateReportArtifactSourceUrl,
   normalizeCorporateReportArtifactKey
 } from "@/lib/corporate-report-artifact-links";
@@ -56,17 +56,25 @@ export async function GET(_request: Request, { params }: CorporateReportArtifact
   }
 
   const sourceUrl = corporateReportArtifactSourceUrl(report, artifactKey);
-  const localPath = corporateReportArtifactLocalPath(sourceUrl);
+  const localPaths = corporateReportArtifactLocalPaths(sourceUrl);
 
-  if (!localPath) {
+  if (localPaths.length === 0) {
     notFound();
   }
 
-  let artifactFile: Buffer;
+  let artifactFile: Buffer | null = null;
 
-  try {
-    artifactFile = await readFile(localPath);
-  } catch {
+  for (const localPath of localPaths) {
+    try {
+      artifactFile = await readFile(localPath);
+      break;
+    } catch {
+      // Try the next compatible storage location. Legacy public paths are
+      // supported only as a migration fallback for previously generated reports.
+    }
+  }
+
+  if (!artifactFile) {
     notFound();
   }
 
