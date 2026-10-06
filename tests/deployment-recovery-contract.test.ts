@@ -26,3 +26,12 @@ test("deployment can roll the application back after post-switch failures", () =
   assert.match(deployScript, /rollback_application "production smoke failure"/);
   assert.match(deployScript, /Database migrations were not rolled back/);
 });
+
+test("production smoke suite verifies baseline security headers", () => {
+  const smokeScript = readFileSync(path.join(process.cwd(), "scripts", "smoke-production.sh"), "utf8");
+
+  assert.match(smokeScript, /X-Content-Type-Options: nosniff/);
+  assert.match(smokeScript, /X-Frame-Options: DENY/);
+  assert.match(smokeScript, /frame-ancestors 'none'/);
+  assert.match(smokeScript, /object-src 'none'/);
+});
