@@ -26,7 +26,7 @@ export async function GET(_request: Request, { params }: PublicCorporateReportAr
   const { publicSlug, artifact } = await params;
   const artifactKey = normalizeCorporateReportArtifactKey(artifact);
 
-  if (!artifactKey) {
+  if (artifactKey !== "pdf") {
     notFound();
   }
 
