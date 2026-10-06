@@ -107,7 +107,7 @@ import {
 import { ensureCompletedExpeditionPassportItem, recordPaymentOperation, transitionDonationPayment, transitionExpeditionBookingPayment } from "@/lib/payment-workflows";
 import { upsertCarbonKgPerUsd } from "@/lib/platform-settings";
 import { processDueDonationSubscriptions } from "@/lib/subscription-billing";
-import { getEvidenceStorageProvider, readUploadedImageAsDataUrl, storeUploadedPublicImage } from "@/lib/storage";
+import { readUploadedImageAsDataUrl, storeUploadedPrivateImage, storeUploadedPublicImage } from "@/lib/storage";
 import { formatCurrency } from "@/lib/utils";
 
 function evidenceCode() {
@@ -4610,7 +4610,7 @@ export async function updateOrganizationVerificationAction(formData: FormData) {
 }
 
 export async function createCampaignActivityAction(formData: FormData) {
-  const user = await requirePartnerRole( "/partner");
+  const user = await requirePartnerRole("/partner");
   const campaignId = formText(formData, "campaignId");
   const title = formText(formData, "title");
   const body = formText(formData, "body");
@@ -4621,25 +4621,45 @@ export async function createCampaignActivityAction(formData: FormData) {
   const financeCategory = financeCategoryInput ? normalizeCampaignBudgetCategory(financeCategoryInput) : null;
   const financeSpendAmount = parseOptionalAmount(formData.get("financeSpendAmount"));
   const financeSpendCurrency = normalizeCampaignCurrency(formData.get("financeSpendCurrency"), "USD");
-  const attachmentUrl = await imageFromForm(formData, "imageFile", "/partner/activity");
   const restorationBatchId = nullableText(formData, "restorationBatchId");
   const hasLegacyActivityUse = rawActivityUse !== null;
   const shouldPublish = hasLegacyActivityUse ? activityUse === "public_update" || activityUse === "update_and_evidence" : true;
-  const shouldSubmitEvidence = hasLegacyActivityUse ? activityUse === "evidence" || activityUse === "update_and_evidence" : Boolean(attachmentUrl);
-
+  const rawImage = formData.get("imageFile");
+  const hasImageUpload = Boolean(rawImage && typeof rawImage !== "string" && rawImage.size > 0);
+  const shouldSubmitEvidence = hasLegacyActivityUse ? activityUse === "evidence" || activityUse === "update_and_evidence" : hasImageUpload;
   const hasFinanceInput = Boolean(financeCategoryInput || financeSpendAmount);
 
   if (
     !campaignId ||
     !title ||
     !body ||
-    (shouldSubmitEvidence && !attachmentUrl) ||
-    (hasFinanceInput && (!attachmentUrl || !financeCategory || !financeSpendAmount))
+    (shouldSubmitEvidence && !hasImageUpload) ||
+    (hasFinanceInput && (!hasImageUpload || !financeCategory || !financeSpendAmount))
   ) {
     redirectPartnerError(formData, "/partner/activity", "activity");
   }
 
   await requireCampaignAccess(user.id, campaignId, formData, "/partner/activity", "activity:create");
+
+  const generatedEvidenceCode = shouldSubmitEvidence ? evidenceCode() : null;
+  const attachmentUpload = shouldPublish
+    ? await storeUploadedPublicImage(rawImage)
+    : generatedEvidenceCode
+      ? await storeUploadedPrivateImage(rawImage, {
+          namespace: "evidence",
+          appUrl: `/private-media/evidence/${generatedEvidenceCode}`
+        })
+      : { dataUrl: null, error: null, storageProvider: null, objectKey: null, contentType: null };
+
+  if (attachmentUpload.error) {
+    redirectPartnerError(formData, "/partner/activity", `image-${attachmentUpload.error}`);
+  }
+
+  const attachmentUrl = attachmentUpload.dataUrl;
+
+  if ((shouldSubmitEvidence && !attachmentUrl) || (hasFinanceInput && !attachmentUrl)) {
+    redirectPartnerError(formData, "/partner/activity", "activity");
+  }
 
   const requestedImpactSiteId = nullableText(formData, "impactSiteId");
   let restorationBatch: { id: string; impactSiteId: string } | null = null;
@@ -4677,13 +4697,12 @@ export async function createCampaignActivityAction(formData: FormData) {
   }
 
   const now = new Date();
-  const storageProvider = attachmentUrl?.startsWith("data:image/") ? "database_inline" : attachmentUrl ? getEvidenceStorageProvider() : null;
+  const storageProvider = attachmentUpload.storageProvider ?? null;
   const generatedActivityCode = activityCode();
 
   await db.transaction(async (tx) => {
     let sourceUpdateId: string | null = null;
     let sourceEvidenceId: string | null = null;
-    let generatedEvidenceCode: string | null = null;
 
     if (shouldPublish) {
       const [update] = await tx
@@ -4700,9 +4719,7 @@ export async function createCampaignActivityAction(formData: FormData) {
       sourceUpdateId = update.id;
     }
 
-    if (shouldSubmitEvidence && attachmentUrl) {
-      generatedEvidenceCode = evidenceCode();
-
+    if (shouldSubmitEvidence && attachmentUrl && generatedEvidenceCode) {
       const [evidence] = await tx
         .insert(projectEvidence)
         .values({
@@ -4714,12 +4731,14 @@ export async function createCampaignActivityAction(formData: FormData) {
           title,
           evidenceType,
           fileUrl: attachmentUrl,
-          storageProvider: storageProvider ?? getEvidenceStorageProvider(),
+          storageProvider: storageProvider ?? "local_demo",
           verificationStatus: "submitted",
           metadata: {
             activityCode: generatedActivityCode,
             observation: body || null,
             submittedFrom: "partner_activity",
+            storageObjectKey: attachmentUpload.objectKey ?? null,
+            storageContentType: attachmentUpload.contentType ?? null,
             ...(financeCategory && financeSpendAmount
               ? {
                   financeCategory,
@@ -4768,6 +4787,8 @@ export async function createCampaignActivityAction(formData: FormData) {
         activityUse: hasLegacyActivityUse ? activityUse : shouldSubmitEvidence ? "field_activity_with_attachment" : "field_activity",
         evidenceCode: generatedEvidenceCode,
         submittedFrom: "partner_portal",
+        storageObjectKey: attachmentUpload.objectKey ?? null,
+        storageContentType: attachmentUpload.contentType ?? null,
         ...(financeCategory && financeSpendAmount
           ? {
               financeCategory,
