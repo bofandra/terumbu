@@ -15,3 +15,6 @@ tsconfig.tsbuildinfo
 
 playwright-report/
 test-results/
+
+# Runtime-generated private corporate report artifacts
+data/corporate-reports/
