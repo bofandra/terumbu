@@ -35,6 +35,7 @@ import { getSessionUser } from "@/lib/auth";
 import { evidenceAnchorId, evidenceSourceHref, evidenceStage, evidenceStageLabel, getMetadataNumberOrString, getMetadataString, suggestedDonationAmounts } from "@/lib/domain";
 import { getCampaignCards, getCampaignDetail, getCampaignRetentionState, getCourses, getExpeditionCards } from "@/lib/queries";
 import { followCampaignAction, unfollowCampaignAction } from "@/lib/retention-actions";
+import { safeNavigationUrl } from "@/lib/safe-url";
 import { getPreferredLocale } from "@/lib/user-preferences";
 import { formatCurrency } from "@/lib/utils";
 
@@ -168,6 +169,7 @@ export default async function CampaignDetailPage({
     getCampaignCards(6, campaign.category),
     sessionUser ? getCampaignRetentionState(sessionUser.id, campaign.slug) : Promise.resolve(null)
   ]);
+  const partnerWebsiteUrl = safeNavigationUrl(campaign.partnerWebsiteUrl);
   const isIndonesian = locale === "id";
   const numberLocale = isIndonesian ? "id-ID" : "en-US";
   const labels =
@@ -993,8 +995,8 @@ export default async function CampaignDetailPage({
                 ) : null}
                 <div className="mt-5 flex flex-wrap gap-3">
                   <ButtonLink href={`/partners/${campaign.partnerSlug}`} tone="secondary">{labels.viewOrganization}</ButtonLink>
-                  {campaign.partnerWebsiteUrl ? (
-                    <ButtonLink href={campaign.partnerWebsiteUrl} tone="ghost" target="_blank" rel="noreferrer">
+                  {partnerWebsiteUrl ? (
+                    <ButtonLink href={partnerWebsiteUrl} tone="ghost" target="_blank" rel="noreferrer">
                       {labels.website}
                     </ButtonLink>
                   ) : null}
