@@ -15,6 +15,11 @@ test("deployment creates a protected PostgreSQL backup before migrations", () =>
   assert.match(deployScript, /chmod 700 "\$\{BACKUP_DIR\}"/);
   assert.match(deployScript, /chmod 600 "\$\{BACKUP_FILE\}"/);
   assert.match(deployScript, /BACKUP_RETENTION=7/);
+  assert.match(
+    deployScript,
+    /exec -T postgres sh -ec 'pg_dump[^\n]+' <\/dev\/null > "\$\{BACKUP_TEMP\}"/,
+    "pg_dump must not consume the stdin stream used to deliver deploy-vps.sh over SSH"
+  );
 });
 
 test("deployment can roll the application back after post-switch failures", () => {

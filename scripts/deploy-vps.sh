@@ -202,7 +202,7 @@ if ! docker compose \
   --env-file "${ENV_FILE}" \
   --project-name "${PROJECT_NAME}" \
   -f "${COMPOSE_FILE}" \
-  exec -T postgres sh -ec 'pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" --format=custom --no-owner --no-privileges' > "${BACKUP_TEMP}"; then
+  exec -T postgres sh -ec 'pg_dump -U "$POSTGRES_USER" -d "$POSTGRES_DB" --format=custom --no-owner --no-privileges' </dev/null > "${BACKUP_TEMP}"; then
   rm -f "${BACKUP_TEMP}"
   echo "PostgreSQL backup failed; aborting before migrations." >&2
   exit 1
