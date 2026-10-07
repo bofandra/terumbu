@@ -8,6 +8,7 @@ import { JsonLd } from "@/components/json-ld";
 import { SectionHeading } from "@/components/section-heading";
 import { ButtonLink } from "@/components/ui/button";
 import { getPartnerProfile } from "@/lib/queries";
+import { safeNavigationUrl } from "@/lib/safe-url";
 
 export const dynamic = "force-dynamic";
 
@@ -55,6 +56,7 @@ export default async function PartnerProfilePage({ params }: { params: Promise<{
 
   const partnerPath = `/partners/${partner.slug}`;
   const partnerUrl = new URL(partnerPath, appUrl).toString();
+  const partnerWebsiteUrl = safeNavigationUrl(partner.websiteUrl);
   const partnerDescription =
     partner.description ??
     `Published conservation campaigns and verified activity linked to ${partner.name} on Terumbu.eco.`;
@@ -66,7 +68,7 @@ export default async function PartnerProfilePage({ params }: { params: Promise<{
       description: partnerDescription,
       url: partnerUrl,
       logo: partner.logoUrl ?? undefined,
-      sameAs: partner.websiteUrl ? [partner.websiteUrl] : undefined
+      sameAs: partnerWebsiteUrl ? [partnerWebsiteUrl] : undefined
     },
     {
       "@context": "https://schema.org",
@@ -94,8 +96,8 @@ export default async function PartnerProfilePage({ params }: { params: Promise<{
           </p>
           <div className="mt-8 flex flex-col gap-3 sm:flex-row">
             <ButtonLink href="/campaigns">View Campaigns</ButtonLink>
-            {partner.websiteUrl ? (
-              <ButtonLink href={partner.websiteUrl} tone="light" target="_blank" rel="noreferrer">
+            {partnerWebsiteUrl ? (
+              <ButtonLink href={partnerWebsiteUrl} tone="light" target="_blank" rel="noreferrer">
                 Website
                 <ExternalLink size={17} aria-hidden="true" />
               </ButtonLink>
