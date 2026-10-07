@@ -43,3 +43,14 @@ test("production smoke script remains a single coherent suite", () => {
   assert.equal((smokeScript.match(/Production smoke suite passed\./g) ?? []).length, 1);
   assert.equal((smokeScript.match(/assert_security_headers\(\)/g) ?? []).length, 1);
 });
+
+test("deployment verifies the released revision through the configured public ingress", () => {
+  const workflow = readFileSync(path.join(process.cwd(), ".github", "workflows", "deploy.yml"), "utf8");
+  const deployIndex = workflow.indexOf("- name: Deploy");
+  const externalSmokeIndex = workflow.indexOf("- name: External production smoke");
+
+  assert.ok(deployIndex >= 0, "workflow must deploy before public ingress verification");
+  assert.ok(externalSmokeIndex > deployIndex, "external smoke must run after the VPS deploy completes");
+  assert.match(workflow, /TERUMBU_PUBLIC_URL=%s/);
+  assert.match(workflow, /BASE_URL="\$\{TERUMBU_PUBLIC_URL\}" EXPECTED_VERSION="\$\{GITHUB_SHA\}" bash scripts\/smoke-production\.sh/);
+});
