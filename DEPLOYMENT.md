@@ -120,6 +120,7 @@ On push to `main`, GitHub Actions:
 12. Force-recreates the `terumbu-web` container from that freshly built image.
 13. Health-checks the deployed version and runs the production smoke suite before declaring deployment successful.
 14. If the new container fails to start, reports the wrong revision, fails health checks, or fails smoke tests, the deploy script attempts to rebuild and restore the previously running application revision.
+15. After the VPS deployment succeeds, the GitHub runner executes the same production smoke suite against the resolved `NEXT_PUBLIC_APP_URL`, verifying the deployed revision through the public ingress rather than only through `127.0.0.1`.
 
 Application rollback intentionally does **not** restore the database automatically. The pre-migration dump is retained for controlled database recovery because automatic database restoration could discard writes made after the backup.
 
