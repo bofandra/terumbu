@@ -108,6 +108,7 @@ import { ensureCompletedExpeditionPassportItem, recordPaymentOperation, transiti
 import { upsertCarbonKgPerUsd } from "@/lib/platform-settings";
 import { processDueDonationSubscriptions } from "@/lib/subscription-billing";
 import { readUploadedImageAsDataUrl, storeUploadedPrivateImage, storeUploadedPublicImage } from "@/lib/storage";
+import { safeNavigationUrl } from "@/lib/safe-url";
 import { formatCurrency } from "@/lib/utils";
 
 function evidenceCode() {
@@ -159,6 +160,10 @@ function nullableText(formData: FormData, key: string) {
   const value = formText(formData, key);
 
   return value || null;
+}
+
+function nullableSafeNavigationUrl(formData: FormData, key: string) {
+  return safeNavigationUrl(formText(formData, key)) || null;
 }
 
 function optionalNullableText(formData: FormData, key: string, fallback: string | null) {
@@ -1886,7 +1891,7 @@ export async function createOrganizationAction(formData: FormData) {
       slug,
       type,
       logoUrl,
-      websiteUrl: nullableText(formData, "websiteUrl"),
+      websiteUrl: nullableSafeNavigationUrl(formData, "websiteUrl"),
       description: nullableText(formData, "description"),
       verification,
       updatedAt: new Date()
@@ -1936,7 +1941,7 @@ export async function updateOrganizationAction(formData: FormData) {
       slug,
       type,
       logoUrl: uploadedLogoUrl ?? organization.logoUrl,
-      websiteUrl: nullableText(formData, "websiteUrl"),
+      websiteUrl: nullableSafeNavigationUrl(formData, "websiteUrl"),
       description: nullableText(formData, "description"),
       verification,
       updatedAt: new Date()
