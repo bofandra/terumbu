@@ -47,7 +47,7 @@ test("corporate admin generates a donation report and a regular user cannot acce
     `;
     expect(report.status).toBe("generated");
     generatedReportId = report.id;
-    await expect(corporatePage.getByRole("link", { name: /download pdf/i }).first()).toBeVisible();
+    await expect(corporatePage.getByRole("link", { name: "PDF" }).first()).toBeVisible();
 
     const regularPage = await userContext.newPage();
     await loginAs(regularPage, "user.demo@terumbu.eco", "/dashboard");
