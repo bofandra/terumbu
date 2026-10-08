@@ -81,7 +81,7 @@ function CourseAssessmentCard({
   const hasQuestions = questions.length > 0;
   const attemptFailed = assessment.attempt?.status === "failed";
   const attemptPassed = assessment.attempt?.status === "passed";
-  const canSubmit = canAttempt && !attemptPassed;
+  const canSubmit = canAttempt && hasQuestions && !attemptPassed;
 
   return (
     <article className="scroll-mt-24 rounded-2xl border border-ocean-900/10 bg-white p-6 shadow-soft">
@@ -105,7 +105,7 @@ function CourseAssessmentCard({
           </span>
         ) : isEnrolled ? (
           <span className="rounded-full bg-ocean-50 px-5 py-3 text-sm font-bold text-ocean-900/58">
-            {canAttempt ? "Ready to submit" : "Complete all lessons to unlock"}
+            {!hasQuestions ? "Assessment setup pending" : canAttempt ? "Ready to submit" : "Complete all lessons to unlock"}
           </span>
         ) : (
           <ButtonLink href={`/login?next=/academy/courses/${courseSlug}`} tone="secondary">Enroll to Start</ButtonLink>
@@ -138,8 +138,11 @@ function CourseAssessmentCard({
         </div>
       ) : null}
 
-      {canSubmit ? (
-        hasQuestions ? (
+      {!hasQuestions && !attemptPassed ? (
+        <p className="mt-5 rounded-xl bg-sand-50 p-4 text-sm font-semibold text-ocean-900/70">
+          This assessment is not yet available. The course team must configure questions before learners can submit answers.
+        </p>
+      ) : canSubmit ? (
           <form action={submitAssessmentAction} className="mt-6 grid gap-4">
             <input type="hidden" name="courseSlug" value={courseSlug} />
             <input type="hidden" name="assessmentId" value={assessment.id} />
@@ -199,17 +202,6 @@ function CourseAssessmentCard({
               </Button>
             </div>
           </form>
-        ) : (
-          <form action={submitAssessmentAction} className="mt-5">
-            <input type="hidden" name="courseSlug" value={courseSlug} />
-            <input type="hidden" name="assessmentId" value={assessment.id} />
-            <input type="hidden" name="score" value={assessment.passingScore} />
-            <Button type="submit">
-              <ClipboardCheck size={18} aria-hidden="true" />
-              Submit Assessment
-            </Button>
-          </form>
-        )
       ) : assessment.attempt && hasQuestions ? (
         <div className="mt-5 grid gap-3">
           {questions.map((question) => (
