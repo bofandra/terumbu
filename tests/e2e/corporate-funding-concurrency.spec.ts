@@ -62,10 +62,11 @@ test("concurrent corporate funding does not double count, and forged program acc
     await expect(formTwo).toBeVisible();
     campaignId = await formOne.locator('select[name="campaignId"]').inputValue();
     expect(campaignId).toBeTruthy();
-    const [before] = await sql<{ raised: string }[]>`
-      select raised_amount::text as raised from campaigns where id = ${campaignId}
+    const [before] = await sql<{ raised: string; currency: string }[]>`
+      select raised_amount::text as raised, currency from campaigns where id = ${campaignId}
     `;
     originalCampaignRaised = Number(before.raised);
+    await sql`update corporate_programs set currency = ${before.currency} where id = ${programId}`;
 
     // Browser form hidden inputs are mutable; access checks must run on the server.
     await formOne.locator('input[name="programId"]').evaluate((node, value) => {
