@@ -2118,12 +2118,8 @@ export async function updateCorporateSecuritySettingsAction(formData: FormData) 
 }
 
 async function reportForUser(userId: string, reportId: string) {
-  const context = await corporateContext(userId);
-
-  if (!context) {
-    return null;
-  }
-
+  // A corporate admin may manage several programs and accounts. Resolve the
+  // report's specific program before looking up this user's authorized context.
   const [report] = await db
     .select({
       id: corporateReportExports.id,
@@ -2133,10 +2129,59 @@ async function reportForUser(userId: string, reportId: string) {
       publicSlug: corporateReportExports.publicSlug
     })
     .from(corporateReportExports)
-    .where(and(eq(corporateReportExports.id, reportId), eq(corporateReportExports.programId, context.programId)))
+    .where(eq(corporateReportExports.id, reportId))
     .limit(1);
 
-  return report ? { context, report } : null;
+  if (!report) return null;
+
+  const context = await corporateContext(userId, report.programId);
+  return context ? { context, report } : null;
+}
+
+async function transitionCorporateReport(input: {
+  reportId: string;
+  programId: string;
+  actorUserId: string;
+  exportCode: string;
+  expectedStatus: "generated" | "review" | "approved";
+  nextStatus: "review" | "approved" | "published";
+  publicSlug?: string;
+}) {
+  const now = new Date();
+
+  return db.transaction(async (tx) => {
+    const [updated] = await tx
+      .update(corporateReportExports)
+      .set({
+        status: input.nextStatus,
+        updatedAt: now,
+        ...(input.nextStatus === "approved" ? { approvedByUserId: input.actorUserId, approvedAt: now } : {}),
+        ...(input.nextStatus === "published" ? { publicSlug: input.publicSlug, publishedAt: now } : {})
+      })
+      .where(and(
+        eq(corporateReportExports.id, input.reportId),
+        eq(corporateReportExports.programId, input.programId),
+        eq(corporateReportExports.status, input.expectedStatus)
+      ))
+      .returning({ id: corporateReportExports.id });
+
+    if (!updated) return false;
+
+    await tx.insert(adminAuditLogs).values({
+      actorUserId: input.actorUserId,
+      action: input.nextStatus === "review" ? "corporate.report.submitted" : input.nextStatus === "approved" ? "corporate.report.approved" : "corporate.report.published",
+      entityType: "corporate_report_exports",
+      entityId: updated.id,
+      metadata: auditMetadata({
+        programId: input.programId,
+        exportCode: input.exportCode,
+        ...(input.publicSlug ? { publicSlug: input.publicSlug } : {}),
+        fromStatus: input.expectedStatus,
+        toStatus: input.nextStatus
+      })
+    });
+    return true;
+  });
 }
 
 export async function submitCorporateReportForApprovalAction(formData: FormData) {
@@ -2152,28 +2197,16 @@ export async function submitCorporateReportForApprovalAction(formData: FormData)
     redirect("/corporate/reports?error=status");
   }
 
-  const now = new Date();
-
-  await db
-    .update(corporateReportExports)
-    .set({
-      status: "review",
-      updatedAt: now
-    })
-    .where(eq(corporateReportExports.id, access.report.id));
-
-  await writeAuditLog({
+  const updated = await transitionCorporateReport({
+    reportId: access.report.id,
+    programId: access.context.programId,
     actorUserId: user.id,
-    action: "corporate.report.submitted",
-    entityType: "corporate_report_exports",
-    entityId: access.report.id,
-    metadata: {
-      programId: access.context.programId,
-      exportCode: access.report.exportCode,
-      fromStatus: access.report.status,
-      toStatus: "review"
-    }
+    exportCode: access.report.exportCode,
+    expectedStatus: "generated",
+    nextStatus: "review"
   });
+
+  if (!updated) redirect("/corporate/reports?error=status");
 
   redirect("/corporate/reports?saved=review");
 }
@@ -2191,30 +2224,16 @@ export async function approveCorporateReportAction(formData: FormData) {
     redirect("/corporate/reports?error=status");
   }
 
-  const now = new Date();
-
-  await db
-    .update(corporateReportExports)
-    .set({
-      status: "approved",
-      approvedByUserId: user.id,
-      approvedAt: now,
-      updatedAt: now
-    })
-    .where(eq(corporateReportExports.id, access.report.id));
-
-  await writeAuditLog({
+  const updated = await transitionCorporateReport({
+    reportId: access.report.id,
+    programId: access.context.programId,
     actorUserId: user.id,
-    action: "corporate.report.approved",
-    entityType: "corporate_report_exports",
-    entityId: access.report.id,
-    metadata: {
-      programId: access.context.programId,
-      exportCode: access.report.exportCode,
-      fromStatus: access.report.status,
-      toStatus: "approved"
-    }
+    exportCode: access.report.exportCode,
+    expectedStatus: "review",
+    nextStatus: "approved"
   });
+
+  if (!updated) redirect("/corporate/reports?error=status");
 
   redirect("/corporate/reports?saved=approved");
 }
@@ -2228,38 +2247,29 @@ export async function publishCorporateReportAction(formData: FormData) {
     redirect("/corporate/reports?error=permission");
   }
 
-  if (!["approved", "published"].includes(access.report.status)) {
+  if (access.report.status === "published") {
+    redirect("/corporate/reports?saved=published");
+  }
+
+  if (access.report.status !== "approved") {
     redirect("/corporate/reports?error=approval");
   }
 
-  const now = new Date();
   const publicSlug =
     access.report.publicSlug ??
     `${toSlug(access.context.accountName)}-${toSlug(access.context.programName)}-${access.report.exportCode.toLowerCase()}`;
 
-  await db
-    .update(corporateReportExports)
-    .set({
-      status: "published",
-      publicSlug,
-      publishedAt: now,
-      updatedAt: now
-    })
-    .where(eq(corporateReportExports.id, access.report.id));
-
-  await writeAuditLog({
+  const updated = await transitionCorporateReport({
+    reportId: access.report.id,
+    programId: access.context.programId,
     actorUserId: user.id,
-    action: "corporate.report.published",
-    entityType: "corporate_report_exports",
-    entityId: access.report.id,
-    metadata: {
-      programId: access.context.programId,
-      exportCode: access.report.exportCode,
-      publicSlug,
-      fromStatus: access.report.status,
-      toStatus: "published"
-    }
+    exportCode: access.report.exportCode,
+    expectedStatus: "approved",
+    nextStatus: "published",
+    publicSlug
   });
+
+  if (!updated) redirect("/corporate/reports?error=approval");
 
   redirect("/corporate/reports?saved=published");
 }
