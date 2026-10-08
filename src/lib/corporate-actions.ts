@@ -1118,7 +1118,8 @@ export async function fundCorporateProjectAction(formData: FormData) {
     .select({
       id: campaigns.id,
       slug: campaigns.slug,
-      title: campaigns.title
+      title: campaigns.title,
+      currency: campaigns.currency
     })
     .from(campaigns)
     .where(eq(campaigns.id, campaignId))
@@ -1126,6 +1127,12 @@ export async function fundCorporateProjectAction(formData: FormData) {
 
   if (!campaign) {
     redirectWithResult(returnPath, "error", "project");
+  }
+
+  // A numeric campaign total has a single currency. Never add IDR corporate
+  // allocations directly to a USD campaign's raisedAmount (or vice versa).
+  if (countsTowardCampaignGoal && campaign.currency.toUpperCase() !== context.currency.toUpperCase()) {
+    redirectWithResult(returnPath, "error", "currency");
   }
 
   // Serialize all contribution changes within a corporate program. This row
