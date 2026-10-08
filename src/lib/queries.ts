@@ -2184,7 +2184,7 @@ export async function getImpactMapSites(campaignId?: string, expeditionId?: stri
           )
         : undefined
     ))
-    .orderBy(asc(impactSites.name));
+    .orderBy(asc(impactSites.name), desc(campaignImpactSites.isPrimary), asc(campaigns.slug));
 
   if (rows.length === 0) {
     return [];
@@ -2192,6 +2192,18 @@ export async function getImpactMapSites(campaignId?: string, expeditionId?: stri
 
   const siteIds = [...new Set(rows.map((site) => site.id))];
   const campaignIds = [...new Set(rows.map((site) => site.campaignId))];
+
+  // The national map represents physical sites, not campaign↔site relations.
+  // Campaign detail maps remain scoped to their own evidence and activity.
+  const displayedRows = campaignId
+    ? rows
+    : rows.filter((site, index) => rows.findIndex((candidate) => candidate.id === site.id) === index);
+  const linkedCampaignIdsBySite = new Map<string, string[]>();
+  for (const site of rows) {
+    const campaignIdsForSite = linkedCampaignIdsBySite.get(site.id) ?? [];
+    campaignIdsForSite.push(site.campaignId);
+    linkedCampaignIdsBySite.set(site.id, campaignIdsForSite);
+  }
   const [evidenceRows, pendingEvidenceRows] = await Promise.all([
     db
       .select({
@@ -2257,16 +2269,23 @@ export async function getImpactMapSites(campaignId?: string, expeditionId?: stri
     return grouped;
   }, new Map<string, EvidenceSourceData[]>());
 
-  return rows.map((site) => {
-    const scopeKey = impactSiteCampaignScopeKey(site.campaignId, site.id);
-    const evidence = evidenceBySite.get(scopeKey) ?? [];
+  return displayedRows.map((site) => {
+    const linkedCampaignIds = campaignId
+      ? [site.campaignId]
+      : linkedCampaignIdsBySite.get(site.id) ?? [site.campaignId];
+    const evidence = linkedCampaignIds
+      .flatMap((linkedCampaignId) => evidenceBySite.get(impactSiteCampaignScopeKey(linkedCampaignId, site.id)) ?? [])
+      .sort((a, b) => (b.verifiedAt ?? b.createdAt).getTime() - (a.verifiedAt ?? a.createdAt).getTime());
     const before = evidence.find((item) => item.stage === "before") ?? null;
     const after = evidence.find((item) => item.stage === "after") ?? evidence.find((item) => item.stage === "monitoring") ?? null;
     const beforeAfter = before || after ? { before, after } : null;
     const latestEvidence = evidence[0] ?? null;
     const monitoringHistory = monitoringHistoryForEvidence(evidence);
     const verifiedEvidenceCount = evidence.length;
-    const pendingEvidenceCount = pendingEvidenceBySite.get(scopeKey) ?? 0;
+    const pendingEvidenceCount = linkedCampaignIds.reduce(
+      (total, linkedCampaignId) => total + (pendingEvidenceBySite.get(impactSiteCampaignScopeKey(linkedCampaignId, site.id)) ?? 0),
+      0
+    );
     const evidenceCount = verifiedEvidenceCount + pendingEvidenceCount;
 
     return {
@@ -2280,8 +2299,8 @@ export async function getImpactMapSites(campaignId?: string, expeditionId?: stri
       latitude: toNumber(site.latitude),
       longitude: toNumber(site.longitude),
       verification: verificationLabel(normalizeImpactSiteVerificationStatus(getMetadataString(site.metadata, "verification"))),
-      // Count only evidence belonging to the current campaign/site pair. Legacy
-      // metadata.evidenceCount is site-wide and must not leak across campaigns.
+      // Count only evidence from the linked public campaigns, never site-wide
+      // legacy metadata (which can misattribute records to another campaign).
       evidenceCount,
       verifiedEvidenceCount,
       pendingEvidenceCount,
