@@ -325,7 +325,7 @@ export async function bookExpeditionAction(formData: FormData) {
       )
     : null;
 
-  if (!departure || !availability?.canBook) {
+  if (!departure || !availability?.canBook || departure.startsAt.getTime() <= Date.now()) {
     redirect(`${nextPath}?error=availability`);
   }
 

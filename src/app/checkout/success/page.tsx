@@ -37,7 +37,7 @@ export default async function CheckoutSuccessPage({ searchParams }: CheckoutSucc
     ? `This ${typeLabel} was not paid, so it remains available for support review.`
     : pending
       ? isExpedition
-        ? "Your seats and payment state are recorded. Confirmation remains pending until the current payment/admin verification flow is completed."
+        ? "Your booking request and payment proof are recorded. Seats are only reserved after payment verification confirms availability."
         : `Your ${typeLabel} proof has been received and is waiting for manual admin verification.`
       : `This ${typeLabel} has been recorded, and the related dashboard and receipt details are being updated.`;
 

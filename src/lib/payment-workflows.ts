@@ -434,6 +434,8 @@ export async function transitionDonationPayment(
   }
 ) {
   const now = input.now ?? new Date();
+  // Serialize transitions on the donation row inside the caller\'s transaction.
+  // Without this, two admin/webhook requests can both observe pending and increment totals.
   const [donation] = await database
     .select({
       id: donations.id,
@@ -461,7 +463,8 @@ export async function transitionDonationPayment(
     .leftJoin(paymentTransactions, eq(paymentTransactions.donationId, donations.id))
     .where(eq(donations.id, input.donationId))
     .orderBy(desc(paymentTransactions.updatedAt))
-    .limit(1);
+    .limit(1)
+    .for("update", { of: donations });
 
   if (!donation) {
     return null;
@@ -839,6 +842,8 @@ export async function transitionExpeditionBookingPayment(
   }
 ) {
   const now = input.now ?? new Date();
+  // Lock the booking before reading previousStatus; the departure UPDATE alone
+  // prevents overselling but does not prevent double-counting the same booking.
   const [booking] = await database
     .select({
       id: expeditionBookings.id,
@@ -866,7 +871,8 @@ export async function transitionExpeditionBookingPayment(
     .leftJoin(expeditionBookingPayments, eq(expeditionBookingPayments.bookingId, expeditionBookings.id))
     .where(eq(expeditionBookings.id, input.bookingId))
     .orderBy(desc(expeditionBookingPayments.updatedAt))
-    .limit(1);
+    .limit(1)
+    .for("update", { of: expeditionBookings });
 
   if (!booking) {
     return null;

@@ -1,6 +1,7 @@
 import { and, asc, desc, eq, gte, inArray, isNotNull, lte, or, sql } from "drizzle-orm";
 
 import { db } from "@/db/client";
+import { impactSiteCampaignScopeKey } from "@/lib/impact-site-scope";
 import {
   assessmentAttempts,
   assessmentChoices,
@@ -80,7 +81,7 @@ import {
   selectedChoiceIdsFromAssessmentMetadata
 } from "@/lib/academy-assessment";
 import { adminListOffset, adminPaginationMeta, parseAdminListQuery } from "@/lib/admin-list-query";
-import { campaignBudgetUtilization, campaignContentCompleteness, campaignStatuses, impactSiteVerificationStatuses } from "@/lib/campaign-content";
+import { campaignBudgetUtilization, campaignContentCompleteness, campaignStatuses, impactSiteVerificationStatuses, normalizeImpactSiteVerificationStatus } from "@/lib/campaign-content";
 import {
   corporateReportArtifactSourceUrl,
   publicCorporateReportArtifactRoute
@@ -1788,7 +1789,7 @@ export async function getExpeditionDetail(slug: string) {
       .from(expeditionDepartures)
       .where(eq(expeditionDepartures.expeditionId, row.id))
       .orderBy(asc(expeditionDepartures.startsAt)),
-    row.relatedCampaignId ? getImpactMapSites(row.relatedCampaignId) : Promise.resolve([]),
+    row.relatedCampaignId ? getImpactMapSites(row.relatedCampaignId, row.id) : Promise.resolve([]),
     row.relatedCampaignId
       ? db
           .select({
@@ -2153,10 +2154,11 @@ function monitoringHistoryForEvidence(evidence: EvidenceSourceData[]) {
   return buildMonitoringHistory(evidence);
 }
 
-export async function getImpactMapSites(campaignId?: string): Promise<ImpactSiteData[]> {
+export async function getImpactMapSites(campaignId?: string, expeditionId?: string): Promise<ImpactSiteData[]> {
   const rows = await db
     .select({
       id: impactSites.id,
+      campaignId: campaignImpactSites.campaignId,
       name: impactSites.name,
       type: impactSites.ecosystemType,
       region: impactSites.region,
@@ -2164,30 +2166,38 @@ export async function getImpactMapSites(campaignId?: string): Promise<ImpactSite
       campaignTitle: campaigns.title,
       latitude: impactSites.latitude,
       longitude: impactSites.longitude,
-      metadata: impactSites.metadata,
-      verification: organizations.verification
+      metadata: impactSites.metadata
     })
     .from(impactSites)
     .innerJoin(campaignImpactSites, eq(impactSites.id, campaignImpactSites.impactSiteId))
     .innerJoin(campaigns, eq(campaignImpactSites.campaignId, campaigns.id))
-    .leftJoin(organizations, eq(campaigns.organizationId, organizations.id))
-    .where(
+    .where(and(
       campaignId
         ? eq(campaignImpactSites.campaignId, campaignId)
-        : inArray(campaigns.status, ["published", "funded", "completed"])
-    )
+        : inArray(campaigns.status, ["published", "funded", "completed"]),
+      expeditionId
+        ? inArray(
+            impactSites.id,
+            db.select({ impactSiteId: expeditionImpactSites.impactSiteId })
+              .from(expeditionImpactSites)
+              .where(eq(expeditionImpactSites.expeditionId, expeditionId))
+          )
+        : undefined
+    ))
     .orderBy(asc(impactSites.name));
 
   if (rows.length === 0) {
     return [];
   }
 
-  const siteIds = rows.map((site) => site.id);
+  const siteIds = [...new Set(rows.map((site) => site.id))];
+  const campaignIds = [...new Set(rows.map((site) => site.campaignId))];
   const [evidenceRows, pendingEvidenceRows] = await Promise.all([
     db
       .select({
         id: projectEvidence.id,
         impactSiteId: projectEvidence.impactSiteId,
+        campaignId: projectEvidence.campaignId,
         evidenceCode: projectEvidence.evidenceCode,
         title: projectEvidence.title,
         evidenceType: projectEvidence.evidenceType,
@@ -2203,6 +2213,7 @@ export async function getImpactMapSites(campaignId?: string): Promise<ImpactSite
       .where(
         and(
           inArray(projectEvidence.impactSiteId, siteIds),
+          inArray(projectEvidence.campaignId, campaignIds),
           eq(projectEvidence.verificationStatus, "verified")
         )
       )
@@ -2210,22 +2221,24 @@ export async function getImpactMapSites(campaignId?: string): Promise<ImpactSite
     db
       .select({
         impactSiteId: projectEvidence.impactSiteId,
+        campaignId: projectEvidence.campaignId,
         total: sql<number>`count(*)::int`
       })
       .from(projectEvidence)
       .where(
         and(
           inArray(projectEvidence.impactSiteId, siteIds),
+          inArray(projectEvidence.campaignId, campaignIds),
           sql`${projectEvidence.verificationStatus} <> 'verified'`
         )
       )
-      .groupBy(projectEvidence.impactSiteId)
+      .groupBy(projectEvidence.campaignId, projectEvidence.impactSiteId)
   ]);
 
   const pendingEvidenceBySite = new Map<string, number>();
   for (const item of pendingEvidenceRows) {
     if (item.impactSiteId) {
-      pendingEvidenceBySite.set(item.impactSiteId, Number(item.total));
+      pendingEvidenceBySite.set(impactSiteCampaignScopeKey(item.campaignId, item.impactSiteId), Number(item.total));
     }
   }
 
@@ -2235,23 +2248,25 @@ export async function getImpactMapSites(campaignId?: string): Promise<ImpactSite
     }
 
     const item = toEvidenceSourceData(evidence);
-    const siteEvidence = grouped.get(evidence.impactSiteId) ?? [];
+    const scopeKey = impactSiteCampaignScopeKey(evidence.campaignId, evidence.impactSiteId);
+    const siteEvidence = grouped.get(scopeKey) ?? [];
 
     siteEvidence.push(item);
-    grouped.set(evidence.impactSiteId, siteEvidence);
+    grouped.set(scopeKey, siteEvidence);
 
     return grouped;
   }, new Map<string, EvidenceSourceData[]>());
 
   return rows.map((site) => {
-    const evidence = evidenceBySite.get(site.id) ?? [];
+    const scopeKey = impactSiteCampaignScopeKey(site.campaignId, site.id);
+    const evidence = evidenceBySite.get(scopeKey) ?? [];
     const before = evidence.find((item) => item.stage === "before") ?? null;
     const after = evidence.find((item) => item.stage === "after") ?? evidence.find((item) => item.stage === "monitoring") ?? null;
     const beforeAfter = before || after ? { before, after } : null;
     const latestEvidence = evidence[0] ?? null;
     const monitoringHistory = monitoringHistoryForEvidence(evidence);
     const verifiedEvidenceCount = evidence.length;
-    const pendingEvidenceCount = pendingEvidenceBySite.get(site.id) ?? 0;
+    const pendingEvidenceCount = pendingEvidenceBySite.get(scopeKey) ?? 0;
     const evidenceCount = verifiedEvidenceCount + pendingEvidenceCount;
 
     return {
@@ -2264,8 +2279,10 @@ export async function getImpactMapSites(campaignId?: string): Promise<ImpactSite
       progress: getMetadataNumber(site.metadata, "progress"),
       latitude: toNumber(site.latitude),
       longitude: toNumber(site.longitude),
-      verification: verificationLabel(site.verification),
-      evidenceCount: evidenceCount || getMetadataNumber(site.metadata, "evidenceCount"),
+      verification: verificationLabel(normalizeImpactSiteVerificationStatus(getMetadataString(site.metadata, "verification"))),
+      // Count only evidence belonging to the current campaign/site pair. Legacy
+      // metadata.evidenceCount is site-wide and must not leak across campaigns.
+      evidenceCount,
       verifiedEvidenceCount,
       pendingEvidenceCount,
       latestSurvey: latestEvidence?.surveyDate ?? getMetadataString(site.metadata, "latestSurvey"),
