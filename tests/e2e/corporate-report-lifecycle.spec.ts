@@ -42,6 +42,12 @@ test("corporate report lifecycle is atomic, idempotent and scoped to its program
     });
     expect(wrongProgram).toBe(false);
 
+    expect(await transitionCorporateReport({
+      ...scoped,
+      expectedStatus: "generated",
+      nextStatus: "published"
+    })).toBe(false);
+
     const submits = await Promise.all([
       transitionCorporateReport({ ...scoped, expectedStatus: "generated", nextStatus: "review" }),
       transitionCorporateReport({ ...scoped, expectedStatus: "generated", nextStatus: "review" })
