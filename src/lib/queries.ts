@@ -2184,7 +2184,7 @@ export async function getImpactMapSites(campaignId?: string, expeditionId?: stri
           )
         : undefined
     ))
-    .orderBy(asc(impactSites.name), asc(campaigns.slug));
+    .orderBy(asc(impactSites.name), desc(campaignImpactSites.isPrimary), asc(campaigns.slug));
 
   if (rows.length === 0) {
     return [];
