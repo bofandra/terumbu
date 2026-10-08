@@ -4519,7 +4519,7 @@ export async function updateCampaignStatusAction(formData: FormData) {
 
   if (decision === "publish") {
     const [siteSummary, targetSummary, mediaSummary, budgetSummary, timelineSummary, teamSummary] = await Promise.all([
-      db.select({ total: sql<number>`count(*)::int` }).from(impactSites).where(eq(impactSites.campaignId, campaign.id)).then((rows) => rows[0]),
+      db.select({ total: sql<number>`count(*)::int` }).from(campaignImpactSites).where(eq(campaignImpactSites.campaignId, campaign.id)).then((rows) => rows[0]),
       db.select({ total: sql<number>`count(*)::int` }).from(campaignImpactTargets).where(eq(campaignImpactTargets.campaignId, campaign.id)).then((rows) => rows[0]),
       db.select({ total: sql<number>`count(*)::int` }).from(campaignMediaItems).where(eq(campaignMediaItems.campaignId, campaign.id)).then((rows) => rows[0]),
       db.select({ total: sql<number>`count(*)::int` }).from(campaignBudgetLineItems).where(eq(campaignBudgetLineItems.campaignId, campaign.id)).then((rows) => rows[0]),
@@ -5297,7 +5297,7 @@ export async function reconcileDonationAction(formData: FormData) {
     });
   }
 
-  if (status === "failed" && donation.status !== "failed" && donation.donorEmail) {
+  if (status === "failed" && result.previousStatus !== "failed" && donation.donorEmail) {
     await sendTransactionalEmail({
       recipientEmail: donation.donorEmail,
       subject: "Your Terumbu donation payment needs attention",
@@ -5717,7 +5717,7 @@ export async function reconcileExpeditionBookingAction(formData: FormData) {
     redirectAdminPayment(formData, "error", "booking");
   }
 
-  if (status === "paid" && booking.paymentStatus !== "paid") {
+  if (status === "paid" && result.previousStatus !== "paid") {
     await sendTransactionalEmail({
       userId: booking.userId,
       recipientEmail: booking.contactEmail,
@@ -5734,7 +5734,7 @@ export async function reconcileExpeditionBookingAction(formData: FormData) {
     });
   }
 
-  if (status === "failed" && booking.paymentStatus !== "failed") {
+  if (status === "failed" && result.previousStatus !== "failed") {
     await sendTransactionalEmail({
       userId: booking.userId,
       recipientEmail: booking.contactEmail,
