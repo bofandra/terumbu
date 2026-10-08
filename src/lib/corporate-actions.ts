@@ -68,6 +68,7 @@ import {
   normalizeCorporateContributionStatus,
   normalizeCorporateContributionType
 } from "@/lib/corporate-contributions";
+import { transitionCorporateReport } from "@/lib/corporate-report-transitions";
 import { getCorporateDashboardData, getCorporateExpeditionActivities } from "@/lib/queries";
 import { formatCurrency } from "@/lib/utils";
 
@@ -2138,51 +2139,6 @@ async function reportForUser(userId: string, reportId: string) {
   return context ? { context, report } : null;
 }
 
-async function transitionCorporateReport(input: {
-  reportId: string;
-  programId: string;
-  actorUserId: string;
-  exportCode: string;
-  expectedStatus: "generated" | "review" | "approved";
-  nextStatus: "review" | "approved" | "published";
-  publicSlug?: string;
-}) {
-  const now = new Date();
-
-  return db.transaction(async (tx) => {
-    const [updated] = await tx
-      .update(corporateReportExports)
-      .set({
-        status: input.nextStatus,
-        updatedAt: now,
-        ...(input.nextStatus === "approved" ? { approvedByUserId: input.actorUserId, approvedAt: now } : {}),
-        ...(input.nextStatus === "published" ? { publicSlug: input.publicSlug, publishedAt: now } : {})
-      })
-      .where(and(
-        eq(corporateReportExports.id, input.reportId),
-        eq(corporateReportExports.programId, input.programId),
-        eq(corporateReportExports.status, input.expectedStatus)
-      ))
-      .returning({ id: corporateReportExports.id });
-
-    if (!updated) return false;
-
-    await tx.insert(adminAuditLogs).values({
-      actorUserId: input.actorUserId,
-      action: input.nextStatus === "review" ? "corporate.report.submitted" : input.nextStatus === "approved" ? "corporate.report.approved" : "corporate.report.published",
-      entityType: "corporate_report_exports",
-      entityId: updated.id,
-      metadata: auditMetadata({
-        programId: input.programId,
-        exportCode: input.exportCode,
-        ...(input.publicSlug ? { publicSlug: input.publicSlug } : {}),
-        fromStatus: input.expectedStatus,
-        toStatus: input.nextStatus
-      })
-    });
-    return true;
-  });
-}
 
 export async function submitCorporateReportForApprovalAction(formData: FormData) {
   const user = await requireCorporateAdminRole("/corporate/reports");
