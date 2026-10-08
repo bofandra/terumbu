@@ -58,7 +58,7 @@ assert_sitemap_path() {
 assert_security_headers() {
   local response_headers
   # curl returns CRLF-terminated HTTP headers; normalize before GNU grep -E.
-  response_headers="$(curl --max-time 10 -fsS -D - -o /dev/null "${BASE_URL}/" | tr -d '\\r')" || fail "unable to read security headers"
+  response_headers="$(curl --max-time 10 -fsS -D - -o /dev/null "${BASE_URL}/" | tr -d '\r')" || fail "unable to read security headers"
 
   grep -Eiq '^x-content-type-options:[[:space:]]*nosniff$' <<<"${response_headers}" || fail "missing X-Content-Type-Options: nosniff"
   grep -Eiq '^x-frame-options:[[:space:]]*DENY$' <<<"${response_headers}" || fail "missing X-Frame-Options: DENY"
