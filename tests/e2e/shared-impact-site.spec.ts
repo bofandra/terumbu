@@ -53,3 +53,41 @@ test("a shared impact site does not borrow verified evidence from another campai
     await sql.end();
   }
 });
+
+test("national impact map renders one pin for a site shared by two campaigns", async ({ page }) => {
+  const sql = postgres(process.env.DATABASE_URL!, { max: 1 });
+  let linkId: string | null = null;
+
+  try {
+    const [site] = await sql<{ id: string; name: string }[]>`
+      select s.id, s.name from campaigns c
+      join campaign_impact_sites cis on cis.campaign_id = c.id
+      join impact_sites s on s.id = cis.impact_site_id
+      where c.slug = 'restore-raja-ampat-reefs'
+      order by cis.is_primary desc limit 1
+    `;
+    const [target] = await sql<{ id: string }[]>`
+      select id from campaigns where slug = 'mangrove-shield-bali' limit 1
+    `;
+    expect(site?.id).toBeTruthy();
+    expect(target?.id).toBeTruthy();
+
+    const [link] = await sql<{ id: string }[]>`
+      insert into campaign_impact_sites (campaign_id, impact_site_id, is_primary)
+      values (${target.id}, ${site.id}, false)
+      on conflict (campaign_id, impact_site_id) do nothing returning id
+    `;
+    expect(link?.id).toBeTruthy();
+    linkId = link.id;
+
+    await page.goto("/impact-map");
+    await expect(page.getByRole("button", { name: `Show impact details for ${site.name}` })).toHaveCount(1);
+    await expect(page.locator("button[title]", { hasText: site.name })).toHaveCount(0);
+    await expect(page.locator(`button[title="${site.name}"]`)).toHaveCount(1);
+  } finally {
+    if (linkId) {
+      await sql`delete from campaign_impact_sites where id = ${linkId}`;
+    }
+    await sql.end();
+  }
+});
