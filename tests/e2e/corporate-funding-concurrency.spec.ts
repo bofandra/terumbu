@@ -84,6 +84,27 @@ test("concurrent corporate funding does not double count, and forged program acc
     `;
     expect(denied.total).toBe(0);
 
+    // The numeric raised total cannot mix USD with IDR when a malicious form
+    // explicitly opts into public-goal counting.
+    const wrongCurrency = before.currency.toUpperCase() === "USD" ? "IDR" : "USD";
+    await sql`update corporate_programs set currency = ${wrongCurrency} where id = ${programId}`;
+    await firstPage.goto("/corporate/donations");
+    const wrongCurrencyForm = firstPage.locator('form:has(button:has-text("Save donation"))');
+    await wrongCurrencyForm.locator('input[name="programId"]').evaluate((node, value) => {
+      (node as HTMLInputElement).value = value;
+    }, programId);
+    await wrongCurrencyForm.locator('input[name="allocationAmount"]').fill("37");
+    await wrongCurrencyForm.locator('input[name="countsTowardCampaignGoal"]').check();
+    await Promise.all([
+      firstPage.waitForURL(/\/corporate\/donations\?error=currency/),
+      wrongCurrencyForm.getByRole("button", { name: "Save donation" }).click()
+    ]);
+    const [currencyDenied] = await sql<{ total: number }[]>`
+      select count(*)::int as total from corporate_contributions where program_id = ${programId}
+    `;
+    expect(currencyDenied.total).toBe(0);
+    await sql`update corporate_programs set currency = ${before.currency} where id = ${programId}`;
+
     await firstPage.goto("/corporate/donations");
     const changedForm = firstPage.locator('form:has(button:has-text("Save donation"))');
     for (const [form, amount] of [[changedForm, "37"], [formTwo, "71"]] as const) {
