@@ -14,6 +14,13 @@ export async function transitionCorporateReport(input: {
   nextStatus: "review" | "approved" | "published";
   publicSlug?: string;
 }) {
+  // Refuse invalid jumps even if a future caller bypasses the UI state checks.
+  const validStep =
+    (input.expectedStatus === "generated" && input.nextStatus === "review") ||
+    (input.expectedStatus === "review" && input.nextStatus === "approved") ||
+    (input.expectedStatus === "approved" && input.nextStatus === "published");
+  if (!validStep) return false;
+
   const now = new Date();
 
   return db.transaction(async (tx) => {
