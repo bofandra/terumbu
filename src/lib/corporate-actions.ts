@@ -1127,74 +1127,76 @@ export async function fundCorporateProjectAction(formData: FormData) {
     redirectWithResult(returnPath, "error", "project");
   }
 
-  const [previousContribution] = await db
-    .select({
-      id: corporateContributions.id,
-      amount: corporateContributions.amount,
-      status: corporateContributions.status,
-      countsTowardCampaignGoal: corporateContributions.countsTowardCampaignGoal
-    })
-    .from(corporateContributions)
-    .where(
-      and(
-        eq(corporateContributions.programId, context.programId),
-        eq(corporateContributions.campaignId, campaign.id),
-        eq(corporateContributions.contributionType, contributionType)
+  // Serialize all contribution changes within a corporate program. This row
+  // lock protects previousContribution -> upsert -> campaign delta as one unit;
+  // atomic campaign increments still allow different programs to contribute.
+  await db.transaction(async (tx) => {
+    const [lockedProgram] = await tx
+      .select({ id: corporatePrograms.id })
+      .from(corporatePrograms)
+      .where(and(
+        eq(corporatePrograms.id, context.programId),
+        eq(corporatePrograms.corporateAccountId, context.accountId)
+      ))
+      .limit(1)
+      .for("update");
+
+    if (!lockedProgram) {
+      throw new Error("CORPORATE_PROGRAM_NOT_FOUND");
+    }
+
+    const [previousContribution] = await tx
+      .select({
+        id: corporateContributions.id,
+        amount: corporateContributions.amount,
+        status: corporateContributions.status,
+        countsTowardCampaignGoal: corporateContributions.countsTowardCampaignGoal
+      })
+      .from(corporateContributions)
+      .where(
+        and(
+          eq(corporateContributions.programId, context.programId),
+          eq(corporateContributions.campaignId, campaign.id),
+          eq(corporateContributions.contributionType, contributionType)
+        )
       )
-    )
-    .limit(1);
+      .limit(1);
 
-  const now = new Date();
-  const baseReferenceCode = buildCorporateContributionReference({
-    accountSlug: context.accountSlug,
-    campaignSlug: campaign.slug,
-    contributionType,
-    date: now
-  });
-  const referenceCode = previousContribution?.id ? undefined : `${baseReferenceCode}-${context.programId.slice(0, 8).toUpperCase()}`;
+    const now = new Date();
+    const baseReferenceCode = buildCorporateContributionReference({
+      accountSlug: context.accountSlug,
+      campaignSlug: campaign.slug,
+      contributionType,
+      date: now
+    });
+    const referenceCode = previousContribution?.id ? undefined : `${baseReferenceCode}-${context.programId.slice(0, 8).toUpperCase()}`;
 
-  const [portfolioRow] = await db
-    .insert(corporateProjectPortfolio)
-    .values({
-      programId: context.programId,
-      campaignId: campaign.id,
-      allocationAmount: allocationAmount.toFixed(2),
-      status: portfolioStatus
-    })
-    .onConflictDoUpdate({
-      target: [corporateProjectPortfolio.programId, corporateProjectPortfolio.campaignId],
-      set: {
+    const [portfolioRow] = await tx
+      .insert(corporateProjectPortfolio)
+      .values({
+        programId: context.programId,
+        campaignId: campaign.id,
         allocationAmount: allocationAmount.toFixed(2),
         status: portfolioStatus
-      }
-    })
-    .returning({ id: corporateProjectPortfolio.id });
+      })
+      .onConflictDoUpdate({
+        target: [corporateProjectPortfolio.programId, corporateProjectPortfolio.campaignId],
+        set: {
+          allocationAmount: allocationAmount.toFixed(2),
+          status: portfolioStatus
+        }
+      })
+      .returning({ id: corporateProjectPortfolio.id });
 
-  const [contributionRow] = await db
-    .insert(corporateContributions)
-    .values({
-      corporateAccountId: context.accountId,
-      programId: context.programId,
-      campaignId: campaign.id,
-      createdByUserId: user.id,
-      referenceCode: referenceCode ?? `${context.programId}-${campaign.id}-${contributionType}`,
-      contributionType,
-      amount: allocationAmount.toFixed(2),
-      currency: (context.currency || "IDR").toUpperCase(),
-      status: contributionStatus,
-      countsTowardCampaignGoal,
-      contributionDate: now,
-      notes,
-      metadata: {
-        source: "corporate_donations_form",
-        portfolioStatus
-      },
-      updatedAt: now,
-      createdAt: now
-    })
-    .onConflictDoUpdate({
-      target: [corporateContributions.programId, corporateContributions.campaignId, corporateContributions.contributionType],
-      set: {
+    const [contributionRow] = await tx
+      .insert(corporateContributions)
+      .values({
+        corporateAccountId: context.accountId,
+        programId: context.programId,
+        campaignId: campaign.id,
+        createdByUserId: user.id,
+        referenceCode: referenceCode ?? `${context.programId}-${campaign.id}-${contributionType}`,
+        contributionType,
         amount: allocationAmount.toFixed(2),
         currency: (context.currency || "IDR").toUpperCase(),
         status: contributionStatus,
@@ -1205,76 +1207,93 @@ export async function fundCorporateProjectAction(formData: FormData) {
           source: "corporate_donations_form",
           portfolioStatus
         },
-        updatedAt: now
-      }
-    })
-    .returning({ id: corporateContributions.id });
-
-  const raisedDelta = campaignRaisedDelta(
-    previousContribution
-      ? {
-          amount: Number(previousContribution.amount),
-          status: previousContribution.status,
-          countsTowardCampaignGoal: previousContribution.countsTowardCampaignGoal
-        }
-      : null,
-    {
-      amount: allocationAmount,
-      status: contributionStatus,
-      countsTowardCampaignGoal
-    }
-  );
-
-  if (raisedDelta !== 0) {
-    await db
-      .update(campaigns)
-      .set({
-        raisedAmount: sql`greatest(0, ${campaigns.raisedAmount} + ${raisedDelta.toFixed(2)}::numeric)`,
-        updatedAt: now
+        updatedAt: now,
+        createdAt: now
       })
-      .where(eq(campaigns.id, campaign.id));
-  }
+      .onConflictDoUpdate({
+        target: [corporateContributions.programId, corporateContributions.campaignId, corporateContributions.contributionType],
+        set: {
+          amount: allocationAmount.toFixed(2),
+          currency: (context.currency || "IDR").toUpperCase(),
+          status: contributionStatus,
+          countsTowardCampaignGoal,
+          contributionDate: now,
+          notes,
+          metadata: {
+            source: "corporate_donations_form",
+            portfolioStatus
+          },
+          updatedAt: now
+        }
+      })
+      .returning({ id: corporateContributions.id });
 
-  const evidenceRows = await db
-    .select({
-      id: projectEvidence.id
-    })
-    .from(projectEvidence)
-    .where(eq(projectEvidence.campaignId, campaign.id));
+    const raisedDelta = campaignRaisedDelta(
+      previousContribution
+        ? {
+            amount: Number(previousContribution.amount),
+            status: previousContribution.status,
+            countsTowardCampaignGoal: previousContribution.countsTowardCampaignGoal
+          }
+        : null,
+      {
+        amount: allocationAmount,
+        status: contributionStatus,
+        countsTowardCampaignGoal
+      }
+    );
 
-  if (evidenceRows.length > 0) {
-    await db
-      .insert(corporateEvidenceCenter)
-      .values(
-        evidenceRows.map((evidence) => ({
-          programId: context.programId,
-          evidenceId: evidence.id,
-          visibility: "reportable"
-        }))
-      )
-      .onConflictDoNothing({
-        target: [corporateEvidenceCenter.programId, corporateEvidenceCenter.evidenceId]
-      });
-  }
-
-  await writeAuditLog({
-    actorUserId: user.id,
-    action: "corporate.project.contribution_recorded",
-    entityType: "corporate_contributions",
-    entityId: contributionRow?.id,
-    metadata: {
-      programId: context.programId,
-      portfolioId: portfolioRow?.id ?? null,
-      campaignId: campaign.id,
-      campaignTitle: campaign.title,
-      contributionType,
-      contributionStatus,
-      allocationAmount,
-      countsTowardCampaignGoal,
-      raisedDelta,
-      portfolioStatus,
-      evidenceLinked: evidenceRows.length
+    if (raisedDelta !== 0) {
+      await tx
+        .update(campaigns)
+        .set({
+          raisedAmount: sql`greatest(0, ${campaigns.raisedAmount} + ${raisedDelta.toFixed(2)}::numeric)`,
+          updatedAt: now
+        })
+        .where(eq(campaigns.id, campaign.id));
     }
+
+    const evidenceRows = await tx
+      .select({
+        id: projectEvidence.id
+      })
+      .from(projectEvidence)
+      .where(eq(projectEvidence.campaignId, campaign.id));
+
+    if (evidenceRows.length > 0) {
+      await tx
+        .insert(corporateEvidenceCenter)
+        .values(
+          evidenceRows.map((evidence) => ({
+            programId: context.programId,
+            evidenceId: evidence.id,
+            visibility: "reportable"
+          }))
+        )
+        .onConflictDoNothing({
+          target: [corporateEvidenceCenter.programId, corporateEvidenceCenter.evidenceId]
+        });
+    }
+
+    await tx.insert(adminAuditLogs).values({
+      actorUserId: user.id,
+      action: "corporate.project.contribution_recorded",
+      entityType: "corporate_contributions",
+      entityId: contributionRow?.id,
+      metadata: auditMetadata({
+        programId: context.programId,
+        portfolioId: portfolioRow?.id ?? null,
+        campaignId: campaign.id,
+        campaignTitle: campaign.title,
+        contributionType,
+        contributionStatus,
+        allocationAmount,
+        countsTowardCampaignGoal,
+        raisedDelta,
+        portfolioStatus,
+        evidenceLinked: evidenceRows.length
+      })
+    });
   });
 
   redirectWithResult(returnPath, "saved", "project");
