@@ -80,10 +80,21 @@ test("national impact map renders one pin for a site shared by two campaigns", a
     expect(link?.id).toBeTruthy();
     linkId = link.id;
 
+    const [recordCount] = await sql<{ total: number }[]>`
+      select count(*)::int as total from project_evidence e
+      join campaign_impact_sites cis on cis.impact_site_id = e.impact_site_id
+        and cis.campaign_id = e.campaign_id
+      join campaigns c on c.id = cis.campaign_id
+      where e.impact_site_id = ${site.id} and c.status in ('published', 'funded', 'completed')
+    `;
+
     await page.goto("/impact-map");
-    await expect(page.getByRole("button", { name: `Show impact details for ${site.name}` })).toHaveCount(1);
-    await expect(page.locator("button[title]", { hasText: site.name })).toHaveCount(0);
+    const pin = page.getByRole("button", { name: `Show impact details for ${site.name}` });
+    await expect(pin).toHaveCount(1);
     await expect(page.locator(`button[title="${site.name}"]`)).toHaveCount(1);
+    await pin.click();
+    await expect(page.getByText(`${recordCount.total} activity records`, { exact: true }).first()).toBeVisible();
+    await expect(page.locator('a[href="/campaigns/restore-raja-ampat-reefs"]').filter({ hasText: "Donate" })).toBeVisible();
   } finally {
     if (linkId) {
       await sql`delete from campaign_impact_sites where id = ${linkId}`;
