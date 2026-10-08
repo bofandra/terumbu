@@ -2,14 +2,13 @@
 
 import { randomBytes } from "node:crypto";
 
-import { and, asc, eq, inArray } from "drizzle-orm";
+import { and, asc, eq, inArray, isNull } from "drizzle-orm";
 import { redirect } from "next/navigation";
 
 import { db } from "@/db/client";
 import {
   buildAssessmentAttemptMetadata,
   correctChoiceIdsFromAssessmentMetadata,
-  manualAssessmentScore,
   nextAvailableAssessmentSlug,
   scoreAssessmentChoices,
   selectedChoiceIdsFromAssessmentMetadata,
@@ -57,16 +56,6 @@ function formInt(formData: FormData, key: string, fallback: number) {
   const value = Number(formData.get(key));
 
   return Number.isFinite(value) ? Math.max(0, Math.round(value)) : fallback;
-}
-
-function parseAssessmentScore(value: FormDataEntryValue | null) {
-  const score = Number(String(value ?? "").replace(/[^0-9]/g, ""));
-
-  if (!Number.isFinite(score)) {
-    return 0;
-  }
-
-  return Math.max(0, Math.min(100, Math.round(score)));
 }
 
 function courseStatusFromForm(formData: FormData) {
@@ -291,7 +280,10 @@ export async function completeLessonAction(formData: FormData) {
     })
     .from(courseEnrollments)
     .innerJoin(courses, eq(courseEnrollments.courseId, courses.id))
-    .where(and(eq(courses.slug, courseSlug), eq(courseEnrollments.userId, user.id)))
+    // A form can be edited in the browser. Only a lesson belonging to this
+    // published course may update the current user's enrollment.
+    .innerJoin(courseLessons, and(eq(courseLessons.courseId, courses.id), eq(courseLessons.id, lessonId)))
+    .where(and(eq(courses.slug, courseSlug), eq(courses.status, "published"), eq(courseEnrollments.userId, user.id)))
     .limit(1);
 
   if (!enrollment || !lessonId) {
@@ -336,7 +328,9 @@ async function scoreAssessment(assessmentId: string, formData: FormData) {
     .orderBy(asc(assessmentQuestions.position), asc(assessmentChoices.position));
 
   if (questions.length === 0) {
-    return manualAssessmentScore(parseAssessmentScore(formData.get("score")));
+    // Never accept scores supplied by a client when no server-side questions
+    // exist. An empty assessment cannot issue a credential.
+    return null;
   }
 
   const selectedByQuestion = new Map<string, string>();
@@ -365,7 +359,8 @@ export async function submitAssessmentAction(formData: FormData) {
       passingScore: courseAssessments.passingScore,
       enrollmentId: courseEnrollments.id,
       passportId: impactPassports.id,
-      attemptMetadata: assessmentAttempts.metadata
+      attemptMetadata: assessmentAttempts.metadata,
+      previousAttemptStatus: assessmentAttempts.status
     })
     .from(courses)
     .innerJoin(courseAssessments, eq(courseAssessments.courseId, courses.id))
@@ -379,7 +374,33 @@ export async function submitAssessmentAction(formData: FormData) {
     redirect(`/academy/courses/${courseSlug}?error=assessment`);
   }
 
+  // UI controls are not authorization checks. Require every lesson for this
+  // enrollment to be completed before processing any assessment submission.
+  const [unfinishedLesson] = await db
+    .select({ id: courseLessons.id })
+    .from(courseLessons)
+    .leftJoin(lessonProgress, and(
+      eq(lessonProgress.lessonId, courseLessons.id),
+      eq(lessonProgress.enrollmentId, row.enrollmentId),
+      eq(lessonProgress.status, "completed")
+    ))
+    .where(and(eq(courseLessons.courseId, row.courseId), isNull(lessonProgress.id)))
+    .limit(1);
+
+  if (unfinishedLesson) {
+    redirect(`/academy/courses/${courseSlug}?error=lessons#course-outline`);
+  }
+
+  // A completed assessment must not be overwritten by a subsequent forged
+  // submission that would mark a certified learner as failed.
+  if (row.previousAttemptStatus === "passed") {
+    redirect(`/academy/courses/${courseSlug}?assessment=passed#final-assessment`);
+  }
+
   const result = await scoreAssessment(row.assessmentId, formData);
+  if (!result) {
+    redirect(`/academy/courses/${courseSlug}?error=assessment-unavailable#final-assessment`);
+  }
   const score = result.score;
   const passed = score >= row.passingScore;
   const attemptMetadata = buildAssessmentAttemptMetadata({
