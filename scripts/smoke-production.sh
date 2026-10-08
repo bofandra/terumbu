@@ -57,11 +57,12 @@ assert_sitemap_path() {
 
 assert_security_headers() {
   local response_headers
-  response_headers="$(curl --max-time 10 -fsS -D - -o /dev/null "${BASE_URL}/")" || fail "unable to read security headers"
+  # curl returns CRLF-terminated HTTP headers; normalize before GNU grep -E.
+  response_headers="$(curl --max-time 10 -fsS -D - -o /dev/null "${BASE_URL}/" | tr -d '\\r')" || fail "unable to read security headers"
 
-  grep -Eiq '^x-content-type-options:[[:space:]]*nosniff\r?$' <<<"${response_headers}" || fail "missing X-Content-Type-Options: nosniff"
-  grep -Eiq '^x-frame-options:[[:space:]]*DENY\r?$' <<<"${response_headers}" || fail "missing X-Frame-Options: DENY"
-  grep -Eiq '^referrer-policy:[[:space:]]*strict-origin-when-cross-origin\r?$' <<<"${response_headers}" || fail "missing strict Referrer-Policy"
+  grep -Eiq '^x-content-type-options:[[:space:]]*nosniff$' <<<"${response_headers}" || fail "missing X-Content-Type-Options: nosniff"
+  grep -Eiq '^x-frame-options:[[:space:]]*DENY$' <<<"${response_headers}" || fail "missing X-Frame-Options: DENY"
+  grep -Eiq '^referrer-policy:[[:space:]]*strict-origin-when-cross-origin$' <<<"${response_headers}" || fail "missing strict Referrer-Policy"
   grep -Eiq "^content-security-policy:.*frame-ancestors 'none'" <<<"${response_headers}" || fail "CSP does not deny framing"
   grep -Eiq "^content-security-policy:.*object-src 'none'" <<<"${response_headers}" || fail "CSP does not block object content"
   echo "Security headers OK" >&2
