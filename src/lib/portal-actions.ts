@@ -5391,19 +5391,30 @@ export async function settlePaymentOperationAction(formData: FormData) {
   }
 
   if (decision === "reject") {
-    await db
-      .update(paymentOperations)
-      .set({
-        processedByUserId: user.id,
-        status: "rejected",
-        processedAt: now,
-        updatedAt: now,
-        metadata: {
-          decision: "rejected",
-          adminNote
-        }
-      })
-      .where(eq(paymentOperations.id, operation.id));
+    // Claim the pending operation exactly once. A second admin request must not
+    // produce a duplicate email or audit event after the first decision commits.
+    const rejected = await db.transaction(async (tx) => {
+      const [claimed] = await tx
+        .update(paymentOperations)
+        .set({
+          processedByUserId: user.id,
+          status: "rejected",
+          processedAt: now,
+          updatedAt: now,
+          metadata: {
+            ...operationMetadata,
+            decision: "rejected",
+            adminNote
+          }
+        })
+        .where(and(eq(paymentOperations.id, operation.id), eq(paymentOperations.status, "pending")))
+        .returning({ id: paymentOperations.id });
+      return Boolean(claimed);
+    });
+
+    if (!rejected) {
+      redirectAdminPayment(formData, "error", "operation");
+    }
 
     if (operation.entityType === "donation" && operation.donationId) {
       const [donation] = await db
@@ -5489,8 +5500,43 @@ export async function settlePaymentOperationAction(formData: FormData) {
 
     const providerReference = operation.providerReference ?? `MANUAL-REFUND-${operation.id}`;
 
-    await db.transaction(async (tx) => {
-      await transitionDonationPayment(tx as unknown as typeof db, {
+    const settled = await db.transaction(async (tx) => {
+      // Lock the payment entity before claiming the operation. This also guards
+      // against two distinct refund operations trying to reverse one payment.
+      const [current] = await tx
+        .select({ status: donations.status })
+        .from(donations)
+        .where(eq(donations.id, donation.id))
+        .limit(1)
+        .for("update");
+
+      if (current?.status !== "paid") {
+        return false;
+      }
+
+      const [claimed] = await tx
+        .update(paymentOperations)
+        .set({
+          processedByUserId: user.id,
+          status: "completed",
+          providerReference,
+          processedAt: now,
+          updatedAt: now,
+          metadata: {
+            ...operationMetadata,
+            decision: "approved",
+            providerStatus: "manually_confirmed",
+            adminNote
+          }
+        })
+        .where(and(eq(paymentOperations.id, operation.id), eq(paymentOperations.status, "pending")))
+        .returning({ id: paymentOperations.id });
+
+      if (!claimed) {
+        return false;
+      }
+
+      const transition = await transitionDonationPayment(tx as unknown as typeof db, {
         donationId: donation.id,
         nextStatus: "refunded",
         providerReference,
@@ -5505,22 +5551,15 @@ export async function settlePaymentOperationAction(formData: FormData) {
         now
       });
 
-      await tx
-        .update(paymentOperations)
-        .set({
-          processedByUserId: user.id,
-          status: "completed",
-          providerReference,
-          processedAt: now,
-          updatedAt: now,
-          metadata: {
-            decision: "approved",
-            providerStatus: "manually_confirmed",
-            adminNote
-          }
-        })
-        .where(eq(paymentOperations.id, operation.id));
+      if (!transition || transition.previousStatus !== "paid") {
+        throw new Error("REFUND_PAYMENT_STATE_CHANGED");
+      }
+      return true;
     });
+
+    if (!settled) {
+      redirectAdminPayment(formData, "error", "operation");
+    }
 
     if (donation.donorEmail) {
       await sendTransactionalEmail({
@@ -5575,8 +5614,41 @@ export async function settlePaymentOperationAction(formData: FormData) {
 
     const providerReference = operation.providerReference ?? `MANUAL-REFUND-${operation.id}`;
 
-    await db.transaction(async (tx) => {
-      await transitionExpeditionBookingPayment(tx as unknown as typeof db, {
+    const settled = await db.transaction(async (tx) => {
+      const [current] = await tx
+        .select({ status: expeditionBookings.paymentStatus })
+        .from(expeditionBookings)
+        .where(eq(expeditionBookings.id, booking.id))
+        .limit(1)
+        .for("update");
+
+      if (current?.status !== "paid") {
+        return false;
+      }
+
+      const [claimed] = await tx
+        .update(paymentOperations)
+        .set({
+          processedByUserId: user.id,
+          status: "completed",
+          providerReference,
+          processedAt: now,
+          updatedAt: now,
+          metadata: {
+            ...operationMetadata,
+            decision: "approved",
+            providerStatus: "manually_confirmed",
+            adminNote
+          }
+        })
+        .where(and(eq(paymentOperations.id, operation.id), eq(paymentOperations.status, "pending")))
+        .returning({ id: paymentOperations.id });
+
+      if (!claimed) {
+        return false;
+      }
+
+      const transition = await transitionExpeditionBookingPayment(tx as unknown as typeof db, {
         bookingId: booking.id,
         nextStatus: "refunded",
         providerReference,
@@ -5591,22 +5663,15 @@ export async function settlePaymentOperationAction(formData: FormData) {
         now
       });
 
-      await tx
-        .update(paymentOperations)
-        .set({
-          processedByUserId: user.id,
-          status: "completed",
-          providerReference,
-          processedAt: now,
-          updatedAt: now,
-          metadata: {
-            decision: "approved",
-            providerStatus: "manually_confirmed",
-            adminNote
-          }
-        })
-        .where(eq(paymentOperations.id, operation.id));
+      if (!transition || transition.previousStatus !== "paid") {
+        throw new Error("REFUND_PAYMENT_STATE_CHANGED");
+      }
+      return true;
     });
+
+    if (!settled) {
+      redirectAdminPayment(formData, "error", "operation");
+    }
 
     await sendTransactionalEmail({
       userId: operation.requestedByUserId,
