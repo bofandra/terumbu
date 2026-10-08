@@ -2280,7 +2280,9 @@ export async function getImpactMapSites(campaignId?: string, expeditionId?: stri
       latitude: toNumber(site.latitude),
       longitude: toNumber(site.longitude),
       verification: verificationLabel(normalizeImpactSiteVerificationStatus(getMetadataString(site.metadata, "verification"))),
-      evidenceCount: evidenceCount || getMetadataNumber(site.metadata, "evidenceCount"),
+      // Count only evidence belonging to the current campaign/site pair. Legacy
+      // metadata.evidenceCount is site-wide and must not leak across campaigns.
+      evidenceCount,
       verifiedEvidenceCount,
       pendingEvidenceCount,
       latestSurvey: latestEvidence?.surveyDate ?? getMetadataString(site.metadata, "latestSurvey"),
