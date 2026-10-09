@@ -24,9 +24,11 @@ test("corporate report lifecycle is atomic, idempotent and scoped to its program
     `;
     expect(reviewer?.id).toBeTruthy();
     const exportCode = `E2E-CORP-STATE-${randomUUID()}`;
+    const snapshot = { metrics: { totalAllocated: 123 }, portfolio: [], evidence: [] };
+    const generationMetadata = JSON.stringify({ generationSnapshot: snapshot });
     const [report] = await sql<{ id: string }[]>`
-      insert into corporate_report_exports (program_id, requested_by_user_id, export_code, report_type, export_format, status, generated_at)
-      values (${actor.program_id}, ${actor.user_id}, ${exportCode}, 'esg', 'pdf', 'generated', now()) returning id
+      insert into corporate_report_exports (program_id, requested_by_user_id, export_code, report_type, export_format, status, generated_at, metadata)
+      values (${actor.program_id}, ${actor.user_id}, ${exportCode}, 'esg', 'pdf', 'generated', now(), ${generationMetadata}::jsonb) returning id
     `;
     reportId = report.id;
 
@@ -71,10 +73,9 @@ test("corporate report lifecycle is atomic, idempotent and scoped to its program
     expect(approvals.filter(Boolean)).toHaveLength(1);
 
     const publicSlug = `e2e-corporate-report-${randomUUID()}`;
-    const snapshot = { metrics: { totalAllocated: 123 }, portfolio: [], evidence: [] };
     const published = await Promise.all([
-      transitionCorporateReport({ ...scoped, expectedStatus: "approved", nextStatus: "published", publicSlug, publicSnapshot: snapshot }),
-      transitionCorporateReport({ ...scoped, expectedStatus: "approved", nextStatus: "published", publicSlug, publicSnapshot: snapshot })
+      transitionCorporateReport({ ...scoped, expectedStatus: "approved", nextStatus: "published", publicSlug }),
+      transitionCorporateReport({ ...scoped, expectedStatus: "approved", nextStatus: "published", publicSlug })
     ]);
     expect(published.filter(Boolean)).toHaveLength(1);
 
