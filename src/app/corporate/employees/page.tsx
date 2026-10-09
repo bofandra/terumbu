@@ -1,7 +1,9 @@
 import { UserPlus } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { requireCorporateAdminRole } from "@/lib/auth";
+import { requireCorporateOperatorRole } from "@/lib/auth";
+import { forbiddenRedirectPath } from "@/lib/account-destinations";
+import { redirect } from "next/navigation";
 import { requireCorporateDashboardData } from "@/lib/corporate-access";
 import { inviteCorporateEmployeeAction } from "@/lib/corporate-actions";
 
@@ -20,8 +22,9 @@ type CorporateEmployeesPageProps = {
 
 export default async function CorporateEmployeesPage({ searchParams }: CorporateEmployeesPageProps) {
   const params = await searchParams;
-  const user = await requireCorporateAdminRole("/corporate/employees");
+  const user = await requireCorporateOperatorRole("/corporate/employees");
   const data = await requireCorporateDashboardData(user.id, "/corporate/employees");
+  if (!data.capabilities.canManageEmployees) redirect(forbiddenRedirectPath("/corporate/employees"));
 
   return (
     <main className="mx-auto max-w-4xl px-4 py-8 sm:px-6 lg:px-8">
