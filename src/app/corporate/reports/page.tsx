@@ -165,7 +165,7 @@ export default async function CorporateReportsPage({ searchParams }: ReportsPage
                   </Link>
                 ) : null}
 
-                {canSubmit && report.status === "generated" && report.artifactReadiness === "ready" ? (
+                {canSubmit && report.status === "generated" && (Boolean(report.pdfUrl) || report.artifactReadiness === "ready") ? (
                   <form action={submitCorporateReportForApprovalAction}>
                     <input type="hidden" name="reportId" value={report.id} />
                     <Button type="submit" tone="secondary"><Send size={16} aria-hidden="true" /> Submit for review</Button>
@@ -184,7 +184,7 @@ export default async function CorporateReportsPage({ searchParams }: ReportsPage
                   </form>
                 ) : null}
               </div>
-              {report.status === "generated" && report.artifactReadiness !== "ready" ? (
+              {report.status === "generated" && !report.pdfUrl && report.artifactReadiness !== "ready" ? (
                 <p className="mt-3 text-xs font-semibold text-coral-700">Artifact not ready. Generate a complete report before submitting it.</p>
               ) : null}
             </article>
