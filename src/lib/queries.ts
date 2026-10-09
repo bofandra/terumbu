@@ -5355,6 +5355,7 @@ export async function getCorporateDashboardData(userId: string, requestedProgram
     db
       .select({
         id: corporateReportExports.id,
+        requestedByUserId: corporateReportExports.requestedByUserId,
         exportCode: corporateReportExports.exportCode,
         reportType: corporateReportExports.reportType,
         exportFormat: corporateReportExports.exportFormat,
@@ -6446,7 +6447,7 @@ export async function getCorporateExpeditionActivities(userId: string, requested
   }));
 }
 
-export async function getPublicCorporateImpactReport(publicSlug: string) {
+async function loadCorporateImpactReport(publicSlug: string | null, unpublishedReportId: string | null = null) {
   const [report] = await db
     .select({
       id: corporateReportExports.id,
@@ -6476,7 +6477,9 @@ export async function getPublicCorporateImpactReport(publicSlug: string) {
     .from(corporateReportExports)
     .innerJoin(corporatePrograms, eq(corporateReportExports.programId, corporatePrograms.id))
     .innerJoin(corporateAccounts, eq(corporatePrograms.corporateAccountId, corporateAccounts.id))
-    .where(and(eq(corporateReportExports.publicSlug, publicSlug), eq(corporateReportExports.status, "published")))
+    .where(unpublishedReportId
+      ? eq(corporateReportExports.id, unpublishedReportId)
+      : and(eq(corporateReportExports.publicSlug, publicSlug!), eq(corporateReportExports.status, "published")))
     .limit(1);
 
   if (!report) {
@@ -6556,23 +6559,77 @@ export async function getPublicCorporateImpactReport(publicSlug: string) {
     exportCode: report.exportCode
   };
 
+  const metrics = {
+    committedFunding,
+    totalAllocated,
+    restorationUnits,
+    verifiedEvidence,
+    projectCount: portfolio.length,
+    partnerCount: new Set(portfolio.map((project) => project.organizationName)).size
+  };
+
+  const metadata = report.metadata && typeof report.metadata === "object" && !Array.isArray(report.metadata)
+    ? report.metadata as Record<string, unknown>
+    : {};
+  const saved = metadata.publicSnapshot && typeof metadata.publicSnapshot === "object" && !Array.isArray(metadata.publicSnapshot)
+    ? metadata.publicSnapshot as {
+        reportContext?: Partial<typeof report>;
+        portfolio?: typeof portfolio;
+        evidence?: typeof evidence;
+        metrics?: typeof metrics;
+      }
+    : null;
+  // Published documents must reflect the exact data captured at publication.
+  // The fallback preserves access to reports published before snapshots existed.
+  const frozen = unpublishedReportId ? null : saved;
   return {
     report: {
       ...report,
-      pdfUrl: corporateReportArtifactSourceUrl(reportArtifactSource, "pdf")
-        ? publicCorporateReportArtifactRoute(report.publicSlug!, "pdf")
+      ...(frozen?.reportContext ? {
+        ...frozen.reportContext,
+        startsAt: frozen.reportContext.startsAt ? new Date(frozen.reportContext.startsAt) : report.startsAt,
+        endsAt: frozen.reportContext.endsAt ? new Date(frozen.reportContext.endsAt) : report.endsAt
+      } : {}),
+      pdfUrl: report.publicSlug && corporateReportArtifactSourceUrl(reportArtifactSource, "pdf")
+        ? publicCorporateReportArtifactRoute(report.publicSlug, "pdf")
         : null
+    },
+    portfolio: frozen?.portfolio ?? portfolio,
+    evidence: frozen?.evidence
+      ? frozen.evidence.map((item) => ({
+          ...item,
+          verifiedAt: item.verifiedAt ? new Date(item.verifiedAt) : null,
+          addedAt: item.addedAt ? new Date(item.addedAt) : null
+        }))
+      : evidence,
+    metrics: frozen?.metrics ?? metrics
+  };
+}
+
+export async function getPublicCorporateImpactReport(publicSlug: string) {
+  return loadCorporateImpactReport(publicSlug);
+}
+
+// Called only after report authorization, before the atomic publish transition.
+export async function getCorporateImpactSnapshotForPublication(reportId: string) {
+  const data = await loadCorporateImpactReport(null, reportId);
+  if (!data) return null;
+  const { report, portfolio, evidence, metrics } = data;
+  return {
+    reportContext: {
+      accountName: report.accountName,
+      accountSlug: report.accountSlug,
+      accountLogoUrl: report.accountLogoUrl,
+      programName: report.programName,
+      programSlug: report.programSlug,
+      startsAt: report.startsAt,
+      endsAt: report.endsAt,
+      budgetAmount: report.budgetAmount,
+      currency: report.currency
     },
     portfolio,
     evidence,
-    metrics: {
-      committedFunding,
-      totalAllocated,
-      restorationUnits,
-      verifiedEvidence,
-      projectCount: portfolio.length,
-      partnerCount: new Set(portfolio.map((project) => project.organizationName)).size
-    }
+    metrics
   };
 }
 
