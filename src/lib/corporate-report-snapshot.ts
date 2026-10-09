@@ -60,3 +60,48 @@ export function corporatePublicSnapshotFromDashboard(
     }
   };
 }
+
+/**
+ * Restore persisted JSONB into the public report shape. A published report is
+ * allowed to serve this dataset without querying mutable campaign/evidence
+ * tables. Incomplete legacy snapshots intentionally fall back to live reads.
+ */
+export function hydrateCorporatePublicSnapshot(value: unknown) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+
+  const snapshot = value as Partial<ReturnType<typeof corporatePublicSnapshotFromDashboard>>;
+  if (
+    snapshot.snapshotVersion !== 1 ||
+    !snapshot.reportContext ||
+    typeof snapshot.reportContext !== "object" ||
+    Array.isArray(snapshot.reportContext) ||
+    !Array.isArray(snapshot.portfolio) ||
+    !Array.isArray(snapshot.evidence) ||
+    !snapshot.metrics ||
+    typeof snapshot.metrics !== "object" ||
+    Array.isArray(snapshot.metrics)
+  ) {
+    return null;
+  }
+
+  const persistedDate = (date: unknown): Date | null => {
+    if (!date) return null;
+    const parsed = date instanceof Date ? date : new Date(String(date));
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+  };
+
+  return {
+    reportContext: {
+      ...snapshot.reportContext,
+      startsAt: persistedDate(snapshot.reportContext.startsAt),
+      endsAt: persistedDate(snapshot.reportContext.endsAt)
+    },
+    portfolio: snapshot.portfolio,
+    evidence: snapshot.evidence.map((item) => ({
+      ...item,
+      verifiedAt: persistedDate(item.verifiedAt),
+      addedAt: persistedDate(item.addedAt)
+    })),
+    metrics: snapshot.metrics
+  };
+}
