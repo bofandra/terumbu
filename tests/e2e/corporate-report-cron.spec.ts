@@ -82,6 +82,16 @@ test("authenticated corporate cron generates each due report once, records revok
     }]);
     expect(notices.some((item) => item.user_id === outsider.id)).toBe(false);
 
+    // The alert is transactionally enqueued exactly once for delivery.
+    const queued = await sql<{ delivery_key: string; status: string; recipient_email: string }[]> `
+      select delivery_key, status, recipient_email from email_logs
+      where template = 'corporate_report_failure' and payload->>'reportId' = ${revokedReportId}
+    `;
+    expect(queued).toHaveLength(1);
+    expect(queued[0].delivery_key).toMatch(/^corporate-report-alert-[0-9a-f-]+$/);
+    expect(["queued", "retry", "sending", "failed"]).toContain(queued[0].status);
+    expect(queued[0].recipient_email).toBe("corporate.demo@terumbu.eco");
+
     // The scoped report library must show failure state and chronological audit activity.
     const page = await browser.newPage();
     try {
@@ -144,8 +154,36 @@ test("authenticated corporate cron generates each due report once, records revok
       where source_type = 'corporate_report_export' and source_id = ${revokedReportId}
     `;
     expect(notificationCount.total).toBe(1);
+
+    // Recovery auto-resolves stale alerts and cancels unsent deliveries.
+    // Make the previously revoked requester eligible and advance the retry.
+    await sql`
+      update corporate_report_exports
+      set requested_by_user_id = ${actor.user_id},
+          metadata = jsonb_set(metadata, '{nextRetryAt}', to_jsonb((now() - interval '1 minute')::text))
+      where id = ${revokedReportId}
+    `;
+    const recovered = await request.post("/api/cron/corporate-reports", { headers });
+    expect(recovered.status()).toBe(200);
+    const [recoveredReport] = await sql<{ status: string }[]> `
+      select status from corporate_report_exports where id = ${revokedReportId}
+    `;
+    expect(recoveredReport.status).toBe("generated");
+
+    const [resolved] = await sql<{ read_at: Date; message: string }[]> `
+      select read_at, message from user_notifications
+      where source_type = 'corporate_report_export' and source_id = ${revokedReportId}
+    `;
+    expect(resolved.read_at).toBeTruthy();
+    expect(resolved.message).toContain("generated successfully");
+    const [delivery] = await sql<{ status: string }[]> `
+      select status from email_logs
+      where template = 'corporate_report_failure' and payload->>'reportId' = ${revokedReportId}
+    `;
+    expect(delivery.status).toBe("cancelled");
   } finally {
     if (reports.length) {
+      await sql`delete from email_logs where template = 'corporate_report_failure' and payload->>'reportId' in ${sql(reports)}`;
       await sql`delete from user_notifications where source_type = 'corporate_report_export' and source_id in ${sql(reports)}`;
       await sql`delete from admin_audit_logs where entity_type = 'corporate_report_exports' and entity_id in ${sql(reports)}`;
       await sql`delete from corporate_report_exports where id in ${sql(reports)}`;
