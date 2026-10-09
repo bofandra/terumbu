@@ -59,11 +59,11 @@ services:
           sleep 3600
           curl --fail --silent --show-error --max-time 60 \
             -X POST \
-            -H "x-cron-secret: ${CRON_SECRET}" \
+            -H "x-cron-secret: $${CRON_SECRET}" \
             http://web:3000/api/cron/expedition-reminders || true
           curl --fail --silent --show-error --max-time 600 \
             -X POST \
-            -H "x-cron-secret: ${CRON_SECRET}" \
+            -H "x-cron-secret: $${CRON_SECRET}" \
             http://web:3000/api/cron/corporate-reports || true
         done
     depends_on:
