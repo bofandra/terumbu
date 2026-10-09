@@ -39,7 +39,7 @@ export default async function CorporateDonationsPage({ searchParams }: Corporate
   const user = await requireUser("/corporate/donations");
   const data = await requireCorporateDashboardData(user.id, "/corporate/donations");
   const roleKeys = await getUserRoles(user.id);
-  const canManageCorporate = roleKeys.includes("corporate_admin") && !roleKeys.includes("admin");
+  const canManageCorporate = !roleKeys.includes("admin") && data.capabilities.canManageProjects;
   const projectOptions = canManageCorporate ? await getCorporateProjectOptions(user.id, data.program.programId) : [];
   const donationReports = data.exports.filter((item) => item.activityScope === "donations");
   const totalDonations = data.contributions.filter((item) => item.status !== "cancelled").reduce((total, item) => total + item.amountValue, 0);
