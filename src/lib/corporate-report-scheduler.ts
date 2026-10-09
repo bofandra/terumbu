@@ -1,6 +1,7 @@
-import { and, eq, lte } from "drizzle-orm";
+import { and, eq, inArray, lte, sql } from "drizzle-orm";
 import { db } from "@/db/client";
-import { adminAuditLogs, corporateReportExports } from "@/db/schema";
+import { adminAuditLogs, corporateReportExports, emailLogs, userNotifications } from "@/db/schema";
+import { CORPORATE_REPORT_ALERT_EMAIL_TEMPLATE } from "@/lib/corporate-report-alert-email";
 
 export type DueCorporateReport = {
   id: string;
@@ -77,6 +78,32 @@ export async function generateDueCorporateReport(input: {
     )).returning({ id: corporateReportExports.id });
 
     if (!updated) throw new Error("Scheduled report changed during generation.");
+
+    // Clear stale failure alerts only when a previously failing scheduled
+    // report actually generated successfully; preserve audit history.
+    if (Number(previousMetadata.scheduleFailureCount) > 0) {
+      await tx.update(userNotifications).set({
+        message: `PDF report ${report.exportCode} was generated successfully after a retry. No action is required.`,
+        readAt: sql`coalesce(${userNotifications.readAt}, ${artifacts.generatedAt})`,
+        updatedAt: artifacts.generatedAt
+      }).where(and(
+        eq(userNotifications.sourceType, "corporate_report_export"),
+        eq(userNotifications.sourceId, report.id),
+        sql`${userNotifications.notificationCode} like ${`corporate-report-failure-${report.id}-%`}`
+      ));
+
+      await tx.update(emailLogs).set({
+        status: "cancelled",
+        nextRetryAt: null,
+        claimedUntil: null,
+        updatedAt: artifacts.generatedAt
+      }).where(and(
+        eq(emailLogs.template, CORPORATE_REPORT_ALERT_EMAIL_TEMPLATE),
+        inArray(emailLogs.status, ["queued", "retry"]),
+        sql`${emailLogs.payload}->>'reportId' = ${report.id}`
+      ));
+    }
+
     await tx.insert(adminAuditLogs).values({
       actorUserId: input.actorUserId,
       action: "corporate.report.scheduled_generated",
