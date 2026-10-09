@@ -76,7 +76,9 @@ async function recordScheduledFailure(input: {
       eq(corporateReportExports.programId, input.programId),
       eq(corporateReportExports.status, "scheduled")
     )).limit(1).for("update");
-    if (!locked) return;
+    // Another cron instance may have recorded the same failure meanwhile.
+    // The row lock and retry eligibility guard prevent duplicate failure audits.
+    if (!locked || !dueReportRetryEligible(locked.metadata, input.now)) return;
 
     const previous = isRecord(locked.metadata) ? locked.metadata : {};
     const oldCount = Number(previous.scheduleFailureCount);
