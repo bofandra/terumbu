@@ -32,6 +32,12 @@ test("corporate report lifecycle is atomic, idempotent and scoped to its program
     `;
     reportId = report.id;
 
+    const [initial] = await sql<{ metadata: Record<string, unknown>; snapshot_type: string | null }[]>`
+      select metadata, jsonb_typeof(metadata->'generationSnapshot') as snapshot_type
+      from corporate_report_exports where id = ${reportId}
+    `;
+    expect(initial.snapshot_type, JSON.stringify(initial.metadata)).toBe("object");
+
     const scoped = {
       reportId,
       programId: actor.program_id,
