@@ -98,6 +98,12 @@ test("authenticated corporate cron generates each due report once, records revok
       await expect(failedMonitor).toContainText("Generation failed");
       await expect(failedMonitor).toContainText("Automatic worker");
 
+      const generatedMonitor = page.locator(`[data-testid="corporate-report-monitor-${authorizedReportId}"]`);
+      await expect(generatedMonitor).toContainText("Generated from schedule");
+      await generatedMonitor.locator("summary").click();
+      await expect(generatedMonitor).toContainText("PDF generated");
+      await expect(generatedMonitor).toContainText("Automatic worker");
+
       // Alert is discoverable from the corporate sidebar and leads back to
       // this selected program; it is not restricted to the report monitor.
       await expect(page.getByRole("link", { name: "Notifications" })).toHaveAttribute(
@@ -108,11 +114,6 @@ test("authenticated corporate cron generates each due report once, records revok
         name: /PDF report E2E-AUTO-.* could not be generated \(attempt 1\)/
       })).toHaveAttribute("href", `/corporate/reports?programId=${actor.program_id}`);
 
-      const generatedMonitor = page.locator(`[data-testid="corporate-report-monitor-${authorizedReportId}"]`);
-      await expect(generatedMonitor).toContainText("Generated from schedule");
-      await generatedMonitor.locator("summary").click();
-      await expect(generatedMonitor).toContainText("PDF generated");
-      await expect(generatedMonitor).toContainText("Automatic worker");
     } finally {
       await page.close();
     }
