@@ -27,6 +27,7 @@ function categoryLabel(category: string, locale: SupportedLocale) {
   }
 
   const labels: Record<string, string> = {
+    "Corporate reports": "Laporan corporate",
     "Supported campaign": "Kampanye yang didukung",
     "Verified campaign evidence": "Bukti kampanye terverifikasi",
     "Sponsorship monitoring": "Monitoring sponsorship",
