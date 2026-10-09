@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import type { ReactNode } from "react";
 
 import { AdminAlert } from "@/components/admin/admin-alert";
-import { AdminPageHeader, AdminStatusBadge, adminInputClassName, adminPanelClassName } from "@/components/admin-ui";
+import { AdminPageHeader, AdminStatusBadge, adminInputClassName, adminPanelClassName, adminSelectClassName } from "@/components/admin-ui";
 import { Button } from "@/components/ui/button";
 import { FormTabs } from "@/components/ui/form-tabs";
 import { MetricValue } from "@/components/ui/metric-value";
