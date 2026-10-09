@@ -145,6 +145,8 @@ jobs:
           CLOUDFLARE_R2_ACCESS_KEY_ID: ${{ secrets.CLOUDFLARE_R2_ACCESS_KEY_ID }}
           CLOUDFLARE_R2_SECRET_ACCESS_KEY: ${{ secrets.CLOUDFLARE_R2_SECRET_ACCESS_KEY }}
           CLOUDFLARE_R2_PUBLIC_BASE_URL: ${{ secrets.CLOUDFLARE_R2_PUBLIC_BASE_URL || vars.CLOUDFLARE_R2_PUBLIC_BASE_URL }}
+          CORPORATE_REPORT_STORAGE: ${{ vars.CORPORATE_REPORT_STORAGE }}
+          CORPORATE_REPORT_R2_BUCKET: ${{ secrets.CORPORATE_REPORT_R2_BUCKET || vars.CORPORATE_REPORT_R2_BUCKET }}
           MIDTRANS_SERVER_KEY: ${{ secrets.MIDTRANS_SERVER_KEY }}
           MIDTRANS_CLIENT_KEY: ${{ secrets.MIDTRANS_CLIENT_KEY }}
           XENDIT_SECRET_KEY: ${{ secrets.XENDIT_SECRET_KEY }}
@@ -212,6 +214,19 @@ jobs:
             exit 1
           fi
 
+          REPORT_STORAGE_MODE="$(clean_env_value "${CORPORATE_REPORT_STORAGE:-local}")"
+          REPORT_PRIVATE_BUCKET="$(clean_env_value "${CORPORATE_REPORT_R2_BUCKET:-}")"
+          if [ "${REPORT_STORAGE_MODE}" != "local" ] && [ "${REPORT_STORAGE_MODE}" != "r2" ]; then
+            echo "CORPORATE_REPORT_STORAGE must be local or r2." >&2
+            exit 1
+          fi
+          if [ "${REPORT_STORAGE_MODE}" = "r2" ]; then
+            if [ "${R2_CONFIGURED_COUNT}" -ne 5 ] || [ -z "${REPORT_PRIVATE_BUCKET}" ] || [ "${REPORT_PRIVATE_BUCKET}" = "${CLOUDFLARE_R2_BUCKET}" ]; then
+              echo "Private corporate R2 storage requires all credentials and a separate, non-public bucket." >&2
+              exit 1
+            fi
+          fi
+
           if [ -z "${TERUMBU_DATABASE_URL}" ]; then
             TERUMBU_DATABASE_URL="postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}"
           else
@@ -232,6 +247,8 @@ jobs:
           write_env_value CLOUDFLARE_R2_ACCESS_KEY_ID "${CLOUDFLARE_R2_ACCESS_KEY_ID}"
           write_env_value CLOUDFLARE_R2_SECRET_ACCESS_KEY "${CLOUDFLARE_R2_SECRET_ACCESS_KEY}"
           write_env_value CLOUDFLARE_R2_PUBLIC_BASE_URL "${CLOUDFLARE_R2_PUBLIC_BASE_URL}"
+          write_env_value CORPORATE_REPORT_STORAGE "${REPORT_STORAGE_MODE}"
+          write_env_value CORPORATE_REPORT_R2_BUCKET "${REPORT_PRIVATE_BUCKET}"
           write_env_value MIDTRANS_SERVER_KEY "${MIDTRANS_SERVER_KEY}"
           write_env_value MIDTRANS_CLIENT_KEY "${MIDTRANS_CLIENT_KEY}"
           write_env_value XENDIT_SECRET_KEY "${XENDIT_SECRET_KEY}"
