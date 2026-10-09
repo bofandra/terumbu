@@ -65,6 +65,7 @@ jobs:
     env:
       DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/terumbu_e2e
       DEMO_ROLE_PASSWORD: TerumbuE2E2026!
+      CRON_SECRET: terumbu-e2e-cron-secret
       SESSION_COOKIE_SECURE: "false"
       NEXT_PUBLIC_APP_URL: http://127.0.0.1:3100
     steps:
