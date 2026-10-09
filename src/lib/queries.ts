@@ -86,6 +86,7 @@ import {
   corporateReportArtifactSourceUrl,
   publicCorporateReportArtifactRoute
 } from "@/lib/corporate-report-artifact-links";
+import { hydrateCorporatePublicSnapshot } from "@/lib/corporate-report-snapshot";
 import {
   destinationArrivalHubs,
   destinationMonthArray,
@@ -6487,6 +6488,34 @@ async function loadCorporateImpactReport(publicSlug: string) {
     return null;
   }
 
+  const artifactSource = {
+    fileUrl: report.fileUrl,
+    previewUrl: report.previewUrl,
+    evidenceBundleUrl: report.evidenceBundleUrl,
+    artifactManifest: report.artifactManifest,
+    metadata: report.metadata,
+    exportCode: report.exportCode
+  };
+  const pdfUrl = report.publicSlug && corporateReportArtifactSourceUrl(artifactSource, "pdf")
+    ? publicCorporateReportArtifactRoute(report.publicSlug, "pdf")
+    : null;
+  const metadata = report.metadata && typeof report.metadata === "object" && !Array.isArray(report.metadata)
+    ? report.metadata as Record<string, unknown>
+    : {};
+  const snapshot = hydrateCorporatePublicSnapshot(metadata.publicSnapshot);
+
+  // Published reports with frozen datasets must never depend on subsequently
+  // edited or deleted portfolio/evidence records. Legacy reports without a
+  // complete snapshot keep the older live-query fallback below.
+  if (snapshot) {
+    return {
+      report: { ...report, ...snapshot.reportContext, pdfUrl },
+      portfolio: snapshot.portfolio,
+      evidence: snapshot.evidence,
+      metrics: snapshot.metrics
+    };
+  }
+
   const [portfolioRows, evidenceRows] = await Promise.all([
     db
       .select({
@@ -6551,15 +6580,6 @@ async function loadCorporateImpactReport(publicSlug: string) {
     sourceHref: evidenceSourceHref(item.campaignSlug, item.evidenceCode) ?? item.fileUrl
   }));
 
-  const reportArtifactSource = {
-    fileUrl: report.fileUrl,
-    previewUrl: report.previewUrl,
-    evidenceBundleUrl: report.evidenceBundleUrl,
-    artifactManifest: report.artifactManifest,
-    metadata: report.metadata,
-    exportCode: report.exportCode
-  };
-
   const metrics = {
     committedFunding,
     totalAllocated,
@@ -6569,41 +6589,11 @@ async function loadCorporateImpactReport(publicSlug: string) {
     partnerCount: new Set(portfolio.map((project) => project.organizationName)).size
   };
 
-  const metadata = report.metadata && typeof report.metadata === "object" && !Array.isArray(report.metadata)
-    ? report.metadata as Record<string, unknown>
-    : {};
-  const saved = metadata.publicSnapshot && typeof metadata.publicSnapshot === "object" && !Array.isArray(metadata.publicSnapshot)
-    ? metadata.publicSnapshot as {
-        reportContext?: Partial<typeof report>;
-        portfolio?: typeof portfolio;
-        evidence?: typeof evidence;
-        metrics?: typeof metrics;
-      }
-    : null;
-  // Published documents must reflect the exact data captured at publication.
-  // The fallback preserves access to reports published before snapshots existed.
-  const frozen = saved;
   return {
-    report: {
-      ...report,
-      ...(frozen?.reportContext ? {
-        ...frozen.reportContext,
-        startsAt: frozen.reportContext.startsAt ? new Date(frozen.reportContext.startsAt) : report.startsAt,
-        endsAt: frozen.reportContext.endsAt ? new Date(frozen.reportContext.endsAt) : report.endsAt
-      } : {}),
-      pdfUrl: report.publicSlug && corporateReportArtifactSourceUrl(reportArtifactSource, "pdf")
-        ? publicCorporateReportArtifactRoute(report.publicSlug, "pdf")
-        : null
-    },
-    portfolio: frozen?.portfolio ?? portfolio,
-    evidence: frozen?.evidence
-      ? frozen.evidence.map((item) => ({
-          ...item,
-          verifiedAt: item.verifiedAt ? new Date(item.verifiedAt) : null,
-          addedAt: item.addedAt ? new Date(item.addedAt) : null
-        }))
-      : evidence,
-    metrics: frozen?.metrics ?? metrics
+    report: { ...report, pdfUrl },
+    portfolio,
+    evidence,
+    metrics
   };
 }
 
