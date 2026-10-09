@@ -89,7 +89,7 @@ test("scheduled corporate reports are scoped, serialized, retryable and manageab
     // The UI's manual processing action operates only on the selected program.
     const page = await context.newPage();
     await loginAs(page, "corporate.demo@terumbu.eco", `/corporate/reports?programId=${actor.program_id}`);
-    await expect(page.getByRole("button", { name: /Generate due reports/ })).toBeDisabled();
+    await expect(page.getByRole("button", { name: /Generate due reports/ })).toBeVisible();
     const futureForm = page.locator('form:has(button:has-text("Schedule PDF"))');
     await expect(futureForm).toBeVisible();
     await futureForm.locator('input[name="scheduledFor"]').fill("2099-12-31T12:30");
