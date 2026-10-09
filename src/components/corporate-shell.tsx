@@ -6,6 +6,7 @@ import {
   CircleDollarSign,
   Compass,
   Home,
+  FileText,
   LogOut,
   Settings,
   Users,
@@ -31,6 +32,7 @@ const corporateNavItems: CorporateNavItem[] = [
   { label: "Programs", href: "/corporate/programs", icon: BriefcaseBusiness },
   { label: "Donations", href: "/corporate/donations", icon: CircleDollarSign },
   { label: "Expeditions", href: "/corporate/expeditions", icon: Compass },
+  { label: "Reports", href: "/corporate/reports", icon: FileText },
   { label: "Employees", href: "/corporate/employees", icon: Users },
   { label: "Settings", href: "/corporate/settings", icon: Settings }
 ];
