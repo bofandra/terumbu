@@ -1,5 +1,3 @@
-import { readFile } from "node:fs/promises";
-
 import { and, eq } from "drizzle-orm";
 import { notFound } from "next/navigation";
 
@@ -8,11 +6,11 @@ import { corporateReportExports } from "@/db/schema";
 import {
   corporateReportArtifactContentType,
   corporateReportArtifactDisposition,
-  corporateReportArtifactLocalPaths,
   corporateReportArtifactSourceUrl,
   isPublicCorporateReportArtifactKey,
   normalizeCorporateReportArtifactKey
 } from "@/lib/corporate-report-artifact-links";
+import { CorporateReportStorageUnavailable, readCorporateReportArtifact } from "@/lib/corporate-report-storage";
 
 export const dynamic = "force-dynamic";
 
@@ -54,26 +52,22 @@ export async function GET(_request: Request, { params }: PublicCorporateReportAr
   }
 
   const sourceUrl = corporateReportArtifactSourceUrl(report, artifactKey);
-  const localPaths = corporateReportArtifactLocalPaths(sourceUrl);
-
-  if (localPaths.length === 0) {
-    notFound();
-  }
-
-  let artifactFile: Buffer | null = null;
-
-  for (const localPath of localPaths) {
-    try {
-      artifactFile = await readFile(localPath);
-      break;
-    } catch {
-      // Legacy published reports can fall back to the bundled public artifact.
+  let artifactFile: Uint8Array | null;
+  try {
+    const metadata = report.metadata && typeof report.metadata === "object" && !Array.isArray(report.metadata)
+      ? report.metadata as Record<string, unknown>
+      : {};
+    artifactFile = await readCorporateReportArtifact({
+      sourceUrl,
+      expectedSha256: artifactKey === "pdf" && typeof metadata.pdfSha256 === "string" ? metadata.pdfSha256 : null
+    });
+  } catch (error) {
+    if (error instanceof CorporateReportStorageUnavailable) {
+      return Response.json({ error: "Report file storage is temporarily unavailable." }, { status: 503, headers: { "Cache-Control": "no-store" } });
     }
+    throw error;
   }
-
-  if (!artifactFile) {
-    notFound();
-  }
+  if (!artifactFile) notFound();
 
   return new Response(new Uint8Array(artifactFile), {
     headers: {
