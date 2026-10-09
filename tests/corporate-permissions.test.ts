@@ -7,66 +7,99 @@ import {
   assignableCorporateEmployeeRoleOptions,
   canAssignCorporateEmployeeRole,
   corporateCapabilitiesForPermission,
+  corporatePermissionLabel,
   normalizeCorporateEmployeeRole,
   normalizeCorporatePermission,
   permissionForCorporateEmployeeRole
 } from "../src/lib/corporate-permissions";
 
-const legacyAdminPermissions = [
-  CORPORATE_ADMIN_PERMISSION,
-  "program.manage",
-  "esg_manager",
-  "finance_reviewer",
-  "executive_viewer",
-  "employee_engagement",
-  "auditor"
-];
+test("legacy program.manage maps to admin but other roles never escalate to admin", () => {
+  assert.equal(normalizeCorporatePermission("program.manage"), CORPORATE_ADMIN_PERMISSION);
+  assert.equal(normalizeCorporatePermission("finance_reviewer"), "finance_reviewer");
+  assert.equal(normalizeCorporatePermission("executive_viewer"), "executive_viewer");
+  assert.equal(normalizeCorporatePermission("auditor"), "auditor");
+  assert.equal(normalizeCorporatePermission("unexpected"), CORPORATE_ACCESS_PERMISSION);
+  assert.equal(corporatePermissionLabel("finance_reviewer"), "Finance Reviewer");
+});
 
-test("legacy corporate admin access maps to the corporate admin capability set", () => {
-  for (const permission of legacyAdminPermissions) {
-    const capabilities = corporateCapabilitiesForPermission(permission);
-
-    assert.equal(normalizeCorporatePermission(permission), CORPORATE_ADMIN_PERMISSION);
-    assert.equal(capabilities.canManagePrograms, true);
-    assert.equal(capabilities.canManageProjects, true);
-    assert.equal(capabilities.canManageEmployees, true);
-    assert.equal(capabilities.canManageSettings, true);
-    assert.equal(capabilities.canGenerateReport, true);
-    assert.equal(capabilities.canSubmitReport, true);
-    assert.equal(capabilities.canApproveReport, true);
-    assert.equal(capabilities.canPublishReport, true);
-    assert.equal(capabilities.canViewEvidenceReview, true);
-    assert.equal(capabilities.canUpdateEvidenceStatus, false);
+test("corporate administrator retains full workflow capabilities", () => {
+  for (const permission of [CORPORATE_ADMIN_PERMISSION, "program.manage"]) {
+    const c = corporateCapabilitiesForPermission(permission);
+    assert.equal(c.canManagePrograms, true);
+    assert.equal(c.canManageProjects, true);
+    assert.equal(c.canManageEmployees, true);
+    assert.equal(c.canManageFunding, true);
+    assert.equal(c.canManageSettings, true);
+    assert.equal(c.canGenerateReport, true);
+    assert.equal(c.canSubmitReport, true);
+    assert.equal(c.canApproveReport, true);
+    assert.equal(c.canPublishReport, true);
+    assert.equal(c.canViewEvidenceReview, true);
+    assert.equal(c.canUpdateEvidenceStatus, false);
   }
 });
 
-test("employee corporate access cannot inherit corporate admin capabilities", () => {
-  const capabilities = corporateCapabilitiesForPermission(CORPORATE_ACCESS_PERMISSION);
-
-  assert.equal(capabilities.canManagePrograms, false);
-  assert.equal(capabilities.canManageProjects, false);
-  assert.equal(capabilities.canManageEmployees, false);
-  assert.equal(capabilities.canManageSettings, false);
-  assert.equal(capabilities.canGenerateReport, false);
-  assert.equal(capabilities.canSubmitReport, false);
-  assert.equal(capabilities.canApproveReport, false);
-  assert.equal(capabilities.canPublishReport, false);
-  assert.equal(capabilities.canViewEvidenceReview, false);
-  assert.equal(capabilities.canUpdateEvidenceStatus, false);
+test("finance reviewer can approve reports and manage finance but not author or publish reports", () => {
+  const c = corporateCapabilitiesForPermission("finance_reviewer");
+  assert.equal(c.canApproveReport, true);
+  assert.equal(c.canManageFunding, true);
+  assert.equal(c.canGenerateReport, false);
+  assert.equal(c.canSubmitReport, false);
+  assert.equal(c.canPublishReport, false);
+  assert.equal(c.canManagePrograms, false);
+  assert.equal(c.canManageProjects, false);
+  assert.equal(c.canManageSettings, false);
+  assert.equal(c.canManageEmployees, false);
 });
 
-test("new employee access uses one canonical permission", () => {
-  assert.equal(normalizeCorporatePermission("unexpected"), CORPORATE_ACCESS_PERMISSION);
+test("ESG manager can author and publish but cannot approve their own report or change security", () => {
+  const c = corporateCapabilitiesForPermission("esg_manager");
+  assert.equal(c.canManagePrograms, true);
+  assert.equal(c.canManageProjects, true);
+  assert.equal(c.canGenerateReport, true);
+  assert.equal(c.canSubmitReport, true);
+  assert.equal(c.canPublishReport, true);
+  assert.equal(c.canApproveReport, false);
+  assert.equal(c.canManageSettings, false);
+  assert.equal(c.canManageFunding, false);
+});
+
+test("employee engagement role can manage employees, not funding or reports", () => {
+  const c = corporateCapabilitiesForPermission("employee_engagement");
+  assert.equal(c.canManageEmployees, true);
+  assert.equal(c.canManageFunding, false);
+  assert.equal(c.canManageProjects, false);
+  assert.equal(c.canGenerateReport, false);
+  assert.equal(c.canApproveReport, false);
+  assert.equal(c.canManageSettings, false);
+});
+
+test("auditor and executive viewer are strictly read-only", () => {
+  for (const role of ["auditor", "executive_viewer"]) {
+    const c = corporateCapabilitiesForPermission(role);
+    assert.equal(c.canPreviewReport, true);
+    for (const [capability, allowed] of Object.entries(c)) {
+      if (capability.startsWith("canManage") || capability.startsWith("canGenerate") ||
+        capability.startsWith("canSubmit") || capability.startsWith("canApprove") ||
+        capability.startsWith("canPublish") || capability.startsWith("canUpdate")) {
+        assert.equal(allowed, false, `${role} unexpectedly has ${capability}`);
+      }
+    }
+  }
+});
+
+test("regular corporate user cannot inherit any administration capability", () => {
+  const c = corporateCapabilitiesForPermission(CORPORATE_ACCESS_PERMISSION);
+  for (const allowed of Object.values(c)) assert.equal(allowed, false);
+});
+
+test("employee invitations cannot grant elevated roles and require management capability", () => {
   assert.equal(permissionForCorporateEmployeeRole("program_admin"), CORPORATE_ACCESS_PERMISSION);
   assert.equal(permissionForCorporateEmployeeRole("finance_reviewer"), CORPORATE_ACCESS_PERMISSION);
-  assert.equal(permissionForCorporateEmployeeRole("unexpected"), CORPORATE_ACCESS_PERMISSION);
-});
-
-test("employee roles are simplified and only corporate admins can assign them", () => {
+  assert.equal(normalizeCorporateEmployeeRole("program_admin"), "member");
   assert.deepEqual(assignableCorporateEmployeeRoleOptions("employee_engagement"), [{ value: "member", label: "Employee" }]);
   assert.deepEqual(assignableCorporateEmployeeRoleOptions(CORPORATE_ACCESS_PERMISSION), []);
-  assert.equal(normalizeCorporateEmployeeRole("program_admin"), "member");
-  assert.equal(normalizeCorporateEmployeeRole("unexpected"), "member");
-  assert.equal(canAssignCorporateEmployeeRole("auditor", "program_admin"), true);
-  assert.equal(canAssignCorporateEmployeeRole(CORPORATE_ACCESS_PERMISSION, "member"), false);
+  assert.equal(canAssignCorporateEmployeeRole("auditor", "member"), false);
+  assert.equal(canAssignCorporateEmployeeRole("finance_reviewer", "member"), false);
+  assert.equal(canAssignCorporateEmployeeRole("corporate_admin", "member"), true);
 });
