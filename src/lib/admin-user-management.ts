@@ -8,20 +8,11 @@ export const systemGlobalRoleOptions = [
 export const systemGlobalRoleKeys = systemGlobalRoleOptions.map((role) => role.key);
 
 export const partnerMembershipStatuses = ["active", "invited", "suspended"] as const;
-export const corporatePermissionOptions = [
-  { value: "corporate_user", label: "Corporate User" },
-  { value: "program.manage", label: "Corporate User" },
-  { value: "esg_manager", label: "Corporate User" },
-  { value: "finance_reviewer", label: "Corporate User" },
-  { value: "employee_engagement", label: "Corporate User" },
-  { value: "executive_viewer", label: "Corporate User" },
-  { value: "auditor", label: "Corporate User" }
-] as const;
+import { corporateRoleOptions, type CorporatePermission } from "@/lib/corporate-permissions";
 
-export type CorporatePermissionValue = (typeof corporatePermissionOptions)[number]["value"];
-export const adminAssignableCorporatePermissionOptions = [
-  { value: "corporate_user", label: "Corporate User" }
-] as const;
+export const corporatePermissionOptions = corporateRoleOptions;
+export type CorporatePermissionValue = CorporatePermission;
+export const adminAssignableCorporatePermissionOptions = corporateRoleOptions;
 export type AdminCreateUserAccess =
   | { type: "global"; roleKey: string; corporatePermission?: never }
   | { type: "partner"; roleKey: "partner"; corporatePermission?: never }
@@ -61,10 +52,8 @@ export function normalizeCorporatePermission(value: string | null | undefined): 
   return corporatePermissionOptions.some((option) => option.value === value) ? (value as CorporatePermissionValue) : "corporate_user";
 }
 
-export function normalizeAdminCorporatePermission(value: string | null | undefined): "corporate_user" {
-  void value;
-
-  return "corporate_user";
+export function normalizeAdminCorporatePermission(value: string | null | undefined): CorporatePermissionValue {
+  return normalizeCorporatePermission(value);
 }
 
 export function normalizeAdminCreateUserAccess(value: string | null | undefined, fallbackRoleKey = "user"): AdminCreateUserAccess {
@@ -78,7 +67,7 @@ export function normalizeAdminCreateUserAccess(value: string | null | undefined,
     return {
       type: "corporate",
       roleKey: "corporate_admin",
-      corporatePermission: normalizeAdminCorporatePermission(rawValue.slice("corporate:".length))
+      corporatePermission: "corporate_user"
     };
   }
 

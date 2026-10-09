@@ -95,7 +95,7 @@ test("corporate report moves from generated to public through the portal with ex
     reviewerRoleAssignmentId = assignedRole?.id ?? null;
     const [assignedPermission] = await sql<{ id: string }[]>`
       insert into corporate_permissions (corporate_account_id, user_id, permission)
-      values (${account.corporate_account_id}, ${reviewer.id}, 'corporate_admin')
+      values (${account.corporate_account_id}, ${reviewer.id}, 'executive_viewer')
       on conflict do nothing returning id
     `;
     reviewerPermissionAssignmentId = assignedPermission?.id ?? null;
@@ -119,6 +119,18 @@ test("corporate report moves from generated to public through the portal with ex
     const reviewerPage = await reviewerContext.newPage();
     await loginAs(reviewerPage, "user.demo@terumbu.eco", `/corporate/reports?programId=${programId}`);
     const reviewerCard = reviewerPage.locator(`[data-testid="corporate-report-${reportId}"]`);
+    // Even a user with a global corporate_admin role must not gain write
+    // permission from executive_viewer corporate membership.
+    await expect(reviewerCard.getByRole("button", { name: "Approve report" })).toHaveCount(0);
+    await expect(reviewerPage.getByRole("button", { name: "Generate ESG report" })).toHaveCount(0);
+    await reviewerPage.goto("/corporate/programs");
+    await expect(reviewerPage).toHaveURL(/\/forbidden\?next=/);
+
+    // A scoped role change takes effect on the next request, without changing
+    // the user's global role. Finance can approve, but not author or publish.
+    await sql`update corporate_permissions set permission = 'finance_reviewer' where id = ${reviewerPermissionAssignmentId}`;
+    await reviewerPage.goto(`/corporate/reports?programId=${programId}`);
+    await expect(reviewerPage.getByRole("button", { name: "Generate ESG report" })).toHaveCount(0);
     await expect(reviewerCard.getByRole("button", { name: "Approve report" })).toBeVisible();
     await Promise.all([
       reviewerPage.waitForURL(/saved=approved/),

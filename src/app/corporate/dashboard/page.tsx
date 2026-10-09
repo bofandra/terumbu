@@ -27,7 +27,7 @@ export default async function CorporateDashboardPage() {
   ]);
 
   if (!data) {
-    if (programAccess && roleKeys.includes("corporate_admin") && !roleKeys.includes("admin")) {
+    if (programAccess?.canManagePrograms && !roleKeys.includes("admin")) {
       redirect("/corporate/programs");
     }
 

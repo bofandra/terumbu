@@ -29,7 +29,7 @@ export default async function CorporateExpeditionsPage({ searchParams }: Corpora
   const user = await requireUser("/corporate/expeditions");
   const data = await requireCorporateDashboardData(user.id, "/corporate/expeditions", params?.programId);
   const roleKeys = await getUserRoles(user.id);
-  const canManageCorporate = roleKeys.includes("corporate_admin") && !roleKeys.includes("admin");
+  const canManageCorporate = !roleKeys.includes("admin") && data.capabilities.canGenerateReport;
   const activities = await getCorporateExpeditionActivities(user.id, data.program.programId);
   const reports = data.exports.filter((item) => item.activityScope === "expeditions");
   const participantCount = activities.reduce((total, item) => total + item.participantsCount, 0);

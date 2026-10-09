@@ -57,15 +57,15 @@ async function requesterCanGenerate(userId: string | null, programId: string) {
     role: roles.key
   }).from(corporatePermissions)
     .innerJoin(corporatePrograms, eq(corporatePrograms.corporateAccountId, corporatePermissions.corporateAccountId))
-    .innerJoin(userRoles, eq(userRoles.userId, corporatePermissions.userId))
-    .innerJoin(roles, eq(roles.id, userRoles.roleId))
+    .leftJoin(userRoles, eq(userRoles.userId, corporatePermissions.userId))
+    .leftJoin(roles, eq(roles.id, userRoles.roleId))
     .where(and(
       eq(corporatePermissions.userId, userId),
       eq(corporatePrograms.id, programId)
     ));
 
   const roleKeys = new Set(permissions.map((entry) => entry.role));
-  return roleKeys.has("corporate_admin") && !roleKeys.has("admin") &&
+  return !roleKeys.has("admin") &&
     permissions.some((entry) => corporateCapabilitiesForPermission(entry.permission).canGenerateReport);
 }
 
@@ -126,19 +126,19 @@ async function recordScheduledFailure(input: {
           permission: corporatePermissions.permission,
           role: roles.key
         }).from(corporatePermissions)
-          .innerJoin(userRoles, eq(userRoles.userId, corporatePermissions.userId))
-          .innerJoin(roles, eq(roles.id, userRoles.roleId))
+          .leftJoin(userRoles, eq(userRoles.userId, corporatePermissions.userId))
+          .leftJoin(roles, eq(roles.id, userRoles.roleId))
           .where(eq(corporatePermissions.corporateAccountId, program.corporateAccountId));
 
         const recipients = new Map<string, { roles: Set<string>; allowed: boolean }>();
         for (const entry of permissions) {
           const recipient = recipients.get(entry.userId) ?? { roles: new Set<string>(), allowed: false };
-          recipient.roles.add(entry.role);
+          if (entry.role) recipient.roles.add(entry.role);
           recipient.allowed ||= corporateCapabilitiesForPermission(entry.permission).canGenerateReport;
           recipients.set(entry.userId, recipient);
         }
         const alerts = [...recipients.entries()]
-          .filter(([, recipient]) => recipient.roles.has("corporate_admin") && !recipient.roles.has("admin") && recipient.allowed)
+          .filter(([, recipient]) => !recipient.roles.has("admin") && recipient.allowed)
           .map(([userId]) => ({
             userId,
             notificationCode: corporateReportFailureAlertCode(locked.id, failureCount),

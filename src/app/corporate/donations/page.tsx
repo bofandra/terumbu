@@ -39,7 +39,8 @@ export default async function CorporateDonationsPage({ searchParams }: Corporate
   const user = await requireUser("/corporate/donations");
   const data = await requireCorporateDashboardData(user.id, "/corporate/donations");
   const roleKeys = await getUserRoles(user.id);
-  const canManageCorporate = roleKeys.includes("corporate_admin") && !roleKeys.includes("admin");
+  const canManageCorporate = !roleKeys.includes("admin") && data.capabilities.canManageProjects;
+  const canGenerateReport = !roleKeys.includes("admin") && data.capabilities.canGenerateReport;
   const projectOptions = canManageCorporate ? await getCorporateProjectOptions(user.id, data.program.programId) : [];
   const donationReports = data.exports.filter((item) => item.activityScope === "donations");
   const totalDonations = data.contributions.filter((item) => item.status !== "cancelled").reduce((total, item) => total + item.amountValue, 0);
@@ -103,7 +104,7 @@ export default async function CorporateDonationsPage({ searchParams }: Corporate
           <article className="rounded-lg border border-ocean-900/10 bg-white p-5 shadow-soft">
             <p className="text-xs font-bold uppercase tracking-[0.14em] text-ocean-900/46">Corporate User</p>
             <h2 className="mt-2 text-xl font-bold tracking-normal text-ocean-900">Donation activity is read-only</h2>
-            <p className="mt-2 text-sm leading-6 text-ocean-900/58">Corporate Admin records funding and manages corporate program commitments.</p>
+            <p className="mt-2 text-sm leading-6 text-ocean-900/58">Authorized ESG managers or Corporate Admins record funding commitments for projects.</p>
           </article>
         )}
 
@@ -151,7 +152,7 @@ export default async function CorporateDonationsPage({ searchParams }: Corporate
       <section className="mt-6 rounded-lg border border-ocean-900/10 bg-white p-5 shadow-soft">
         <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
           <div><h2 className="text-xl font-bold tracking-normal text-ocean-900">Donation report</h2><p className="mt-1 text-sm text-ocean-900/58">Branded PDF with report scope, donation summary, field activity, and traceability note.</p></div>
-          {canManageCorporate ? (
+          {canGenerateReport ? (
             <form action={createCorporateActivityPdfReportAction}>
               <input type="hidden" name="activityScope" value="donations" />
               <input type="hidden" name="programId" value={data.program.programId} />

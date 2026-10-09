@@ -32,14 +32,19 @@ test("admin scoped role values normalize defensively", () => {
   assert.equal(normalizePartnerMembershipStatus("unknown"), "active");
   assert.equal(normalizeCorporatePermission("auditor"), "auditor");
   assert.equal(normalizeCorporatePermission("unknown"), "corporate_user");
-  assert.equal(normalizeAdminCorporatePermission("finance_reviewer"), "corporate_user");
+  assert.equal(normalizeAdminCorporatePermission("finance_reviewer"), "finance_reviewer");
+  assert.equal(normalizeAdminCorporatePermission("auditor"), "auditor");
+  assert.equal(normalizeAdminCorporatePermission("unknown"), "corporate_user");
 });
 
 test("admin create user access options expose one corporate access choice", () => {
   const values = adminCreateUserAccessOptions.map((option) => option.value);
 
   assert.deepEqual(values, ["global:user", "corporate:corporate_user", "partner", "global:admin"]);
-  assert.deepEqual(adminAssignableCorporatePermissionOptions.map((option) => option.value), ["corporate_user"]);
+  assert.deepEqual(adminAssignableCorporatePermissionOptions.map((option) => option.value), [
+    "corporate_user", "corporate_admin", "esg_manager", "finance_reviewer",
+    "employee_engagement", "executive_viewer", "auditor"
+  ]);
 });
 
 test("admin create user access normalizes global, partner, and corporate access", () => {

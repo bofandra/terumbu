@@ -27,7 +27,7 @@ import {
   corporateSecuritySettings,
   projectEvidence,
 } from "@/db/schema";
-import { requireCorporateAdminRole, requireUser, safeRedirectPath } from "@/lib/auth";
+import { requireCorporateOperatorRole, requireUser, safeRedirectPath } from "@/lib/auth";
 import {
   normalizeCorporateIntegrationStatus,
   normalizeCorporateIntegrationType
@@ -561,7 +561,7 @@ function reportHtml(input: {
 }
 
 export async function createCorporateProgramAction(formData: FormData) {
-  const user = await requireCorporateAdminRole("/corporate/programs");
+  const user = await requireCorporateOperatorRole("/corporate/programs");
   const context = await corporateAccountContext(user.id);
 
   if (!context || !corporateCapabilitiesForPermission(context.permission).canManagePrograms) {
@@ -613,7 +613,7 @@ export async function createCorporateProgramAction(formData: FormData) {
 }
 
 export async function updateCorporateProgramAction(formData: FormData) {
-  const user = await requireCorporateAdminRole("/corporate/programs");
+  const user = await requireCorporateOperatorRole("/corporate/programs");
   const context = await corporateContext(user.id);
 
   if (!context || !corporateCapabilitiesForPermission(context.permission).canManagePrograms) {
@@ -671,7 +671,7 @@ export async function updateCorporateProgramAction(formData: FormData) {
 export async function createCorporateActivityPdfReportAction(formData: FormData) {
   const activityScope = textValue(formData.get("activityScope"), 40);
   const returnPath = activityScope === "expeditions" ? "/corporate/expeditions" : "/corporate/donations";
-  const user = await requireCorporateAdminRole(returnPath);
+  const user = await requireCorporateOperatorRole(returnPath);
   const requestedProgramId = textValue(formData.get("programId"), 80) || null;
   const context = await corporateContext(user.id, requestedProgramId);
 
@@ -807,7 +807,7 @@ export async function createCorporateActivityPdfReportAction(formData: FormData)
 }
 
 export async function createCorporateReportExportAction(formData: FormData) {
-  const user = await requireCorporateAdminRole("/corporate");
+  const user = await requireCorporateOperatorRole("/corporate");
   const requestedProgramId = textValue(formData.get("programId"), 80) || null;
   const context = await corporateContext(user.id, requestedProgramId);
 
@@ -969,7 +969,7 @@ export async function createCorporateReportExportAction(formData: FormData) {
 }
 
 export async function runDueCorporateReportExportsAction(formData: FormData) {
-  const user = await requireCorporateAdminRole("/corporate/reports");
+  const user = await requireCorporateOperatorRole("/corporate/reports");
   const requestedProgramId = textValue(formData.get("programId"), 80);
   const context = await corporateContext(user.id, requestedProgramId);
 
@@ -1026,7 +1026,7 @@ export async function runDueCorporateReportExportsAction(formData: FormData) {
 }
 
 export async function fundCorporateProjectAction(formData: FormData) {
-  const user = await requireCorporateAdminRole("/corporate/donations");
+  const user = await requireCorporateOperatorRole("/corporate/donations");
   const requestedProgramId = textValue(formData.get("programId"), 80);
   const context = await corporateContext(user.id, requestedProgramId);
   const returnPath = "/corporate/donations";
@@ -1242,7 +1242,7 @@ export async function fundCorporateProjectAction(formData: FormData) {
 }
 
 export async function createCorporateEmployeeEventAction(formData: FormData) {
-  const user = await requireCorporateAdminRole("/corporate/employees");
+  const user = await requireCorporateOperatorRole("/corporate/employees");
   const context = await corporateContext(user.id);
 
   if (!context || !corporateCapabilitiesForPermission(context.permission).canManageEmployees) {
@@ -1309,7 +1309,7 @@ export async function createCorporateEmployeeEventAction(formData: FormData) {
 }
 
 export async function registerCorporateEmployeeEventAction(formData: FormData) {
-  const user = await requireCorporateAdminRole("/corporate/employees");
+  const user = await requireCorporateOperatorRole("/corporate/employees");
   const context = await corporateContext(user.id);
 
   if (!context || !corporateCapabilitiesForPermission(context.permission).canManageEmployees) {
@@ -1442,7 +1442,7 @@ export async function registerCorporateEmployeeEventAction(formData: FormData) {
 }
 
 export async function checkInCorporateEmployeeEventAction(formData: FormData) {
-  const user = await requireCorporateAdminRole("/corporate/employees");
+  const user = await requireCorporateOperatorRole("/corporate/employees");
   const context = await corporateContext(user.id);
 
   if (!context || !corporateCapabilitiesForPermission(context.permission).canManageEmployees) {
@@ -1519,7 +1519,7 @@ export async function checkInCorporateEmployeeEventAction(formData: FormData) {
 }
 
 export async function cancelCorporateEmployeeEventRegistrationAction(formData: FormData) {
-  const user = await requireCorporateAdminRole("/corporate/employees");
+  const user = await requireCorporateOperatorRole("/corporate/employees");
   const context = await corporateContext(user.id);
 
   if (!context || !corporateCapabilitiesForPermission(context.permission).canManageEmployees) {
@@ -1589,7 +1589,7 @@ export async function cancelCorporateEmployeeEventRegistrationAction(formData: F
 }
 
 export async function inviteCorporateEmployeeAction(formData: FormData) {
-  const user = await requireCorporateAdminRole("/corporate/employees");
+  const user = await requireCorporateOperatorRole("/corporate/employees");
   const context = await corporateContext(user.id);
 
   if (!context || !corporateCapabilitiesForPermission(context.permission).canManageEmployees) {
@@ -1761,7 +1761,7 @@ export async function acceptCorporateEmployeeInviteAction(formData: FormData) {
 }
 
 export async function updateCorporateBudgetAction(formData: FormData) {
-  const user = await requireCorporateAdminRole("/corporate/funding");
+  const user = await requireCorporateOperatorRole("/corporate/funding");
   const requestedProgramId = textValue(formData.get("programId"), 80);
   const context = await corporateContext(user.id, requestedProgramId);
   const returnPath = context ? `/corporate/funding?programId=${encodeURIComponent(context.programId)}` : "/corporate/funding";
@@ -1818,7 +1818,7 @@ export async function updateCorporateEvidenceSpendAction(formData: FormData) {
   const requestedProgramId = textValue(formData.get("programId"), 80);
   const fallbackReturnPath = requestedProgramId ? `/corporate/funding?programId=${encodeURIComponent(requestedProgramId)}` : "/corporate/funding";
   const returnPath = safeRedirectPath(formData.get("returnTo"), fallbackReturnPath);
-  const user = await requireCorporateAdminRole(returnPath);
+  const user = await requireCorporateOperatorRole(returnPath);
   const context = await corporateContext(user.id, requestedProgramId);
 
   if (!context || !corporateCapabilitiesForPermission(context.permission).canManageFunding) {
@@ -1900,7 +1900,7 @@ export async function updateCorporateEvidenceStatusAction(formData: FormData) {
   const fallbackReturnPath = requestedProgramId ? `/corporate/evidence?programId=${encodeURIComponent(requestedProgramId)}` : "/corporate/evidence";
   const returnPath = safeRedirectPath(formData.get("returnTo"), fallbackReturnPath);
 
-  await requireCorporateAdminRole(returnPath);
+  await requireCorporateOperatorRole(returnPath);
 
   redirectWithResult(returnPath, "error", "admin-only");
 }
@@ -1917,7 +1917,7 @@ function parseRetentionDays(value: FormDataEntryValue | null) {
 }
 
 export async function updateCorporateIntegrationAction(formData: FormData) {
-  const user = await requireCorporateAdminRole("/corporate/settings");
+  const user = await requireCorporateOperatorRole("/corporate/settings");
   const context = await corporateContext(user.id);
 
   if (!context || !corporateCapabilitiesForPermission(context.permission).canManageSettings) {
@@ -1986,7 +1986,7 @@ export async function updateCorporateIntegrationAction(formData: FormData) {
 }
 
 export async function updateCorporateSecuritySettingsAction(formData: FormData) {
-  const user = await requireCorporateAdminRole("/corporate/settings");
+  const user = await requireCorporateOperatorRole("/corporate/settings");
   const context = await corporateContext(user.id);
 
   if (!context || !corporateCapabilitiesForPermission(context.permission).canManageSettings) {
@@ -2083,7 +2083,7 @@ async function reportForUser(userId: string, reportId: string) {
 
 
 export async function submitCorporateReportForApprovalAction(formData: FormData) {
-  const user = await requireCorporateAdminRole("/corporate/reports");
+  const user = await requireCorporateOperatorRole("/corporate/reports");
   const reportId = String(formData.get("reportId") ?? "");
   const access = await reportForUser(user.id, reportId);
 
@@ -2110,7 +2110,7 @@ export async function submitCorporateReportForApprovalAction(formData: FormData)
 }
 
 export async function approveCorporateReportAction(formData: FormData) {
-  const user = await requireCorporateAdminRole("/corporate/reports");
+  const user = await requireCorporateOperatorRole("/corporate/reports");
   const reportId = String(formData.get("reportId") ?? "");
   const access = await reportForUser(user.id, reportId);
 
@@ -2141,7 +2141,7 @@ export async function approveCorporateReportAction(formData: FormData) {
 }
 
 export async function publishCorporateReportAction(formData: FormData) {
-  const user = await requireCorporateAdminRole("/corporate/reports");
+  const user = await requireCorporateOperatorRole("/corporate/reports");
   const reportId = String(formData.get("reportId") ?? "");
   const access = await reportForUser(user.id, reportId);
 
