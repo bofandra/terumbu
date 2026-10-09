@@ -31,7 +31,9 @@ const errorMessages: Record<string, string> = {
   permission: "You do not have permission to manage that report.",
   status: "The report status has changed. Refresh and review the latest status.",
   approval: "The report must be approved before publishing.",
-  report: "The report could not be generated."
+  report: "The report could not be generated.",
+  separation: "The report creator cannot approve their own report. Another corporate admin must review it.",
+  snapshot: "The published snapshot could not be captured. The report has not been published."
 };
 
 function formatDate(value: Date | null | undefined) {
@@ -171,11 +173,17 @@ export default async function CorporateReportsPage({ searchParams }: ReportsPage
                     <Button type="submit" tone="secondary"><Send size={16} aria-hidden="true" /> Submit for review</Button>
                   </form>
                 ) : null}
-                {canApprove && report.status === "review" ? (
+                {canApprove && report.status === "review" && report.requestedByUserId && report.requestedByUserId !== user.id ? (
                   <form action={approveCorporateReportAction}>
                     <input type="hidden" name="reportId" value={report.id} />
                     <Button type="submit" tone="secondary"><CheckCircle2 size={16} aria-hidden="true" /> Approve report</Button>
                   </form>
+                ) : null}
+                {canApprove && report.status === "review" && report.requestedByUserId === user.id ? (
+                  <p className="text-sm font-semibold text-ocean-900/60">Awaiting independent approval from another corporate admin.</p>
+                ) : null}
+                {canApprove && report.status === "review" && !report.requestedByUserId ? (
+                  <p className="text-sm font-semibold text-coral-700">Creator unknown; independent approval requires a report with an identified creator.</p>
                 ) : null}
                 {canPublish && report.status === "approved" ? (
                   <form action={publishCorporateReportAction}>
