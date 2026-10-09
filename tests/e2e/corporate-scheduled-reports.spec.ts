@@ -90,6 +90,20 @@ test("scheduled corporate reports are scoped, serialized, retryable and manageab
     const page = await context.newPage();
     await loginAs(page, "corporate.demo@terumbu.eco", `/corporate/reports?programId=${actor.program_id}`);
     await expect(page.getByRole("button", { name: /Generate due reports/ })).toBeVisible();
+    // Exercise the production action and real PDF generation using a due report
+    // in the selected program (the helper tests above use a fake artifact).
+    await sql`update corporate_report_exports set scheduled_for = now() - interval '1 minute' where id = ${future}`;
+    await Promise.all([
+      page.waitForURL(/saved=scheduled-run/),
+      page.getByRole("button", { name: /Generate due reports/ }).click()
+    ]);
+    const [fromPortal] = await sql<{ status: string; file_url: string | null; metadata: Record<string, unknown> }[]> `
+      select status, file_url, metadata from corporate_report_exports where id = ${future}
+    `;
+    expect(fromPortal.status).toBe("generated");
+    expect(fromPortal.file_url).toMatch(/^private:\/\/corporate-reports\//);
+    expect(fromPortal.metadata.generationSnapshot).toBeTruthy();
+
     const futureForm = page.locator('form:has(button:has-text("Schedule PDF"))');
     await expect(futureForm).toBeVisible();
     await futureForm.locator('input[name="scheduledFor"]').fill("2099-12-31T12:30");
