@@ -67,7 +67,7 @@ export function normalizeAdminCreateUserAccess(value: string | null | undefined,
     return {
       type: "corporate",
       roleKey: "corporate_admin",
-      corporatePermission: normalizeAdminCorporatePermission(rawValue.slice("corporate:".length))
+      corporatePermission: "corporate_user"
     };
   }
 
