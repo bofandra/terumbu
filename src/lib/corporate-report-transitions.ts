@@ -1,4 +1,4 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, ne, isNotNull, sql } from "drizzle-orm";
 
 import { db } from "@/db/client";
 import { adminAuditLogs, corporateReportExports } from "@/db/schema";
@@ -13,13 +13,14 @@ export async function transitionCorporateReport(input: {
   expectedStatus: "generated" | "review" | "approved";
   nextStatus: "review" | "approved" | "published";
   publicSlug?: string;
+  publicSnapshot?: Record<string, unknown>;
 }) {
   // Refuse invalid jumps even if a future caller bypasses the UI state checks.
   const validStep =
     (input.expectedStatus === "generated" && input.nextStatus === "review") ||
     (input.expectedStatus === "review" && input.nextStatus === "approved") ||
     (input.expectedStatus === "approved" && input.nextStatus === "published");
-  if (!validStep) return false;
+  if (!validStep || (input.nextStatus === "published" && !input.publicSnapshot)) return false;
 
   const now = new Date();
 
@@ -30,12 +31,26 @@ export async function transitionCorporateReport(input: {
         status: input.nextStatus,
         updatedAt: now,
         ...(input.nextStatus === "approved" ? { approvedByUserId: input.actorUserId, approvedAt: now } : {}),
-        ...(input.nextStatus === "published" ? { publicSlug: input.publicSlug, publishedAt: now } : {})
+        ...(input.nextStatus === "published" ? {
+          publicSlug: input.publicSlug,
+          publishedAt: now,
+          // Persist the public-facing data and state change atomically.
+          metadata: sql`coalesce(${corporateReportExports.metadata}, '{}'::jsonb) || ${JSON.stringify({ publicSnapshot: input.publicSnapshot })}::jsonb`
+        } : {})
       })
       .where(and(
         eq(corporateReportExports.id, input.reportId),
         eq(corporateReportExports.programId, input.programId),
-        eq(corporateReportExports.status, input.expectedStatus)
+        eq(corporateReportExports.status, input.expectedStatus),
+        // Fail closed when the original report creator is unknown. Independent
+        // approval must be enforced in SQL, including under concurrent requests.
+        ...(input.nextStatus === "approved" ? [
+          isNotNull(corporateReportExports.requestedByUserId),
+          ne(corporateReportExports.requestedByUserId, input.actorUserId)
+        ] : []),
+        ...(input.nextStatus === "published" ? [
+          eq(corporateReportExports.approvedByUserId, input.actorUserId)
+        ] : [])
       ))
       .returning({ id: corporateReportExports.id });
 
