@@ -6585,7 +6585,11 @@ async function loadCorporateImpactReport(publicSlug: string | null, unpublishedR
   return {
     report: {
       ...report,
-      ...(frozen?.reportContext ?? {}),
+      ...(frozen?.reportContext ? {
+        ...frozen.reportContext,
+        startsAt: frozen.reportContext.startsAt ? new Date(frozen.reportContext.startsAt) : report.startsAt,
+        endsAt: frozen.reportContext.endsAt ? new Date(frozen.reportContext.endsAt) : report.endsAt
+      } : {}),
       pdfUrl: report.publicSlug && corporateReportArtifactSourceUrl(reportArtifactSource, "pdf")
         ? publicCorporateReportArtifactRoute(report.publicSlug, "pdf")
         : null
