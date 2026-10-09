@@ -1,8 +1,5 @@
-import { mkdir, writeFile } from "node:fs/promises";
-import path from "node:path";
-
 import { buildCorporateReportPdf, type CorporateReportArtifactInput } from "@/lib/corporate-report-artifacts";
-import { corporateReportArtifactStorageRoot, corporateReportArtifactStorageUrl } from "@/lib/corporate-report-artifact-links";
+import { storeCorporateReportPdf } from "@/lib/corporate-report-storage";
 import { buildCorporateReportArtifactManifest, corporateReportTypeLabel } from "@/lib/corporate-report-lifecycle";
 import { corporatePublicSnapshotFromDashboard } from "@/lib/corporate-report-snapshot";
 import type { getCorporateDashboardData } from "@/lib/queries";
@@ -17,10 +14,6 @@ export async function writeReportArtifacts(input: {
   data: NonNullable<Awaited<ReturnType<typeof getCorporateDashboardData>>>;
 }) {
   const generatedAt = new Date();
-  const folder = corporateReportArtifactStorageRoot();
-  const baseName = input.exportCode.toLowerCase();
-  const pdfFilename = `${baseName}.pdf`;
-  const pdfUrl = corporateReportArtifactStorageUrl(pdfFilename);
   const artifactInput: CorporateReportArtifactInput = {
     exportCode: input.exportCode,
     reportTypeLabel: corporateReportTypeLabel(input.reportType),
@@ -49,6 +42,12 @@ export async function writeReportArtifacts(input: {
       sourceHref: item.sourceHref
     }))
   };
+  const stored = await storeCorporateReportPdf({
+    exportCode: input.exportCode,
+    pdf: buildCorporateReportPdf(artifactInput),
+    now: generatedAt
+  });
+  const pdfUrl = stored.url;
   const manifest = buildCorporateReportArtifactManifest({
     exportCode: input.exportCode,
     reportType: input.reportType,
@@ -57,9 +56,6 @@ export async function writeReportArtifacts(input: {
     generatedAt,
     files: [{ label: "Terumbu PDF report", format: "pdf", url: pdfUrl, required: true }]
   });
-
-  await mkdir(folder, { recursive: true });
-  await writeFile(path.join(folder, pdfFilename), buildCorporateReportPdf(artifactInput));
 
   return {
     fileUrl: pdfUrl,
@@ -76,7 +72,10 @@ export async function writeReportArtifacts(input: {
       generatedBy: "corporate_report_generator",
       exportFormat: "pdf",
       artifactVersion: input.artifactVersion,
-      pdfUrl
+      pdfUrl,
+      pdfSha256: stored.sha256,
+      pdfByteLength: stored.byteLength,
+      artifactStorageProvider: stored.provider
     }
   };
 }
