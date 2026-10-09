@@ -68,7 +68,9 @@ export function CorporateShell({
   roleLabel,
   accountName,
   accountLogoUrl,
-  canManagePrograms
+  canManagePrograms,
+  canManageEmployees,
+  canManageSettings
 }: {
   children: ReactNode;
   displayName: string;
@@ -76,6 +78,8 @@ export function CorporateShell({
   accountName: string;
   accountLogoUrl: string | null;
   canManagePrograms: boolean;
+  canManageEmployees: boolean;
+  canManageSettings: boolean;
 }) {
   const pathname = usePathname();
   const currentTask = currentTaskForPath(pathname);
@@ -119,9 +123,9 @@ export function CorporateShell({
           <nav className="mt-5 flex gap-2 overflow-x-auto pb-1 lg:grid lg:overflow-visible lg:pb-0" aria-label="Corporate sections">
             {corporateNavItems
               .filter((item) =>
-                canManagePrograms
-                  ? true
-                  : !["/corporate/programs", "/corporate/employees", "/corporate/settings"].includes(item.href)
+                item.href === "/corporate/programs" ? canManagePrograms :
+                item.href === "/corporate/employees" ? canManageEmployees :
+                item.href === "/corporate/settings" ? canManageSettings : true
               )
               .map((item) => {
               const Icon = item.icon;
@@ -171,7 +175,7 @@ export function CorporateShell({
                 <Link href="/corporate" className="block rounded-lg px-3 py-2 text-sm font-bold text-ocean-900 hover:bg-ocean-50">
                   Overview
                 </Link>
-                {canManagePrograms ? (
+                {canManageSettings ? (
                   <Link href="/corporate/settings" className="block rounded-lg px-3 py-2 text-sm font-bold text-ocean-900 hover:bg-ocean-50">
                     Settings
                   </Link>
