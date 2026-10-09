@@ -25,10 +25,10 @@ test("corporate report lifecycle is atomic, idempotent and scoped to its program
     expect(reviewer?.id).toBeTruthy();
     const exportCode = `E2E-CORP-STATE-${randomUUID()}`;
     const snapshot = { metrics: { totalAllocated: 123 }, portfolio: [], evidence: [] };
-    const generationMetadata = JSON.stringify({ generationSnapshot: snapshot });
+    const generationMetadata = { generationSnapshot: snapshot };
     const [report] = await sql<{ id: string }[]>`
       insert into corporate_report_exports (program_id, requested_by_user_id, export_code, report_type, export_format, status, generated_at, metadata)
-      values (${actor.program_id}, ${actor.user_id}, ${exportCode}, 'esg', 'pdf', 'generated', now(), ${generationMetadata}::jsonb) returning id
+      values (${actor.program_id}, ${actor.user_id}, ${exportCode}, 'esg', 'pdf', 'generated', now(), ${sql.json(generationMetadata)}) returning id
     `;
     reportId = report.id;
 
