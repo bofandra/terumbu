@@ -150,6 +150,15 @@ export async function requireCorporateAdminRole(nextPath = "/corporate") {
   return user;
 }
 
+// Scoped corporate actions independently check account membership and capabilities.
+// Never let a platform admin inherit a customer's corporate operator rights.
+export async function requireCorporateOperatorRole(nextPath = "/corporate") {
+  const user = await requireUser(nextPath);
+  const roles = await getUserRoles(user.id);
+  if (roles.includes("admin")) redirect(forbiddenRedirectPath(nextPath));
+  return user;
+}
+
 export async function destroyCurrentSession() {
   const cookieStore = await cookies();
   const token = cookieStore.get(SESSION_COOKIE)?.value;
