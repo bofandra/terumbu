@@ -1,6 +1,6 @@
 "use server";
 
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { redirect } from "next/navigation";
 
 import { db } from "@/db/client";
@@ -11,6 +11,7 @@ import {
   users
 } from "@/db/schema";
 import { requireRole } from "@/lib/auth";
+import { normalizeAdminCorporatePermission } from "@/lib/admin-user-management";
 import { storeUploadedPublicImage } from "@/lib/storage";
 
 function textValue(value: FormDataEntryValue | null, maxLength: number) {
@@ -55,8 +56,6 @@ async function corporateLogoFromForm(formData: FormData) {
 
   return upload.dataUrl;
 }
-
-const corporateAccessPermission = "corporate_user";
 
 function corporateReturnPath(formData: FormData, fallback = "/admin/corporate") {
   const returnTo = textValue(formData.get("returnTo"), 500);
@@ -122,7 +121,7 @@ export async function assignCorporatePermissionAction(formData: FormData) {
   const admin = await requireRole(["admin"], "/admin/corporate");
   const accountId = textValue(formData.get("corporateAccountId"), 80);
   const email = textValue(formData.get("email"), 255).toLowerCase();
-  const permission = corporateAccessPermission;
+  const permission = normalizeAdminCorporatePermission(textValue(formData.get("permission"), 80));
 
   if (!accountId || !email) {
     corporateRedirect(formData, "error", "permission-invalid");
@@ -139,17 +138,15 @@ export async function assignCorporatePermissionAction(formData: FormData) {
     corporateRedirect(formData, "error", "permission-missing");
   }
 
-  const [row] = await db
-    .insert(corporatePermissions)
-    .values({
-      corporateAccountId: account.id,
-      userId: user.id,
-      permission
-    })
-    .onConflictDoNothing({
-      target: [corporatePermissions.corporateAccountId, corporatePermissions.userId, corporatePermissions.permission]
-    })
-    .returning({ id: corporatePermissions.id });
+  const [row] = await db.transaction(async (tx) => {
+    await tx.delete(corporatePermissions).where(and(
+      eq(corporatePermissions.corporateAccountId, account.id),
+      eq(corporatePermissions.userId, user.id)
+    ));
+    return tx.insert(corporatePermissions)
+      .values({ corporateAccountId: account.id, userId: user.id, permission })
+      .returning({ id: corporatePermissions.id });
+  });
 
   await writeAdminAuditLog({
     actorUserId: admin.id,
