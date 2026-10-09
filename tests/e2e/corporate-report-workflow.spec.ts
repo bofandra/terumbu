@@ -16,6 +16,7 @@ test("corporate report moves from generated to public through the portal with ex
   let reviewerPermissionAssignmentId: string | null = null;
   let modifiedProgramBudget: string | null = null;
   let modifiedProgramId: string | null = null;
+  let committedFundingAtGeneration: number | null = null;
   let reportId: string | null = null;
   let foreignAccountId: string | null = null;
   let foreignProgramId: string | null = null;
@@ -57,6 +58,22 @@ test("corporate report moves from generated to public through the portal with ex
     `;
     expect(report?.status).toBe("generated");
     reportId = report.id;
+
+    const [generated] = await sql<{ snapshot: { metrics: { committedFunding: number } } }[]>`
+      select metadata->'generationSnapshot' as snapshot
+      from corporate_report_exports where id = ${reportId}
+    `;
+    expect(generated.snapshot.metrics.committedFunding).toBeGreaterThanOrEqual(0);
+    committedFundingAtGeneration = generated.snapshot.metrics.committedFunding;
+
+    // Mutate live program data BEFORE publication. Public report must retain
+    // the dataset that was used to build the original PDF.
+    const [initialBudget] = await sql<{ budget_amount: string }[]>`
+      select budget_amount::text from corporate_programs where id = ${programId}
+    `;
+    modifiedProgramBudget = initialBudget.budget_amount;
+    modifiedProgramId = programId;
+    await sql`update corporate_programs set budget_amount = budget_amount + 2000 where id = ${programId}`;
 
     // Provision a second independent corporate admin just for this fixture.
     const [reviewer] = await sql<{ id: string }[]>`
@@ -138,11 +155,7 @@ test("corporate report moves from generated to public through the portal with ex
     // The publicly published numbers must be fixed at the publication time.
     const frozenBefore = await getPublicCorporateImpactReport(state.public_slug);
     expect(frozenBefore).not.toBeNull();
-    const [budgetBefore] = await sql<{ budget_amount: string }[]>`
-      select budget_amount::text from corporate_programs where id = ${programId}
-    `;
-    modifiedProgramBudget = budgetBefore.budget_amount;
-    modifiedProgramId = programId;
+    expect(frozenBefore?.metrics.committedFunding).toBe(committedFundingAtGeneration);
     await sql`update corporate_programs set budget_amount = budget_amount + 2000 where id = ${programId}`;
     const frozenAfter = await getPublicCorporateImpactReport(state.public_slug);
     expect(frozenAfter?.metrics.committedFunding).toBe(frozenBefore?.metrics.committedFunding);
