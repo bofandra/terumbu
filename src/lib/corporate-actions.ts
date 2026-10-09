@@ -69,7 +69,8 @@ import {
   normalizeCorporateContributionType
 } from "@/lib/corporate-contributions";
 import { transitionCorporateReport } from "@/lib/corporate-report-transitions";
-import { getCorporateDashboardData, getCorporateExpeditionActivities, getCorporateImpactSnapshotForPublication } from "@/lib/queries";
+import { getCorporateDashboardData, getCorporateExpeditionActivities } from "@/lib/queries";
+import { corporatePublicSnapshotFromDashboard } from "@/lib/corporate-report-snapshot";
 import { formatCurrency } from "@/lib/utils";
 
 function exportCode() {
@@ -624,6 +625,7 @@ async function writeReportArtifacts(input: {
       evidenceCount: input.data.evidence.length,
       verifiedOutputs: input.data.impactOutputs.verifiedOutputs,
       committedFunding: input.data.financials.committedFunding,
+      generationSnapshot: corporatePublicSnapshotFromDashboard(input.data),
       generatedBy: "corporate_report_generator",
       exportFormat: "pdf",
       artifactVersion: input.artifactVersion,
@@ -852,6 +854,7 @@ export async function createCorporateActivityPdfReportAction(formData: FormData)
         activityScope,
         pdfUrl,
         recordCount: finalReportInput.rows.length,
+        generationSnapshot: corporatePublicSnapshotFromDashboard(data),
         generatedBy: "corporate_activity_pdf"
       },
       createdAt: generatedAt,
@@ -892,7 +895,28 @@ export async function createCorporateReportExportAction(formData: FormData) {
     redirect("/corporate/reports?error=permission");
   }
 
-  const reportType = normalizeCorporateReportType(String(formData.get("reportType") ?? "esg").toLowerCase());
+  const revisionOfReportId = textValue(formData.get("revisionOfReportId"), 80);
+  const [revisionSource] = revisionOfReportId
+    ? await db.select({
+        id: corporateReportExports.id,
+        status: corporateReportExports.status,
+        reportType: corporateReportExports.reportType,
+        exportCode: corporateReportExports.exportCode,
+        artifactVersion: corporateReportExports.artifactVersion
+      }).from(corporateReportExports)
+        .where(and(
+          eq(corporateReportExports.id, revisionOfReportId),
+          eq(corporateReportExports.programId, context.programId),
+          eq(corporateReportExports.status, "published")
+        ))
+        .limit(1)
+    : [undefined];
+  if (revisionOfReportId && !revisionSource) {
+    redirect(`/corporate/reports?programId=${context.programId}&error=revision`);
+  }
+  const reportType = revisionSource
+    ? normalizeCorporateReportType(revisionSource.reportType)
+    : normalizeCorporateReportType(String(formData.get("reportType") ?? "esg").toLowerCase());
   const exportFormat = normalizeCorporateReportFormat("pdf");
   const scheduledFor = dateValue(formData.get("scheduledFor"));
   const now = new Date();
@@ -907,7 +931,9 @@ export async function createCorporateReportExportAction(formData: FormData) {
     .from(corporateReportExports)
     .where(and(eq(corporateReportExports.programId, context.programId), eq(corporateReportExports.reportType, reportType)));
   const code = exportCode();
-  const artifactVersion = nextArtifactVersion(Number(existingCount ?? 0));
+  const artifactVersion = revisionSource
+    ? Math.max(nextArtifactVersion(Number(existingCount ?? 0)), revisionSource.artifactVersion + 1)
+    : nextArtifactVersion(Number(existingCount ?? 0));
 
   if (scheduledFor && scheduledFor.getTime() > now.getTime()) {
     const manifest = buildCorporateReportArtifactManifest({
@@ -933,6 +959,7 @@ export async function createCorporateReportExportAction(formData: FormData) {
         scheduledFor,
         artifactManifest: manifest,
         metadata: {
+          ...(revisionSource ? { revisionOfReportId: revisionSource.id, revisionOfExportCode: revisionSource.exportCode } : {}),
           exportFormat,
           artifactVersion,
           scheduledFor: scheduledFor.toISOString(),
@@ -984,7 +1011,10 @@ export async function createCorporateReportExportAction(formData: FormData) {
       evidenceBundleUrl: artifacts.evidenceBundleUrl,
       generatedAt: artifacts.generatedAt,
       artifactManifest: artifacts.artifactManifest,
-      metadata: artifacts.metadata,
+      metadata: {
+        ...artifacts.metadata,
+        ...(revisionSource ? { revisionOfReportId: revisionSource.id, revisionOfExportCode: revisionSource.exportCode } : {})
+      },
       createdAt: artifacts.generatedAt,
       updatedAt: artifacts.generatedAt
     })
@@ -2228,11 +2258,6 @@ export async function publishCorporateReportAction(formData: FormData) {
     access.report.publicSlug ??
     `${toSlug(access.context.accountName)}-${toSlug(access.context.programName)}-${access.report.exportCode.toLowerCase()}`;
 
-  const publicSnapshot = await getCorporateImpactSnapshotForPublication(access.report.id);
-  if (!publicSnapshot) {
-    redirect("/corporate/reports?error=snapshot");
-  }
-
   const updated = await transitionCorporateReport({
     reportId: access.report.id,
     programId: access.context.programId,
@@ -2240,8 +2265,7 @@ export async function publishCorporateReportAction(formData: FormData) {
     exportCode: access.report.exportCode,
     expectedStatus: "approved",
     nextStatus: "published",
-    publicSlug,
-    publicSnapshot
+    publicSlug
   });
 
   if (!updated) redirect("/corporate/reports?error=approval");
