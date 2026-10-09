@@ -19,7 +19,7 @@ import {
   updateAdminUserProfileAction,
   updatePartnerMembershipAction
 } from "@/lib/admin-user-actions";
-import { partnerMembershipStatuses } from "@/lib/admin-user-management";
+import { adminAssignableCorporatePermissionOptions, partnerMembershipStatuses } from "@/lib/admin-user-management";
 import { partnerOrganizationRoles } from "@/lib/partner-permissions";
 import type { getAdminUserWorkspaceData } from "@/lib/queries";
 
@@ -191,7 +191,7 @@ export function AdminUserWorkspace({
       <section className="grid gap-4">
         <div>
           <h2 className="text-lg font-bold text-ocean-900">Corporate access</h2>
-          <p className="mt-1 text-sm font-semibold leading-6 text-ocean-900/58">Grant or remove corporate workspace access.</p>
+          <p className="mt-1 text-sm font-semibold leading-6 text-ocean-900/58">Choose a workspace-scoped role. Finance, ESG, auditor and executive permissions are not full Corporate Admin access.</p>
           <div className="mt-3 grid gap-2">
             {user.corporatePermissions.map((permission) => (
               <form key={permission.id} action={removeCorporatePermissionAction} className="rounded-lg border border-ocean-900/10 bg-white p-3">
@@ -216,7 +216,10 @@ export function AdminUserWorkspace({
             <select name="corporateAccountId" className={adminSelectClassName} disabled={data.corporateAccounts.length === 0}>
               {data.corporateAccounts.map((account) => <option key={account.id} value={account.id}>{account.name}</option>)}
             </select>
-            <Button type="submit" className="min-h-10 w-fit rounded-lg px-3" disabled={data.corporateAccounts.length === 0}>Grant Access</Button>
+            <select name="permission" defaultValue="corporate_user" className={adminSelectClassName}>
+              {adminAssignableCorporatePermissionOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+            </select>
+            <Button type="submit" className="min-h-10 w-fit rounded-lg px-3" disabled={data.corporateAccounts.length === 0}>Save Corporate Role</Button>
           </form>
         </div>
       </section>
