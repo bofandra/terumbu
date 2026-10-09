@@ -113,6 +113,16 @@ export async function getCorporateReportExecutionMonitor(
   reports: ReportRow[],
   now = new Date()
 ) {
+  const zeroSummary = { scheduled: 0, awaitingGeneration: 0, needAttention: 0 };
+  if (reports.length === 0) return { byReportId: {}, summary: zeroSummary };
+
+  const [authorized] = await db.select({ id: corporatePrograms.id })
+    .from(corporatePrograms)
+    .innerJoin(corporatePermissions, eq(corporatePermissions.corporateAccountId, corporatePrograms.corporateAccountId))
+    .where(and(eq(corporatePrograms.id, programId), eq(corporatePermissions.userId, userId)))
+    .limit(1);
+  if (!authorized) return { byReportId: {}, summary: zeroSummary };
+
   const byReportId: Record<string, CorporateReportExecutionState> = {};
   for (const report of reports) {
     byReportId[report.id] = corporateReportExecutionState(report, now);
