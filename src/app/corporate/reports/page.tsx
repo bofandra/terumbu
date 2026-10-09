@@ -152,7 +152,7 @@ export default async function CorporateReportsPage({ searchParams }: ReportsPage
 
         {canGenerate ? (
           <div className="mt-5 rounded-lg border border-ocean-900/10 bg-sand-50 p-4">
-            <h3 className="font-bold text-ocean-900">Scheduled PDF reports</h3>
+            <h3 className="font-bold text-ocean-900">Schedule PDF exports</h3>
             <p className="mt-1 text-xs leading-5 text-ocean-900/60">
               Times are entered in UTC. Scheduling does not publish reports or run automatically:
               an authorized corporate admin generates due reports here before independent review.
