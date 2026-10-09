@@ -1,8 +1,6 @@
 "use server";
 
 import { randomBytes } from "node:crypto";
-import { mkdir, writeFile } from "node:fs/promises";
-import path from "node:path";
 
 import { and, desc, eq, inArray, lte, sql } from "drizzle-orm";
 import { redirect } from "next/navigation";
@@ -49,10 +47,7 @@ import {
   buildCorporateActivityReportPdf,
   type CorporateActivityReportInput
 } from "@/lib/corporate-report-artifacts";
-import {
-  corporateReportArtifactStorageRoot,
-  corporateReportArtifactStorageUrl
-} from "@/lib/corporate-report-artifact-links";
+import { storeCorporateReportPdf } from "@/lib/corporate-report-storage";
 import {
   buildCorporateReportArtifactManifest,
   corporateReportFormatLabel,
@@ -696,10 +691,6 @@ export async function createCorporateActivityPdfReportAction(formData: FormData)
     .where(and(eq(corporateReportExports.programId, context.programId), eq(corporateReportExports.reportType, activityScope)));
   const artifactVersion = nextArtifactVersion(Number(existingCount ?? 0));
   const code = `TRB-${activityScope === "donations" ? "DON" : "EXP"}-${generatedAt.getUTCFullYear()}-${randomBytes(4).toString("hex").toUpperCase()}`;
-  const folder = corporateReportArtifactStorageRoot();
-  const baseName = code.toLowerCase();
-  const pdfFilename = `${baseName}.pdf`;
-  const pdfUrl = corporateReportArtifactStorageUrl(pdfFilename);
 
   let finalReportInput: CorporateActivityReportInput | null = null;
 
@@ -762,8 +753,12 @@ export async function createCorporateActivityPdfReportAction(formData: FormData)
     redirect(`${returnPath}?error=report`);
   }
 
-  await mkdir(folder, { recursive: true });
-  await writeFile(path.join(folder, pdfFilename), buildCorporateActivityReportPdf(finalReportInput));
+  const stored = await storeCorporateReportPdf({
+    exportCode: code,
+    pdf: buildCorporateActivityReportPdf(finalReportInput),
+    now: generatedAt
+  });
+  const pdfUrl = stored.url;
 
   const [report] = await db
     .insert(corporateReportExports)
@@ -779,6 +774,9 @@ export async function createCorporateActivityPdfReportAction(formData: FormData)
       metadata: {
         activityScope,
         pdfUrl,
+        pdfSha256: stored.sha256,
+        pdfByteLength: stored.byteLength,
+        artifactStorageProvider: stored.provider,
         recordCount: finalReportInput.rows.length,
         generationSnapshot: corporatePublicSnapshotFromDashboard(data),
         generatedBy: "corporate_activity_pdf"
