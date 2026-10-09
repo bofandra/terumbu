@@ -69,6 +69,19 @@ test("authenticated corporate cron generates each due report once, records revok
     expect(bad.metadata.scheduleFailureCount).toBe(1);
     expect(Date.parse(String(bad.metadata.nextRetryAt))).toBeGreaterThan(Date.now());
 
+    // The first failure creates a durable, account-scoped admin alert.
+    const alertCode = `corporate-report-failure-${revokedReportId}-1`;
+    const notices = await sql<{ user_id: string; notification_code: string; href: string }[]> `
+      select user_id, notification_code, href from user_notifications
+      where source_type = 'corporate_report_export' and source_id = ${revokedReportId}
+    `;
+    expect(notices).toEqual([{
+      user_id: actor.user_id,
+      notification_code: alertCode,
+      href: `/corporate/reports?programId=${actor.program_id}`
+    }]);
+    expect(notices.some((item) => item.user_id === outsider.id)).toBe(false);
+
     // The scoped report library must show failure state and chronological audit activity.
     const page = await browser.newPage();
     try {
@@ -84,6 +97,16 @@ test("authenticated corporate cron generates each due report once, records revok
       await failedMonitor.locator("summary").click();
       await expect(failedMonitor).toContainText("Generation failed");
       await expect(failedMonitor).toContainText("Automatic worker");
+
+      // Alert is discoverable from the corporate sidebar and leads back to
+      // this selected program; it is not restricted to the report monitor.
+      await expect(page.getByRole("link", { name: "Notifications" })).toHaveAttribute(
+        "href", "/dashboard/notifications"
+      );
+      await page.goto("/dashboard/notifications");
+      await expect(page.getByRole("link", {
+        name: /PDF report E2E-AUTO-.* could not be generated \(attempt 1\)/
+      })).toHaveAttribute("href", `/corporate/reports?programId=${actor.program_id}`);
 
       const generatedMonitor = page.locator(`[data-testid="corporate-report-monitor-${authorizedReportId}"]`);
       await expect(generatedMonitor).toContainText("Generated from schedule");
@@ -114,8 +137,15 @@ test("authenticated corporate cron generates each due report once, records revok
     `;
     expect(audits.generated).toBe(1);
     expect(audits.failed).toBe(1);
+
+    const [notificationCount] = await sql<{ total: number }[]> `
+      select count(*)::int as total from user_notifications
+      where source_type = 'corporate_report_export' and source_id = ${revokedReportId}
+    `;
+    expect(notificationCount.total).toBe(1);
   } finally {
     if (reports.length) {
+      await sql`delete from user_notifications where source_type = 'corporate_report_export' and source_id in ${sql(reports)}`;
       await sql`delete from admin_audit_logs where entity_type = 'corporate_report_exports' and entity_id in ${sql(reports)}`;
       await sql`delete from corporate_report_exports where id in ${sql(reports)}`;
     }
