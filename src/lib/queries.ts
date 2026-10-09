@@ -148,7 +148,7 @@ import {
   sortExpeditionMarketplaceItems,
   type ExpeditionSearchFilters
 } from "@/lib/expedition-marketplace";
-import { corporateCapabilitiesForPermission } from "@/lib/corporate-permissions";
+import { corporateCapabilitiesForPermission, corporatePermissionLabel } from "@/lib/corporate-permissions";
 import { corporateReportFormatLabel, corporateReportTypeLabel, scheduledReportIsDue } from "@/lib/corporate-report-lifecycle";
 import { evidenceReviewActionLabel, evidenceReviewStage, evidenceStatusLabel, evidenceVerificationStatuses } from "@/lib/evidence-review-workflow";
 import { getPublishedExpeditionMedia } from "@/lib/expedition-media";
@@ -6106,10 +6106,12 @@ export async function getCorporateDashboardData(userId: string, requestedProgram
   const capabilities = corporateCapabilitiesForPermission(currentPermission);
   const roleCapabilities = [
     {
-      role: "Corporate User",
-      permission: "corporate_user",
-      access: "Manage the company workspace, projects, contributions, employees, activity records, reports, and settings.",
-      allowedActions: ["Manage projects", "Invite employees", "Generate reports"],
+      role: corporatePermissionLabel(currentPermission),
+      permission: currentPermission,
+      access: "Workspace actions are limited by account-scoped role. Only Corporate Admin has full control.",
+      allowedActions: Object.entries(capabilities)
+        .filter(([, allowed]) => allowed)
+        .map(([capability]) => capability.replace(/^can/, "").replace(/([a-z])([A-Z])/g, "$1 $2")),
       active: true
     }
   ];
@@ -6166,7 +6168,7 @@ export async function getCorporateDashboardData(userId: string, requestedProgram
       invitedEmployees: employeeRows.filter((employee) => employee.status === "invited").length,
       suspendedEmployees: employeeRows.filter((employee) => employee.status === "suspended").length,
       currentPermission,
-      currentRole: "Corporate User"
+      currentRole: corporatePermissionLabel(currentPermission)
     },
     roleCapabilities,
     integrations: governanceIntegrations,
