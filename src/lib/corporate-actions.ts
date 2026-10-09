@@ -69,7 +69,7 @@ import {
   normalizeCorporateContributionType
 } from "@/lib/corporate-contributions";
 import { transitionCorporateReport } from "@/lib/corporate-report-transitions";
-import { getCorporateDashboardData, getCorporateExpeditionActivities } from "@/lib/queries";
+import { getCorporateDashboardData, getCorporateExpeditionActivities, getCorporateImpactSnapshotForPublication } from "@/lib/queries";
 import { formatCurrency } from "@/lib/utils";
 
 function exportCode() {
@@ -2135,7 +2135,8 @@ async function reportForUser(userId: string, reportId: string) {
       programId: corporateReportExports.programId,
       exportCode: corporateReportExports.exportCode,
       status: corporateReportExports.status,
-      publicSlug: corporateReportExports.publicSlug
+      publicSlug: corporateReportExports.publicSlug,
+      requestedByUserId: corporateReportExports.requestedByUserId
     })
     .from(corporateReportExports)
     .where(eq(corporateReportExports.id, reportId))
@@ -2184,6 +2185,10 @@ export async function approveCorporateReportAction(formData: FormData) {
     redirect("/corporate/reports?error=permission");
   }
 
+  if (!access.report.requestedByUserId || access.report.requestedByUserId === user.id) {
+    redirect("/corporate/reports?error=separation");
+  }
+
   if (access.report.status !== "review") {
     redirect("/corporate/reports?error=status");
   }
@@ -2223,6 +2228,11 @@ export async function publishCorporateReportAction(formData: FormData) {
     access.report.publicSlug ??
     `${toSlug(access.context.accountName)}-${toSlug(access.context.programName)}-${access.report.exportCode.toLowerCase()}`;
 
+  const publicSnapshot = await getCorporateImpactSnapshotForPublication(access.report.id);
+  if (!publicSnapshot) {
+    redirect("/corporate/reports?error=snapshot");
+  }
+
   const updated = await transitionCorporateReport({
     reportId: access.report.id,
     programId: access.context.programId,
@@ -2230,7 +2240,8 @@ export async function publishCorporateReportAction(formData: FormData) {
     exportCode: access.report.exportCode,
     expectedStatus: "approved",
     nextStatus: "published",
-    publicSlug
+    publicSlug,
+    publicSnapshot
   });
 
   if (!updated) redirect("/corporate/reports?error=approval");
