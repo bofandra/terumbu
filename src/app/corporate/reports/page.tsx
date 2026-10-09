@@ -11,6 +11,7 @@ import {
   submitCorporateReportForApprovalAction
 } from "@/lib/corporate-actions";
 import { corporateReportArtifactRoute } from "@/lib/corporate-report-artifact-links";
+import { getCorporateReportExecutionMonitor } from "@/lib/corporate-report-execution-monitor";
 import { getUserRoles, requireUser } from "@/lib/auth";
 
 export const metadata = { title: "Corporate Reports" };
@@ -67,6 +68,9 @@ export default async function CorporateReportsPage({ searchParams }: ReportsPage
   const canApprove = canAdmin && data.reportCapabilities.canApprove;
   const canPublish = canAdmin && data.reportCapabilities.canPublish;
   const reports = data.exports;
+  const executionMonitor = canAdmin
+    ? await getCorporateReportExecutionMonitor(user.id, data.program.programId, reports)
+    : { byReportId: {}, summary: { scheduled: 0, awaitingGeneration: 0, needAttention: 0 } };
   const inReview = reports.filter((item) => item.status === "review").length;
   const published = reports.filter((item) => item.status === "published").length;
 
@@ -129,6 +133,30 @@ export default async function CorporateReportsPage({ searchParams }: ReportsPage
         ))}
       </section>
 
+      {canAdmin ? <section aria-label="Scheduled generation overview" className="mt-6 rounded-lg border border-ocean-900/10 bg-white p-5">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h2 className="text-lg font-bold text-ocean-900">PDF generation monitor</h2>
+          <p className="text-xs text-ocean-900/60">Hourly automatic processing · Selected corporate program only</p>
+        </div>
+        <div className="mt-3 grid gap-3 sm:grid-cols-3">
+          {[
+            { label: "Scheduled", value: executionMonitor.summary.scheduled },
+            { label: "Due for generation", value: executionMonitor.summary.awaitingGeneration },
+            { label: "Needs attention", value: executionMonitor.summary.needAttention }
+          ].map((metric) => (
+            <div key={metric.label} className="rounded-lg border border-ocean-900/10 p-3">
+              <p className="text-xs font-semibold text-ocean-900/65">{metric.label}</p>
+              <p className="mt-1 text-xl font-bold text-ocean-900">{metric.value.toLocaleString("id-ID")}</p>
+            </div>
+          ))}
+        </div>
+        {executionMonitor.summary.needAttention > 0 ? (
+          <p className="mt-3 text-sm text-coral-700">
+            Some reports could not be generated. Review the issue and next retry time in the report library below.
+          </p>
+        ) : null}
+      </section> : null}
+
       <section className="mt-6 rounded-lg border border-ocean-900/10 bg-white p-5 shadow-soft">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
@@ -190,7 +218,7 @@ export default async function CorporateReportsPage({ searchParams }: ReportsPage
                 <div className="min-w-0">
                   <p className="break-all text-base font-bold text-ocean-900">{report.exportCode}</p>
                   <p className="mt-1 text-sm text-ocean-900/62">
-                    {report.reportTypeLabel} · {report.artifactVersionLabel} · Generated {formatDate(report.generatedAt)}
+                    {report.reportTypeLabel} · {report.artifactVersionLabel} · {report.status === "scheduled" ? "Awaiting PDF generation" : `Generated ${formatDate(report.generatedAt)}`}
                   </p>
                   {report.revisionOfExportCode ? (
                     <p className="mt-1 text-xs font-semibold text-ocean-900/60">New version of {report.revisionOfExportCode}</p>
@@ -203,6 +231,53 @@ export default async function CorporateReportsPage({ searchParams }: ReportsPage
                   {report.status === "review" ? "In review" : report.status}
                 </span>
               </div>
+
+              {canAdmin && executionMonitor.byReportId[report.id] && (report.scheduledFor || executionMonitor.byReportId[report.id].events.length > 0) ? (
+                <section
+                  aria-label={`Execution monitor for ${report.exportCode}`}
+                  data-testid={`corporate-report-monitor-${report.id}`}
+                  className="mt-3 rounded-lg border border-ocean-900/10 bg-sand-50 p-3"
+                >
+                  <p className="text-xs font-bold text-ocean-900">
+                    Execution: {executionMonitor.byReportId[report.id].statusLabel}
+                  </p>
+                  {executionMonitor.byReportId[report.id].failureCount > 0 ? (
+                    <div className="mt-2 space-y-1 text-xs text-ocean-900/75">
+                      <p>Failed attempts: {executionMonitor.byReportId[report.id].failureCount}</p>
+                      {executionMonitor.byReportId[report.id].lastFailure ? (
+                        <p className="font-semibold text-coral-700">
+                          Last issue: {executionMonitor.byReportId[report.id].lastFailure}
+                        </p>
+                      ) : null}
+                      {executionMonitor.byReportId[report.id].lastFailedAt ? (
+                        <p>Last failed: {formatScheduledUtc(executionMonitor.byReportId[report.id].lastFailedAt)}</p>
+                      ) : null}
+                      {executionMonitor.byReportId[report.id].nextRetryAt ? (
+                        <p>Next automatic retry: {formatScheduledUtc(executionMonitor.byReportId[report.id].nextRetryAt)}</p>
+                      ) : null}
+                      {!executionMonitor.byReportId[report.id].scheduled ? (
+                        <p>Generation recovered; this report is no longer queued for retry.</p>
+                      ) : null}
+                    </div>
+                  ) : null}
+                  {executionMonitor.byReportId[report.id].events.length > 0 ? (
+                    <details className="mt-2">
+                      <summary className="cursor-pointer text-xs font-bold text-ocean-700">Recent execution history</summary>
+                      <ol className="mt-2 space-y-2 border-l-2 border-ocean-900/10 pl-3">
+                        {executionMonitor.byReportId[report.id].events.map((event) => (
+                          <li key={event.id} className="text-xs text-ocean-900/75">
+                            <p className="font-semibold text-ocean-900">{event.label} · {event.source}</p>
+                            <p>{formatScheduledUtc(event.occurredAt)}</p>
+                            {event.detail ? <p className="mt-1 text-coral-700">{event.detail}</p> : null}
+                          </li>
+                        ))}
+                      </ol>
+                    </details>
+                  ) : (
+                    <p className="mt-1 text-xs text-ocean-900/60">No execution events recorded yet.</p>
+                  )}
+                </section>
+              ) : null}
 
               <div className="mt-4 flex flex-wrap items-center gap-2">
                 {report.pdfUrl ? (

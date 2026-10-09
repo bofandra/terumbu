@@ -3,7 +3,10 @@ import { randomUUID } from "node:crypto";
 import { expect, test } from "@playwright/test";
 import postgres from "postgres";
 
-test("authenticated corporate cron generates each due report once, records revoked access and backs off", async ({ request }) => {
+import { getCorporateReportExecutionMonitor } from "../../src/lib/corporate-report-execution-monitor";
+import { loginAs } from "./support";
+
+test("authenticated corporate cron generates each due report once, records revoked access and backs off", async ({ request, browser }) => {
   test.skip(!process.env.CRON_SECRET, "CRON_SECRET is required for cron integration test");
   test.setTimeout(120_000);
 
@@ -65,6 +68,40 @@ test("authenticated corporate cron generates each due report once, records revok
     expect(bad.metadata.scheduleLastFailure).toBe("requester_not_authorized");
     expect(bad.metadata.scheduleFailureCount).toBe(1);
     expect(Date.parse(String(bad.metadata.nextRetryAt))).toBeGreaterThan(Date.now());
+
+    // The scoped report library must show failure state and chronological audit activity.
+    const page = await browser.newPage();
+    try {
+      await loginAs(page, "corporate.demo@terumbu.eco", `/corporate/reports?programId=${actor.program_id}`);
+      const overview = page.getByRole("region", { name: "Scheduled generation overview" });
+      await expect(overview).toContainText("Needs attention");
+
+      const failedMonitor = page.locator(`[data-testid="corporate-report-monitor-${revokedReportId}"]`);
+      await expect(failedMonitor).toContainText("Waiting for retry");
+      await expect(failedMonitor).toContainText("Failed attempts: 1");
+      await expect(failedMonitor).toContainText("Next automatic retry:");
+      await expect(failedMonitor).toContainText("original requester no longer has permission");
+      await failedMonitor.locator("summary").click();
+      await expect(failedMonitor).toContainText("Generation failed");
+      await expect(failedMonitor).toContainText("Automatic worker");
+
+      const generatedMonitor = page.locator(`[data-testid="corporate-report-monitor-${authorizedReportId}"]`);
+      await expect(generatedMonitor).toContainText("Generated from schedule");
+      await generatedMonitor.locator("summary").click();
+      await expect(generatedMonitor).toContainText("PDF generated");
+      await expect(generatedMonitor).toContainText("Automatic worker");
+    } finally {
+      await page.close();
+    }
+
+    // An unauthorized or unselected program cannot expose the run history.
+    const unauthorized = await getCorporateReportExecutionMonitor(
+      actor.user_id,
+      randomUUID(),
+      [{ id: revokedReportId, status: bad.status, metadata: bad.metadata, scheduledFor: new Date() }]
+    );
+    expect(unauthorized.summary.scheduled).toBe(0);
+    expect(Object.keys(unauthorized.byReportId)).toHaveLength(0);
 
     const repeat = await request.post("/api/cron/corporate-reports", { headers });
     expect(repeat.status()).toBe(200);
