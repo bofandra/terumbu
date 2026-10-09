@@ -15,6 +15,7 @@ import {
 } from "@/lib/admin-corporate-actions";
 import { observeAdminDataLoader } from "@/lib/admin-observability";
 import { requireRole } from "@/lib/auth";
+import { adminAssignableCorporatePermissionOptions } from "@/lib/admin-user-management";
 import { getAdminCorporateWorkspaceData } from "@/lib/queries";
 import { formatCurrency } from "@/lib/utils";
 
@@ -232,14 +233,21 @@ export default async function AdminCorporateDetailPage({ params, searchParams }:
             <div className="border-b border-ocean-900/10 p-4">
               <h2 className="text-lg font-bold text-ocean-900">Assign workspace access</h2>
               <p className="mt-1 text-sm font-semibold leading-6 text-ocean-900/58">
-                The user account must already exist. To let this person manage Programs, also assign the global Corporate Admin role from User management.
+                Assign a role for this corporate account. Only Corporate Admin receives all workspace permissions; other roles are limited to their designated tasks.
               </p>
             </div>
-            <form action={assignCorporatePermissionAction} className="grid gap-3 p-4 sm:grid-cols-[1fr_auto] sm:items-end">
+            <form action={assignCorporatePermissionAction} className="grid gap-3 p-4 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
               <input type="hidden" name="returnTo" value={`/admin/corporate/${account.id}?tab=users`} />
               <input type="hidden" name="corporateAccountId" value={account.id} />
               <Field label="User email">
                 <input name="email" type="email" className={adminInputClassName} placeholder="name@company.com" required />
+              </Field>
+              <Field label="Corporate role">
+                <select name="permission" defaultValue="corporate_user" className={adminSelectClassName}>
+                  {adminAssignableCorporatePermissionOptions.map((option) => (
+                    <option key={option.value} value={option.value}>{option.label}</option>
+                  ))}
+                </select>
               </Field>
               <Button type="submit" className="min-h-10 rounded-lg px-4">Assign workspace access</Button>
             </form>
