@@ -62,11 +62,11 @@ export default async function CorporateReportsPage({ searchParams }: ReportsPage
     requireCorporateDashboardData(user.id, "/corporate/reports", params?.programId),
     getUserRoles(user.id)
   ]);
-  const canAdmin = roleKeys.includes("corporate_admin") && !roleKeys.includes("admin");
-  const canGenerate = canAdmin && data.reportCapabilities.canGenerate;
-  const canSubmit = canAdmin && data.reportCapabilities.canSubmit;
-  const canApprove = canAdmin && data.reportCapabilities.canApprove;
-  const canPublish = canAdmin && data.reportCapabilities.canPublish;
+  const canAdmin = !roleKeys.includes("admin") && (data.capabilities.canGenerateReport || data.capabilities.canApproveReport);
+  const canGenerate = !roleKeys.includes("admin") && data.reportCapabilities.canGenerate;
+  const canSubmit = !roleKeys.includes("admin") && data.reportCapabilities.canSubmit;
+  const canApprove = !roleKeys.includes("admin") && data.reportCapabilities.canApprove;
+  const canPublish = !roleKeys.includes("admin") && data.reportCapabilities.canPublish;
   const reports = data.exports;
   const executionMonitor = canAdmin
     ? await getCorporateReportExecutionMonitor(user.id, data.program.programId, reports)
