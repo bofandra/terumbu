@@ -17,6 +17,7 @@ import {
   normalizeCorporateReportFormat,
   normalizeCorporateReportStatus,
   normalizeCorporateReportType,
+  parseCorporateReportScheduleUtc,
   scheduledReportIsDue
 } from "../src/lib/corporate-report-lifecycle";
 
@@ -151,4 +152,12 @@ test("corporate activity report PDF is a simple portable activity report", () =>
   assert.match(pdf.toString("ascii"), /Restore Reef/);
   assert.match(pdf.toString("ascii"), /Data assurance/);
   assert.match(pdf.toString("ascii"), /\/Count 2/);
+});
+
+test("corporate scheduling accepts only explicit valid UTC minute timestamps", () => {
+  assert.deepEqual(parseCorporateReportScheduleUtc("2026-10-19T03:30"), new Date("2026-10-19T03:30:00.000Z"));
+  assert.equal(parseCorporateReportScheduleUtc(""), null);
+  assert.equal(parseCorporateReportScheduleUtc("2026-02-30T12:00"), null);
+  assert.equal(parseCorporateReportScheduleUtc("2026-10-19T25:30"), null);
+  assert.equal(parseCorporateReportScheduleUtc("2026-10-19T03:30+07:00"), null);
 });

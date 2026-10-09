@@ -7,6 +7,7 @@ import {
   approveCorporateReportAction,
   createCorporateReportExportAction,
   publishCorporateReportAction,
+  runDueCorporateReportExportsAction,
   submitCorporateReportForApprovalAction
 } from "@/lib/corporate-actions";
 import { corporateReportArtifactRoute } from "@/lib/corporate-report-artifact-links";
@@ -16,7 +17,7 @@ export const metadata = { title: "Corporate Reports" };
 export const dynamic = "force-dynamic";
 
 type ReportsPageProps = {
-  searchParams?: Promise<{ programId?: string; error?: string; saved?: string }>;
+  searchParams?: Promise<{ programId?: string; error?: string; saved?: string; generated?: string; failed?: string }>;
 };
 
 const successMessages: Record<string, string> = {
@@ -24,7 +25,7 @@ const successMessages: Record<string, string> = {
   review: "Report submitted for review.",
   approved: "Report approved. It is ready to publish.",
   published: "Report published and available at its public link.",
-  scheduled: "Report scheduled."
+  scheduled: "Report scheduled. Generate it when due using the action below."
 };
 
 const errorMessages: Record<string, string> = {
@@ -34,11 +35,16 @@ const errorMessages: Record<string, string> = {
   report: "The report could not be generated.",
   separation: "The report creator cannot approve their own report. Another corporate admin must review it.",
   snapshot: "This older report has no generation snapshot. Create a new report before publishing.",
-  revision: "Only a published ESG or CSR report from this program can be revised."
+  revision: "Only a published ESG or CSR report from this program can be revised.",
+  schedule: "Choose a valid future UTC date and time to schedule a report."
 };
 
 function formatDate(value: Date | null | undefined) {
   return value ? value.toLocaleString("id-ID", { dateStyle: "medium", timeStyle: "short" }) : "Not yet";
+}
+
+function formatScheduledUtc(value: Date | null | undefined) {
+  return value ? `${value.toISOString().slice(0, 16).replace("T", " ")} UTC` : "Not yet";
 }
 
 function statusClass(value: string) {
@@ -81,6 +87,12 @@ export default async function CorporateReportsPage({ searchParams }: ReportsPage
       {params?.saved && successMessages[params.saved] ? (
         <p role="status" className="mt-5 rounded-lg border border-kelp-500/20 bg-kelp-100 px-4 py-3 text-sm font-semibold text-kelp-700">
           {successMessages[params.saved]}
+        </p>
+      ) : null}
+      {params?.saved === "scheduled-run" ? (
+        <p role="status" className="mt-5 rounded-lg border border-kelp-500/20 bg-kelp-100 px-4 py-3 text-sm font-semibold text-kelp-700">
+          {Number(params.generated ?? 0) || 0} due reports generated.
+          {Number(params.failed ?? 0) > 0 ? ` ${Number(params.failed)} reports failed and remain scheduled for retry.` : ""}
         </p>
       ) : null}
       {params?.error ? (
@@ -138,6 +150,39 @@ export default async function CorporateReportsPage({ searchParams }: ReportsPage
           ) : null}
         </div>
 
+        {canGenerate ? (
+          <div className="mt-5 rounded-lg border border-ocean-900/10 bg-sand-50 p-4">
+            <h3 className="font-bold text-ocean-900">Schedule PDF exports</h3>
+            <p className="mt-1 text-xs leading-5 text-ocean-900/60">
+              Times are entered in UTC. Scheduling does not publish reports or run automatically:
+              an authorized corporate admin generates due reports here before independent review.
+            </p>
+            <div className="mt-4 flex flex-wrap items-end gap-3">
+              <form action={createCorporateReportExportAction} className="flex flex-wrap items-end gap-3">
+                <input type="hidden" name="programId" value={data.program.programId} />
+                <label className="grid gap-1 text-xs font-bold text-ocean-900">
+                  Report type
+                  <select name="reportType" className="min-h-11 rounded-lg border border-ocean-900/15 bg-white px-3 text-sm">
+                    <option value="esg">ESG</option>
+                    <option value="csr">CSR</option>
+                  </select>
+                </label>
+                <label className="grid gap-1 text-xs font-bold text-ocean-900">
+                  Scheduled time (UTC)
+                  <input type="datetime-local" name="scheduledFor" required className="min-h-11 rounded-lg border border-ocean-900/15 bg-white px-3 text-sm" />
+                </label>
+                <Button type="submit" tone="secondary">Schedule PDF</Button>
+              </form>
+              <form action={runDueCorporateReportExportsAction}>
+                <input type="hidden" name="programId" value={data.program.programId} />
+                <Button type="submit" tone="secondary">
+                  Generate due reports
+                </Button>
+              </form>
+            </div>
+          </div>
+        ) : null}
+
         <div className="mt-5 divide-y divide-ocean-900/10">
           {reports.map((report) => (
             <article key={report.id} data-testid={`corporate-report-${report.id}`} className="py-5 first:pt-0 last:pb-0">
@@ -151,7 +196,7 @@ export default async function CorporateReportsPage({ searchParams }: ReportsPage
                     <p className="mt-1 text-xs font-semibold text-ocean-900/60">New version of {report.revisionOfExportCode}</p>
                   ) : null}
                   {report.status === "scheduled" ? (
-                    <p className="mt-1 text-xs font-semibold text-ocean-900/55">Scheduled for {formatDate(report.scheduledFor)}</p>
+                    <p className="mt-1 text-xs font-semibold text-ocean-900/55">Scheduled for {formatScheduledUtc(report.scheduledFor)}</p>
                   ) : null}
                 </div>
                 <span className={`rounded-full border border-ocean-900/10 px-3 py-1 text-xs font-bold capitalize ${statusClass(report.status)}`}>
