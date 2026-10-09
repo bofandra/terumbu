@@ -68,6 +68,7 @@ import {
   normalizeCorporateContributionStatus,
   normalizeCorporateContributionType
 } from "@/lib/corporate-contributions";
+import { transitionCorporateReport } from "@/lib/corporate-report-transitions";
 import { getCorporateDashboardData, getCorporateExpeditionActivities } from "@/lib/queries";
 import { formatCurrency } from "@/lib/utils";
 
@@ -1117,7 +1118,8 @@ export async function fundCorporateProjectAction(formData: FormData) {
     .select({
       id: campaigns.id,
       slug: campaigns.slug,
-      title: campaigns.title
+      title: campaigns.title,
+      currency: campaigns.currency
     })
     .from(campaigns)
     .where(eq(campaigns.id, campaignId))
@@ -1127,74 +1129,82 @@ export async function fundCorporateProjectAction(formData: FormData) {
     redirectWithResult(returnPath, "error", "project");
   }
 
-  const [previousContribution] = await db
-    .select({
-      id: corporateContributions.id,
-      amount: corporateContributions.amount,
-      status: corporateContributions.status,
-      countsTowardCampaignGoal: corporateContributions.countsTowardCampaignGoal
-    })
-    .from(corporateContributions)
-    .where(
-      and(
-        eq(corporateContributions.programId, context.programId),
-        eq(corporateContributions.campaignId, campaign.id),
-        eq(corporateContributions.contributionType, contributionType)
+  // A numeric campaign total has a single currency. Never add IDR corporate
+  // allocations directly to a USD campaign's raisedAmount (or vice versa).
+  if (countsTowardCampaignGoal && campaign.currency.toUpperCase() !== context.currency.toUpperCase()) {
+    redirectWithResult(returnPath, "error", "currency");
+  }
+
+  // Serialize all contribution changes within a corporate program. This row
+  // lock protects previousContribution -> upsert -> campaign delta as one unit;
+  // atomic campaign increments still allow different programs to contribute.
+  await db.transaction(async (tx) => {
+    const [lockedProgram] = await tx
+      .select({ id: corporatePrograms.id })
+      .from(corporatePrograms)
+      .where(and(
+        eq(corporatePrograms.id, context.programId),
+        eq(corporatePrograms.corporateAccountId, context.accountId)
+      ))
+      .limit(1)
+      .for("update");
+
+    if (!lockedProgram) {
+      throw new Error("CORPORATE_PROGRAM_NOT_FOUND");
+    }
+
+    const [previousContribution] = await tx
+      .select({
+        id: corporateContributions.id,
+        amount: corporateContributions.amount,
+        status: corporateContributions.status,
+        countsTowardCampaignGoal: corporateContributions.countsTowardCampaignGoal
+      })
+      .from(corporateContributions)
+      .where(
+        and(
+          eq(corporateContributions.programId, context.programId),
+          eq(corporateContributions.campaignId, campaign.id),
+          eq(corporateContributions.contributionType, contributionType)
+        )
       )
-    )
-    .limit(1);
+      .limit(1);
 
-  const now = new Date();
-  const baseReferenceCode = buildCorporateContributionReference({
-    accountSlug: context.accountSlug,
-    campaignSlug: campaign.slug,
-    contributionType,
-    date: now
-  });
-  const referenceCode = previousContribution?.id ? undefined : `${baseReferenceCode}-${context.programId.slice(0, 8).toUpperCase()}`;
+    const now = new Date();
+    const baseReferenceCode = buildCorporateContributionReference({
+      accountSlug: context.accountSlug,
+      campaignSlug: campaign.slug,
+      contributionType,
+      date: now
+    });
+    const referenceCode = previousContribution?.id ? undefined : `${baseReferenceCode}-${context.programId.slice(0, 8).toUpperCase()}`;
 
-  const [portfolioRow] = await db
-    .insert(corporateProjectPortfolio)
-    .values({
-      programId: context.programId,
-      campaignId: campaign.id,
-      allocationAmount: allocationAmount.toFixed(2),
-      status: portfolioStatus
-    })
-    .onConflictDoUpdate({
-      target: [corporateProjectPortfolio.programId, corporateProjectPortfolio.campaignId],
-      set: {
+    const [portfolioRow] = await tx
+      .insert(corporateProjectPortfolio)
+      .values({
+        programId: context.programId,
+        campaignId: campaign.id,
         allocationAmount: allocationAmount.toFixed(2),
         status: portfolioStatus
-      }
-    })
-    .returning({ id: corporateProjectPortfolio.id });
+      })
+      .onConflictDoUpdate({
+        target: [corporateProjectPortfolio.programId, corporateProjectPortfolio.campaignId],
+        set: {
+          allocationAmount: allocationAmount.toFixed(2),
+          status: portfolioStatus
+        }
+      })
+      .returning({ id: corporateProjectPortfolio.id });
 
-  const [contributionRow] = await db
-    .insert(corporateContributions)
-    .values({
-      corporateAccountId: context.accountId,
-      programId: context.programId,
-      campaignId: campaign.id,
-      createdByUserId: user.id,
-      referenceCode: referenceCode ?? `${context.programId}-${campaign.id}-${contributionType}`,
-      contributionType,
-      amount: allocationAmount.toFixed(2),
-      currency: (context.currency || "IDR").toUpperCase(),
-      status: contributionStatus,
-      countsTowardCampaignGoal,
-      contributionDate: now,
-      notes,
-      metadata: {
-        source: "corporate_donations_form",
-        portfolioStatus
-      },
-      updatedAt: now,
-      createdAt: now
-    })
-    .onConflictDoUpdate({
-      target: [corporateContributions.programId, corporateContributions.campaignId, corporateContributions.contributionType],
-      set: {
+    const [contributionRow] = await tx
+      .insert(corporateContributions)
+      .values({
+        corporateAccountId: context.accountId,
+        programId: context.programId,
+        campaignId: campaign.id,
+        createdByUserId: user.id,
+        referenceCode: referenceCode ?? `${context.programId}-${campaign.id}-${contributionType}`,
+        contributionType,
         amount: allocationAmount.toFixed(2),
         currency: (context.currency || "IDR").toUpperCase(),
         status: contributionStatus,
@@ -1205,76 +1215,93 @@ export async function fundCorporateProjectAction(formData: FormData) {
           source: "corporate_donations_form",
           portfolioStatus
         },
-        updatedAt: now
-      }
-    })
-    .returning({ id: corporateContributions.id });
-
-  const raisedDelta = campaignRaisedDelta(
-    previousContribution
-      ? {
-          amount: Number(previousContribution.amount),
-          status: previousContribution.status,
-          countsTowardCampaignGoal: previousContribution.countsTowardCampaignGoal
-        }
-      : null,
-    {
-      amount: allocationAmount,
-      status: contributionStatus,
-      countsTowardCampaignGoal
-    }
-  );
-
-  if (raisedDelta !== 0) {
-    await db
-      .update(campaigns)
-      .set({
-        raisedAmount: sql`greatest(0, ${campaigns.raisedAmount} + ${raisedDelta.toFixed(2)}::numeric)`,
-        updatedAt: now
+        updatedAt: now,
+        createdAt: now
       })
-      .where(eq(campaigns.id, campaign.id));
-  }
+      .onConflictDoUpdate({
+        target: [corporateContributions.programId, corporateContributions.campaignId, corporateContributions.contributionType],
+        set: {
+          amount: allocationAmount.toFixed(2),
+          currency: (context.currency || "IDR").toUpperCase(),
+          status: contributionStatus,
+          countsTowardCampaignGoal,
+          contributionDate: now,
+          notes,
+          metadata: {
+            source: "corporate_donations_form",
+            portfolioStatus
+          },
+          updatedAt: now
+        }
+      })
+      .returning({ id: corporateContributions.id });
 
-  const evidenceRows = await db
-    .select({
-      id: projectEvidence.id
-    })
-    .from(projectEvidence)
-    .where(eq(projectEvidence.campaignId, campaign.id));
+    const raisedDelta = campaignRaisedDelta(
+      previousContribution
+        ? {
+            amount: Number(previousContribution.amount),
+            status: previousContribution.status,
+            countsTowardCampaignGoal: previousContribution.countsTowardCampaignGoal
+          }
+        : null,
+      {
+        amount: allocationAmount,
+        status: contributionStatus,
+        countsTowardCampaignGoal
+      }
+    );
 
-  if (evidenceRows.length > 0) {
-    await db
-      .insert(corporateEvidenceCenter)
-      .values(
-        evidenceRows.map((evidence) => ({
-          programId: context.programId,
-          evidenceId: evidence.id,
-          visibility: "reportable"
-        }))
-      )
-      .onConflictDoNothing({
-        target: [corporateEvidenceCenter.programId, corporateEvidenceCenter.evidenceId]
-      });
-  }
-
-  await writeAuditLog({
-    actorUserId: user.id,
-    action: "corporate.project.contribution_recorded",
-    entityType: "corporate_contributions",
-    entityId: contributionRow?.id,
-    metadata: {
-      programId: context.programId,
-      portfolioId: portfolioRow?.id ?? null,
-      campaignId: campaign.id,
-      campaignTitle: campaign.title,
-      contributionType,
-      contributionStatus,
-      allocationAmount,
-      countsTowardCampaignGoal,
-      raisedDelta,
-      portfolioStatus,
-      evidenceLinked: evidenceRows.length
+    if (raisedDelta !== 0) {
+      await tx
+        .update(campaigns)
+        .set({
+          raisedAmount: sql`greatest(0, ${campaigns.raisedAmount} + ${raisedDelta.toFixed(2)}::numeric)`,
+          updatedAt: now
+        })
+        .where(eq(campaigns.id, campaign.id));
     }
+
+    const evidenceRows = await tx
+      .select({
+        id: projectEvidence.id
+      })
+      .from(projectEvidence)
+      .where(eq(projectEvidence.campaignId, campaign.id));
+
+    if (evidenceRows.length > 0) {
+      await tx
+        .insert(corporateEvidenceCenter)
+        .values(
+          evidenceRows.map((evidence) => ({
+            programId: context.programId,
+            evidenceId: evidence.id,
+            visibility: "reportable"
+          }))
+        )
+        .onConflictDoNothing({
+          target: [corporateEvidenceCenter.programId, corporateEvidenceCenter.evidenceId]
+        });
+    }
+
+    await tx.insert(adminAuditLogs).values({
+      actorUserId: user.id,
+      action: "corporate.project.contribution_recorded",
+      entityType: "corporate_contributions",
+      entityId: contributionRow?.id,
+      metadata: auditMetadata({
+        programId: context.programId,
+        portfolioId: portfolioRow?.id ?? null,
+        campaignId: campaign.id,
+        campaignTitle: campaign.title,
+        contributionType,
+        contributionStatus,
+        allocationAmount,
+        countsTowardCampaignGoal,
+        raisedDelta,
+        portfolioStatus,
+        evidenceLinked: evidenceRows.length
+      })
+    });
   });
 
   redirectWithResult(returnPath, "saved", "project");
@@ -2099,12 +2126,8 @@ export async function updateCorporateSecuritySettingsAction(formData: FormData) 
 }
 
 async function reportForUser(userId: string, reportId: string) {
-  const context = await corporateContext(userId);
-
-  if (!context) {
-    return null;
-  }
-
+  // A corporate admin may manage several programs and accounts. Resolve the
+  // report's specific program before looking up this user's authorized context.
   const [report] = await db
     .select({
       id: corporateReportExports.id,
@@ -2114,11 +2137,15 @@ async function reportForUser(userId: string, reportId: string) {
       publicSlug: corporateReportExports.publicSlug
     })
     .from(corporateReportExports)
-    .where(and(eq(corporateReportExports.id, reportId), eq(corporateReportExports.programId, context.programId)))
+    .where(eq(corporateReportExports.id, reportId))
     .limit(1);
 
-  return report ? { context, report } : null;
+  if (!report) return null;
+
+  const context = await corporateContext(userId, report.programId);
+  return context ? { context, report } : null;
 }
+
 
 export async function submitCorporateReportForApprovalAction(formData: FormData) {
   const user = await requireCorporateAdminRole("/corporate/reports");
@@ -2133,28 +2160,16 @@ export async function submitCorporateReportForApprovalAction(formData: FormData)
     redirect("/corporate/reports?error=status");
   }
 
-  const now = new Date();
-
-  await db
-    .update(corporateReportExports)
-    .set({
-      status: "review",
-      updatedAt: now
-    })
-    .where(eq(corporateReportExports.id, access.report.id));
-
-  await writeAuditLog({
+  const updated = await transitionCorporateReport({
+    reportId: access.report.id,
+    programId: access.context.programId,
     actorUserId: user.id,
-    action: "corporate.report.submitted",
-    entityType: "corporate_report_exports",
-    entityId: access.report.id,
-    metadata: {
-      programId: access.context.programId,
-      exportCode: access.report.exportCode,
-      fromStatus: access.report.status,
-      toStatus: "review"
-    }
+    exportCode: access.report.exportCode,
+    expectedStatus: "generated",
+    nextStatus: "review"
   });
+
+  if (!updated) redirect("/corporate/reports?error=status");
 
   redirect("/corporate/reports?saved=review");
 }
@@ -2172,30 +2187,16 @@ export async function approveCorporateReportAction(formData: FormData) {
     redirect("/corporate/reports?error=status");
   }
 
-  const now = new Date();
-
-  await db
-    .update(corporateReportExports)
-    .set({
-      status: "approved",
-      approvedByUserId: user.id,
-      approvedAt: now,
-      updatedAt: now
-    })
-    .where(eq(corporateReportExports.id, access.report.id));
-
-  await writeAuditLog({
+  const updated = await transitionCorporateReport({
+    reportId: access.report.id,
+    programId: access.context.programId,
     actorUserId: user.id,
-    action: "corporate.report.approved",
-    entityType: "corporate_report_exports",
-    entityId: access.report.id,
-    metadata: {
-      programId: access.context.programId,
-      exportCode: access.report.exportCode,
-      fromStatus: access.report.status,
-      toStatus: "approved"
-    }
+    exportCode: access.report.exportCode,
+    expectedStatus: "review",
+    nextStatus: "approved"
   });
+
+  if (!updated) redirect("/corporate/reports?error=status");
 
   redirect("/corporate/reports?saved=approved");
 }
@@ -2209,38 +2210,29 @@ export async function publishCorporateReportAction(formData: FormData) {
     redirect("/corporate/reports?error=permission");
   }
 
-  if (!["approved", "published"].includes(access.report.status)) {
+  if (access.report.status === "published") {
+    redirect("/corporate/reports?saved=published");
+  }
+
+  if (access.report.status !== "approved") {
     redirect("/corporate/reports?error=approval");
   }
 
-  const now = new Date();
   const publicSlug =
     access.report.publicSlug ??
     `${toSlug(access.context.accountName)}-${toSlug(access.context.programName)}-${access.report.exportCode.toLowerCase()}`;
 
-  await db
-    .update(corporateReportExports)
-    .set({
-      status: "published",
-      publicSlug,
-      publishedAt: now,
-      updatedAt: now
-    })
-    .where(eq(corporateReportExports.id, access.report.id));
-
-  await writeAuditLog({
+  const updated = await transitionCorporateReport({
+    reportId: access.report.id,
+    programId: access.context.programId,
     actorUserId: user.id,
-    action: "corporate.report.published",
-    entityType: "corporate_report_exports",
-    entityId: access.report.id,
-    metadata: {
-      programId: access.context.programId,
-      exportCode: access.report.exportCode,
-      publicSlug,
-      fromStatus: access.report.status,
-      toStatus: "published"
-    }
+    exportCode: access.report.exportCode,
+    expectedStatus: "approved",
+    nextStatus: "published",
+    publicSlug
   });
+
+  if (!updated) redirect("/corporate/reports?error=approval");
 
   redirect("/corporate/reports?saved=published");
 }
