@@ -47,9 +47,6 @@ export async function transitionCorporateReport(input: {
         ...(input.nextStatus === "approved" ? [
           isNotNull(corporateReportExports.requestedByUserId),
           ne(corporateReportExports.requestedByUserId, input.actorUserId)
-        ] : []),
-        ...(input.nextStatus === "published" ? [
-          eq(corporateReportExports.approvedByUserId, input.actorUserId)
         ] : [])
       ))
       .returning({ id: corporateReportExports.id });
