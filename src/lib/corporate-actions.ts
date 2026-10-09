@@ -879,7 +879,8 @@ export async function createCorporateActivityPdfReportAction(formData: FormData)
 
 export async function createCorporateReportExportAction(formData: FormData) {
   const user = await requireCorporateAdminRole("/corporate");
-  const context = await corporateContext(user.id);
+  const requestedProgramId = textValue(formData.get("programId"), 80) || null;
+  const context = await corporateContext(user.id, requestedProgramId);
 
   if (!context) {
     redirect("/corporate?error=program");
@@ -895,7 +896,7 @@ export async function createCorporateReportExportAction(formData: FormData) {
   const exportFormat = normalizeCorporateReportFormat("pdf");
   const scheduledFor = dateValue(formData.get("scheduledFor"));
   const now = new Date();
-  const data = await getCorporateDashboardData(user.id);
+  const data = await getCorporateDashboardData(user.id, context.programId);
 
   if (!data) {
     redirect("/corporate?error=program");
@@ -957,7 +958,7 @@ export async function createCorporateReportExportAction(formData: FormData) {
       }
     });
 
-    redirect("/corporate/reports?saved=scheduled");
+    redirect(`/corporate/reports?programId=${context.programId}&saved=scheduled`);
   }
 
   const artifacts = await writeReportArtifacts({
@@ -1004,7 +1005,7 @@ export async function createCorporateReportExportAction(formData: FormData) {
     }
   });
 
-  redirect("/corporate/reports?saved=export");
+  redirect(`/corporate/reports?programId=${context.programId}&saved=export`);
 }
 
 export async function runDueCorporateReportExportsAction(_formData: FormData) {
@@ -2171,7 +2172,7 @@ export async function submitCorporateReportForApprovalAction(formData: FormData)
 
   if (!updated) redirect("/corporate/reports?error=status");
 
-  redirect("/corporate/reports?saved=review");
+  redirect(`/corporate/reports?programId=${access.context.programId}&saved=review`);
 }
 
 export async function approveCorporateReportAction(formData: FormData) {
@@ -2198,7 +2199,7 @@ export async function approveCorporateReportAction(formData: FormData) {
 
   if (!updated) redirect("/corporate/reports?error=status");
 
-  redirect("/corporate/reports?saved=approved");
+  redirect(`/corporate/reports?programId=${access.context.programId}&saved=approved`);
 }
 
 export async function publishCorporateReportAction(formData: FormData) {
@@ -2211,7 +2212,7 @@ export async function publishCorporateReportAction(formData: FormData) {
   }
 
   if (access.report.status === "published") {
-    redirect("/corporate/reports?saved=published");
+    redirect(`/corporate/reports?programId=${access.context.programId}&saved=published`);
   }
 
   if (access.report.status !== "approved") {
@@ -2234,5 +2235,5 @@ export async function publishCorporateReportAction(formData: FormData) {
 
   if (!updated) redirect("/corporate/reports?error=approval");
 
-  redirect("/corporate/reports?saved=published");
+  redirect(`/corporate/reports?programId=${access.context.programId}&saved=published`);
 }
