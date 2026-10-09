@@ -84,7 +84,7 @@ export async function generateDueCorporateReport(input: {
     if (Number(previousMetadata.scheduleFailureCount) > 0) {
       await tx.update(userNotifications).set({
         message: `PDF report ${report.exportCode} was generated successfully after a retry. No action is required.`,
-        readAt: sql`coalesce(${userNotifications.readAt}, ${artifacts.generatedAt})`,
+        readAt: sql`coalesce(${userNotifications.readAt}, ${artifacts.generatedAt.toISOString()}::timestamptz)`,
         updatedAt: artifacts.generatedAt
       }).where(and(
         eq(userNotifications.sourceType, "corporate_report_export"),
