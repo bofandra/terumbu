@@ -24,6 +24,29 @@ export async function transitionCorporateReport(input: {
   const now = new Date();
 
   return db.transaction(async (tx) => {
+    // Serialize publish against any concurrent transition or metadata change.
+    // The snapshot is loaded from the exact row used by the generated PDF,
+    // not recalculated from live funding/evidence at publication time.
+    let generationSnapshot: Record<string, unknown> | null = null;
+    if (input.nextStatus === "published") {
+      const [locked] = await tx
+        .select({ status: corporateReportExports.status, metadata: corporateReportExports.metadata })
+        .from(corporateReportExports)
+        .where(and(
+          eq(corporateReportExports.id, input.reportId),
+          eq(corporateReportExports.programId, input.programId)
+        ))
+        .for("update");
+      const meta = locked?.metadata;
+      const snapshot = meta && typeof meta === "object" && !Array.isArray(meta)
+        ? (meta as Record<string, unknown>).generationSnapshot
+        : null;
+      if (locked?.status !== "approved" || !snapshot || typeof snapshot !== "object" || Array.isArray(snapshot)) {
+        return false;
+      }
+      generationSnapshot = snapshot as Record<string, unknown>;
+    }
+
     const [updated] = await tx
       .update(corporateReportExports)
       .set({
@@ -34,7 +57,7 @@ export async function transitionCorporateReport(input: {
           publicSlug: input.publicSlug,
           publishedAt: now,
           // Persist the public-facing data and state change atomically.
-          metadata: sql`coalesce(${corporateReportExports.metadata}, '{}'::jsonb) || jsonb_build_object('publicSnapshot', ${corporateReportExports.metadata}->'generationSnapshot')`
+          metadata: sql`coalesce(${corporateReportExports.metadata}, '{}'::jsonb) || ${JSON.stringify({ publicSnapshot: generationSnapshot })}::jsonb`
         } : {})
       })
       .where(and(
@@ -46,9 +69,6 @@ export async function transitionCorporateReport(input: {
         ...(input.nextStatus === "approved" ? [
           isNotNull(corporateReportExports.requestedByUserId),
           ne(corporateReportExports.requestedByUserId, input.actorUserId)
-        ] : []),
-        ...(input.nextStatus === "published" ? [
-          sql`jsonb_typeof(${corporateReportExports.metadata}->'generationSnapshot') = 'object'`
         ] : [])
       ))
       .returning({ id: corporateReportExports.id });
