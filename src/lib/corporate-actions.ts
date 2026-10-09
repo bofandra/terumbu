@@ -60,7 +60,8 @@ import {
   corporateReportFormatLabel,
   corporateReportTypeLabel,
   normalizeCorporateReportFormat,
-  normalizeCorporateReportType
+  normalizeCorporateReportType,
+  parseCorporateReportScheduleUtc
 } from "@/lib/corporate-report-lifecycle";
 import {
   buildCorporateContributionReference,
@@ -69,6 +70,7 @@ import {
   normalizeCorporateContributionType
 } from "@/lib/corporate-contributions";
 import { transitionCorporateReport } from "@/lib/corporate-report-transitions";
+import { generateDueCorporateReport } from "@/lib/corporate-report-scheduler";
 import { getCorporateDashboardData, getCorporateExpeditionActivities } from "@/lib/queries";
 import { corporatePublicSnapshotFromDashboard } from "@/lib/corporate-report-snapshot";
 import { formatCurrency } from "@/lib/utils";
@@ -918,8 +920,12 @@ export async function createCorporateReportExportAction(formData: FormData) {
     ? normalizeCorporateReportType(revisionSource.reportType)
     : normalizeCorporateReportType(String(formData.get("reportType") ?? "esg").toLowerCase());
   const exportFormat = normalizeCorporateReportFormat("pdf");
-  const scheduledFor = revisionSource ? null : dateValue(formData.get("scheduledFor"));
+  const scheduleInput = textValue(formData.get("scheduledFor"), 32);
+  const scheduledFor = revisionSource ? null : parseCorporateReportScheduleUtc(scheduleInput);
   const now = new Date();
+  if (scheduleInput && (!scheduledFor || scheduledFor.getTime() <= now.getTime())) {
+    redirect(`/corporate/reports?programId=${context.programId}&error=schedule`);
+  }
   const data = await getCorporateDashboardData(user.id, context.programId);
 
   if (!data) {
@@ -1038,88 +1044,61 @@ export async function createCorporateReportExportAction(formData: FormData) {
   redirect(`/corporate/reports?programId=${context.programId}&saved=export`);
 }
 
-export async function runDueCorporateReportExportsAction(_formData: FormData) {
-  void _formData;
-
+export async function runDueCorporateReportExportsAction(formData: FormData) {
   const user = await requireCorporateAdminRole("/corporate/reports");
-  const context = await corporateContext(user.id);
+  const requestedProgramId = textValue(formData.get("programId"), 80);
+  const context = await corporateContext(user.id, requestedProgramId);
 
-  if (!context || !corporateCapabilitiesForPermission(context.permission).canGenerateReport) {
+  // Require an explicit authorized program: never process the caller's
+  // implicit/default program when a forged or missing programId is supplied.
+  if (!requestedProgramId || !context || context.programId !== requestedProgramId ||
+      !corporateCapabilitiesForPermission(context.permission).canGenerateReport) {
     redirect("/corporate/reports?error=permission");
   }
 
   const now = new Date();
-  const data = await getCorporateDashboardData(user.id);
-
-  if (!data) {
-    redirect("/corporate/reports?error=program");
-  }
-
-  const dueReports = await db
-    .select({
-      id: corporateReportExports.id,
-      exportCode: corporateReportExports.exportCode,
-      reportType: corporateReportExports.reportType,
-      exportFormat: corporateReportExports.exportFormat,
-      artifactVersion: corporateReportExports.artifactVersion,
-      scheduledFor: corporateReportExports.scheduledFor
-    })
+  const dueReports = await db.select({ id: corporateReportExports.id })
     .from(corporateReportExports)
-    .where(and(eq(corporateReportExports.programId, context.programId), eq(corporateReportExports.status, "scheduled"), lte(corporateReportExports.scheduledFor, now)));
+    .where(and(
+      eq(corporateReportExports.programId, context.programId),
+      eq(corporateReportExports.status, "scheduled"),
+      lte(corporateReportExports.scheduledFor, now)
+    ));
 
+  let generatedCount = 0;
+  let failedCount = 0;
   for (const report of dueReports) {
-    const reportType = normalizeCorporateReportType(report.reportType);
-    const exportFormat = normalizeCorporateReportFormat(report.exportFormat);
-    const artifactVersion = Math.max(1, report.artifactVersion);
-    const artifacts = await writeReportArtifacts({
-      exportCode: report.exportCode,
-      reportType,
-      exportFormat,
-      artifactVersion,
-      accountName: context.accountName,
-      programName: context.programName,
-      data
-    });
-
-    await db
-      .update(corporateReportExports)
-      .set({
-        status: "generated",
-        reportType,
-        exportFormat,
-        artifactVersion,
-        fileUrl: artifacts.fileUrl,
-        previewUrl: artifacts.previewUrl,
-        evidenceBundleUrl: artifacts.evidenceBundleUrl,
-        generatedAt: artifacts.generatedAt,
-        artifactManifest: artifacts.artifactManifest,
-        metadata: {
-          ...artifacts.metadata,
-          scheduledFor: report.scheduledFor?.toISOString() ?? null,
-          generatedFromSchedule: true
-        },
-        updatedAt: artifacts.generatedAt
-      })
-      .where(eq(corporateReportExports.id, report.id));
-
-    await writeAuditLog({
-      actorUserId: user.id,
-      action: "corporate.report.scheduled_generated",
-      entityType: "corporate_report_exports",
-      entityId: report.id,
-      metadata: {
+    try {
+      const processed = await generateDueCorporateReport({
+        reportId: report.id,
         programId: context.programId,
-        exportCode: report.exportCode,
-        reportType,
-        exportFormat,
-        artifactVersion,
-        scheduledFor: report.scheduledFor?.toISOString() ?? null,
-        fileCount: artifacts.artifactManifest.fileCount
-      }
-    });
+        actorUserId: user.id,
+        now,
+        generate: async (locked) => {
+          // Query the *locked report's* program, not the admin's default.
+          const data = await getCorporateDashboardData(user.id, locked.programId);
+          if (!data || data.program.programId !== locked.programId) {
+            throw new Error("Corporate report program scope could not be resolved.");
+          }
+          return writeReportArtifacts({
+            exportCode: locked.exportCode,
+            reportType: normalizeCorporateReportType(locked.reportType),
+            exportFormat: normalizeCorporateReportFormat(locked.exportFormat),
+            artifactVersion: Math.max(1, locked.artifactVersion),
+            accountName: context.accountName,
+            programName: context.programName,
+            data
+          });
+        }
+      });
+      if (processed) generatedCount += 1;
+    } catch (error) {
+      failedCount += 1;
+      console.error("Corporate scheduled report generation failed", { reportId: report.id, error });
+    }
   }
 
-  redirect(`/corporate/reports?saved=scheduled-run&generated=${dueReports.length}`);
+  redirect(`/corporate/reports?programId=${context.programId}&saved=scheduled-run&generated=${generatedCount}&failed=${failedCount}`);
 }
 
 export async function fundCorporateProjectAction(formData: FormData) {
