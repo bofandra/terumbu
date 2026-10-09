@@ -13,14 +13,13 @@ export async function transitionCorporateReport(input: {
   expectedStatus: "generated" | "review" | "approved";
   nextStatus: "review" | "approved" | "published";
   publicSlug?: string;
-  publicSnapshot?: Record<string, unknown>;
 }) {
   // Refuse invalid jumps even if a future caller bypasses the UI state checks.
   const validStep =
     (input.expectedStatus === "generated" && input.nextStatus === "review") ||
     (input.expectedStatus === "review" && input.nextStatus === "approved") ||
     (input.expectedStatus === "approved" && input.nextStatus === "published");
-  if (!validStep || (input.nextStatus === "published" && !input.publicSnapshot)) return false;
+  if (!validStep) return false;
 
   const now = new Date();
 
@@ -35,7 +34,7 @@ export async function transitionCorporateReport(input: {
           publicSlug: input.publicSlug,
           publishedAt: now,
           // Persist the public-facing data and state change atomically.
-          metadata: sql`coalesce(${corporateReportExports.metadata}, '{}'::jsonb) || ${JSON.stringify({ publicSnapshot: input.publicSnapshot })}::jsonb`
+          metadata: sql`coalesce(${corporateReportExports.metadata}, '{}'::jsonb) || jsonb_build_object('publicSnapshot', ${corporateReportExports.metadata}->'generationSnapshot')`
         } : {})
       })
       .where(and(
@@ -47,6 +46,9 @@ export async function transitionCorporateReport(input: {
         ...(input.nextStatus === "approved" ? [
           isNotNull(corporateReportExports.requestedByUserId),
           ne(corporateReportExports.requestedByUserId, input.actorUserId)
+        ] : []),
+        ...(input.nextStatus === "published" ? [
+          sql`jsonb_typeof(${corporateReportExports.metadata}->'generationSnapshot') = 'object'`
         ] : [])
       ))
       .returning({ id: corporateReportExports.id });
