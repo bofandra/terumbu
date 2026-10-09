@@ -5355,6 +5355,7 @@ export async function getCorporateDashboardData(userId: string, requestedProgram
     db
       .select({
         id: corporateReportExports.id,
+        requestedByUserId: corporateReportExports.requestedByUserId,
         exportCode: corporateReportExports.exportCode,
         reportType: corporateReportExports.reportType,
         exportFormat: corporateReportExports.exportFormat,
