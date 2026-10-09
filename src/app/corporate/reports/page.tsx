@@ -25,7 +25,7 @@ const successMessages: Record<string, string> = {
   review: "Report submitted for review.",
   approved: "Report approved. It is ready to publish.",
   published: "Report published and available at its public link.",
-  scheduled: "Report scheduled. Generate it when due using the action below."
+  scheduled: "Report scheduled. The worker will generate it automatically when due."
 };
 
 const errorMessages: Record<string, string> = {
@@ -154,8 +154,8 @@ export default async function CorporateReportsPage({ searchParams }: ReportsPage
           <div className="mt-5 rounded-lg border border-ocean-900/10 bg-sand-50 p-4">
             <h3 className="font-bold text-ocean-900">Schedule PDF exports</h3>
             <p className="mt-1 text-xs leading-5 text-ocean-900/60">
-              Times are entered in UTC. Scheduling does not publish reports or run automatically:
-              an authorized corporate admin generates due reports here before independent review.
+              Times are entered in UTC. Due reports are generated automatically (typically within an hour),
+              or manually via the button below. Reports still require independent approval before publishing.
             </p>
             <div className="mt-4 flex flex-wrap items-end gap-3">
               <form action={createCorporateReportExportAction} className="flex flex-wrap items-end gap-3">
