@@ -13,18 +13,40 @@ export async function transitionCorporateReport(input: {
   expectedStatus: "generated" | "review" | "approved";
   nextStatus: "review" | "approved" | "published";
   publicSlug?: string;
-  publicSnapshot?: Record<string, unknown>;
 }) {
   // Refuse invalid jumps even if a future caller bypasses the UI state checks.
   const validStep =
     (input.expectedStatus === "generated" && input.nextStatus === "review") ||
     (input.expectedStatus === "review" && input.nextStatus === "approved") ||
     (input.expectedStatus === "approved" && input.nextStatus === "published");
-  if (!validStep || (input.nextStatus === "published" && !input.publicSnapshot)) return false;
+  if (!validStep) return false;
 
   const now = new Date();
 
   return db.transaction(async (tx) => {
+    // Serialize publish against any concurrent transition or metadata change.
+    // The snapshot is loaded from the exact row used by the generated PDF,
+    // not recalculated from live funding/evidence at publication time.
+    let generationSnapshot: Record<string, unknown> | null = null;
+    if (input.nextStatus === "published") {
+      const [locked] = await tx
+        .select({ status: corporateReportExports.status, metadata: corporateReportExports.metadata })
+        .from(corporateReportExports)
+        .where(and(
+          eq(corporateReportExports.id, input.reportId),
+          eq(corporateReportExports.programId, input.programId)
+        ))
+        .for("update");
+      const meta = locked?.metadata;
+      const snapshot = meta && typeof meta === "object" && !Array.isArray(meta)
+        ? (meta as Record<string, unknown>).generationSnapshot
+        : null;
+      if (locked?.status !== "approved" || !snapshot || typeof snapshot !== "object" || Array.isArray(snapshot)) {
+        return false;
+      }
+      generationSnapshot = snapshot as Record<string, unknown>;
+    }
+
     const [updated] = await tx
       .update(corporateReportExports)
       .set({
@@ -35,7 +57,7 @@ export async function transitionCorporateReport(input: {
           publicSlug: input.publicSlug,
           publishedAt: now,
           // Persist the public-facing data and state change atomically.
-          metadata: sql`coalesce(${corporateReportExports.metadata}, '{}'::jsonb) || ${JSON.stringify({ publicSnapshot: input.publicSnapshot })}::jsonb`
+          metadata: sql`coalesce(${corporateReportExports.metadata}, '{}'::jsonb) || ${JSON.stringify({ publicSnapshot: generationSnapshot })}::jsonb`
         } : {})
       })
       .where(and(

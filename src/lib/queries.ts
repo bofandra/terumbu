@@ -5799,6 +5799,9 @@ export async function getCorporateDashboardData(userId: string, requestedProgram
       portfolioCsvUrl: corporateReportArtifactSourceUrl(artifactSource, "portfolio-csv"),
       evidenceCsvUrl: corporateReportArtifactSourceUrl(artifactSource, "evidence-csv"),
       activityScope: getMetadataString(item.metadata, "activityScope"),
+      revisionOfReportId: getMetadataString(item.metadata, "revisionOfReportId"),
+      revisionOfExportCode: getMetadataString(item.metadata, "revisionOfExportCode"),
+      hasGenerationSnapshot: Boolean(item.metadata && typeof item.metadata === "object" && !Array.isArray(item.metadata) && "generationSnapshot" in item.metadata),
       isScheduledDue: item.status === "scheduled" && scheduledReportIsDue(item.scheduledFor, now),
       generatedAt: item.generatedAt ?? (item.status === "scheduled" ? null : item.createdAt),
       verifiedMetrics: verifiedOutputs,
@@ -6447,7 +6450,7 @@ export async function getCorporateExpeditionActivities(userId: string, requested
   }));
 }
 
-async function loadCorporateImpactReport(publicSlug: string | null, unpublishedReportId: string | null = null) {
+async function loadCorporateImpactReport(publicSlug: string) {
   const [report] = await db
     .select({
       id: corporateReportExports.id,
@@ -6477,9 +6480,7 @@ async function loadCorporateImpactReport(publicSlug: string | null, unpublishedR
     .from(corporateReportExports)
     .innerJoin(corporatePrograms, eq(corporateReportExports.programId, corporatePrograms.id))
     .innerJoin(corporateAccounts, eq(corporatePrograms.corporateAccountId, corporateAccounts.id))
-    .where(unpublishedReportId
-      ? eq(corporateReportExports.id, unpublishedReportId)
-      : and(eq(corporateReportExports.publicSlug, publicSlug!), eq(corporateReportExports.status, "published")))
+    .where(and(eq(corporateReportExports.publicSlug, publicSlug), eq(corporateReportExports.status, "published")))
     .limit(1);
 
   if (!report) {
@@ -6581,7 +6582,7 @@ async function loadCorporateImpactReport(publicSlug: string | null, unpublishedR
     : null;
   // Published documents must reflect the exact data captured at publication.
   // The fallback preserves access to reports published before snapshots existed.
-  const frozen = unpublishedReportId ? null : saved;
+  const frozen = saved;
   return {
     report: {
       ...report,
@@ -6608,29 +6609,6 @@ async function loadCorporateImpactReport(publicSlug: string | null, unpublishedR
 
 export async function getPublicCorporateImpactReport(publicSlug: string) {
   return loadCorporateImpactReport(publicSlug);
-}
-
-// Called only after report authorization, before the atomic publish transition.
-export async function getCorporateImpactSnapshotForPublication(reportId: string) {
-  const data = await loadCorporateImpactReport(null, reportId);
-  if (!data) return null;
-  const { report, portfolio, evidence, metrics } = data;
-  return {
-    reportContext: {
-      accountName: report.accountName,
-      accountSlug: report.accountSlug,
-      accountLogoUrl: report.accountLogoUrl,
-      programName: report.programName,
-      programSlug: report.programSlug,
-      startsAt: report.startsAt,
-      endsAt: report.endsAt,
-      budgetAmount: report.budgetAmount,
-      currency: report.currency
-    },
-    portfolio,
-    evidence,
-    metrics
-  };
 }
 
 export async function getAdminCorporateData() {

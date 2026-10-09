@@ -24,11 +24,19 @@ test("corporate report lifecycle is atomic, idempotent and scoped to its program
     `;
     expect(reviewer?.id).toBeTruthy();
     const exportCode = `E2E-CORP-STATE-${randomUUID()}`;
+    const snapshot = { metrics: { totalAllocated: 123 }, portfolio: [], evidence: [] };
+    const generationMetadata = { generationSnapshot: snapshot };
     const [report] = await sql<{ id: string }[]>`
-      insert into corporate_report_exports (program_id, requested_by_user_id, export_code, report_type, export_format, status, generated_at)
-      values (${actor.program_id}, ${actor.user_id}, ${exportCode}, 'esg', 'pdf', 'generated', now()) returning id
+      insert into corporate_report_exports (program_id, requested_by_user_id, export_code, report_type, export_format, status, generated_at, metadata)
+      values (${actor.program_id}, ${actor.user_id}, ${exportCode}, 'esg', 'pdf', 'generated', now(), ${sql.json(generationMetadata)}) returning id
     `;
     reportId = report.id;
+
+    const [initial] = await sql<{ metadata: Record<string, unknown>; snapshot_type: string | null }[]>`
+      select metadata, jsonb_typeof(metadata->'generationSnapshot') as snapshot_type
+      from corporate_report_exports where id = ${reportId}
+    `;
+    expect(initial.snapshot_type, JSON.stringify(initial.metadata)).toBe("object");
 
     const scoped = {
       reportId,
@@ -70,11 +78,17 @@ test("corporate report lifecycle is atomic, idempotent and scoped to its program
     ]);
     expect(approvals.filter(Boolean)).toHaveLength(1);
 
+    const [ready] = await sql<{ status: string; snapshot_type: string | null }[]>`
+      select status, jsonb_typeof(metadata->'generationSnapshot') as snapshot_type
+      from corporate_report_exports where id = ${reportId}
+    `;
+    expect(ready.status).toBe("approved");
+    expect(ready.snapshot_type).toBe("object");
+
     const publicSlug = `e2e-corporate-report-${randomUUID()}`;
-    const snapshot = { metrics: { totalAllocated: 123 }, portfolio: [], evidence: [] };
     const published = await Promise.all([
-      transitionCorporateReport({ ...scoped, expectedStatus: "approved", nextStatus: "published", publicSlug, publicSnapshot: snapshot }),
-      transitionCorporateReport({ ...scoped, expectedStatus: "approved", nextStatus: "published", publicSlug, publicSnapshot: snapshot })
+      transitionCorporateReport({ ...scoped, expectedStatus: "approved", nextStatus: "published", publicSlug }),
+      transitionCorporateReport({ ...scoped, expectedStatus: "approved", nextStatus: "published", publicSlug })
     ]);
     expect(published.filter(Boolean)).toHaveLength(1);
 

@@ -33,7 +33,8 @@ const errorMessages: Record<string, string> = {
   approval: "The report must be approved before publishing.",
   report: "The report could not be generated.",
   separation: "The report creator cannot approve their own report. Another corporate admin must review it.",
-  snapshot: "The published snapshot could not be captured. The report has not been published."
+  snapshot: "This older report has no generation snapshot. Create a new report before publishing.",
+  revision: "Only a published ESG or CSR report from this program can be revised."
 };
 
 function formatDate(value: Date | null | undefined) {
@@ -146,6 +147,9 @@ export default async function CorporateReportsPage({ searchParams }: ReportsPage
                   <p className="mt-1 text-sm text-ocean-900/62">
                     {report.reportTypeLabel} · {report.artifactVersionLabel} · Generated {formatDate(report.generatedAt)}
                   </p>
+                  {report.revisionOfExportCode ? (
+                    <p className="mt-1 text-xs font-semibold text-ocean-900/60">New version of {report.revisionOfExportCode}</p>
+                  ) : null}
                   {report.status === "scheduled" ? (
                     <p className="mt-1 text-xs font-semibold text-ocean-900/55">Scheduled for {formatDate(report.scheduledFor)}</p>
                   ) : null}
@@ -167,6 +171,13 @@ export default async function CorporateReportsPage({ searchParams }: ReportsPage
                   </Link>
                 ) : null}
 
+                {canGenerate && report.status === "published" && ["esg", "csr"].includes(report.reportType) ? (
+                  <form action={createCorporateReportExportAction}>
+                    <input type="hidden" name="programId" value={data.program.programId} />
+                    <input type="hidden" name="revisionOfReportId" value={report.id} />
+                    <Button type="submit" tone="secondary">Create revision</Button>
+                  </form>
+                ) : null}
                 {canSubmit && report.status === "generated" && (Boolean(report.pdfUrl) || report.artifactReadiness === "ready") ? (
                   <form action={submitCorporateReportForApprovalAction}>
                     <input type="hidden" name="reportId" value={report.id} />
@@ -185,7 +196,12 @@ export default async function CorporateReportsPage({ searchParams }: ReportsPage
                 {canApprove && report.status === "review" && !report.requestedByUserId ? (
                   <p className="text-sm font-semibold text-coral-700">Creator unknown; independent approval requires a report with an identified creator.</p>
                 ) : null}
-                {canPublish && report.status === "approved" ? (
+                {canPublish && report.status === "approved" && !report.hasGenerationSnapshot ? (
+                  <p className="text-sm font-semibold text-coral-700">
+                    This older report has no frozen PDF dataset. Generate a new report instead.
+                  </p>
+                ) : null}
+                {canPublish && report.status === "approved" && report.hasGenerationSnapshot ? (
                   <form action={publishCorporateReportAction}>
                     <input type="hidden" name="reportId" value={report.id} />
                     <Button type="submit"><Globe2 size={16} aria-hidden="true" /> Publish report</Button>
