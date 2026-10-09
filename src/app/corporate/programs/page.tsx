@@ -2,7 +2,9 @@ import { Building2, CalendarRange, CircleDollarSign, Plus, Save } from "lucide-r
 
 import { Button } from "@/components/ui/button";
 import { createCorporateProgramAction, updateCorporateProgramAction } from "@/lib/corporate-actions";
-import { requireCorporateAdminRole } from "@/lib/auth";
+import { requireCorporateOperatorRole } from "@/lib/auth";
+import { forbiddenRedirectPath } from "@/lib/account-destinations";
+import { redirect } from "next/navigation";
 import { getCorporateProgramsForUser } from "@/lib/queries";
 import { formatCurrency } from "@/lib/utils";
 
@@ -39,7 +41,7 @@ export default async function CorporateProgramsPage({
 }: {
   searchParams?: Promise<{ error?: string; saved?: string }>;
 }) {
-  const user = await requireCorporateAdminRole("/corporate/programs");
+  const user = await requireCorporateOperatorRole("/corporate/programs");
   const [data, query] = await Promise.all([getCorporateProgramsForUser(user.id), searchParams]);
 
   if (!data) {
@@ -54,6 +56,8 @@ export default async function CorporateProgramsPage({
       </main>
     );
   }
+
+  if (!data.canManagePrograms) redirect(forbiddenRedirectPath("/corporate/programs"));
 
   const savedMessage = query?.saved ? savedMessages[query.saved] : null;
   const errorMessage = query?.error ? errorMessages[query.error] : null;
