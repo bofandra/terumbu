@@ -6580,6 +6580,15 @@ async function loadCorporateImpactReport(publicSlug: string) {
     sourceHref: evidenceSourceHref(item.campaignSlug, item.evidenceCode) ?? item.fileUrl
   }));
 
+  const metrics = {
+    committedFunding,
+    totalAllocated,
+    restorationUnits,
+    verifiedEvidence,
+    projectCount: portfolio.length,
+    partnerCount: new Set(portfolio.map((project) => project.organizationName)).size
+  };
+
   return {
     report: { ...report, pdfUrl },
     portfolio,
