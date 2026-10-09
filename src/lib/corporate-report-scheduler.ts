@@ -29,6 +29,7 @@ export async function generateDueCorporateReport(input: {
   reportId: string;
   programId: string;
   actorUserId: string;
+  source?: "corporate_portal" | "cron";
   generate: (report: DueCorporateReport) => Promise<ScheduledArtifacts>;
   now?: Date;
 }) {
@@ -82,7 +83,7 @@ export async function generateDueCorporateReport(input: {
       entityType: "corporate_report_exports",
       entityId: updated.id,
       metadata: {
-        source: "corporate_portal",
+        source: input.source ?? "corporate_portal",
         programId: report.programId,
         exportCode: report.exportCode,
         reportType: report.reportType,
