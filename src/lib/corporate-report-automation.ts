@@ -7,6 +7,7 @@ import {
   corporatePrograms,
   corporateReportExports,
   roles,
+  userNotifications,
   userRoles
 } from "@/db/schema";
 import { corporateCapabilitiesForPermission } from "@/lib/corporate-permissions";
@@ -18,6 +19,15 @@ import { getCorporateDashboardData } from "@/lib/queries";
 export const CORPORATE_REPORT_CRON_BATCH_SIZE = 10;
 
 export type CorporateReportFailureCode = "requester_not_authorized" | "program_unavailable" | "generation_failed";
+
+// Notify on the first failure, then on milestones rather than spamming every hourly retry.
+export function shouldAlertCorporateReportFailure(attempt: number) {
+  return Number.isSafeInteger(attempt) && (attempt === 1 || attempt === 3 || (attempt >= 6 && attempt % 6 === 0));
+}
+
+export function corporateReportFailureAlertCode(reportId: string, attempt: number) {
+  return `corporate-report-failure-${reportId}-${attempt}`;
+}
 
 class ScheduledReportFailure extends Error {
   constructor(readonly code: CorporateReportFailureCode) {
@@ -99,6 +109,53 @@ async function recordScheduledFailure(input: {
       eq(corporateReportExports.programId, input.programId),
       eq(corporateReportExports.status, "scheduled")
     ));
+
+    // Notify only active corporate admins who can manage this program.
+    // The alert is committed with the failure audit, so concurrent cron
+    // instances cannot create duplicate or cross-account notifications.
+    if (shouldAlertCorporateReportFailure(failureCount)) {
+      const [program] = await tx.select({
+        corporateAccountId: corporatePrograms.corporateAccountId
+      }).from(corporatePrograms)
+        .where(eq(corporatePrograms.id, input.programId))
+        .limit(1);
+
+      if (program) {
+        const permissions = await tx.select({
+          userId: corporatePermissions.userId,
+          permission: corporatePermissions.permission,
+          role: roles.key
+        }).from(corporatePermissions)
+          .innerJoin(userRoles, eq(userRoles.userId, corporatePermissions.userId))
+          .innerJoin(roles, eq(roles.id, userRoles.roleId))
+          .where(eq(corporatePermissions.corporateAccountId, program.corporateAccountId));
+
+        const recipients = new Map<string, { roles: Set<string>; allowed: boolean }>();
+        for (const entry of permissions) {
+          const recipient = recipients.get(entry.userId) ?? { roles: new Set<string>(), allowed: false };
+          recipient.roles.add(entry.role);
+          recipient.allowed ||= corporateCapabilitiesForPermission(entry.permission).canGenerateReport;
+          recipients.set(entry.userId, recipient);
+        }
+        const alerts = [...recipients.entries()]
+          .filter(([, recipient]) => recipient.roles.has("corporate_admin") && !recipient.roles.has("admin") && recipient.allowed)
+          .map(([userId]) => ({
+            userId,
+            notificationCode: corporateReportFailureAlertCode(locked.id, failureCount),
+            category: "Corporate reports",
+            title: "Scheduled report needs attention",
+            message: `PDF report ${locked.exportCode} could not be generated (attempt ${failureCount}). Open Reports to review the issue and next automatic retry.`,
+            href: `/corporate/reports?programId=${input.programId}`,
+            sourceType: "corporate_report_export",
+            sourceId: locked.id,
+            createdAt: input.now,
+            updatedAt: input.now
+          }));
+        if (alerts.length > 0) {
+          await tx.insert(userNotifications).values(alerts).onConflictDoNothing();
+        }
+      }
+    }
 
     await tx.insert(adminAuditLogs).values({
       actorUserId: input.requestedByUserId,

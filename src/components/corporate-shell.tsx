@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  Bell,
   BriefcaseBusiness,
   Building2,
   CircleDollarSign,
@@ -33,6 +34,7 @@ const corporateNavItems: CorporateNavItem[] = [
   { label: "Donations", href: "/corporate/donations", icon: CircleDollarSign },
   { label: "Expeditions", href: "/corporate/expeditions", icon: Compass },
   { label: "Reports", href: "/corporate/reports", icon: FileText },
+  { label: "Notifications", href: "/dashboard/notifications", icon: Bell },
   { label: "Employees", href: "/corporate/employees", icon: Users },
   { label: "Settings", href: "/corporate/settings", icon: Settings }
 ];
