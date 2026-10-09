@@ -124,7 +124,9 @@ export async function storeCorporateReportPdf(input: {
   // Backwards-compatible, durable across web-container recreation provided the
   // deployment preserves the named reports volume. Never silently fall back
   // from an explicitly selected R2 mode to a local file when upload fails.
-  const filename = `${input.exportCode.toLowerCase()}.pdf`;
+  // A database failure after writing must not strand all future retries on an
+  // existing filename. Use a new immutable path for each local attempt too.
+  const filename = `${input.exportCode.toLowerCase()}-${randomUUID()}.pdf`;
   const localUrl = corporateReportArtifactStorageUrl(filename);
   await mkdir(corporateReportArtifactStorageRoot(), { recursive: true });
   await writeFile(path.join(corporateReportArtifactStorageRoot(), filename), input.pdf, { flag: "wx" });
