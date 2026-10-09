@@ -1,6 +1,8 @@
 import { Building2, Users } from "lucide-react";
 
-import { requireCorporateAdminRole } from "@/lib/auth";
+import { requireCorporateOperatorRole } from "@/lib/auth";
+import { forbiddenRedirectPath } from "@/lib/account-destinations";
+import { redirect } from "next/navigation";
 import { requireCorporateDashboardData } from "@/lib/corporate-access";
 
 export const metadata = {
@@ -14,8 +16,9 @@ function formatDate(value: Date | null | undefined) {
 }
 
 export default async function CorporateSettingsPage() {
-  const user = await requireCorporateAdminRole("/corporate/settings");
+  const user = await requireCorporateOperatorRole("/corporate/settings");
   const data = await requireCorporateDashboardData(user.id, "/corporate/settings");
+  if (!data.capabilities.canManageSettings) redirect(forbiddenRedirectPath("/corporate/settings"));
 
   return (
     <main className="mx-auto max-w-4xl px-4 py-8 sm:px-6 lg:px-8">
