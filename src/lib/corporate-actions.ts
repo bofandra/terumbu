@@ -911,14 +911,14 @@ export async function createCorporateReportExportAction(formData: FormData) {
         ))
         .limit(1)
     : [undefined];
-  if (revisionOfReportId && !revisionSource) {
+  if (revisionOfReportId && (!revisionSource || !["esg", "csr"].includes(revisionSource.reportType))) {
     redirect(`/corporate/reports?programId=${context.programId}&error=revision`);
   }
   const reportType = revisionSource
     ? normalizeCorporateReportType(revisionSource.reportType)
     : normalizeCorporateReportType(String(formData.get("reportType") ?? "esg").toLowerCase());
   const exportFormat = normalizeCorporateReportFormat("pdf");
-  const scheduledFor = dateValue(formData.get("scheduledFor"));
+  const scheduledFor = revisionSource ? null : dateValue(formData.get("scheduledFor"));
   const now = new Date();
   const data = await getCorporateDashboardData(user.id, context.programId);
 
