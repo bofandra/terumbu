@@ -69,7 +69,6 @@ export default async function CorporateReportsPage({ searchParams }: ReportsPage
   const reports = data.exports;
   const inReview = reports.filter((item) => item.status === "review").length;
   const published = reports.filter((item) => item.status === "published").length;
-  const dueCount = reports.filter((item) => item.status === "scheduled" && item.scheduledFor && item.scheduledFor.getTime() <= Date.now()).length;
 
   return (
     <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
@@ -176,8 +175,8 @@ export default async function CorporateReportsPage({ searchParams }: ReportsPage
               </form>
               <form action={runDueCorporateReportExportsAction}>
                 <input type="hidden" name="programId" value={data.program.programId} />
-                <Button type="submit" tone="secondary" disabled={dueCount === 0}>
-                  Generate due reports ({dueCount})
+                <Button type="submit" tone="secondary">
+                  Generate due reports
                 </Button>
               </form>
             </div>
