@@ -1,10 +1,7 @@
 import { CorporateShell } from "@/components/corporate-shell";
 import { getUserRoles, requireUser } from "@/lib/auth";
 import { getCorporateDashboardData, getCorporateProgramsForUser } from "@/lib/queries";
-
-function roleLabel(canManagePrograms: boolean) {
-  return canManagePrograms ? "Corporate Admin" : "Corporate User";
-}
+import { corporateCapabilitiesForPermission, corporatePermissionLabel } from "@/lib/corporate-permissions";
 
 export default async function CorporateLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   const user = await requireUser("/corporate");
@@ -18,7 +15,11 @@ export default async function CorporateLayout({ children }: Readonly<{ children:
     return <>{children}</>;
   }
 
-  const canManagePrograms = roleKeys.includes("corporate_admin") && !roleKeys.includes("admin");
+  const permission = data?.governance.accessSummary.currentPermission ?? programAccess?.account.permission;
+  const capabilities = corporateCapabilitiesForPermission(permission);
+  const canManagePrograms = !roleKeys.includes("admin") && capabilities.canManagePrograms;
+  const canManageEmployees = !roleKeys.includes("admin") && capabilities.canManageEmployees;
+  const canManageSettings = !roleKeys.includes("admin") && capabilities.canManageSettings;
   const displayName = user.displayName ?? user.name ?? user.email;
   const accountName = data?.program.accountName ?? programAccess!.account.accountName;
   const accountLogoUrl = data?.program.accountLogoUrl ?? programAccess!.account.accountLogoUrl;
@@ -26,10 +27,12 @@ export default async function CorporateLayout({ children }: Readonly<{ children:
   return (
     <CorporateShell
       displayName={displayName}
-      roleLabel={roleLabel(canManagePrograms)}
+      roleLabel={corporatePermissionLabel(permission)}
       accountName={accountName}
       accountLogoUrl={accountLogoUrl}
       canManagePrograms={canManagePrograms}
+      canManageEmployees={canManageEmployees}
+      canManageSettings={canManageSettings}
     >
       {children}
     </CorporateShell>
