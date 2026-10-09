@@ -72,6 +72,13 @@ test("corporate report lifecycle is atomic, idempotent and scoped to its program
     ]);
     expect(approvals.filter(Boolean)).toHaveLength(1);
 
+    const [ready] = await sql<{ status: string; snapshot_type: string | null }[]>`
+      select status, jsonb_typeof(metadata->'generationSnapshot') as snapshot_type
+      from corporate_report_exports where id = ${reportId}
+    `;
+    expect(ready.status).toBe("approved");
+    expect(ready.snapshot_type).toBe("object");
+
     const publicSlug = `e2e-corporate-report-${randomUUID()}`;
     const published = await Promise.all([
       transitionCorporateReport({ ...scoped, expectedStatus: "approved", nextStatus: "published", publicSlug }),
