@@ -68,7 +68,9 @@ export default async function CorporateReportsPage({ searchParams }: ReportsPage
   const canApprove = canAdmin && data.reportCapabilities.canApprove;
   const canPublish = canAdmin && data.reportCapabilities.canPublish;
   const reports = data.exports;
-  const executionMonitor = await getCorporateReportExecutionMonitor(user.id, data.program.programId, reports);
+  const executionMonitor = canAdmin
+    ? await getCorporateReportExecutionMonitor(user.id, data.program.programId, reports)
+    : { byReportId: {}, summary: { scheduled: 0, awaitingGeneration: 0, needAttention: 0 } };
   const inReview = reports.filter((item) => item.status === "review").length;
   const published = reports.filter((item) => item.status === "published").length;
 
@@ -131,7 +133,7 @@ export default async function CorporateReportsPage({ searchParams }: ReportsPage
         ))}
       </section>
 
-      <section aria-label="Scheduled generation overview" className="mt-6 rounded-lg border border-ocean-900/10 bg-white p-5">
+      {canAdmin ? <section aria-label="Scheduled generation overview" className="mt-6 rounded-lg border border-ocean-900/10 bg-white p-5">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h2 className="text-lg font-bold text-ocean-900">PDF generation monitor</h2>
           <p className="text-xs text-ocean-900/60">Hourly automatic processing · Selected corporate program only</p>
@@ -153,7 +155,7 @@ export default async function CorporateReportsPage({ searchParams }: ReportsPage
             Some reports could not be generated. Review the issue and next retry time in the report library below.
           </p>
         ) : null}
-      </section>
+      </section> : null}
 
       <section className="mt-6 rounded-lg border border-ocean-900/10 bg-white p-5 shadow-soft">
         <div className="flex flex-wrap items-center justify-between gap-4">
@@ -230,7 +232,7 @@ export default async function CorporateReportsPage({ searchParams }: ReportsPage
                 </span>
               </div>
 
-              {executionMonitor.byReportId[report.id] && (report.scheduledFor || executionMonitor.byReportId[report.id].events.length > 0) ? (
+              {canAdmin && executionMonitor.byReportId[report.id] && (report.scheduledFor || executionMonitor.byReportId[report.id].events.length > 0) ? (
                 <section
                   aria-label={`Execution monitor for ${report.exportCode}`}
                   data-testid={`corporate-report-monitor-${report.id}`}
