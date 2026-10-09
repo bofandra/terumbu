@@ -267,6 +267,13 @@
       "when": 1790816400000,
       "tag": "0037_location_domain_relations",
       "breakpoints": true
+    },
+    {
+      "idx": 38,
+      "version": "7",
+      "when": 1791651600000,
+      "tag": "0038_corporate_report_alert_outbox",
+      "breakpoints": true
     }
   ]
 }
