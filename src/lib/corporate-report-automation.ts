@@ -1,4 +1,4 @@
-import { and, asc, eq, lte, sql } from "drizzle-orm";
+import { and, asc, eq, inArray, lte, sql } from "drizzle-orm";
 
 import { db } from "@/db/client";
 import {
@@ -6,11 +6,14 @@ import {
   corporatePermissions,
   corporatePrograms,
   corporateReportExports,
+  emailLogs,
   roles,
   userNotifications,
-  userRoles
+  userRoles,
+  users
 } from "@/db/schema";
 import { corporateCapabilitiesForPermission } from "@/lib/corporate-permissions";
+import { CORPORATE_REPORT_ALERT_EMAIL_TEMPLATE, corporateReportEmailDeliveryKey } from "@/lib/corporate-report-alert-email";
 import { writeReportArtifacts } from "@/lib/corporate-report-generator";
 import { normalizeCorporateReportFormat, normalizeCorporateReportType } from "@/lib/corporate-report-lifecycle";
 import { generateDueCorporateReport } from "@/lib/corporate-report-scheduler";
@@ -152,7 +155,47 @@ async function recordScheduledFailure(input: {
             updatedAt: input.now
           }));
         if (alerts.length > 0) {
-          await tx.insert(userNotifications).values(alerts).onConflictDoNothing();
+          const inserted = await tx.insert(userNotifications).values(alerts)
+            .onConflictDoNothing()
+            .returning({ id: userNotifications.id, userId: userNotifications.userId });
+
+          // A notification and its outgoing email are enqueued atomically.
+          // Unique notification code + delivery key prevent duplicate sends
+          // across concurrent failures and restarts.
+          if (inserted.length > 0) {
+            const recipientsWithEmail = await tx.select({
+              id: users.id,
+              email: users.email,
+              verifiedAt: users.emailVerifiedAt
+            }).from(users).where(inArray(users.id, inserted.map((entry) => entry.userId)));
+            const addresses = new Map(recipientsWithEmail
+              .filter((entry) => entry.verifiedAt !== null)
+              .map((entry) => [entry.id, entry.email]));
+            const deliveries = inserted.flatMap((entry) => {
+              const email = addresses.get(entry.userId);
+              if (!email) return [];
+              return [{
+                userId: entry.userId,
+                recipientEmail: email,
+                subject: "Terumbu — scheduled report needs attention",
+                template: CORPORATE_REPORT_ALERT_EMAIL_TEMPLATE,
+                deliveryKey: corporateReportEmailDeliveryKey(entry.id),
+                status: "queued",
+                payload: {
+                  reportId: locked.id,
+                  programId: input.programId,
+                  notificationId: entry.id,
+                  exportCode: locked.exportCode,
+                  failureCount
+                },
+                createdAt: input.now,
+                updatedAt: input.now
+              }];
+            });
+            if (deliveries.length > 0) {
+              await tx.insert(emailLogs).values(deliveries).onConflictDoNothing();
+            }
+          }
         }
       }
     }

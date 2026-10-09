@@ -1635,10 +1635,20 @@ export const emailLogs = pgTable("email_logs", {
   status: varchar("status", { length: 80 }).default("queued").notNull(),
   payload: jsonb("payload"),
   sentAt: timestamp("sent_at", { withTimezone: true }),
+  // Null for synchronous transactional email deliveries. Non-null for outbox jobs.
+  deliveryKey: varchar("delivery_key", { length: 180 }),
+  attemptCount: integer("attempt_count").default(0).notNull(),
+  nextRetryAt: timestamp("next_retry_at", { withTimezone: true }),
+  claimedUntil: timestamp("claimed_until", { withTimezone: true }),
+  providerMessageId: varchar("provider_message_id", { length: 255 }),
+  deliveryError: varchar("delivery_error", { length: 120 }),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull()
 }, (table) => ({
   recipientIdx: index("email_logs_recipient_idx").on(table.recipientEmail),
-  userIdx: index("email_logs_user_idx").on(table.userId)
+  userIdx: index("email_logs_user_idx").on(table.userId),
+  deliveryKeyIdx: uniqueIndex("email_logs_delivery_key_idx").on(table.deliveryKey),
+  outboxQueueIdx: index("email_logs_outbox_queue_idx").on(table.template, table.status, table.nextRetryAt)
 }));
 
 export const adminAuditLogs = pgTable("admin_audit_logs", {
