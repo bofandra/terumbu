@@ -40,8 +40,8 @@ an equivalent authenticated hourly schedule.
    `next_retry_at`. Avoid logging recipient addresses or API credentials.
 
 The outbox is **at-most-once when provider state is ambiguous after the safe window**,
-not a guarantee of exactly-once inbox delivery. Provider webhooks or manual requeue
-would be a separate feature with its own authorization and monitoring.
+not a guarantee of exactly-once inbox delivery. An authenticated provider webhook
+records delivery outcomes separately; manual requeue remains out of scope.
 
 ## Corporate report email visibility
 
@@ -52,6 +52,53 @@ The program summary also surfaces pending and failed counts. No recipient emails
 email payloads, or provider IDs are exposed in this UI. Counts only reflect
 reports currently included in the report library, not an all-time account total.
 
-`Provider accepted` records Resend acceptance only and does **not** prove delivery
-to an inbox. A terminal `failed` record is visible for operator follow-up;
+`Provider accepted` records Resend acceptance only. `Delivered` means the
+recipient's mail server accepted the message; it does **not** prove placement
+in an inbox, opening, or reading. A terminal `failed` record is visible for operator follow-up;
 the portal deliberately does not allow resending or bypassing delivery permissions.
+
+## Resend delivery webhook
+
+Migration `0039_resend_delivery_events` adds two optional outbox fields,
+`provider_event_type` and `provider_event_at`, plus a provider ID lookup
+index. Existing email delivery records remain valid.
+
+1. In the Resend dashboard, register an HTTPS POST webhook pointing at
+   `https://terumbu.world/api/webhooks/resend`, using the actual public
+   production domain. Subscribe to `email.delivered`,
+   `email.delivery_delayed`, `email.bounced`, `email.complained`,
+   `email.failed` and `email.suppressed`.
+2. Save the webhook signing secret (starting with `whsec_`) as
+   `RESEND_WEBHOOK_SECRET` in GitHub Actions' **production secrets**.
+   It is passed to the server container only, not to browser bundles.
+3. Deploy after the database migration, then test a provider-generated
+   webhook in the Resend dashboard. The signed webhook requires raw
+   payload bytes and `svix-id`, `svix-timestamp`, and `svix-signature`
+   headers; invalid signatures are rejected, and old timestamps outside
+   a five-minute window are not accepted.
+4. Confirm the corresponding report alert in **Corporate → Reports**
+   transitions from `Provider accepted` to `Delivered` or a specific
+   delivery problem. Confirm that the sender domain and email API key are
+   validated in Resend's dashboard before using production recipients.
+
+The webhook is fail-closed with HTTP 503 when its signing secret is not
+configured. Unknown/unrelated email IDs and unsubscribed event types are
+acknowledged without changing Terumbu records. Only `email_logs` rows with
+`template = 'corporate_report_failure'` and a matching provider message ID
+can be updated. The event timestamp guard makes duplicate and out-of-order
+events idempotent and does not reactivate cancelled/unsent jobs.
+
+**Status meanings:** `sent` (Resend accepted), `delivered` (receiving
+mail server accepted), `delivery_delayed`, `bounced`, `complained`,
+`provider_failed`, `suppressed`. `failed` still means the original
+outbox send attempt failed before provider acceptance. Provider failures are
+not automatically resent, to avoid duplicate messages or repeated sends to
+invalid/suppressed addresses. An operator should investigate the provider
+dashboard, validate the address and permission, and only then consider
+a separately authorized manual remediation process.
+
+**Limitations:** An unusually early provider webhook that arrives before the
+provider ID has been committed to the outbox is acknowledged but not linked;
+this release does not implement a separate durable provider-event journal.
+This is a record of the provider's mail-server events, not proof of inbox
+placement or user engagement.
