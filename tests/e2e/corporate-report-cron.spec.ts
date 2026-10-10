@@ -105,7 +105,7 @@ test("authenticated corporate cron generates each due report once, records revok
       await expect(failedMonitor).toContainText("Failure alert emails: 1");
       await expect(failedMonitor).toContainText("Provider accepted does not confirm inbox delivery");
       await expect(overview).toContainText("Alert emails");
-      await expect(overview).toContainText("An accepted email means the provider received it");
+      await expect(overview).toContainText("Provider accepted means Resend accepted the send request");
       await expect(failedMonitor).toContainText("Next automatic retry:");
       await expect(failedMonitor).toContainText("original requester no longer has permission");
       await failedMonitor.locator("summary").click();

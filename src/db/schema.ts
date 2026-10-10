@@ -1641,6 +1641,8 @@ export const emailLogs = pgTable("email_logs", {
   nextRetryAt: timestamp("next_retry_at", { withTimezone: true }),
   claimedUntil: timestamp("claimed_until", { withTimezone: true }),
   providerMessageId: varchar("provider_message_id", { length: 255 }),
+  providerEventType: varchar("provider_event_type", { length: 80 }),
+  providerEventAt: timestamp("provider_event_at", { withTimezone: true }),
   deliveryError: varchar("delivery_error", { length: 120 }),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull()
@@ -1648,6 +1650,7 @@ export const emailLogs = pgTable("email_logs", {
   recipientIdx: index("email_logs_recipient_idx").on(table.recipientEmail),
   userIdx: index("email_logs_user_idx").on(table.userId),
   deliveryKeyIdx: uniqueIndex("email_logs_delivery_key_idx").on(table.deliveryKey),
+  providerMessageIdx: index("email_logs_provider_message_idx").on(table.providerMessageId),
   outboxQueueIdx: index("email_logs_outbox_queue_idx").on(table.template, table.status, table.nextRetryAt)
 }));
 

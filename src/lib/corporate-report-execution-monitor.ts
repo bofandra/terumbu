@@ -22,6 +22,12 @@ export type CorporateReportEmailState = {
   sending: number;
   retry: number;
   accepted: number;
+  delivered: number;
+  delayed: number;
+  bounced: number;
+  complained: number;
+  providerFailed: number;
+  suppressed: number;
   failed: number;
   cancelled: number;
   total: number;
@@ -30,13 +36,19 @@ export type CorporateReportEmailState = {
 /** Provider acceptance is not confirmed delivery to the recipient's inbox. */
 export function summarizeCorporateReportEmailStatuses(rows: Array<{ status: string; count: number }>): CorporateReportEmailState {
   const summary: CorporateReportEmailState = {
-    queued: 0, sending: 0, retry: 0, accepted: 0, failed: 0, cancelled: 0, total: 0
+    queued: 0, sending: 0, retry: 0, accepted: 0, delivered: 0, delayed: 0,
+    bounced: 0, complained: 0, providerFailed: 0, suppressed: 0, failed: 0, cancelled: 0, total: 0
   };
   for (const row of rows) {
     if (!Number.isSafeInteger(row.count) || row.count <= 0) continue;
-    const key = row.status === "sent" ? "accepted" : row.status;
-    if (key !== "queued" && key !== "sending" && key !== "retry" &&
-      key !== "accepted" && key !== "failed" && key !== "cancelled") continue;
+    const mapping: Record<string, keyof CorporateReportEmailState> = {
+      queued: "queued", sending: "sending", retry: "retry", sent: "accepted",
+      delivered: "delivered", delivery_delayed: "delayed",
+      bounced: "bounced", complained: "complained", provider_failed: "providerFailed",
+      suppressed: "suppressed", failed: "failed", cancelled: "cancelled"
+    };
+    const key = mapping[row.status];
+    if (!key) continue;
     summary[key] += row.count;
     summary.total += row.count;
   }
@@ -143,7 +155,11 @@ export async function getCorporateReportExecutionMonitor(
   reports: ReportRow[],
   now = new Date()
 ) {
-  const zeroSummary = { scheduled: 0, awaitingGeneration: 0, needAttention: 0, alertEmailPending: 0, alertEmailFailed: 0, alertEmailAccepted: 0 };
+  const zeroSummary = {
+    scheduled: 0, awaitingGeneration: 0, needAttention: 0,
+    alertEmailPending: 0, alertEmailFailed: 0, alertEmailAccepted: 0,
+    alertEmailDelivered: 0, alertEmailDeliveryIssues: 0
+  };
   if (reports.length === 0) return { byReportId: {}, summary: zeroSummary };
 
   const [authorized] = await db.select({ id: corporatePrograms.id })
@@ -242,7 +258,11 @@ export async function getCorporateReportExecutionMonitor(
       needAttention: states.filter((state) => state.needsAttention).length,
       alertEmailPending: states.reduce((total, state) => total + state.alertEmails.queued + state.alertEmails.sending + state.alertEmails.retry, 0),
       alertEmailFailed: states.reduce((total, state) => total + state.alertEmails.failed, 0),
-      alertEmailAccepted: states.reduce((total, state) => total + state.alertEmails.accepted, 0)
+      alertEmailAccepted: states.reduce((total, state) => total + state.alertEmails.accepted, 0),
+      alertEmailDelivered: states.reduce((total, state) => total + state.alertEmails.delivered, 0),
+      alertEmailDeliveryIssues: states.reduce((total, state) =>
+        total + state.alertEmails.bounced + state.alertEmails.complained +
+        state.alertEmails.providerFailed + state.alertEmails.suppressed, 0)
     }
   };
 }
