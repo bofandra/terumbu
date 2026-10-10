@@ -102,6 +102,10 @@ test("authenticated corporate cron generates each due report once, records revok
       const failedMonitor = page.locator(`[data-testid="corporate-report-monitor-${revokedReportId}"]`);
       await expect(failedMonitor).toContainText("Waiting for retry");
       await expect(failedMonitor).toContainText("Failed attempts: 1");
+      await expect(failedMonitor).toContainText("Failure alert emails: 1");
+      await expect(failedMonitor).toContainText("Provider accepted does not confirm inbox delivery");
+      await expect(overview).toContainText("Alert emails");
+      await expect(overview).toContainText("An accepted email means the provider received it");
       await expect(failedMonitor).toContainText("Next automatic retry:");
       await expect(failedMonitor).toContainText("original requester no longer has permission");
       await failedMonitor.locator("summary").click();
@@ -135,6 +139,8 @@ test("authenticated corporate cron generates each due report once, records revok
       [{ id: revokedReportId, status: bad.status, metadata: bad.metadata, scheduledFor: new Date() }]
     );
     expect(unauthorized.summary.scheduled).toBe(0);
+    expect(unauthorized.summary.alertEmailPending).toBe(0);
+    expect(unauthorized.summary.alertEmailFailed).toBe(0);
     expect(Object.keys(unauthorized.byReportId)).toHaveLength(0);
 
     const repeat = await request.post("/api/cron/corporate-reports", { headers });
