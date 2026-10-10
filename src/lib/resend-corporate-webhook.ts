@@ -1,10 +1,10 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 
-import { and, eq, inArray, isNull, lt, or } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, isNull, lt, lte, or } from "drizzle-orm";
 
 import { db } from "@/db/client";
-import { emailLogs } from "@/db/schema";
-import { CORPORATE_REPORT_ALERT_EMAIL_TEMPLATE } from "@/lib/corporate-report-alert-email";
+import { emailLogs, resendWebhookEvents } from "@/db/schema";
+import { CORPORATE_REPORT_ALERT_EMAIL_TEMPLATE } from "@/lib/corporate-report-email-template";
 
 const MAX_CLOCK_SKEW_MS = 5 * 60 * 1000;
 const allowedEvents = {
@@ -73,18 +73,16 @@ export function parseResendCorporateDeliveryEvent(rawBody: string): CorporateEma
   return { type, emailId, occurredAt, status: allowedEvents[type] };
 }
 
-/** Update only previously accepted corporate report alert emails.
- * The event timestamp guard makes retried and out-of-order webhooks harmless.
- * This never schedules a second email or changes the worker retry state.
+/**
+ * Update only accepted corporate report alerts, never queued/retry/cancelled jobs.
+ * A monotonic event timestamp avoids older events overriding a newer result.
  */
 export async function reconcileResendCorporateDelivery(event: CorporateEmailDeliveryEvent, now = new Date()) {
   const changed = await db.update(emailLogs).set({
     status: event.status,
     providerEventType: event.type,
     providerEventAt: event.occurredAt,
-    deliveryError: event.status === "bounced" || event.status === "complained" ||
-      event.status === "provider_failed" || event.status === "suppressed"
-      ? event.type.replace(".", "_") : null,
+    deliveryError: corporateProviderDeliveryError(event),
     updatedAt: now
   }).where(and(
     eq(emailLogs.template, CORPORATE_REPORT_ALERT_EMAIL_TEMPLATE),
@@ -95,4 +93,99 @@ export async function reconcileResendCorporateDelivery(event: CorporateEmailDeli
     or(isNull(emailLogs.providerEventAt), lt(emailLogs.providerEventAt, event.occurredAt))
   )).returning({ id: emailLogs.id });
   return changed.length;
+}
+
+function corporateProviderDeliveryError(event: CorporateEmailDeliveryEvent) {
+  return event.status === "bounced" || event.status === "complained" ||
+    event.status === "provider_failed" || event.status === "suppressed"
+    ? event.type.replace(".", "_") : null;
+}
+
+/**
+ * Store the verified delivery event before returning 200.
+ * The insert and attempted reconciliation share one transaction, preventing
+ * a successful acknowledgement from losing the event during a send/commit race.
+ */
+export async function recordResendCorporateDelivery(
+  eventId: string,
+  event: CorporateEmailDeliveryEvent,
+  now = new Date()
+) {
+  if (!eventId || eventId.length > 256) throw new Error("invalid_event_id");
+  return db.transaction(async (tx) => {
+    const inserted = await tx.insert(resendWebhookEvents).values({
+      eventId,
+      providerMessageId: event.emailId,
+      eventType: event.type,
+      eventAt: event.occurredAt,
+      receivedAt: now
+    }).onConflictDoNothing().returning({ eventId: resendWebhookEvents.eventId });
+    if (inserted.length === 0) return { recorded: false, applied: false };
+
+    const changed = await tx.update(emailLogs).set({
+      status: event.status,
+      providerEventType: event.type,
+      providerEventAt: event.occurredAt,
+      deliveryError: corporateProviderDeliveryError(event),
+      updatedAt: now
+    }).where(and(
+      eq(emailLogs.template, CORPORATE_REPORT_ALERT_EMAIL_TEMPLATE),
+      eq(emailLogs.providerMessageId, event.emailId),
+      inArray(emailLogs.status, [
+        "sent", "delivered", "delivery_delayed", "bounced", "complained", "provider_failed", "suppressed"
+      ]),
+      or(isNull(emailLogs.providerEventAt), lt(emailLogs.providerEventAt, event.occurredAt))
+    )).returning({ id: emailLogs.id });
+
+    if (changed.length > 0) {
+      await tx.update(resendWebhookEvents).set({ appliedAt: now })
+        .where(eq(resendWebhookEvents.eventId, eventId));
+    }
+    return { recorded: true, applied: changed.length > 0 };
+  });
+}
+
+/**
+ * Called immediately after a provider ID is saved on an accepted send.
+ * If the webhook committed earlier, the most recent stored event is replayed.
+ * If it is still in flight, its own conditional update observes the committed
+ * "sent" row and applies itself. Both interleavings are safe.
+ */
+export async function replayResendCorporateDeliveryForProvider(providerMessageId: string, now = new Date()) {
+  const [latest] = await db.select({
+    eventId: resendWebhookEvents.eventId,
+    eventType: resendWebhookEvents.eventType,
+    eventAt: resendWebhookEvents.eventAt
+  }).from(resendWebhookEvents)
+    .where(eq(resendWebhookEvents.providerMessageId, providerMessageId))
+    .orderBy(desc(resendWebhookEvents.eventAt), desc(resendWebhookEvents.eventId))
+    .limit(1);
+  if (!latest || !(latest.eventType in allowedEvents)) return 0;
+  const type = latest.eventType as keyof typeof allowedEvents;
+  const changed = await reconcileResendCorporateDelivery({
+    type, emailId: providerMessageId, occurredAt: latest.eventAt, status: allowedEvents[type]
+  }, now);
+  if (changed > 0) {
+    await db.update(resendWebhookEvents).set({ appliedAt: now })
+      .where(eq(resendWebhookEvents.eventId, latest.eventId));
+  }
+  return changed;
+}
+
+const EVENT_RETENTION_HOURS = 72;
+const EVENT_PRUNE_BATCH = 200;
+
+/** Keep the private journal bounded, without storing raw payloads/PII. */
+export async function pruneResendCorporateDeliveryEvents(now = new Date()) {
+  const cutoff = new Date(now.getTime() - EVENT_RETENTION_HOURS * 3_600_000);
+  const stale = await db.select({ id: resendWebhookEvents.eventId })
+    .from(resendWebhookEvents)
+    .where(lte(resendWebhookEvents.receivedAt, cutoff))
+    .orderBy(asc(resendWebhookEvents.receivedAt))
+    .limit(EVENT_PRUNE_BATCH);
+  if (stale.length === 0) return 0;
+  const removed = await db.delete(resendWebhookEvents)
+    .where(inArray(resendWebhookEvents.eventId, stale.map((item) => item.id)))
+    .returning({ eventId: resendWebhookEvents.eventId });
+  return removed.length;
 }
