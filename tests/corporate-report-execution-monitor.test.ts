@@ -75,12 +75,19 @@ test("alert email summary distinguishes provider acceptance, retries and termina
     { status: "sending", count: 1 },
     { status: "retry", count: 3 },
     { status: "sent", count: 4 },
+    { status: "delivered", count: 6 },
+    { status: "delivery_delayed", count: 1 },
+    { status: "bounced", count: 2 },
+    { status: "complained", count: 1 },
+    { status: "provider_failed", count: 2 },
+    { status: "suppressed", count: 1 },
     { status: "failed", count: 1 },
     { status: "cancelled", count: 2 },
     { status: "unexpected", count: 10 },
     { status: "failed", count: -1 }
   ]), {
-    queued: 2, sending: 1, retry: 3, accepted: 4, failed: 1, cancelled: 2, total: 13
+    queued: 2, sending: 1, retry: 3, accepted: 4, delivered: 6, delayed: 1,
+    bounced: 2, complained: 1, providerFailed: 2, suppressed: 1, failed: 1, cancelled: 2, total: 26
   });
   assert.equal(corporateReportExecutionState(report("scheduled", null), now).alertEmails.total, 0);
 });
