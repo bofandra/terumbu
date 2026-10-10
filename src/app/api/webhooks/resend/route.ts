@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import {
   parseResendCorporateDeliveryEvent,
-  reconcileResendCorporateDelivery,
+  recordResendCorporateDelivery,
   verifyResendCorporateWebhook
 } from "@/lib/resend-corporate-webhook";
 
@@ -41,9 +41,8 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    await reconcileResendCorporateDelivery(event);
-    // A matched provider ID is required before corporate delivery state changes.
-    // Unrelated Resend messages are intentionally acknowledged without mutation.
+    await recordResendCorporateDelivery(request.headers.get("svix-id")!, event);
+    // Verified events are persisted even when provider acceptance is still in flight.
     return NextResponse.json({ ok: true });
   } catch (error) {
     console.error("Resend corporate webhook processing failed", { type: event.type, error });
