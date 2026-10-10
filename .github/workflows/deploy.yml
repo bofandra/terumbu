@@ -153,6 +153,7 @@ jobs:
           DEMO_GATEWAY_WEBHOOK_SECRET: ${{ secrets.DEMO_GATEWAY_WEBHOOK_SECRET }}
           RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
           RESEND_FROM_EMAIL: ${{ secrets.RESEND_FROM_EMAIL }}
+          RESEND_WEBHOOK_SECRET: ${{ secrets.RESEND_WEBHOOK_SECRET }}
           SUPPORT_EMAIL: ${{ secrets.SUPPORT_EMAIL || vars.SUPPORT_EMAIL }}
           NEXT_PUBLIC_SUPPORT_WHATSAPP_URL: ${{ secrets.NEXT_PUBLIC_SUPPORT_WHATSAPP_URL || vars.NEXT_PUBLIC_SUPPORT_WHATSAPP_URL }}
           POSTHOG_KEY: ${{ secrets.POSTHOG_KEY }}
@@ -255,6 +256,7 @@ jobs:
           write_env_value DEMO_GATEWAY_WEBHOOK_SECRET "${DEMO_GATEWAY_WEBHOOK_SECRET}"
           write_env_value RESEND_API_KEY "${RESEND_API_KEY}"
           write_env_value RESEND_FROM_EMAIL "${RESEND_FROM_EMAIL}"
+          write_env_value RESEND_WEBHOOK_SECRET "${RESEND_WEBHOOK_SECRET}"
           write_env_value SUPPORT_EMAIL "${SUPPORT_EMAIL}"
           write_env_value NEXT_PUBLIC_SUPPORT_WHATSAPP_URL "${NEXT_PUBLIC_SUPPORT_WHATSAPP_URL}"
           write_env_value POSTHOG_KEY "${POSTHOG_KEY}"
