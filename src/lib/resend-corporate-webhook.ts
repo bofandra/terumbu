@@ -172,6 +172,41 @@ export async function replayResendCorporateDeliveryForProvider(providerMessageId
   return changed;
 }
 
+/**
+ * Recover early events if the send worker accepted the provider ID but
+ * crashed before the inline replay. Match at the database boundary so
+ * unrelated Resend traffic never enters the retry batch.
+ */
+export async function reconcilePendingResendCorporateDeliveryEvents(now = new Date()) {
+  const pending = await db.select({
+    eventId: resendWebhookEvents.eventId,
+    eventType: resendWebhookEvents.eventType,
+    eventAt: resendWebhookEvents.eventAt,
+    providerMessageId: resendWebhookEvents.providerMessageId
+  }).from(resendWebhookEvents)
+    .innerJoin(emailLogs, eq(emailLogs.providerMessageId, resendWebhookEvents.providerMessageId))
+    .where(and(
+      isNull(resendWebhookEvents.appliedAt),
+      eq(emailLogs.template, CORPORATE_REPORT_ALERT_EMAIL_TEMPLATE),
+      inArray(emailLogs.status, [
+        "sent", "delivered", "delivery_delayed", "bounced", "complained", "provider_failed", "suppressed"
+      ])
+    )).orderBy(asc(resendWebhookEvents.eventAt), asc(resendWebhookEvents.eventId)).limit(200);
+
+  let applied = 0;
+  for (const entry of pending) {
+    if (!(entry.eventType in allowedEvents)) continue;
+    const type = entry.eventType as keyof typeof allowedEvents;
+    applied += await reconcileResendCorporateDelivery({
+      type, emailId: entry.providerMessageId, occurredAt: entry.eventAt, status: allowedEvents[type]
+    }, now);
+    // Also mark superseded events processed so they do not starve the queue.
+    await db.update(resendWebhookEvents).set({ appliedAt: now })
+      .where(and(eq(resendWebhookEvents.eventId, entry.eventId), isNull(resendWebhookEvents.appliedAt)));
+  }
+  return { checked: pending.length, applied };
+}
+
 const EVENT_RETENTION_HOURS = 72;
 const EVENT_PRUNE_BATCH = 200;
 
