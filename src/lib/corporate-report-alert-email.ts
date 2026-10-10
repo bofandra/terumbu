@@ -12,7 +12,8 @@ import {
 } from "@/db/schema";
 import { corporateCapabilitiesForPermission } from "@/lib/corporate-permissions";
 
-export const CORPORATE_REPORT_ALERT_EMAIL_TEMPLATE = "corporate_report_failure";
+import { CORPORATE_REPORT_ALERT_EMAIL_TEMPLATE } from "@/lib/corporate-report-email-template";
+export { CORPORATE_REPORT_ALERT_EMAIL_TEMPLATE } from "@/lib/corporate-report-email-template";
 export const CORPORATE_REPORT_ALERT_EMAIL_BATCH_SIZE = 5;
 const CLAIM_MINUTES = 2;
 const MAX_ATTEMPTS = 7;
