@@ -160,18 +160,62 @@ async function claimPendingEmails(now: Date): Promise<ClaimedEmail[]> {
   });
 }
 
+/**
+ * Finalize provider acceptance with a compare-and-swap against the claimed job.
+ * Exposed for transactional integration tests and the real worker, not an API.
+ */
+export async function completeCorporateReportAlertAcceptance(input: {
+  id: string;
+  attemptCount: number;
+  providerMessageId: string;
+  now: Date;
+}) {
+  const updated = await db.update(emailLogs).set({
+    status: "sent",
+    deliveryError: null,
+    providerMessageId: input.providerMessageId,
+    sentAt: input.now,
+    claimedUntil: null,
+    nextRetryAt: null,
+    updatedAt: input.now
+  }).where(and(
+    eq(emailLogs.id, input.id),
+    eq(emailLogs.template, CORPORATE_REPORT_ALERT_EMAIL_TEMPLATE),
+    eq(emailLogs.status, "sending"),
+    eq(emailLogs.attemptCount, input.attemptCount)
+  )).returning({ id: emailLogs.id });
+
+  if (updated.length) {
+    try {
+      await replayResendCorporateDeliveryForProvider(input.providerMessageId, input.now);
+    } catch {
+      // Acceptance is committed: never re-send due to a journal read failure.
+      // The authenticated hourly cron will reconcile durable events.
+      console.error("Corporate report delivery event replay deferred", { id: input.id });
+    }
+  }
+  return updated.length > 0;
+}
+
 async function markDelivery(
   job: ClaimedEmail,
   status: "sent" | "retry" | "failed" | "cancelled",
   now: Date,
   options: { error?: string; providerId?: string } = {}
 ) {
+  if (status === "sent") {
+    if (!options.providerId) throw new Error("Missing provider message ID for accepted email");
+    await completeCorporateReportAlertAcceptance({
+      id: job.id, attemptCount: job.attemptCount, providerMessageId: options.providerId, now
+    });
+    return;
+  }
   const retry = status === "retry";
-  const updated = await db.update(emailLogs).set({
+  await db.update(emailLogs).set({
     status,
     deliveryError: options.error ?? null,
-    providerMessageId: options.providerId ?? null,
-    sentAt: status === "sent" ? now : null,
+    providerMessageId: null,
+    sentAt: null,
     claimedUntil: null,
     nextRetryAt: retry ? new Date(now.getTime() + corporateReportEmailRetryDelayMinutes(job.attemptCount) * 60_000) : null,
     updatedAt: now
@@ -179,18 +223,7 @@ async function markDelivery(
     eq(emailLogs.id, job.id),
     eq(emailLogs.status, "sending"),
     eq(emailLogs.attemptCount, job.attemptCount)
-  )).returning({ id: emailLogs.id });
-
-  if (updated.length && status === "sent" && options.providerId) {
-    try {
-      await replayResendCorporateDeliveryForProvider(options.providerId, now);
-    } catch {
-      // Provider acceptance has already been committed. Never convert it to
-      // a retry, which could duplicate a delivered email. The hourly recovery
-      // processor will reconcile the durable journal on its next pass.
-      console.error("Corporate report delivery event replay deferred", { id: job.id });
-    }
-  }
+  ));
 }
 
 async function sendClaimedEmail(job: ClaimedEmail, now: Date) {
