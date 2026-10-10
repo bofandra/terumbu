@@ -11,6 +11,7 @@ import {
   userRoles
 } from "@/db/schema";
 import { corporateCapabilitiesForPermission } from "@/lib/corporate-permissions";
+import { replayResendCorporateDeliveryForProvider } from "@/lib/resend-corporate-webhook";
 
 import { CORPORATE_REPORT_ALERT_EMAIL_TEMPLATE } from "@/lib/corporate-report-email-template";
 export { CORPORATE_REPORT_ALERT_EMAIL_TEMPLATE } from "@/lib/corporate-report-email-template";
@@ -166,7 +167,7 @@ async function markDelivery(
   options: { error?: string; providerId?: string } = {}
 ) {
   const retry = status === "retry";
-  await db.update(emailLogs).set({
+  const updated = await db.update(emailLogs).set({
     status,
     deliveryError: options.error ?? null,
     providerMessageId: options.providerId ?? null,
@@ -178,7 +179,18 @@ async function markDelivery(
     eq(emailLogs.id, job.id),
     eq(emailLogs.status, "sending"),
     eq(emailLogs.attemptCount, job.attemptCount)
-  ));
+  )).returning({ id: emailLogs.id });
+
+  if (updated.length && status === "sent" && options.providerId) {
+    try {
+      await replayResendCorporateDeliveryForProvider(options.providerId, now);
+    } catch {
+      // Provider acceptance has already been committed. Never convert it to
+      // a retry, which could duplicate a delivered email. The hourly recovery
+      // processor will reconcile the durable journal on its next pass.
+      console.error("Corporate report delivery event replay deferred", { id: job.id });
+    }
+  }
 }
 
 async function sendClaimedEmail(job: ClaimedEmail, now: Date) {
