@@ -155,7 +155,7 @@ export default async function CorporateReportsPage({ searchParams }: ReportsPage
           ))}
         </div>
         <p className="mt-3 text-xs text-ocean-900/55">
-          Email counts cover the reports shown for this program. Provider accepted means Resend accepted the send request; delivered means the recipient's mail server accepted it, not that someone read it.
+          Email counts cover the reports shown for this program. Provider accepted means Resend accepted the send request; delivered means the receiving mail server accepted it, not that someone read it.
         </p>
         {executionMonitor.summary.needAttention > 0 ? (
           <p className="mt-3 text-sm text-coral-700">
