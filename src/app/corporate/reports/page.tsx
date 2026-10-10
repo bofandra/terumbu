@@ -70,7 +70,7 @@ export default async function CorporateReportsPage({ searchParams }: ReportsPage
   const reports = data.exports;
   const executionMonitor = canAdmin
     ? await getCorporateReportExecutionMonitor(user.id, data.program.programId, reports)
-    : { byReportId: {}, summary: { scheduled: 0, awaitingGeneration: 0, needAttention: 0, alertEmailPending: 0, alertEmailFailed: 0, alertEmailAccepted: 0 } };
+    : { byReportId: {}, summary: { scheduled: 0, awaitingGeneration: 0, needAttention: 0, alertEmailPending: 0, alertEmailFailed: 0, alertEmailAccepted: 0, alertEmailDelivered: 0, alertEmailDeliveryIssues: 0 } };
   const inReview = reports.filter((item) => item.status === "review").length;
   const published = reports.filter((item) => item.status === "published").length;
 
@@ -138,13 +138,15 @@ export default async function CorporateReportsPage({ searchParams }: ReportsPage
           <h2 className="text-lg font-bold text-ocean-900">PDF generation monitor</h2>
           <p className="text-xs text-ocean-900/60">Hourly automatic processing · Selected corporate program only</p>
         </div>
-        <div className="mt-3 grid gap-3 sm:grid-cols-3 lg:grid-cols-5">
+        <div className="mt-3 grid gap-3 sm:grid-cols-3 lg:grid-cols-4">
           {[
             { label: "Scheduled", value: executionMonitor.summary.scheduled },
             { label: "Due for generation", value: executionMonitor.summary.awaitingGeneration },
             { label: "Needs attention", value: executionMonitor.summary.needAttention },
             { label: "Alert emails pending", value: executionMonitor.summary.alertEmailPending },
-            { label: "Alert emails failed", value: executionMonitor.summary.alertEmailFailed }
+            { label: "Alert emails failed", value: executionMonitor.summary.alertEmailFailed },
+            { label: "Delivered to mail server", value: executionMonitor.summary.alertEmailDelivered },
+            { label: "Delivery problems", value: executionMonitor.summary.alertEmailDeliveryIssues }
           ].map((metric) => (
             <div key={metric.label} className="rounded-lg border border-ocean-900/10 p-3">
               <p className="text-xs font-semibold text-ocean-900/65">{metric.label}</p>
@@ -153,7 +155,7 @@ export default async function CorporateReportsPage({ searchParams }: ReportsPage
           ))}
         </div>
         <p className="mt-3 text-xs text-ocean-900/55">
-          Email counts cover the reports shown for this program. An accepted email means the provider received it, not that it reached an inbox.
+          Email counts cover the reports shown for this program. Provider accepted means Resend accepted the send request; delivered means the recipient's mail server accepted it, not that someone read it.
         </p>
         {executionMonitor.summary.needAttention > 0 ? (
           <p className="mt-3 text-sm text-coral-700">
@@ -271,9 +273,12 @@ export default async function CorporateReportsPage({ searchParams }: ReportsPage
                       <p className="mt-1">
                         Queued {executionMonitor.byReportId[report.id].alertEmails.queued} · Sending {executionMonitor.byReportId[report.id].alertEmails.sending}
                         {" · "}Retry {executionMonitor.byReportId[report.id].alertEmails.retry} · Provider accepted {executionMonitor.byReportId[report.id].alertEmails.accepted}
-                        {" · "}Failed {executionMonitor.byReportId[report.id].alertEmails.failed} · Cancelled {executionMonitor.byReportId[report.id].alertEmails.cancelled}
+                        {" · "}Delivered {executionMonitor.byReportId[report.id].alertEmails.delivered} · Delayed {executionMonitor.byReportId[report.id].alertEmails.delayed}
+                        {" · "}Bounced {executionMonitor.byReportId[report.id].alertEmails.bounced} · Complained {executionMonitor.byReportId[report.id].alertEmails.complained}
+                        {" · "}Provider failed {executionMonitor.byReportId[report.id].alertEmails.providerFailed} · Suppressed {executionMonitor.byReportId[report.id].alertEmails.suppressed}
+                        {" · "}Send failed {executionMonitor.byReportId[report.id].alertEmails.failed} · Cancelled {executionMonitor.byReportId[report.id].alertEmails.cancelled}
                       </p>
-                      <p className="mt-1 text-ocean-900/55">Provider accepted does not confirm inbox delivery. Cancelled alerts need no further action.</p>
+                      <p className="mt-1 text-ocean-900/55">Provider accepted does not confirm inbox delivery. Delivered means accepted by the recipient mail server, not opened or read. Cancelled alerts need no further action.</p>
                     </div>
                   ) : null}
                   {executionMonitor.byReportId[report.id].events.length > 0 ? (
