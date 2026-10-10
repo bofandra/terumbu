@@ -1654,6 +1654,19 @@ export const emailLogs = pgTable("email_logs", {
   outboxQueueIdx: index("email_logs_outbox_queue_idx").on(table.template, table.status, table.nextRetryAt)
 }));
 
+/** Signed Resend delivery event journal (no email addresses or raw provider payload). */
+export const resendWebhookEvents = pgTable("resend_webhook_events", {
+  eventId: varchar("event_id", { length: 256 }).primaryKey(),
+  providerMessageId: varchar("provider_message_id", { length: 255 }).notNull(),
+  eventType: varchar("event_type", { length: 80 }).notNull(),
+  eventAt: timestamp("event_at", { withTimezone: true }).notNull(),
+  receivedAt: timestamp("received_at", { withTimezone: true }).defaultNow().notNull(),
+  appliedAt: timestamp("applied_at", { withTimezone: true })
+}, (table) => ({
+  providerIdx: index("resend_webhook_events_provider_idx").on(table.providerMessageId, table.eventAt),
+  retentionIdx: index("resend_webhook_events_retention_idx").on(table.receivedAt)
+}));
+
 export const adminAuditLogs = pgTable("admin_audit_logs", {
   id: uuid("id").defaultRandom().primaryKey(),
   actorUserId: uuid("actor_user_id").references(() => users.id, { onDelete: "set null" }),
