@@ -1,12 +1,14 @@
-import { and, desc, eq, inArray } from "drizzle-orm";
+import { and, desc, eq, inArray, sql } from "drizzle-orm";
 
 import { db } from "@/db/client";
 import {
   adminAuditLogs,
   corporatePermissions,
   corporatePrograms,
-  corporateReportExports
+  corporateReportExports,
+  emailLogs
 } from "@/db/schema";
+import { CORPORATE_REPORT_ALERT_EMAIL_TEMPLATE } from "@/lib/corporate-report-alert-email";
 
 type ReportRow = {
   id: string;
@@ -14,6 +16,32 @@ type ReportRow = {
   metadata: unknown;
   scheduledFor: Date | null;
 };
+
+export type CorporateReportEmailState = {
+  queued: number;
+  sending: number;
+  retry: number;
+  accepted: number;
+  failed: number;
+  cancelled: number;
+  total: number;
+};
+
+/** Provider acceptance is not confirmed delivery to the recipient's inbox. */
+export function summarizeCorporateReportEmailStatuses(rows: Array<{ status: string; count: number }>): CorporateReportEmailState {
+  const summary: CorporateReportEmailState = {
+    queued: 0, sending: 0, retry: 0, accepted: 0, failed: 0, cancelled: 0, total: 0
+  };
+  for (const row of rows) {
+    if (!Number.isSafeInteger(row.count) || row.count <= 0) continue;
+    const key = row.status === "sent" ? "accepted" : row.status;
+    if (key !== "queued" && key !== "sending" && key !== "retry" &&
+      key !== "accepted" && key !== "failed" && key !== "cancelled") continue;
+    summary[key] += row.count;
+    summary.total += row.count;
+  }
+  return summary;
+}
 
 export type CorporateReportExecutionState = {
   statusLabel: string;
@@ -24,6 +52,7 @@ export type CorporateReportExecutionState = {
   lastFailure: string | null;
   lastFailedAt: Date | null;
   nextRetryAt: Date | null;
+  alertEmails: CorporateReportEmailState;
   events: Array<{
     id: string;
     label: string;
@@ -90,6 +119,7 @@ export function corporateReportExecutionState(report: ReportRow, now: Date): Cor
     lastFailure: count > 0 ? corporateReportFailureDescription(metadata.scheduleLastFailure) : null,
     lastFailedAt,
     nextRetryAt: scheduled && count > 0 ? nextRetryAt : null,
+    alertEmails: summarizeCorporateReportEmailStatuses([]),
     events: []
   };
 }
@@ -113,7 +143,7 @@ export async function getCorporateReportExecutionMonitor(
   reports: ReportRow[],
   now = new Date()
 ) {
-  const zeroSummary = { scheduled: 0, awaitingGeneration: 0, needAttention: 0 };
+  const zeroSummary = { scheduled: 0, awaitingGeneration: 0, needAttention: 0, alertEmailPending: 0, alertEmailFailed: 0, alertEmailAccepted: 0 };
   if (reports.length === 0) return { byReportId: {}, summary: zeroSummary };
 
   const [authorized] = await db.select({ id: corporatePrograms.id })
@@ -174,13 +204,45 @@ export async function getCorporateReportExecutionMonitor(
     }
   }
 
+  // Only aggregate statuses; never expose recipient addresses or provider IDs.
+  // Both the export and the outbox payload must match the selected program.
+  const deliveryCounts = await db.select({
+    reportId: corporateReportExports.id,
+    status: emailLogs.status,
+    count: sql<number>`count(*)::int`
+  }).from(emailLogs)
+    .innerJoin(corporateReportExports,
+      sql`${emailLogs.payload}->>'reportId' = ${corporateReportExports.id}::text`)
+    .where(and(
+      eq(emailLogs.template, CORPORATE_REPORT_ALERT_EMAIL_TEMPLATE),
+      eq(corporateReportExports.programId, programId),
+      eq(sql<string>`${emailLogs.payload}->>'programId'`, programId),
+      inArray(corporateReportExports.id, reports.map((report) => report.id))
+    ))
+    .groupBy(corporateReportExports.id, emailLogs.status);
+
+  const deliveriesByReport = new Map<string, Array<{ status: string; count: number }>>();
+  for (const row of deliveryCounts) {
+    const existing = deliveriesByReport.get(row.reportId) ?? [];
+    existing.push({ status: row.status, count: row.count });
+    deliveriesByReport.set(row.reportId, existing);
+  }
+  for (const [reportId, deliveryRows] of deliveriesByReport) {
+    if (byReportId[reportId]) {
+      byReportId[reportId].alertEmails = summarizeCorporateReportEmailStatuses(deliveryRows);
+    }
+  }
+
   const states = Object.values(byReportId);
   return {
     byReportId,
     summary: {
       scheduled: states.filter((state) => state.scheduled).length,
       awaitingGeneration: states.filter((state) => state.due && !state.needsAttention).length,
-      needAttention: states.filter((state) => state.needsAttention).length
+      needAttention: states.filter((state) => state.needsAttention).length,
+      alertEmailPending: states.reduce((total, state) => total + state.alertEmails.queued + state.alertEmails.sending + state.alertEmails.retry, 0),
+      alertEmailFailed: states.reduce((total, state) => total + state.alertEmails.failed, 0),
+      alertEmailAccepted: states.reduce((total, state) => total + state.alertEmails.accepted, 0)
     }
   };
 }

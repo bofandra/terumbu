@@ -3,7 +3,8 @@ import test from "node:test";
 
 import {
   corporateReportExecutionState,
-  corporateReportFailureDescription
+  corporateReportFailureDescription,
+  summarizeCorporateReportEmailStatuses
 } from "../src/lib/corporate-report-execution-monitor";
 
 const now = new Date("2026-10-09T09:00:00.000Z");
@@ -66,4 +67,20 @@ test("malformed metadata is handled without disclosing arbitrary error text", ()
   assert.equal(state.nextRetryAt, null);
   assert.equal(corporateReportFailureDescription("<untrusted stack trace>"), "The scheduled report could not be generated.");
   assert.equal(corporateReportExecutionState(report("scheduled", []), now).failureCount, 0);
+});
+
+test("alert email summary distinguishes provider acceptance, retries and terminal failures", () => {
+  assert.deepEqual(summarizeCorporateReportEmailStatuses([
+    { status: "queued", count: 2 },
+    { status: "sending", count: 1 },
+    { status: "retry", count: 3 },
+    { status: "sent", count: 4 },
+    { status: "failed", count: 1 },
+    { status: "cancelled", count: 2 },
+    { status: "unexpected", count: 10 },
+    { status: "failed", count: -1 }
+  ]), {
+    queued: 2, sending: 1, retry: 3, accepted: 4, failed: 1, cancelled: 2, total: 13
+  });
+  assert.equal(corporateReportExecutionState(report("scheduled", null), now).alertEmails.total, 0);
 });
