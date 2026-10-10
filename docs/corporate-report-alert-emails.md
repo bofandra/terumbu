@@ -97,8 +97,33 @@ invalid/suppressed addresses. An operator should investigate the provider
 dashboard, validate the address and permission, and only then consider
 a separately authorized manual remediation process.
 
-**Limitations:** An unusually early provider webhook that arrives before the
-provider ID has been committed to the outbox is acknowledged but not linked;
-this release does not implement a separate durable provider-event journal.
-This is a record of the provider's mail-server events, not proof of inbox
-placement or user engagement.
+## Early webhook recovery and retention (migration 0040)
+
+Migration `0040_resend_webhook_event_journal` adds
+`resend_webhook_events`, a small, private database journal containing only
+the signed `svix-id` event ID, provider message ID, event type, timestamps
+and whether the event was processed. It stores **no** addresses, recipients,
+raw webhook bodies, error descriptions or API credentials.
+
+- Webhook handling first verifies the original raw-body Svix signature and
+  timestamp, then transactionally records the event with `svix-id` as a
+  unique key. A duplicate event is acknowledged but cannot be applied twice.
+- If the email is already accepted by Resend, the same transaction applies
+  the latest event using its provider ID and event timestamp.
+- If the event arrives while its email remains `sending`, the journal
+  retains the event. Immediately after the send worker saves the accepted
+  provider ID, it replays the most recent matching event. Any interruption
+  in that inline reconciliation is recovered by the authenticated hourly
+  corporate report cron, with a maximum of 200 matching pending events per
+  pass. Unknown provider IDs are not reprocessed in a tight loop.
+- Cron also removes up to 200 journal entries per invocation once they are
+  older than **72 hours**. This keeps storage bounded while exceeding the
+  23-hour at-most-once send retry window. Events outside this retention
+  period are not guaranteed to be recoverable. A sufficiently large
+  backlog can require multiple hourly cleanup passes.
+- Original send retry and permission checks remain unchanged. Webhook
+  delivery problems **never** trigger an automatic resend.
+
+The production service must apply migration 0040 before enabling this version.
+The status remains a record of mail-server outcomes, **not** proof of inbox
+placement, opening, or reading.
