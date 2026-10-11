@@ -66,3 +66,24 @@ test("hourly worker invokes authenticated corporate report generation", () => {
   assert.match(cronRoute, /status: 503/);
   assert.match(cronRoute, /status: 500/);
 });
+
+test("post-deploy external worker watch runs independently after successful production deployment", () => {
+  const workflow = read(".github/workflows/deploy.yml");
+  const scheduled = read(".github/workflows/worker-health-watch.yml");
+  const script = read("scripts/monitor-worker-heartbeats.mjs");
+
+  const postDeploy = workflow.split("  external_worker_watch:")[1];
+  assert.ok(postDeploy, "post-deploy monitor job must exist");
+  assert.match(postDeploy, /needs: \[deploy\]/);
+  assert.match(postDeploy, /if: github\.ref == 'refs\/heads\/main'/);
+  assert.match(postDeploy, /group: terumbu-external-worker-watch/);
+  assert.match(postDeploy, /issues: write/);
+  assert.match(postDeploy, /MONITOR_ASSIGNEE:/);
+  assert.match(postDeploy, /node scripts\/monitor-worker-heartbeats\.mjs/);
+  assert.doesNotMatch(postDeploy, /(?:CRON_SECRET|DATABASE_URL|VPS_SSH_KEY)/);
+
+  assert.match(scheduled, /group: terumbu-external-worker-watch/);
+  assert.match(scheduled, /MONITOR_ASSIGNEE:/);
+  assert.match(scheduled, /issues: write/);
+  assert.match(script, /assignees: \[assignee\]/);
+});
