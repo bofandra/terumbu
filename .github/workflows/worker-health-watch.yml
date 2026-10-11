@@ -23,6 +23,7 @@ jobs:
     timeout-minutes: 5
     env:
       MONITOR_BASE_URL: ${{ vars.MONITOR_BASE_URL || vars.NEXT_PUBLIC_APP_URL || 'https://terumbu.world' }}
+      MONITOR_ASSIGNEE: ${{ vars.MONITOR_ASSIGNEE || github.repository_owner }}
       GITHUB_TOKEN: ${{ github.token }}
     steps:
       - name: Checkout
