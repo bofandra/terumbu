@@ -87,3 +87,20 @@ test("post-deploy external worker watch runs independently after successful prod
   assert.match(scheduled, /issues: write/);
   assert.match(script, /assignees: \[assignee\]/);
 });
+ 
+test("recreated hourly worker probes readiness and runs both crons before its initial one-hour sleep", () => {
+  const compose = read("deploy/docker-compose.yml");
+  const workerSection = compose.split("  reminder-worker:")[1]?.split("\n  migrate:")[0];
+  assert.ok(workerSection, "reminder-worker definition must exist");
+  assert.match(workerSection, /until curl --fail --silent --max-time 5 http:\/\/web:3000\/api\/health/);
+  assert.match(workerSection, /sleep 5/);
+  const reminder = workerSection.indexOf("http://web:3000/api/cron/expedition-reminders");
+  const corporate = workerSection.indexOf("http://web:3000/api/cron/corporate-reports");
+  const hourlySleep = workerSection.indexOf("sleep 3600");
+  assert.ok(reminder > 0 && corporate > reminder && hourlySleep > corporate,
+    "first hourly sleep must come only after both cron endpoints were invoked");
+  assert.equal(workerSection.match(/sleep 3600/g)?.length, 1);
+  assert.match(workerSection, /x-cron-secret: \$\$\{CRON_SECRET\}/);
+  assert.match(read("scripts/deploy-vps.sh"), /--force-recreate web reminder-worker/,
+    "preserve required secret rotation behavior while preventing restart starvation");
+});
