@@ -29,3 +29,9 @@ Use this account to review platform operations: campaign oversight, expedition m
 ## Operations dashboard
 
 The admin-only `/admin/operations` page summarizes corporate PDF schedules, failure-alert email outbox and signed Resend delivery events. Results are global aggregate counts; it intentionally excludes personal identifiers and raw payloads. Overdue means at least two hours after the scheduled time; email backlog ignores retries that are not yet due. An empty alert list does not prove that the hourly worker or external Resend webhooks are running; check the deployment scheduler and provider separately. No manual sending or publishing is offered on this dashboard.
+
+### Durable hourly worker heartbeat
+
+The Operations dashboard now shows the persisted last invocation of both authenticated hourly endpoints: `corporate_reports` and `expedition_reminders`. Each run saves start/finish times, success/failure, the latest successful and failed timestamps, and consecutive failed cycles in the `worker_heartbeats` PostgreSQL table. An invocation older than **150 minutes**, two or more consecutive failures, or a missing record appears in the dashboard's attention list. A single failure is displayed as degraded. A new deployment can display "not observed" until the first normal hourly run.
+
+Heartbeat alerts are **evaluated when the admin opens or refreshes** `/admin/operations`; no independent external alert delivery, SMS, or email heartbeat watchdog is configured by this change. A stopped scheduler cannot send its own warning. For proactive out-of-band notifications, configure a separate external monitor. These records do not prove the Resend provider subscription is correctly registered.

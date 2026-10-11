@@ -1676,3 +1676,16 @@ export const adminAuditLogs = pgTable("admin_audit_logs", {
   metadata: jsonb("metadata"),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull()
 });
+
+/** One durable heartbeat per authenticated hourly scheduler endpoint. */
+export const workerHeartbeats = pgTable("worker_heartbeats", {
+  workerName: varchar("worker_name", { length: 80 }).primaryKey(),
+  runId: uuid("run_id").notNull(),
+  lastStartedAt: timestamp("last_started_at", { withTimezone: true }).notNull(),
+  lastFinishedAt: timestamp("last_finished_at", { withTimezone: true }),
+  lastSucceededAt: timestamp("last_succeeded_at", { withTimezone: true }),
+  lastFailedAt: timestamp("last_failed_at", { withTimezone: true }),
+  lastStatus: varchar("last_status", { length: 16 }).notNull(),
+  consecutiveFailures: integer("consecutive_failures").default(0).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull()
+});

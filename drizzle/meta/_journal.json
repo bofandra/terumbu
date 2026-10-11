@@ -288,6 +288,13 @@
       "when": 1791663600000,
       "tag": "0040_resend_webhook_event_journal",
       "breakpoints": true
+    },
+    {
+      "idx": 41,
+      "version": "7",
+      "when": 1791749400000,
+      "tag": "0041_worker_heartbeats",
+      "breakpoints": true
     }
   ]
 }

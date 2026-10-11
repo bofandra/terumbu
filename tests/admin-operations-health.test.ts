@@ -8,6 +8,7 @@ const now = new Date("2026-10-11T12:00:00.000Z");
 function snapshot(): AdminOperationsMetrics {
   return {
     checkedAt: now,
+    workers: [],
     reports: { scheduled: 0, due: 0, overdue: 0, retrying: 0, lastScheduledGenerationAt: null },
     emails: {
       queued: 0, sending: 0, retry: 0, failed: 0, accepted: 0,
@@ -60,4 +61,17 @@ test("invalid and zero threshold values do not create alerts", () => {
   data.emails.failed = -1;
   data.webhook.stalePending = 0;
   assert.equal(adminOperationsAlerts(data).length, 0);
+});
+
+test("worker health flags missing, stale, and consecutive failed invocations", () => {
+  const data = snapshot();
+  data.workers = [
+    { name: "corporate_reports", health: "stale", consecutiveFailures: 0, lastStartedAt: now, lastFinishedAt: null, lastSucceededAt: null, lastFailedAt: null },
+    { name: "expedition_reminders", health: "failing", consecutiveFailures: 3, lastStartedAt: now, lastFinishedAt: now, lastSucceededAt: null, lastFailedAt: now }
+  ];
+  assert.deepEqual(adminOperationsAlerts(data).slice(0, 2).map((alert) => [alert.key, alert.count]), [
+    ["corporate_reports-stale", 1], ["expedition_reminders-failing", 3]
+  ]);
+  data.workers[0].health = "not_observed";
+  assert.equal(adminOperationsAlerts(data)[0].key, "corporate_reports-unobserved");
 });

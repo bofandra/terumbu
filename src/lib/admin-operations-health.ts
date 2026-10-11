@@ -1,4 +1,17 @@
+import type { HourlyWorkerName, WorkerHealth } from "@/lib/worker-heartbeat";
+
+export type AdminWorkerMetrics = {
+  name: HourlyWorkerName;
+  health: WorkerHealth;
+  consecutiveFailures: number;
+  lastStartedAt: Date | null;
+  lastFinishedAt: Date | null;
+  lastSucceededAt: Date | null;
+  lastFailedAt: Date | null;
+};
+
 export type AdminOperationsMetrics = {
+  workers: AdminWorkerMetrics[];
   checkedAt: Date;
   reports: {
     scheduled: number;
@@ -38,6 +51,19 @@ export function adminOperationsAlerts(metrics: AdminOperationsMetrics): AdminOpe
   const alerts: AdminOperationsAlert[] = [];
   function add(key: string, label: string, count: number, detail: string) {
     if (Number.isSafeInteger(count) && count > 0) alerts.push({ key, label, count, detail });
+  }
+  for (const worker of metrics.workers) {
+    const name = worker.name === "corporate_reports" ? "Corporate reports" : "Expedition reminders";
+    if (worker.health === "not_observed") {
+      add(worker.name + "-unobserved", name + ": no heartbeat recorded", 1,
+        "No authenticated worker execution has been recorded yet. Verify the scheduler after deployment.");
+    } else if (worker.health === "stale") {
+      add(worker.name + "-stale", name + ": missed heartbeat", 1,
+        "No new worker invocation for more than 150 minutes. Check the container and scheduler logs.");
+    } else if (worker.health === "failing") {
+      add(worker.name + "-failing", name + ": repeated failures", worker.consecutiveFailures,
+        "Two or more consecutive worker cycles failed. Review dependencies and the last recorded failure.");
+    }
   }
   add("overdue-reports", "Overdue scheduled PDFs", metrics.reports.overdue,
     "Scheduled at least 2 hours ago and not generated.");

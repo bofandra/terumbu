@@ -1,21 +1,22 @@
-import { eq, sql } from "drizzle-orm";
+import { eq, inArray, sql } from "drizzle-orm";
 
 import { db } from "@/db/client";
-import { corporateReportExports, emailLogs, resendWebhookEvents } from "@/db/schema";
+import { corporateReportExports, emailLogs, resendWebhookEvents, workerHeartbeats } from "@/db/schema";
 import { CORPORATE_REPORT_ALERT_EMAIL_TEMPLATE } from "@/lib/corporate-report-email-template";
 import type { AdminOperationsMetrics } from "@/lib/admin-operations-health";
+import { HOURLY_WORKERS, workerHeartbeatHealth, type WorkerHeartbeatRow } from "@/lib/worker-heartbeat";
 
 /**
  * Platform-admin-only caller. Aggregate in Postgres and never select email
  * addresses, payloads, message IDs or other personal/provider identifiers.
- * This is a database snapshot, not a cron heartbeat or an inbox-delivery SLA.
+ * Heartbeat status is stored durably, but this is not an inbox-delivery SLA.
  */
 export async function getAdminOperationsMetrics(now = new Date()): Promise<AdminOperationsMetrics> {
   // Raw SQL parameters must be timestamp strings: Drizzle column encoders do not
   // run for values interpolated directly inside sql templates.
   const nowIso = now.toISOString();
   const olderThanTwoHoursIso = new Date(now.getTime() - 2 * 60 * 60 * 1000).toISOString();
-  const [[reports], [emails], [webhook]] = await Promise.all([
+  const [[reports], [emails], [webhook], heartbeatRows] = await Promise.all([
     db.select({
       scheduled: sql<number>`count(*) filter (where ${corporateReportExports.status} = 'scheduled')::int`,
       due: sql<number>`count(*) filter (where ${corporateReportExports.status} = 'scheduled' and ${corporateReportExports.scheduledFor} <= ${nowIso}::timestamptz)::int`,
@@ -44,11 +45,33 @@ export async function getAdminOperationsMetrics(now = new Date()): Promise<Admin
       lastReceivedAt: sql<Date | null>`max(${resendWebhookEvents.receivedAt})`
     }).from(resendWebhookEvents)
       .innerJoin(emailLogs, eq(emailLogs.providerMessageId, resendWebhookEvents.providerMessageId))
-      .where(eq(emailLogs.template, CORPORATE_REPORT_ALERT_EMAIL_TEMPLATE))
+      .where(eq(emailLogs.template, CORPORATE_REPORT_ALERT_EMAIL_TEMPLATE)),
+    db.select({
+      workerName: workerHeartbeats.workerName,
+      lastStatus: workerHeartbeats.lastStatus,
+      lastStartedAt: workerHeartbeats.lastStartedAt,
+      lastFinishedAt: workerHeartbeats.lastFinishedAt,
+      lastSucceededAt: workerHeartbeats.lastSucceededAt,
+      lastFailedAt: workerHeartbeats.lastFailedAt,
+      consecutiveFailures: workerHeartbeats.consecutiveFailures
+    }).from(workerHeartbeats).where(inArray(workerHeartbeats.workerName, [...HOURLY_WORKERS]))
   ]);
 
   return {
     checkedAt: now,
+    workers: HOURLY_WORKERS.map((name) => {
+      const row = heartbeatRows.find((item) => item.workerName === name);
+      const heartbeat = row ? { ...row, workerName: name } satisfies WorkerHeartbeatRow : null;
+      return {
+        name,
+        health: workerHeartbeatHealth(heartbeat, now),
+        consecutiveFailures: heartbeat?.consecutiveFailures ?? 0,
+        lastStartedAt: heartbeat?.lastStartedAt ?? null,
+        lastFinishedAt: heartbeat?.lastFinishedAt ?? null,
+        lastSucceededAt: heartbeat?.lastSucceededAt ?? null,
+        lastFailedAt: heartbeat?.lastFailedAt ?? null
+      };
+    }),
     reports: {
       scheduled: reports.scheduled,
       due: reports.due,

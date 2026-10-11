@@ -155,3 +155,7 @@ reconciliation failures do not block the event-journal retention pass.
 - Authentication still requires `CRON_SECRET`. This change does not create
   a public diagnostic endpoint or an automatic email resend mechanism.
 
+
+## Durable worker heartbeat monitoring
+
+The authenticated corporate report worker now writes a start and completion record to `worker_heartbeats` for every execution. Any partial cron failure records a failed cycle, despite the successful independent stages; all-successful cycles clear the consecutive-failure counter. The expedition reminder endpoint writes an independent heartbeat. Per-run fencing UUIDs prevent late finishes of overlapping invocations from replacing the latest recorded result. In the admin-only Operations dashboard, a missing heartbeat, last start older than 150 minutes, or at least two consecutive failures produces an attention alert. These alerts are visible on dashboard refresh, not delivered independently if the scheduler itself has stopped. Monitor worker container and external delivery separately.
