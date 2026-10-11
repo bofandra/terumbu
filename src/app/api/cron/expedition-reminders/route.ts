@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { processDueExpeditionReminders } from "@/lib/expedition-reminders";
+import { runWithWorkerHeartbeat } from "@/lib/worker-heartbeat";
 
 export const dynamic = "force-dynamic";
 
@@ -23,6 +24,12 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const result = await processDueExpeditionReminders();
-  return NextResponse.json({ ok: true, ...result });
+  try {
+    const result = await runWithWorkerHeartbeat("expedition_reminders", processDueExpeditionReminders);
+    return NextResponse.json({ ok: true, ...result }, { headers: { "Cache-Control": "no-store" } });
+  } catch {
+    console.error("Expedition reminder worker unable to complete heartbeat or cycle");
+    return NextResponse.json({ error: "Expedition reminder scheduler unavailable." },
+      { status: 500, headers: { "Cache-Control": "no-store" } });
+  }
 }
