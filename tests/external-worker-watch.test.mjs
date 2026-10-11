@@ -70,6 +70,7 @@ test("outage opens one safe issue, repeat checks dedupe, and recovery closes it"
     if (endpoint.pathname.endsWith("/issues") && options.method === "POST") {
       const body = JSON.parse(options.body);
       assert.equal(body.title, INCIDENT_TITLE);
+      assert.deepEqual(body.assignees, ["bofandra"]);
       assert.match(body.body, /http_503/);
       assert.match(body.body, /Check the authenticated Admin/);
       assert.doesNotMatch(body.body, /secret|credentials|private database payload/i);
@@ -89,7 +90,7 @@ test("outage opens one safe issue, repeat checks dedupe, and recovery closes it"
     }
     throw new Error("Unexpected test API call " + endpoint.pathname);
   };
-  const options = { fetchImpl, githubToken: token, repo: "bofandra/terumbu" };
+  const options = { fetchImpl, githubToken: token, repo: "bofandra/terumbu", assignee: "bofandra" };
   assert.deepEqual(await syncWorkerIncident({
     ...options,
     health: { healthy: false, reason: "http_503" }
@@ -103,6 +104,13 @@ test("outage opens one safe issue, repeat checks dedupe, and recovery closes it"
     health: { healthy: true, reason: "healthy" }
   }), { action: "recovered", count: 1 });
   assert.deepEqual(actions, ["opened", "closed"]);
+});
+
+test("GitHub issues sync rejects invalid incident assignees before any network call", async () => {
+  await assert.rejects(syncWorkerIncident({
+    repo: "bofandra/terumbu", githubToken: "test", health: { healthy: false },
+    assignee: "not a GitHub login"
+  }), /Invalid monitoring issue assignee/);
 });
 
 test("GitHub issues sync fails safely when API fails or no token is configured", async () => {
