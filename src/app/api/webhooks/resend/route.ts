@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
+import { readBoundedRequestBody, RequestBodyTooLargeError } from "@/lib/read-bounded-request-body";
 import {
   parseResendCorporateDeliveryEvent,
   recordResendCorporateDelivery,
@@ -23,12 +24,13 @@ export async function POST(request: NextRequest) {
 
   let rawBody: string;
   try {
-    rawBody = await request.text();
-  } catch {
+    // Apply the limit while reading: Content-Length can be absent or misleading.
+    rawBody = await readBoundedRequestBody(request.body, MAX_PAYLOAD_BYTES);
+  } catch (error) {
+    if (error instanceof RequestBodyTooLargeError) {
+      return NextResponse.json({ error: "Payload too large." }, { status: 413 });
+    }
     return NextResponse.json({ error: "Unable to read payload." }, { status: 400 });
-  }
-  if (Buffer.byteLength(rawBody, "utf8") > MAX_PAYLOAD_BYTES) {
-    return NextResponse.json({ error: "Payload too large." }, { status: 413 });
   }
   if (!verifyResendCorporateWebhook(rawBody, request.headers, secret)) {
     return NextResponse.json({ error: "Invalid webhook signature." }, { status: 401 });
