@@ -4,6 +4,8 @@ import { DonationAmountFields } from "@/components/donation-amount-fields";
 import { Button, ButtonLink } from "@/components/ui/button";
 import { getSessionUser } from "@/lib/auth";
 import { createDonationAction } from "@/lib/checkout-actions";
+import { createMidtransDonationAction } from "@/lib/midtrans-donation-actions";
+import { midtransConfiguration } from "@/lib/midtrans";
 import { normalizeDonationContributionIntent, parseDonationAmount } from "@/lib/checkout";
 import { suggestedDonationAmounts } from "@/lib/domain";
 import { getDonationPaymentInstructions } from "@/lib/donation-payment-instructions";
@@ -36,6 +38,7 @@ export default async function DonationCheckoutPage({ searchParams }: DonationChe
   const selectedCampaign = params?.campaign ?? campaigns[0]?.slug;
   const selectedCampaignData = campaigns.find((campaign) => campaign.slug === selectedCampaign) ?? campaigns[0];
   const selectedCurrency = selectedCampaignData?.currency ?? "USD";
+  const midtransEnabled = Boolean(midtransConfiguration()) && selectedCurrency.toUpperCase() === "IDR";
   const donationAmounts = selectedCampaignData ? suggestedDonationAmounts(selectedCampaignData.goal, selectedCurrency) : [];
   const requestedAmount = parseDonationAmount(params?.amount);
   const hasRequestedPresetAmount = donationAmounts.includes(requestedAmount);
@@ -74,6 +77,10 @@ export default async function DonationCheckoutPage({ searchParams }: DonationChe
           paymentReferencePlaceholder: "Referensi transfer, nama rekening, atau catatan (opsional)",
           paymentProof: "Bukti pembayaran",
           submit: "Kirim bukti pembayaran",
+          payOnline: "Bayar online melalui Midtrans",
+          paymentOnlineHint: "Pembayaran online hanya untuk donasi IDR. Status donasi dikonfirmasi melalui notifikasi resmi Midtrans, bukan halaman redirect.",
+          paymentProofOnlineHint: "Hanya diperlukan jika memilih pembayaran manual.",
+          errorGateway: "Pembayaran online belum dapat dimulai. Silakan coba checkout baru nanti atau gunakan pembayaran manual.",
           errorProof: "Unggah bukti pembayaran berupa JPG, PNG, WebP, atau GIF dengan ukuran maksimal 1.5 MB.",
           errorCampaign: "Pilih kampanye aktif sebelum melanjutkan.",
           errorGeneric: "Periksa kampanye, nominal, nama, email, dan bukti pembayaran sebelum melanjutkan."
@@ -106,13 +113,19 @@ export default async function DonationCheckoutPage({ searchParams }: DonationChe
           paymentReferencePlaceholder: "Optional transfer reference, account name, or note",
           paymentProof: "Payment proof",
           submit: "Submit payment proof",
+          payOnline: "Pay online with Midtrans",
+          paymentOnlineHint: "Online payments are available for IDR donations. Donations are confirmed by signed Midtrans notifications, not browser redirects.",
+          paymentProofOnlineHint: "Only required when choosing manual payment.",
+          errorGateway: "Online payment could not be started. Please create a fresh checkout later or use manual payment.",
           errorProof: "Upload payment proof as JPG, PNG, WebP, or GIF up to 1.5 MB.",
           errorCampaign: "Choose an active campaign before continuing.",
           errorGeneric: "Check the campaign, amount, name, email, and payment proof before continuing."
         };
 
   const errorMessage =
-    params?.error === "payment_proof"
+    params?.error === "gateway"
+      ? labels.errorGateway
+      : params?.error === "payment_proof"
       ? labels.errorProof
       : params?.error === "campaign"
         ? labels.errorCampaign
@@ -225,10 +238,19 @@ export default async function DonationCheckoutPage({ searchParams }: DonationChe
               type="file"
               accept="image/jpeg,image/png,image/webp,image/gif"
               className="w-full min-w-0 rounded-xl border border-ocean-900/14 bg-white px-4 py-3 text-sm outline-none file:mr-4 file:rounded-full file:border-0 file:bg-ocean-900 file:px-4 file:py-2 file:text-sm file:font-bold file:text-white focus:border-coral-500"
-              required
+              required={!midtransEnabled}
             />
+            {midtransEnabled ? <span className="text-xs font-normal text-ocean-900/60">{labels.paymentProofOnlineHint}</span> : null}
           </label>
 
+          {midtransEnabled ? (
+            <div className="grid gap-2 rounded-xl border border-kelp-500/20 bg-kelp-100/60 p-4">
+              <p className="text-xs leading-5 text-ocean-900/68">{labels.paymentOnlineHint}</p>
+              <button type="submit" formAction={createMidtransDonationAction} className="min-h-11 rounded-xl bg-kelp-700 px-4 py-3 text-sm font-bold text-white hover:bg-kelp-800">
+                {labels.payOnline}
+              </button>
+            </div>
+          ) : null}
           <Button type="submit" disabled={!paymentInstructions.enabled}>{labels.submit}</Button>
         </form>
       </section>
