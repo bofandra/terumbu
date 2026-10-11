@@ -4,7 +4,8 @@ import { AnalyticsEvent } from "@/components/analytics-event";
 import { Button, ButtonLink } from "@/components/ui/button";
 import { getSessionUser } from "@/lib/auth";
 import { secondaryPriceLabel } from "@/lib/currency-display";
-import { bookExpeditionAction } from "@/lib/checkout-actions";
+import { bookExpeditionAction, bookMidtransExpeditionAction } from "@/lib/checkout-actions";
+import { midtransConfiguration } from "@/lib/midtrans";
 import { getExpeditionCheckoutOptions, getUserCorporateAttributionOptions } from "@/lib/queries";
 import { getPreferredDisplayCurrency, getPreferredLocale, localeTag } from "@/lib/user-preferences";
 import { formatCurrency } from "@/lib/utils";
@@ -39,6 +40,8 @@ export default async function ExpeditionCheckoutPage({ searchParams }: Expeditio
   const visibleOptions = filteredOptions.length > 0 ? filteredOptions : options;
   const selectedDeparture = params?.departure ?? visibleOptions[0]?.departureId;
   const selectedOption = visibleOptions.find((option) => option.departureId === selectedDeparture) ?? visibleOptions[0] ?? null;
+  const midtransAvailable = Boolean(midtransConfiguration()) && process.env.MIDTRANS_EXPEDITION_ENABLED === "true" &&
+    visibleOptions.some((option) => option.currency.toUpperCase() === "IDR");
   const selectedParticipants = Math.max(1, Math.min(12, Number(params?.participants ?? 1) || 1));
   const idempotencyKey = `expedition-${randomBytes(12).toString("hex")}`;
   const labels =
@@ -95,7 +98,10 @@ export default async function ExpeditionCheckoutPage({ searchParams }: Expeditio
           paymentReference: "Referensi pembayaran",
           paymentReferencePlaceholder: "Bank / referensi transfer",
           paymentProof: "Bukti pembayaran",
-          submit: "Kirim booking untuk verifikasi"
+          submit: "Kirim booking untuk verifikasi",
+          payOnline: "Bayar ekspedisi via Midtrans",
+          onlineHelp: "Pilihan online hanya tersedia untuk keberangkatan berdenominasi IDR. Pilih tanggal IDR jika ingin membayar online. Kursi dikonfirmasi setelah pembayaran diverifikasi dan kapasitas masih tersedia.",
+          gatewayError: "Pembayaran online belum dapat dimulai. Silakan coba lagi dari checkout baru atau gunakan pembayaran manual."
         }
       : {
           unavailable: "Booking unavailable",
@@ -149,7 +155,10 @@ export default async function ExpeditionCheckoutPage({ searchParams }: Expeditio
           paymentReference: "Payment reference",
           paymentReferencePlaceholder: "Bank / transfer reference",
           paymentProof: "Payment proof",
-          submit: "Submit Booking for Verification"
+          submit: "Submit Booking for Verification",
+          payOnline: "Pay for expedition with Midtrans",
+          onlineHelp: "Online payment only supports IDR departures. Select an IDR departure for online payment. Seats are confirmed only after verified settlement and an availability check.",
+          gatewayError: "Online payment could not be started. Please retry from a new checkout or choose manual transfer."
         };
 
   if (visibleOptions.length === 0) {
@@ -197,7 +206,9 @@ export default async function ExpeditionCheckoutPage({ searchParams }: Expeditio
         </div>
         {params?.error ? (
           <p className="mt-4 rounded-xl border border-coral-500/20 bg-coral-100 px-4 py-3 text-sm font-semibold text-coral-700">
-            {params.error === "availability"
+            {params.error === "gateway"
+              ? labels.gatewayError
+              : params.error === "availability"
               ? labels.errorAvailability
               : params.error === "learning_required"
                 ? labels.errorLearning
@@ -327,9 +338,15 @@ export default async function ExpeditionCheckoutPage({ searchParams }: Expeditio
             </label>
             <label className="grid min-w-0 gap-2 text-sm font-semibold text-ocean-900">
               {labels.paymentProof}
-              <input name="paymentProofFile" type="file" accept="image/jpeg,image/png,image/webp,image/gif" className="w-full min-w-0 rounded-xl border border-ocean-900/14 bg-white px-4 py-3 text-sm" required />
+              <input name="paymentProofFile" type="file" accept="image/jpeg,image/png,image/webp,image/gif" className="w-full min-w-0 rounded-xl border border-ocean-900/14 bg-white px-4 py-3 text-sm" required={!midtransAvailable} />
             </label>
           </section>
+          {midtransAvailable ? (
+            <div className="grid gap-2 rounded-xl border border-kelp-500/20 bg-kelp-100/60 p-4">
+              <p className="text-xs leading-5 text-ocean-900/70">{labels.onlineHelp}</p>
+              <button type="submit" formAction={bookMidtransExpeditionAction} className="min-h-11 rounded-xl bg-kelp-700 px-4 py-3 text-sm font-bold text-white hover:bg-kelp-800">{labels.payOnline}</button>
+            </div>
+          ) : null}
           <Button type="submit">{labels.submit}</Button>
         </form>
       </section>
