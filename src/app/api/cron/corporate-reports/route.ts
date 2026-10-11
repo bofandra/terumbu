@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { processDueCorporateReports } from "@/lib/corporate-report-automation";
 import { processCorporateReportAlertEmails } from "@/lib/corporate-report-alert-email";
+import { runCorporateCronStages } from "@/lib/corporate-cron-runner";
 import { pruneResendCorporateDeliveryEvents, reconcilePendingResendCorporateDeliveryEvents } from "@/lib/resend-corporate-webhook";
 
 export const dynamic = "force-dynamic";
@@ -19,15 +20,31 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  try {
-    const result = await processDueCorporateReports();
-    const emails = await processCorporateReportAlertEmails();
-    const deliveryEvents = await reconcilePendingResendCorporateDeliveryEvents();
-    const removedEvents = await pruneResendCorporateDeliveryEvents();
-    return NextResponse.json({ ok: true, ...result, emails, deliveryEvents, removedEvents },
-      { headers: { "Cache-Control": "no-store" } });
-  } catch (error) {
-    console.error("Corporate report scheduler failed", error);
-    return NextResponse.json({ error: "Corporate report scheduler unavailable." }, { status: 500 });
+  const result = await runCorporateCronStages({
+    reports: processDueCorporateReports,
+    emails: processCorporateReportAlertEmails,
+    deliveryEvents: reconcilePendingResendCorporateDeliveryEvents,
+    prune: pruneResendCorporateDeliveryEvents
+  }, (stage) => {
+    // Only emit the stage name; underlying DB/provider errors may contain secrets.
+    console.error("Corporate report cron stage failed", { stage });
+  });
+
+  if (!result.ok) {
+    // HTTP 500 remains visible to monitoring, even when other stages complete.
+    // Never return partial job results that could be mistaken for full success.
+    return NextResponse.json({
+      ok: false,
+      error: "Corporate report scheduler partially unavailable.",
+      stages: result.stages
+    }, { status: 500, headers: { "Cache-Control": "no-store" } });
   }
+
+  return NextResponse.json({
+    ok: true,
+    ...result.reports,
+    emails: result.emails,
+    deliveryEvents: result.deliveryEvents,
+    removedEvents: result.removedEvents
+  }, { headers: { "Cache-Control": "no-store" } });
 }

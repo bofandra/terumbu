@@ -50,9 +50,19 @@ test("production workflow rejects partially configured R2 storage", () => {
 test("hourly worker invokes authenticated corporate report generation", () => {
   const compose = read("deploy/docker-compose.yml");
   const cronRoute = read("src/app/api/cron/corporate-reports/route.ts");
+  const runner = read("src/lib/corporate-cron-runner.ts");
   assert.match(compose, /\/api\/cron\/corporate-reports/);
   assert.match(compose, /x-cron-secret: \$\$\{CRON_SECRET\}/);
-  assert.match(cronRoute, /processDueCorporateReports\(\)/);
+  assert.match(cronRoute, /runCorporateCronStages\(/);
+  assert.match(cronRoute, /reports: processDueCorporateReports/);
+  assert.match(cronRoute, /emails: processCorporateReportAlertEmails/);
+  assert.match(cronRoute, /deliveryEvents: reconcilePendingResendCorporateDeliveryEvents/);
+  assert.match(cronRoute, /prune: pruneResendCorporateDeliveryEvents/);
+  assert.match(runner, /await attempt\("reports", tasks\.reports/);
+  assert.match(runner, /await attempt\("emails", tasks\.emails/);
+  assert.match(runner, /await attempt\("deliveryEvents", tasks\.deliveryEvents/);
+  assert.match(runner, /await attempt\("prune", tasks\.prune/);
   assert.match(cronRoute, /status: 401/);
   assert.match(cronRoute, /status: 503/);
+  assert.match(cronRoute, /status: 500/);
 });
