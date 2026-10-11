@@ -155,9 +155,19 @@ export async function createMidtransDonationAction(formData: FormData) {
     status: "pending",
     payload: { ...providerPayload, redirectUrl, snapCreatedAt: new Date().toISOString() },
     updatedAt: new Date()
-  }).where(and(eq(paymentTransactions.provider, "midtrans"), eq(paymentTransactions.providerReference, orderId)))
-    .returning({ id: paymentTransactions.id });
+  }).where(and(
+    eq(paymentTransactions.provider, "midtrans"),
+    eq(paymentTransactions.providerReference, orderId),
+    eq(paymentTransactions.status, "created")
+  )).returning({ id: paymentTransactions.id });
   if (!updated.length) {
+    // A verified webhook can arrive before Snap responds; never regress a
+    // settled payment back to pending just to save its hosted URL.
+    const [latest] = await db.select({ status: donations.status })
+      .from(donations).where(eq(donations.id, inserted.id)).limit(1);
+    if (latest?.status === "paid") {
+      redirect("/checkout/success?type=donation&id=" + inserted.id + "&status=paid");
+    }
     console.error("Midtrans donation link was not persisted.");
     redirect(checkoutError("gateway"));
   }
