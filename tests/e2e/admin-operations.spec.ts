@@ -37,7 +37,7 @@ test("operations monitoring is admin-only and never leaks recipient/provider det
     const outsider = await outsiderContext.newPage();
     await loginAs(outsider, "user.demo@terumbu.eco", "/dashboard");
     await outsider.goto("/admin/operations");
-    await expect(outsider).toHaveURL(/\/access-denied\?next=/);
+    await expect(outsider).toHaveURL(/\/forbidden\?next=/);
     await expect(outsider.getByRole("heading", { name: "Operational health" })).toHaveCount(0);
   } finally {
     await context.close();
