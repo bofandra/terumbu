@@ -1,4 +1,4 @@
-import { Activity, AlertTriangle, Clock3, FileText, Mail, RadioTower } from "lucide-react";
+import { Activity, AlertTriangle, Clock3, FileText, Mail, RadioTower, TimerReset } from "lucide-react";
 
 import { AdminPageHeader } from "@/components/admin-ui";
 import { observeAdminDataLoader } from "@/lib/admin-observability";
@@ -67,6 +67,29 @@ export default async function AdminOperationsPage() {
         ) : null}
       </section>
 
+      <section aria-labelledby="operations-workers" className="space-y-3">
+        <div className="flex items-center gap-2">
+          <TimerReset aria-hidden="true" className="size-5 text-ocean-700" />
+          <h2 id="operations-workers" className="text-lg font-bold text-ocean-900">Hourly worker heartbeats</h2>
+        </div>
+        <p className="text-sm font-semibold text-ocean-900/60">An authenticated run records its start and finish in the database. A missed heartbeat is detected after 150 minutes; two consecutive failed runs trigger an alert.</p>
+        <div className="grid gap-3 md:grid-cols-2">
+          {metrics.workers.map((worker) => (
+            <article key={worker.name} data-testid={`worker-heartbeat-${worker.name}`} className="rounded-lg border border-ocean-900/10 bg-white p-4 shadow-soft">
+              <h3 className="font-bold text-ocean-900">{worker.name === "corporate_reports" ? "Corporate report scheduler" : "Expedition reminder scheduler"}</h3>
+              <p className="mt-2 text-sm font-bold capitalize text-ocean-900">Status: {worker.health.replaceAll("_", " ")}</p>
+              <dl className="mt-3 grid gap-2 text-xs font-semibold text-ocean-900/60">
+                <div><dt className="inline font-bold">Last started (WIB): </dt><dd className="inline">{when(worker.lastStartedAt)}</dd></div>
+                <div><dt className="inline font-bold">Last finished (WIB): </dt><dd className="inline">{when(worker.lastFinishedAt)}</dd></div>
+                <div><dt className="inline font-bold">Last success (WIB): </dt><dd className="inline">{when(worker.lastSucceededAt)}</dd></div>
+                <div><dt className="inline font-bold">Last failure (WIB): </dt><dd className="inline">{when(worker.lastFailedAt)}</dd></div>
+                <div><dt className="inline font-bold">Consecutive failed runs: </dt><dd className="inline">{worker.consecutiveFailures}</dd></div>
+              </dl>
+            </article>
+          ))}
+        </div>
+      </section>
+
       <section aria-labelledby="operations-reports" className="space-y-3">
         <div className="flex items-center gap-2">
           <FileText aria-hidden="true" className="size-5 text-ocean-700" />
@@ -122,8 +145,9 @@ export default async function AdminOperationsPage() {
       <footer className="rounded-lg border border-ocean-900/10 bg-white p-4 text-sm font-semibold leading-6 text-ocean-900/60">
         Snapshot at {when(metrics.checkedAt)} WIB. Only aggregate counts are shown; recipient addresses,
         raw webhook bodies and provider IDs are excluded. Webhook counts exclude unrelated Resend traffic.
-        This page does not yet record a durable worker heartbeat. A lack of recent records is not proof
-        that cron or webhook delivery is healthy. <span className="font-bold">No automated resend or report publication is triggered here.</span>
+        Worker heartbeat records indicate authenticated endpoint execution, but do not independently verify
+        external cron scheduling or Resend configuration. Alerts are evaluated when an admin opens this page,
+        not pushed to email or a separate monitoring provider. <span className="font-bold">No automated resend or report publication is triggered here.</span>
       </footer>
     </div>
   );
