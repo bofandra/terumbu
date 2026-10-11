@@ -11,12 +11,15 @@ import type { AdminOperationsMetrics } from "@/lib/admin-operations-health";
  * This is a database snapshot, not a cron heartbeat or an inbox-delivery SLA.
  */
 export async function getAdminOperationsMetrics(now = new Date()): Promise<AdminOperationsMetrics> {
-  const olderThanTwoHours = new Date(now.getTime() - 2 * 60 * 60 * 1000);
+  // Raw SQL parameters must be timestamp strings: Drizzle column encoders do not
+  // run for values interpolated directly inside sql templates.
+  const nowIso = now.toISOString();
+  const olderThanTwoHoursIso = new Date(now.getTime() - 2 * 60 * 60 * 1000).toISOString();
   const [[reports], [emails], [webhook]] = await Promise.all([
     db.select({
       scheduled: sql<number>`count(*) filter (where ${corporateReportExports.status} = 'scheduled')::int`,
-      due: sql<number>`count(*) filter (where ${corporateReportExports.status} = 'scheduled' and ${corporateReportExports.scheduledFor} <= ${now})::int`,
-      overdue: sql<number>`count(*) filter (where ${corporateReportExports.status} = 'scheduled' and ${corporateReportExports.scheduledFor} <= ${olderThanTwoHours})::int`,
+      due: sql<number>`count(*) filter (where ${corporateReportExports.status} = 'scheduled' and ${corporateReportExports.scheduledFor} <= ${nowIso}::timestamptz)::int`,
+      overdue: sql<number>`count(*) filter (where ${corporateReportExports.status} = 'scheduled' and ${corporateReportExports.scheduledFor} <= ${olderThanTwoHoursIso}::timestamptz)::int`,
       retrying: sql<number>`count(*) filter (where ${corporateReportExports.status} = 'scheduled' and coalesce(${corporateReportExports.metadata}->>'scheduleFailureCount', '0') <> '0')::int`,
       lastScheduledGenerationAt: sql<Date | null>`max(${corporateReportExports.generatedAt}) filter (where ${corporateReportExports.metadata}->>'generatedFromSchedule' = 'true')`
     }).from(corporateReportExports),
@@ -29,15 +32,15 @@ export async function getAdminOperationsMetrics(now = new Date()): Promise<Admin
       delivered: sql<number>`count(*) filter (where ${emailLogs.status} = 'delivered')::int`,
       deliveryIssues: sql<number>`count(*) filter (where ${emailLogs.status} in ('bounced', 'complained', 'provider_failed', 'suppressed'))::int`,
       staleQueued: sql<number>`count(*) filter (where
-        (${emailLogs.status} = 'queued' and ${emailLogs.createdAt} <= ${olderThanTwoHours})
-        or (${emailLogs.status} = 'retry' and ${emailLogs.nextRetryAt} <= ${olderThanTwoHours})
+        (${emailLogs.status} = 'queued' and ${emailLogs.createdAt} <= ${olderThanTwoHoursIso}::timestamptz)
+        or (${emailLogs.status} = 'retry' and ${emailLogs.nextRetryAt} <= ${olderThanTwoHoursIso}::timestamptz)
       )::int`,
-      expiredClaims: sql<number>`count(*) filter (where ${emailLogs.status} = 'sending' and ${emailLogs.claimedUntil} <= ${now})::int`,
+      expiredClaims: sql<number>`count(*) filter (where ${emailLogs.status} = 'sending' and ${emailLogs.claimedUntil} <= ${nowIso}::timestamptz)::int`,
       lastProviderEventAt: sql<Date | null>`max(${emailLogs.providerEventAt})`
     }).from(emailLogs).where(eq(emailLogs.template, CORPORATE_REPORT_ALERT_EMAIL_TEMPLATE)),
     db.select({
       pending: sql<number>`count(distinct ${resendWebhookEvents.eventId}) filter (where ${resendWebhookEvents.appliedAt} is null)::int`,
-      stalePending: sql<number>`count(distinct ${resendWebhookEvents.eventId}) filter (where ${resendWebhookEvents.appliedAt} is null and ${resendWebhookEvents.receivedAt} <= ${olderThanTwoHours})::int`,
+      stalePending: sql<number>`count(distinct ${resendWebhookEvents.eventId}) filter (where ${resendWebhookEvents.appliedAt} is null and ${resendWebhookEvents.receivedAt} <= ${olderThanTwoHoursIso}::timestamptz)::int`,
       lastReceivedAt: sql<Date | null>`max(${resendWebhookEvents.receivedAt})`
     }).from(resendWebhookEvents)
       .innerJoin(emailLogs, eq(emailLogs.providerMessageId, resendWebhookEvents.providerMessageId))
