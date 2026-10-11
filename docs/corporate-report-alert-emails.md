@@ -127,3 +127,31 @@ raw webhook bodies, error descriptions or API credentials.
 The production service must apply migration 0040 before enabling this version.
 The status remains a record of mail-server outcomes, **not** proof of inbox
 placement, opening, or reading.
+
+
+## Isolated hourly cron stages
+
+The authenticated corporate report endpoint runs four jobs in this order:
+scheduled PDF generation, failure-alert email delivery, signed Resend event
+reconciliation, and webhook event-journal pruning. **Each is isolated from
+failures in the other stages**. If PDF generation fails unexpectedly, queued
+emails and already-verified delivery events can still progress and expire
+correctly within the same cron invocation. Likewise, email transport or
+reconciliation failures do not block the event-journal retention pass.
+
+- On complete success, the endpoint keeps its existing HTTP 200 response
+  contract: generation counts plus `emails`, `deliveryEvents`, and
+  `removedEvents` summaries.
+- If any job fails unexpectedly, the remaining jobs still run, but the
+  endpoint returns **HTTP 500** with `ok: false` and a `stages` object
+  containing only `ok` / `failed` per job. It never reports a partially
+  completed cron as a successful cycle or exposes DB/provider exception
+  details in the response.
+- The server logs the failed stage name, not potentially sensitive error
+  strings. The hourly worker's `curl --fail --show-error` reports non-2xx
+  status; operators should inspect worker logs and stage names and repair
+  the upstream dependency. Completed jobs are not rolled back; the next
+  scheduled invocation rechecks idempotent status/claim guards.
+- Authentication still requires `CRON_SECRET`. This change does not create
+  a public diagnostic endpoint or an automatic email resend mechanism.
+
