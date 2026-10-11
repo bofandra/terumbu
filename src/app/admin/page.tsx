@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowUpRight, BarChart3, Building2, FileCheck2, Handshake, Megaphone, ReceiptText, ScrollText, ShipWheel, Users } from "lucide-react";
+import { Activity, ArrowUpRight, BarChart3, Building2, FileCheck2, Handshake, Megaphone, ReceiptText, ScrollText, ShipWheel, Users } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
 import { observeAdminDataLoader } from "@/lib/admin-observability";
@@ -117,6 +117,7 @@ export default async function AdminPortalPage({ searchParams }: AdminPortalPageP
     { title: "Partners", description: "Maintain partner organizations, verification levels, and ownership.", href: "/admin/partners", icon: Handshake, count: dashboard.partners, countLabel: "partners" },
     { title: "Reports", description: "Configure and run the monthly user impact report.", href: "/admin/reports", icon: BarChart3 },
     { title: "Users", description: "Create accounts, assign roles, and resolve access gaps.", href: "/admin/users", icon: Users, count: recentUsers, countLabel: "users" },
+    { title: "Operations", description: "Monitor scheduled PDF work, corporate email outbox and signed webhook reconciliation.", href: "/admin/operations", icon: Activity },
     { title: "Audit", description: "Search operational events and account activity.", href: "/admin/audit", icon: ScrollText }
   ];
 
