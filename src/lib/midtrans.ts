@@ -42,8 +42,8 @@ export type MidtransStatusPayload = {
 function signedFields(value: MidtransStatusPayload) {
   return (
     typeof value.order_id === "string" && /^[a-zA-Z0-9_-]{1,100}$/.test(value.order_id) &&
-    typeof value.status_code === "string" && /^\\d{3}$/.test(value.status_code) &&
-    typeof value.gross_amount === "string" && /^\\d+(?:\\.\\d{1,2})?$/.test(value.gross_amount) &&
+    typeof value.status_code === "string" && /^\d{3}$/.test(value.status_code) &&
+    typeof value.gross_amount === "string" && /^\d+(?:\.\d{1,2})?$/.test(value.gross_amount) &&
     typeof value.signature_key === "string" && /^[0-9a-f]{128}$/i.test(value.signature_key)
   );
 }
@@ -57,7 +57,7 @@ export function verifyMidtransSignature(value: MidtransStatusPayload, serverKey:
 }
 
 export function midtransIdrAmount(value: unknown): number | null {
-  if (typeof value !== "string" || !/^\\d+(?:\\.0{1,2})?$/.test(value)) return null;
+  if (typeof value !== "string" || !/^\d+(?:\.0{1,2})?$/.test(value)) return null;
   const amount = Number(value);
   return Number.isSafeInteger(amount) && amount > 0 ? amount : null;
 }
