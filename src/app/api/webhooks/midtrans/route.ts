@@ -2,7 +2,7 @@ import { and, eq } from "drizzle-orm";
 import { NextResponse, type NextRequest } from "next/server";
 
 import { db } from "@/db/client";
-import { donations, paymentTransactions } from "@/db/schema";
+import { donations, expeditionBookingPayments, expeditionBookings, paymentOperations, paymentTransactions } from "@/db/schema";
 import {
   fetchMidtransTransactionStatus,
   midtransConfiguration,
@@ -11,7 +11,7 @@ import {
   verifyMidtransSignature,
   type MidtransStatusPayload
 } from "@/lib/midtrans";
-import { transitionDonationPayment } from "@/lib/payment-workflows";
+import { recordPaymentOperation, transitionDonationPayment, transitionExpeditionBookingPayment } from "@/lib/payment-workflows";
 import { readBoundedRequestBody, RequestBodyTooLargeError } from "@/lib/read-bounded-request-body";
 
 /**
@@ -48,7 +48,13 @@ export async function POST(request: NextRequest) {
     .from(paymentTransactions)
     .where(and(eq(paymentTransactions.provider, "midtrans"), eq(paymentTransactions.providerReference, orderId)))
     .limit(1);
-  if (!payment?.donationId) return NextResponse.json({ error: "Unknown order." }, { status: 404 });
+  const [expeditionPayment] = payment?.donationId ? [] : await db.select({ bookingId: expeditionBookingPayments.bookingId })
+    .from(expeditionBookingPayments)
+    .where(and(eq(expeditionBookingPayments.provider, "midtrans"), eq(expeditionBookingPayments.providerReference, orderId)))
+    .limit(1);
+  if (!payment?.donationId && !expeditionPayment?.bookingId) {
+    return NextResponse.json({ error: "Unknown order." }, { status: 404 });
+  }
 
   // Authenticated GET Status provides the current authoritative state, avoiding
   // stale notifications moving a settled donation back to pending.
@@ -68,6 +74,63 @@ export async function POST(request: NextRequest) {
     // Partial refunds and unrecognized states require explicit reconciliation.
     console.warn("Unmapped Midtrans transaction state requires manual review.");
     return NextResponse.json({ ok: true, manualReview: true });
+  }
+
+  if (expeditionPayment?.bookingId) {
+    const bookingId = expeditionPayment.bookingId;
+    let result: "mismatch" | "unchanged" | "updated" | "capacity_unavailable";
+    try {
+      result = await db.transaction(async (tx) => {
+        const [booking] = await tx.select({
+          id: expeditionBookings.id,
+          amount: expeditionBookings.totalAmount,
+          currency: expeditionBookings.currency,
+          status: expeditionBookings.status,
+          paymentStatus: expeditionBookings.paymentStatus
+        }).from(expeditionBookings).where(eq(expeditionBookings.id, bookingId)).limit(1).for("update");
+        if (!booking || booking.currency !== "IDR" || Number(booking.amount) !== requestedAmount) return "mismatch" as const;
+        if (booking.paymentStatus === status || booking.paymentStatus === "refunded" && status !== "refunded") return "unchanged" as const;
+        if (status === "paid" && booking.status === "cancelled") return "capacity_unavailable" as const;
+        const updated = await transitionExpeditionBookingPayment(tx as unknown as typeof db, {
+          bookingId, nextStatus: status, providerReference: orderId,
+          providerPayload: {
+            method: "midtrans_snap",
+            providerTransactionId: typeof current.transaction_id === "string" ? current.transaction_id : null,
+            providerStatus: current.transaction_status,
+            verifiedAt: new Date().toISOString()
+          },
+          operationType: "midtrans_webhook"
+        });
+        return updated ? "updated" as const : "mismatch" as const;
+      });
+    } catch (error) {
+      if (!(error instanceof Error) || error.message !== "EXPEDITION_CAPACITY_UNAVAILABLE") throw error;
+      result = "capacity_unavailable";
+    }
+    if (result === "capacity_unavailable") {
+      // Payment may be settled but no seats remain. Keep the booking unconfirmed,
+      // and create a durable, operator-visible exception. Never overbook.
+      await db.transaction(async (tx) => {
+        const [booking] = await tx.select({ id: expeditionBookings.id })
+          .from(expeditionBookings).where(eq(expeditionBookings.id, bookingId)).limit(1).for("update");
+        if (!booking) return;
+        const [existing] = await tx.select({ id: paymentOperations.id }).from(paymentOperations)
+          .where(and(eq(paymentOperations.bookingId, bookingId), eq(paymentOperations.operationType, "midtrans_capacity_conflict")))
+          .limit(1);
+        if (!existing) {
+          await recordPaymentOperation(tx as unknown as typeof db, {
+            operationType: "midtrans_capacity_conflict", entityType: "expedition_booking",
+            bookingId, provider: "midtrans", providerReference: orderId,
+            status: "failed", reason: "Verified payment cannot be allocated to available expedition seats; manual reconciliation/refund required.",
+            amount: requestedAmount, currency: "IDR", processedAt: new Date()
+          });
+        }
+      });
+      console.error("Midtrans expedition paid but capacity unavailable; operator reconciliation required.");
+      return NextResponse.json({ error: "Capacity conflict; manual reconciliation required." }, { status: 503 });
+    }
+    if (result === "mismatch") return NextResponse.json({ error: "Booking amount mismatch." }, { status: 422 });
+    return NextResponse.json({ ok: true, type: "expedition", status: result });
   }
 
   const result = await db.transaction(async (tx) => {
