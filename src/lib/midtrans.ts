@@ -94,11 +94,20 @@ type Fetcher = typeof fetch;
 
 export async function createMidtransSnapPayment(
   config: MidtransConfiguration,
-  input: { orderId: string; amount: number; donorName: string; donorEmail: string },
+  input: { orderId: string; amount: number; donorName: string; donorEmail: string; finishUrl?: string },
   fetcher: Fetcher = fetch
 ): Promise<string> {
   if (!/^[a-zA-Z0-9_-]{1,100}$/.test(input.orderId) || !Number.isSafeInteger(input.amount) || input.amount < 1) {
     throw new Error("Invalid Midtrans payment request.");
+  }
+  let finishUrl: string | null = null;
+  if (input.finishUrl) {
+    const parsed = new URL(input.finishUrl);
+    if (parsed.username || parsed.password ||
+        (parsed.protocol !== "https:" && !(parsed.protocol === "http:" && parsed.hostname === "localhost"))) {
+      throw new Error("Invalid merchant finish URL.");
+    }
+    finishUrl = parsed.toString();
   }
   const response = await fetcher(`${midtransSnapOrigin(config)}/snap/v1/transactions`, {
     method: "POST",
@@ -109,7 +118,8 @@ export async function createMidtransSnapPayment(
     },
     body: JSON.stringify({
       transaction_details: { order_id: input.orderId, gross_amount: input.amount },
-      customer_details: { first_name: input.donorName.slice(0, 160), email: input.donorEmail }
+      customer_details: { first_name: input.donorName.slice(0, 160), email: input.donorEmail },
+      ...(finishUrl ? { callbacks: { finish: finishUrl } } : {})
     }),
     signal: AbortSignal.timeout(10000),
     cache: "no-store"
