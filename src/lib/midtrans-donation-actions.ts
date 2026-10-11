@@ -143,7 +143,11 @@ export async function createMidtransDonationAction(formData: FormData) {
 
   let redirectUrl: string;
   try {
-    redirectUrl = await createMidtransSnapPayment(config, { orderId, amount, donorName, donorEmail });
+    const publicBase = process.env.NEXT_PUBLIC_APP_URL;
+    const finishUrl = publicBase && URL.canParse(publicBase)
+      ? new URL("/checkout/success?type=donation&id=" + inserted.id + "&status=pending&method=midtrans", publicBase).toString()
+      : undefined;
+    redirectUrl = await createMidtransSnapPayment(config, { orderId, amount, donorName, donorEmail, finishUrl });
   } catch {
     // The provider may have accepted a request even when its response was
     // lost. Keep the durable pending order for webhook reconciliation.
