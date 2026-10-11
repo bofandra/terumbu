@@ -16,6 +16,7 @@ type CheckoutSuccessPageProps = {
     id?: string;
     expedition?: string;
     ref?: string;
+    method?: string;
   }>;
 };
 
@@ -24,10 +25,13 @@ export default async function CheckoutSuccessPage({ searchParams }: CheckoutSucc
   const shareReferralCode = sessionUser ? referralCodeForUser(sessionUser.id) : null;
   const failed = params?.status === "failed";
   const pending = params?.status === "pending";
+  const midtransPending = pending && params?.method === "midtrans" && params?.type !== "expedition";
   const typeLabel = params?.type === "expedition" ? "booking" : "donation";
   const isExpedition = params?.type === "expedition";
   const title = failed
     ? "Payment was not completed"
+    : midtransPending
+      ? "Payment is awaiting verification"
     : pending
       ? isExpedition
         ? "Your expedition request is recorded"
@@ -35,6 +39,8 @@ export default async function CheckoutSuccessPage({ searchParams }: CheckoutSucc
       : "Your impact is recorded";
   const body = failed
     ? `This ${typeLabel} was not paid, so it remains available for support review.`
+    : midtransPending
+      ? "Your Midtrans checkout has returned to Terumbu. Payment will be confirmed only after an authenticated provider notification. Do not pay twice while verification is pending."
     : pending
       ? isExpedition
         ? "Your booking request and payment proof are recorded. Seats are only reserved after payment verification confirms availability."
