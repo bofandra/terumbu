@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
+  Activity,
   BarChart3,
   Building2,
   GraduationCap,
@@ -42,6 +43,7 @@ const adminNavItems: AdminNavItem[] = [
   { href: "/admin/users", label: "Users", icon: Users },
   { href: "/admin/academy", label: "Academy", icon: GraduationCap },
   { href: "/admin/reports", label: "Reports", icon: BarChart3 },
+  { href: "/admin/operations", label: "Operations", icon: Activity },
   { href: "/admin/audit", label: "Audit", icon: ScrollText }
 ];
 
