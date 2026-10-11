@@ -1,0 +1,37 @@
+name: External Worker Watch
+
+# Runs on GitHub-hosted infrastructure, independent of Terumbu's VPS cron.
+# Scheduled runs may be delayed by GitHub; this is not a hard real-time SLA.
+on:
+  schedule:
+    - cron: "13,43 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: terumbu-external-worker-watch
+  cancel-in-progress: false
+
+jobs:
+  worker-watch:
+    name: Check worker heartbeats and manage incident
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    env:
+      MONITOR_BASE_URL: ${{ vars.MONITOR_BASE_URL || vars.NEXT_PUBLIC_APP_URL || 'https://terumbu.world' }}
+      GITHUB_TOKEN: ${{ github.token }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+
+      - name: Probe remote worker health and synchronize GitHub issue
+        run: node scripts/monitor-worker-heartbeats.mjs
