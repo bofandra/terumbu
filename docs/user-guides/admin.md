@@ -35,3 +35,7 @@ The admin-only `/admin/operations` page summarizes corporate PDF schedules, fail
 The Operations dashboard now shows the persisted last invocation of both authenticated hourly endpoints: `corporate_reports` and `expedition_reminders`. Each run saves start/finish times, success/failure, the latest successful and failed timestamps, and consecutive failed cycles in the `worker_heartbeats` PostgreSQL table. An invocation older than **150 minutes**, two or more consecutive failures, or a missing record appears in the dashboard's attention list. A single failure is displayed as degraded. A new deployment can display "not observed" until the first normal hourly run.
 
 Heartbeat alerts are **evaluated when the admin opens or refreshes** `/admin/operations`; no independent external alert delivery, SMS, or email heartbeat watchdog is configured by this change. A stopped scheduler cannot send its own warning. For proactive out-of-band notifications, configure a separate external monitor. These records do not prove the Resend provider subscription is correctly registered.
+
+### Independent external worker watchdog
+
+The [external worker monitoring runbook](../external-worker-monitoring.md) documents the GitHub-hosted 30-minute check, the public status-only endpoint and automatically managed incident issues. Detailed dashboard warnings remain visible on refresh; the separate monitor only watches missed or repeatedly failing heartbeat records. GitHub Issue notifications depend on each operator's repository notification settings.
