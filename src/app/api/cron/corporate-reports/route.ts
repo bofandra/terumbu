@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { processDueCorporateReports } from "@/lib/corporate-report-automation";
 import { processCorporateReportAlertEmails } from "@/lib/corporate-report-alert-email";
 import { runCorporateCronStages } from "@/lib/corporate-cron-runner";
+import { runWithWorkerHeartbeat } from "@/lib/worker-heartbeat";
 import { pruneResendCorporateDeliveryEvents, reconcilePendingResendCorporateDeliveryEvents } from "@/lib/resend-corporate-webhook";
 
 export const dynamic = "force-dynamic";
@@ -20,7 +21,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const result = await runCorporateCronStages({
+  try {
+    const result = await runWithWorkerHeartbeat("corporate_reports", () => runCorporateCronStages({
     reports: processDueCorporateReports,
     emails: processCorporateReportAlertEmails,
     deliveryEvents: reconcilePendingResendCorporateDeliveryEvents,
@@ -28,6 +30,9 @@ export async function POST(request: NextRequest) {
   }, (stage) => {
     // Only emit the stage name; underlying DB/provider errors may contain secrets.
     console.error("Corporate report cron stage failed", { stage });
+  }), (result) => {
+    // Only a complete stage cycle counts as a successful heartbeat.
+    return result.ok;
   });
 
   if (!result.ok) {
@@ -47,4 +52,9 @@ export async function POST(request: NextRequest) {
     deliveryEvents: result.deliveryEvents,
     removedEvents: result.removedEvents
   }, { headers: { "Cache-Control": "no-store" } });
+  } catch {
+    console.error("Corporate report cron unable to complete heartbeat or cycle");
+    return NextResponse.json({ error: "Corporate report scheduler unavailable." },
+      { status: 500, headers: { "Cache-Control": "no-store" } });
+  }
 }
