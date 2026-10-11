@@ -58,8 +58,14 @@ services:
       - sh
       - -c
       - |
+        # Deployment force-recreates this container. Do not sleep for an
+        # hour before the first run, or frequent deploys can starve cron.
+        # Wait for the web container to be reachable before posting jobs.
+        until curl --fail --silent --max-time 5 http://web:3000/api/health >/dev/null; do
+          echo "Waiting for Terumbu web readiness..."
+          sleep 5
+        done
         while true; do
-          sleep 3600
           curl --fail --silent --show-error --max-time 60 \
             -X POST \
             -H "x-cron-secret: $${CRON_SECRET}" \
@@ -68,6 +74,8 @@ services:
             -X POST \
             -H "x-cron-secret: $${CRON_SECRET}" \
             http://web:3000/api/cron/corporate-reports || true
+          # Sleep only after both authenticated cron requests have run.
+          sleep 3600
         done
     depends_on:
       web:

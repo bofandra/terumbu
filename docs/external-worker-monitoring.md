@@ -28,6 +28,12 @@ A currently running or single-failure/degraded worker is still externally consid
 - The workflow uses only GITHUB_TOKEN with issues: write; CRON_SECRET, SSH and database secrets are not passed to this monitoring workflow.
 - New incidents are assigned by default to the repository owner (override with the GitHub Actions variable MONITOR_ASSIGNEE). The assignee must have issue assignment rights; GitHub may reject an invalid assignee. Enable notification settings for assigned issues or repository Watch → Issues for relevant operators. **Opening an Issue does not guarantee email, push, SMS, or paging delivery.**
 
+## First execution after a deployment
+
+Deployment force-recreates both the web and reminder-worker containers so rotated secrets are applied. Previously the reminder worker began by sleeping 3,600 seconds. Frequent deployments could therefore repeatedly postpone both cron endpoints before any durable heartbeat existed.
+
+The worker now **waits until the web health endpoint is reachable**, immediately invokes authenticated expedition reminder and corporate report cron endpoints in their original order, then sleeps 3,600 seconds before the next cycle. Cron actions retain their existing idempotency/retry behavior; each deployment can initiate an extra normal cycle. If the web server does not become reachable, the worker remains in a short readiness retry loop, allowing the external monitor to keep reporting that no current heartbeat exists.
+
 ## First deployment and recovery
 
 The first scheduled check may alert before both hourly endpoints have executed at least once. Check the terumbu-reminder-worker service and allow normal scheduling. Do not manually invoke cron just to silence an incident without understanding side effects.
