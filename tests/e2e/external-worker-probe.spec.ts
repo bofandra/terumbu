@@ -34,7 +34,7 @@ test("public external probe exposes only coarse health and detects silent/stale/
         insert into worker_heartbeats
           (worker_name, run_id, last_started_at, last_finished_at,
            last_succeeded_at, last_failed_at, last_status, consecutive_failures)
-        values ($${name}, $${randomUUID()}, now() - interval '1 minute',
+        values (${name}, ${randomUUID()}, now() - interval '1 minute',
           now(), now(), null, 'success', 0)
       `;
     }
@@ -73,10 +73,10 @@ test("public external probe exposes only coarse health and detects silent/stale/
           last_succeeded_at, last_failed_at, last_status,
           consecutive_failures, updated_at
         ) values (
-          $${row.worker_name}, $${row.run_id}, $${row.last_started_at},
-          $${row.last_finished_at}, $${row.last_succeeded_at},
-          $${row.last_failed_at}, $${row.last_status},
-          $${row.consecutive_failures}, $${row.updated_at}
+          ${row.worker_name}, ${row.run_id}, ${row.last_started_at},
+          ${row.last_finished_at}, ${row.last_succeeded_at},
+          ${row.last_failed_at}, ${row.last_status},
+          ${row.consecutive_failures}, ${row.updated_at}
         )
       `;
     }
