@@ -75,11 +75,16 @@ export async function syncWorkerIncident({
   githubToken,
   repo,
   health,
-  runUrl = ""
+  runUrl = "",
+  assignee = ""
 }) {
   if (!githubToken) throw new Error("GITHUB_TOKEN is required");
   if (!/^[a-zA-Z0-9_.-]+\/[a-zA-Z0-9_.-]+$/.test(repo || "")) {
     throw new Error("Valid owner/repo is required");
+  }
+
+  if (assignee && !/^[a-zA-Z0-9-]{1,39}$/.test(assignee)) {
+    throw new Error("Invalid monitoring issue assignee");
   }
 
   const path = "/repos/" + repo;
@@ -121,7 +126,8 @@ export async function syncWorkerIncident({
   ].join("\n");
   await githubRequest(fetchImpl, githubToken, path + "/issues", "POST", {
     title: INCIDENT_TITLE,
-    body
+    body,
+    ...(assignee ? { assignees: [assignee] } : {})
   });
   return { action: "opened", count: 1 };
 }
@@ -133,6 +139,7 @@ export async function main(env = process.env) {
     githubToken: env.GITHUB_TOKEN,
     repo: env.GITHUB_REPOSITORY,
     health,
+    assignee: env.MONITOR_ASSIGNEE ?? "",
     runUrl: env.GITHUB_SERVER_URL && env.GITHUB_REPOSITORY && env.GITHUB_RUN_ID
       ? env.GITHUB_SERVER_URL + "/" + env.GITHUB_REPOSITORY + "/actions/runs/" + env.GITHUB_RUN_ID
       : ""

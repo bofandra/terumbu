@@ -19,26 +19,27 @@ A currently running or single-failure/degraded worker is still externally consid
 ## GitHub Actions behavior
 
 - The workflow at .github/workflows/worker-health-watch.yml runs at minutes 13 and 43 of every UTC hour and via manual workflow_dispatch. GitHub's schedule can run later than planned.
+- The main CI/CD workflow also runs the same monitoring script in a separate **External Worker Watch (post-deploy)** job after a successful VPS deployment and external production smoke check. This verifies the alert pipeline immediately after each release, without waiting for a scheduled run. The two workflows serialize incident operations.
 - It uses the MONITOR_BASE_URL repository variable if present, otherwise NEXT_PUBLIC_APP_URL, otherwise https://terumbu.world. Verify this is the actual public HTTPS origin.
 - It probes from GitHub-hosted infrastructure; on a failing first probe, it retries once after 15 seconds.
 - On confirmed failure, it opens one GitHub Issue titled **[Terumbu Operations] External worker heartbeat incident**. Subsequent checks reuse the open incident instead of spamming duplicates.
 - Upon recovery it closes existing open monitor incidents automatically.
 - Confirmed outages mark the Actions run red as well.
 - The workflow uses only GITHUB_TOKEN with issues: write; CRON_SECRET, SSH and database secrets are not passed to this monitoring workflow.
-- Enable repository Watch → Issues notifications for the relevant operators. **Opening an Issue does not guarantee email, push, SMS, or paging delivery.**
+- New incidents are assigned by default to the repository owner (override with the GitHub Actions variable MONITOR_ASSIGNEE). The assignee must have issue assignment rights; GitHub may reject an invalid assignee. Enable notification settings for assigned issues or repository Watch → Issues for relevant operators. **Opening an Issue does not guarantee email, push, SMS, or paging delivery.**
 
 ## First deployment and recovery
 
 The first scheduled check may alert before both hourly endpoints have executed at least once. Check the terumbu-reminder-worker service and allow normal scheduling. Do not manually invoke cron just to silence an incident without understanding side effects.
 
-Use GitHub Actions → External Worker Watch → Run workflow to manually test its ability to reach the endpoint. If unhealthy, consult Admin → Operations and the deployment logs for specifics.
+Every normal deployment now runs the check automatically after smoke tests. Use GitHub Actions → External Worker Watch → Run workflow for an additional manual verification of its independent schedule workflow. If unhealthy, consult Admin → Operations and the deployment logs for specifics.
 
 If Issues is disabled or organization policy prevents GITHUB_TOKEN issue writes, the workflow fails and cannot automatically create an incident. GitHub Actions schedules can be delayed, suspended or unavailable; higher uptime requirements warrant a second external monitoring provider.
 
 ## Operational acceptance
 
 1. Confirm the public endpoint emits only one status field and never includes private details.
-2. Confirm both hourly workers have recent heartbeats and the manual external monitor workflow is green.
+2. Confirm both hourly workers have recent heartbeats, the CI/CD **External Worker Watch (post-deploy)** job is green, and the standalone scheduled workflow is enabled (scheduled runs may be delayed).
 3. In a **test environment**, simulate a stale worker and confirm the 503 status, a single deduplicated incident, and automatic closure after recovery.
 4. Enable appropriate GitHub Issues notifications and review Actions execution logs.
 5. Do not interpret worker health as confirmation of provider webhook subscription or inbox email delivery.

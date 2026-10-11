@@ -38,4 +38,4 @@ Heartbeat alerts are **evaluated when the admin opens or refreshes** `/admin/ope
 
 ### Independent external worker watchdog
 
-The [external worker monitoring runbook](../external-worker-monitoring.md) documents the GitHub-hosted 30-minute check, the public status-only endpoint and automatically managed incident issues. Detailed dashboard warnings remain visible on refresh; the separate monitor only watches missed or repeatedly failing heartbeat records. GitHub Issue notifications depend on each operator's repository notification settings.
+The [external worker monitoring runbook](../external-worker-monitoring.md) documents the GitHub-hosted 30-minute check, the post-deployment verification job, the public status-only endpoint and automatically managed incident issues. New incidents are assigned to the repository owner by default (configurable via MONITOR_ASSIGNEE). Detailed dashboard warnings remain visible on refresh; the separate monitor only watches missed or repeatedly failing heartbeat records. GitHub Issue notifications depend on each operator's repository notification settings.
