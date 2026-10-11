@@ -296,3 +296,32 @@ jobs:
           set -euo pipefail
           test -n "${TERUMBU_PUBLIC_URL:-}" || { echo "TERUMBU_PUBLIC_URL is required for external smoke checks"; exit 1; }
           BASE_URL="${TERUMBU_PUBLIC_URL}" EXPECTED_VERSION="${GITHUB_SHA}" bash scripts/smoke-production.sh
+
+  external_worker_watch:
+    name: External Worker Watch (post-deploy)
+    runs-on: ubuntu-24.04
+    needs: [deploy]
+    if: github.ref == 'refs/heads/main'
+    # Serialize issue operations against the scheduled, independent workflow.
+    concurrency:
+      group: terumbu-external-worker-watch
+      cancel-in-progress: false
+    permissions:
+      contents: read
+      issues: write
+    timeout-minutes: 5
+    env:
+      MONITOR_BASE_URL: ${{ vars.MONITOR_BASE_URL || vars.NEXT_PUBLIC_APP_URL || 'https://terumbu.world' }}
+      MONITOR_ASSIGNEE: ${{ vars.MONITOR_ASSIGNEE || github.repository_owner }}
+      GITHUB_TOKEN: ${{ github.token }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+
+      - name: Check deployed worker health and synchronize GitHub incident
+        run: node scripts/monitor-worker-heartbeats.mjs
