@@ -145,9 +145,10 @@ export default async function AdminOperationsPage() {
       <footer className="rounded-lg border border-ocean-900/10 bg-white p-4 text-sm font-semibold leading-6 text-ocean-900/60">
         Snapshot at {when(metrics.checkedAt)} WIB. Only aggregate counts are shown; recipient addresses,
         raw webhook bodies and provider IDs are excluded. Webhook counts exclude unrelated Resend traffic.
-        Worker heartbeat records indicate authenticated endpoint execution, but do not independently verify
-        external cron scheduling or Resend configuration. Alerts are evaluated when an admin opens this page,
-        not pushed to email or a separate monitoring provider. <span className="font-bold">No automated resend or report publication is triggered here.</span>
+        Worker heartbeat records indicate authenticated endpoint execution, not verified Resend configuration.
+        Detailed alerts appear when an admin opens this page; an independent GitHub Actions check monitors
+        missed or repeatedly failing heartbeats and manages GitHub incident issues. GitHub notification delivery
+        depends on each operator’s settings. <span className="font-bold">No automated resend or report publication is triggered here.</span>
       </footer>
     </div>
   );
