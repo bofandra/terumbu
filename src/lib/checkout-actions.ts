@@ -1,6 +1,6 @@
 "use server";
 
-import { randomBytes } from "node:crypto";
+import { randomBytes, randomUUID } from "node:crypto";
 
 import { and, eq } from "drizzle-orm";
 import { redirect } from "next/navigation";
@@ -33,6 +33,7 @@ import {
 import { getSessionUser, safeRedirectPath } from "@/lib/auth";
 import { trackEvent } from "@/lib/analytics";
 import { sendTransactionalEmail } from "@/lib/email";
+import { createMidtransSnapPayment, midtransConfiguration, midtransSnapOrigin } from "@/lib/midtrans";
 import { expeditionDepartureAvailability } from "@/lib/expedition-booking-lifecycle";
 import { calculateDonationImpact, minimumDonationAmount, normalizeCurrency } from "@/lib/impact-calculations";
 import { storeUploadedPrivateImage } from "@/lib/storage";
@@ -124,7 +125,7 @@ export async function createDonationAction(formData: FormData) {
     namespace: "payment-proof",
     appUrl: `/private-media/payment-proof/donation/${providerReference}`
   });
-  const proofError = paymentProofUploadError(proofUpload);
+  const proofError = isMidtrans ? null : paymentProofUploadError(proofUpload!);
 
   if (proofError) {
     redirect(checkoutErrorPath("payment_proof"));
@@ -154,10 +155,10 @@ export async function createDonationAction(formData: FormData) {
       unitCount: Number(line.unitCount.toFixed(2)),
       allocatedAmount: Number(line.allocatedAmount.toFixed(2))
     })),
-    paymentProofUrl: proofUpload.dataUrl,
-    paymentProofObjectKey: proofUpload.objectKey ?? null,
-    paymentProofContentType: proofUpload.contentType ?? null,
-    paymentProofStorageProvider: proofUpload.storageProvider ?? null,
+    paymentProofUrl: proofUpload?.dataUrl ?? null,
+    paymentProofObjectKey: proofUpload?.objectKey ?? null,
+    paymentProofContentType: proofUpload?.contentType ?? null,
+    paymentProofStorageProvider: proofUpload?.storageProvider ?? null,
     paymentReference: paymentReference || null,
     submittedAt,
     verificationStatus: "submitted",
@@ -187,10 +188,10 @@ export async function createDonationAction(formData: FormData) {
     await tx.insert(paymentTransactions).values({
       donationId: donation.id,
       paymentMethodId: null,
-      provider: "manual_external",
+      provider: paymentProvider,
       providerReference,
-      status: "pending",
-      payload: manualPaymentMetadata,
+      status: isMidtrans ? "created" : "pending",
+      payload: isMidtrans ? { method: "midtrans_snap", initiatedAt: now.toISOString() } : manualPaymentMetadata,
       updatedAt: now
     });
 
@@ -227,6 +228,15 @@ export async function createDonationAction(formData: FormData) {
 }
 
 export async function bookExpeditionAction(formData: FormData) {
+  return submitExpeditionCheckout(formData, "manual_external");
+}
+
+export async function bookMidtransExpeditionAction(formData: FormData) {
+  return submitExpeditionCheckout(formData, "midtrans");
+}
+
+async function submitExpeditionCheckout(formData: FormData, paymentProvider: "manual_external" | "midtrans") {
+  const isMidtrans = paymentProvider === "midtrans";
   const departureId = String(formData.get("departureId") ?? "");
   const contactName = String(formData.get("contactName") ?? "").trim();
   const contactEmail = String(formData.get("contactEmail") ?? "")
@@ -245,6 +255,10 @@ export async function bookExpeditionAction(formData: FormData) {
   const paymentState = "pending";
   const paymentReference = String(formData.get("paymentReference") ?? "").trim();
   const nextPath = safeRedirectPath(formData.get("next"));
+  const midtransConfig = isMidtrans ? midtransConfiguration() : null;
+  if (isMidtrans && (!midtransConfig || process.env.MIDTRANS_EXPEDITION_ENABLED !== "true")) {
+    redirect(`${nextPath}?error=gateway`);
+  }
   const idempotencyKey = String(formData.get("idempotencyKey") ?? "").trim() || null;
   const joinAs = String(formData.get("joinAs") ?? "personal").trim();
   const referralCode = String(formData.get("referralCode") ?? "")
@@ -254,7 +268,8 @@ export async function bookExpeditionAction(formData: FormData) {
   const selectedCorporateAccountId = joinAs.startsWith("corporate:") ? joinAs.replace("corporate:", "").trim() : null;
   const sessionUser = await getSessionUser();
 
-  if (!departureId || !contactName || !contactEmail) {
+  if (!departureId || !contactName || contactName.length > 160 || !contactEmail || contactEmail.length > 255 ||
+      (isMidtrans && (!/^expedition-[0-9a-f]{24}$/.test(idempotencyKey ?? "") || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contactEmail)))) {
     redirect(`${nextPath}?error=invalid`);
   }
 
@@ -329,6 +344,12 @@ export async function bookExpeditionAction(formData: FormData) {
     redirect(`${nextPath}?error=availability`);
   }
 
+  const checkoutTotal = calculateBookingTotal(departure.basePrice, participantCount);
+  if (isMidtrans && (normalizeCurrency(departure.currency) !== "IDR" || !Number.isSafeInteger(checkoutTotal) ||
+      checkoutTotal < 1 || checkoutTotal >= 1_000_000_000_000)) {
+    redirect(`${nextPath}?error=gateway`);
+  }
+
   if (departure.requiredAcademyCourseId) {
     if (!sessionUser) {
       redirect(`/login?next=${encodeURIComponent(nextPath)}&reason=academy-prerequisite`);
@@ -342,19 +363,47 @@ export async function bookExpeditionAction(formData: FormData) {
     const [existingBooking] = await db
       .select({
         id: expeditionBookings.id,
-        paymentStatus: expeditionBookings.paymentStatus
+        paymentStatus: expeditionBookings.paymentStatus,
+        departureId: expeditionBookings.departureId,
+        contactEmail: expeditionBookings.contactEmail,
+        totalAmount: expeditionBookings.totalAmount,
+        participantsCount: expeditionBookings.participantsCount,
+        provider: expeditionBookingPayments.provider,
+        providerPayload: expeditionBookingPayments.payload
       })
       .from(expeditionBookings)
+      .leftJoin(expeditionBookingPayments, eq(expeditionBookingPayments.bookingId, expeditionBookings.id))
       .where(eq(expeditionBookings.idempotencyKey, idempotencyKey))
       .limit(1);
 
     if (existingBooking) {
+      if (isMidtrans) {
+        if (existingBooking.provider !== "midtrans" || existingBooking.departureId !== departureId ||
+            existingBooking.contactEmail !== contactEmail || existingBooking.participantsCount !== participantCount ||
+            Number(existingBooking.totalAmount) !== checkoutTotal) redirect(`${nextPath}?error=invalid`);
+        if (existingBooking.paymentStatus === "paid" || existingBooking.paymentStatus === "refunded") {
+          redirect(`/checkout/success?status=${existingBooking.paymentStatus}&type=expedition&id=${existingBooking.id}`);
+        }
+        const payload = existingBooking.providerPayload;
+        const savedUrl = payload && typeof payload === "object" && !Array.isArray(payload)
+          ? (payload as Record<string, unknown>).redirectUrl : null;
+        if (typeof savedUrl === "string" && midtransConfig) {
+          try {
+            const url = new URL(savedUrl);
+            if (url.protocol === "https:" && url.origin === midtransSnapOrigin(midtransConfig) && !url.username && !url.password) redirect(savedUrl);
+          } catch (error) {
+            // Next.js redirects throw; only ignore malformed URLs, not redirects.
+            if (error && typeof error === "object" && "digest" in error) throw error;
+          }
+        }
+        redirect(`${nextPath}?error=gateway`);
+      }
       redirect(`/checkout/success?status=${existingBooking.paymentStatus}&type=expedition&id=${existingBooking.id}`);
     }
   }
 
-  const providerReference = randomReference("MANUAL-EXPEDITION");
-  const proofUpload = await storeUploadedPrivateImage(formData.get("paymentProofFile"), {
+  const providerReference = isMidtrans ? `TRB-EXP-${randomUUID()}` : randomReference("MANUAL-EXPEDITION");
+  const proofUpload = isMidtrans ? null : await storeUploadedPrivateImage(formData.get("paymentProofFile"), {
     namespace: "payment-proof",
     appUrl: `/private-media/payment-proof/expedition/${providerReference}`
   });
@@ -376,7 +425,7 @@ export async function bookExpeditionAction(formData: FormData) {
     verificationStatus: "submitted"
   };
   const bookingCode = buildBookingCode(providerReference, now);
-  const totalAmount = calculateBookingTotal(departure.basePrice, participantCount);
+  const totalAmount = checkoutTotal;
   let bookingId = "";
   let shouldSendBookingEmail = false;
   let bookingEmailUserId: string | null = null;
@@ -438,18 +487,27 @@ export async function bookExpeditionAction(formData: FormData) {
       }))
     );
 
-    const result = await transitionExpeditionBookingPayment(tx as unknown as typeof db, {
-      bookingId: booking.id,
-      nextStatus: paymentState,
-      providerReference,
-      providerPayload: manualPaymentMetadata,
-      operationType: "payment_proof_submitted",
-      now
-    });
+    if (isMidtrans) {
+      await recordPaymentOperation(tx as unknown as typeof db, {
+        operationType: "midtrans_expedition_initiated", entityType: "expedition_booking",
+        bookingId: booking.id, requestedByUserId: sessionUser?.id ?? null,
+        status: "pending", provider: "midtrans", providerReference,
+        amount: totalAmount.toFixed(2), currency: "IDR", now
+      });
+    } else {
+      const result = await transitionExpeditionBookingPayment(tx as unknown as typeof db, {
+        bookingId: booking.id,
+        nextStatus: paymentState,
+        providerReference,
+        providerPayload: manualPaymentMetadata,
+        operationType: "payment_proof_submitted",
+        now
+      });
 
-    if (result?.nextStatus === "paid") {
-      shouldSendBookingEmail = true;
-      bookingEmailUserId = sessionUser?.id ?? null;
+      if (result?.nextStatus === "paid") {
+        shouldSendBookingEmail = true;
+        bookingEmailUserId = sessionUser?.id ?? null;
+      }
     }
   });
 
@@ -482,6 +540,39 @@ export async function bookExpeditionAction(formData: FormData) {
       hasReferral: Boolean(referralCode)
     }
   });
+
+  if (isMidtrans && midtransConfig) {
+    let snapUrl: string;
+    try {
+      const publicBase = process.env.NEXT_PUBLIC_APP_URL;
+      const finishUrl = publicBase && URL.canParse(publicBase)
+        ? new URL(`/checkout/success?status=pending&type=expedition&id=${bookingId}&method=midtrans`, publicBase).toString()
+        : undefined;
+      snapUrl = await createMidtransSnapPayment(midtransConfig, {
+        orderId: providerReference, amount: totalAmount,
+        donorName: contactName, donorEmail: contactEmail, finishUrl
+      });
+    } catch {
+      console.error("Midtrans expedition checkout could not be initiated.");
+      redirect(`${nextPath}?error=gateway`);
+    }
+    const updated = await db.update(expeditionBookingPayments).set({
+      status: "pending",
+      payload: { method: "midtrans_snap", initiatedAt: now.toISOString(), redirectUrl: snapUrl },
+      updatedAt: new Date()
+    }).where(and(eq(expeditionBookingPayments.provider, "midtrans"),
+      eq(expeditionBookingPayments.providerReference, providerReference),
+      eq(expeditionBookingPayments.status, "created"))).returning({ id: expeditionBookingPayments.id });
+    if (!updated.length) {
+      const [latest] = await db.select({ status: expeditionBookings.paymentStatus })
+        .from(expeditionBookings).where(eq(expeditionBookings.id, bookingId)).limit(1);
+      if (latest?.status === "paid") {
+        redirect(`/checkout/success?status=paid&type=expedition&id=${bookingId}`);
+      }
+      redirect(`${nextPath}?error=gateway`);
+    }
+    redirect(snapUrl);
+  }
 
   const successParams = new URLSearchParams({
     status: "pending",
