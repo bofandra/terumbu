@@ -962,6 +962,18 @@ export const paymentOperations = pgTable("payment_operations", {
   statusIdx: index("payment_operations_status_idx").on(table.status)
 }));
 
+export const midtransRefundBankConfirmations = pgTable("midtrans_refund_bank_confirmations", {
+  operationId: uuid("operation_id").primaryKey().notNull().references(() => paymentOperations.id, { onDelete: "restrict" }),
+  providerReference: varchar("provider_reference", { length: 255 }).notNull(),
+  refundKey: varchar("refund_key", { length: 80 }).notNull(),
+  refundAmount: numeric("refund_amount", { precision: 14, scale: 2 }).notNull(),
+  bankConfirmedAt: timestamp("bank_confirmed_at", { withTimezone: true }).notNull(),
+  observedAt: timestamp("observed_at", { withTimezone: true }).defaultNow().notNull(),
+  source: varchar("source", { length: 40 }).default("midtrans_get_status").notNull()
+}, (table) => ({
+  providerIdx: index("midtrans_refund_bank_confirmations_provider_idx").on(table.providerReference)
+}));
+
 export const courses = pgTable("courses", {
   id: uuid("id").defaultRandom().primaryKey(),
   title: varchar("title", { length: 220 }).notNull(),
