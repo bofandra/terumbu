@@ -5,6 +5,7 @@ import { donations, expeditionBookingPayments, expeditionBookings, paymentOperat
 import { queueMidtransCapacityConflict, reconcileMidtransCompensation } from "@/lib/midtrans-compensations";
 import { verifiedExpeditionGrossMatches } from "@/lib/midtrans-expedition";
 import { midtransIdrAmount, midtransPaymentState, type MidtransStatusPayload } from "@/lib/midtrans";
+import { canApplyVerifiedMidtransState } from "@/lib/midtrans-state-guard";
 import { transitionDonationPayment, transitionExpeditionBookingPayment } from "@/lib/payment-workflows";
 
 export type MidtransSettlementResult = {
@@ -57,7 +58,7 @@ export async function applyVerifiedMidtransStatus(
           return "mismatch" as const;
         }
         if (booking.paymentStatus === status ||
-            (booking.paymentStatus === "refunded" && status !== "refunded")) {
+            !canApplyVerifiedMidtransState(booking.paymentStatus, status)) {
           return "unchanged" as const;
         }
         if (status === "paid") {
@@ -109,7 +110,7 @@ export async function applyVerifiedMidtransStatus(
     if (!donation || donation.currency !== "IDR" || Number(donation.amount) !== amount) {
       return "mismatch" as const;
     }
-    if (donation.status === status || (donation.status === "refunded" && status !== "refunded")) {
+    if (donation.status === status || !canApplyVerifiedMidtransState(donation.status, status)) {
       return "unchanged" as const;
     }
     const updated = await transitionDonationPayment(tx as unknown as typeof db, {
