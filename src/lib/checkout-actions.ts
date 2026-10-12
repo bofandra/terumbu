@@ -35,7 +35,7 @@ import { trackEvent } from "@/lib/analytics";
 import { sendTransactionalEmail } from "@/lib/email";
 import { createMidtransSnapPayment, midtransConfiguration, midtransSnapOrigin } from "@/lib/midtrans";
 import { midtransExpeditionEnabled, validMidtransExpeditionTotal } from "@/lib/midtrans-expedition";
-import { checkoutStatusTokenHash, newCheckoutStatusToken, setCheckoutStatusCookie, checkoutStatusPayload } from "@/lib/checkout-status-access";
+import { checkoutStatusTokenHash, newCheckoutStatusToken, setCheckoutStatusCookie } from "@/lib/checkout-status-access";
 import { expeditionDepartureAvailability } from "@/lib/expedition-booking-lifecycle";
 import { canAcquireExpeditionHold, expeditionHoldExpiresAt, midtransJakartaStartTime, MIDTRANS_EXPEDITION_PAYMENT_MINUTES } from "@/lib/expedition-seat-holds";
 import { calculateDonationImpact, minimumDonationAmount, normalizeCurrency } from "@/lib/impact-calculations";
