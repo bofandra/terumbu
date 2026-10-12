@@ -316,6 +316,13 @@
       "when": 1791813600000,
       "tag": "0044_checkout_status_email_recovery",
       "breakpoints": true
+    },
+    {
+      "idx": 45,
+      "version": "7",
+      "when": 1791833000000,
+      "tag": "0045_midtrans_refund_bank_confirmations",
+      "breakpoints": true
     }
   ]
 }
