@@ -1,3 +1,4 @@
+import { sql } from "drizzle-orm";
 import {
   boolean,
   foreignKey,
@@ -774,12 +775,14 @@ export const expeditionBookings = pgTable("expedition_bookings", {
   paymentStatus: paymentStatus("payment_status").default("created").notNull(),
   bookedAt: timestamp("booked_at", { withTimezone: true }).defaultNow().notNull(),
   confirmedAt: timestamp("confirmed_at", { withTimezone: true }),
+  holdExpiresAt: timestamp("hold_expires_at", { withTimezone: true }),
   metadata: jsonb("metadata")
 }, (table) => ({
   bookingCodeIdx: uniqueIndex("expedition_bookings_code_idx").on(table.bookingCode),
   idempotencyIdx: uniqueIndex("expedition_bookings_idempotency_idx").on(table.idempotencyKey),
   userIdx: index("expedition_bookings_user_idx").on(table.userId),
   departureIdx: index("expedition_bookings_departure_idx").on(table.departureId),
+  holdExpiryIdx: index("expedition_bookings_active_holds_idx").on(table.departureId, table.holdExpiresAt).where(sql`"hold_expires_at" IS NOT NULL AND "payment_status" IN (\'created\',\'pending\')`),
   statusIdx: index("expedition_bookings_status_idx").on(table.status)
 }));
 
