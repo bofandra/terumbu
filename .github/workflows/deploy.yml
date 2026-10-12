@@ -36,7 +36,7 @@ jobs:
         uses: actions/checkout@v7
 
       - name: Validate deploy scripts
-        run: bash -n scripts/deploy-vps.sh scripts/smoke-production.sh scripts/validate-midtrans-release.sh scripts/validate-manual-deploy.sh
+        run: bash -n scripts/deploy-vps.sh scripts/smoke-production.sh scripts/validate-midtrans-release.sh scripts/validate-manual-deploy.sh scripts/prepare-pinned-ssh.sh
 
       - name: Setup Node
         uses: actions/setup-node@v7
@@ -143,16 +143,18 @@ jobs:
           VPS_HOST: ${{ secrets.VPS_HOST }}
           VPS_USER: ${{ secrets.VPS_USER }}
           VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+          VPS_SSH_KNOWN_HOSTS: ${{ secrets.VPS_SSH_KNOWN_HOSTS }}
         run: |
           set -euo pipefail
           test -n "${VPS_HOST}" || { echo "VPS_HOST secret is required"; exit 1; }
           test -n "${VPS_USER}" || { echo "VPS_USER secret is required"; exit 1; }
           test -n "${VPS_SSH_KEY}" || { echo "VPS_SSH_KEY secret is required"; exit 1; }
 
-          install -m 700 -d ~/.ssh
+          # The host identity comes from independently verified secret data,
+          # never an unauthenticated key discovered from the network.
+          bash scripts/prepare-pinned-ssh.sh
           printf '%s\n' "${VPS_SSH_KEY}" > ~/.ssh/terumbu_deploy_key
           chmod 600 ~/.ssh/terumbu_deploy_key
-          ssh-keyscan -H "${VPS_HOST}" >> ~/.ssh/known_hosts
 
       - name: Render production env
         env:
