@@ -44,6 +44,22 @@ test("public external probe exposes only coarse health and detects silent/stale/
     expect(healthy.status()).toBe(200);
     expect(await healthy.json()).toEqual({ status: "ok" });
 
+    // A five-minute worker cannot silently miss 4+ runs while the
+    // 150-minute hourly-worker tolerance keeps external health green.
+    await sql`
+      update worker_heartbeats
+      set last_started_at = now() - interval '21 minutes'
+      where worker_name = 'midtrans_reconciliation'
+    `;
+    const missedFiveMinuteWorker = await request.get("/api/health/workers");
+    expect(missedFiveMinuteWorker.status()).toBe(503);
+    expect(await missedFiveMinuteWorker.json()).toEqual({ status: "unhealthy" });
+    await sql`
+      update worker_heartbeats
+      set last_started_at = now() - interval '1 minute'
+      where worker_name = 'midtrans_reconciliation'
+    `;
+
     await sql`
       update worker_heartbeats
       set last_started_at = now() - interval '180 minutes'
