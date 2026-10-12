@@ -38,6 +38,34 @@ test("Midtrans remains disabled without explicit enablement and a server key", (
   }), { serverKey: "server", mode: "sandbox" });
 });
 
+test("Midtrans production cannot activate from the payment flag or server key alone", () => {
+  const basic = {
+    MIDTRANS_PAYMENT_ENABLED: "true",
+    MIDTRANS_SERVER_KEY: "production-merchant-key",
+    MIDTRANS_ENV: "production"
+  };
+  assert.equal(midtransConfiguration(basic), null);
+  assert.equal(midtransConfiguration({
+    ...basic,
+    MIDTRANS_PRODUCTION_RELEASE_APPROVED: "true",
+    MIDTRANS_SANDBOX_UAT_APPROVED: "true"
+  }), null);
+  assert.equal(midtransConfiguration({
+    ...basic,
+    MIDTRANS_PRODUCTION_RELEASE_APPROVED: "true",
+    MIDTRANS_SANDBOX_UAT_APPROVED: "true",
+    MIDTRANS_OPERATIONS_APPROVED: "true",
+    MIDTRANS_RELEASE_EVIDENCE_ID: "UAT-2026-10"
+  })?.mode, "production");
+  assert.equal(midtransConfiguration({
+    ...basic,
+    MIDTRANS_PRODUCTION_RELEASE_APPROVED: "true",
+    MIDTRANS_SANDBOX_UAT_APPROVED: "true",
+    MIDTRANS_OPERATIONS_APPROVED: "true",
+    MIDTRANS_RELEASE_EVIDENCE_ID: ""
+  }), null);
+});
+
 test("Midtrans signature covers the order ID, status code and exact gross amount", () => {
   const notification = signedNotification();
   assert.equal(verifyMidtransSignature(notification, config.serverKey), true);
