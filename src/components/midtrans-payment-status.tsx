@@ -82,6 +82,9 @@ export function MidtransPaymentStatus({
         {payment?.message ?? "Only verified payment records can confirm your checkout."}
       </p>
       {error ? <p role="alert" className="mt-3 text-sm font-semibold text-coral-700">{error}</p> : null}
+      <a href="/checkout/recover" className="mt-4 inline-block text-sm font-bold text-coral-700 hover:underline">
+        Using another device? Verify your checkout email
+      </a>
       {payment ? (
         <p className="mt-3 text-xs text-ocean-900/55">
           Last read: {new Date(payment.asOf).toLocaleString("id-ID", { dateStyle: "short", timeStyle: "short" })}
