@@ -902,6 +902,27 @@ export const expeditionBookingPayments = pgTable("expedition_booking_payments", 
   }).onDelete("cascade")
 }));
 
+export const checkoutStatusAccessTokens = pgTable("checkout_status_access_tokens", {
+  tokenHash: varchar("token_hash", { length: 64 }).primaryKey().notNull(),
+  checkoutType: varchar("checkout_type", { length: 16 }).notNull(),
+  checkoutId: uuid("checkout_id").notNull(),
+  purpose: varchar("purpose", { length: 16 }).notNull(),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  usedAt: timestamp("used_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull()
+}, (table) => ({
+  checkoutIdx: index("checkout_status_access_checkout_idx").on(table.checkoutType, table.checkoutId, table.purpose, table.expiresAt),
+  expiryIdx: index("checkout_status_access_expiry_idx").on(table.expiresAt)
+}));
+
+export const checkoutStatusRequestLimits = pgTable("checkout_status_request_limits", {
+  keyHash: varchar("key_hash", { length: 64 }).primaryKey().notNull(),
+  hits: integer("hits").default(0).notNull(),
+  resetAt: timestamp("reset_at", { withTimezone: true }).notNull()
+}, (table) => ({
+  resetIdx: index("checkout_status_request_limits_reset_idx").on(table.resetAt)
+}));
+
 export const midtransReconciliationChecks = pgTable("midtrans_reconciliation_checks", {
   providerReference: varchar("provider_reference", { length: 100 }).primaryKey().notNull(),
   lastCheckedAt: timestamp("last_checked_at", { withTimezone: true }).notNull(),
