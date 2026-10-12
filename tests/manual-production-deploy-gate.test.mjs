@@ -100,6 +100,9 @@ test("workflow preserves automatic CI but production release requires manual dis
   assert.match(deploySection, /DEPLOY_VERSION: \$\{\{ inputs\.release_sha \}\}/);
   const observer = workflow.split(/\n  external_worker_watch:\s*\n/)[1];
   assert.match(observer, /needs: \[deploy\]/);
+  assert.equal((observer.match(/^\s+permissions:/gm) || []).length, 1,
+    "GitHub Actions rejects duplicate YAML permissions keys");
+  assert.match(observer, /permissions:\s*\n\s+contents: read\s*\n\s+issues: write/);
   assert.match(observer, /if: github\.event_name == 'workflow_dispatch' && github\.ref == 'refs\/heads\/main'/);
   assert.match(observer, /node scripts\/monitor-midtrans-refund-sla\.mjs/);
   assert.match(workflow, /bash -n [^\n]*scripts\/validate-manual-deploy\.sh/);
