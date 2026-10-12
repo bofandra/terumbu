@@ -76,7 +76,7 @@ test("verified email on a new device provides scoped, one-time guest payment acc
     }).from(checkoutStatusAccessTokens)
       .where(eq(checkoutStatusAccessTokens.tokenHash,
         // Hash recovery token before reading database.
-        (await import("../../src/lib/checkout-status-access")).checkoutStatusTokenHash(token)))
+        (await import("../../src/lib/checkout-status-token")).checkoutStatusTokenHash(token)))
       .limit(1);
     expect(recoveryRow.usedAt).not.toBeNull();
 
