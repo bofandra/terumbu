@@ -112,3 +112,29 @@ test("GET status uses authenticated provider API and validates returned order", 
   }), { status: 200 })) as typeof fetch;
   await assert.rejects(fetchMidtransTransactionStatus(config, "TRB-DON-123", tampered), /Invalid Midtrans order/);
 });
+
+test("expedition Snap sessions enforce a fixed server-side payment and page expiry", async () => {
+  let payload: Record<string, unknown> = {};
+  const fetcher = (async (_input: string | URL | Request, init?: RequestInit) => {
+    payload = JSON.parse(String(init?.body)) as Record<string, unknown>;
+    return new Response(JSON.stringify({ redirect_url: "https://app.sandbox.midtrans.com/snap/v2/vtweb/exp" }), { status: 201 });
+  }) as typeof fetch;
+
+  await createMidtransSnapPayment(config, {
+    orderId: "TRB-EXP-123",
+    amount: 100000,
+    donorName: "Traveler",
+    donorEmail: "traveler@example.org",
+    expiry: { startTime: "2026-10-12 07:00:00 +0700", durationMinutes: 15 }
+  }, fetcher);
+
+  assert.deepEqual(payload.expiry, {
+    start_time: "2026-10-12 07:00:00 +0700", duration: 15, unit: "minute"
+  });
+  assert.deepEqual(payload.page_expiry, { duration: 15, unit: "minute" });
+  await assert.rejects(createMidtransSnapPayment(config, {
+    orderId: "TRB-EXP-123", amount: 100000, donorName: "Traveler",
+    donorEmail: "traveler@example.org",
+    expiry: { startTime: "malformed", durationMinutes: 15 }
+  }, fetcher), /Invalid Snap payment expiry/);
+});
