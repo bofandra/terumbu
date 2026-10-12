@@ -295,6 +295,13 @@
       "when": 1791749400000,
       "tag": "0041_worker_heartbeats",
       "breakpoints": true
+    },
+    {
+      "idx": 42,
+      "version": "7",
+      "when": 1791750000000,
+      "tag": "0042_expedition_seat_holds",
+      "breakpoints": true
     }
   ]
 }
