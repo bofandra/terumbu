@@ -9,6 +9,7 @@ import { checkoutStatusTokenHash, newCheckoutStatusToken } from "../../src/lib/c
 
 test("private status API rejects guessed URLs and allows only the guest checkout cookie", async ({ browser, request }) => {
   let donationId: string | null = null;
+  let providerReference: string | null = null;
   const context = await browser.newContext();
   try {
     const [campaign] = await db.select({ id: campaigns.id }).from(campaigns).limit(1);
@@ -24,10 +25,11 @@ test("private status API rejects guessed URLs and allows only the guest checkout
       status: "pending"
     }).returning({ id: donations.id });
     donationId = donation.id;
+    providerReference = "TRB-DON-" + randomUUID();
     await db.insert(paymentTransactions).values({
       donationId,
       provider: "midtrans",
-      providerReference: "TRB-DON-" + randomUUID(),
+      providerReference,
       status: "pending",
       payload: { method: "midtrans_snap", checkoutAccessHash: checkoutStatusTokenHash(token) }
     });
@@ -67,6 +69,7 @@ test("private status API rejects guessed URLs and allows only the guest checkout
     expect((await request.get(url)).status()).toBe(404);
   } finally {
     await context.close();
+    if (providerReference) await db.delete(paymentTransactions).where(eq(paymentTransactions.providerReference, providerReference));
     if (donationId) await db.delete(donations).where(eq(donations.id, donationId));
   }
 });
