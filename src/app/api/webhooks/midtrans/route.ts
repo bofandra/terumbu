@@ -12,6 +12,7 @@ import {
   type MidtransStatusPayload
 } from "@/lib/midtrans";
 import { recordPaymentOperation, transitionDonationPayment, transitionExpeditionBookingPayment } from "@/lib/payment-workflows";
+import { verifiedExpeditionGrossMatches } from "@/lib/midtrans-expedition";
 import { readBoundedRequestBody, RequestBodyTooLargeError } from "@/lib/read-bounded-request-body";
 
 /**
@@ -88,7 +89,7 @@ export async function POST(request: NextRequest) {
           status: expeditionBookings.status,
           paymentStatus: expeditionBookings.paymentStatus
         }).from(expeditionBookings).where(eq(expeditionBookings.id, bookingId)).limit(1).for("update");
-        if (!booking || booking.currency !== "IDR" || Number(booking.amount) !== requestedAmount) return "mismatch" as const;
+        if (!booking || !verifiedExpeditionGrossMatches(booking.currency, Number(booking.amount), requestedAmount)) return "mismatch" as const;
         if (booking.paymentStatus === status || booking.paymentStatus === "refunded" && status !== "refunded") return "unchanged" as const;
         if (status === "paid" && booking.status === "cancelled") return "capacity_unavailable" as const;
         const updated = await transitionExpeditionBookingPayment(tx as unknown as typeof db, {
