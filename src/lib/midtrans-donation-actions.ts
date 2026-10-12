@@ -12,6 +12,7 @@ import { normalizeDonationContributionIntent, parseDonationAmount } from "@/lib/
 import { minimumDonationAmount, normalizeCurrency } from "@/lib/impact-calculations";
 import { createMidtransSnapPayment, midtransConfiguration, midtransSnapOrigin } from "@/lib/midtrans";
 import { recordPaymentOperation } from "@/lib/payment-workflows";
+import { checkoutStatusTokenHash, newCheckoutStatusToken, setCheckoutStatusCookie } from "@/lib/checkout-status-access";
 
 function checkoutError(error: string) {
   return "/checkout/donation?error=" + encodeURIComponent(error);
@@ -93,11 +94,13 @@ export async function createMidtransDonationAction(formData: FormData) {
 
   const sessionUser = await getSessionUser();
   const orderId = "TRB-DON-" + randomUUID();
+  const statusToken = newCheckoutStatusToken();
   const now = new Date();
   const providerPayload = {
     method: "midtrans_snap",
     contributionIntent,
-    createdAt: now.toISOString()
+    createdAt: now.toISOString(),
+    checkoutAccessHash: checkoutStatusTokenHash(statusToken)
   };
 
   const [inserted] = await db.transaction(async (tx) => {
@@ -140,6 +143,7 @@ export async function createMidtransDonationAction(formData: FormData) {
     return rows;
   });
   if (!inserted) redirect(checkoutError("gateway"));
+  await setCheckoutStatusCookie(inserted.id, statusToken);
 
   let redirectUrl: string;
   try {
