@@ -37,6 +37,7 @@ export type MidtransStatusPayload = {
   currency?: unknown;
   payment_type?: unknown;
   transaction_id?: unknown;
+  refunds?: unknown;
 };
 
 function signedFields(value: MidtransStatusPayload) {
