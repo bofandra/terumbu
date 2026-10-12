@@ -83,7 +83,7 @@ services:
             -X POST \
             -H "x-cron-secret: $${CRON_SECRET}" \
             http://web:3000/api/cron/corporate-reports || true
-          # Sleep only after both authenticated cron requests have run.
+          # Sleep only after all three authenticated cron requests have run.
           sleep 3600
         done
     depends_on:
