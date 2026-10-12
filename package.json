@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
-    "test": "node --import tsx --test tests/*.test.ts && node --test tests/external-worker-watch.test.mjs tests/midtrans-release-gate.test.mjs tests/midtrans-refund-sla-watch.test.mjs tests/midtrans-uat-evidence.test.mjs tests/manual-production-deploy-gate.test.mjs",
+    "test": "node --import tsx --test tests/*.test.ts && node --test tests/external-worker-watch.test.mjs tests/midtrans-release-gate.test.mjs tests/midtrans-refund-sla-watch.test.mjs tests/midtrans-uat-evidence.test.mjs tests/manual-production-deploy-gate.test.mjs tests/deploy-ssh-host-pinning.test.mjs",
     "typecheck": "next typegen && node -e \"require('node:fs').rmSync('.next/types/validator.ts', { force: true })\" && tsc --noEmit --incremental false",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
