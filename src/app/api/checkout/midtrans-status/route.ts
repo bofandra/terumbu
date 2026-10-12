@@ -6,6 +6,7 @@ import { donations, expeditionBookingPayments, expeditionBookings, paymentOperat
 import { getSessionUser } from "@/lib/auth";
 import { checkoutStatusPayload, mayReadCheckoutStatus, readCheckoutStatusCookie } from "@/lib/checkout-status-access";
 import { customerPaymentResolution } from "@/lib/checkout-payment-status";
+import { hasRecoveredCheckoutAccess } from "@/lib/checkout-status-recovery";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -29,12 +30,15 @@ export async function GET(request: NextRequest) {
       .innerJoin(paymentTransactions, eq(paymentTransactions.donationId, donations.id))
       .where(and(eq(donations.id, id), eq(paymentTransactions.provider, "midtrans")))
       .limit(1);
-    if (!record || !mayReadCheckoutStatus({
-      ownerId: record.ownerId,
-      currentUserId: user?.id ?? null,
-      guestToken,
-      storedHash: checkoutStatusPayload(record.payload).checkoutAccessHash
-    })) return NextResponse.json({ error: "Not found." }, { status: 404, headers: noStore });
+    const authorized = record && (
+      mayReadCheckoutStatus({
+        ownerId: record.ownerId,
+        currentUserId: user?.id ?? null,
+        guestToken,
+        storedHash: checkoutStatusPayload(record.payload).checkoutAccessHash
+      }) || (record.ownerId === null && await hasRecoveredCheckoutAccess({ token: guestToken, checkoutId: id, type: "donation" }))
+    );
+    if (!authorized) return NextResponse.json({ error: "Not found." }, { status: 404, headers: noStore });
 
     const resolution = customerPaymentResolution({ paymentStatus: record.paymentStatus });
     return NextResponse.json({ type, ...resolution, asOf: new Date().toISOString() }, { headers: noStore });
@@ -50,12 +54,15 @@ export async function GET(request: NextRequest) {
     .where(and(eq(expeditionBookings.id, id), eq(expeditionBookingPayments.provider, "midtrans")))
     .limit(1);
 
-  if (!record || !mayReadCheckoutStatus({
-    ownerId: record.ownerId,
-    currentUserId: user?.id ?? null,
-    guestToken,
-    storedHash: checkoutStatusPayload(record.payload).checkoutAccessHash
-  })) return NextResponse.json({ error: "Not found." }, { status: 404, headers: noStore });
+  const authorized = record && (
+    mayReadCheckoutStatus({
+      ownerId: record.ownerId,
+      currentUserId: user?.id ?? null,
+      guestToken,
+      storedHash: checkoutStatusPayload(record.payload).checkoutAccessHash
+    }) || (record.ownerId === null && await hasRecoveredCheckoutAccess({ token: guestToken, checkoutId: id, type: "expedition" }))
+  );
+  if (!authorized) return NextResponse.json({ error: "Not found." }, { status: 404, headers: noStore });
 
   const [compensation] = await db.select({ status: paymentOperations.status })
     .from(paymentOperations)
