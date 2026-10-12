@@ -8,9 +8,7 @@ import {
   donations, expeditionBookingPayments, expeditionBookings, paymentTransactions
 } from "@/db/schema";
 import { authAppBaseUrl } from "@/lib/auth-tokens";
-import {
-  checkoutStatusTokenHash, newCheckoutStatusToken, setCheckoutStatusCookie
-} from "@/lib/checkout-status-access";
+import { checkoutStatusTokenHash, newCheckoutStatusToken } from "@/lib/checkout-status-token";
 import { sendTransactionalEmail } from "@/lib/email";
 
 export const CHECKOUT_RECOVERY_MINUTES = 15;
@@ -184,6 +182,8 @@ export async function redeemGuestCheckoutRecovery(rawToken: string, now = new Da
     }).returning({ id: checkoutStatusAccessTokens.checkoutId, type: checkoutStatusAccessTokens.checkoutType });
   });
   if (!grant || (grant.type !== "donation" && grant.type !== "expedition")) return null;
+  // Load Next request-bound cookies only during explicit server-action redemption.
+  const { setCheckoutStatusCookie } = await import("@/lib/checkout-status-access");
   await setCheckoutStatusCookie(grant.id, newToken);
   return { type: grant.type, id: grant.id };
 }
