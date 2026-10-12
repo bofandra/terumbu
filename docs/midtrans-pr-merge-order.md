@@ -25,6 +25,7 @@ matters. PR #114 is **an issue**, not the missing fourth pull request.
 | 10 | #122 | Production release gate and worker deployment | Fail closed, migrations and rollback safety |
 | 11 | #123 | Refund SLA and external monitoring | 20-minute heartbeat, 1h/24h/72h review alarms |
 | 12 | #124 | Merchant sandbox UAT evidence and stack verifier | Real evidence must be collected, NO-GO by default |
+| 13 | #125 | Manual production deployment authorization | Code merge must not trigger automatic VPS deploy |
 
 Inspect relationship using the read-only command:
 
@@ -41,11 +42,14 @@ invalidates a prior inspection.
 
 ## Why *not* merge everything immediately
 
-The current `.github/workflows/deploy.yml` deploys automatically after a
-successful **push to main**, including DB migrations and app updates.
-Consequently, **merging an intermediate PR is itself a production deployment
-event**. A reviewer must not assume a green PR CI is permission to merge,
-especially for payment/refund code.
+Historically, `.github/workflows/deploy.yml` deployed automatically on a
+successful **push to main**, including DB migrations and app updates. **PR #125
+changes this behavior**: pushes and PRs run CI without deployment, and only a
+protected, explicitly confirmed `workflow_dispatch` from `main` with an exact
+commit SHA and approved release ticket can enter the production job. This
+change does not take effect until the code is actually merged. Until then,
+**merging any earlier PR can still cause an automatic production deployment**.
+Review the live `main` workflow before merging anything.
 
 Before any merge:
 
@@ -72,6 +76,9 @@ contain historical commits from earlier PRs. After each squash merge, the
 next branch must be deliberately rebased or its PR diff inspected and updated
 against the new main commit; never assume GitHub will automatically remove
 all duplicates. Recheck database journal ordering and CI at the final SHA.
+
+See `docs/midtrans-safe-merge-manual-deploy.md` for the protected manual
+production deployment procedure and required environment configuration.
 
 **Keep the entire chain draft for now.** The objective of this plan is
 reviewability and safer deployment, not an automatic bypass of human checks.
