@@ -1,4 +1,7 @@
 import { Activity, AlertTriangle, Clock3, FileText, Mail, RadioTower, TimerReset } from "lucide-react";
+import { desc, eq } from "drizzle-orm";
+import { db } from "@/db/client";
+import { expeditionBookings, paymentOperations } from "@/db/schema";
 
 import { AdminPageHeader } from "@/components/admin-ui";
 import { observeAdminDataLoader } from "@/lib/admin-observability";
@@ -34,6 +37,17 @@ export default async function AdminOperationsPage() {
   await requireRole(["admin"], "/admin/operations");
   const metrics = await observeAdminDataLoader("admin.operations", () => getAdminOperationsMetrics());
   const alerts = adminOperationsAlerts(metrics);
+  const compensations = await observeAdminDataLoader("admin.midtrans-compensations", () => db.select({
+    id: paymentOperations.id,
+    status: paymentOperations.status,
+    amount: paymentOperations.amount,
+    currency: paymentOperations.currency,
+    bookingCode: expeditionBookings.bookingCode,
+    createdAt: paymentOperations.createdAt
+  }).from(paymentOperations)
+    .innerJoin(expeditionBookings, eq(paymentOperations.bookingId, expeditionBookings.id))
+    .where(eq(paymentOperations.operationType, "midtrans_capacity_conflict"))
+    .orderBy(desc(paymentOperations.createdAt)).limit(20));
 
   return (
     <div className="space-y-6">
@@ -85,6 +99,38 @@ export default async function AdminOperationsPage() {
                 <div><dt className="inline font-bold">Last failure (WIB): </dt><dd className="inline">{when(worker.lastFailedAt)}</dd></div>
                 <div><dt className="inline font-bold">Consecutive failed runs: </dt><dd className="inline">{worker.consecutiveFailures}</dd></div>
               </dl>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section aria-labelledby="operations-compensations" className="space-y-3">
+        <div className="flex items-center gap-2">
+          <AlertTriangle aria-hidden="true" className="size-5 text-coral-700" />
+          <h2 id="operations-compensations" className="text-lg font-bold text-ocean-900">
+            Midtrans expedition compensation cases
+          </h2>
+        </div>
+        <p className="text-sm font-semibold text-ocean-900/60">
+          The 20 newest paid-without-seats incidents; statuses pending, requesting, refund_submitted,
+          and manual_review require operational monitoring. Provider acceptance is not bank-confirmed repayment.
+        </p>
+        <div className="space-y-2" data-testid="midtrans-compensation-queue">
+          {compensations.length === 0 ? (
+            <p className="rounded-lg border border-ocean-900/10 bg-white p-4 text-sm text-ocean-900/60">
+              No Midtrans capacity-compensation incidents recorded.
+            </p>
+          ) : compensations.map((record) => (
+            <article key={record.id} className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-ocean-900/10 bg-white p-4">
+              <div>
+                <p className="font-bold text-ocean-900">{record.bookingCode}</p>
+                <p className="mt-1 text-xs text-ocean-900/60">
+                  {when(record.createdAt)} WIB · {record.currency} {Number(record.amount ?? 0).toLocaleString("id-ID")}
+                </p>
+              </div>
+              <span className="rounded-full border border-coral-700/15 bg-sand-50 px-3 py-1 text-xs font-bold text-ocean-900">
+                {record.status.replaceAll("_", " ")}
+              </span>
             </article>
           ))}
         </div>
