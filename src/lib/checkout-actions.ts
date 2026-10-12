@@ -126,7 +126,7 @@ export async function createDonationAction(formData: FormData) {
     namespace: "payment-proof",
     appUrl: `/private-media/payment-proof/donation/${providerReference}`
   });
-  const proofError = isMidtrans ? null : paymentProofUploadError(proofUpload!);
+  const proofError = paymentProofUploadError(proofUpload);
 
   if (proofError) {
     redirect(checkoutErrorPath("payment_proof"));
@@ -156,10 +156,10 @@ export async function createDonationAction(formData: FormData) {
       unitCount: Number(line.unitCount.toFixed(2)),
       allocatedAmount: Number(line.allocatedAmount.toFixed(2))
     })),
-    paymentProofUrl: proofUpload?.dataUrl ?? null,
-    paymentProofObjectKey: proofUpload?.objectKey ?? null,
-    paymentProofContentType: proofUpload?.contentType ?? null,
-    paymentProofStorageProvider: proofUpload?.storageProvider ?? null,
+    paymentProofUrl: proofUpload.dataUrl,
+    paymentProofObjectKey: proofUpload.objectKey ?? null,
+    paymentProofContentType: proofUpload.contentType ?? null,
+    paymentProofStorageProvider: proofUpload.storageProvider ?? null,
     paymentReference: paymentReference || null,
     submittedAt,
     verificationStatus: "submitted",
@@ -189,10 +189,10 @@ export async function createDonationAction(formData: FormData) {
     await tx.insert(paymentTransactions).values({
       donationId: donation.id,
       paymentMethodId: null,
-      provider: paymentProvider,
+      provider: "manual_external",
       providerReference,
-      status: isMidtrans ? "created" : "pending",
-      payload: isMidtrans ? { method: "midtrans_snap", initiatedAt: now.toISOString() } : manualPaymentMetadata,
+      status: "pending",
+      payload: manualPaymentMetadata,
       updatedAt: now
     });
 
@@ -407,7 +407,7 @@ async function submitExpeditionCheckout(formData: FormData, paymentProvider: "ma
     namespace: "payment-proof",
     appUrl: `/private-media/payment-proof/expedition/${providerReference}`
   });
-  const proofError = paymentProofUploadError(proofUpload);
+  const proofError = isMidtrans ? null : paymentProofUploadError(proofUpload!);
 
   if (proofError) {
     redirect(`${nextPath}?error=payment_proof`);
@@ -416,10 +416,10 @@ async function submitExpeditionCheckout(formData: FormData, paymentProvider: "ma
   const now = new Date();
   const manualPaymentMetadata = {
     method: "manual_external",
-    paymentProofUrl: proofUpload.dataUrl,
-    paymentProofObjectKey: proofUpload.objectKey ?? null,
-    paymentProofContentType: proofUpload.contentType ?? null,
-    paymentProofStorageProvider: proofUpload.storageProvider ?? null,
+    paymentProofUrl: proofUpload?.dataUrl ?? null,
+    paymentProofObjectKey: proofUpload?.objectKey ?? null,
+    paymentProofContentType: proofUpload?.contentType ?? null,
+    paymentProofStorageProvider: proofUpload?.storageProvider ?? null,
     paymentReference: paymentReference || null,
     submittedAt: now.toISOString(),
     verificationStatus: "submitted"
@@ -470,10 +470,10 @@ async function submitExpeditionCheckout(formData: FormData, paymentProvider: "ma
 
     await tx.insert(expeditionBookingPayments).values({
       bookingId: booking.id,
-      provider: "manual_external",
+      provider: paymentProvider,
       providerReference,
-      status: "pending",
-      payload: manualPaymentMetadata,
+      status: isMidtrans ? "created" : "pending",
+      payload: isMidtrans ? { method: "midtrans_snap", initiatedAt: now.toISOString() } : manualPaymentMetadata,
       updatedAt: now
     });
 
