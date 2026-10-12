@@ -21,6 +21,7 @@ test("duplicate capacity conflicts generate one case; refund POST once, then rec
   };
   let bookingId: string | null = null;
   let departureId: string | null = null;
+  let providerReference: string | null = null;
   try {
     const [expedition] = await db.select({ id: expeditions.id }).from(expeditions)
       .where(eq(expeditions.slug, "raja-ampat-coral-restoration")).limit(1);
@@ -32,7 +33,7 @@ test("duplicate capacity conflicts generate one case; refund POST once, then rec
       capacity: 1, seatsBooked: 1, status: "full"
     }).returning({ id: expeditionDepartures.id });
     departureId = departure.id;
-    const providerReference = "TRB-EXP-" + randomUUID();
+    providerReference = "TRB-EXP-" + randomUUID();
     const [booking] = await db.insert(expeditionBookings).values({
       expeditionId: expedition.id, departureId: departure.id,
       bookingCode: "E2E-COMP-" + randomUUID(),
@@ -133,7 +134,7 @@ test("duplicate capacity conflicts generate one case; refund POST once, then rec
       else process.env[key] = value;
     }
     if (bookingId) {
-      await db.delete(midtransRefundBankConfirmations).where(eq(midtransRefundBankConfirmations.providerReference, providerReference));
+      if (providerReference) await db.delete(midtransRefundBankConfirmations).where(eq(midtransRefundBankConfirmations.providerReference, providerReference));
       await db.delete(paymentOperations).where(eq(paymentOperations.bookingId, bookingId));
       await db.delete(expeditionBookings).where(eq(expeditionBookings.id, bookingId));
     }
