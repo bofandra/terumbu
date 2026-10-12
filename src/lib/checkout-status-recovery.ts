@@ -56,10 +56,10 @@ async function takeRequestSlot(scope: string, key: string, limit: number, now: D
   }).onConflictDoUpdate({
     target: checkoutStatusRequestLimits.keyHash,
     set: {
-      hits: sql`case when ${checkoutStatusRequestLimits.resetAt} <= ${now}
+      hits: sql`case when ${checkoutStatusRequestLimits.resetAt} <= ${now.toISOString()}
         then 1 else least(${checkoutStatusRequestLimits.hits} + 1, 100000) end`,
-      resetAt: sql`case when ${checkoutStatusRequestLimits.resetAt} <= ${now}
-        then ${resetAt} else ${checkoutStatusRequestLimits.resetAt} end`
+      resetAt: sql`case when ${checkoutStatusRequestLimits.resetAt} <= ${now.toISOString()}
+        then ${resetAt.toISOString()} else ${checkoutStatusRequestLimits.resetAt} end`
     }
   }).returning({ hits: checkoutStatusRequestLimits.hits });
   return Boolean(hit && hit.hits <= limit);
