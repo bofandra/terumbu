@@ -90,6 +90,31 @@ services:
       web:
         condition: service_started
 
+  midtrans-reconciliation-worker:
+    # A separate five-minute GET Status poller; does not depend on provider webhooks.
+    container_name: terumbu-midtrans-reconciliation-worker
+    image: curlimages/curl:8.12.1
+    restart: unless-stopped
+    environment:
+      CRON_SECRET: ${CRON_SECRET:?CRON_SECRET is required}
+    command:
+      - sh
+      - -c
+      - |
+        until curl --fail --silent --max-time 5 http://web:3000/api/health >/dev/null; do
+          sleep 5
+        done
+        while true; do
+          curl --fail --silent --show-error --max-time 240 \
+            -X POST \
+            -H "x-cron-secret: ${CRON_SECRET}" \
+            http://web:3000/api/cron/midtrans-reconciliation || true
+          sleep 300
+        done
+    depends_on:
+      web:
+        condition: service_started
+
   migrate:
     build:
       context: ..
