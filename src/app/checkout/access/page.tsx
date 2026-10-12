@@ -26,7 +26,7 @@ export default async function CheckoutAccessPage({
         <h1 className="mt-8 text-2xl font-bold text-ocean-900">Confirm access to payment status</h1>
         <p className="mt-3 text-sm leading-6 text-ocean-900/70">
           You followed a secure link from a Terumbu email. Confirm to authorize this
-          browser to view only that checkout's payment status for 30 days.
+          browser to view only that checkout&apos;s payment status for 30 days.
         </p>
         {token ? (
           <form action={redeemCheckoutStatusEmailAction} className="mt-6">
