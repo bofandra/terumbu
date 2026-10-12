@@ -7,14 +7,18 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
-    "test": "node --import tsx --test tests/*.test.ts && node --test tests/external-worker-watch.test.mjs tests/midtrans-release-gate.test.mjs tests/midtrans-refund-sla-watch.test.mjs",
+    "test": "node --import tsx --test tests/*.test.ts && node --test tests/external-worker-watch.test.mjs tests/midtrans-release-gate.test.mjs tests/midtrans-refund-sla-watch.test.mjs tests/midtrans-uat-evidence.test.mjs",
     "typecheck": "next typegen && node -e \"require('node:fs').rmSync('.next/types/validator.ts', { force: true })\" && tsc --noEmit --incremental false",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:push": "drizzle-kit push",
     "db:seed": "tsx scripts/seed.ts",
     "db:seed-role-users": "tsx scripts/seed-role-users.ts",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "midtrans:uat:init": "node scripts/midtrans-uat-evidence.mjs init",
+    "midtrans:uat:assess": "node scripts/midtrans-uat-evidence.mjs assess",
+    "midtrans:uat:probe": "node scripts/midtrans-uat-evidence.mjs probe",
+    "midtrans:stack": "node scripts/midtrans-pr-stack.mjs"
   },
   "dependencies": {
     "clsx": "^2.1.1",
