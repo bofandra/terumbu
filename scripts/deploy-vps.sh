@@ -73,6 +73,10 @@ case "${CURRENT_HEAD}" in
 esac
 
 echo "Checked out ${CURRENT_HEAD}."
+# This executes before PostgreSQL startup, backup rotation, migration and any
+# container replacement. Refuse unsafe financial flags even on manual SSH deploy.
+bash "${APP_DIR}/scripts/validate-midtrans-release.sh" "${ENV_FILE}"
+
 if [ -n "${PREVIOUS_REVISION}" ]; then
   echo "Previous running revision: ${PREVIOUS_REVISION}."
 fi
@@ -142,6 +146,16 @@ rollback_application() {
       --project-name "${PROJECT_NAME}" \
       -f "${rollback_compose_file}" \
       up -d --no-build --force-recreate reminder-worker || true
+  fi
+
+  # Always restore the reconciliation scheduler when the rollback revision
+  # contains it. A restored web without this worker can strand paid orders.
+  if docker compose --env-file "${ENV_FILE}" --project-name "${PROJECT_NAME}" -f "${rollback_compose_file}" config --services | grep -qx "midtrans-reconciliation-worker"; then
+    docker compose \
+      --env-file "${ENV_FILE}" \
+      --project-name "${PROJECT_NAME}" \
+      -f "${rollback_compose_file}" \
+      up -d --no-build --force-recreate midtrans-reconciliation-worker || true
   fi
 
   local rollback_running_revision
@@ -258,7 +272,7 @@ if ! docker compose \
   --env-file "${ENV_FILE}" \
   --project-name "${PROJECT_NAME}" \
   -f "${COMPOSE_FILE}" \
-  up -d --no-build --force-recreate web reminder-worker; then
+  up -d --no-build --force-recreate web reminder-worker midtrans-reconciliation-worker; then
   echo "New application containers failed to start." >&2
   rollback_application "container recreation failure" || true
   exit 1
