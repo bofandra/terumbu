@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 
-type PaymentStage = "pending" | "confirmed" | "not_completed" | "operator_review" | "refund_requested" | "refunded";
+type PaymentStage = "pending" | "confirmed" | "not_completed" | "operator_review" | "refund_requested" | "refunded" | "bank_confirmed";
 type PaymentStatus = {
   type: "donation" | "expedition";
   stage: PaymentStage;
@@ -17,7 +17,8 @@ const names: Record<PaymentStage, string> = {
   not_completed: "Payment not completed",
   operator_review: "Under review",
   refund_requested: "Refund is being processed",
-  refunded: "Provider reports a refund"
+  refunded: "Provider reports a refund",
+  bank_confirmed: "Acquiring bank confirmed the refund request"
 };
 
 export function MidtransPaymentStatus({
@@ -34,6 +35,7 @@ export function MidtransPaymentStatus({
     const refresh = async () => {
       controller = new AbortController();
       let shouldPoll = true;
+      let valuePollMs = 15000;
       try {
         const params = new URLSearchParams({ type, id: checkoutId });
         const response = await fetch("/api/checkout/midtrans-status?" + params, {
@@ -50,6 +52,7 @@ export function MidtransPaymentStatus({
         } else {
           const value = await response.json() as PaymentStatus;
           shouldPoll = !value.final;
+          valuePollMs = value.stage === "refunded" ? 60000 : 15000;
           if (!cancelled) {
             setPayment(value);
             setError(null);
@@ -58,7 +61,7 @@ export function MidtransPaymentStatus({
       } catch {
         if (!cancelled) setError("Cannot reach the status service at the moment.");
       } finally {
-        if (!cancelled && shouldPoll) handle = setTimeout(refresh, 15000);
+        if (!cancelled && shouldPoll) handle = setTimeout(refresh, valuePollMs);
       }
     };
 
