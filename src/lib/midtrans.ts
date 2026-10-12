@@ -94,7 +94,7 @@ type Fetcher = typeof fetch;
 
 export async function createMidtransSnapPayment(
   config: MidtransConfiguration,
-  input: { orderId: string; amount: number; donorName: string; donorEmail: string; finishUrl?: string },
+  input: { orderId: string; amount: number; donorName: string; donorEmail: string; finishUrl?: string; expiry?: { startTime: string; durationMinutes: number } },
   fetcher: Fetcher = fetch
 ): Promise<string> {
   if (!/^[a-zA-Z0-9_-]{1,100}$/.test(input.orderId) || !Number.isSafeInteger(input.amount) || input.amount < 1) {
@@ -109,6 +109,11 @@ export async function createMidtransSnapPayment(
     }
     finishUrl = parsed.toString();
   }
+  if (input.expiry &&
+      (!/^\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2} [+-]\\d{4}$/.test(input.expiry.startTime) ||
+        !Number.isInteger(input.expiry.durationMinutes) || input.expiry.durationMinutes < 5 || input.expiry.durationMinutes > 1440)) {
+    throw new Error("Invalid Snap payment expiry.");
+  }
   const response = await fetcher(`${midtransSnapOrigin(config)}/snap/v1/transactions`, {
     method: "POST",
     headers: {
@@ -118,6 +123,10 @@ export async function createMidtransSnapPayment(
     },
     body: JSON.stringify({
       transaction_details: { order_id: input.orderId, gross_amount: input.amount },
+      ...(input.expiry ? {
+        expiry: { start_time: input.expiry.startTime, duration: input.expiry.durationMinutes, unit: "minute" },
+        page_expiry: { duration: input.expiry.durationMinutes, unit: "minute" }
+      } : {}),
       customer_details: { first_name: input.donorName.slice(0, 160), email: input.donorEmail },
       ...(finishUrl ? { callbacks: { finish: finishUrl } } : {})
     }),
