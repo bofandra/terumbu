@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { processMissingMidtransWebhooks } from "@/lib/midtrans-reconciliation";
+import { pruneExpiredCheckoutStatusRecovery } from "@/lib/checkout-status-recovery";
 import { runWithWorkerHeartbeat } from "@/lib/worker-heartbeat";
 
 export const dynamic = "force-dynamic";
@@ -15,7 +16,11 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
   }
   try {
-    const result = await runWithWorkerHeartbeat("midtrans_reconciliation", processMissingMidtransWebhooks);
+    const result = await runWithWorkerHeartbeat("midtrans_reconciliation", async () => {
+      const payments = await processMissingMidtransWebhooks();
+      await pruneExpiredCheckoutStatusRecovery();
+      return payments;
+    });
     return NextResponse.json({ ok: true, ...result }, { headers: { "Cache-Control": "no-store" } });
   } catch {
     console.error("Midtrans reconciliation cycle failed.");
