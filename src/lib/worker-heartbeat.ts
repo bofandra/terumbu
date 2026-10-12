@@ -5,7 +5,7 @@ import { and, eq, sql } from "drizzle-orm";
 import { db } from "@/db/client";
 import { workerHeartbeats } from "@/db/schema";
 
-export const HOURLY_WORKERS = ["corporate_reports", "expedition_reminders"] as const;
+export const HOURLY_WORKERS = ["corporate_reports", "expedition_reminders", "midtrans_compensations"] as const;
 export type HourlyWorkerName = (typeof HOURLY_WORKERS)[number];
 export type WorkerHeartbeatRow = {
   workerName: HourlyWorkerName;
