@@ -18,3 +18,7 @@ test-results/
 
 # Runtime-generated private corporate report artifacts
 data/corporate-reports/
+
+# Restricted merchant sandbox UAT evidence — never commit order IDs or credentials
+data/midtrans-uat/
+*.midtrans-uat.private.json
