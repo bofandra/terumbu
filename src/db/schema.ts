@@ -902,6 +902,17 @@ export const expeditionBookingPayments = pgTable("expedition_booking_payments", 
   }).onDelete("cascade")
 }));
 
+export const midtransReconciliationChecks = pgTable("midtrans_reconciliation_checks", {
+  providerReference: varchar("provider_reference", { length: 100 }).primaryKey().notNull(),
+  lastCheckedAt: timestamp("last_checked_at", { withTimezone: true }).notNull(),
+  lastProviderStatus: varchar("last_provider_status", { length: 40 }),
+  attempts: integer("attempts").default(0).notNull(),
+  failures: integer("failures").default(0).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull()
+}, (table) => ({
+  dueIdx: index("midtrans_reconciliation_checks_due_idx").on(table.lastCheckedAt)
+}));
+
 export const paymentOperations = pgTable("payment_operations", {
   id: uuid("id").defaultRandom().primaryKey(),
   operationCode: varchar("operation_code", { length: 120 }).notNull(),
