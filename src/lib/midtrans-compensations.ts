@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 
-import { and, eq, inArray } from "drizzle-orm";
+import { and, asc, eq, inArray, lt, or } from "drizzle-orm";
 
 import { db } from "@/db/client";
 import { expeditionBookingPayments, expeditionBookings, paymentOperations } from "@/db/schema";
@@ -120,7 +120,8 @@ export async function reconcileMidtransCompensation(bookingId: string): Promise<
     .limit(1);
   if (!candidate) return "not_found";
   if (candidate.status === RESOLVED) return "provider_refunded";
-  if (candidate.status === "manual_review") return "manual_review";
+  // Manual review may be reconciled by a later provider refund, but must never
+  // trigger a fresh automated POST.
   if (candidate.bookingStatus === "confirmed" || candidate.bookingCurrency !== "IDR" ||
       candidate.amount == null || Number(candidate.amount) !== Number(candidate.bookingAmount) ||
       !candidate.providerReference) return "not_eligible";
@@ -163,6 +164,11 @@ export async function reconcileMidtransCompensation(bookingId: string): Promise<
     return "provider_refunded";
   }
   if (candidate.status === "refund_submitted") return "submitted";
+  if (candidate.status === "manual_review") {
+    await db.update(paymentOperations).set({ updatedAt: new Date() })
+      .where(eq(paymentOperations.id, candidate.id));
+    return "manual_review";
+  }
   if (candidate.status === "requesting") {
     // An interrupted/unknown provider call is *not* automatically repeated.
     if (candidate.updatedAt < new Date(Date.now() - 15 * 60_000)) {
@@ -218,7 +224,12 @@ export async function processDueMidtransCompensations() {
   const rows = await db.select({ bookingId: paymentOperations.bookingId })
     .from(paymentOperations)
     .where(and(eq(paymentOperations.operationType, CONFLICT),
-      inArray(paymentOperations.status, ["pending", "refund_submitted", "requesting"])))
+      or(
+        inArray(paymentOperations.status, ["pending", "refund_submitted", "requesting"]),
+        and(eq(paymentOperations.status, "manual_review"),
+          lt(paymentOperations.updatedAt, new Date(Date.now() - 24 * 60 * 60_000)))
+      )))
+    .orderBy(asc(paymentOperations.updatedAt))
     .limit(25);
   const results: Record<string, number> = {};
   for (const row of rows) {
