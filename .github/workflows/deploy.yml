@@ -149,6 +149,7 @@ jobs:
           CORPORATE_REPORT_STORAGE: ${{ vars.CORPORATE_REPORT_STORAGE }}
           CORPORATE_REPORT_R2_BUCKET: ${{ secrets.CORPORATE_REPORT_R2_BUCKET || vars.CORPORATE_REPORT_R2_BUCKET }}
           MIDTRANS_PAYMENT_ENABLED: ${{ vars.MIDTRANS_PAYMENT_ENABLED }}
+          MIDTRANS_EXPEDITION_ENABLED: ${{ vars.MIDTRANS_EXPEDITION_ENABLED }}
           MIDTRANS_ENV: ${{ vars.MIDTRANS_ENV }}
           MIDTRANS_SERVER_KEY: ${{ secrets.MIDTRANS_SERVER_KEY }}
           MIDTRANS_CLIENT_KEY: ${{ secrets.MIDTRANS_CLIENT_KEY }}
@@ -260,6 +261,7 @@ jobs:
             fi
           fi
           write_env_value MIDTRANS_PAYMENT_ENABLED "${MIDTRANS_PAYMENT_ENABLED:-false}"
+          write_env_value MIDTRANS_EXPEDITION_ENABLED "${MIDTRANS_EXPEDITION_ENABLED:-false}"
           write_env_value MIDTRANS_ENV "${MIDTRANS_ENV:-sandbox}"
           write_env_value MIDTRANS_SERVER_KEY "${MIDTRANS_SERVER_KEY}"
           write_env_value MIDTRANS_CLIENT_KEY "${MIDTRANS_CLIENT_KEY}"
