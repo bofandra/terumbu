@@ -34,7 +34,7 @@ export default async function MidtransCompensationDetailPage({
 }) {
   await requireRole(["admin"], "/admin/operations");
   const { operationId } = await params;
-  if (!/^[0-9a-f]{8}-[0-9a-f-]{27,}$/i.test(operationId)) notFound();
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(operationId)) notFound();
 
   const [caseRow] = await db.select({
     id: paymentOperations.id,
