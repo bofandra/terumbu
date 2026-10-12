@@ -3,6 +3,7 @@ import { NextResponse, type NextRequest } from "next/server";
 
 import { db } from "@/db/client";
 import { donations, expeditionBookingPayments, expeditionBookings, paymentOperations, paymentTransactions } from "@/db/schema";
+import { queueMidtransCapacityConflict, reconcileMidtransCompensation } from "@/lib/midtrans-compensations";
 import {
   fetchMidtransTransactionStatus,
   midtransConfiguration,
@@ -11,7 +12,7 @@ import {
   verifyMidtransSignature,
   type MidtransStatusPayload
 } from "@/lib/midtrans";
-import { recordPaymentOperation, transitionDonationPayment, transitionExpeditionBookingPayment } from "@/lib/payment-workflows";
+import { transitionDonationPayment, transitionExpeditionBookingPayment } from "@/lib/payment-workflows";
 import { verifiedExpeditionGrossMatches } from "@/lib/midtrans-expedition";
 import { readBoundedRequestBody, RequestBodyTooLargeError } from "@/lib/read-bounded-request-body";
 
@@ -91,6 +92,14 @@ export async function POST(request: NextRequest) {
         }).from(expeditionBookings).where(eq(expeditionBookings.id, bookingId)).limit(1).for("update");
         if (!booking || !verifiedExpeditionGrossMatches(booking.currency, Number(booking.amount), requestedAmount)) return "mismatch" as const;
         if (booking.paymentStatus === status || booking.paymentStatus === "refunded" && status !== "refunded") return "unchanged" as const;
+        if (status === "paid") {
+          const [compensation] = await tx.select({ id: paymentOperations.id }).from(paymentOperations)
+            .where(and(eq(paymentOperations.bookingId, bookingId),
+              eq(paymentOperations.operationType, "midtrans_capacity_conflict"))).limit(1);
+          // Once an external payment has entered compensation, do not silently
+          // claim newly available seats on a retrying settlement webhook.
+          if (compensation) return "capacity_unavailable" as const;
+        }
         if (status === "paid" && booking.status === "cancelled") return "capacity_unavailable" as const;
         const updated = await transitionExpeditionBookingPayment(tx as unknown as typeof db, {
           bookingId, nextStatus: status, providerReference: orderId,
@@ -109,26 +118,16 @@ export async function POST(request: NextRequest) {
       result = "capacity_unavailable";
     }
     if (result === "capacity_unavailable") {
-      // Payment may be settled but no seats remain. Keep the booking unconfirmed,
-      // and create a durable, operator-visible exception. Never overbook.
-      await db.transaction(async (tx) => {
-        const [booking] = await tx.select({ id: expeditionBookings.id })
-          .from(expeditionBookings).where(eq(expeditionBookings.id, bookingId)).limit(1).for("update");
-        if (!booking) return;
-        const [existing] = await tx.select({ id: paymentOperations.id }).from(paymentOperations)
-          .where(and(eq(paymentOperations.bookingId, bookingId), eq(paymentOperations.operationType, "midtrans_capacity_conflict")))
-          .limit(1);
-        if (!existing) {
-          await recordPaymentOperation(tx as unknown as typeof db, {
-            operationType: "midtrans_capacity_conflict", entityType: "expedition_booking",
-            bookingId, provider: "midtrans", providerReference: orderId,
-            status: "failed", reason: "Verified payment cannot be allocated to available expedition seats; manual reconciliation/refund required.",
-            amount: requestedAmount, currency: "IDR", processedAt: new Date()
-          });
-        }
+      // Commit the compensation incident once, alert the operator/traveler,
+      // then attempt an opt-in refund. Never make a second seat allocation.
+      await queueMidtransCapacityConflict({
+        bookingId, providerReference: orderId,
+        amount: requestedAmount, providerPaymentType: current.payment_type
       });
-      console.error("Midtrans expedition paid but capacity unavailable; operator reconciliation required.");
-      return NextResponse.json({ error: "Capacity conflict; manual reconciliation required." }, { status: 503 });
+      // Opt-in sandbox/prod guard is enforced by the compensator. A failed
+      // refund remains a durable manual-review record.
+      await reconcileMidtransCompensation(bookingId);
+      return NextResponse.json({ ok: true, type: "expedition", compensation: "queued_for_resolution" });
     }
     if (result === "mismatch") return NextResponse.json({ error: "Booking amount mismatch." }, { status: 422 });
     return NextResponse.json({ ok: true, type: "expedition", status: result });
