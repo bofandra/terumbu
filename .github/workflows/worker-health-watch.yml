@@ -36,3 +36,6 @@ jobs:
 
       - name: Probe remote worker health and synchronize GitHub issue
         run: node scripts/monitor-worker-heartbeats.mjs
+
+      - name: Probe Midtrans refund review SLA and synchronize independent incident
+        run: node scripts/monitor-midtrans-refund-sla.mjs
