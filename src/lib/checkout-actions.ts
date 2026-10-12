@@ -36,6 +36,7 @@ import { sendTransactionalEmail } from "@/lib/email";
 import { createMidtransSnapPayment, midtransConfiguration, midtransSnapOrigin } from "@/lib/midtrans";
 import { midtransExpeditionEnabled, validMidtransExpeditionTotal } from "@/lib/midtrans-expedition";
 import { expeditionDepartureAvailability } from "@/lib/expedition-booking-lifecycle";
+import { canAcquireExpeditionHold, expeditionHoldExpiresAt, midtransJakartaStartTime, MIDTRANS_EXPEDITION_PAYMENT_MINUTES } from "@/lib/expedition-seat-holds";
 import { calculateDonationImpact, minimumDonationAmount, normalizeCurrency } from "@/lib/impact-calculations";
 import { storeUploadedPrivateImage } from "@/lib/storage";
 import {
@@ -369,7 +370,8 @@ async function submitExpeditionCheckout(formData: FormData, paymentProvider: "ma
         totalAmount: expeditionBookings.totalAmount,
         participantsCount: expeditionBookings.participantsCount,
         provider: expeditionBookingPayments.provider,
-        providerPayload: expeditionBookingPayments.payload
+        providerPayload: expeditionBookingPayments.payload,
+        holdExpiresAt: expeditionBookings.holdExpiresAt
       })
       .from(expeditionBookings)
       .leftJoin(expeditionBookingPayments, eq(expeditionBookingPayments.bookingId, expeditionBookings.id))
@@ -387,6 +389,9 @@ async function submitExpeditionCheckout(formData: FormData, paymentProvider: "ma
         const payload = existingBooking.providerPayload;
         const savedUrl = payload && typeof payload === "object" && !Array.isArray(payload)
           ? (payload as Record<string, unknown>).redirectUrl : null;
+        if (existingBooking.holdExpiresAt && existingBooking.holdExpiresAt <= new Date()) {
+          redirect(`${nextPath}?error=availability`);
+        }
         if (typeof savedUrl === "string" && midtransConfig) {
           try {
             const url = new URL(savedUrl);
@@ -430,7 +435,14 @@ async function submitExpeditionCheckout(formData: FormData, paymentProvider: "ma
   let shouldSendBookingEmail = false;
   let bookingEmailUserId: string | null = null;
 
-  await db.transaction(async (tx) => {
+  try {
+    await db.transaction(async (tx) => {
+    if (isMidtrans) {
+      const canHold = await canAcquireExpeditionHold(tx as unknown as typeof db, {
+        departureId: departure.id, participantsCount: participantCount, now
+      });
+      if (!canHold) throw new Error("EXPEDITION_HOLD_UNAVAILABLE");
+    }
     const [booking] = await tx
       .insert(expeditionBookings)
       .values({
@@ -448,6 +460,7 @@ async function submitExpeditionCheckout(formData: FormData, paymentProvider: "ma
         paymentStatus: "created",
         bookedAt: now,
         confirmedAt: null,
+        holdExpiresAt: isMidtrans ? expeditionHoldExpiresAt(now) : null,
         metadata: {
           providerReference,
           participantNames,
@@ -509,7 +522,13 @@ async function submitExpeditionCheckout(formData: FormData, paymentProvider: "ma
         bookingEmailUserId = sessionUser?.id ?? null;
       }
     }
-  });
+    });
+  } catch (error) {
+    if (error instanceof Error && error.message === "EXPEDITION_HOLD_UNAVAILABLE") {
+      redirect(`${nextPath}?error=availability`);
+    }
+    throw error;
+  }
 
   await sendTransactionalEmail({
     userId: bookingEmailUserId,
@@ -550,7 +569,8 @@ async function submitExpeditionCheckout(formData: FormData, paymentProvider: "ma
         : undefined;
       snapUrl = await createMidtransSnapPayment(midtransConfig, {
         orderId: providerReference, amount: totalAmount,
-        donorName: contactName, donorEmail: contactEmail, finishUrl
+        donorName: contactName, donorEmail: contactEmail, finishUrl,
+        expiry: { startTime: midtransJakartaStartTime(now), durationMinutes: MIDTRANS_EXPEDITION_PAYMENT_MINUTES }
       });
     } catch {
       console.error("Midtrans expedition checkout could not be initiated.");
