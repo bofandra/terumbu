@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 
-import { and, desc, eq, gt, isNull, sql } from "drizzle-orm";
+import { and, desc, eq, gt, inArray, isNull, lt, sql } from "drizzle-orm";
 
 import { db } from "@/db/client";
 import {
@@ -148,7 +148,7 @@ export async function requestGuestCheckoutRecovery(
     });
     if (sent.status !== "sent") {
       await db.delete(checkoutStatusAccessTokens)
-        .where(sql`${checkoutStatusAccessTokens.tokenHash} in (${sql.join(issued.map(x => sql`${x.tokenHash}`), sql`, `)})`);
+        .where(inArray(checkoutStatusAccessTokens.tokenHash, issued.map(item => item.tokenHash)));
     }
   } catch {
     // Never expose address existence or delivery provider errors to the caller.
@@ -203,4 +203,15 @@ export async function hasRecoveredCheckoutAccess(input: {
       gt(checkoutStatusAccessTokens.expiresAt, now)
     )).limit(1);
   return Boolean(record);
+}
+
+/** Remove expired email links, expired per-device grants, and throttle buckets. */
+export async function pruneExpiredCheckoutStatusRecovery(now = new Date()) {
+  const [tokens, limits] = await Promise.all([
+    db.delete(checkoutStatusAccessTokens)
+      .where(lt(checkoutStatusAccessTokens.expiresAt, now)).returning({ hash: checkoutStatusAccessTokens.tokenHash }),
+    db.delete(checkoutStatusRequestLimits)
+      .where(lt(checkoutStatusRequestLimits.resetAt, now)).returning({ hash: checkoutStatusRequestLimits.keyHash })
+  ]);
+  return { tokensDeleted: tokens.length, limitsDeleted: limits.length };
 }
