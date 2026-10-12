@@ -24,6 +24,8 @@ services:
       CORPORATE_REPORT_R2_BUCKET: ${CORPORATE_REPORT_R2_BUCKET:-}
       MIDTRANS_PAYMENT_ENABLED: ${MIDTRANS_PAYMENT_ENABLED:-false}
       MIDTRANS_EXPEDITION_ENABLED: ${MIDTRANS_EXPEDITION_ENABLED:-false}
+      MIDTRANS_AUTO_REFUND_ENABLED: ${MIDTRANS_AUTO_REFUND_ENABLED:-false}
+      MIDTRANS_AUTO_REFUND_PRODUCTION_ENABLED: ${MIDTRANS_AUTO_REFUND_PRODUCTION_ENABLED:-false}
       MIDTRANS_ENV: ${MIDTRANS_ENV:-sandbox}
       MIDTRANS_SERVER_KEY: ${MIDTRANS_SERVER_KEY:-}
       MIDTRANS_CLIENT_KEY: ${MIDTRANS_CLIENT_KEY:-}
@@ -77,6 +79,10 @@ services:
             -X POST \
             -H "x-cron-secret: $${CRON_SECRET}" \
             http://web:3000/api/cron/corporate-reports || true
+          curl --fail --silent --show-error --max-time 90 \
+            -X POST \
+            -H "x-cron-secret: ${CRON_SECRET}" \
+            http://web:3000/api/cron/midtrans-compensations || true
           # Sleep only after both authenticated cron requests have run.
           sleep 3600
         done
