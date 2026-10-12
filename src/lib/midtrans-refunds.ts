@@ -14,7 +14,7 @@ export function midtransAutoRefundEnabled(
 }
 
 export function midtransRefundKey(bookingId: string) {
-  if (!/^[0-9a-f-]{36}$/i.test(bookingId)) throw new Error("Invalid compensation booking ID.");
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(bookingId)) throw new Error("Invalid compensation booking ID.");
   return "TRB-COMP-" + bookingId.replaceAll("-", "").toLowerCase();
 }
 
@@ -33,7 +33,7 @@ export function midtransRefundEligible(
     REFUNDABLE_CHANNELS.has(status.payment_type.toLowerCase()) &&
     midtransIdrAmount(status.gross_amount) === storedAmount &&
     Number.isSafeInteger(storedAmount) && storedAmount > 0 &&
-    status.currency !== "USD";
+    (status.currency === undefined || status.currency === "IDR");
 }
 
 export type MidtransRefundResponse = {
