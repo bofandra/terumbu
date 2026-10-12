@@ -42,3 +42,41 @@ Do not enable until the merchant sandbox integration and a paid-but-no-capacity 
 - Review legal/operational refund window, privacy policy, payment method availability and Midtrans merchant settings.
 
 API references: https://docs.midtrans.com/docs/https-notification-webhooks and https://docs.midtrans.com/reference/transaction-status
+
+
+## Added in seat-hold follow-up (Issue #114)
+
+The checkout now persists `hold_expires_at` on Midtrans expedition bookings. The
+`0042_expedition_seat_holds.sql` migration must run before deploying this
+revision.
+
+- Each confirmed Midtrans checkout request holds its requested inventory for
+  **20 minutes**. The Midtrans Snap API receives an absolute WIB
+  `expiry.start_time` and a **15-minute** expiry for both payment methods and
+  the hosted payment page. This explicit start time is required to prevent
+  a visitor delaying payment method selection indefinitely.
+- Both hold acquisition and any subsequent paid booking transition serialize
+  against the same PostgreSQL `expedition_departures` row lock. The accounting
+  invariant is `seats_booked + active_other_holds + newly_confirmed_seats <= capacity`.
+  Manual payments must also respect active holds.
+- Expired holds are excluded by the query without waiting for a worker.
+  Previously recorded bookings and financial provider order IDs remain
+  available for reconciliation.
+- A paid status arriving after the hold expires is **not** assumed invalid.
+  The provider status is checked; if there is still room the booking can be
+  confirmed, otherwise the existing `midtrans_capacity_conflict` workflow
+  keeps it unconfirmed for manual refund/reconciliation.
+
+**Important remaining risk:** providers may deliver settlement notifications
+more than five minutes late. A seat hold reduces overselling and unfair
+competition for seats but does **not** guarantee that every captured payment
+becomes a confirmed booking. Midtrans expedition checkout must remain off in
+production until a tested idempotent compensating refund mechanism, operator
+alerting, and incident runbook are in place.
+
+Regression coverage: `tests/expedition-seat-holds.test.ts`,
+`tests/e2e/expedition-seat-holds.spec.ts`, and
+`tests/midtrans.test.ts`.
+
+Midtrans explicitly documents hosted Snap transaction expiry and page expiry:
+https://docs.midtrans.com/docs/snap-advanced-feature
