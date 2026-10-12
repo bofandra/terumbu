@@ -1,5 +1,6 @@
 import { Activity, AlertTriangle, Clock3, FileText, Mail, RadioTower, TimerReset } from "lucide-react";
 import { desc, eq } from "drizzle-orm";
+import Link from "next/link";
 import { db } from "@/db/client";
 import { expeditionBookings, midtransRefundBankConfirmations, paymentOperations } from "@/db/schema";
 
@@ -128,6 +129,10 @@ export default async function AdminOperationsPage() {
                 <p className="mt-1 text-xs text-ocean-900/60">
                   {when(record.createdAt)} WIB · {record.currency} {Number(record.amount ?? 0).toLocaleString("id-ID")}
                 </p>
+                <Link className="mt-2 inline-block text-sm font-bold text-coral-700 hover:underline"
+                  href={`/admin/operations/midtrans/${record.id}`}>
+                  Review refund follow-up →
+                </Link>
                 {record.bankConfirmedAt ? (
                   <p className="mt-1 text-xs font-semibold text-kelp-700">Acquiring bank acknowledged refund request: {when(record.bankConfirmedAt)} WIB</p>
                 ) : record.status === "provider_refunded" ? (
