@@ -2,7 +2,6 @@ import { and, eq, sql } from "drizzle-orm";
 
 import { db } from "@/db/client";
 import {
-  midtransCompensationCaseEvents,
   midtransRefundBankConfirmations,
   paymentOperations
 } from "@/db/schema";
