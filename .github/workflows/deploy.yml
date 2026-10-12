@@ -36,7 +36,7 @@ jobs:
         uses: actions/checkout@v7
 
       - name: Validate deploy scripts
-        run: bash -n scripts/deploy-vps.sh scripts/smoke-production.sh scripts/validate-midtrans-release.sh
+        run: bash -n scripts/deploy-vps.sh scripts/smoke-production.sh scripts/validate-midtrans-release.sh scripts/validate-manual-deploy.sh
 
       - name: Setup Node
         uses: actions/setup-node@v7
@@ -136,26 +136,7 @@ jobs:
           REQUESTED_SHA: ${{ inputs.release_sha }}
           CHANGE_TICKET: ${{ inputs.release_ticket }}
           REQUESTED_CONFIRM: ${{ inputs.confirm_prod_deploy }}
-        run: |
-          set -euo pipefail
-          if [ "${GITHUB_EVENT_NAME}" != "workflow_dispatch" ] || [ "${GITHUB_REF}" != "refs/heads/main" ]; then
-            echo "Deployment can only be dispatched from the main branch." >&2
-            exit 1
-          fi
-          if [ "${REQUESTED_CONFIRM}" != "true" ]; then
-            echo "Deployment requires explicit approval of the manual dispatch." >&2
-            exit 1
-          fi
-          if [[ ! "${REQUESTED_SHA}" =~ ^[a-f0-9]{40}$ ]] || [ "${REQUESTED_SHA}" != "${GITHUB_SHA}" ] || [ "${REQUESTED_SHA}" != "$(git rev-parse HEAD)" ]; then
-            echo "Requested release SHA does not match the exact checked-out main commit." >&2
-            exit 1
-          fi
-          if [[ ! "${CHANGE_TICKET}" =~ ^[A-Za-z0-9][A-Za-z0-9_-]{5,79}$ ]]; then
-            echo "A safe internal release change ticket is required." >&2
-            exit 1
-          fi
-          echo "Authorized deployment of commit ${GITHUB_SHA} against change ticket ${CHANGE_TICKET}."
-          echo "GitHub production environment protection and independent release approvals must be configured by repository administrators."
+        run: bash scripts/validate-manual-deploy.sh
 
       - name: Configure SSH
         env:
