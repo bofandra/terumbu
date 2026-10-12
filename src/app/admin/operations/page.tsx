@@ -1,7 +1,7 @@
 import { Activity, AlertTriangle, Clock3, FileText, Mail, RadioTower, TimerReset } from "lucide-react";
 import { desc, eq } from "drizzle-orm";
 import { db } from "@/db/client";
-import { expeditionBookings, paymentOperations } from "@/db/schema";
+import { expeditionBookings, midtransRefundBankConfirmations, paymentOperations } from "@/db/schema";
 
 import { AdminPageHeader } from "@/components/admin-ui";
 import { observeAdminDataLoader } from "@/lib/admin-observability";
@@ -43,9 +43,11 @@ export default async function AdminOperationsPage() {
     amount: paymentOperations.amount,
     currency: paymentOperations.currency,
     bookingCode: expeditionBookings.bookingCode,
-    createdAt: paymentOperations.createdAt
+    createdAt: paymentOperations.createdAt,
+    bankConfirmedAt: midtransRefundBankConfirmations.bankConfirmedAt
   }).from(paymentOperations)
     .innerJoin(expeditionBookings, eq(paymentOperations.bookingId, expeditionBookings.id))
+    .leftJoin(midtransRefundBankConfirmations, eq(midtransRefundBankConfirmations.operationId, paymentOperations.id))
     .where(eq(paymentOperations.operationType, "midtrans_capacity_conflict"))
     .orderBy(desc(paymentOperations.createdAt)).limit(20));
 
@@ -84,7 +86,7 @@ export default async function AdminOperationsPage() {
       <section aria-labelledby="operations-workers" className="space-y-3">
         <div className="flex items-center gap-2">
           <TimerReset aria-hidden="true" className="size-5 text-ocean-700" />
-          <h2 id="operations-workers" className="text-lg font-bold text-ocean-900">Hourly worker heartbeats</h2>
+          <h2 id="operations-workers" className="text-lg font-bold text-ocean-900">Scheduled worker heartbeats</h2>
         </div>
         <p className="text-sm font-semibold text-ocean-900/60">An authenticated run records its start and finish in the database. A missed heartbeat is detected after 150 minutes; two consecutive failed runs trigger an alert.</p>
         <div className="grid gap-3 md:grid-cols-2">
@@ -112,8 +114,7 @@ export default async function AdminOperationsPage() {
           </h2>
         </div>
         <p className="text-sm font-semibold text-ocean-900/60">
-          The 20 newest paid-without-seats incidents; statuses pending, requesting, refund_submitted,
-          and manual_review require operational monitoring. Provider acceptance is not bank-confirmed repayment.
+          The 20 newest paid-without-seats incidents; check unresolved cases and provider refund status. Acquiring-bank acknowledgement does not prove that the customer has received the funds.
         </p>
         <div className="space-y-2" data-testid="midtrans-compensation-queue">
           {compensations.length === 0 ? (
@@ -127,6 +128,11 @@ export default async function AdminOperationsPage() {
                 <p className="mt-1 text-xs text-ocean-900/60">
                   {when(record.createdAt)} WIB · {record.currency} {Number(record.amount ?? 0).toLocaleString("id-ID")}
                 </p>
+                {record.bankConfirmedAt ? (
+                  <p className="mt-1 text-xs font-semibold text-kelp-700">Acquiring bank acknowledged refund request: {when(record.bankConfirmedAt)} WIB</p>
+                ) : record.status === "provider_refunded" ? (
+                  <p className="mt-1 text-xs font-semibold text-coral-700">Provider refund recorded; awaiting acquiring-bank confirmation</p>
+                ) : null}
               </div>
               <span className="rounded-full border border-coral-700/15 bg-sand-50 px-3 py-1 text-xs font-bold text-ocean-900">
                 {record.status.replaceAll("_", " ")}
