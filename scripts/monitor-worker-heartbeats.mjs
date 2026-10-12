@@ -4,18 +4,21 @@ import { resolve } from "node:path";
 export const INCIDENT_TITLE = "[Terumbu Operations] External worker heartbeat incident";
 export const INCIDENT_MARKER = "<!-- terumbu-external-worker-watch:v1 -->";
 
-export function healthEndpoint(baseUrl) {
+export function healthEndpoint(baseUrl, resource = "/api/health/workers") {
   const origin = new URL(baseUrl);
   if (origin.protocol !== "https:" && origin.hostname !== "127.0.0.1" && origin.hostname !== "localhost") {
     throw new Error("Monitor target must be HTTPS.");
   }
   // Strip userinfo and never reuse an arbitrary path/query from the base URL.
   if (origin.username || origin.password) throw new Error("Monitor target cannot contain credentials.");
-  return new URL("/api/health/workers", origin).toString();
+  if (resource !== "/api/health/workers" && resource !== "/api/health/midtrans-refunds") {
+    throw new Error("Unsupported monitor endpoint.");
+  }
+  return new URL(resource, origin).toString();
 }
 
-export async function probeWorkerHealth(baseUrl, fetchImpl = fetch) {
-  const url = healthEndpoint(baseUrl);
+export async function probeWorkerHealth(baseUrl, fetchImpl = fetch, resource = "/api/health/workers") {
+  const url = healthEndpoint(baseUrl, resource);
   try {
     const response = await fetchImpl(url, {
       headers: { Accept: "application/json" },
@@ -38,20 +41,20 @@ export async function probeWorkerHealth(baseUrl, fetchImpl = fetch) {
 /** Retry a failing probe once to filter brief network interruptions. */
 export async function confirmedWorkerHealth(
   baseUrl,
-  { fetchImpl = fetch, delay = () => new Promise((done) => setTimeout(done, 15000)) } = {}
+  { fetchImpl = fetch, delay = () => new Promise((done) => setTimeout(done, 15000)), resource = "/api/health/workers" } = {}
 ) {
-  const initial = await probeWorkerHealth(baseUrl, fetchImpl);
+  const initial = await probeWorkerHealth(baseUrl, fetchImpl, resource);
   if (initial.healthy) return initial;
   await delay();
-  return probeWorkerHealth(baseUrl, fetchImpl);
+  return probeWorkerHealth(baseUrl, fetchImpl, resource);
 }
 
-export function matchesIncident(issue) {
+export function matchesIncident(issue, title = INCIDENT_TITLE, marker = INCIDENT_MARKER) {
   return issue &&
     !issue.pull_request &&
-    issue.title === INCIDENT_TITLE &&
+    issue.title === title &&
     typeof issue.body === "string" &&
-    issue.body.includes(INCIDENT_MARKER);
+    issue.body.includes(marker);
 }
 
 async function githubRequest(fetchImpl, githubToken, path, method = "GET", body = undefined) {
@@ -76,7 +79,10 @@ export async function syncWorkerIncident({
   repo,
   health,
   runUrl = "",
-  assignee = ""
+  assignee = "",
+  incidentTitle = INCIDENT_TITLE,
+  incidentMarker = INCIDENT_MARKER,
+  remediation = "Check the authenticated Admin → Operations dashboard, the terumbu-reminder-worker container, and the production deployment logs."
 }) {
   if (!githubToken) throw new Error("GITHUB_TOKEN is required");
   if (!/^[a-zA-Z0-9_.-]+\/[a-zA-Z0-9_.-]+$/.test(repo || "")) {
@@ -93,7 +99,7 @@ export async function syncWorkerIncident({
   for (let page = 1; page <= 10; page += 1) {
     const open = await githubRequest(fetchImpl, githubToken, path + "/issues?state=open&per_page=100&page=" + page);
     if (!Array.isArray(open)) throw new Error("Unexpected GitHub issues response");
-    incidents.push(...open.filter(matchesIncident));
+    incidents.push(...open.filter((issue) => matchesIncident(issue, incidentTitle, incidentMarker)));
     if (open.length < 100) break;
     if (page === 10) throw new Error("Too many open issues to safely deduplicate an incident");
   }
@@ -111,13 +117,15 @@ export async function syncWorkerIncident({
     return { action: "already_open", count: incidents.length };
   }
   const body = [
-    INCIDENT_MARKER,
-    "The independent GitHub Actions monitor confirmed that the Terumbu worker health endpoint is unhealthy.",
+    incidentMarker,
+    incidentMarker === INCIDENT_MARKER
+      ? "The independent GitHub Actions monitor confirmed that the Terumbu worker health endpoint is unhealthy."
+      : "The independent GitHub Actions monitor confirmed that the Terumbu refund SLA health endpoint is unhealthy.",
     "",
     "**Signal:** " + (health.reason ?? "unhealthy"),
     "**Observed (UTC):** " + new Date().toISOString(),
     "",
-    "Check the authenticated Admin → Operations dashboard, the terumbu-reminder-worker container, and the production deployment logs.",
+    remediation,
     "This issue is automatically closed after the external health probe recovers.",
     "No customer, delivery provider, or private database details are included.",
     ...(runUrl && /^https:\/\/github\.com\/[a-zA-Z0-9_.-]+\/[a-zA-Z0-9_.-]+\/actions\/runs\/[0-9]+$/.test(runUrl)
@@ -125,7 +133,7 @@ export async function syncWorkerIncident({
       : [])
   ].join("\n");
   await githubRequest(fetchImpl, githubToken, path + "/issues", "POST", {
-    title: INCIDENT_TITLE,
+    title: incidentTitle,
     body,
     ...(assignee ? { assignees: [assignee] } : {})
   });
