@@ -6,7 +6,7 @@ import { expect, test } from "@playwright/test";
 import { db } from "../../src/db/client";
 import {
   midtransCompensationCaseEvents, midtransRefundBankConfirmations,
-  paymentOperations
+  paymentOperations, users
 } from "../../src/db/schema";
 import { loginAs } from "./support";
 
@@ -41,12 +41,12 @@ test("overdue refund cases trip independent SLA health until operator, provider 
 
     // An operator contact resolves only the first-contact escalation; it
     // never changes payment status or the provider refund settlement.
+    const [administrator] = await db.select({ id: users.id }).from(users)
+      .where(eq(users.email, "admin.demo@terumbu.eco")).limit(1);
+    expect(administrator?.id).toBeTruthy();
     await db.insert(midtransCompensationCaseEvents).values({
       id: randomUUID(), operationId: operation.id,
-      actorUserId: (await db.query.users.findFirst({
-        where: (users, { eq }) => eq(users.email, "admin.demo@terumbu.eco"),
-        columns: { id: true }
-      }))!.id,
+      actorUserId: administrator.id,
       eventType: "contact_attempted",
       evidenceChannel: "support_ticket",
       ticketReference: "E2E-SLA-123"
