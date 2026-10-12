@@ -2,7 +2,7 @@ import { and, eq } from "drizzle-orm";
 import { NextResponse, type NextRequest } from "next/server";
 
 import { db } from "@/db/client";
-import { donations, expeditionBookingPayments, expeditionBookings, paymentOperations, paymentTransactions } from "@/db/schema";
+import { donations, expeditionBookingPayments, expeditionBookings, midtransRefundBankConfirmations, paymentOperations, paymentTransactions } from "@/db/schema";
 import { getSessionUser } from "@/lib/auth";
 import { checkoutStatusPayload, mayReadCheckoutStatus, readCheckoutStatusCookie } from "@/lib/checkout-status-access";
 import { customerPaymentResolution } from "@/lib/checkout-payment-status";
@@ -64,15 +64,21 @@ export async function GET(request: NextRequest) {
   );
   if (!authorized) return NextResponse.json({ error: "Not found." }, { status: 404, headers: noStore });
 
-  const [compensation] = await db.select({ status: paymentOperations.status })
+  const [compensation] = await db.select({
+    status: paymentOperations.status,
+    bankConfirmedAt: midtransRefundBankConfirmations.bankConfirmedAt
+  })
     .from(paymentOperations)
+    .leftJoin(midtransRefundBankConfirmations,
+      eq(midtransRefundBankConfirmations.operationId, paymentOperations.id))
     .where(and(eq(paymentOperations.bookingId, id),
       eq(paymentOperations.operationType, "midtrans_capacity_conflict")))
     .limit(1);
   const resolution = customerPaymentResolution({
     paymentStatus: record.paymentStatus,
     bookingStatus: record.bookingStatus,
-    compensationStatus: compensation?.status
+    compensationStatus: compensation?.status,
+    bankConfirmed: Boolean(compensation?.bankConfirmedAt)
   });
   return NextResponse.json({ type, ...resolution, asOf: new Date().toISOString() }, { headers: noStore });
 }
