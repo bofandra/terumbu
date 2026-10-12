@@ -9,6 +9,7 @@ import {
   donations, emailLogs, paymentTransactions
 } from "../../src/db/schema";
 import { checkoutRecoveryThrottleKey, requestGuestCheckoutRecovery } from "../../src/lib/checkout-status-recovery";
+import { checkoutStatusTokenHash } from "../../src/lib/checkout-status-token";
 
 test("verified email on a new device provides scoped, one-time guest payment access", async ({ page, request }) => {
   test.setTimeout(120_000);
@@ -76,7 +77,7 @@ test("verified email on a new device provides scoped, one-time guest payment acc
     }).from(checkoutStatusAccessTokens)
       .where(eq(checkoutStatusAccessTokens.tokenHash,
         // Hash recovery token before reading database.
-        (await import("../../src/lib/checkout-status-token")).checkoutStatusTokenHash(token)))
+        checkoutStatusTokenHash(token)))
       .limit(1);
     expect(recoveryRow.usedAt).not.toBeNull();
 
