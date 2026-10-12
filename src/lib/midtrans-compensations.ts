@@ -1,9 +1,10 @@
 import { randomUUID } from "node:crypto";
 
-import { and, asc, eq, inArray, lt, or } from "drizzle-orm";
+import { and, asc, eq, inArray, isNull, lt, or } from "drizzle-orm";
 
 import { db } from "@/db/client";
-import { expeditionBookingPayments, expeditionBookings, paymentOperations } from "@/db/schema";
+import { expeditionBookingPayments, expeditionBookings, midtransRefundBankConfirmations, paymentOperations } from "@/db/schema";
+import { midtransBankConfirmedRefund } from "@/lib/midtrans-bank-refund";
 import { sendTransactionalEmail } from "@/lib/email";
 import { fetchMidtransTransactionStatus, midtransConfiguration, midtransIdrAmount } from "@/lib/midtrans";
 import { midtransAutoRefundEnabled, midtransRefundEligible, midtransRefundKey, requestMidtransFullRefund } from "@/lib/midtrans-refunds";
@@ -95,7 +96,7 @@ export async function queueMidtransCapacityConflict(input: {
 }
 
 type CompensationOutcome = "not_found" | "disabled" | "pending" | "in_progress" | "submitted" |
-  "provider_refunded" | "manual_review" | "not_eligible";
+  "provider_refunded" | "bank_confirmed" | "manual_review" | "not_eligible";
 
 /**
  * GET Status is authoritative. Never send another provider POST after an
@@ -119,7 +120,11 @@ export async function reconcileMidtransCompensation(bookingId: string): Promise<
     .where(and(eq(paymentOperations.bookingId, bookingId), eq(paymentOperations.operationType, CONFLICT)))
     .limit(1);
   if (!candidate) return "not_found";
-  if (candidate.status === RESOLVED) return "provider_refunded";
+  if (candidate.status === RESOLVED) {
+    const [bankEvidence] = await db.select({ operationId: midtransRefundBankConfirmations.operationId })
+      .from(midtransRefundBankConfirmations).where(eq(midtransRefundBankConfirmations.operationId, candidate.id)).limit(1);
+    if (bankEvidence) return "bank_confirmed";
+  }
   // Manual review may be reconciled by a later provider refund, but must never
   // trigger a fresh automated POST.
   if (candidate.bookingStatus === "confirmed" || candidate.bookingCurrency !== "IDR" ||
@@ -145,6 +150,12 @@ export async function reconcileMidtransCompensation(bookingId: string): Promise<
   }
 
   if (provider.transaction_status === "refund" || provider.transaction_status === "chargeback") {
+    const bankConfirmedAt = midtransBankConfirmedRefund({
+      status: provider,
+      orderId: candidate.providerReference,
+      refundKey: midtransRefundKey(bookingId),
+      fullAmount: amount
+    });
     await db.transaction(async (tx) => {
       const [booking] = await tx.select({ status: expeditionBookings.status, paymentStatus: expeditionBookings.paymentStatus })
         .from(expeditionBookings).where(eq(expeditionBookings.id, bookingId)).limit(1).for("update");
@@ -160,7 +171,23 @@ export async function reconcileMidtransCompensation(bookingId: string): Promise<
         status: RESOLVED, processedAt: new Date(), updatedAt: new Date(),
         metadata: { ...payloadObject(candidate.metadata), providerStatus: provider.transaction_status }
       }).where(eq(paymentOperations.id, candidate.id));
+      if (bankConfirmedAt) {
+        await tx.insert(midtransRefundBankConfirmations).values({
+          operationId: candidate.id,
+          providerReference: candidate.providerReference!,
+          refundKey: midtransRefundKey(bookingId),
+          refundAmount: String(amount),
+          bankConfirmedAt,
+          source: "midtrans_get_status"
+        }).onConflictDoNothing({ target: midtransRefundBankConfirmations.operationId });
+      }
     });
+    return bankConfirmedAt ? "bank_confirmed" : "provider_refunded";
+  }
+  if (candidate.status === RESOLVED) {
+    // Provider status may be stale/replayed. Never issue a new refund POST.
+    await db.update(paymentOperations).set({ updatedAt: new Date() })
+      .where(eq(paymentOperations.id, candidate.id));
     return "provider_refunded";
   }
   if (candidate.status === "refund_submitted") return "submitted";
@@ -221,13 +248,18 @@ export async function reconcileMidtransCompensation(bookingId: string): Promise<
 
 export async function processDueMidtransCompensations() {
   if (!midtransConfiguration()) return { processed: 0, disabled: true };
+  const dailyCutoff = new Date(Date.now() - 24 * 60 * 60_000);
   const rows = await db.select({ bookingId: paymentOperations.bookingId })
     .from(paymentOperations)
-    .where(and(eq(paymentOperations.operationType, CONFLICT),
+    .leftJoin(midtransRefundBankConfirmations,
+      eq(midtransRefundBankConfirmations.operationId, paymentOperations.id))
+    .where(and(
+      eq(paymentOperations.operationType, CONFLICT),
       or(
         inArray(paymentOperations.status, ["pending", "refund_submitted", "requesting"]),
-        and(eq(paymentOperations.status, "manual_review"),
-          lt(paymentOperations.updatedAt, new Date(Date.now() - 24 * 60 * 60_000)))
+        and(inArray(paymentOperations.status, ["manual_review", RESOLVED]),
+          lt(paymentOperations.updatedAt, dailyCutoff),
+          isNull(midtransRefundBankConfirmations.operationId))
       )))
     .orderBy(asc(paymentOperations.updatedAt))
     .limit(25);
