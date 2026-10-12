@@ -73,7 +73,7 @@ services:
         while true; do
           curl --fail --silent --show-error --max-time 90 \
             -X POST \
-            -H "x-cron-secret: ${CRON_SECRET}" \
+            -H "x-cron-secret: $${CRON_SECRET}" \
             http://web:3000/api/cron/midtrans-compensations || true
           curl --fail --silent --show-error --max-time 60 \
             -X POST \
@@ -107,7 +107,7 @@ services:
         while true; do
           curl --fail --silent --show-error --max-time 240 \
             -X POST \
-            -H "x-cron-secret: ${CRON_SECRET}" \
+            -H "x-cron-secret: $${CRON_SECRET}" \
             http://web:3000/api/cron/midtrans-reconciliation || true
           sleep 300
         done
