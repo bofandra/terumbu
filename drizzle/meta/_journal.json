@@ -323,6 +323,13 @@
       "when": 1791833000000,
       "tag": "0045_midtrans_refund_bank_confirmations",
       "breakpoints": true
+    },
+    {
+      "idx": 46,
+      "version": "7",
+      "when": 1791837000000,
+      "tag": "0046_midtrans_compensation_case_events",
+      "breakpoints": true
     }
   ]
 }
