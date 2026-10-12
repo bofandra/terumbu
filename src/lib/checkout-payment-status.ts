@@ -1,8 +1,19 @@
 export function customerPaymentResolution(input: {
-  paymentStatus: string; bookingStatus?: string; compensationStatus?: string | null
+  paymentStatus: string; bookingStatus?: string; compensationStatus?: string | null; bankConfirmed?: boolean
 }) {
   if (input.compensationStatus === "provider_refunded") {
-    return { stage: "refunded", message: "Midtrans reports a refund or chargeback. Bank or issuer completion may take additional time.", final: true };
+    if (input.bankConfirmed) {
+      return {
+        stage: "bank_confirmed",
+        message: "Midtrans reports acquiring-bank confirmation of the refund request. This does not guarantee the funds are already visible in your account.",
+        final: true
+      };
+    }
+    return {
+      stage: "refunded",
+      message: "Midtrans reports a full refund. Acquiring-bank confirmation is still being checked; funds may take additional time to appear.",
+      final: false
+    };
   }
   if (input.compensationStatus === "refund_submitted") {
     return { stage: "refund_requested", message: "A refund request was accepted for processing by Midtrans. Funds are not yet confirmed received.", final: false };
