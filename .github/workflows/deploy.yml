@@ -354,6 +354,9 @@ jobs:
   external_worker_watch:
     name: External Worker Watch (post-deploy)
     runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      issues: write
     needs: [deploy]
     if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
     # Serialize issue operations against the scheduled, independent workflow.
