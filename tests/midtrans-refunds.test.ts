@@ -18,6 +18,17 @@ test("refund automation is disabled by default, with separate production approva
   assert.equal(midtransAutoRefundEnabled(production, {
     MIDTRANS_AUTO_REFUND_ENABLED: "true",
     MIDTRANS_AUTO_REFUND_PRODUCTION_ENABLED: "true"
+  }), false);
+  assert.equal(midtransAutoRefundEnabled(production, {
+    MIDTRANS_AUTO_REFUND_ENABLED: "true",
+    MIDTRANS_AUTO_REFUND_PRODUCTION_ENABLED: "true",
+    MIDTRANS_REFUND_UAT_APPROVED: "true"
+  }), false);
+  assert.equal(midtransAutoRefundEnabled(production, {
+    MIDTRANS_AUTO_REFUND_ENABLED: "true",
+    MIDTRANS_AUTO_REFUND_PRODUCTION_ENABLED: "true",
+    MIDTRANS_REFUND_UAT_APPROVED: "true",
+    MIDTRANS_REFUND_OPERATIONS_APPROVED: "true"
   }), true);
   assert.equal(midtransAutoRefundEnabled(null, { MIDTRANS_AUTO_REFUND_ENABLED: "true" }), false);
 });
