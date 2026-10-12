@@ -97,3 +97,42 @@ application image before approving any deployment.
 The public merchant sandbox probe is GET-only and does not prove a
 transaction/refund journey. Maintain **NO-GO** until Issue #114, real merchant
 UAT, safe compensation and customer refund resolution are signed off.
+
+## SSH host identity: required for any production VPS release
+
+The deploy workflow will now **reject** production SSH unless the GitHub
+`production` environment has an independently validated secret named
+`VPS_SSH_KNOWN_HOSTS`. It must contain exactly one OpenSSH known-hosts
+entry for the exact DNS hostname or IPv4 address in `VPS_HOST`, in the form:
+
+```text
+vps.example.org ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAI...replace-with-real-public-host-key...
+```
+
+The example is intentionally not a usable host key. To enroll the real VPS:
+
+1. Through the hosting provider's authenticated VPS console (not via an
+   unverified initial SSH connection), an authorized operator reads
+   `/etc/ssh/ssh_host_ed25519_key.pub`. Record the complete public host
+   key and its SHA-256 fingerprint in the restricted change ticket.
+2. Independently verify the fingerprint and hostname with the VPS owner.
+   Copy the complete `VPS_HOST ssh-ed25519 BASE64KEY` entry to the
+   `VPS_SSH_KNOWN_HOSTS` secret scoped to GitHub's protected
+   **production** environment; do not store the private host key or
+   use the public client/deploy key in its place.
+3. Keep production environment required reviewers, prevent self-review
+   and restrict deployment branches to `main`. Maintain the separate
+   manual exact-SHA and Midtrans UAT/release approvals.
+4. If the key is absent, changes, fails validation, or the hostname differs,
+   the workflow **fails before writing the deployment private key or
+   opening a connection to the VPS**. Investigate unexpected changes out
+   of band rather than accepting a new key from the network.
+5. During an authorized VPS host-key rotation, update and independently
+   verify this pin using the provider console before the next deployment.
+   A missing pin is a failed deployment, **not** a reason to disable SSH
+   host verification.
+
+Only one Ed25519 host key and a DNS hostname/IPv4 address are supported by
+this guarded workflow. Custom SSH ports, IPv6 literal hostnames and alternate
+host-key types require a separately reviewed change. The existing worker
+monitoring schedule is unaffected.
