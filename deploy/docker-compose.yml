@@ -71,6 +71,10 @@ services:
           sleep 5
         done
         while true; do
+          curl --fail --silent --show-error --max-time 90 \
+            -X POST \
+            -H "x-cron-secret: ${CRON_SECRET}" \
+            http://web:3000/api/cron/midtrans-compensations || true
           curl --fail --silent --show-error --max-time 60 \
             -X POST \
             -H "x-cron-secret: $${CRON_SECRET}" \
@@ -79,10 +83,6 @@ services:
             -X POST \
             -H "x-cron-secret: $${CRON_SECRET}" \
             http://web:3000/api/cron/corporate-reports || true
-          curl --fail --silent --show-error --max-time 90 \
-            -X POST \
-            -H "x-cron-secret: ${CRON_SECRET}" \
-            http://web:3000/api/cron/midtrans-compensations || true
           # Sleep only after both authenticated cron requests have run.
           sleep 3600
         done
