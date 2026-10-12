@@ -5,7 +5,7 @@ import { Button, ButtonLink } from "@/components/ui/button";
 import { getSessionUser } from "@/lib/auth";
 import { secondaryPriceLabel } from "@/lib/currency-display";
 import { bookExpeditionAction, bookMidtransExpeditionAction } from "@/lib/checkout-actions";
-import { midtransConfiguration } from "@/lib/midtrans";
+import { midtransExpeditionEnabled } from "@/lib/midtrans-expedition";
 import { getExpeditionCheckoutOptions, getUserCorporateAttributionOptions } from "@/lib/queries";
 import { getPreferredDisplayCurrency, getPreferredLocale, localeTag } from "@/lib/user-preferences";
 import { formatCurrency } from "@/lib/utils";
@@ -40,8 +40,7 @@ export default async function ExpeditionCheckoutPage({ searchParams }: Expeditio
   const visibleOptions = filteredOptions.length > 0 ? filteredOptions : options;
   const selectedDeparture = params?.departure ?? visibleOptions[0]?.departureId;
   const selectedOption = visibleOptions.find((option) => option.departureId === selectedDeparture) ?? visibleOptions[0] ?? null;
-  const midtransAvailable = Boolean(midtransConfiguration()) && process.env.MIDTRANS_EXPEDITION_ENABLED === "true" &&
-    visibleOptions.some((option) => option.currency.toUpperCase() === "IDR");
+  const midtransAvailable = midtransExpeditionEnabled() && visibleOptions.some((option) => option.currency.toUpperCase() === "IDR");
   const selectedParticipants = Math.max(1, Math.min(12, Number(params?.participants ?? 1) || 1));
   const idempotencyKey = `expedition-${randomBytes(12).toString("hex")}`;
   const labels =
