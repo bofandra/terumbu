@@ -22,7 +22,7 @@ jobs:
         uses: actions/checkout@v7
 
       - name: Validate deploy scripts
-        run: bash -n scripts/deploy-vps.sh scripts/smoke-production.sh
+        run: bash -n scripts/deploy-vps.sh scripts/smoke-production.sh scripts/validate-midtrans-release.sh
 
       - name: Setup Node
         uses: actions/setup-node@v7
@@ -150,6 +150,14 @@ jobs:
           CORPORATE_REPORT_R2_BUCKET: ${{ secrets.CORPORATE_REPORT_R2_BUCKET || vars.CORPORATE_REPORT_R2_BUCKET }}
           MIDTRANS_PAYMENT_ENABLED: ${{ vars.MIDTRANS_PAYMENT_ENABLED }}
           MIDTRANS_EXPEDITION_ENABLED: ${{ vars.MIDTRANS_EXPEDITION_ENABLED }}
+          MIDTRANS_AUTO_REFUND_ENABLED: ${{ vars.MIDTRANS_AUTO_REFUND_ENABLED }}
+          MIDTRANS_AUTO_REFUND_PRODUCTION_ENABLED: ${{ vars.MIDTRANS_AUTO_REFUND_PRODUCTION_ENABLED }}
+          MIDTRANS_PRODUCTION_RELEASE_APPROVED: ${{ vars.MIDTRANS_PRODUCTION_RELEASE_APPROVED }}
+          MIDTRANS_SANDBOX_UAT_APPROVED: ${{ vars.MIDTRANS_SANDBOX_UAT_APPROVED }}
+          MIDTRANS_OPERATIONS_APPROVED: ${{ vars.MIDTRANS_OPERATIONS_APPROVED }}
+          MIDTRANS_RELEASE_EVIDENCE_ID: ${{ vars.MIDTRANS_RELEASE_EVIDENCE_ID }}
+          MIDTRANS_REFUND_UAT_APPROVED: ${{ vars.MIDTRANS_REFUND_UAT_APPROVED }}
+          MIDTRANS_REFUND_OPERATIONS_APPROVED: ${{ vars.MIDTRANS_REFUND_OPERATIONS_APPROVED }}
           MIDTRANS_ENV: ${{ vars.MIDTRANS_ENV }}
           MIDTRANS_SERVER_KEY: ${{ secrets.MIDTRANS_SERVER_KEY }}
           MIDTRANS_CLIENT_KEY: ${{ secrets.MIDTRANS_CLIENT_KEY }}
@@ -262,6 +270,14 @@ jobs:
           fi
           write_env_value MIDTRANS_PAYMENT_ENABLED "${MIDTRANS_PAYMENT_ENABLED:-false}"
           write_env_value MIDTRANS_EXPEDITION_ENABLED "${MIDTRANS_EXPEDITION_ENABLED:-false}"
+          write_env_value MIDTRANS_AUTO_REFUND_ENABLED "${MIDTRANS_AUTO_REFUND_ENABLED:-false}"
+          write_env_value MIDTRANS_AUTO_REFUND_PRODUCTION_ENABLED "${MIDTRANS_AUTO_REFUND_PRODUCTION_ENABLED:-false}"
+          write_env_value MIDTRANS_PRODUCTION_RELEASE_APPROVED "${MIDTRANS_PRODUCTION_RELEASE_APPROVED:-false}"
+          write_env_value MIDTRANS_SANDBOX_UAT_APPROVED "${MIDTRANS_SANDBOX_UAT_APPROVED:-false}"
+          write_env_value MIDTRANS_OPERATIONS_APPROVED "${MIDTRANS_OPERATIONS_APPROVED:-false}"
+          write_env_value MIDTRANS_RELEASE_EVIDENCE_ID "${MIDTRANS_RELEASE_EVIDENCE_ID:-}"
+          write_env_value MIDTRANS_REFUND_UAT_APPROVED "${MIDTRANS_REFUND_UAT_APPROVED:-false}"
+          write_env_value MIDTRANS_REFUND_OPERATIONS_APPROVED "${MIDTRANS_REFUND_OPERATIONS_APPROVED:-false}"
           write_env_value MIDTRANS_ENV "${MIDTRANS_ENV:-sandbox}"
           write_env_value MIDTRANS_SERVER_KEY "${MIDTRANS_SERVER_KEY}"
           write_env_value MIDTRANS_CLIENT_KEY "${MIDTRANS_CLIENT_KEY}"
@@ -279,6 +295,9 @@ jobs:
           write_env_value NEXT_PUBLIC_FX_USD_EUR "${NEXT_PUBLIC_FX_USD_EUR}"
           write_env_value NEXT_PUBLIC_FX_USD_IDR "${NEXT_PUBLIC_FX_USD_IDR}"
           write_env_value NEXT_PUBLIC_FX_USD_JPY "${NEXT_PUBLIC_FX_USD_JPY}"
+
+          # Stop before uploading credentials or touching the VPS.
+          bash scripts/validate-midtrans-release.sh terumbu.production.env
 
       - name: Upload production env
         env:
