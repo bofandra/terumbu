@@ -25,7 +25,7 @@ export default async function CheckoutSuccessPage({ searchParams }: CheckoutSucc
   const shareReferralCode = sessionUser ? referralCodeForUser(sessionUser.id) : null;
   const failed = params?.status === "failed";
   const pending = params?.status === "pending";
-  const midtransPending = pending && params?.method === "midtrans" && params?.type !== "expedition";
+  const midtransPending = pending && params?.method === "midtrans";
   const typeLabel = params?.type === "expedition" ? "booking" : "donation";
   const isExpedition = params?.type === "expedition";
   const title = failed
@@ -40,7 +40,9 @@ export default async function CheckoutSuccessPage({ searchParams }: CheckoutSucc
   const body = failed
     ? `This ${typeLabel} was not paid, so it remains available for support review.`
     : midtransPending
-      ? "Your Midtrans checkout has returned to Terumbu. Payment will be confirmed only after an authenticated provider notification. Do not pay twice while verification is pending."
+      ? isExpedition
+        ? "Your Midtrans checkout has returned to Terumbu. The expedition is confirmed only after the provider verifies payment and seats are still available. Do not pay again while verification is pending."
+        : "Your Midtrans checkout has returned to Terumbu. Payment will be confirmed only after an authenticated provider notification. Do not pay twice while verification is pending."
     : pending
       ? isExpedition
         ? "Your booking request and payment proof are recorded. Seats are only reserved after payment verification confirms availability."
