@@ -29,6 +29,15 @@ test("checkout status never falsely confirms pending payments or promises bank-s
   assert.deepEqual(customerPaymentResolution({ paymentStatus: "paid", bookingStatus: "confirmed" }).stage, "confirmed");
   assert.equal(customerPaymentResolution({ paymentStatus: "paid", compensationStatus: "refund_submitted" }).stage, "refund_requested");
   assert.equal(customerPaymentResolution({ paymentStatus: "pending", compensationStatus: "manual_review" }).stage, "operator_review");
+  const awaitingBank = customerPaymentResolution({ paymentStatus: "refunded", compensationStatus: "provider_refunded" });
+  assert.equal(awaitingBank.stage, "refunded");
+  assert.equal(awaitingBank.final, false);
+  const bankAcknowledged = customerPaymentResolution({
+    paymentStatus: "refunded", compensationStatus: "provider_refunded", bankConfirmed: true
+  });
+  assert.equal(bankAcknowledged.stage, "bank_confirmed");
+  assert.equal(bankAcknowledged.final, true);
+  assert.match(bankAcknowledged.message, /not guarantee/i);
   const refunded = customerPaymentResolution({ paymentStatus: "refunded" });
   assert.equal(refunded.stage, "refunded");
   assert.match(refunded.message, /bank/i);
