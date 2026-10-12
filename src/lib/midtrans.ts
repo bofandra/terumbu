@@ -110,7 +110,7 @@ export async function createMidtransSnapPayment(
     finishUrl = parsed.toString();
   }
   if (input.expiry &&
-      (!/^\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2} [+-]\\d{4}$/.test(input.expiry.startTime) ||
+      (!/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2} [+-]\d{4}$/.test(input.expiry.startTime) ||
         !Number.isInteger(input.expiry.durationMinutes) || input.expiry.durationMinutes < 5 || input.expiry.durationMinutes > 1440)) {
     throw new Error("Invalid Snap payment expiry.");
   }
