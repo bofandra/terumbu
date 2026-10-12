@@ -782,7 +782,7 @@ export const expeditionBookings = pgTable("expedition_bookings", {
   idempotencyIdx: uniqueIndex("expedition_bookings_idempotency_idx").on(table.idempotencyKey),
   userIdx: index("expedition_bookings_user_idx").on(table.userId),
   departureIdx: index("expedition_bookings_departure_idx").on(table.departureId),
-  holdExpiryIdx: index("expedition_bookings_active_holds_idx").on(table.departureId, table.holdExpiresAt).where(sql`"hold_expires_at" IS NOT NULL AND "payment_status" IN (\'created\',\'pending\')`),
+  holdExpiryIdx: index("expedition_bookings_active_holds_idx").on(table.departureId, table.holdExpiresAt).where(sql`"hold_expires_at" IS NOT NULL AND "payment_status" IN ('created','pending')`),
   statusIdx: index("expedition_bookings_status_idx").on(table.status)
 }));
 
