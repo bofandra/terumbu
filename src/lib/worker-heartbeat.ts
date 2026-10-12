@@ -19,11 +19,17 @@ export type WorkerHeartbeatRow = {
 
 export type WorkerHealth = "not_observed" | "running" | "healthy" | "degraded" | "failing" | "stale";
 export const WORKER_STALE_AFTER_MINUTES = 150;
+export const MIDTRANS_RECONCILIATION_STALE_AFTER_MINUTES = 20;
+export function workerStaleAfterMinutes(name: HourlyWorkerName) {
+  return name === "midtrans_reconciliation"
+    ? MIDTRANS_RECONCILIATION_STALE_AFTER_MINUTES
+    : WORKER_STALE_AFTER_MINUTES;
+}
 
 /** A missing worker row is a warning, not an assertion that the service is down. */
 export function workerHeartbeatHealth(row: WorkerHeartbeatRow | null, now = new Date()): WorkerHealth {
   if (!row) return "not_observed";
-  if (now.getTime() - row.lastStartedAt.getTime() > WORKER_STALE_AFTER_MINUTES * 60_000) return "stale";
+  if (now.getTime() - row.lastStartedAt.getTime() > workerStaleAfterMinutes(row.workerName) * 60_000) return "stale";
   if (row.consecutiveFailures >= 2) return "failing";
   if (row.lastStatus === "running") return "running";
   if (row.lastStatus === "success" && row.consecutiveFailures === 0) return "healthy";
