@@ -34,6 +34,7 @@ import { getSessionUser, safeRedirectPath } from "@/lib/auth";
 import { trackEvent } from "@/lib/analytics";
 import { sendTransactionalEmail } from "@/lib/email";
 import { createMidtransSnapPayment, midtransConfiguration, midtransSnapOrigin } from "@/lib/midtrans";
+import { midtransExpeditionEnabled, validMidtransExpeditionTotal } from "@/lib/midtrans-expedition";
 import { expeditionDepartureAvailability } from "@/lib/expedition-booking-lifecycle";
 import { calculateDonationImpact, minimumDonationAmount, normalizeCurrency } from "@/lib/impact-calculations";
 import { storeUploadedPrivateImage } from "@/lib/storage";
@@ -256,7 +257,7 @@ async function submitExpeditionCheckout(formData: FormData, paymentProvider: "ma
   const paymentReference = String(formData.get("paymentReference") ?? "").trim();
   const nextPath = safeRedirectPath(formData.get("next"));
   const midtransConfig = isMidtrans ? midtransConfiguration() : null;
-  if (isMidtrans && (!midtransConfig || process.env.MIDTRANS_EXPEDITION_ENABLED !== "true")) {
+  if (isMidtrans && (!midtransConfig || !midtransExpeditionEnabled())) {
     redirect(`${nextPath}?error=gateway`);
   }
   const idempotencyKey = String(formData.get("idempotencyKey") ?? "").trim() || null;
@@ -345,8 +346,7 @@ async function submitExpeditionCheckout(formData: FormData, paymentProvider: "ma
   }
 
   const checkoutTotal = calculateBookingTotal(departure.basePrice, participantCount);
-  if (isMidtrans && (normalizeCurrency(departure.currency) !== "IDR" || !Number.isSafeInteger(checkoutTotal) ||
-      checkoutTotal < 1 || checkoutTotal >= 1_000_000_000_000)) {
+  if (isMidtrans && !validMidtransExpeditionTotal(departure.currency, checkoutTotal)) {
     redirect(`${nextPath}?error=gateway`);
   }
 
