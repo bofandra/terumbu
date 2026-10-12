@@ -11,11 +11,26 @@ export type MidtransConfiguration = {
   mode: "sandbox" | "production";
 };
 
+/**
+ * Independently reviewed production payment go-live. These values are human
+ * attestations, not proof that sandbox UAT happened; a deployment preflight
+ * also checks them before replacing any production container.
+ */
+export function midtransProductionReleaseApproved(
+  env: Record<string, string | undefined> = process.env
+) {
+  return env.MIDTRANS_PRODUCTION_RELEASE_APPROVED === "true" &&
+    env.MIDTRANS_SANDBOX_UAT_APPROVED === "true" &&
+    env.MIDTRANS_OPERATIONS_APPROVED === "true" &&
+    /^[A-Za-z0-9][A-Za-z0-9_-]{5,79}$/.test(env.MIDTRANS_RELEASE_EVIDENCE_ID ?? "");
+}
+
 export function midtransConfiguration(env: Record<string, string | undefined> = process.env): MidtransConfiguration | null {
   if (env.MIDTRANS_PAYMENT_ENABLED !== "true") return null;
   const serverKey = env.MIDTRANS_SERVER_KEY?.trim();
   const mode = env.MIDTRANS_ENV || "sandbox";
   if (!serverKey || (mode !== "sandbox" && mode !== "production")) return null;
+  if (mode === "production" && !midtransProductionReleaseApproved(env)) return null;
   return { serverKey, mode };
 }
 
