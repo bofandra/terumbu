@@ -33,6 +33,7 @@ export function MidtransPaymentStatus({
 
     const refresh = async () => {
       controller = new AbortController();
+      let shouldPoll = true;
       try {
         const params = new URLSearchParams({ type, id: checkoutId });
         const response = await fetch("/api/checkout/midtrans-status?" + params, {
@@ -48,6 +49,7 @@ export function MidtransPaymentStatus({
           }
         } else {
           const value = await response.json() as PaymentStatus;
+          shouldPoll = !value.final;
           if (!cancelled) {
             setPayment(value);
             setError(null);
@@ -56,7 +58,7 @@ export function MidtransPaymentStatus({
       } catch {
         if (!cancelled) setError("Cannot reach the status service at the moment.");
       } finally {
-        if (!cancelled && !payment?.final) handle = setTimeout(refresh, 15000);
+        if (!cancelled && shouldPoll) handle = setTimeout(refresh, 15000);
       }
     };
 
