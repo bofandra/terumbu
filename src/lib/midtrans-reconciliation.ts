@@ -14,6 +14,8 @@ import { applyVerifiedMidtransStatus, type MidtransSettlementResult } from "@/li
 export const MIDTRANS_RECONCILIATION_INTERVAL_MINUTES = 5;
 export const MIDTRANS_RECONCILIATION_ATTENTION_MINUTES = 60;
 export const MIDTRANS_RECONCILIATION_BATCH_SIZE = 20;
+export const MIDTRANS_HISTORICAL_INTERVAL_HOURS = 24;
+export const MIDTRANS_RECENT_WINDOW_DAYS = 7;
 
 type Candidate = {
   orderId: string;
@@ -36,8 +38,9 @@ export function midtransNeedsOperatorAttention(
 
 async function pendingMidtransOrders(now: Date): Promise<Candidate[]> {
   const olderThanTwoMinutes = new Date(now.getTime() - 2 * 60_000);
-  const youngerThanSevenDays = new Date(now.getTime() - 7 * 24 * 60 * 60_000);
+  const sevenDaysAgo = new Date(now.getTime() - MIDTRANS_RECENT_WINDOW_DAYS * 24 * 60 * 60_000);
   const dueBy = new Date(now.getTime() - MIDTRANS_RECONCILIATION_INTERVAL_MINUTES * 60_000);
+  const historicalDueBy = new Date(now.getTime() - MIDTRANS_HISTORICAL_INTERVAL_HOURS * 60 * 60_000);
   const donationRows = await db.select({
     orderId: paymentTransactions.providerReference,
     id: donations.id,
@@ -50,9 +53,11 @@ async function pendingMidtransOrders(now: Date): Promise<Candidate[]> {
       eq(paymentTransactions.provider, "midtrans"),
       inArray(donations.status, ["created", "pending", "failed", "expired"]),
       lt(paymentTransactions.createdAt, olderThanTwoMinutes),
-      gte(paymentTransactions.createdAt, youngerThanSevenDays),
-      or(isNull(midtransReconciliationChecks.lastCheckedAt),
-        lt(midtransReconciliationChecks.lastCheckedAt, dueBy))
+      or(
+        isNull(midtransReconciliationChecks.lastCheckedAt),
+        and(gte(paymentTransactions.createdAt, sevenDaysAgo), lt(midtransReconciliationChecks.lastCheckedAt, dueBy)),
+        and(lt(paymentTransactions.createdAt, sevenDaysAgo), lt(midtransReconciliationChecks.lastCheckedAt, historicalDueBy))
+      )
     )).orderBy(asc(sql`coalesce(${midtransReconciliationChecks.lastCheckedAt}, 'epoch'::timestamptz)`))
     .limit(MIDTRANS_RECONCILIATION_BATCH_SIZE);
 
@@ -68,9 +73,11 @@ async function pendingMidtransOrders(now: Date): Promise<Candidate[]> {
       eq(expeditionBookingPayments.provider, "midtrans"),
       inArray(expeditionBookings.paymentStatus, ["created", "pending", "failed", "expired"]),
       lt(expeditionBookingPayments.createdAt, olderThanTwoMinutes),
-      gte(expeditionBookingPayments.createdAt, youngerThanSevenDays),
-      or(isNull(midtransReconciliationChecks.lastCheckedAt),
-        lt(midtransReconciliationChecks.lastCheckedAt, dueBy))
+      or(
+        isNull(midtransReconciliationChecks.lastCheckedAt),
+        and(gte(expeditionBookingPayments.createdAt, sevenDaysAgo), lt(midtransReconciliationChecks.lastCheckedAt, dueBy)),
+        and(lt(expeditionBookingPayments.createdAt, sevenDaysAgo), lt(midtransReconciliationChecks.lastCheckedAt, historicalDueBy))
+      )
     )).orderBy(asc(sql`coalesce(${midtransReconciliationChecks.lastCheckedAt}, 'epoch'::timestamptz)`))
     .limit(MIDTRANS_RECONCILIATION_BATCH_SIZE);
 
