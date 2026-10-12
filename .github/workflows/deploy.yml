@@ -8,6 +8,20 @@ on:
     branches:
       - main
   workflow_dispatch:
+    inputs:
+      release_sha:
+        description: "Full 40-character main commit SHA approved for production deployment"
+        required: true
+        type: string
+      release_ticket:
+        description: "Approved internal release change ticket (no credentials or PII)"
+        required: true
+        type: string
+      confirm_prod_deploy:
+        description: "I explicitly approve running the protected production deployment workflow"
+        required: true
+        type: boolean
+        default: false
 
 concurrency:
   group: ${{ github.event_name == 'pull_request' && format('terumbu-pr-{0}', github.event.pull_request.number) || 'terumbu-production' }}
@@ -109,11 +123,39 @@ jobs:
     name: Deploy to VPS
     runs-on: ubuntu-24.04
     needs: [verify, e2e]
-    if: github.ref == 'refs/heads/main'
+    # Code merges/pushes to main run CI only. Deploy requires a separate,
+    # explicit main-branch workflow_dispatch plus a protected environment.
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && inputs.confirm_prod_deploy == true
     environment: production
     steps:
       - name: Checkout
         uses: actions/checkout@v7
+
+      - name: Verify explicit commit and change-ticket authorization
+        env:
+          REQUESTED_SHA: ${{ inputs.release_sha }}
+          CHANGE_TICKET: ${{ inputs.release_ticket }}
+          REQUESTED_CONFIRM: ${{ inputs.confirm_prod_deploy }}
+        run: |
+          set -euo pipefail
+          if [ "${GITHUB_EVENT_NAME}" != "workflow_dispatch" ] || [ "${GITHUB_REF}" != "refs/heads/main" ]; then
+            echo "Deployment can only be dispatched from the main branch." >&2
+            exit 1
+          fi
+          if [ "${REQUESTED_CONFIRM}" != "true" ]; then
+            echo "Deployment requires explicit approval of the manual dispatch." >&2
+            exit 1
+          fi
+          if [[ ! "${REQUESTED_SHA}" =~ ^[a-f0-9]{40}$ ]] || [ "${REQUESTED_SHA}" != "${GITHUB_SHA}" ] || [ "${REQUESTED_SHA}" != "$(git rev-parse HEAD)" ]; then
+            echo "Requested release SHA does not match the exact checked-out main commit." >&2
+            exit 1
+          fi
+          if [[ ! "${CHANGE_TICKET}" =~ ^[A-Za-z0-9][A-Za-z0-9_-]{5,79}$ ]]; then
+            echo "A safe internal release change ticket is required." >&2
+            exit 1
+          fi
+          echo "Authorized deployment of commit ${GITHUB_SHA} against change ticket ${CHANGE_TICKET}."
+          echo "GitHub production environment protection and independent release approvals must be configured by repository administrators."
 
       - name: Configure SSH
         env:
@@ -315,7 +357,7 @@ jobs:
           VPS_USER: ${{ secrets.VPS_USER }}
           DEPLOY_REPO: https://github.com/${{ github.repository }}.git
           DEPLOY_REF: ${{ github.ref_name }}
-          DEPLOY_VERSION: ${{ github.sha }}
+          DEPLOY_VERSION: ${{ inputs.release_sha }}
         run: |
           set -euo pipefail
           ssh -i ~/.ssh/terumbu_deploy_key "${VPS_USER}@${VPS_HOST}" \
@@ -332,7 +374,7 @@ jobs:
     name: External Worker Watch (post-deploy)
     runs-on: ubuntu-24.04
     needs: [deploy]
-    if: github.ref == 'refs/heads/main'
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
     # Serialize issue operations against the scheduled, independent workflow.
     concurrency:
       group: terumbu-external-worker-watch
@@ -356,3 +398,5 @@ jobs:
 
       - name: Check deployed worker health and synchronize GitHub incident
         run: node scripts/monitor-worker-heartbeats.mjs
+      - name: Check Midtrans refund SLA and synchronize independent GitHub incident
+        run: node scripts/monitor-midtrans-refund-sla.mjs
