@@ -10,7 +10,7 @@ import {
 } from "../../src/db/schema";
 import { processMissingMidtransWebhooks } from "../../src/lib/midtrans-reconciliation";
 
-test("missing Midtrans webhooks confirm once, while provider failure alerts exactly once", async ({ request }) => {
+test("webhook-free settlement recovers and ten-day-old provider failure alerts once", async ({ request }) => {
   test.setTimeout(120_000);
   expect((await request.post("/api/cron/midtrans-reconciliation")).status()).toBe(401);
   const [expedition] = await db.select({ id: expeditions.id }).from(expeditions)
@@ -31,7 +31,7 @@ test("missing Midtrans webhooks confirm once, while provider failure alerts exac
     departureId = departure.id;
 
     for (const orderId of [successfulOrderId, missingOrderId]) {
-      const submittedAt = new Date(Date.now() - (orderId === missingOrderId ? 120 : 12) * 60_000);
+      const submittedAt = new Date(Date.now() - (orderId === missingOrderId ? 10 * 24 * 60 : 12) * 60_000);
       const [booking] = await db.insert(expeditionBookings).values({
         expeditionId: expedition.id, departureId,
         bookingCode: "E2E-RECON-" + randomUUID(),
@@ -92,7 +92,7 @@ test("missing Midtrans webhooks confirm once, while provider failure alerts exac
 
     // A retry can see the same pending payment; case creation must stay unique.
     await db.update(midtransReconciliationChecks)
-      .set({ lastCheckedAt: new Date(Date.now() - 10 * 60_000) })
+      .set({ lastCheckedAt: new Date(Date.now() - 25 * 60 * 60_000) })
       .where(eq(midtransReconciliationChecks.providerReference, missingOrderId));
     await processMissingMidtransWebhooks(new Date(), { config, fetcher: mockFetch });
     const repeatedCases = await db.select({ id: paymentOperations.id })
