@@ -17,17 +17,18 @@ type HeartbeatRow = {
 
 test("public external probe exposes only coarse health and detects silent/stale/failing workers", async ({ request }) => {
   const sql = postgres(process.env.DATABASE_URL!, { max: 1 });
-  const names = ["corporate_reports", "expedition_reminders", "midtrans_compensations"];
+  const names = ["corporate_reports", "expedition_reminders", "midtrans_compensations", "midtrans_reconciliation"];
   const previous = await sql<HeartbeatRow[]>`
     select * from worker_heartbeats
-    where worker_name in ('corporate_reports', 'expedition_reminders', 'midtrans_compensations')
+    where worker_name in ('corporate_reports', 'expedition_reminders', 'midtrans_compensations', 'midtrans_reconciliation')
   `;
   try {
-    await sql`delete from worker_heartbeats where worker_name in ('corporate_reports', 'expedition_reminders', 'midtrans_compensations')`;
+    await sql`delete from worker_heartbeats where worker_name in ('corporate_reports', 'expedition_reminders', 'midtrans_compensations', 'midtrans_reconciliation')`;
     const missing = await request.get("/api/health/workers");
     expect(missing.status()).toBe(503);
     expect(await missing.json()).toEqual({ status: "unhealthy" });
     expect((await request.post("/api/cron/midtrans-compensations")).status()).toBe(401);
+    expect((await request.post("/api/cron/midtrans-reconciliation")).status()).toBe(401);
     expect(missing.headers()["cache-control"]).toContain("no-store");
 
     for (const name of names) {
@@ -66,7 +67,7 @@ test("public external probe exposes only coarse health and detects silent/stale/
     expect(JSON.stringify(data)).not.toContain("expedition_reminders");
     expect(JSON.stringify(data)).not.toContain("last_failed_at");
   } finally {
-    await sql`delete from worker_heartbeats where worker_name in ('corporate_reports', 'expedition_reminders', 'midtrans_compensations')`;
+    await sql`delete from worker_heartbeats where worker_name in ('corporate_reports', 'expedition_reminders', 'midtrans_compensations', 'midtrans_reconciliation')`;
     for (const row of previous) {
       await sql`
         insert into worker_heartbeats (
