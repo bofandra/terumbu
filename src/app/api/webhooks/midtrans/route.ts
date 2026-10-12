@@ -1,29 +1,23 @@
-import { and, eq } from "drizzle-orm";
 import { NextResponse, type NextRequest } from "next/server";
 
-import { db } from "@/db/client";
-import { donations, expeditionBookingPayments, expeditionBookings, paymentOperations, paymentTransactions } from "@/db/schema";
-import { queueMidtransCapacityConflict, reconcileMidtransCompensation } from "@/lib/midtrans-compensations";
 import {
   fetchMidtransTransactionStatus,
   midtransConfiguration,
   midtransIdrAmount,
-  midtransPaymentState,
   verifyMidtransSignature,
   type MidtransStatusPayload
 } from "@/lib/midtrans";
-import { transitionDonationPayment, transitionExpeditionBookingPayment } from "@/lib/payment-workflows";
-import { verifiedExpeditionGrossMatches } from "@/lib/midtrans-expedition";
+import { applyVerifiedMidtransStatus } from "@/lib/midtrans-settlement";
 import { readBoundedRequestBody, RequestBodyTooLargeError } from "@/lib/read-bounded-request-body";
 
 /**
- * An authenticated, bounded, fail-closed notification endpoint for IDR
- * donations created by Terumbu. No client redirect can mark payments as paid.
+ * Signed Midtrans notification is only a trigger: GET Status independently
+ * establishes the current authoritative status and gross amount.
+ * The scheduled reconciliation worker calls the same settlement function.
  */
 export async function POST(request: NextRequest) {
   const config = midtransConfiguration();
   if (!config) return NextResponse.json({ error: "Not configured." }, { status: 503 });
-
   let input: MidtransStatusPayload;
   try {
     const body = await readBoundedRequestBody(request.body, 16 * 1024);
@@ -33,135 +27,36 @@ export async function POST(request: NextRequest) {
     }
     input = parsed as MidtransStatusPayload;
   } catch (error) {
-    return NextResponse.json(
-      { error: error instanceof RequestBodyTooLargeError ? "Payload too large." : "Invalid notification." },
-      { status: error instanceof RequestBodyTooLargeError ? 413 : 400 }
-    );
+    return NextResponse.json({
+      error: error instanceof RequestBodyTooLargeError ? "Payload too large." : "Invalid notification."
+    }, { status: error instanceof RequestBodyTooLargeError ? 413 : 400 });
   }
-
   if (!verifyMidtransSignature(input, config.serverKey)) {
     return NextResponse.json({ error: "Invalid signature." }, { status: 401 });
   }
   const orderId = input.order_id as string;
-  const requestedAmount = midtransIdrAmount(input.gross_amount);
-  if (requestedAmount == null) return NextResponse.json({ error: "Invalid amount." }, { status: 422 });
+  const amount = midtransIdrAmount(input.gross_amount);
+  if (amount === null) return NextResponse.json({ error: "Invalid amount." }, { status: 422 });
 
-  const [payment] = await db.select({ donationId: paymentTransactions.donationId })
-    .from(paymentTransactions)
-    .where(and(eq(paymentTransactions.provider, "midtrans"), eq(paymentTransactions.providerReference, orderId)))
-    .limit(1);
-  const [expeditionPayment] = payment?.donationId ? [] : await db.select({ bookingId: expeditionBookingPayments.bookingId })
-    .from(expeditionBookingPayments)
-    .where(and(eq(expeditionBookingPayments.provider, "midtrans"), eq(expeditionBookingPayments.providerReference, orderId)))
-    .limit(1);
-  if (!payment?.donationId && !expeditionPayment?.bookingId) {
-    return NextResponse.json({ error: "Unknown order." }, { status: 404 });
-  }
-
-  // Authenticated GET Status provides the current authoritative state, avoiding
-  // stale notifications moving a settled donation back to pending.
-  let current: MidtransStatusPayload;
+  let verified: MidtransStatusPayload;
   try {
-    current = await fetchMidtransTransactionStatus(config, orderId);
+    verified = await fetchMidtransTransactionStatus(config, orderId);
   } catch {
     console.error("Midtrans status confirmation unavailable.");
     return NextResponse.json({ error: "Status confirmation unavailable." }, { status: 503 });
   }
-  const currentAmount = midtransIdrAmount(current.gross_amount);
-  if (currentAmount !== requestedAmount || current.order_id !== orderId) {
+  if (verified.order_id !== orderId || midtransIdrAmount(verified.gross_amount) !== amount) {
     return NextResponse.json({ error: "Provider order mismatch." }, { status: 422 });
   }
-  const status = midtransPaymentState(current);
-  if (!status) {
-    // Partial refunds and unrecognized states require explicit reconciliation.
-    console.warn("Unmapped Midtrans transaction state requires manual review.");
-    return NextResponse.json({ ok: true, manualReview: true });
+  const result = await applyVerifiedMidtransStatus(orderId, verified);
+  if (result.status === "unknown") {
+    return NextResponse.json({ error: "Unknown Midtrans order." }, { status: 404 });
   }
-
-  if (expeditionPayment?.bookingId) {
-    const bookingId = expeditionPayment.bookingId;
-    let result: "mismatch" | "unchanged" | "updated" | "capacity_unavailable";
-    try {
-      result = await db.transaction(async (tx) => {
-        const [booking] = await tx.select({
-          id: expeditionBookings.id,
-          amount: expeditionBookings.totalAmount,
-          currency: expeditionBookings.currency,
-          status: expeditionBookings.status,
-          paymentStatus: expeditionBookings.paymentStatus
-        }).from(expeditionBookings).where(eq(expeditionBookings.id, bookingId)).limit(1).for("update");
-        if (!booking || !verifiedExpeditionGrossMatches(booking.currency, Number(booking.amount), requestedAmount)) return "mismatch" as const;
-        if (booking.paymentStatus === status || booking.paymentStatus === "refunded" && status !== "refunded") return "unchanged" as const;
-        if (status === "paid") {
-          const [compensation] = await tx.select({ id: paymentOperations.id }).from(paymentOperations)
-            .where(and(eq(paymentOperations.bookingId, bookingId),
-              eq(paymentOperations.operationType, "midtrans_capacity_conflict"))).limit(1);
-          // Once an external payment has entered compensation, do not silently
-          // claim newly available seats on a retrying settlement webhook.
-          if (compensation) return "capacity_unavailable" as const;
-        }
-        if (status === "paid" && booking.status === "cancelled") return "capacity_unavailable" as const;
-        const updated = await transitionExpeditionBookingPayment(tx as unknown as typeof db, {
-          bookingId, nextStatus: status, providerReference: orderId,
-          providerPayload: {
-            method: "midtrans_snap",
-            providerTransactionId: typeof current.transaction_id === "string" ? current.transaction_id : null,
-            providerStatus: current.transaction_status,
-            verifiedAt: new Date().toISOString()
-          },
-          operationType: "midtrans_webhook"
-        });
-        return updated ? "updated" as const : "mismatch" as const;
-      });
-    } catch (error) {
-      if (!(error instanceof Error) || error.message !== "EXPEDITION_CAPACITY_UNAVAILABLE") throw error;
-      result = "capacity_unavailable";
-    }
-    if (result === "capacity_unavailable") {
-      // Commit the compensation incident once, alert the operator/traveler,
-      // then attempt an opt-in refund. Never make a second seat allocation.
-      await queueMidtransCapacityConflict({
-        bookingId, providerReference: orderId,
-        amount: requestedAmount, providerPaymentType: current.payment_type
-      });
-      // Opt-in sandbox/prod guard is enforced by the compensator. A failed
-      // refund remains a durable manual-review record.
-      await reconcileMidtransCompensation(bookingId);
-      return NextResponse.json({ ok: true, type: "expedition", compensation: "queued_for_resolution" });
-    }
-    if (result === "mismatch") return NextResponse.json({ error: "Booking amount mismatch." }, { status: 422 });
-    return NextResponse.json({ ok: true, type: "expedition", status: result });
+  if (result.status === "mismatch") {
+    return NextResponse.json({ error: "Stored order amount mismatch." }, { status: 422 });
   }
-
-  const result = await db.transaction(async (tx) => {
-    const [donation] = await tx.select({
-      id: donations.id,
-      amount: donations.amount,
-      currency: donations.currency,
-      status: donations.status
-    }).from(donations).where(eq(donations.id, payment.donationId!)).limit(1).for("update");
-
-    if (!donation || donation.currency !== "IDR" || Number(donation.amount) !== requestedAmount) {
-      return "mismatch" as const;
-    }
-    if (donation.status === status) return "unchanged" as const;
-    if (donation.status === "refunded" && status !== "refunded") return "unchanged" as const;
-    const updated = await transitionDonationPayment(tx as unknown as typeof db, {
-      donationId: donation.id,
-      nextStatus: status,
-      providerReference: orderId,
-      providerPayload: {
-        method: "midtrans_snap",
-        providerTransactionId: typeof current.transaction_id === "string" ? current.transaction_id : null,
-        providerStatus: current.transaction_status,
-        providerFraudStatus: typeof current.fraud_status === "string" ? current.fraud_status : null,
-        providerPaymentType: typeof current.payment_type === "string" ? current.payment_type : null,
-        verifiedAt: new Date().toISOString()
-      },
-      operationType: "midtrans_webhook"
-    });
-    return updated ? "updated" as const : "mismatch" as const;
-  });
-  if (result === "mismatch") return NextResponse.json({ error: "Donation mismatch." }, { status: 422 });
-  return NextResponse.json({ ok: true, status: result });
+  if (result.status === "manual_review") {
+    return NextResponse.json({ ok: true, manualReview: true, type: result.type });
+  }
+  return NextResponse.json({ ok: true, type: result.type, status: result.status });
 }
