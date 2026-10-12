@@ -35,6 +35,7 @@ import { trackEvent } from "@/lib/analytics";
 import { sendTransactionalEmail } from "@/lib/email";
 import { createMidtransSnapPayment, midtransConfiguration, midtransSnapOrigin } from "@/lib/midtrans";
 import { midtransExpeditionEnabled, validMidtransExpeditionTotal } from "@/lib/midtrans-expedition";
+import { checkoutStatusTokenHash, newCheckoutStatusToken, setCheckoutStatusCookie, checkoutStatusPayload } from "@/lib/checkout-status-access";
 import { expeditionDepartureAvailability } from "@/lib/expedition-booking-lifecycle";
 import { canAcquireExpeditionHold, expeditionHoldExpiresAt, midtransJakartaStartTime, MIDTRANS_EXPEDITION_PAYMENT_MINUTES } from "@/lib/expedition-seat-holds";
 import { calculateDonationImpact, minimumDonationAmount, normalizeCurrency } from "@/lib/impact-calculations";
@@ -408,6 +409,7 @@ async function submitExpeditionCheckout(formData: FormData, paymentProvider: "ma
   }
 
   const providerReference = isMidtrans ? `TRB-EXP-${randomUUID()}` : randomReference("MANUAL-EXPEDITION");
+  const statusToken = isMidtrans ? newCheckoutStatusToken() : null;
   const proofUpload = isMidtrans ? null : await storeUploadedPrivateImage(formData.get("paymentProofFile"), {
     namespace: "payment-proof",
     appUrl: `/private-media/payment-proof/expedition/${providerReference}`
@@ -486,7 +488,8 @@ async function submitExpeditionCheckout(formData: FormData, paymentProvider: "ma
       provider: paymentProvider,
       providerReference,
       status: isMidtrans ? "created" : "pending",
-      payload: isMidtrans ? { method: "midtrans_snap", initiatedAt: now.toISOString() } : manualPaymentMetadata,
+      payload: isMidtrans ? { method: "midtrans_snap", initiatedAt: now.toISOString(),
+        checkoutAccessHash: checkoutStatusTokenHash(statusToken!) } : manualPaymentMetadata,
       updatedAt: now
     });
 
@@ -529,6 +532,8 @@ async function submitExpeditionCheckout(formData: FormData, paymentProvider: "ma
     }
     throw error;
   }
+
+  if (isMidtrans && statusToken) await setCheckoutStatusCookie(bookingId, statusToken);
 
   await sendTransactionalEmail({
     userId: bookingEmailUserId,
@@ -578,7 +583,8 @@ async function submitExpeditionCheckout(formData: FormData, paymentProvider: "ma
     }
     const updated = await db.update(expeditionBookingPayments).set({
       status: "pending",
-      payload: { method: "midtrans_snap", initiatedAt: now.toISOString(), redirectUrl: snapUrl },
+      payload: { method: "midtrans_snap", initiatedAt: now.toISOString(), redirectUrl: snapUrl,
+        checkoutAccessHash: checkoutStatusTokenHash(statusToken!) },
       updatedAt: new Date()
     }).where(and(eq(expeditionBookingPayments.provider, "midtrans"),
       eq(expeditionBookingPayments.providerReference, providerReference),
