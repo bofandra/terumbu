@@ -962,6 +962,18 @@ export const paymentOperations = pgTable("payment_operations", {
   statusIdx: index("payment_operations_status_idx").on(table.status)
 }));
 
+export const midtransCompensationCaseEvents = pgTable("midtrans_compensation_case_events", {
+  id: uuid("id").primaryKey().notNull(),
+  operationId: uuid("operation_id").notNull().references(() => paymentOperations.id, { onDelete: "restrict" }),
+  actorUserId: uuid("actor_user_id").notNull().references(() => users.id, { onDelete: "restrict" }),
+  eventType: varchar("event_type", { length: 50 }).notNull(),
+  evidenceChannel: varchar("evidence_channel", { length: 20 }).notNull(),
+  ticketReference: varchar("ticket_reference", { length: 64 }).notNull(),
+  recordedAt: timestamp("recorded_at", { withTimezone: true }).defaultNow().notNull()
+}, (table) => ({
+  operationIdx: index("midtrans_compensation_case_events_operation_idx").on(table.operationId, table.recordedAt)
+}));
+
 export const midtransRefundBankConfirmations = pgTable("midtrans_refund_bank_confirmations", {
   operationId: uuid("operation_id").primaryKey().notNull().references(() => paymentOperations.id, { onDelete: "restrict" }),
   providerReference: varchar("provider_reference", { length: 255 }).notNull(),
