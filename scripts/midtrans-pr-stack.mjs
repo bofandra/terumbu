@@ -10,7 +10,7 @@ import { fileURLToPath } from "node:url";
 import { resolve } from "node:path";
 
 export const REQUIRED_MIDTRANS_PRS = Object.freeze([
-  112, 113, 115, 116, 117, 118, 119, 120, 121, 122, 123, 124
+  112, 113, 115, 116, 117, 118, 119, 120, 121, 122, 123, 124, 125
 ]);
 
 const SHA = /^[a-f0-9]{40}$/;
