@@ -10,7 +10,11 @@ export function midtransAutoRefundEnabled(
   env: Record<string, string | undefined> = process.env
 ) {
   return Boolean(config) && env.MIDTRANS_AUTO_REFUND_ENABLED === "true" &&
-    (config?.mode === "sandbox" || env.MIDTRANS_AUTO_REFUND_PRODUCTION_ENABLED === "true");
+    (config?.mode === "sandbox" || (
+      env.MIDTRANS_AUTO_REFUND_PRODUCTION_ENABLED === "true" &&
+      env.MIDTRANS_REFUND_UAT_APPROVED === "true" &&
+      env.MIDTRANS_REFUND_OPERATIONS_APPROVED === "true"
+    ));
 }
 
 export function midtransRefundKey(bookingId: string) {
