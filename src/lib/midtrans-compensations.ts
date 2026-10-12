@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 
-import { and, eq, inArray, lt } from "drizzle-orm";
+import { and, eq, inArray } from "drizzle-orm";
 
 import { db } from "@/db/client";
 import { expeditionBookingPayments, expeditionBookings, paymentOperations } from "@/db/schema";
