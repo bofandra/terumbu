@@ -5,7 +5,7 @@ import { and, eq } from "drizzle-orm";
 import { expect, test } from "@playwright/test";
 
 import { db } from "../../src/db/client";
-import { expeditionBookingPayments, expeditionBookings, expeditionDepartures, expeditions, paymentOperations } from "../../src/db/schema";
+import { expeditionBookingPayments, expeditionBookings, expeditionDepartures, expeditions, midtransRefundBankConfirmations, paymentOperations } from "../../src/db/schema";
 import { queueMidtransCapacityConflict, reconcileMidtransCompensation } from "../../src/lib/midtrans-compensations";
 import { midtransRefundKey } from "../../src/lib/midtrans-refunds";
 
@@ -67,13 +67,20 @@ test("duplicate capacity conflicts generate one case; refund POST once, then rec
     delete process.env.MIDTRANS_AUTO_REFUND_PRODUCTION_ENABLED;
 
     let stage: "settlement" | "refund" = "settlement";
+    let bankConfirmed = false;
     let refundRequests = 0;
     globalThis.fetch = (async (input: string | URL | Request, init?: RequestInit) => {
       const url = String(input);
       if (url.endsWith("/status")) {
         return new Response(JSON.stringify({
           order_id: providerReference, gross_amount: "100000.00", currency: "IDR",
-          payment_type: "gopay", transaction_status: stage
+          payment_type: "gopay", transaction_status: stage,
+          ...(stage === "refund" ? {
+            refunds: [{ refund_key: midtransRefundKey(bookingId!),
+              refund_amount: "100000.00",
+              ...(bankConfirmed ? { bank_confirmed_at: "2026-10-10 08:15:00" } : {})
+            }]
+          } : {})
         }), { status: 200 });
       }
       if (url.endsWith("/refund")) {
@@ -102,6 +109,22 @@ test("duplicate capacity conflicts generate one case; refund POST once, then rec
     const [updatedOperation] = await db.select({ status: paymentOperations.status }).from(paymentOperations)
       .where(eq(paymentOperations.id, first.operationId!)).limit(1);
     expect(updatedOperation.status).toBe("provider_refunded");
+    const [bankBefore] = await db.select({ id: midtransRefundBankConfirmations.operationId })
+      .from(midtransRefundBankConfirmations).where(eq(midtransRefundBankConfirmations.operationId, first.operationId!));
+    expect(bankBefore).toBeUndefined();
+
+    bankConfirmed = true;
+    expect(await reconcileMidtransCompensation(bookingId)).toBe("bank_confirmed");
+    expect(await reconcileMidtransCompensation(bookingId)).toBe("bank_confirmed");
+
+    const bankRows = await db.select({
+      bankConfirmedAt: midtransRefundBankConfirmations.bankConfirmedAt,
+      amount: midtransRefundBankConfirmations.refundAmount
+    }).from(midtransRefundBankConfirmations)
+      .where(eq(midtransRefundBankConfirmations.operationId, first.operationId!));
+    expect(bankRows).toHaveLength(1);
+    expect(bankRows[0].bankConfirmedAt.toISOString()).toBe("2026-10-10T01:15:00.000Z");
+    expect(Number(bankRows[0].amount)).toBe(100000);
     expect(refundRequests).toBe(1);
   } finally {
     globalThis.fetch = previousFetch;
@@ -110,6 +133,7 @@ test("duplicate capacity conflicts generate one case; refund POST once, then rec
       else process.env[key] = value;
     }
     if (bookingId) {
+      await db.delete(midtransRefundBankConfirmations).where(eq(midtransRefundBankConfirmations.providerReference, providerReference));
       await db.delete(paymentOperations).where(eq(paymentOperations.bookingId, bookingId));
       await db.delete(expeditionBookings).where(eq(expeditionBookings.id, bookingId));
     }
