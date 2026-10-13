@@ -1,4 +1,4 @@
-import { and, eq, gt, inArray } from "drizzle-orm";
+import { and, eq, gt, inArray, notInArray } from "drizzle-orm";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
@@ -157,6 +157,24 @@ export async function requireCorporateOperatorRole(nextPath = "/corporate") {
   const roles = await getUserRoles(user.id);
   if (roles.includes("admin")) redirect(forbiddenRedirectPath(nextPath));
   return user;
+}
+
+/**
+ * After a verified password change, invalidate every other browser/device.
+ * Preserve the currently authenticated cookie (including legacy raw-token
+ * sessions) so the person changing their password stays signed in.
+ * Scoped by userId: never touch sessions that belong to another user.
+ */
+export async function revokeOtherUserSessions(userId: string) {
+  const cookieStore = await cookies();
+  const currentToken = cookieStore.get(SESSION_COOKIE)?.value;
+  const keepCandidates = sessionTokenLookupCandidates(currentToken ?? "");
+
+  await db.delete(sessions).where(
+    keepCandidates.length > 0
+      ? and(eq(sessions.userId, userId), notInArray(sessions.sessionToken, keepCandidates))
+      : eq(sessions.userId, userId)
+  );
 }
 
 export async function destroyCurrentSession() {
