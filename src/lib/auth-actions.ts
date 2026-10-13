@@ -35,6 +35,7 @@ import {
   clearDistributedAuthRateLimit,
   consumeDistributedAuthRateLimits
 } from "@/lib/distributed-auth-rate-limit";
+import { verifiedProxyClientIdentifier } from "@/lib/trusted-proxy-client";
 import {
   normalizePassportEvidenceConsent,
   normalizePassportVisibility,
@@ -84,57 +85,71 @@ function validEmail(value: string) {
 }
 
 const FIFTEEN_MINUTES_MS = 15 * 60 * 1000;
-// Each request consumes a shared PostgreSQL counter before expensive work.
- // Client ceilings include successful attempts; account ceilings make IP header
-// spoofing insufficient to bypass anti-brute-force protection entirely.
+
+/**
+ * Only edge-authenticated IP addresses may split the per-client rate limits.
+ * Without trusted proxy metadata, the account-specific fallback is more
+ * restrictive and cannot be reset by changing spoofed HTTP request headers.
+ */
 const authRateLimitPolicies = {
   login: {
     pair: { limit: 8, windowMs: FIFTEEN_MINUTES_MS },
     client: { limit: 120, windowMs: FIFTEEN_MINUTES_MS },
-    account: { limit: 30, windowMs: FIFTEEN_MINUTES_MS }
+    account: { limit: 30, windowMs: FIFTEEN_MINUTES_MS },
+    untrustedAccount: { limit: 8, windowMs: FIFTEEN_MINUTES_MS }
   },
   recovery: {
     pair: { limit: 3, windowMs: FIFTEEN_MINUTES_MS },
     client: { limit: 15, windowMs: FIFTEEN_MINUTES_MS },
-    account: { limit: 5, windowMs: FIFTEEN_MINUTES_MS }
+    account: { limit: 5, windowMs: FIFTEEN_MINUTES_MS },
+    untrustedAccount: { limit: 3, windowMs: FIFTEEN_MINUTES_MS }
   },
   verification: {
     pair: { limit: 3, windowMs: FIFTEEN_MINUTES_MS },
     client: { limit: 15, windowMs: FIFTEEN_MINUTES_MS },
-    account: { limit: 5, windowMs: FIFTEEN_MINUTES_MS }
+    account: { limit: 5, windowMs: FIFTEEN_MINUTES_MS },
+    untrustedAccount: { limit: 3, windowMs: FIFTEEN_MINUTES_MS }
   }
-} satisfies Record<string, { pair: AuthRateLimitPolicy; client: AuthRateLimitPolicy; account: AuthRateLimitPolicy }>;
+} satisfies Record<string, {
+  pair: AuthRateLimitPolicy;
+  client: AuthRateLimitPolicy;
+  account: AuthRateLimitPolicy;
+  untrustedAccount: AuthRateLimitPolicy;
+}>;
 
 type AuthRateLimitFlow = keyof typeof authRateLimitPolicies;
 
 async function authClientIdentifier() {
-  const requestHeaders = await headers();
-  const forwardedFor = requestHeaders.get("x-forwarded-for")?.split(",")[0]?.trim();
-  const address =
-    requestHeaders.get("cf-connecting-ip")?.trim() ||
-    requestHeaders.get("x-real-ip")?.trim() ||
-    forwardedFor;
-
-  if (address) {
-    return hashAuthRateLimitIdentifier(`ip:${address}`);
-  }
-
-  const userAgent = requestHeaders.get("user-agent")?.trim().slice(0, 256) || "unknown";
-  return hashAuthRateLimitIdentifier(`ua:${userAgent}`);
+  return verifiedProxyClientIdentifier(await headers());
 }
 
-function authFlowRateLimitKeys(flow: AuthRateLimitFlow, email: string, clientIdentifier: string) {
+function authFlowRateLimitKeys(flow: AuthRateLimitFlow, email: string, clientIdentifier: string | null) {
   const accountIdentifier = hashAuthRateLimitIdentifier(email || "invalid-email");
 
   return {
-    pair: authRateLimitKey(`${flow}:pair`, accountIdentifier, clientIdentifier),
-    client: authRateLimitKey(`${flow}:client`, clientIdentifier),
-    account: authRateLimitKey(`${flow}:account`, accountIdentifier)
+    account: authRateLimitKey(`${flow}:account`, accountIdentifier),
+    untrustedAccount: authRateLimitKey(`${flow}:untrusted-account`, accountIdentifier),
+    pair: clientIdentifier
+      ? authRateLimitKey(`${flow}:pair`, accountIdentifier, clientIdentifier)
+      : null,
+    client: clientIdentifier
+      ? authRateLimitKey(`${flow}:client`, clientIdentifier)
+      : null
   };
 }
 
 async function consumeAuthFlow(flow: AuthRateLimitFlow, keys: ReturnType<typeof authFlowRateLimitKeys>) {
   const policy = authRateLimitPolicies[flow];
+
+  if (!keys.pair || !keys.client) {
+    // Treat all unverified clients of an account as one capped pool. In
+    // particular, malicious changes to XFF/CF-IP/User-Agent do not alter it.
+    return consumeDistributedAuthRateLimits([
+      { key: keys.account, policy: policy.account },
+      { key: keys.untrustedAccount, policy: policy.untrustedAccount }
+    ]);
+  }
+
   return consumeDistributedAuthRateLimits([
     { key: keys.pair, policy: policy.pair },
     { key: keys.client, policy: policy.client },
@@ -216,7 +231,7 @@ export async function loginAction(formData: FormData) {
 
   // Successful credentials clear this account/client pair, but retain the
   // account-wide and client-wide counters against distributed spraying.
-  await clearDistributedAuthRateLimit(loginKeys.pair);
+  if (loginKeys.pair) await clearDistributedAuthRateLimit(loginKeys.pair);
 
   if (!user.emailVerifiedAt) {
     if (await consumeAuthFlow("verification", authFlowRateLimitKeys("verification", user.email, clientIdentifier))) {
