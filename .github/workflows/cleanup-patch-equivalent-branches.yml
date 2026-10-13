@@ -1,0 +1,44 @@
+name: Cleanup patch-equivalent branches (one-time)
+
+# Phase two: only runs when this workflow is introduced on main.
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - .github/workflows/cleanup-patch-equivalent-branches.yml
+
+permissions:
+  contents: write
+
+concurrency:
+  group: terumbu-one-time-patch-equivalence-cleanup
+  cancel-in-progress: false
+
+jobs:
+  cleanup:
+    name: Prune proven patch-equivalent and merged branches
+    if: github.repository == 'bofandra/terumbu' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Checkout immutable main SHA with full history
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Fetch all development branch heads for independent Git patch-id audit
+        run: git fetch --no-tags --prune origin '+refs/heads/*:refs/remotes/origin/*'
+      - name: Setup Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+      - name: Verify branch preservation and equivalence policy
+        run: node --test tests/cleanup-patch-equivalent-branches.test.mjs
+      - name: Delete only provably equivalent branches
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_SHA: ${{ github.sha }}
+          GITHUB_API_URL: ${{ github.api_url }}
+        run: node scripts/cleanup-patch-equivalent-branches.mjs --apply
