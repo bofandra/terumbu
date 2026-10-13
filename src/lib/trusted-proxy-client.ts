@@ -23,10 +23,11 @@ export function verifiedProxyClientIdentifier(
     return null;
   }
 
-  const trusted = timingSafeEqual(
-    Buffer.from(configuredSecret, "utf8"),
-    Buffer.from(suppliedSecret, "utf8")
-  );
+  const expected = Buffer.from(configuredSecret, "utf8");
+  const supplied = Buffer.from(suppliedSecret, "utf8");
+  if (expected.length !== supplied.length) return null;
+
+  const trusted = timingSafeEqual(expected, supplied);
   if (!trusted || !suppliedIp) return null;
 
   // Do not accept comma-separated forwarded chains or IP:port strings. The
