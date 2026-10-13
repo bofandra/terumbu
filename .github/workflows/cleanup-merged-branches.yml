@@ -1,0 +1,41 @@
+name: Cleanup fully merged branches (one-time)
+
+# Run only when this workflow file is introduced/changed on main.
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - .github/workflows/cleanup-merged-branches.yml
+
+permissions:
+  contents: write
+
+concurrency:
+  group: terumbu-one-time-merged-branch-cleanup
+  cancel-in-progress: false
+
+jobs:
+  cleanup:
+    name: Delete ancestor-only development branches
+    if: github.repository == 'bofandra/terumbu' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Checkout pinned main commit
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+      - name: Verify cleanup safety policy
+        run: node --test tests/cleanup-merged-branches.test.mjs
+      - name: Remove only fully merged development branches
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_SHA: ${{ github.sha }}
+          GITHUB_API_URL: ${{ github.api_url }}
+        run: node scripts/cleanup-merged-branches.mjs --apply
