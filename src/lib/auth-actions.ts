@@ -88,33 +88,29 @@ const FIFTEEN_MINUTES_MS = 15 * 60 * 1000;
 
 /**
  * Only edge-authenticated IP addresses may split the per-client rate limits.
- * Without trusted proxy metadata, the account-specific fallback is more
- * restrictive and cannot be reset by changing spoofed HTTP request headers.
+ * Without trusted proxy metadata, the existing account-wide quota remains
+ * active and cannot be reset by changing spoofed HTTP request headers.
  */
 const authRateLimitPolicies = {
   login: {
     pair: { limit: 8, windowMs: FIFTEEN_MINUTES_MS },
     client: { limit: 120, windowMs: FIFTEEN_MINUTES_MS },
     account: { limit: 30, windowMs: FIFTEEN_MINUTES_MS },
-    untrustedAccount: { limit: 8, windowMs: FIFTEEN_MINUTES_MS }
   },
   recovery: {
     pair: { limit: 3, windowMs: FIFTEEN_MINUTES_MS },
     client: { limit: 15, windowMs: FIFTEEN_MINUTES_MS },
     account: { limit: 5, windowMs: FIFTEEN_MINUTES_MS },
-    untrustedAccount: { limit: 3, windowMs: FIFTEEN_MINUTES_MS }
   },
   verification: {
     pair: { limit: 3, windowMs: FIFTEEN_MINUTES_MS },
     client: { limit: 15, windowMs: FIFTEEN_MINUTES_MS },
     account: { limit: 5, windowMs: FIFTEEN_MINUTES_MS },
-    untrustedAccount: { limit: 3, windowMs: FIFTEEN_MINUTES_MS }
   }
 } satisfies Record<string, {
   pair: AuthRateLimitPolicy;
   client: AuthRateLimitPolicy;
   account: AuthRateLimitPolicy;
-  untrustedAccount: AuthRateLimitPolicy;
 }>;
 
 type AuthRateLimitFlow = keyof typeof authRateLimitPolicies;
@@ -128,7 +124,6 @@ function authFlowRateLimitKeys(flow: AuthRateLimitFlow, email: string, clientIde
 
   return {
     account: authRateLimitKey(`${flow}:account`, accountIdentifier),
-    untrustedAccount: authRateLimitKey(`${flow}:untrusted-account`, accountIdentifier),
     pair: clientIdentifier
       ? authRateLimitKey(`${flow}:pair`, accountIdentifier, clientIdentifier)
       : null,
@@ -142,11 +137,11 @@ async function consumeAuthFlow(flow: AuthRateLimitFlow, keys: ReturnType<typeof 
   const policy = authRateLimitPolicies[flow];
 
   if (!keys.pair || !keys.client) {
-    // Treat all unverified clients of an account as one capped pool. In
-    // particular, malicious changes to XFF/CF-IP/User-Agent do not alter it.
+    // No per-IP bucket is possible without an authenticated edge. The
+    // stable account-wide PostgreSQL quota still applies regardless of
+    // forged forwarding, User-Agent or other request headers.
     return consumeDistributedAuthRateLimits([
-      { key: keys.account, policy: policy.account },
-      { key: keys.untrustedAccount, policy: policy.untrustedAccount }
+      { key: keys.account, policy: policy.account }
     ]);
   }
 
