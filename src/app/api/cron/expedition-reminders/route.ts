@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { processDueExpeditionReminders } from "@/lib/expedition-reminders";
+import { pruneExpiredAuthRateLimits } from "@/lib/distributed-auth-rate-limit";
 import { runWithWorkerHeartbeat } from "@/lib/worker-heartbeat";
 
 export const dynamic = "force-dynamic";
@@ -26,6 +27,14 @@ export async function POST(request: NextRequest) {
 
   try {
     const result = await runWithWorkerHeartbeat("expedition_reminders", processDueExpeditionReminders);
+    // Retain recent throttle history, but delete old hashed buckets once per
+    // authenticated scheduler cycle to keep database growth bounded.
+    // A failed cleanup must never obscure a successfully sent reminder.
+    try {
+      await pruneExpiredAuthRateLimits();
+    } catch {
+      console.error("Expired auth bucket cleanup failed.");
+    }
     return NextResponse.json({ ok: true, ...result }, { headers: { "Cache-Control": "no-store" } });
   } catch {
     console.error("Expedition reminder worker unable to complete heartbeat or cycle");
