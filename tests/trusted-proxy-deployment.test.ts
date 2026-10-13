@@ -23,8 +23,9 @@ test("login does not trust forwarding headers or a forgeable user agent directly
 
   assert.match(source, /verifiedProxyClientIdentifier\(await headers\(\)\)/);
   assert.doesNotMatch(source, /requestHeaders\.get\("(?:cf-connecting-ip|x-real-ip|x-forwarded-for|user-agent)"\)/);
-  assert.match(source, /untrustedAccount: \{ limit: 8,/);
-  assert.match(source, /\{ key: keys\.untrustedAccount, policy: policy\.untrustedAccount \}/);
+  assert.match(source, /if \(!keys\.pair \|\| !keys\.client\)/);
+  assert.match(source, /\{ key: keys\.account, policy: policy\.account \}/);
+  assert.doesNotMatch(source, /keys\.untrustedAccount/);
   assert.match(verifier, /timingSafeEqual/);
   assert.match(verifier, /isIP\(address\)/);
   assert.match(guide, /proxy_set_header X-Terumbu-Client-IP \$remote_addr/);
