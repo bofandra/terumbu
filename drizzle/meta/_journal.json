@@ -330,6 +330,13 @@
       "when": 1791837000000,
       "tag": "0046_midtrans_compensation_case_events",
       "breakpoints": true
+    },
+    {
+      "idx": 47,
+      "version": "7",
+      "when": 1791850000000,
+      "tag": "0047_distributed_auth_rate_limits",
+      "breakpoints": true
     }
   ]
 }

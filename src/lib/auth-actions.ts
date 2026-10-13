@@ -28,12 +28,13 @@ import {
 } from "@/lib/auth-tokens";
 import {
   authRateLimitKey,
-  authRateLimitStatus,
-  clearAuthRateLimit,
   hashAuthRateLimitIdentifier,
-  recordAuthRateLimitHit,
   type AuthRateLimitPolicy
 } from "@/lib/auth-rate-limit";
+import {
+  clearDistributedAuthRateLimit,
+  consumeDistributedAuthRateLimits
+} from "@/lib/distributed-auth-rate-limit";
 import {
   normalizePassportEvidenceConsent,
   normalizePassportVisibility,
@@ -83,20 +84,26 @@ function validEmail(value: string) {
 }
 
 const FIFTEEN_MINUTES_MS = 15 * 60 * 1000;
+// Each request consumes a shared PostgreSQL counter before expensive work.
+ // Client ceilings include successful attempts; account ceilings make IP header
+// spoofing insufficient to bypass anti-brute-force protection entirely.
 const authRateLimitPolicies = {
   login: {
     pair: { limit: 8, windowMs: FIFTEEN_MINUTES_MS },
-    client: { limit: 40, windowMs: FIFTEEN_MINUTES_MS }
+    client: { limit: 120, windowMs: FIFTEEN_MINUTES_MS },
+    account: { limit: 30, windowMs: FIFTEEN_MINUTES_MS }
   },
   recovery: {
     pair: { limit: 3, windowMs: FIFTEEN_MINUTES_MS },
-    client: { limit: 15, windowMs: FIFTEEN_MINUTES_MS }
+    client: { limit: 15, windowMs: FIFTEEN_MINUTES_MS },
+    account: { limit: 5, windowMs: FIFTEEN_MINUTES_MS }
   },
   verification: {
     pair: { limit: 3, windowMs: FIFTEEN_MINUTES_MS },
-    client: { limit: 15, windowMs: FIFTEEN_MINUTES_MS }
+    client: { limit: 15, windowMs: FIFTEEN_MINUTES_MS },
+    account: { limit: 5, windowMs: FIFTEEN_MINUTES_MS }
   }
-} satisfies Record<string, { pair: AuthRateLimitPolicy; client: AuthRateLimitPolicy }>;
+} satisfies Record<string, { pair: AuthRateLimitPolicy; client: AuthRateLimitPolicy; account: AuthRateLimitPolicy }>;
 
 type AuthRateLimitFlow = keyof typeof authRateLimitPolicies;
 
@@ -121,32 +128,18 @@ function authFlowRateLimitKeys(flow: AuthRateLimitFlow, email: string, clientIde
 
   return {
     pair: authRateLimitKey(`${flow}:pair`, accountIdentifier, clientIdentifier),
-    client: authRateLimitKey(`${flow}:client`, clientIdentifier)
+    client: authRateLimitKey(`${flow}:client`, clientIdentifier),
+    account: authRateLimitKey(`${flow}:account`, accountIdentifier)
   };
 }
 
-function authFlowIsAllowed(flow: AuthRateLimitFlow, keys: ReturnType<typeof authFlowRateLimitKeys>) {
+async function consumeAuthFlow(flow: AuthRateLimitFlow, keys: ReturnType<typeof authFlowRateLimitKeys>) {
   const policy = authRateLimitPolicies[flow];
-
-  return authRateLimitStatus(keys.pair, policy.pair).allowed && authRateLimitStatus(keys.client, policy.client).allowed;
-}
-
-function recordAuthFlowHit(flow: AuthRateLimitFlow, keys: ReturnType<typeof authFlowRateLimitKeys>) {
-  const policy = authRateLimitPolicies[flow];
-
-  recordAuthRateLimitHit(keys.pair, policy.pair);
-  recordAuthRateLimitHit(keys.client, policy.client);
-}
-
-function consumeAuthFlow(flow: AuthRateLimitFlow, email: string, clientIdentifier: string) {
-  const keys = authFlowRateLimitKeys(flow, email, clientIdentifier);
-
-  if (!authFlowIsAllowed(flow, keys)) {
-    return false;
-  }
-
-  recordAuthFlowHit(flow, keys);
-  return true;
+  return consumeDistributedAuthRateLimits([
+    { key: keys.pair, policy: policy.pair },
+    { key: keys.client, policy: policy.client },
+    { key: keys.account, policy: policy.account }
+  ]);
 }
 
 function resetPasswordPath(error: string, token?: string) {
@@ -199,7 +192,7 @@ export async function loginAction(formData: FormData) {
   const clientIdentifier = await authClientIdentifier();
   const loginKeys = authFlowRateLimitKeys("login", email, clientIdentifier);
 
-  if (!authFlowIsAllowed("login", loginKeys)) {
+  if (!await consumeAuthFlow("login", loginKeys)) {
     redirect(loginRateLimitedPath(nextPath));
   }
 
@@ -218,14 +211,15 @@ export async function loginAction(formData: FormData) {
   const passwordIsValid = verifyPassword(password, user?.passwordHash ?? null);
 
   if (!user || !passwordIsValid) {
-    recordAuthFlowHit("login", loginKeys);
     redirect(loginErrorPath(nextPath));
   }
 
-  clearAuthRateLimit(loginKeys.pair);
+  // Successful credentials clear this account/client pair, but retain the
+  // account-wide and client-wide counters against distributed spraying.
+  await clearDistributedAuthRateLimit(loginKeys.pair);
 
   if (!user.emailVerifiedAt) {
-    if (consumeAuthFlow("verification", user.email, clientIdentifier)) {
+    if (await consumeAuthFlow("verification", authFlowRateLimitKeys("verification", user.email, clientIdentifier))) {
       await sendEmailVerificationEmail({
         userId: user.id,
         email: user.email,
@@ -257,7 +251,7 @@ export async function requestPasswordResetAction(formData: FormData) {
     .toLowerCase();
   const clientIdentifier = await authClientIdentifier();
 
-  if (!consumeAuthFlow("recovery", email, clientIdentifier)) {
+  if (!await consumeAuthFlow("recovery", authFlowRateLimitKeys("recovery", email, clientIdentifier))) {
     redirect("/forgot-password?sent=1");
   }
 
@@ -303,7 +297,7 @@ export async function requestVerificationEmailAction(formData: FormData) {
   const nextPath = safeRedirectPath(formData.get("next"), "");
   const clientIdentifier = await authClientIdentifier();
 
-  if (!consumeAuthFlow("verification", email, clientIdentifier)) {
+  if (!await consumeAuthFlow("verification", authFlowRateLimitKeys("verification", email, clientIdentifier))) {
     redirect(loginVerificationSentPath(nextPath));
   }
 
