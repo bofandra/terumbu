@@ -1,0 +1,59 @@
+name: Audit and prune content-equivalent branches (one-time)
+
+# One-time on main. Existing workflows do not trigger VPS deployment on push.
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - .github/workflows/cleanup-content-equivalent-branches.yml
+
+permissions:
+  contents: write
+
+concurrency:
+  group: terumbu-content-branch-cleanup-once
+  cancel-in-progress: false
+
+jobs:
+  audit-and-clean:
+    name: Verify content equivalence before branch pruning
+    if: github.repository == 'bofandra/terumbu' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Checkout audited main commit with full history
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Fetch each branch head without credentials
+        run: git fetch --no-tags --prune origin '+refs/heads/*:refs/remotes/origin/*'
+      - name: Setup Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+      - name: Run in-repository Git history regression tests
+        run: node --test tests/cleanup-content-equivalent-branches.test.mjs
+      - name: Audit changed paths without deletion
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_SHA: ${{ github.sha }}
+          GITHUB_API_URL: ${{ github.api_url }}
+        run: node scripts/cleanup-content-equivalent-branches.mjs --dry-run
+      - name: Prune only branches with verified identical changes
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_SHA: ${{ github.sha }}
+          GITHUB_API_URL: ${{ github.api_url }}
+        run: node scripts/cleanup-content-equivalent-branches.mjs --apply
+      - name: Retain audit report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: terumbu-content-branch-audit
+          path: terumbu-content-branch-audit.json
+          if-no-files-found: ignore
+          retention-days: 30
