@@ -38,4 +38,6 @@ jobs:
         run: node scripts/monitor-worker-heartbeats.mjs
 
       - name: Probe Midtrans refund review SLA and synchronize independent incident
+        # Worker-alert failure must never suppress the independent financial SLA alert.
+        if: ${{ success() || failure() }}
         run: node scripts/monitor-midtrans-refund-sla.mjs

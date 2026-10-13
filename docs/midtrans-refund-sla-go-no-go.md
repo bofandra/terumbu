@@ -36,6 +36,34 @@ the corresponding incident is closed. GitHub's scheduled jobs can be delayed,
 and GitHub issue notifications depend on each operator's notification settings:
 this is NOT an immediate paging service.
 
+## External incident signal diagnosis
+
+The scheduled GitHub monitor polls the refund SLA endpoint independently of
+worker heartbeat monitoring. An unhealthy worker check must **not** skip
+refund checks. Refund incidents retain the same issue across repeated
+checks, updating the machine-readable signal line only when the diagnosis
+changes; existing operator details and incident comments are preserved.
+
+| GitHub issue signal | Interpretation and first check |
+| --- | --- |
+| `refund_sla_breached` | HTTP 503 with `{"status":"unhealthy"}`; review protected Admin → Operations refund cases and overdue contact/provider/bank stages |
+| `refund_sla_database_unavailable` | HTTP 503 with `{"status":"unavailable"}`; verify web→PostgreSQL connectivity, migrations and application logs before assuming any customer refund is overdue |
+| `refund_sla_endpoint_404` | HTTP 404; verify the actual deployed image revision and reverse-proxy route for `/api/health/midtrans-refunds`. A 404 alone is **not evidence of overdue refunds** |
+| `refund_sla_endpoint_blocked` | HTTP 401/403; inspect access controls, WAF and reverse-proxy configuration |
+| `refund_sla_upstream_unavailable` | HTTP 502/504; inspect ingress and application health |
+| `refund_sla_unreachable` | Network failure, timeout or unexpected redirect; inspect DNS/TLS/connectivity before attempting any payment action |
+| `refund_sla_invalid_health_response` | HTTP 200 or 503 with unexpected JSON; investigate deployed route behavior |
+| `refund_sla_unexpected_http_status` | Another HTTP status; verify ingress and deployment routing |
+
+Only the current coarse signal is copied to GitHub. Never include order IDs,
+customer details, refunds, provider payloads or exact amounts in issues.
+A recovered HTTP 200/`{"status":"ok"}` can close the monitoring issue,
+but does **not** count as merchant sandbox UAT or customer refund receipt
+sign-off. If a monitor issue has existed since before deploying this
+classification change, its initial `unexpected_http_status` text may
+refer to an old runtime route; the next scheduled check will refine the
+signal once this code runs in GitHub Actions, not by asserting a cause.
+
 ## Financial correctness and safeguards
 
 - A recorded follow-up means a human action was logged, **not** that a provider
