@@ -14,6 +14,7 @@ import {
   destroyCurrentSession,
   getDefaultAuthenticatedPath,
   requireUser,
+  revokeOtherUserSessions,
   safeRedirectPath,
   verifyPassword
 } from "@/lib/auth";
@@ -506,6 +507,9 @@ export async function changePasswordAction(formData: FormData) {
       updatedAt: new Date()
     })
     .where(eq(users.id, sessionUser.id));
+
+  // Changing credentials must terminate other devices, but keep this session active.
+  await revokeOtherUserSessions(sessionUser.id);
 
   redirect("/dashboard/settings?saved=password");
 }
