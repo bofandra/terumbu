@@ -5,8 +5,12 @@ import { hashAuthRateLimitIdentifier } from "../src/lib/auth-rate-limit";
 import { verifiedProxyClientIdentifier } from "../src/lib/trusted-proxy-client";
 
 const secret = "proxy-shared-secret-" + "a".repeat(32);
-function request(values: Record<string, string>) {
-  return new Headers(values);
+function request(values: Record<string, string | undefined>) {
+  const result = new Headers();
+  for (const [name, value] of Object.entries(values)) {
+    if (value !== undefined) result.set(name, value);
+  }
+  return result;
 }
 
 test("only a trusted reverse proxy may specify the client IP for throttling", () => {
