@@ -1,9 +1,14 @@
 import { Activity, AlertTriangle, Clock3, FileText, Mail, RadioTower, TimerReset } from "lucide-react";
+import { desc, eq } from "drizzle-orm";
+import Link from "next/link";
+import { db } from "@/db/client";
+import { expeditionBookings, midtransRefundBankConfirmations, paymentOperations } from "@/db/schema";
 
 import { AdminPageHeader } from "@/components/admin-ui";
 import { observeAdminDataLoader } from "@/lib/admin-observability";
 import { adminOperationsAlerts } from "@/lib/admin-operations-health";
 import { getAdminOperationsMetrics } from "@/lib/admin-operations";
+import { getMidtransRefundSlaCounts, midtransRefundSlaBreached } from "@/lib/midtrans-refund-sla";
 import { requireRole } from "@/lib/auth";
 
 export const metadata = { title: "Admin Operations" };
@@ -34,6 +39,20 @@ export default async function AdminOperationsPage() {
   await requireRole(["admin"], "/admin/operations");
   const metrics = await observeAdminDataLoader("admin.operations", () => getAdminOperationsMetrics());
   const alerts = adminOperationsAlerts(metrics);
+  const refundSla = await observeAdminDataLoader("admin.midtrans-refund-sla", () => getMidtransRefundSlaCounts());
+  const compensations = await observeAdminDataLoader("admin.midtrans-compensations", () => db.select({
+    id: paymentOperations.id,
+    status: paymentOperations.status,
+    amount: paymentOperations.amount,
+    currency: paymentOperations.currency,
+    bookingCode: expeditionBookings.bookingCode,
+    createdAt: paymentOperations.createdAt,
+    bankConfirmedAt: midtransRefundBankConfirmations.bankConfirmedAt
+  }).from(paymentOperations)
+    .innerJoin(expeditionBookings, eq(paymentOperations.bookingId, expeditionBookings.id))
+    .leftJoin(midtransRefundBankConfirmations, eq(midtransRefundBankConfirmations.operationId, paymentOperations.id))
+    .where(eq(paymentOperations.operationType, "midtrans_capacity_conflict"))
+    .orderBy(desc(paymentOperations.createdAt)).limit(20));
 
   return (
     <div className="space-y-6">
@@ -70,13 +89,13 @@ export default async function AdminOperationsPage() {
       <section aria-labelledby="operations-workers" className="space-y-3">
         <div className="flex items-center gap-2">
           <TimerReset aria-hidden="true" className="size-5 text-ocean-700" />
-          <h2 id="operations-workers" className="text-lg font-bold text-ocean-900">Hourly worker heartbeats</h2>
+          <h2 id="operations-workers" className="text-lg font-bold text-ocean-900">Scheduled worker heartbeats</h2>
         </div>
-        <p className="text-sm font-semibold text-ocean-900/60">An authenticated run records its start and finish in the database. A missed heartbeat is detected after 150 minutes; two consecutive failed runs trigger an alert.</p>
+        <p className="text-sm font-semibold text-ocean-900/60">An authenticated run records its start and finish in the database. The five-minute Midtrans reconciliation worker is stale after 20 minutes; hourly workers after 150 minutes. Two consecutive failed runs trigger an alert.</p>
         <div className="grid gap-3 md:grid-cols-2">
           {metrics.workers.map((worker) => (
             <article key={worker.name} data-testid={`worker-heartbeat-${worker.name}`} className="rounded-lg border border-ocean-900/10 bg-white p-4 shadow-soft">
-              <h3 className="font-bold text-ocean-900">{worker.name === "corporate_reports" ? "Corporate report scheduler" : "Expedition reminder scheduler"}</h3>
+              <h3 className="font-bold text-ocean-900">{worker.name === "corporate_reports" ? "Corporate report scheduler" : worker.name === "expedition_reminders" ? "Expedition reminder scheduler" : worker.name === "midtrans_compensations" ? "Midtrans compensation scheduler" : "Midtrans five-minute reconciliation"}</h3>
               <p className="mt-2 text-sm font-bold capitalize text-ocean-900">Status: {worker.health.replaceAll("_", " ")}</p>
               <dl className="mt-3 grid gap-2 text-xs font-semibold text-ocean-900/60">
                 <div><dt className="inline font-bold">Last started (WIB): </dt><dd className="inline">{when(worker.lastStartedAt)}</dd></div>
@@ -85,6 +104,75 @@ export default async function AdminOperationsPage() {
                 <div><dt className="inline font-bold">Last failure (WIB): </dt><dd className="inline">{when(worker.lastFailedAt)}</dd></div>
                 <div><dt className="inline font-bold">Consecutive failed runs: </dt><dd className="inline">{worker.consecutiveFailures}</dd></div>
               </dl>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <section aria-labelledby="operations-refund-sla" className="space-y-3" data-testid="midtrans-refund-sla">
+        <div className="flex items-center gap-2">
+          <AlertTriangle aria-hidden="true" className="size-5 text-coral-700" />
+          <h2 id="operations-refund-sla" className="text-lg font-bold text-ocean-900">
+            Midtrans refund case SLA
+          </h2>
+        </div>
+        <p className="text-sm font-semibold text-ocean-900/60">
+          Internal operator review thresholds, not promises about bank transfer speed.
+          {midtransRefundSlaBreached(refundSla)
+            ? " Some cases have breached review thresholds; investigate before production sign-off."
+            : " No review threshold is breached in this snapshot."}
+        </p>
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+          <Metric label="No operator follow-up 1h+" value={refundSla.firstContactOverdue}
+            help="Unresolved paid-without-seat incidents without any recorded operator follow-up after one hour." />
+          <Metric label="Refund unresolved 24h+" value={refundSla.resolutionOverdue}
+            help="Cases without a provider-reported full refund after 24 hours." />
+          <Metric label="Missing bank acknowledgment 72h+" value={refundSla.bankAcknowledgementOverdue}
+            help="Provider-refunded cases without acquiring-bank acknowledgment after 72 hours. Bank acknowledgment does not confirm customer receipt." />
+        </div>
+        <p className="text-xs font-semibold text-ocean-900/60">
+          {refundSla.incidents.toLocaleString("id-ID")} total capacity-conflict incidents,
+          {" "}{refundSla.awaitingResolution.toLocaleString("id-ID")} still unresolved,
+          {" "}{refundSla.missingBankEvidence.toLocaleString("id-ID")} provider-refunded without bank evidence.
+          An independent GitHub-hosted monitor opens a separate incident when a review SLA is exceeded.
+        </p>
+      </section>
+
+      <section aria-labelledby="operations-compensations" className="space-y-3">
+        <div className="flex items-center gap-2">
+          <AlertTriangle aria-hidden="true" className="size-5 text-coral-700" />
+          <h2 id="operations-compensations" className="text-lg font-bold text-ocean-900">
+            Midtrans expedition compensation cases
+          </h2>
+        </div>
+        <p className="text-sm font-semibold text-ocean-900/60">
+          The 20 newest paid-without-seats incidents; check unresolved cases and provider refund status. Acquiring-bank acknowledgement does not prove that the customer has received the funds.
+        </p>
+        <div className="space-y-2" data-testid="midtrans-compensation-queue">
+          {compensations.length === 0 ? (
+            <p className="rounded-lg border border-ocean-900/10 bg-white p-4 text-sm text-ocean-900/60">
+              No Midtrans capacity-compensation incidents recorded.
+            </p>
+          ) : compensations.map((record) => (
+            <article key={record.id} className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-ocean-900/10 bg-white p-4">
+              <div>
+                <p className="font-bold text-ocean-900">{record.bookingCode}</p>
+                <p className="mt-1 text-xs text-ocean-900/60">
+                  {when(record.createdAt)} WIB · {record.currency} {Number(record.amount ?? 0).toLocaleString("id-ID")}
+                </p>
+                <Link className="mt-2 inline-block text-sm font-bold text-coral-700 hover:underline"
+                  href={`/admin/operations/midtrans/${record.id}`}>
+                  Review refund follow-up →
+                </Link>
+                {record.bankConfirmedAt ? (
+                  <p className="mt-1 text-xs font-semibold text-kelp-700">Acquiring bank acknowledged refund request: {when(record.bankConfirmedAt)} WIB</p>
+                ) : record.status === "provider_refunded" ? (
+                  <p className="mt-1 text-xs font-semibold text-coral-700">Provider refund recorded; awaiting acquiring-bank confirmation</p>
+                ) : null}
+              </div>
+              <span className="rounded-full border border-coral-700/15 bg-sand-50 px-3 py-1 text-xs font-bold text-ocean-900">
+                {record.status.replaceAll("_", " ")}
+              </span>
             </article>
           ))}
         </div>

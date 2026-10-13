@@ -22,6 +22,17 @@ services:
       CLOUDFLARE_R2_PUBLIC_BASE_URL: ${CLOUDFLARE_R2_PUBLIC_BASE_URL:-}
       CORPORATE_REPORT_STORAGE: ${CORPORATE_REPORT_STORAGE:-local}
       CORPORATE_REPORT_R2_BUCKET: ${CORPORATE_REPORT_R2_BUCKET:-}
+      MIDTRANS_PAYMENT_ENABLED: ${MIDTRANS_PAYMENT_ENABLED:-false}
+      MIDTRANS_EXPEDITION_ENABLED: ${MIDTRANS_EXPEDITION_ENABLED:-false}
+      MIDTRANS_AUTO_REFUND_ENABLED: ${MIDTRANS_AUTO_REFUND_ENABLED:-false}
+      MIDTRANS_AUTO_REFUND_PRODUCTION_ENABLED: ${MIDTRANS_AUTO_REFUND_PRODUCTION_ENABLED:-false}
+      MIDTRANS_PRODUCTION_RELEASE_APPROVED: ${MIDTRANS_PRODUCTION_RELEASE_APPROVED:-false}
+      MIDTRANS_SANDBOX_UAT_APPROVED: ${MIDTRANS_SANDBOX_UAT_APPROVED:-false}
+      MIDTRANS_OPERATIONS_APPROVED: ${MIDTRANS_OPERATIONS_APPROVED:-false}
+      MIDTRANS_RELEASE_EVIDENCE_ID: ${MIDTRANS_RELEASE_EVIDENCE_ID:-}
+      MIDTRANS_REFUND_UAT_APPROVED: ${MIDTRANS_REFUND_UAT_APPROVED:-false}
+      MIDTRANS_REFUND_OPERATIONS_APPROVED: ${MIDTRANS_REFUND_OPERATIONS_APPROVED:-false}
+      MIDTRANS_ENV: ${MIDTRANS_ENV:-sandbox}
       MIDTRANS_SERVER_KEY: ${MIDTRANS_SERVER_KEY:-}
       MIDTRANS_CLIENT_KEY: ${MIDTRANS_CLIENT_KEY:-}
       XENDIT_SECRET_KEY: ${XENDIT_SECRET_KEY:-}
@@ -66,6 +77,10 @@ services:
           sleep 5
         done
         while true; do
+          curl --fail --silent --show-error --max-time 90 \
+            -X POST \
+            -H "x-cron-secret: $${CRON_SECRET}" \
+            http://web:3000/api/cron/midtrans-compensations || true
           curl --fail --silent --show-error --max-time 60 \
             -X POST \
             -H "x-cron-secret: $${CRON_SECRET}" \
@@ -74,8 +89,33 @@ services:
             -X POST \
             -H "x-cron-secret: $${CRON_SECRET}" \
             http://web:3000/api/cron/corporate-reports || true
-          # Sleep only after both authenticated cron requests have run.
+          # Sleep only after all three authenticated cron requests have run.
           sleep 3600
+        done
+    depends_on:
+      web:
+        condition: service_started
+
+  midtrans-reconciliation-worker:
+    # A separate five-minute GET Status poller; does not depend on provider webhooks.
+    container_name: terumbu-midtrans-reconciliation-worker
+    image: curlimages/curl:8.12.1
+    restart: unless-stopped
+    environment:
+      CRON_SECRET: ${CRON_SECRET:?CRON_SECRET is required}
+    command:
+      - sh
+      - -c
+      - |
+        until curl --fail --silent --max-time 5 http://web:3000/api/health >/dev/null; do
+          sleep 5
+        done
+        while true; do
+          curl --fail --silent --show-error --max-time 240 \
+            -X POST \
+            -H "x-cron-secret: $${CRON_SECRET}" \
+            http://web:3000/api/cron/midtrans-reconciliation || true
+          sleep 300
         done
     depends_on:
       web:

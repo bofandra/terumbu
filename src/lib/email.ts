@@ -9,6 +9,7 @@ type TransactionalEmailInput = {
   subject: string;
   template: string;
   payload?: Record<string, unknown>;
+  auditPayload?: Record<string, unknown>;
 };
 
 function renderText(template: string, payload: Record<string, unknown>) {
@@ -29,6 +30,7 @@ function failurePayload(payload: Record<string, unknown>, deliveryError: string,
 
 export async function sendTransactionalEmail(input: TransactionalEmailInput) {
   const payload = input.payload ?? {};
+  const auditPayload = input.auditPayload ?? payload;
   const [log] = await db
     .insert(emailLogs)
     .values({
@@ -37,7 +39,7 @@ export async function sendTransactionalEmail(input: TransactionalEmailInput) {
       subject: input.subject,
       template: input.template,
       status: "queued",
-      payload
+      payload: auditPayload
     })
     .returning({ id: emailLogs.id });
 
@@ -53,7 +55,7 @@ export async function sendTransactionalEmail(input: TransactionalEmailInput) {
       .update(emailLogs)
       .set({
         status: "failed",
-        payload: failurePayload(payload, "missing_resend_config", { missingConfig })
+        payload: failurePayload(auditPayload, "missing_resend_config", { missingConfig })
       })
       .where(eq(emailLogs.id, log.id));
 
@@ -81,7 +83,7 @@ export async function sendTransactionalEmail(input: TransactionalEmailInput) {
       .update(emailLogs)
       .set({
         status: "failed",
-        payload: failurePayload(payload, "resend_request_failed", {
+        payload: failurePayload(auditPayload, "resend_request_failed", {
           errorMessage: error instanceof Error ? error.message : "Unknown email delivery error"
         })
       })
@@ -100,7 +102,7 @@ export async function sendTransactionalEmail(input: TransactionalEmailInput) {
       ...(response.ok
         ? {}
         : {
-            payload: failurePayload(payload, "resend_response_failed", {
+            payload: failurePayload(auditPayload, "resend_response_failed", {
               responseStatus: response.status
             })
           })

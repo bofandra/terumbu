@@ -36,6 +36,7 @@ import {
 import { getMetadataNumber, getMetadataString, toNumber } from "@/lib/domain";
 import { CARBON_SETTING_KEY, calculateDonationImpact, formatImpactQuantity, parseCarbonKgPerUsd } from "@/lib/impact-calculations";
 import { formatCurrency } from "@/lib/utils";
+import { activeExpeditionHeldSeats } from "@/lib/expedition-seat-holds";
 
 export type ManagedPaymentStatus = "created" | "pending" | "paid" | "failed" | "expired" | "refunded";
 
@@ -888,9 +889,22 @@ export async function transitionExpeditionBookingPayment(
   const wasPaid = booking.previousStatus === "paid";
   const isPaid = input.nextStatus === "paid";
 
-  // Claim capacity before marking the booking paid. The conditional UPDATE is
-  // atomic in PostgreSQL, so concurrent verifications cannot oversell a departure.
+  // Both hold creation and settlement synchronize on this departure row.
+  // Serialize first, then count active holds from other bookings. This keeps
+  // manual admin confirmation from taking inventory reserved for Snap users.
   if (!wasPaid && isPaid) {
+    const [lockedDeparture] = await database.select({
+      capacity: expeditionDepartures.capacity,
+      seatsBooked: expeditionDepartures.seatsBooked,
+      status: expeditionDepartures.status
+    }).from(expeditionDepartures)
+      .where(eq(expeditionDepartures.id, booking.departureId)).limit(1).for("update");
+    const heldElsewhere = await activeExpeditionHeldSeats(database, booking.departureId, now, booking.id);
+    if (!lockedDeparture || lockedDeparture.status !== "open" ||
+        lockedDeparture.seatsBooked + heldElsewhere + booking.participantsCount > lockedDeparture.capacity) {
+      throw new Error("EXPEDITION_CAPACITY_UNAVAILABLE");
+    }
+
     const [claimedDeparture] = await database
       .update(expeditionDepartures)
       .set({

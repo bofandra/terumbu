@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { ExpeditionShareButtons } from "@/components/expedition-share-buttons";
+import { MidtransPaymentStatus } from "@/components/midtrans-payment-status";
 import { ButtonLink } from "@/components/ui/button";
 import { getSessionUser } from "@/lib/auth";
 import { referralCodeForUser } from "@/lib/referrals";
@@ -16,18 +17,23 @@ type CheckoutSuccessPageProps = {
     id?: string;
     expedition?: string;
     ref?: string;
+    method?: string;
   }>;
 };
 
 export default async function CheckoutSuccessPage({ searchParams }: CheckoutSuccessPageProps) {
   const [params, sessionUser] = await Promise.all([searchParams, getSessionUser()]);
   const shareReferralCode = sessionUser ? referralCodeForUser(sessionUser.id) : null;
-  const failed = params?.status === "failed";
-  const pending = params?.status === "pending";
+  const midtransFlow = params?.method === "midtrans" && (params?.type === "donation" || params?.type === "expedition");
+  const failed = !midtransFlow && params?.status === "failed";
+  const pending = !midtransFlow && params?.status === "pending";
+  const midtransPending = midtransFlow;
   const typeLabel = params?.type === "expedition" ? "booking" : "donation";
   const isExpedition = params?.type === "expedition";
   const title = failed
     ? "Payment was not completed"
+    : midtransPending
+      ? "Payment is awaiting verification"
     : pending
       ? isExpedition
         ? "Your expedition request is recorded"
@@ -35,6 +41,10 @@ export default async function CheckoutSuccessPage({ searchParams }: CheckoutSucc
       : "Your impact is recorded";
   const body = failed
     ? `This ${typeLabel} was not paid, so it remains available for support review.`
+    : midtransPending
+      ? isExpedition
+        ? "Your Midtrans checkout has returned to Terumbu. The expedition is confirmed only after the provider verifies payment and seats are still available. Do not pay again while verification is pending."
+        : "Your Midtrans checkout has returned to Terumbu. Payment will be confirmed only after an authenticated provider notification. Do not pay twice while verification is pending."
     : pending
       ? isExpedition
         ? "Your booking request and payment proof are recorded. Seats are only reserved after payment verification confirms availability."
@@ -49,6 +59,9 @@ export default async function CheckoutSuccessPage({ searchParams }: CheckoutSucc
         </Link>
         <h1 className="mt-8 text-3xl font-bold tracking-normal text-ocean-900">{title}</h1>
         <p className="mt-3 text-ocean-900/68">{body}</p>
+        {midtransFlow && params?.id ? (
+          <MidtransPaymentStatus type={params.type as "donation" | "expedition"} checkoutId={params.id} />
+        ) : null}
         {!sessionUser && !failed ? (
           <p className="mt-4 rounded-xl bg-ocean-50 px-4 py-3 text-sm font-semibold leading-6 text-ocean-900/64">
             You checked out as a guest. Status updates will use the email you entered at checkout; this guest record is not shown in a personal dashboard.

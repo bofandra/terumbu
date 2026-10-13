@@ -1,3 +1,4 @@
+import { sql } from "drizzle-orm";
 import {
   boolean,
   foreignKey,
@@ -774,12 +775,14 @@ export const expeditionBookings = pgTable("expedition_bookings", {
   paymentStatus: paymentStatus("payment_status").default("created").notNull(),
   bookedAt: timestamp("booked_at", { withTimezone: true }).defaultNow().notNull(),
   confirmedAt: timestamp("confirmed_at", { withTimezone: true }),
+  holdExpiresAt: timestamp("hold_expires_at", { withTimezone: true }),
   metadata: jsonb("metadata")
 }, (table) => ({
   bookingCodeIdx: uniqueIndex("expedition_bookings_code_idx").on(table.bookingCode),
   idempotencyIdx: uniqueIndex("expedition_bookings_idempotency_idx").on(table.idempotencyKey),
   userIdx: index("expedition_bookings_user_idx").on(table.userId),
   departureIdx: index("expedition_bookings_departure_idx").on(table.departureId),
+  holdExpiryIdx: index("expedition_bookings_active_holds_idx").on(table.departureId, table.holdExpiresAt).where(sql`"hold_expires_at" IS NOT NULL AND "payment_status" IN ('created','pending')`),
   statusIdx: index("expedition_bookings_status_idx").on(table.status)
 }));
 
@@ -899,6 +902,38 @@ export const expeditionBookingPayments = pgTable("expedition_booking_payments", 
   }).onDelete("cascade")
 }));
 
+export const checkoutStatusAccessTokens = pgTable("checkout_status_access_tokens", {
+  tokenHash: varchar("token_hash", { length: 64 }).primaryKey().notNull(),
+  checkoutType: varchar("checkout_type", { length: 16 }).notNull(),
+  checkoutId: uuid("checkout_id").notNull(),
+  purpose: varchar("purpose", { length: 16 }).notNull(),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  usedAt: timestamp("used_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull()
+}, (table) => ({
+  checkoutIdx: index("checkout_status_access_checkout_idx").on(table.checkoutType, table.checkoutId, table.purpose, table.expiresAt),
+  expiryIdx: index("checkout_status_access_expiry_idx").on(table.expiresAt)
+}));
+
+export const checkoutStatusRequestLimits = pgTable("checkout_status_request_limits", {
+  keyHash: varchar("key_hash", { length: 64 }).primaryKey().notNull(),
+  hits: integer("hits").default(0).notNull(),
+  resetAt: timestamp("reset_at", { withTimezone: true }).notNull()
+}, (table) => ({
+  resetIdx: index("checkout_status_request_limits_reset_idx").on(table.resetAt)
+}));
+
+export const midtransReconciliationChecks = pgTable("midtrans_reconciliation_checks", {
+  providerReference: varchar("provider_reference", { length: 100 }).primaryKey().notNull(),
+  lastCheckedAt: timestamp("last_checked_at", { withTimezone: true }).notNull(),
+  lastProviderStatus: varchar("last_provider_status", { length: 40 }),
+  attempts: integer("attempts").default(0).notNull(),
+  failures: integer("failures").default(0).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull()
+}, (table) => ({
+  dueIdx: index("midtrans_reconciliation_checks_due_idx").on(table.lastCheckedAt)
+}));
+
 export const paymentOperations = pgTable("payment_operations", {
   id: uuid("id").defaultRandom().primaryKey(),
   operationCode: varchar("operation_code", { length: 120 }).notNull(),
@@ -925,6 +960,30 @@ export const paymentOperations = pgTable("payment_operations", {
   bookingIdx: index("payment_operations_booking_idx").on(table.bookingId),
   subscriptionIdx: index("payment_operations_subscription_idx").on(table.subscriptionId),
   statusIdx: index("payment_operations_status_idx").on(table.status)
+}));
+
+export const midtransCompensationCaseEvents = pgTable("midtrans_compensation_case_events", {
+  id: uuid("id").primaryKey().notNull(),
+  operationId: uuid("operation_id").notNull().references(() => paymentOperations.id, { onDelete: "restrict" }),
+  actorUserId: uuid("actor_user_id").notNull().references(() => users.id, { onDelete: "restrict" }),
+  eventType: varchar("event_type", { length: 50 }).notNull(),
+  evidenceChannel: varchar("evidence_channel", { length: 20 }).notNull(),
+  ticketReference: varchar("ticket_reference", { length: 64 }).notNull(),
+  recordedAt: timestamp("recorded_at", { withTimezone: true }).defaultNow().notNull()
+}, (table) => ({
+  operationIdx: index("midtrans_compensation_case_events_operation_idx").on(table.operationId, table.recordedAt)
+}));
+
+export const midtransRefundBankConfirmations = pgTable("midtrans_refund_bank_confirmations", {
+  operationId: uuid("operation_id").primaryKey().notNull().references(() => paymentOperations.id, { onDelete: "restrict" }),
+  providerReference: varchar("provider_reference", { length: 255 }).notNull(),
+  refundKey: varchar("refund_key", { length: 80 }).notNull(),
+  refundAmount: numeric("refund_amount", { precision: 14, scale: 2 }).notNull(),
+  bankConfirmedAt: timestamp("bank_confirmed_at", { withTimezone: true }).notNull(),
+  observedAt: timestamp("observed_at", { withTimezone: true }).defaultNow().notNull(),
+  source: varchar("source", { length: 40 }).default("midtrans_get_status").notNull()
+}, (table) => ({
+  providerIdx: index("midtrans_refund_bank_confirmations_provider_idx").on(table.providerReference)
 }));
 
 export const courses = pgTable("courses", {

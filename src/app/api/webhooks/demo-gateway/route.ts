@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { NextResponse, type NextRequest } from "next/server";
 
 import { db } from "@/db/client";
@@ -48,7 +48,7 @@ export async function POST(request: NextRequest) {
       donationId: paymentTransactions.donationId
     })
     .from(paymentTransactions)
-    .where(eq(paymentTransactions.providerReference, providerReference))
+    .where(and(eq(paymentTransactions.provider, "demo_gateway"), eq(paymentTransactions.providerReference, providerReference)))
     .limit(1);
 
   if (donationTransaction?.donationId) {
@@ -73,7 +73,7 @@ export async function POST(request: NextRequest) {
       bookingId: expeditionBookingPayments.bookingId
     })
     .from(expeditionBookingPayments)
-    .where(eq(expeditionBookingPayments.providerReference, providerReference))
+    .where(and(eq(expeditionBookingPayments.provider, "demo_gateway"), eq(expeditionBookingPayments.providerReference, providerReference)))
     .limit(1);
 
   if (bookingTransaction) {
