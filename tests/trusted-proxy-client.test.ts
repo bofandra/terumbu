@@ -68,6 +68,14 @@ test("rejects forged chains, hostnames, ports, control text and empty addresses"
   }
 });
 
+test("unequal UTF-8 byte lengths never throw during secret verification", () => {
+  const sameCharacterLength = "é" + "a".repeat(secret.length - 1);
+  assert.equal(verifiedProxyClientIdentifier(request({
+    "x-terumbu-proxy-secret": sameCharacterLength,
+    "x-terumbu-client-ip": "203.0.113.77"
+  }), secret), null);
+});
+
 test("accepts normalized IPv6 sent by verified edge proxy", () => {
   assert.equal(verifiedProxyClientIdentifier(request({
     "x-terumbu-proxy-secret": secret,
