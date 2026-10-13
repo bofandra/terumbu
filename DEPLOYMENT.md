@@ -79,6 +79,7 @@ Optional secrets:
 - `RESEND_FROM_EMAIL`
 - `POSTHOG_KEY`
 - `CRON_SECRET`: optional; deployment generates a random value when omitted.
+- `AUTH_TRUSTED_PROXY_SECRET`: optional private 32+-character secret shared with a controlled reverse proxy. See `docs/trusted-proxy-client-ip.md`. If omitted, auth uses stricter hashed account-only limits.
 
 Optional repository variables:
 
@@ -104,7 +105,10 @@ Workflow file:
 
 - `.github/workflows/deploy.yml`
 
-On push to `main`, GitHub Actions:
+When code reaches `main`, GitHub Actions runs Verify and critical-path E2E.
+**Deploying to the VPS requires a separate approved manual workflow_dispatch**
+of `.github/workflows/deploy.yml`. Merging to `main` never uploads
+production credentials or deploys by itself. A manually initiated release:
 
 1. Checks out the repository.
 2. Installs dependencies with `npm ci`.
