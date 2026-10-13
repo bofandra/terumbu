@@ -30,7 +30,7 @@ export async function probeMidtransRefundSla(baseUrl, fetchImpl = fetch) {
     return { healthy: false, reason: "refund_sla_unreachable" };
   }
 
-  if (response.status === 404) return { healthy: false, reason: "refund_sla_endpoint_not_deployed" };
+  if (response.status === 404) return { healthy: false, reason: "refund_sla_endpoint_404" };
   if (response.status === 401 || response.status === 403) {
     return { healthy: false, reason: "refund_sla_endpoint_blocked" };
   }
