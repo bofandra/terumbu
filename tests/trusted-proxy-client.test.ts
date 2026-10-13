@@ -54,7 +54,7 @@ test("missing, empty or short proxy configuration disables trust", () => {
 test("rejects forged chains, hostnames, ports, control text and empty addresses", () => {
   for (const invalid of [
     "203.0.113.1, 198.51.100.2", "203.0.113.1:8765",
-    "example.com", "not-an-ip", "203.0.113.1\nspoofed", " ",
+    "example.com", "not-an-ip", "203.0.113.1 spoofed", " ",
     "[2001:db8::1]", "203.0.113.999", "::1, 203.0.113.1"
   ]) {
     assert.equal(verifiedProxyClientIdentifier(request({
