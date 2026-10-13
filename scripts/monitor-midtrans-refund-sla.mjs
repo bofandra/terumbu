@@ -2,7 +2,7 @@ import { fileURLToPath } from "node:url";
 import { resolve } from "node:path";
 
 import {
-  confirmedWorkerHealth,
+  healthEndpoint,
   syncWorkerIncident
 } from "./monitor-worker-heartbeats.mjs";
 
@@ -10,6 +10,65 @@ export const MIDTRANS_REFUND_SLA_ISSUE_TITLE =
   "[Terumbu Payments] Midtrans refund review SLA incident";
 export const MIDTRANS_REFUND_SLA_ISSUE_MARKER =
   "<!-- terumbu-midtrans-refund-sla:v1 -->";
+
+/**
+ * Distinguish an SLA breach from an unreachable production origin or a route
+ * that was never deployed. Only an allowlisted coarse status leaves the probe:
+ * never log or publish a provider payload, financial count or user identifier.
+ */
+export async function probeMidtransRefundSla(baseUrl, fetchImpl = fetch) {
+  const url = healthEndpoint(baseUrl, "/api/health/midtrans-refunds");
+  let response;
+  try {
+    response = await fetchImpl(url, {
+      headers: { Accept: "application/json" },
+      signal: AbortSignal.timeout(12000),
+      cache: "no-store",
+      redirect: "error"
+    });
+  } catch {
+    return { healthy: false, reason: "refund_sla_unreachable" };
+  }
+
+  if (response.status === 404) return { healthy: false, reason: "refund_sla_endpoint_not_deployed" };
+  if (response.status === 401 || response.status === 403) {
+    return { healthy: false, reason: "refund_sla_endpoint_blocked" };
+  }
+  if (response.status === 502 || response.status === 504) {
+    return { healthy: false, reason: "refund_sla_upstream_unavailable" };
+  }
+  if (response.status !== 200 && response.status !== 503) {
+    return { healthy: false, reason: "refund_sla_unexpected_http_status" };
+  }
+  try {
+    const body = await response.json();
+    if (!body || typeof body !== "object" || Array.isArray(body)) {
+      return { healthy: false, reason: "refund_sla_invalid_health_response" };
+    }
+    if (response.status === 200 && body.status === "ok") {
+      return { healthy: true, reason: "healthy" };
+    }
+    if (response.status === 503 && body.status === "unhealthy") {
+      return { healthy: false, reason: "refund_sla_breached" };
+    }
+    if (response.status === 503 && body.status === "unavailable") {
+      return { healthy: false, reason: "refund_sla_database_unavailable" };
+    }
+    return { healthy: false, reason: "refund_sla_invalid_health_response" };
+  } catch {
+    return { healthy: false, reason: "refund_sla_invalid_health_response" };
+  }
+}
+
+export async function confirmedMidtransRefundSla(baseUrl, {
+  fetchImpl = fetch,
+  delay = () => new Promise(done => setTimeout(done, 15000))
+} = {}) {
+  const initial = await probeMidtransRefundSla(baseUrl, fetchImpl);
+  if (initial.healthy) return initial;
+  await delay();
+  return probeMidtransRefundSla(baseUrl, fetchImpl);
+}
 
 /**
  * GitHub-hosted monitor is independent from the VPS. The health endpoint
@@ -24,10 +83,9 @@ export async function monitorMidtransRefundSla({
   fetchImpl = fetch,
   delay
 }) {
-  const health = await confirmedWorkerHealth(baseUrl, {
+  const health = await confirmedMidtransRefundSla(baseUrl, {
     fetchImpl,
-    ...(delay ? { delay } : {}),
-    resource: "/api/health/midtrans-refunds"
+    ...(delay ? { delay } : {})
   });
   const incident = await syncWorkerIncident({
     fetchImpl,
@@ -37,6 +95,7 @@ export async function monitorMidtransRefundSla({
     assignee,
     incidentTitle: MIDTRANS_REFUND_SLA_ISSUE_TITLE,
     incidentMarker: MIDTRANS_REFUND_SLA_ISSUE_MARKER,
+    refreshIncidentSignal: true,
     remediation: "Check Admin → Operations → Midtrans compensation cases. Prioritize overdue customer contact, refunds unresolved over 24 hours, and provider refunds missing acquiring-bank acknowledgement after 72 hours. Do not retry a refund blindly."
   });
   return { healthy: health.healthy, incident: incident.action };
