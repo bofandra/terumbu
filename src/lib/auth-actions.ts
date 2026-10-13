@@ -35,6 +35,7 @@ import {
   clearDistributedAuthRateLimit,
   consumeDistributedAuthRateLimits
 } from "@/lib/distributed-auth-rate-limit";
+import { verifiedProxyClientIdentifier } from "@/lib/trusted-proxy-client";
 import {
   normalizePassportEvidenceConsent,
   normalizePassportVisibility,
@@ -84,57 +85,66 @@ function validEmail(value: string) {
 }
 
 const FIFTEEN_MINUTES_MS = 15 * 60 * 1000;
-// Each request consumes a shared PostgreSQL counter before expensive work.
- // Client ceilings include successful attempts; account ceilings make IP header
-// spoofing insufficient to bypass anti-brute-force protection entirely.
+
+/**
+ * Only edge-authenticated IP addresses may split the per-client rate limits.
+ * Without trusted proxy metadata, the existing account-wide quota remains
+ * active and cannot be reset by changing spoofed HTTP request headers.
+ */
 const authRateLimitPolicies = {
   login: {
     pair: { limit: 8, windowMs: FIFTEEN_MINUTES_MS },
     client: { limit: 120, windowMs: FIFTEEN_MINUTES_MS },
-    account: { limit: 30, windowMs: FIFTEEN_MINUTES_MS }
+    account: { limit: 30, windowMs: FIFTEEN_MINUTES_MS },
   },
   recovery: {
     pair: { limit: 3, windowMs: FIFTEEN_MINUTES_MS },
     client: { limit: 15, windowMs: FIFTEEN_MINUTES_MS },
-    account: { limit: 5, windowMs: FIFTEEN_MINUTES_MS }
+    account: { limit: 5, windowMs: FIFTEEN_MINUTES_MS },
   },
   verification: {
     pair: { limit: 3, windowMs: FIFTEEN_MINUTES_MS },
     client: { limit: 15, windowMs: FIFTEEN_MINUTES_MS },
-    account: { limit: 5, windowMs: FIFTEEN_MINUTES_MS }
+    account: { limit: 5, windowMs: FIFTEEN_MINUTES_MS },
   }
-} satisfies Record<string, { pair: AuthRateLimitPolicy; client: AuthRateLimitPolicy; account: AuthRateLimitPolicy }>;
+} satisfies Record<string, {
+  pair: AuthRateLimitPolicy;
+  client: AuthRateLimitPolicy;
+  account: AuthRateLimitPolicy;
+}>;
 
 type AuthRateLimitFlow = keyof typeof authRateLimitPolicies;
 
 async function authClientIdentifier() {
-  const requestHeaders = await headers();
-  const forwardedFor = requestHeaders.get("x-forwarded-for")?.split(",")[0]?.trim();
-  const address =
-    requestHeaders.get("cf-connecting-ip")?.trim() ||
-    requestHeaders.get("x-real-ip")?.trim() ||
-    forwardedFor;
-
-  if (address) {
-    return hashAuthRateLimitIdentifier(`ip:${address}`);
-  }
-
-  const userAgent = requestHeaders.get("user-agent")?.trim().slice(0, 256) || "unknown";
-  return hashAuthRateLimitIdentifier(`ua:${userAgent}`);
+  return verifiedProxyClientIdentifier(await headers());
 }
 
-function authFlowRateLimitKeys(flow: AuthRateLimitFlow, email: string, clientIdentifier: string) {
+function authFlowRateLimitKeys(flow: AuthRateLimitFlow, email: string, clientIdentifier: string | null) {
   const accountIdentifier = hashAuthRateLimitIdentifier(email || "invalid-email");
 
   return {
-    pair: authRateLimitKey(`${flow}:pair`, accountIdentifier, clientIdentifier),
-    client: authRateLimitKey(`${flow}:client`, clientIdentifier),
-    account: authRateLimitKey(`${flow}:account`, accountIdentifier)
+    account: authRateLimitKey(`${flow}:account`, accountIdentifier),
+    pair: clientIdentifier
+      ? authRateLimitKey(`${flow}:pair`, accountIdentifier, clientIdentifier)
+      : null,
+    client: clientIdentifier
+      ? authRateLimitKey(`${flow}:client`, clientIdentifier)
+      : null
   };
 }
 
 async function consumeAuthFlow(flow: AuthRateLimitFlow, keys: ReturnType<typeof authFlowRateLimitKeys>) {
   const policy = authRateLimitPolicies[flow];
+
+  if (!keys.pair || !keys.client) {
+    // No per-IP bucket is possible without an authenticated edge. The
+    // stable account-wide PostgreSQL quota still applies regardless of
+    // forged forwarding, User-Agent or other request headers.
+    return consumeDistributedAuthRateLimits([
+      { key: keys.account, policy: policy.account }
+    ]);
+  }
+
   return consumeDistributedAuthRateLimits([
     { key: keys.pair, policy: policy.pair },
     { key: keys.client, policy: policy.client },
@@ -216,7 +226,7 @@ export async function loginAction(formData: FormData) {
 
   // Successful credentials clear this account/client pair, but retain the
   // account-wide and client-wide counters against distributed spraying.
-  await clearDistributedAuthRateLimit(loginKeys.pair);
+  if (loginKeys.pair) await clearDistributedAuthRateLimit(loginKeys.pair);
 
   if (!user.emailVerifiedAt) {
     if (await consumeAuthFlow("verification", authFlowRateLimitKeys("verification", user.email, clientIdentifier))) {
