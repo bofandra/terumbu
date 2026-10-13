@@ -107,6 +107,19 @@ export const sessions = pgTable("sessions", {
   userIdx: index("sessions_user_idx").on(table.userId)
 }));
 
+/**
+ * Durable, shared auth attempt counters. Keys are pre-hashed; never store
+ * email, IP or user agent. The database performs atomic increment/upsert.
+ */
+export const authRateLimitBuckets = pgTable("auth_rate_limit_buckets", {
+  bucketKey: varchar("bucket_key", { length: 64 }).primaryKey(),
+  attempts: integer("attempts").default(0).notNull(),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull()
+}, (table) => ({
+  expiresIdx: index("auth_rate_limit_buckets_expires_idx").on(table.expiresAt)
+}));
+
 export const verificationTokens = pgTable("verification_tokens", {
   identifier: varchar("identifier", { length: 255 }).notNull(),
   token: varchar("token", { length: 255 }).notNull(),
