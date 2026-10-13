@@ -26,7 +26,7 @@ test("refund monitor distinguishes actual SLA breach from unavailable API, missi
     { code: 200, json: { status: "ok" }, healthy: true, reason: "healthy" },
     { code: 503, json: { status: "unhealthy", order_id: "PRIVATE" }, healthy: false, reason: "refund_sla_breached" },
     { code: 503, json: { status: "unavailable" }, healthy: false, reason: "refund_sla_database_unavailable" },
-    { code: 404, json: { status: "missing" }, healthy: false, reason: "refund_sla_endpoint_not_deployed" },
+    { code: 404, json: { status: "missing" }, healthy: false, reason: "refund_sla_endpoint_404" },
     { code: 401, json: { status: "restricted" }, healthy: false, reason: "refund_sla_endpoint_blocked" },
     { code: 403, json: { status: "restricted" }, healthy: false, reason: "refund_sla_endpoint_blocked" },
     { code: 502, json: { status: "gateway" }, healthy: false, reason: "refund_sla_upstream_unavailable" },
@@ -86,7 +86,7 @@ test("refund incident is distinct, deduplicated, and updates only when diagnosis
       const body = JSON.parse(options.body);
       assert.equal(body.title, MIDTRANS_REFUND_SLA_ISSUE_TITLE);
       assert.match(body.body, /overdue customer contact/i);
-      assert.match(body.body, /refund_sla_endpoint_not_deployed/);
+      assert.match(body.body, /refund_sla_endpoint_404/);
       assert.ok(body.body.includes(MIDTRANS_REFUND_SLA_ISSUE_MARKER));
       assert.ok(!body.body.includes(INCIDENT_MARKER));
       assert.doesNotMatch(body.body, /TRB-EXP-|customer@example.org|secret-unit-test/);
