@@ -82,7 +82,8 @@ export async function syncWorkerIncident({
   assignee = "",
   incidentTitle = INCIDENT_TITLE,
   incidentMarker = INCIDENT_MARKER,
-  remediation = "Check the authenticated Admin → Operations dashboard, the terumbu-reminder-worker container, and the production deployment logs."
+  remediation = "Check the authenticated Admin → Operations dashboard, the terumbu-reminder-worker container, and the production deployment logs.",
+  refreshIncidentSignal = false
 }) {
   if (!githubToken) throw new Error("GITHUB_TOKEN is required");
   if (!/^[a-zA-Z0-9_.-]+\/[a-zA-Z0-9_.-]+$/.test(repo || "")) {
@@ -114,6 +115,31 @@ export async function syncWorkerIncident({
   }
 
   if (incidents.length > 0) {
+    if (refreshIncidentSignal) {
+      // Refresh only our machine-generated signal line in matching incidents.
+      // Keep the human-operational context and all existing issue comments.
+      // Do not edit tickets that have been manually reformatted to remove it.
+      const knownReason = /^[a-z][a-z0-9_]{0,80}$/.test(health.reason ?? "");
+      if (knownReason) {
+        let updated = 0;
+        for (const incident of incidents) {
+          if (typeof incident.body !== "string") continue;
+          const signalLine = /^\*\*Signal:\*\* ([a-z][a-z0-9_]{0,80})$/m;
+          const found = incident.body.match(signalLine);
+          if (!found || found[1] === health.reason) continue;
+          const current = incident.body.replace(signalLine, "**Signal:** " + health.reason);
+          const signalTimestamp = "**Signal changed (UTC):** " + new Date().toISOString();
+          const revised = /^\*\*Signal changed \(UTC\):\*\* [^\n]*$/m.test(current)
+            ? current.replace(/^\*\*Signal changed \(UTC\):\*\* [^\n]*$/m, signalTimestamp)
+            : current.replace("**Signal:** " + health.reason,
+                "**Signal:** " + health.reason + "\n" + signalTimestamp);
+          await githubRequest(fetchImpl, githubToken, path + "/issues/" + incident.number,
+            "PATCH", { body: revised });
+          updated++;
+        }
+        if (updated) return { action: "updated", count: incidents.length };
+      }
+    }
     return { action: "already_open", count: incidents.length };
   }
   const body = [
