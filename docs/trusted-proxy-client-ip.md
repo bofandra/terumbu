@@ -14,11 +14,11 @@ The only eligible IP is a single valid IPv4/IPv6 address supplied in the
 reverse proxy, overwriting client-supplied copies on every request.
 
 **Without a verified proxy**, the request remains usable but is rate-limited
-in a stable, hashed account-wide pool: 8 login attempts or 3 recovery or
-verification requests per account per 15 minutes (in addition to the normal
-account-wide cap). Spoofing any forwarding header or User-Agent does not
-create new buckets. This intentionally trades away IP-level differentiation
-for a safe default until the ingress is configured.
+by the existing durable, hashed account-wide quota: 30 login attempts or 5
+recovery or verification requests per account per 15 minutes. Spoofing any
+forwarding header or User-Agent cannot create fresh buckets. This trades away
+client-IP differentiation without changing the per-account policy that is
+already covered by the full Playwright E2E suite.
 
 ## Setting up trusted proxy mode
 
