@@ -1,6 +1,7 @@
 import { Compass, Leaf, Search, ShieldCheck, Users } from "lucide-react";
 
 import { ExpeditionCard } from "@/components/expedition-card";
+import { ExpeditionTravelSearchFields } from "@/components/expedition-travel-search-fields";
 import {
   ExpeditionActiveFilterChips,
   ExpeditionMarketplaceFilters,
@@ -66,6 +67,7 @@ export default async function ExpeditionsPage({ searchParams }: ExpeditionsPageP
             </div>
           </div>
           <form action="/expeditions" className="rounded-xl border border-ocean-900/10 bg-mist-50 p-4">
+            {Object.entries(filters).filter(([key]) => !["q", "destination", "dateFrom", "dateTo", "participants"].includes(key)).map(([key, value]) => value !== undefined && <input key={key} type="hidden" name={key} value={String(value)} />)}
             <p className="text-sm font-bold text-ocean-900">Start searching</p>
             <div className="mt-3 grid gap-3">
               <label className="relative">
@@ -90,6 +92,7 @@ export default async function ExpeditionsPage({ searchParams }: ExpeditionsPageP
               <button type="submit" className="flex min-h-12 items-center justify-center rounded-lg bg-kelp-500 px-4 text-sm font-bold text-white shadow-sm hover:bg-kelp-700">
                 {messages.search}
               </button>
+              <ExpeditionTravelSearchFields filters={filters} locale={locale} />
             </div>
           </form>
         </div>

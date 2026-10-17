@@ -20,10 +20,14 @@ export function ExpeditionCard({ expedition, displayCurrency = "USD", locale = "
   const remainingActivities = Math.max(marketplace.helpActivities.length - helpActivities.length, 0);
   const secondaryPrice = secondaryPriceLabel(expedition.price, expedition.currency, displayCurrency, locale);
   const isIndonesian = locale.toLowerCase().startsWith("id");
+  const query = new URLSearchParams();
+  if (expedition.matchingDepartureId) query.set("departure", expedition.matchingDepartureId);
+  if (expedition.requestedParticipants) query.set("participants", String(expedition.requestedParticipants));
+  const tripHref = `/expeditions/${expedition.slug}${query.size ? `?${query}` : ""}`;
 
   return (
     <article className="grid overflow-hidden rounded-xl border border-ocean-900/10 bg-white shadow-sm transition hover:-translate-y-0.5 hover:border-kelp-500/35 hover:shadow-soft md:grid-cols-[240px_minmax(0,1fr)]">
-      <Link href={`/expeditions/${expedition.slug}`} className="relative block min-h-56 bg-ocean-900">
+      <Link href={tripHref} className="relative block min-h-56 bg-ocean-900">
         {expedition.imageUrl ? (
           <Image
             src={expedition.imageUrl}
@@ -60,7 +64,7 @@ export function ExpeditionCard({ expedition, displayCurrency = "USD", locale = "
         </div>
 
         <h3 className="mt-3 text-xl font-bold tracking-normal text-ocean-900">
-          <Link href={`/expeditions/${expedition.slug}`} className="hover:text-coral-700">
+          <Link href={tripHref} className="hover:text-coral-700">
             {expedition.title}
           </Link>
         </h3>
@@ -98,7 +102,7 @@ export function ExpeditionCard({ expedition, displayCurrency = "USD", locale = "
               </p>
             ) : null}
           </div>
-          <ButtonLink href={`/expeditions/${expedition.slug}`} tone="secondary">
+          <ButtonLink href={tripHref} tone="secondary">
             {isIndonesian ? "Lihat detail" : "View details"}
           </ButtonLink>
         </div>

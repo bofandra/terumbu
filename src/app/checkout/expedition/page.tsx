@@ -23,6 +23,7 @@ type ExpeditionCheckoutPageProps = {
     participants?: string;
     error?: string;
     ref?: string;
+    requestId?: string;
   }>;
 };
 
@@ -226,10 +227,12 @@ export default async function ExpeditionCheckoutPage({ searchParams }: Expeditio
               ...(params?.departure ? { departure: params.departure } : {}),
               participants: String(selectedParticipants),
               ...(params?.expedition ? { expedition: params.expedition } : {}),
-              ...(params?.ref ? { ref: params.ref } : {})
+              ...(params?.ref ? { ref: params.ref } : {}),
+              ...(params?.requestId ? { requestId: params.requestId } : {})
             }).toString()}`}
           />
           <input type="hidden" name="idempotencyKey" value={idempotencyKey} />
+          <input type="hidden" name="requestId" value={params?.requestId ?? ""} />
           <input type="hidden" name="referralCode" value={params?.ref ?? ""} />
           <label className="grid min-w-0 gap-2 text-sm font-semibold text-ocean-900">
             {labels.departure}

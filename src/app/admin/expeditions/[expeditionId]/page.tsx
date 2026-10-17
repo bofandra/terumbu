@@ -3,6 +3,7 @@ import { ArrowUpRight, CalendarDays, MessageSquareText, ShieldCheck, Star, Users
 import { notFound } from "next/navigation";
 
 import { AdminAlert } from "@/components/admin/admin-alert";
+import { ExpeditionBookingChangeInbox } from "@/components/expedition-booking-change-inbox";
 import { AdminPageHeader, AdminStatusBadge, adminPanelClassName } from "@/components/admin-ui";
 import { Button } from "@/components/ui/button";
 import { FormTabs } from "@/components/ui/form-tabs";
@@ -205,11 +206,12 @@ export default async function AdminExpeditionDetailPage({ params, searchParams }
         </section>
 
         <section className="grid gap-3">
+          <ExpeditionBookingChangeInbox expeditionId={expedition.id} />
           {expedition.bookings.map((booking) => (
             <article key={booking.id} className="rounded-lg border border-ocean-900/10 bg-white p-4 shadow-soft">
               <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-start">
                 <div>
-                  <p className="font-bold text-ocean-900">{booking.contactName} · {booking.bookingCode}</p>
+                  <Link href={`/expedition-bookings/${booking.id}`} className="font-bold text-coral-700">{booking.contactName} · {booking.bookingCode} — booking changes</Link>
                   <p className="mt-1 text-sm font-semibold text-ocean-900/54">{booking.contactEmail} · {booking.participantsCount} participants</p>
                 </div>
                 <div className="flex gap-2"><AdminStatusBadge value={booking.status} /><AdminStatusBadge value={booking.paymentStatus} /></div>

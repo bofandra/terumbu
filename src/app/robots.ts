@@ -12,6 +12,8 @@ export default function robots(): MetadataRoute.Robots {
         "/partner",
         "/dashboard",
         "/checkout",
+        "/expedition-bookings",
+        "/expedition-requests",
         "/api",
         "/login",
         "/signup",

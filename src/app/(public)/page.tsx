@@ -1,6 +1,7 @@
 import { ArrowRight, BadgeCheck, BookOpen, CalendarDays, Compass, HeartHandshake, MapPinned, PlayCircle, Search, Star, Users } from "lucide-react";
 
 import { CampaignCard } from "@/components/campaign-card";
+import { ExpeditionTravelSearchFields } from "@/components/expedition-travel-search-fields";
 import { FeaturedExpeditionRail } from "@/components/featured-expedition-rail";
 import { ImpactMapPreview } from "@/components/impact-map-preview";
 import { PassportPreview } from "@/components/passport-preview";
@@ -95,6 +96,7 @@ export default async function HomePage() {
               {messages.home.intro}
             </p>
             <form action="/expeditions" className="mt-9 grid gap-2 rounded-2xl border border-white/24 bg-white/12 p-3 backdrop-blur-xl sm:grid-cols-[1fr_1fr_auto]">
+              <div className="sm:col-span-3"><ExpeditionTravelSearchFields locale={locale} /></div>
               <label className="relative">
                 <span className="sr-only">Where in Indonesia?</span>
                 <MapPinned className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-ocean-900/45" aria-hidden="true" />

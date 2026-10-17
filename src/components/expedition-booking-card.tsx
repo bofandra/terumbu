@@ -42,6 +42,8 @@ type ExpeditionBookingCardProps = {
   locale?: string;
   academyEligibility?: "not_required" | "eligible" | "learning_required";
   requiredAcademyCourse?: { title: string; slug: string } | null;
+  initialDepartureId?: string;
+  initialParticipants?: number;
 };
 
 function participantTotal(adults: number, students: number, children: number) {
@@ -129,7 +131,9 @@ export function ExpeditionBookingCard({
   displayCurrency = "USD",
   locale = "en-US",
   academyEligibility = "not_required",
-  requiredAcademyCourse = null
+  requiredAcademyCourse = null,
+  initialDepartureId,
+  initialParticipants = 1
 }: ExpeditionBookingCardProps) {
   const isIndonesian = locale.toLowerCase().startsWith("id");
   const labels =
@@ -207,8 +211,8 @@ export function ExpeditionBookingCard({
           contributionPrefix: "per participant supports the associated conservation program. Seats are held during checkout only."
         };
   const firstBookableDeparture = departures.find((departure) => departure.status === "open" && departure.availableSeats > 0) ?? departures[0] ?? null;
-  const [selectedDepartureId, setSelectedDepartureId] = useState(firstBookableDeparture?.id ?? null);
-  const [adults, setAdults] = useState(1);
+  const [selectedDepartureId, setSelectedDepartureId] = useState(departures.some(item => item.id === initialDepartureId) ? initialDepartureId! : firstBookableDeparture?.id ?? null);
+  const [adults, setAdults] = useState(Number.isInteger(initialParticipants) && initialParticipants >= 1 && initialParticipants <= 12 ? initialParticipants : 1);
   const [students, setStudents] = useState(0);
   const [children, setChildren] = useState(0);
   const participants = participantTotal(adults, students, children);
@@ -390,7 +394,8 @@ export function ExpeditionBookingCard({
 }
 
 export function ExpeditionMobileBookingBar(props: ExpeditionBookingCardProps) {
-  const bookableDeparture = props.departures.find((departure) => departure.status === "open" && departure.availableSeats > 0) ?? null;
+  const bookableDeparture = props.departures.find(departure => departure.id === props.initialDepartureId && departure.status === "open" && departure.availableSeats > 0)
+    ?? props.departures.find((departure) => departure.status === "open" && departure.availableSeats > 0) ?? null;
   const firstDeparture = bookableDeparture ?? props.departures[0] ?? null;
   const isIndonesian = (props.locale ?? "en-US").toLowerCase().startsWith("id");
   const secondaryPrice = secondaryPriceLabel(props.price, props.currency, props.displayCurrency ?? "USD", props.locale ?? "en-US");

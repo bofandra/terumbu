@@ -8,6 +8,7 @@ Terumbu.eco is a conservation engagement platform for Indonesia's coastal ecosys
 - Campaign listing and campaign detail pages with donation progress, partner verification, field activity, impact sites, and evidence records.
 - Donation checkout flow with demo payment webhook handling.
 - Conservation expedition listing, trip detail pages, departure availability, and booking checkout flow.
+- Expedition search by travel dates, group size and budget, private host conversations and departure offers, pre-trip preparation, and reviewed booking changes. See [traveler journeys](docs/traveler-journeys.md).
 - Terumbu Academy course catalog, course detail pages, lesson progress, assessments, certificates, and learn-to-action pathways.
 - Impact Map pages for restoration sites, ecosystem metadata, project locations, and evidence visibility.
 - User dashboard for personal impact, corals, donations, expeditions, academy progress, passport, and settings.

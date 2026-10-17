@@ -337,6 +337,13 @@
       "when": 1791850000000,
       "tag": "0047_distributed_auth_rate_limits",
       "breakpoints": true
+    },
+    {
+      "idx": 48,
+      "version": "7",
+      "when": 1792238400000,
+      "tag": "0048_expedition_traveler_journeys",
+      "breakpoints": true
     }
   ]
 }

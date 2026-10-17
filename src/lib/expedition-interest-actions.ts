@@ -2,7 +2,7 @@
 
 import { randomBytes } from "node:crypto";
 
-import { and, eq, isNull } from "drizzle-orm";
+import { and, eq, isNull, sql } from "drizzle-orm";
 import { redirect } from "next/navigation";
 
 import { db } from "@/db/client";
@@ -139,6 +139,7 @@ export async function submitExpeditionInterestRequestAction(formData: FormData) 
         eq(expeditionInterestRequests.expeditionId, expedition.id),
         departureId ? eq(expeditionInterestRequests.departureId, departureId) : isNull(expeditionInterestRequests.departureId),
         eq(expeditionInterestRequests.contactEmail, contactEmail),
+        user ? eq(expeditionInterestRequests.userId, user.id) : sql`false`,
         eq(expeditionInterestRequests.requestType, requestType),
         eq(expeditionInterestRequests.status, "pending")
       )

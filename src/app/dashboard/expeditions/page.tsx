@@ -3,6 +3,7 @@ import Image from "next/image";
 import { ArrowRight, BookmarkX, CalendarDays, CheckCircle2, Heart, MapPin, RefreshCw, ShieldCheck, Star } from "lucide-react";
 
 import { ExpeditionCalendarActions } from "@/components/expedition-calendar-actions";
+import { getTravelRequests } from "@/lib/expedition-journeys";
 import { submitExpeditionMediaAction } from "@/lib/expedition-media-actions";
 import { getUserExpeditionMediaSubmissions } from "@/lib/expedition-media";
 import { cancelExpeditionReminderAction, scheduleSavedExpeditionReminderAction } from "@/lib/expedition-reminder-actions";
@@ -129,12 +130,13 @@ function reviewStatusDescription(status: ExpeditionReviewStatus | null, locale: 
 export default async function DashboardExpeditionsPage({ searchParams }: DashboardExpeditionsPageProps) {
   const params = await searchParams;
   const user = await requireUser("/dashboard/expeditions");
-  const [data, highlightedExpeditions, reminders, mediaSubmissions, locale] = await Promise.all([
+  const [data, highlightedExpeditions, reminders, mediaSubmissions, locale, travelRequests] = await Promise.all([
     getDashboardData(user.id),
     getExpeditionCards(3),
     getUserExpeditionReminders(user.id),
     getUserExpeditionMediaSubmissions(user.id),
-    getPreferredLocale()
+    getPreferredLocale(),
+    getTravelRequests({ id: user.id, roles: [] })
   ]);
   const isIndonesian = locale === "id";
   const numberLocale = isIndonesian ? "id-ID" : "en-US";
@@ -482,6 +484,10 @@ export default async function DashboardExpeditionsPage({ searchParams }: Dashboa
 
       <section className="mt-6 grid gap-4">
         <h2 className="text-2xl font-bold tracking-normal text-ocean-900">{labels.bookings}</h2>
+        <section className="grid gap-3 rounded-2xl border border-ocean-900/10 bg-white p-5">
+          <h2 className="text-xl font-bold">{isIndonesian ? "Percakapan dengan host" : "Conversations with hosts"}</h2>
+          {travelRequests.length === 0 ? <p>{isIndonesian ? "Pertanyaan dan permintaan perjalananmu akan muncul di sini." : "Your trip questions and requests will appear here."}</p> : travelRequests.map(request => <Link key={request.id} className="rounded-lg border p-3 font-bold text-coral-700" href={`/expedition-requests/${request.id}`}>{request.title} · {request.status}</Link>)}
+        </section>
         {data.bookings.map((booking) => {
           const reviewStatus = booking.reviewId ? normalizeExpeditionReviewStatus(booking.reviewStatus, "pending") : null;
 
@@ -507,6 +513,7 @@ export default async function DashboardExpeditionsPage({ searchParams }: Dashboa
                   </div>
                 </div>
                 <div className="flex flex-wrap gap-2 md:justify-end">
+                  <Link className="inline-flex min-h-9 items-center rounded-full bg-kelp-100 px-3 text-xs font-bold text-kelp-700" href={`/expedition-bookings/${booking.id}`}>{isIndonesian ? "Persiapan & ubah booking" : "Prepare & manage booking"}</Link>
                   <ExpeditionCalendarActions
                     title={booking.expeditionTitle}
                     startsAt={booking.startsAt}

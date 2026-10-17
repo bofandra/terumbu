@@ -44,11 +44,12 @@ function activeEntries(filters: ExpeditionSearchFilters) {
     meals: "Meals",
     accommodation: "Stay",
     digitalNomad: "Nomad",
-    benefits: "Benefit"
+    benefits: "Benefit",
+    dateFrom: "Starts on/after", dateTo: "Ends on/before", participants: "Travelers", maxPrice: "Budget per person"
   };
 
   return Object.entries(filters)
-    .filter(([key, value]) => key !== "sort" && value !== undefined && value !== null && String(value).trim())
+    .filter(([key, value]) => key !== "sort" && key !== "budgetCurrency" && value !== undefined && value !== null && String(value).trim())
     .map(([key, value]) => ({
       key: key as keyof ExpeditionSearchFilters,
       label: `${labels[key as keyof ExpeditionSearchFilters] ?? key}: ${key === "hoursMax" ? `Up to ${value}h/week` : value}`
@@ -118,6 +119,12 @@ function FilterFields({ filters, facets }: { filters: ExpeditionSearchFilters; f
       </div>
 
       <div className="mt-5 grid gap-4">
+        <label className="grid gap-1 text-sm font-bold">Trip starts on/after<input className="min-h-11 rounded-lg border p-2" type="date" name="dateFrom" defaultValue={filters.dateFrom} /></label>
+        <label className="grid gap-1 text-sm font-bold">Trip ends on/before<input className="min-h-11 rounded-lg border p-2" type="date" name="dateTo" min={filters.dateFrom} defaultValue={filters.dateTo} /></label>
+        <label className="grid gap-1 text-sm font-bold">Travelers<input className="min-h-11 rounded-lg border p-2" type="number" min="1" max="12" name="participants" defaultValue={filters.participants} placeholder="Any group size" /></label>
+        <label className="grid gap-1 text-sm font-bold">Maximum price per person<input className="min-h-11 rounded-lg border p-2" type="number" min="0" step="0.01" name="maxPrice" defaultValue={filters.maxPrice} placeholder="Any budget" /></label>
+        <label className="grid gap-1 text-sm font-bold">Budget currency<select className="min-h-11 rounded-lg border p-2" name="budgetCurrency" defaultValue={filters.budgetCurrency ?? "USD"}>{["USD", "IDR", "EUR", "JPY"].map(value => <option key={value}>{value}</option>)}</select></label>
+        <p className="text-xs text-ocean-900/60">Trips must fit entirely within your dates. Currency conversions are approximate; checkout uses the listed currency.</p>
         <SelectFilter label="Program Types" name="programType" value={filters.programType} options={facets.programTypes} placeholder="Any program" />
         <SelectFilter label="Highlights" name="highlight" value={filters.highlight} options={facets.highlights} placeholder="Any highlight" />
         <SelectFilter label="Purpose of the trip" name="purpose" value={filters.purpose} options={facets.purposes} placeholder="Any purpose" />

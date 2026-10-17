@@ -158,14 +158,16 @@ function DetailDivider() {
 function CheckoutLink({
   expeditionSlug,
   departureId,
+  participants = 1,
   label = "Select Date"
 }: {
   expeditionSlug: string;
   departureId: string;
+  participants?: number;
   label?: string;
 }) {
   return (
-    <ButtonLink href={`/checkout/expedition?expedition=${encodeURIComponent(expeditionSlug)}&departure=${encodeURIComponent(departureId)}`} className="rounded-full">
+    <ButtonLink href={`/checkout/expedition?expedition=${encodeURIComponent(expeditionSlug)}&departure=${encodeURIComponent(departureId)}&participants=${Number.isInteger(participants) && participants >= 1 && participants <= 12 ? participants : 1}`} className="rounded-full">
       {label}
       <ArrowRight size={17} aria-hidden="true" />
     </ButtonLink>
@@ -207,7 +209,7 @@ export default async function ExpeditionDetailPage({
   searchParams
 }: {
   params: Promise<{ slug: string }>;
-  searchParams?: Promise<{ saved?: string; error?: string; ref?: string }>;
+  searchParams?: Promise<{ saved?: string; error?: string; ref?: string; departure?: string; participants?: string }>;
 }) {
   const { slug } = await params;
   const [query, expedition, sessionUser, displayCurrency, locale] = await Promise.all([
@@ -283,6 +285,8 @@ export default async function ExpeditionDetailPage({
   const incomingReferralCode = rawIncomingReferralCode && rawIncomingReferralCode !== ownReferralCode ? rawIncomingReferralCode : null;
   const shareReferralCode = ownReferralCode;
   const bookingProps = {
+    initialDepartureId: query?.departure,
+    initialParticipants: Number(query?.participants ?? 1),
     slug: expedition.slug,
     price: expedition.price,
     currency: expedition.currency,
@@ -763,7 +767,7 @@ export default async function ExpeditionDetailPage({
             <div className="mt-10 divide-y divide-ocean-900/10 border-y border-ocean-900/10">
               {expedition.departures.length > 0 ? (
                 expedition.departures.map((departure) => (
-                  <article key={departure.id} className="grid gap-5 py-6 lg:grid-cols-[minmax(0,1fr)_220px] lg:items-center">
+                  <article key={departure.id} className={cn("grid gap-5 py-6 lg:grid-cols-[minmax(0,1fr)_220px] lg:items-center", query?.departure === departure.id && "rounded-lg bg-kelp-100/40 px-3")}>
                     <div>
                       <p className="text-sm font-bold uppercase tracking-[0.12em] text-sky-700">{departure.dateRangeLabel}</p>
                       <h3 className="mt-2 text-2xl font-semibold tracking-normal text-ocean-900">
@@ -788,7 +792,7 @@ export default async function ExpeditionDetailPage({
                           location={departure.meetingPoint ?? expedition.region}
                           description={`${expedition.summary} — ${labels.expeditionCalendarDescription}`}
                         />
-                        {academyEligibility === "learning_required" && expedition.requiredAcademyCourse ? <ButtonLink href={"/academy/courses/" + expedition.requiredAcademyCourse.slug} className="rounded-full">{labels.completeCourse}</ButtonLink> : <CheckoutLink expeditionSlug={expedition.slug} departureId={departure.id} label={labels.selectDate} />}
+                        {academyEligibility === "learning_required" && expedition.requiredAcademyCourse ? <ButtonLink href={"/academy/courses/" + expedition.requiredAcademyCourse.slug} className="rounded-full">{labels.completeCourse}</ButtonLink> : <CheckoutLink expeditionSlug={expedition.slug} departureId={departure.id} participants={Number(query?.participants ?? 1)} label={labels.selectDate} />}
                       </div>
                       ) : (
                         <form action={submitExpeditionInterestRequestAction} className="grid gap-2 rounded-md border border-ocean-900/10 bg-ocean-50 p-3">

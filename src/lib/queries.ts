@@ -1,6 +1,7 @@
 import { and, asc, desc, eq, gte, inArray, isNotNull, lte, or, sql } from "drizzle-orm";
 
 import { db } from "@/db/client";
+import { expeditionDepartureMatchesSearch } from "@/lib/expedition-marketplace";
 import { impactSiteCampaignScopeKey } from "@/lib/impact-site-scope";
 import {
   assessmentAttempts,
@@ -1654,12 +1655,17 @@ export async function getExpeditionCards(limitOrOptions?: number | ExpeditionCar
       .orderBy(asc(expeditions.title)),
     db
       .select({
+        id: expeditionDepartures.id,
         expeditionId: expeditionDepartures.expeditionId,
         capacity: expeditionDepartures.capacity,
         seatsBooked: expeditionDepartures.seatsBooked,
         status: expeditionDepartures.status,
         metadata: expeditionDepartures.metadata,
-        startsAt: expeditionDepartures.startsAt
+        startsAt: expeditionDepartures.startsAt,
+        endsAt: expeditionDepartures.endsAt,
+        // Qualify the outer id in SQL: single-table field interpolation otherwise
+        // removes its table qualifier and resolves it to the inner booking id.
+        heldSeats: sql<number>`coalesce((select sum(b.participants_count) from expedition_bookings b where b.departure_id = expedition_departures.id and b.status = 'pending_payment' and b.payment_status in ('created', 'pending') and b.hold_expires_at > now()), 0)::int`
       })
       .from(expeditionDepartures)
       .orderBy(asc(expeditionDepartures.startsAt))
@@ -1668,18 +1674,21 @@ export async function getExpeditionCards(limitOrOptions?: number | ExpeditionCar
   const nextDepartureByExpeditionId = new Map<string, (typeof departureRows)[number]>();
 
   for (const departure of departureRows) {
+    if (departure.startsAt <= new Date()) continue;
+    if ((options.filters?.dateFrom || options.filters?.dateTo || options.filters?.participants) &&
+        !expeditionDepartureMatchesSearch(departure, options.filters)) continue;
     const current = nextDepartureByExpeditionId.get(departure.expeditionId);
     const availability = expeditionDepartureAvailability({
       status: departure.status,
       capacity: departure.capacity,
-      seatsBooked: departure.seatsBooked,
+      seatsBooked: departure.seatsBooked + departure.heldSeats,
       minParticipants: getMetadataNumber(departure.metadata, "minParticipants", 0)
     });
     const currentAvailability = current
       ? expeditionDepartureAvailability({
           status: current.status,
           capacity: current.capacity,
-          seatsBooked: current.seatsBooked,
+          seatsBooked: current.seatsBooked + current.heldSeats,
           minParticipants: getMetadataNumber(current.metadata, "minParticipants", 0)
         })
       : null;
@@ -1695,7 +1704,7 @@ export async function getExpeditionCards(limitOrOptions?: number | ExpeditionCar
       ? expeditionDepartureAvailability({
           status: nextDeparture.status,
           capacity: nextDeparture.capacity,
-          seatsBooked: nextDeparture.seatsBooked,
+          seatsBooked: nextDeparture.seatsBooked + nextDeparture.heldSeats,
           minParticipants: getMetadataNumber(nextDeparture.metadata, "minParticipants", 0)
         })
       : null;
@@ -1703,10 +1712,12 @@ export async function getExpeditionCards(limitOrOptions?: number | ExpeditionCar
       ? `${nextAvailability.availableSeats} seats available`
       : nextAvailability?.label ?? "No open departures";
 
-    return toExpeditionCard({ ...row, nextDepartureStartsAt: nextDeparture?.startsAt ?? null }, availabilityLabel);
+    return { ...toExpeditionCard({ ...row, nextDepartureStartsAt: nextDeparture?.startsAt ?? null }, availabilityLabel),
+      matchingDepartureId: options.filters ? nextDeparture?.id : null, requestedParticipants: options.filters?.participants };
   });
   const filteredCards = options.filters
-    ? cards.filter((card) => expeditionMatchesMarketplaceFilters(card, options.filters ?? {}))
+    ? cards.filter((card, index) => expeditionMatchesMarketplaceFilters(card, options.filters ?? {}) &&
+      (!(options.filters?.dateFrom || options.filters?.dateTo || options.filters?.participants) || nextDepartureByExpeditionId.has(rows[index].id)))
     : cards;
   const sortedCards = sortExpeditionMarketplaceItems(filteredCards, options.filters?.sort);
 
@@ -2704,7 +2715,8 @@ export async function getAcademyHomeData(userId?: string) {
     ? [
         { label: "Payment completed", complete: upcomingBooking.paymentStatus === "paid" },
         { label: "Participant details completed", complete: upcomingBooking.participantsCount > 0 },
-        { label: "Waiver signed", complete: getMetadataString(upcomingBooking.bookingMetadata, "waiverSigned") === "true" },
+        { label: "Participation requirements acknowledged", complete: getMetadataString(upcomingBooking.bookingMetadata, "waiverAccepted") === "true" },
+        { label: "Emergency contacts completed", complete: getMetadataString(upcomingBooking.bookingMetadata, "emergencyContactComplete") === "true" },
         { label: "Equipment list reviewed", complete: getMetadataString(upcomingBooking.bookingMetadata, "equipmentReviewed") === "true" },
         { label: "Briefing completed", complete: getMetadataString(upcomingBooking.bookingMetadata, "briefingCompleted") === "true" }
       ]
@@ -4318,9 +4330,10 @@ export async function getDashboardData(userId: string) {
       preparationComplete: [
         getMetadataString(booking.bookingMetadata, "waiverAccepted") === "true",
         getMetadataString(booking.bookingMetadata, "emergencyContactComplete") === "true",
+        getMetadataString(booking.bookingMetadata, "equipmentReviewed") === "true",
         getMetadataString(booking.bookingMetadata, "briefingCompleted") === "true"
       ].filter(Boolean).length,
-      preparationTotal: 3,
+      preparationTotal: 4,
       participationCompleted,
       completedAt: participationCompleted ? booking.endsAt : null,
       relatedCampaignId: booking.relatedCampaignId,
@@ -4354,7 +4367,8 @@ export async function getDashboardData(userId: string) {
     ? [
         { label: "Payment completed", complete: upcomingBooking.paymentStatus === "paid" },
         { label: "Participant details completed", complete: upcomingBooking.participantsCount > 0 },
-        { label: "Waiver signed", complete: getMetadataString(upcomingBooking.bookingMetadata, "waiverSigned") === "true" },
+        { label: "Participation requirements acknowledged", complete: getMetadataString(upcomingBooking.bookingMetadata, "waiverAccepted") === "true" },
+        { label: "Emergency contacts completed", complete: getMetadataString(upcomingBooking.bookingMetadata, "emergencyContactComplete") === "true" },
         { label: "Equipment list reviewed", complete: getMetadataString(upcomingBooking.bookingMetadata, "equipmentReviewed") === "true" },
         { label: "Briefing completed", complete: getMetadataString(upcomingBooking.bookingMetadata, "briefingCompleted") === "true" }
       ]

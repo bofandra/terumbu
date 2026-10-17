@@ -1,3 +1,5 @@
+import { convertDisplayAmount } from "@/lib/currency-display";
+
 export type ExpeditionAdditionalFee = {
   amount: number;
   currency: string;
@@ -39,7 +41,26 @@ export type ExpeditionSearchFilters = {
   digitalNomad?: string;
   benefits?: string;
   sort?: string;
+  dateFrom?: string;
+  dateTo?: string;
+  participants?: number;
+  maxPrice?: number;
+  budgetCurrency?: "USD" | "IDR" | "EUR" | "JPY";
 };
+
+export function validTravelDate(value: string | undefined) {
+  return value && /^\d{4}-\d{2}-\d{2}$/.test(value) &&
+    Number.isFinite(Date.parse(value)) && new Date(value).toISOString().slice(0, 10) === value ? value : undefined;
+}
+
+export function expeditionDepartureMatchesSearch(departure: {
+  startsAt: Date; endsAt: Date; status: string; capacity: number; seatsBooked: number; heldSeats?: number;
+}, filters: ExpeditionSearchFilters, now = new Date()) {
+  return departure.status === "open" && departure.startsAt > now &&
+    departure.capacity - departure.seatsBooked - (departure.heldSeats ?? 0) >= (filters.participants ?? 1) &&
+    (!filters.dateFrom || departure.startsAt.toISOString().slice(0, 10) >= filters.dateFrom) &&
+    (!filters.dateTo || departure.endsAt.toISOString().slice(0, 10) <= filters.dateTo);
+}
 
 export type ExpeditionMarketplaceOption = {
   value: string;
@@ -227,6 +248,8 @@ export function expeditionMatchesMarketplaceFilters(
     region: string;
     availabilityLabel: string;
     marketplace: ExpeditionMarketplaceMetadata;
+    price?: number;
+    currency?: string;
   },
   filters: ExpeditionSearchFilters
 ) {
@@ -247,7 +270,10 @@ export function expeditionMatchesMarketplaceFilters(
     containsNormalized(marketplace.mealsIncluded, filters.meals) &&
     includesNormalized(marketplace.accommodations, filters.accommodation) &&
     includesNormalized(marketplace.digitalNomadAmenities, filters.digitalNomad) &&
-    includesNormalized(marketplace.benefits, filters.benefits)
+    includesNormalized(marketplace.benefits, filters.benefits) &&
+    (filters.maxPrice === undefined || (item.price !== undefined && item.currency !== undefined &&
+      ["USD", "IDR", "EUR", "JPY"].includes(item.currency) &&
+      convertDisplayAmount(item.price, item.currency, filters.budgetCurrency ?? "USD") <= filters.maxPrice))
   );
 }
 
@@ -259,6 +285,9 @@ export function parseExpeditionSearchFilters(params: Record<string, string | str
     return raw && raw.trim() ? raw.trim() : undefined;
   };
   const hoursMax = Number(pick("hoursMax"));
+  const participants = Number(pick("participants"));
+  const maxPrice = Number(pick("maxPrice"));
+  const budgetCurrency = pick("budgetCurrency");
 
   return {
     q: pick("q"),
@@ -275,7 +304,12 @@ export function parseExpeditionSearchFilters(params: Record<string, string | str
     accommodation: pick("accommodation"),
     digitalNomad: pick("digitalNomad"),
     benefits: pick("benefits"),
-    sort: pick("sort")
+    sort: pick("sort"),
+    dateFrom: validTravelDate(pick("dateFrom")),
+    dateTo: validTravelDate(pick("dateTo")),
+    participants: Number.isInteger(participants) && participants >= 1 && participants <= 12 ? participants : undefined,
+    maxPrice: pick("maxPrice") !== undefined && Number.isFinite(maxPrice) && maxPrice >= 0 ? maxPrice : undefined,
+    budgetCurrency: ["USD", "IDR", "EUR", "JPY"].includes(budgetCurrency ?? "") ? budgetCurrency as ExpeditionSearchFilters["budgetCurrency"] : undefined
   };
 }
 
@@ -293,7 +327,7 @@ export function expeditionSearchParams(filters: ExpeditionSearchFilters, overrid
 }
 
 export function activeExpeditionFilterCount(filters: ExpeditionSearchFilters) {
-  return Object.entries(filters).filter(([key, value]) => key !== "sort" && value !== undefined && value !== null && String(value).trim()).length;
+  return Object.entries(filters).filter(([key, value]) => key !== "sort" && key !== "budgetCurrency" && value !== undefined && value !== null && String(value).trim()).length;
 }
 
 export function buildExpeditionMarketplaceFacets(

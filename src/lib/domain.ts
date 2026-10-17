@@ -28,6 +28,8 @@ export type CampaignCardData = {
 };
 
 export type ExpeditionCardData = {
+  matchingDepartureId?: string | null;
+  requestedParticipants?: number;
   slug: string;
   title: string;
   region: string;

@@ -8,6 +8,7 @@ import { ExpeditionItineraryBuilder, ExpeditionListField } from "@/components/pa
 import { Button } from "@/components/ui/button";
 import { FormTabs } from "@/components/ui/form-tabs";
 import { ExpeditionMarketplaceFields } from "@/components/expedition-marketplace-fields";
+import { ExpeditionBookingChangeInbox } from "@/components/expedition-booking-change-inbox";
 import { processPartnerExpeditionInterestRequestAction } from "@/lib/expedition-interest-actions";
 import {
   createPartnerExpeditionAction,
@@ -779,6 +780,7 @@ function RequestList({ expedition, returnTo }: { expedition: Expedition; returnT
               </p>
             ) : null}
           </div>
+          <Link href={`/expedition-requests/${request.id}`} className="mt-3 inline-block font-bold text-coral-700">Open conversation & offer a departure</Link>
           <form action={processPartnerExpeditionInterestRequestAction} className="mt-4 grid gap-2 lg:grid-cols-[180px_1fr_auto]">
             <input type="hidden" name="returnTo" value={returnTo} />
             <input type="hidden" name="requestId" value={request.id} />
@@ -1029,12 +1031,13 @@ export function PartnerExpeditionDetailWorkspace({
         )}
 
         <section className="grid gap-3">
+          {canManageExpeditions && <ExpeditionBookingChangeInbox expeditionId={expedition.id} />}
           {expedition.bookings.map((booking) => (
             <article key={booking.id} className="rounded-lg border border-ocean-900/10 bg-white p-5 shadow-soft">
               <div className="flex flex-col justify-between gap-4 lg:flex-row lg:items-center">
                 <div>
                   <div className="flex flex-wrap items-center gap-2">
-                    <h3 className="font-bold text-ocean-900">{booking.bookingCode}</h3>
+                    <Link href={`/expedition-bookings/${booking.id}`} className="font-bold text-coral-700">{booking.bookingCode} — preparation & changes</Link>
                     <StatusBadge value={booking.status} />
                     <StatusBadge value={booking.paymentStatus} />
                   </div>

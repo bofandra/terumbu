@@ -1,6 +1,7 @@
 import { sql } from "drizzle-orm";
 import {
   boolean,
+  check,
   foreignKey,
   index,
   integer,
@@ -814,11 +815,16 @@ export const expeditionInterestRequests = pgTable("expedition_interest_requests"
   message: text("message"),
   processedByUserId: uuid("processed_by_user_id").references(() => users.id, { onDelete: "set null" }),
   processedAt: timestamp("processed_at", { withTimezone: true }),
+  proposedDepartureId: uuid("proposed_departure_id").references(() => expeditionDepartures.id, { onDelete: "set null" }),
+  acceptedAt: timestamp("accepted_at", { withTimezone: true }),
+  bookingId: uuid("booking_id").references(() => expeditionBookings.id, { onDelete: "set null" }),
   metadata: jsonb("metadata"),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull()
 }, (table) => ({
   codeIdx: uniqueIndex("expedition_interest_requests_code_idx").on(table.requestCode),
+  proposedDepartureIdx: index("expedition_interest_requests_proposed_departure_idx").on(table.proposedDepartureId),
+  bookingIdx: uniqueIndex("expedition_interest_requests_booking_idx").on(table.bookingId),
   expeditionIdx: index("expedition_interest_requests_expedition_idx").on(table.expeditionId),
   departureIdx: index("expedition_interest_requests_departure_idx").on(table.departureId),
   userIdx: index("expedition_interest_requests_user_idx").on(table.userId),
@@ -854,6 +860,52 @@ export const expeditionParticipants = pgTable("expedition_participants", {
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull()
 }, (table) => ({
   bookingIdx: index("expedition_participants_booking_idx").on(table.bookingId)
+}));
+
+export const expeditionRequestMessages = pgTable("expedition_request_messages", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  requestId: uuid("request_id").notNull().references(() => expeditionInterestRequests.id, { onDelete: "cascade" }),
+  senderUserId: uuid("sender_user_id").notNull().references(() => users.id),
+  senderRole: varchar("sender_role", { length: 20 }).notNull(),
+  body: text("body").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull()
+}, table => ({
+  requestIdx: index("expedition_request_messages_request_idx").on(table.requestId, table.createdAt),
+  senderIdx: index("expedition_request_messages_sender_idx").on(table.senderUserId),
+  bodyCheck: check("expedition_request_messages_body_check", sql`length(${table.body}) between 1 and 4000`),
+  roleCheck: check("expedition_request_messages_role_check", sql`${table.senderRole} in ('traveler', 'host')`)
+}));
+
+export const expeditionBookingChanges = pgTable("expedition_booking_changes", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  bookingId: uuid("booking_id").notNull().references(() => expeditionBookings.id, { onDelete: "cascade" }),
+  requestedByUserId: uuid("requested_by_user_id").notNull().references(() => users.id),
+  sourceDepartureId: uuid("source_departure_id").notNull().references(() => expeditionDepartures.id),
+  targetDepartureId: uuid("target_departure_id").notNull().references(() => expeditionDepartures.id),
+  participantsCount: integer("participants_count").notNull(),
+  participantNames: jsonb("participant_names").$type<string[]>().notNull(),
+  originalAmount: numeric("original_amount", { precision: 14, scale: 2 }).notNull(),
+  quotedAmount: numeric("quoted_amount", { precision: 14, scale: 2 }).notNull(),
+  currency: varchar("currency", { length: 8 }).notNull(),
+  reason: text("reason").notNull(),
+  status: varchar("status", { length: 20 }).default("pending").notNull(),
+  quoteAcceptedAt: timestamp("quote_accepted_at", { withTimezone: true }),
+  adjustmentConfirmedAt: timestamp("adjustment_confirmed_at", { withTimezone: true }),
+  adjustmentReference: varchar("adjustment_reference", { length: 160 }),
+  processedByUserId: uuid("processed_by_user_id").references(() => users.id),
+  decisionNote: text("decision_note"),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull()
+}, table => ({
+  pendingIdx: uniqueIndex("expedition_booking_changes_pending_idx").on(table.bookingId).where(sql`${table.status} = 'pending'`),
+  bookingIdx: index("expedition_booking_changes_booking_idx").on(table.bookingId, table.createdAt),
+  requesterIdx: index("expedition_booking_changes_requester_idx").on(table.requestedByUserId),
+  sourceIdx: index("expedition_booking_changes_source_idx").on(table.sourceDepartureId),
+  targetIdx: index("expedition_booking_changes_target_idx").on(table.targetDepartureId),
+  processorIdx: index("expedition_booking_changes_processor_idx").on(table.processedByUserId),
+  countCheck: check("expedition_booking_changes_count_check", sql`${table.participantsCount} between 1 and 12 and jsonb_array_length(${table.participantNames}) = ${table.participantsCount}`),
+  amountCheck: check("expedition_booking_changes_amount_check", sql`${table.originalAmount} >= 0 and ${table.quotedAmount} >= 0`),
+  statusCheck: check("expedition_booking_changes_status_check", sql`${table.status} in ('pending', 'approved', 'declined', 'cancelled')`)
 }));
 
 export const expeditionReminders = pgTable("expedition_reminders", {

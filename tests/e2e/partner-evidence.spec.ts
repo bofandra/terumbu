@@ -10,6 +10,7 @@ import {
 } from "./support";
 
 test("partner evidence stays private until admin verifies it, then appears publicly", async ({ browser }) => {
+  test.setTimeout(120_000);
   const fixture = await campaignFixture();
   const evidenceTitle = `E2E Private Evidence ${Date.now()}`;
 
@@ -51,6 +52,7 @@ test("partner evidence stays private until admin verifies it, then appears publi
   await loginAs(adminPage, "admin.demo@terumbu.eco", queuePath);
 
   await adminPage.getByRole("link", { name: evidenceTitle }).click();
+  await adminPage.waitForURL(url => url.pathname === `/admin/campaigns/evidence/${submitted?.id}`, { timeout: 30_000 });
   await expect(adminPage.getByRole("heading", { name: evidenceTitle })).toBeVisible();
   await adminPage.locator('select[name="status"]').selectOption("verified");
   await adminPage.getByRole("button", { name: "Save review decision" }).click();

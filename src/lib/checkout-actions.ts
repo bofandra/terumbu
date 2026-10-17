@@ -16,6 +16,7 @@ import {
   expeditionBookingPayments,
   expeditionBookings,
   expeditionDepartures,
+  expeditionInterestRequests,
   expeditionParticipants,
   expeditions,
   paymentTransactions
@@ -240,6 +241,7 @@ export async function bookMidtransExpeditionAction(formData: FormData) {
 
 async function submitExpeditionCheckout(formData: FormData, paymentProvider: "manual_external" | "midtrans") {
   const isMidtrans = paymentProvider === "midtrans";
+  const requestId = String(formData.get("requestId") ?? "");
   const departureId = String(formData.get("departureId") ?? "");
   const contactName = String(formData.get("contactName") ?? "").trim();
   const contactEmail = String(formData.get("contactEmail") ?? "")
@@ -439,6 +441,13 @@ async function submitExpeditionCheckout(formData: FormData, paymentProvider: "ma
 
   try {
     await db.transaction(async (tx) => {
+    if (requestId) {
+      if (!sessionUser || !/^[0-9a-f-]{36}$/i.test(requestId)) throw new Error("EXPEDITION_REQUEST_UNAVAILABLE");
+      const [request] = await tx.select().from(expeditionInterestRequests).where(eq(expeditionInterestRequests.id, requestId)).for("update");
+      if (!request || request.userId !== sessionUser.id || !request.acceptedAt || request.bookingId ||
+          request.proposedDepartureId !== departure.id || request.participantsCount !== participantCount ||
+          ["declined", "cancelled"].includes(request.status)) throw new Error("EXPEDITION_REQUEST_UNAVAILABLE");
+    }
     if (isMidtrans) {
       const canHold = await canAcquireExpeditionHold(tx as unknown as typeof db, {
         departureId: departure.id, participantsCount: participantCount, now
@@ -466,6 +475,7 @@ async function submitExpeditionCheckout(formData: FormData, paymentProvider: "ma
         metadata: {
           providerReference,
           participantNames,
+          bookingUnitPrice: Number(departure.basePrice),
           availabilityCode: availability.code,
           availabilityMessage: availability.message,
           attribution: corporateAttribution ?? { type: "personal" },
@@ -482,6 +492,8 @@ async function submitExpeditionCheckout(formData: FormData, paymentProvider: "ma
       .returning({ id: expeditionBookings.id });
 
     bookingId = booking.id;
+    if (requestId) await tx.update(expeditionInterestRequests).set({ bookingId: booking.id, status: "converted", updatedAt: now })
+      .where(eq(expeditionInterestRequests.id, requestId));
 
     await tx.insert(expeditionBookingPayments).values({
       bookingId: booking.id,
@@ -527,7 +539,7 @@ async function submitExpeditionCheckout(formData: FormData, paymentProvider: "ma
     }
     });
   } catch (error) {
-    if (error instanceof Error && error.message === "EXPEDITION_HOLD_UNAVAILABLE") {
+    if (error instanceof Error && ["EXPEDITION_HOLD_UNAVAILABLE", "EXPEDITION_REQUEST_UNAVAILABLE"].includes(error.message)) {
       redirect(`${nextPath}?error=availability`);
     }
     throw error;
