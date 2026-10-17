@@ -18,7 +18,7 @@ test("public URL fallbacks use the .world production domain", () => {
   "src/lib/passport-sharing.ts",
   "src/app/(public)/certificates/verify/[publicSlug]/download/route.ts",
   "src/lib/monthly-impact-report.ts",
-  "src/app/dashboard/page.ts",
+  "src/app/dashboard/page.tsx",
   "src/app/(public)/partners/[slug]/page.tsx",
   "src/app/dashboard/impact/page.tsx",
   "src/app/(public)/academy/page.tsx",
