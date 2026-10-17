@@ -14,7 +14,7 @@ import { formatCurrency } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
-const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://terumbu.eco";
+const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://terumbu.world";
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params;

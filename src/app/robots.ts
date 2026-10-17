@@ -1,6 +1,6 @@
 import type { MetadataRoute } from "next";
 
-const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://terumbu.eco";
+const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://terumbu.world";
 
 export default function robots(): MetadataRoute.Robots {
   return {

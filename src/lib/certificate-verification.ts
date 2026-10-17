@@ -53,7 +53,7 @@ export function certificateScore(certificate: Pick<CertificateVerificationRecord
   return null;
 }
 
-export function certificateVerificationUrl(publicSlug: string, origin = "https://terumbu.eco") {
+export function certificateVerificationUrl(publicSlug: string, origin = "https://terumbu.world") {
   return `${origin}/certificates/verify/${publicSlug}`;
 }
 
@@ -70,7 +70,7 @@ export function certificateStatusLabel(certificate: Pick<CertificateVerification
   return certificate.issuedAt.getTime() <= Date.now() ? "Verified certificate" : "Issued certificate";
 }
 
-export function buildCertificateDownloadHtml(certificate: CertificateVerificationRecord, origin = "https://terumbu.eco") {
+export function buildCertificateDownloadHtml(certificate: CertificateVerificationRecord, origin = "https://terumbu.world") {
   const holderName = certificateHolderName(certificate);
   const credentialName = certificateCredentialName(certificate);
   const score = certificateScore(certificate);

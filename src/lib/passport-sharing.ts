@@ -84,7 +84,7 @@ export function passportItemIsVisible(itemType: string, categoryVisibility: Pass
 }
 
 export function publicPassportShareUrl({
-  origin = "https://terumbu.eco",
+  origin = "https://terumbu.world",
   publicSlug,
   visibility,
   shareToken

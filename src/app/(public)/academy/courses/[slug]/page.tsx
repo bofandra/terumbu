@@ -39,7 +39,7 @@ import { getSessionUser } from "@/lib/auth";
 import { getCourseDetail } from "@/lib/queries";
 import { cn } from "@/lib/utils";
 
-const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://terumbu.eco";
+const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://terumbu.world";
 
 function ProgressBar({ value, label }: { value: number; label: string }) {
   return <ProgressMeter value={value} label={label} indicatorClassName="bg-kelp-500" trackClassName="bg-ocean-900/10" />;

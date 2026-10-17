@@ -74,15 +74,15 @@ export function parseAuthTokenIdentifier(identifier: string) {
 
 export function authAppBaseUrl(rawAppUrl = process.env.NEXT_PUBLIC_APP_URL) {
   try {
-    const url = new URL(rawAppUrl || "https://terumbu.eco");
+    const url = new URL(rawAppUrl || "https://terumbu.world");
 
     if (!["http:", "https:"].includes(url.protocol)) {
-      return "https://terumbu.eco";
+      return "https://terumbu.world";
     }
 
     return url.toString().replace(/\/$/, "");
   } catch {
-    return "https://terumbu.eco";
+    return "https://terumbu.world";
   }
 }
 

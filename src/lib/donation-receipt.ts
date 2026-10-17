@@ -59,7 +59,7 @@ export function donationReceiptProviderReference(receipt: Pick<DonationReceiptDo
   return metadataString(receipt.payload, "providerReference") ?? metadataString(receipt.payload, "paymentReference") ?? "Recorded";
 }
 
-export function buildDonationReceiptDownloadPdf(receipt: DonationReceiptDownloadRecord, origin = "https://terumbu.eco") {
+export function buildDonationReceiptDownloadPdf(receipt: DonationReceiptDownloadRecord, origin = "https://terumbu.world") {
   const holderName = donationReceiptHolderName(receipt);
   const providerReference = donationReceiptProviderReference(receipt);
   const issuedAt = formatDate(receipt.issuedAt);

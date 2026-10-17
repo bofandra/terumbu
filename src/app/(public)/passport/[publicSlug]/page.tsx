@@ -146,7 +146,7 @@ function metadataNumber(metadata: unknown, key: string) {
 
 function publicPassportUrl(publicSlug: string, visibility: string, shareToken: string | null) {
   return publicPassportShareUrl({
-    origin: process.env.NEXT_PUBLIC_APP_URL ?? "https://terumbu.eco",
+    origin: process.env.NEXT_PUBLIC_APP_URL ?? "https://terumbu.world",
     publicSlug,
     visibility,
     shareToken

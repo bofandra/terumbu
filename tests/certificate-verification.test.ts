@@ -43,7 +43,7 @@ test("certificate score parsing is defensive", () => {
 });
 
 test("certificate share and download helpers are stable", () => {
-  assert.equal(certificateVerificationUrl("abc-123"), "https://terumbu.eco/certificates/verify/abc-123");
+  assert.equal(certificateVerificationUrl("abc-123"), "https://terumbu.world/certificates/verify/abc-123");
   assert.equal(certificateVerificationUrl("abc-123", "https://example.test"), "https://example.test/certificates/verify/abc-123");
   assert.equal(certificateDownloadFilename(certificate), "terumbu-certificate-trb-2026-0001.html");
   assert.equal(certificateStatusLabel(certificate), "Verified certificate");

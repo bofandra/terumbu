@@ -25,9 +25,6 @@ import { getPreferredDisplayCurrency, getPreferredLocale, localeTag, t } from "@
 
 export const dynamic = "force-dynamic";
 
-const fallbackHeroImageUrl =
-  "https://images.unsplash.com/photo-1544551763-46a013bb70d5?auto=format&fit=crop&w=2400&q=85";
-
 const fallbackPassport: PassportPreviewData = {
   displayName: "Your Ocean Hero profile",
   initials: "OH",
@@ -69,17 +66,17 @@ export default async function HomePage() {
     { title: messages.home.journeyLearnTitle, description: messages.home.journeyLearnDescription, icon: BookOpen },
     { title: messages.home.journeyTrackTitle, description: messages.home.journeyTrackDescription, icon: BadgeCheck }
   ];
-  const heroImageUrl = fieldUpdate?.imageUrl ?? fallbackHeroImageUrl;
+  const heroImageUrl = fieldUpdate?.imageUrl;
 
   return (
     <>
       <section className="relative flex min-h-[calc(100svh-5rem)] items-center overflow-hidden bg-ocean-900">
-        <div
-          className="absolute inset-0 bg-cover bg-center"
-          style={{
-            backgroundImage: `url('${heroImageUrl}')`
-          }}
-        />
+        {heroImageUrl ? (
+          <div
+            className="absolute inset-0 bg-cover bg-center"
+            style={{ backgroundImage: `url('${heroImageUrl}')` }}
+          />
+        ) : null}
         <div className="absolute inset-0 bg-gradient-to-br from-ocean-900/95 via-ocean-900/62 to-coral-700/34" />
         <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-sand-50 to-transparent" />
 

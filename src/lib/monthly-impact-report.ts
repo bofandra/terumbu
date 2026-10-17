@@ -151,7 +151,7 @@ function projectDigestPage(
   return commands.join("\n");
 }
 
-export function buildMonthlyImpactReportDownloadPdf(report: MonthlyImpactReportRecord, origin = "https://terumbu.eco") {
+export function buildMonthlyImpactReportDownloadPdf(report: MonthlyImpactReportRecord, origin = "https://terumbu.world") {
   const holderName = monthlyImpactReportHolderName(report);
   const digest = monthlyImpactReportDigest(report.metadata);
   const campaignChunks: MonthlyImpactCampaignDigestItem[][] = [];
