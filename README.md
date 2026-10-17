@@ -245,19 +245,22 @@ http://localhost:3100
 
 ### Production Deploy
 
-The GitHub Actions workflow deploys on pushes to `main`.
+Pushes to `main` run CI. Production deployment requires a separate manual
+workflow dispatch for the exact current `main` SHA with explicit owner approval.
+The release reference is optional; the workflow records its run ID when omitted.
+See [deployment policy](docs/midtrans-safe-merge-manual-deploy.md).
 
-On every `main` push it:
+An approved manual release:
 
 1. Installs dependencies.
-2. Runs typecheck, lint, and build.
+2. Runs typecheck, lint, unit/operations tests, PostgreSQL E2E, and build.
 3. Uploads production environment variables to the VPS.
 4. SSHes into the server.
 5. Updates the server checkout.
 6. Starts PostgreSQL.
-7. Builds and runs the migration container.
-8. Builds and restarts the web container.
-9. Health-checks the running app.
+7. Backs up PostgreSQL, then builds and runs the migration container.
+8. Builds the web image and restarts the web and worker containers.
+9. Verifies the running commit and runs smoke checks through the local and public ingress.
 
 The server deploy entrypoint is:
 

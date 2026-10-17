@@ -31,7 +31,7 @@ function probe(overrides = {}) {
   });
 }
 
-test("manual production gate permits an exact SHA and a safe human release ticket", () => {
+test("manual production gate permits an exact SHA, approval and an optional release reference", () => {
   assert.match(sha, /^[a-f0-9]{40}$/);
   const result = probe();
   assert.equal(result.status, 0, result.stderr);
@@ -68,9 +68,15 @@ test("release must match both selected event SHA and checked-out repository cont
   }
 });
 
-test("unsafe or blank release evidence references are rejected before SSH or migration", () => {
+test("direct approval can use a generated reference without an internal release ticket", () => {
+  const result = probe({ CHANGE_TICKET: "" });
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, new RegExp(`Release reference: manual-${sha.slice(0, 12)}`));
+});
+
+test("unsafe supplied release references are rejected before SSH or migration", () => {
   for (const ticket of [
-    "", "issue", "finance@example.com", "contains spaces",
+    "issue", "finance@example.com", "contains spaces",
     "../release", "$(echo unsafe)", "a".repeat(81)
   ]) {
     assert.equal(probe({ CHANGE_TICKET: ticket }).status, 1, ticket);
@@ -85,6 +91,8 @@ test("workflow preserves automatic CI but production release requires manual dis
   for (const key of ["release_sha", "release_ticket", "confirm_prod_deploy"]) {
     assert.ok(workflow.includes(key + ":"), "missing dispatch input " + key);
   }
+  assert.match(workflow, /release_ticket:\s*\n\s+description: [^\n]+\n\s+required: false/);
+  assert.match(workflow, /CHANGE_TICKET: \$\{\{ inputs\.release_ticket \|\| format\('github-run-\{0\}', github\.run_id\) \}\}/);
   assert.match(workflow, /confirm_prod_deploy:[\s\S]*?type: boolean[\s\S]*?default: false/);
   const deploySection = workflow.split(/\n  deploy:\s*\n/)[1]?.split(/\n  external_worker_watch:\s*\n/)[0];
   assert.ok(deploySection, "deploy job missing");

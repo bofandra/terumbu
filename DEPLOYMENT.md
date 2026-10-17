@@ -108,7 +108,14 @@ Workflow file:
 When code reaches `main`, GitHub Actions runs Verify and critical-path E2E.
 **Deploying to the VPS requires a separate approved manual workflow_dispatch**
 of `.github/workflows/deploy.yml`. Merging to `main` never uploads
-production credentials or deploys by itself. A manually initiated release:
+production credentials or deploys by itself.
+
+The owner explicitly approves the release and selects the full current `main`
+SHA with `confirm_prod_deploy=true`. The `release_ticket` input is optional;
+when omitted, the workflow run ID is the release reference. The `production`
+environment permits the `main` branch; additional reviewers are optional.
+
+A manually initiated release:
 
 1. Checks out the repository.
 2. Installs dependencies with `npm ci`.
@@ -128,18 +135,23 @@ production credentials or deploys by itself. A manually initiated release:
 
 Application rollback intentionally does **not** restore the database automatically. The pre-migration dump is retained for controlled database recovery because automatic database restoration could discard writes made after the backup.
 
-The deploy script intentionally force-recreates only the Terumbu web container so the compiled Next.js bundle cannot remain stale after a successful deploy.
+The deploy script force-recreates the Terumbu web, hourly reminder, and
+five-minute payment reconciliation containers so the compiled application and
+its scheduled workers use the deployed revision together.
 
 Commit generated Drizzle files under `drizzle/` with the schema change. GitHub Actions deploys from the pushed commit, so uncommitted migration files cannot run on the VPS.
 
 ## Manual VPS Deploy
 
-After creating `/home/ubuntu/terumbu/.env`, a manual deploy can be run with:
+After direct owner approval and successful CI for the selected commit, an
+operator can preserve the existing production environment and deploy over
+pinned SSH. Record the approval and full SHA in the deployment log, then run:
 
 ```bash
 DEPLOY_BASE=/home/ubuntu/terumbu \
 DEPLOY_REPO=https://github.com/bofandra/terumbu.git \
 DEPLOY_REF=main \
+DEPLOY_VERSION=FULL_APPROVED_MAIN_SHA \
 bash scripts/deploy-vps.sh
 ```
 

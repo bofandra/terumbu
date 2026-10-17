@@ -2,11 +2,15 @@
 
 ## Decision and scope
 
-**Production payments: NO-GO.** Midtrans PRs #112–#125 remain **draft**.
-This change separates **merging reviewed code into `main`** from
-**running a production deployment**. No real merchant sandbox testing,
-production credentials, deploy, database migration, or payment flag change
-is performed by this PR.
+Code deployment and activation of production payments are separate decisions.
+An explicit owner-approved release can deploy the selected `main` commit with
+payment and refund switches disabled. Production payment activation still needs
+its own merchant UAT and financial release approvals.
+
+The owner-approved policy accepts direct release approval. An internal ticket
+and an additional environment reviewer are optional. The workflow records the
+selected commit, requesting actor, explicit confirmation and release reference;
+when a reference is omitted, it uses the workflow run ID.
 
 ## Why the change is necessary
 
@@ -21,32 +25,31 @@ After this change:
 | --- | --- | --- | --- | --- |
 | PR targeting `main` | Automatic | Automatic | **Never** | **Never** |
 | Push/merge to `main` | Automatic | Automatic | **Never** | **Never** |
-| Explicit workflow dispatch on `main`, with correct authorization | Automatic | Automatic | After human environment approval | After successful deploy |
+| Explicit workflow dispatch on `main`, with exact SHA and confirmation | Automatic | Automatic | After successful CI and explicit release approval | After successful deploy |
 | Dispatch from another branch or with missing confirmation | CI can run | CI can run | **Denied** | **Never** |
 
-A GitHub `production` environment is still used. **Repository
-administrators must configure its required reviewers and restrict deployment
-branches to `main`**. The workflow code cannot set or verify those GitHub
-account-level controls by itself. Ideally, exclude the individual who
-requested the release from approving their own deployment.
+A GitHub `production` environment is used and its deployment branch policy is
+restricted to `main`. The workflow also checks the branch before deploying.
+Additional environment reviewers may be configured when the owner wants a
+second approval; direct owner approval is sufficient under the current policy.
 
 ## Approved deployment procedure
 
 1. Finish code review, merging, migration compatibility and rollback plan.
    Confirm that merging feature code with flags off will not create sensitive
    side effects in the existing production environment.
-2. Run the 12 real Midtrans sandbox scenarios and six independent sign-offs
-   using `docs/midtrans-sandbox-uat-evidence.md`. This tooling does not
-   certify production GO; obtain an independent human release decision.
-3. Log the approved release in the restricted change-management system with
-   a safe reference of 6–80 ASCII letters, digits, hyphens or underscores.
-   Never embed PII, credentials, order IDs or bank details in ticket inputs.
+2. Confirm the payment configuration passes `validate-midtrans-release.sh`.
+   For a release that enables production payments, complete the merchant UAT
+   and independent financial approvals in `docs/midtrans-sandbox-uat-evidence.md`.
+3. Optionally supply a reference of 6–80 ASCII letters, digits, hyphens or
+   underscores. The workflow run ID becomes the reference when omitted.
+   Never embed PII, credentials, order IDs or bank details in reference inputs.
 4. In GitHub → Actions → **CI/CD** → **Run workflow**, select **main**.
 5. Supply the complete 40-character **current main SHA** as `release_sha`,
-   the approved ticket reference as `release_ticket`, and explicitly check
-   `confirm_prod_deploy`. Do not run the workflow merely because CI is green.
-6. Review the deployment authorization/CI results and have an authorized
-   reviewer approve the protected `production` environment.
+   optionally fill `release_ticket`, and explicitly check `confirm_prod_deploy`
+   after obtaining the owner's release approval. Green CI alone is insufficient.
+6. Review the deployment authorization and CI results. If the environment has
+   additional reviewers configured, obtain that review before proceeding.
 7. The workflow checks the exact SHA against the GitHub event and checked-out
    tree **before SSH configuration**. Then it renders the production env,
    verifies Midtrans's separate fail-closed release gate **before uploading
@@ -71,10 +74,12 @@ changes after the workflow starts and the VPS fetches a newer revision,
   satisfy the deployment authorization.
 - Manual dispatch from a feature branch is denied.
 - Missing/false confirmation, partial SHA, wrong SHA, stale SHA and
-  unrecognized change ticket format are rejected.
+  unsafe supplied release references are rejected.
+- Direct confirmation without an internal ticket is accepted and produces a
+  generated release reference.
 - The deployment workflow preserves automatic CI for PRs and pushes,
   requires `workflow_dispatch` on `main`, includes `needs: [verify,e2e]`,
-  and places a protected production environment and authorization step
+  and places a production environment and authorization step
   **ahead of SSH and the VPS**.
 - The selected SHA is used as `DEPLOY_VERSION`.
 - Post-deployment worker and refund SLA checks cannot run without a
@@ -85,10 +90,11 @@ commit of the CI runner; they do not access the production VPS or credentials.
 
 ## Operational limitations
 
-The script validates the **format and consistency** of approval inputs, not
-the authenticity of underlying UAT evidence or a ticket's authorizations.
-Requiring GitHub protected-environment reviewers and independent financial
-release review is mandatory.
+The script validates the **format and consistency** of the explicit approval
+and selected commit. The GitHub workflow log records who initiated the release.
+It does not authenticate optional external references or certify merchant UAT.
+Independent financial release review remains required for activating production
+payments; it is separate from code-only deployment with those switches disabled.
 
 Application rollback does not undo forward-only Drizzle migrations. Take
 and verify a database backup and confirm compatibility with the previous
@@ -120,8 +126,8 @@ The example is intentionally not a usable host key. To enroll the real VPS:
    `VPS_SSH_KNOWN_HOSTS` secret scoped to GitHub's protected
    **production** environment; do not store the private host key or
    use the public client/deploy key in its place.
-3. Keep production environment required reviewers, prevent self-review
-   and restrict deployment branches to `main`. Maintain the separate
+3. Restrict production environment deployment branches to `main`; additional
+   reviewers are optional under the owner-approved policy. Maintain the separate
    manual exact-SHA and Midtrans UAT/release approvals.
 4. If the key is absent, changes, fails validation, or the hostname differs,
    the workflow **fails before writing the deployment private key or

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Fail closed: only an explicit manual dispatch of the exact main commit can
-# start a production deploy. Called inside the protected production job,
+# start a production deploy. Called inside the production environment job,
 # before loading credentials, network access or VPS database migration.
 set -euo pipefail
 
@@ -25,11 +25,12 @@ fail() {
 [ "${REQUESTED_SHA}" = "$(git rev-parse HEAD)" ] ||
   fail "approved SHA does not match checked-out code"
 
-[[ "${CHANGE_TICKET:-}" =~ ^[A-Za-z0-9][A-Za-z0-9_-]{5,79}$ ]] ||
-  fail "a valid internal approved release ticket is required"
+release_reference="${CHANGE_TICKET:-manual-${REQUESTED_SHA:0:12}}"
+[[ "${release_reference}" =~ ^[A-Za-z0-9][A-Za-z0-9_-]{5,79}$ ]] ||
+  fail "release references must use 6-80 ASCII letters, digits, hyphens or underscores"
 
 echo "Manual production deployment authorization passed."
 echo "Release commit: ${REQUESTED_SHA}"
-echo "Internal release ticket: ${CHANGE_TICKET}"
-echo "Important: repository administrators must independently configure"
-echo "required reviewers and branch restrictions on the production environment."
+echo "Release reference: ${release_reference}"
+echo "Approval: explicit manual deployment confirmation."
+echo "Production is main-only; additional environment reviewers are optional."
