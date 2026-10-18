@@ -11,6 +11,7 @@ import { MetricValue } from "@/components/ui/metric-value";
 import { observeAdminDataLoader } from "@/lib/admin-observability";
 import { requireRole } from "@/lib/auth";
 import { updateExpeditionPublicationStatusAction } from "@/lib/portal-actions";
+import { expeditionPublicationReadiness } from "@/lib/expedition-publication-readiness";
 import { getAdminExpeditionWorkspaceData } from "@/lib/queries";
 import { formatCurrency } from "@/lib/utils";
 
@@ -57,6 +58,13 @@ export default async function AdminExpeditionDetailPage({ params, searchParams }
   const openDepartures = expedition.departures.filter((departure) => departure.status === "open").length;
   const availableSeats = expedition.departures.reduce((total, departure) => total + departure.availableSeats, 0);
   const relatedCampaign = data.campaignOptions.find((campaign) => campaign.id === expedition.relatedCampaignId);
+  const publication = expeditionPublicationReadiness({
+    metadata: expedition.detailMetadata,
+    imageUrl: expedition.imageUrl,
+    destinationStatus: expedition.destinationStatus,
+    relatedCampaignStatus: relatedCampaign?.status,
+    departureCount: expedition.departures.length
+  });
 
   return (
     <div className="space-y-6">
@@ -100,6 +108,24 @@ export default async function AdminExpeditionDetailPage({ params, searchParams }
             </div>
             <AdminStatusBadge value={expedition.status} />
           </div>
+          <div className="mt-5 rounded-lg border border-ocean-900/10 bg-sand-50 p-4">
+            <p className="font-bold text-ocean-900">Publication readiness: {publication.completed} / {publication.total}</p>
+            {publication.ready ? (
+              <p className="mt-2 text-sm text-kelp-700">Required expedition information is present. Verify the submitted content and evidence before approving publication.</p>
+            ) : (
+              <>
+                <p className="mt-2 text-sm text-ocean-900/65">Approval is blocked until the partner completes the following requirements. Send a review note so the partner knows what to correct.</p>
+                <ul className="mt-3 grid gap-2 sm:grid-cols-2">
+                  {publication.missing.map((item) => (
+                    <li key={item.id} className="rounded-md border border-ocean-900/10 bg-white p-3">
+                      <p className="text-sm font-bold text-ocean-900">{item.label}</p>
+                      <p className="mt-1 text-xs leading-5 text-ocean-900/65">{item.guidance}</p>
+                    </li>
+                  ))}
+                </ul>
+              </>
+            )}
+          </div>
           <form action={updateExpeditionPublicationStatusAction} className="mt-5 grid gap-4">
             <input type="hidden" name="expeditionId" value={expedition.id} />
             <label className="grid gap-2 text-sm font-bold text-ocean-900">
@@ -111,7 +137,7 @@ export default async function AdminExpeditionDetailPage({ params, searchParams }
               />
             </label>
             <div className="flex flex-wrap gap-2">
-              <Button type="submit" name="decision" value="publish">Approve & publish</Button>
+              <Button type="submit" name="decision" value="publish" disabled={!publication.ready} className="disabled:cursor-not-allowed disabled:opacity-50">Approve & publish</Button>
               <Button type="submit" name="decision" value="request_changes" tone="secondary">Request changes</Button>
             </div>
           </form>
