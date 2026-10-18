@@ -58,7 +58,7 @@ test("empty marketplace does not create unsupported facts", () => {
   const m = buildDefaultExpeditionMarketplaceMetadata({ region: "Test Region", durationDays: 4, summary: "Test" });
   assert.deepEqual(buildExpeditionOfferFacts(m), []);
   assert.deepEqual(buildExpeditionBenefitFacts({ marketplace: m, durationDays: 4, included: [], hostVerificationLabel: "" }).map((x) => x.kind), ["stay"]);
-  assert.deepEqual(buildExpeditionSdgFacts({ tags: [], sustainability: [], impactTargets: [] }), []);
+  assert.deepEqual(buildExpeditionSdgFacts({ claims: [] }), []);
 });
 
 test("expedition normalization strips unsafe public URLs before rendering", () => {

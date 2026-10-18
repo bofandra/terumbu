@@ -7,6 +7,7 @@ import { AdminPageHeader, AdminStatusBadge, adminSelectClassName, adminTextareaC
 import { Button } from "@/components/ui/button";
 import { observeAdminDataLoader } from "@/lib/admin-observability";
 import { evidenceStatusLabel, evidenceVerificationStatuses } from "@/lib/evidence-review-workflow";
+import { approvedSdgCodesFromEvidence, approvedSdgOptions } from "@/lib/sdg-claims";
 import { requireRole, safeRedirectPath } from "@/lib/auth";
 import { verifyEvidenceAction } from "@/lib/portal-actions";
 import { getAdminEvidenceReviewItem } from "@/lib/queries";
@@ -59,6 +60,7 @@ export default async function AdminEvidenceDetailPage({ params, searchParams }: 
   const errorMessage = query?.error
     ? statusMessages[query.error] ?? "Activity status could not be saved with the current input or permission."
     : null;
+  const existingSdgCodes = approvedSdgCodesFromEvidence(evidence);
   const assignmentLabel = evidence.assignedReviewerUserId === user.id
     ? "Assigned to you"
     : evidence.assignedReviewer
@@ -231,6 +233,19 @@ export default async function AdminEvidenceDetailPage({ params, searchParams }: 
                 className={adminTextareaClassName}
               />
             </label>
+
+            <fieldset className="mt-5 space-y-2 rounded-lg border border-ocean-900/10 bg-sand-50 p-4">
+              <legend className="px-1 text-sm font-bold text-ocean-900">SDG themes supported by this evidence (optional)</legend>
+              <p className="text-xs leading-5 text-ocean-900/65">
+                Select a goal only if the attached evidence directly supports its relevance. These checkboxes are reviewed when status is Verified; changing status revokes prior SDG approval. No selection means no public SDG claim.
+              </p>
+              {approvedSdgOptions.map((goal) => (
+                <label key={goal.code} className="flex items-center gap-2 text-sm text-ocean-900">
+                  <input type="checkbox" name="approvedSdgCodes" value={goal.code} defaultChecked={existingSdgCodes.includes(goal.code)} className="size-4 accent-kelp-500" />
+                  SDG {goal.code} — {goal.label}
+                </label>
+              ))}
+            </fieldset>
 
             <Button type="submit" className="mt-5 min-h-11 w-full rounded-lg">
               Save review decision

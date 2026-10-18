@@ -96,6 +96,7 @@ import {
   type ExpeditionMarketplaceMetadata
 } from "@/lib/expedition-marketplace";
 import { canCancelExpeditionBooking, canCompleteExpeditionBooking } from "@/lib/expedition-booking-lifecycle";
+import { normalizeApprovedSdgCodes } from "@/lib/sdg-claims";
 import { canTransitionSponsoredEcosystem, normalizeSponsoredEcosystemOperationalStatus, sponsoredEcosystemTransitionRequiresReason } from "@/lib/sponsored-ecosystem-lifecycle";
 import { canAllocateSponsorshipToRestorationBatch, canTransitionRestorationBatch, normalizeRestorationBatchStatus, restorationTransitionPrerequisiteSatisfied, validRestorationAllocationUnits } from "@/lib/restoration-batches";
 import { buildPassportNumber, normalizeCurrency, parseCarbonKgPerUsd } from "@/lib/impact-calculations";
@@ -5021,6 +5022,7 @@ export async function verifyEvidenceAction(formData: FormData) {
   const status = normalizeEvidenceVerificationStatus(String(formData.get("status") ?? "verified"), "verified");
   const reviewNote = formText(formData, "reviewNote") || formText(formData, "rejectionReason");
   const reviewerAssignment = formText(formData, "reviewerAssignment");
+  const sdgCodes = status === "verified" ? normalizeApprovedSdgCodes(formData.getAll("approvedSdgCodes")) : [];
   const redirectTo = safeRedirectPath(formData.get("redirectTo"), "/admin/campaigns/evidence");
 
   if (!evidenceId) {
@@ -5038,6 +5040,7 @@ export async function verifyEvidenceAction(formData: FormData) {
       campaignId: projectEvidence.campaignId,
       evidenceCode: projectEvidence.evidenceCode,
       verificationStatus: projectEvidence.verificationStatus,
+      metadata: projectEvidence.metadata,
       assignedReviewerUserId: projectEvidence.assignedReviewerUserId,
       campaignTitle: campaigns.title,
       organizationId: campaigns.organizationId
@@ -5070,6 +5073,12 @@ export async function verifyEvidenceAction(formData: FormData) {
       .update(projectEvidence)
       .set({
         verificationStatus: status,
+        metadata: {
+          ...(evidence.metadata && typeof evidence.metadata === "object" && !Array.isArray(evidence.metadata) ? evidence.metadata : {}),
+          sdgApproval: status === "verified"
+            ? { codes: sdgCodes, reviewedByUserId: user.id, reviewedAt: now.toISOString() }
+            : null
+        },
         verifiedAt: status === "verified" ? now : null,
         assignedReviewerUserId,
         reviewedByUserId: user.id,
@@ -5110,6 +5119,7 @@ export async function verifyEvidenceAction(formData: FormData) {
       metadata: {
         evidenceCode: evidence.evidenceCode,
         reviewerAssignment,
+        sdgCodes,
         reviewedAt: now.toISOString()
       }
     });
@@ -5137,6 +5147,7 @@ export async function verifyEvidenceAction(formData: FormData) {
     metadata: {
       status,
       reviewAction,
+      sdgCodes,
       reviewNote: reviewNote || null,
       rejectionReason: status === "rejected" ? reviewNote : null,
       linkedCorporatePrograms
