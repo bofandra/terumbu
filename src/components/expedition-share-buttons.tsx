@@ -33,7 +33,7 @@ export function ExpeditionShareButtons({ slug, title, referralCode, compact = fa
           copied: "Disalin",
           copyInvite: "Salin tautan undangan",
           referral: "Pelacakan referral aktif",
-          shareText: `Ikut saya di ${title} bersama Terumbu.eco — perjalanan dengan tujuan konservasi terverifikasi.`,
+          shareText: `Ikut saya di ${title} bersama Terumbu.eco.`,
           whatsappText: `Ikut saya di ${title} bersama Terumbu.eco`
         }
       : {
@@ -41,7 +41,7 @@ export function ExpeditionShareButtons({ slug, title, referralCode, compact = fa
           copied: "Copied",
           copyInvite: "Copy invite link",
           referral: "Referral tracking on",
-          shareText: `Join me on ${title} with Terumbu.eco — travel with a verified conservation purpose.`,
+          shareText: `Join me on ${title} with Terumbu.eco.`,
           whatsappText: `Join me on ${title} with Terumbu.eco`
         };
   const [copied, setCopied] = useState(false);
