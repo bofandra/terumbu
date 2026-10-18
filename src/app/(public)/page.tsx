@@ -108,21 +108,9 @@ export default async function HomePage() {
                 {messages.home.searchTrips} <ArrowRight size={17} aria-hidden="true" />
               </button>
             </form>
-            <div className="mt-4 flex flex-wrap items-center gap-4 text-sm font-semibold text-white/78">
-              <span className="inline-flex items-center gap-2"><CalendarDays size={16} aria-hidden="true" /> {messages.home.flexibleDates}</span>
-              <span>{messages.home.verifiedPartners}</span>
-              <span>{messages.home.evidenceAfterTrip}</span>
-            </div>
             <div className="mt-7 flex flex-wrap items-center gap-4 text-sm font-semibold text-white/82">
               {reviewSummary ? (
                 <span className="inline-flex items-center gap-2">
-                  <span className="flex -space-x-2">
-                    {["RA", "WK", "LB"].map((label) => (
-                      <span key={label} className="flex size-8 items-center justify-center rounded-full border border-white/40 bg-white/18 text-[11px] font-black backdrop-blur">
-                        {label}
-                      </span>
-                    ))}
-                  </span>
                   <Star size={16} fill="currentColor" className="text-coral-300" aria-hidden="true" />
                   {reviewSummary.label}
                 </span>
