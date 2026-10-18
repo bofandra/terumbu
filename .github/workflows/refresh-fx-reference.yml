@@ -1,0 +1,61 @@
+name: Review FX reference update
+
+on:
+  schedule:
+    - cron: "35 4 * * 1-5"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: terumbu-fx-reference
+  cancel-in-progress: false
+
+jobs:
+  propose:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v7
+        with:
+          ref: main
+
+      - name: Setup Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+
+      - name: Fetch and validate official-source-blended quotes
+        run: node scripts/refresh-fx-rates.mjs
+
+      - name: Propose change for review, never auto-deploy
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+
+          if git diff --quiet -- src/data/fx-rates.json; then
+            echo "FX reference already matches reviewed main; no update needed."
+            exit 0
+          fi
+
+          existing="$(gh pr list --base main --state open --json title,number --jq '[.[] | select(.title | startswith("FX reference:"))] | length')"
+          if [ "$existing" -gt 0 ]; then
+            echo "An FX reference PR is awaiting review. Skipping a duplicate."
+            exit 0
+          fi
+
+          observed="$(node -p 'require("./src/data/fx-rates.json").asOf')"
+          branch="automation/fx-reference-${observed//-/}"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git switch -c "$branch"
+          git add src/data/fx-rates.json
+          git commit -m "data: update reviewed FX reference for $observed"
+          git push origin "HEAD:refs/heads/$branch"
+          gh pr create --base main --head "$branch" \
+            --title "FX reference: $observed" \
+            --body "Automated proposal from Frankfurter official-source-blended USD→EUR, IDR and JPY quotes. Includes explicit observation date and validated numeric values. Review the provider and values before merging. **Does not deploy** or change payments. A separate approved production release is needed."
