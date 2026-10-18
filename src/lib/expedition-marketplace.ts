@@ -255,6 +255,9 @@ export function expeditionMatchesMarketplaceFilters(
 ) {
   const marketplace = item.marketplace;
   const haystack = marketplaceSearchHaystack(item);
+  const convertedBudgetPrice = filters.maxPrice !== undefined && item.price !== undefined && item.currency !== undefined
+    ? convertDisplayAmount(item.price, item.currency, filters.budgetCurrency ?? "USD")
+    : null;
 
   return (
     containsNormalized(haystack, filters.q) &&
@@ -271,9 +274,7 @@ export function expeditionMatchesMarketplaceFilters(
     includesNormalized(marketplace.accommodations, filters.accommodation) &&
     includesNormalized(marketplace.digitalNomadAmenities, filters.digitalNomad) &&
     includesNormalized(marketplace.benefits, filters.benefits) &&
-    (filters.maxPrice === undefined || (item.price !== undefined && item.currency !== undefined &&
-      ["USD", "IDR", "EUR", "JPY"].includes(item.currency) &&
-      convertDisplayAmount(item.price, item.currency, filters.budgetCurrency ?? "USD") <= filters.maxPrice))
+    (filters.maxPrice === undefined || (convertedBudgetPrice !== null && convertedBudgetPrice <= filters.maxPrice))
   );
 }
 
