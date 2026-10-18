@@ -12154,9 +12154,11 @@ export async function getAdminExpeditionWorkspaceData(
       publishedAt: expeditions.publishedAt,
       updatedAt: expeditions.updatedAt,
       relatedCampaignId: expeditions.relatedCampaignId,
-      relatedCampaignTitle: campaigns.title
+      relatedCampaignTitle: campaigns.title,
+      destinationStatus: destinations.status
     })
     .from(expeditions)
+    .leftJoin(destinations, eq(expeditions.destinationId, destinations.id))
     .leftJoin(campaigns, eq(expeditions.relatedCampaignId, campaigns.id))
     .where(eq(expeditions.id, expeditionId))
     .limit(1);
