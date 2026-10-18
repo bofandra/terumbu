@@ -1,4 +1,4 @@
-import { Clock, MapPin, ShieldCheck, Users } from "lucide-react";
+import { Clock, MapPin, Users } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 
@@ -84,11 +84,6 @@ export function ExpeditionCard({ expedition, displayCurrency = "USD", locale = "
             ) : null}
           </div>
         ) : null}
-
-        <div className="mt-4 inline-flex w-fit items-center gap-1.5 rounded-full bg-kelp-100 px-2.5 py-1 text-xs font-bold text-kelp-700">
-          <ShieldCheck size={14} aria-hidden="true" />
-          {isIndonesian ? "Perjalanan terverifikasi" : "Verified trip"}
-        </div>
 
         <div className="mt-auto flex flex-wrap items-end justify-between gap-4 pt-5">
           <div>

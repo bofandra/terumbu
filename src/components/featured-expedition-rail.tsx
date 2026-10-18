@@ -13,18 +13,6 @@ type FeaturedExpeditionRailProps = {
   locale?: string;
 };
 
-function activityLabel(summary: string) {
-  if (summary.toLowerCase().includes("survey")) {
-    return "Reef survey + community guides";
-  }
-
-  if (summary.toLowerCase().includes("coral")) {
-    return "Plant corals + diving";
-  }
-
-  return "Field learning + conservation";
-}
-
 export function FeaturedExpeditionRail({ expeditions, displayCurrency = "USD", locale = "en-US" }: FeaturedExpeditionRailProps) {
   if (expeditions.length === 0) {
     return (
@@ -65,7 +53,7 @@ export function FeaturedExpeditionRail({ expeditions, displayCurrency = "USD", l
           <div className="absolute inset-x-0 bottom-0 p-5 text-white">
             <p className="text-sm font-bold uppercase tracking-[0.14em] text-coral-100">{expedition.region}</p>
             <h3 className="mt-3 text-2xl font-bold tracking-normal">{expedition.title}</h3>
-            <p className="mt-2 text-sm leading-6 text-white/76">{activityLabel(expedition.summary)}</p>
+            <p className="mt-2 text-sm leading-6 text-white/76">{expedition.summary}</p>
             <div className="mt-5 flex flex-wrap items-center justify-between gap-3 text-sm font-semibold">
               <span className="inline-flex items-center gap-1 text-coral-100">
                 <CalendarDays size={16} aria-hidden="true" />
