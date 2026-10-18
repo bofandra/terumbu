@@ -8,7 +8,9 @@ test("partner and admin new-record forms leave URL slugs optional", () => {
   const portalActions = readFileSync("src/lib/portal-actions.ts", "utf8");
 
   assert.match(partnerForm, /<Field label="URL slug \(optional\)">\s*<input name="slug"[^>]*\/>/);
-  assert.doesNotMatch(partnerForm, /<input name="slug"[^>]*required/);
+  const createSlugInput = partnerForm.match(/<input name="slug"[^>]*\/>/)?.[0] ?? "";
+  assert.ok(createSlugInput, "new expedition slug input exists");
+  assert.doesNotMatch(createSlugInput, /required/);
   assert.match(destinationForm, /label="URL slug \(optional\)"/);
   assert.match(portalActions, /const slug = slugifyExpedition\(formText\(formData, "slug"\) \|\| title\);/);
   assert.match(portalActions, /const slug = slugifyDestination\(formText\(formData, "slug"\) \|\| name\);/);
