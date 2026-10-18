@@ -34,6 +34,7 @@ const swimmingAbilityOptions = ["Not specified", "No swimming required", "Basic 
 const highlightStatusOptions = ["Included", "Guaranteed", "Weather-dependent", "Optional", "Add-on", "Not included"];
 const physicalLevelOptions = ["Light", "Moderate", "Active", "Challenging"];
 const accommodationTypeOptions = ["Shared twin room included", "Private room upgrade", "Homestay", "Eco-lodge", "Liveaboard", "Hotel partner stay"];
+const guideLanguageOptions = ["English", "Bahasa Indonesia", "Mandarin", "Japanese", "Arabic", "French", "German", "Spanish", "Dutch", "Korean"];
 const requestStatuses = ["contacted", "resolved", "converted", "declined", "cancelled"];
 const fileInputClassName =
   "min-h-11 w-full min-w-0 rounded-lg border border-ocean-900/14 bg-white px-3 py-2 text-sm font-semibold text-ocean-900 outline-none transition file:mr-3 file:rounded-full file:border-0 file:bg-ocean-50 file:px-3 file:py-1.5 file:text-sm file:font-bold file:text-ocean-700 focus:border-coral-500";
@@ -161,7 +162,15 @@ export function PartnerExpeditionCreateForm({
   );
 }
 
-function DetailFields({ detail, marketplace }: { detail: ExpeditionDetailMetadata; marketplace: ExpeditionMarketplaceMetadata }) {
+function DetailFields({
+  detail,
+  marketplace,
+  arrivalHubs
+}: {
+  detail: ExpeditionDetailMetadata;
+  marketplace: ExpeditionMarketplaceMetadata;
+  arrivalHubs: Destination["arrivalHubs"];
+}) {
   const galleryRows = withRows(detail.galleryImages, 5, { src: "", label: "", caption: "", provenance: "" });
   const pillarRows = withRows(detail.overview.pillars, 3, { title: "", body: "" });
   const highlightRows = withRows(detail.highlights, 6, { title: "", status: "" });
@@ -172,6 +181,8 @@ function DetailFields({ detail, marketplace }: { detail: ExpeditionDetailMetadat
   const cancellationRows = withRows(detail.cancellationPolicy, 4, { label: "", refund: "" });
   const faqRows = withRows(detail.faqs, 5, { question: "", answer: "" });
   const currentSwimmingAbility = detail.quickFacts.find((fact) => fact.label === "Swimming ability")?.value ?? "Not specified";
+  const preservedLanguages = detail.languages.filter((language) => !guideLanguageOptions.includes(language));
+  const arrivalHubSuggestions = Array.from(new Set(arrivalHubs.map((hub) => hub.code ? `${hub.name} (${hub.code})` : hub.name)));
   const highlightOptions = optionsWithCurrentValues(
     highlightStatusOptions,
     highlightRows.map((highlight) => highlight.status)
@@ -231,9 +242,19 @@ function DetailFields({ detail, marketplace }: { detail: ExpeditionDetailMetadat
               <input name="documentationUrl" type="url" defaultValue={detail.documentationUrl} placeholder="https://drive.google.com/..." className={inputClassName} />
             </Field>
             <div className="grid gap-3 md:grid-cols-3">
-              <Field label="Languages">
-                <textarea name="languages" defaultValue={listValue(detail.languages)} className={textareaClassName} />
-              </Field>
+              <fieldset className="grid gap-2">
+                <legend className="text-sm font-bold text-ocean-900">Guide languages</legend>
+                <p className="text-xs leading-5 text-ocean-900/60">Select the languages the actual trip guides speak. Existing custom choices are preserved and can be deselected.</p>
+                <div className="grid max-h-44 grid-cols-2 gap-2 overflow-y-auto rounded-lg border border-ocean-900/10 bg-sand-50 p-3">
+                  {[...guideLanguageOptions, ...preservedLanguages].map((language) => (
+                    <label key={language} className="flex items-center gap-2 text-sm text-ocean-900">
+                      <input name="languages" type="checkbox" value={language} defaultChecked={detail.languages.includes(language)} className="size-4 accent-kelp-500" />
+                      {language}
+                    </label>
+                  ))}
+                </div>
+                <input name="languages" placeholder="Other language (optional)" className={inputClassName} aria-label="Other guide language" />
+              </fieldset>
               <Field label="Skill requirements">
                 <textarea name="skillRequirements" defaultValue={listValue(detail.skillRequirements)} className={textareaClassName} />
               </Field>
@@ -364,8 +385,11 @@ function DetailFields({ detail, marketplace }: { detail: ExpeditionDetailMetadat
               <Field label="Meeting point">
                 <input name="travelMeetingPoint" defaultValue={detail.travelInfo.meetingPoint} className={inputClassName} />
               </Field>
-              <Field label="Nearest airport / arrival hub">
-                <input name="travelNearestAirport" defaultValue={detail.travelInfo.nearestAirport} className={inputClassName} />
+              <Field label="Nearest airport / arrival hub" help="Suggestions come from the saved destination's admin-managed arrival hubs. Select a suggestion or enter a verified alternative; no hub is invented.">
+                <input name="travelNearestAirport" list="expedition-managed-arrival-hubs" defaultValue={detail.travelInfo.nearestAirport} className={inputClassName} autoComplete="off" />
+                <datalist id="expedition-managed-arrival-hubs">
+                  {arrivalHubSuggestions.map((hub) => <option key={hub} value={hub} />)}
+                </datalist>
               </Field>
               <Field label="Local time zone">
                 <select name="travelLocalTimeZone" defaultValue={detail.travelInfo.localTimeZone} className={inputClassName}>
@@ -616,7 +640,7 @@ function ExpeditionDetailForm({
         </div>
       </section>
 
-      <DetailFields detail={detail} marketplace={expedition.marketplaceMetadata!} />
+      <DetailFields detail={detail} marketplace={expedition.marketplaceMetadata!} arrivalHubs={destinations.find((destination) => destination.id === expedition.destinationId)?.arrivalHubs ?? []} />
 
       <p className="rounded-lg bg-sand-50 p-3 text-xs font-semibold leading-5 text-ocean-900/65">Submit for review only when every item in Publication readiness is complete. Saving as a draft remains available while you fill in the details.</p>
 
