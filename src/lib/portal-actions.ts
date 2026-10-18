@@ -86,7 +86,6 @@ import {
 } from "@/lib/evidence-review-workflow";
 import {
   buildDefaultExpeditionDetailMetadata,
-  expeditionTravelerReadiness,
   normalizeExpeditionDetailMetadata,
   type ExpeditionDetailMetadata
 } from "@/lib/expedition-metadata";
@@ -97,6 +96,7 @@ import {
 } from "@/lib/expedition-marketplace";
 import { canCancelExpeditionBooking, canCompleteExpeditionBooking } from "@/lib/expedition-booking-lifecycle";
 import { normalizeApprovedSdgCodes } from "@/lib/sdg-claims";
+import { expeditionPublicationReadiness } from "@/lib/expedition-publication-readiness";
 import { canTransitionSponsoredEcosystem, normalizeSponsoredEcosystemOperationalStatus, sponsoredEcosystemTransitionRequiresReason } from "@/lib/sponsored-ecosystem-lifecycle";
 import { canAllocateSponsorshipToRestorationBatch, canTransitionRestorationBatch, normalizeRestorationBatchStatus, restorationTransitionPrerequisiteSatisfied, validRestorationAllocationUnits } from "@/lib/restoration-batches";
 import { buildPassportNumber, normalizeCurrency, parseCarbonKgPerUsd } from "@/lib/impact-calculations";
@@ -3534,8 +3534,6 @@ export async function updatePartnerExpeditionAction(formData: FormData) {
       currency,
       maxCapacity
     });
-    const travelerReadiness = expeditionTravelerReadiness(reviewMetadata);
-
     const [departureSummary, relatedCampaign] = await Promise.all([
       db
         .select({ total: sql<number>`count(*)::int` })
@@ -3550,10 +3548,15 @@ export async function updatePartnerExpeditionAction(formData: FormData) {
         .then((rows) => rows[0] ?? null)
     ]);
 
-    const relatedCampaignIsPublic = ["published", "funded", "completed"].includes(relatedCampaign?.status ?? "");
-    const hasDeparture = Number(departureSummary?.total ?? 0) > 0;
+    const publication = expeditionPublicationReadiness({
+      metadata: reviewMetadata,
+      imageUrl,
+      destinationStatus: "published",
+      relatedCampaignStatus: relatedCampaign?.status,
+      departureCount: Number(departureSummary?.total ?? 0)
+    });
 
-    if (!imageUrl || !relatedCampaignIsPublic || !hasDeparture || !travelerReadiness.ready) {
+    if (!publication.ready) {
       redirectPartnerError(formData, "/partner/expeditions", "expedition-not-ready");
     }
   }
@@ -3668,11 +3671,8 @@ export async function updateExpeditionPublicationStatusAction(formData: FormData
       .from(expeditionDepartures)
       .where(eq(expeditionDepartures.expeditionId, expedition.id));
 
-    const relatedCampaignIsPublic = ["published", "funded", "completed"].includes(expedition.relatedCampaignStatus ?? "");
-    const destinationIsPublic = Boolean(expedition.destinationId) && expedition.destinationStatus === "published";
-    const hasDeparture = Number(departureSummary?.total ?? 0) > 0;
-    const travelerReadiness = expeditionTravelerReadiness(
-      normalizeExpeditionDetailMetadata(
+    const publication = expeditionPublicationReadiness({
+      metadata: normalizeExpeditionDetailMetadata(
         expedition.metadata,
         buildDefaultExpeditionDetailMetadata({
           title: expedition.title,
@@ -3684,10 +3684,14 @@ export async function updateExpeditionPublicationStatusAction(formData: FormData
           galleryImages: [],
           tripUpdates: []
         })
-      )
-    );
+      ),
+      imageUrl: expedition.imageUrl,
+      destinationStatus: expedition.destinationStatus,
+      relatedCampaignStatus: expedition.relatedCampaignStatus,
+      departureCount: Number(departureSummary?.total ?? 0)
+    });
 
-    if (!expedition.imageUrl || !destinationIsPublic || !relatedCampaignIsPublic || !hasDeparture || !travelerReadiness.ready) {
+    if (!publication.ready) {
       redirect(withAdminFormOutcome(`/admin/expeditions/${expedition.id}`, "error", "expedition-not-ready"));
     }
   }
@@ -3863,10 +3867,10 @@ export async function createPartnerExpeditionDepartureAction(formData: FormData)
   const startsAt = parseDateTime(formData.get("startsAt"));
   const endsAt = parseDateTime(formData.get("endsAt"));
   const capacity = parsePositiveInteger(formData.get("capacity"));
-  const seatsBooked = parseNonNegativeInteger(formData.get("seatsBooked")) ?? 0;
+  // Seats are derived from bookings; new departures cannot accept a manually inflated count.
   const status = expeditionDepartureStatusFromForm(formData.get("status"));
 
-  if (!expeditionId || !startsAt || !endsAt || !capacity || endsAt <= startsAt || seatsBooked > capacity) {
+  if (!expeditionId || !startsAt || !endsAt || !capacity || endsAt <= startsAt) {
     redirectPartnerError(formData, "/partner/expeditions", "departure-invalid");
   }
 
@@ -3889,7 +3893,7 @@ export async function createPartnerExpeditionDepartureAction(formData: FormData)
       startsAt,
       endsAt,
       capacity,
-      seatsBooked,
+      seatsBooked: 0,
       status,
       metadata: departureMetadata(formData)
     })

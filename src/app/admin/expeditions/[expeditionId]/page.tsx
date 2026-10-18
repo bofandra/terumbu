@@ -39,7 +39,7 @@ const errorMessages: Record<string, string> = {
   "expedition-review": "Choose a valid publication decision.",
   "expedition-missing": "Expedition record was not found.",
   "expedition-review-state": "Only expeditions currently in review can be moderated.",
-  "expedition-not-ready": "Publication requires a public related campaign, a hero image, and at least one departure."
+  "expedition-not-ready": "Publication requires a published destination, public campaign, hero image, departure, and complete international-traveler information."
 };
 
 export default async function AdminExpeditionDetailPage({ params, searchParams }: AdminExpeditionDetailPageProps) {
