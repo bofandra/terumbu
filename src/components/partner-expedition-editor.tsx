@@ -658,8 +658,15 @@ function ExpeditionDetailForm({
 }
 
 function DepartureForms({ expedition, returnTo }: { expedition: Expedition; returnTo: string }) {
+  const managedTeamNames = Array.from(new Set((expedition.detailMetadata?.team ?? [])
+    .map((member) => member.name.trim())
+    .filter(Boolean)));
+
   return (
     <div className="grid gap-4">
+      <datalist id="managed-expedition-leaders">
+        {managedTeamNames.map((name) => <option key={name} value={name} />)}
+      </datalist>
       {expedition.departures.length > 0 ? (
         expedition.departures.map((departure) => (
           <form key={departure.id} action={updatePartnerExpeditionDepartureAction} className="grid gap-3 rounded-lg border border-ocean-900/10 bg-white p-4 shadow-soft">
@@ -701,12 +708,12 @@ function DepartureForms({ expedition, returnTo }: { expedition: Expedition; retu
                 <input name="meetingPoint" defaultValue={departure.meetingPoint ?? ""} className={inputClassName} />
               </Field>
               <Field label="Trip leader">
-                <input name="guide" defaultValue={departure.guide ?? ""} className={inputClassName} />
+                <input name="guide" list="managed-expedition-leaders" defaultValue={departure.guide ?? ""} className={inputClassName} />
               </Field>
             </div>
             <div className="grid gap-3 md:grid-cols-[160px_1fr]">
               <Field label="Minimum">
-                <input name="minParticipants" type="number" min={1} defaultValue={departure.minParticipants} className={inputClassName} />
+                <input name="minParticipants" type="number" min={1} defaultValue={departure.minParticipants > 0 ? departure.minParticipants : undefined} placeholder="Optional" className={inputClassName} />
               </Field>
               <Field label="Weather advisory">
                 <input name="weatherAdvisory" defaultValue={departure.weatherAdvisory ?? ""} className={inputClassName} />
@@ -743,7 +750,7 @@ function DepartureForms({ expedition, returnTo }: { expedition: Expedition; retu
           </div>
           <div className="grid gap-3 md:grid-cols-2">
             <Field label="Capacity">
-              <input name="capacity" type="number" min={1} defaultValue={12} className={inputClassName} required />
+              <input name="capacity" type="number" min={1} placeholder="Confirmed seat capacity" className={inputClassName} required />
             </Field>
             <Field label="Status">
               <select name="status" defaultValue="open" className={inputClassName}>
@@ -755,15 +762,15 @@ function DepartureForms({ expedition, returnTo }: { expedition: Expedition; retu
           </div>
           <div className="grid gap-3 md:grid-cols-2">
             <Field label="Meeting point">
-              <input name="meetingPoint" placeholder={expedition.region} className={inputClassName} />
+              <input name="meetingPoint" defaultValue={expedition.detailMetadata?.travelInfo.meetingPoint ?? ""} placeholder="Use the confirmed meeting point" className={inputClassName} />
             </Field>
             <Field label="Trip leader">
-              <input name="guide" placeholder="Field team leader" className={inputClassName} />
+              <input name="guide" list="managed-expedition-leaders" placeholder="Select a saved team member or enter an actual leader" className={inputClassName} />
             </Field>
           </div>
           <div className="grid gap-3 md:grid-cols-[160px_1fr]">
             <Field label="Minimum">
-              <input name="minParticipants" type="number" min={1} defaultValue={6} className={inputClassName} />
+              <input name="minParticipants" type="number" min={1} placeholder="Optional, only if confirmed" className={inputClassName} />
             </Field>
             <Field label="Weather advisory">
               <input name="weatherAdvisory" className={inputClassName} />

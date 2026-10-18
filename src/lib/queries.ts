@@ -12320,7 +12320,7 @@ export async function getAdminExpeditionWorkspaceData(
     requestsPagination,
     reviewsPagination,
     departures: departureRows.map((row) => {
-      const minParticipants = getMetadataNumber(row.metadata, "minParticipants", 6);
+      const minParticipants = getMetadataNumber(row.metadata, "minParticipants", 0);
       const availability = expeditionDepartureAvailability({
         status: row.status,
         capacity: row.capacity,
