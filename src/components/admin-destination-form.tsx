@@ -85,7 +85,7 @@ export function AdminDestinationForm({
             <Field label="Destination name">
               <input name="name" defaultValue={destination?.name ?? ""} placeholder="Raja Ampat" className={adminInputClassName} required />
             </Field>
-            <Field label="URL slug" help="Stable public URL identifier.">
+            <Field label="URL slug (optional)" help="Leave blank when creating a destination to generate the slug from its name. Existing URLs should normally be preserved.">
               <input name="slug" defaultValue={destination?.slug ?? ""} placeholder="raja-ampat" className={adminInputClassName} />
             </Field>
           </div>
