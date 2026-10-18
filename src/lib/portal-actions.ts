@@ -96,6 +96,7 @@ import {
 } from "@/lib/expedition-marketplace";
 import { canCancelExpeditionBooking, canCompleteExpeditionBooking } from "@/lib/expedition-booking-lifecycle";
 import { normalizeApprovedSdgCodes } from "@/lib/sdg-claims";
+import { pendingPaymentHeldSeats } from "@/lib/expedition-held-seats";
 import { expeditionPublicationReadiness } from "@/lib/expedition-publication-readiness";
 import { canTransitionSponsoredEcosystem, normalizeSponsoredEcosystemOperationalStatus, sponsoredEcosystemTransitionRequiresReason } from "@/lib/sponsored-ecosystem-lifecycle";
 import { canAllocateSponsorshipToRestorationBatch, canTransitionRestorationBatch, normalizeRestorationBatchStatus, restorationTransitionPrerequisiteSatisfied, validRestorationAllocationUnits } from "@/lib/restoration-batches";
@@ -3541,7 +3542,8 @@ export async function updatePartnerExpeditionAction(formData: FormData) {
           endsAt: expeditionDepartures.endsAt,
           status: expeditionDepartures.status,
           capacity: expeditionDepartures.capacity,
-          seatsBooked: expeditionDepartures.seatsBooked
+          seatsBooked: expeditionDepartures.seatsBooked,
+          heldSeats: pendingPaymentHeldSeats
         })
         .from(expeditionDepartures)
         .where(eq(expeditionDepartures.expeditionId, expeditionId)),
@@ -3677,7 +3679,8 @@ export async function updateExpeditionPublicationStatusAction(formData: FormData
         endsAt: expeditionDepartures.endsAt,
         status: expeditionDepartures.status,
         capacity: expeditionDepartures.capacity,
-        seatsBooked: expeditionDepartures.seatsBooked
+        seatsBooked: expeditionDepartures.seatsBooked,
+        heldSeats: pendingPaymentHeldSeats
       })
       .from(expeditionDepartures)
       .where(eq(expeditionDepartures.expeditionId, expedition.id));
