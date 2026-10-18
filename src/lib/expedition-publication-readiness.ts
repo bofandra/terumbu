@@ -1,6 +1,28 @@
 import { expeditionTravelerReadiness, type ExpeditionDetailMetadata } from "@/lib/expedition-metadata";
+import { expeditionDepartureMatchesSearch } from "@/lib/expedition-marketplace";
 
 type PublicationTab = "content" | "departures";
+
+export type PublicationDeparture = {
+  startsAt: Date;
+  endsAt: Date;
+  status: string;
+  capacity: number;
+  seatsBooked: number;
+  heldSeats?: number;
+};
+
+/** Only an upcoming, valid, open departure with at least one free seat qualifies. */
+export function hasBookablePublicationDeparture(departures: PublicationDeparture[], now = new Date()) {
+  return departures.some((departure) =>
+    departure.startsAt instanceof Date &&
+    departure.endsAt instanceof Date &&
+    !Number.isNaN(departure.startsAt.getTime()) &&
+    !Number.isNaN(departure.endsAt.getTime()) &&
+    departure.endsAt > departure.startsAt &&
+    expeditionDepartureMatchesSearch(departure, { participants: 1 }, now)
+  );
+}
 
 export type ExpeditionPublicationCheck = {
   id: string;
@@ -15,7 +37,8 @@ export function expeditionPublicationReadiness(input: {
   imageUrl: string | null | undefined;
   destinationStatus: string | null | undefined;
   relatedCampaignStatus: string | null | undefined;
-  departureCount: number;
+  departures: PublicationDeparture[];
+  now?: Date;
 }) {
   const traveler = expeditionTravelerReadiness(input.metadata);
   const checks: ExpeditionPublicationCheck[] = [
@@ -35,9 +58,9 @@ export function expeditionPublicationReadiness(input: {
       ready: Boolean(input.imageUrl?.trim())
     },
     {
-      id: "departure", label: "Departure dates and capacity", tab: "departures",
-      guidance: "Create at least one departure with its dates, capacity, and meeting details.",
-      ready: input.departureCount > 0
+      id: "departure", label: "Upcoming bookable departure", tab: "departures",
+      guidance: "Add a future departure with a valid date range, Open status and at least one available seat. Past, full, cancelled and waitlist-only departures do not qualify.",
+      ready: hasBookablePublicationDeparture(input.departures, input.now)
     },
     {
       id: "languages", label: "Guide languages", tab: "content",

@@ -63,7 +63,7 @@ export default async function AdminExpeditionDetailPage({ params, searchParams }
     imageUrl: expedition.imageUrl,
     destinationStatus: expedition.destinationStatus,
     relatedCampaignStatus: relatedCampaign?.status,
-    departureCount: expedition.departures.length
+    departures: expedition.departures
   });
 
   return (
