@@ -92,20 +92,16 @@ test("detail view handles sparse metadata defaults", () => {
   assert.equal(stayRange.stayUpTo, "4 weeks");
 });
 
-test("detail view derives only supported SDG facts", () => {
-  const reefFacts = buildExpeditionSdgFacts({
-    tags: ["SDG 14", "Reef monitoring"],
-    sustainability: ["Local procurement"],
-    impactTargets: [{ value: "12", label: "Local workdays supported" }]
-  });
-  const fallbackFacts = buildExpeditionSdgFacts({
-    tags: [],
-    sustainability: [],
-    impactTargets: []
-  });
+test("SDG themes require explicit approved evidence links, never generic keywords", () => {
+  const claims = [
+    { code: "14", evidenceHref: "/campaigns/reef-project#evidence-reef-report" },
+    { code: "14", evidenceHref: "/campaigns/reef-project#evidence-other-report" },
+    { code: "13", evidenceHref: "javascript:alert(1)" },
+    { code: "999", evidenceHref: "/campaigns/reef-project#evidence-reef-report" }
+  ];
+  const facts = buildExpeditionSdgFacts({ claims });
 
-  assert.equal(reefFacts.some((fact) => fact.code === "14"), true);
-  assert.equal(reefFacts.some((fact) => fact.code === "8"), true);
-  assert.deepEqual(fallbackFacts, []);
+  assert.deepEqual(facts.map((fact) => fact.code), ["14"]);
+  assert.equal(facts[0].evidenceHref, "/campaigns/reef-project#evidence-reef-report");
+  assert.deepEqual(buildExpeditionSdgFacts({ claims: [] }), []);
 });
-

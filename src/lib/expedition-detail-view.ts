@@ -1,3 +1,4 @@
+import { normalizeApprovedSdgCodes } from "@/lib/sdg-claims";
 import type { ExpeditionMarketplaceMetadata } from "@/lib/expedition-marketplace";
 
 export type ExpeditionDetailViewDeparture = {
@@ -26,6 +27,7 @@ export type ExpeditionSdgFact = {
   label: string;
   description: string;
   tone: "kelp" | "ocean" | "sand";
+  evidenceHref: string;
 };
 
 function uniq(values: string[]) {
@@ -176,68 +178,30 @@ export function buildExpeditionBenefitFacts({
 }
 
 export function buildExpeditionSdgFacts({
-  tags,
-  sustainability,
-  impactTargets,
+  claims,
   locale = "en"
 }: {
-  tags: string[];
-  sustainability: string[];
-  impactTargets: { label: string; value: string }[];
+  claims: Array<{ code: string; evidenceHref: string }>;
   locale?: "en" | "id";
 }): ExpeditionSdgFact[] {
-  const haystack = `${tags.join(" ")} ${sustainability.join(" ")} ${impactTargets.map((item) => `${item.value} ${item.label}`).join(" ")}`.toLowerCase();
   const facts: ExpeditionSdgFact[] = [];
+  const definitions: Record<string, Omit<ExpeditionSdgFact, "code" | "evidenceHref">> = {
+    "4": { label: locale === "id" ? "Pendidikan berkualitas" : "Quality education", description: locale === "id" ? "Tema SDG yang terkait dengan bukti lapangan yang telah ditinjau." : "SDG theme linked to a reviewed field evidence record.", tone: "ocean" },
+    "8": { label: locale === "id" ? "Pekerjaan layak dan pertumbuhan ekonomi" : "Decent work and economic growth", description: locale === "id" ? "Tema SDG yang terkait dengan bukti lapangan yang telah ditinjau." : "SDG theme linked to a reviewed field evidence record.", tone: "sand" },
+    "13": { label: locale === "id" ? "Penanganan perubahan iklim" : "Climate action", description: locale === "id" ? "Tema SDG yang terkait dengan bukti lapangan yang telah ditinjau." : "SDG theme linked to a reviewed field evidence record.", tone: "kelp" },
+    "14": { label: locale === "id" ? "Ekosistem laut" : "Life below water", description: locale === "id" ? "Tema SDG yang terkait dengan bukti lapangan yang telah ditinjau." : "SDG theme linked to a reviewed field evidence record.", tone: "ocean" },
+    "15": { label: locale === "id" ? "Ekosistem daratan" : "Life on land", description: locale === "id" ? "Tema SDG yang terkait dengan bukti lapangan yang telah ditinjau." : "SDG theme linked to a reviewed field evidence record.", tone: "kelp" }
+  };
 
-  if (haystack.includes("education") || haystack.includes("learning") || haystack.includes("academy")) {
-    facts.push({
-      code: "4",
-      label: locale === "id" ? "Pendidikan berkualitas" : "Quality education",
-      description: locale === "id" ? "Mendukung pembelajaran lapangan dan pengetahuan konservasi praktis." : "Support field learning and practical conservation knowledge.",
-      tone: "ocean"
-    });
+  const seen = new Set<string>();
+  for (const claim of claims) {
+    if (!normalizeApprovedSdgCodes([claim.code]).length ||
+        !/^\/campaigns\/[a-z0-9-]+#evidence-[a-z0-9-]+$/.test(claim.evidenceHref) ||
+        seen.has(claim.code)) continue;
+    facts.push({ code: claim.code, ...definitions[claim.code], evidenceHref: claim.evidenceHref });
+    seen.add(claim.code);
+    if (facts.length === 4) break;
   }
 
-  if (haystack.includes("community") || haystack.includes("workday") || haystack.includes("local")) {
-    facts.push({
-      code: "8",
-      label: locale === "id" ? "Pekerjaan layak dan pertumbuhan ekonomi" : "Decent work and economic growth",
-      description: locale === "id" ? "Mendukung mata pencaharian lokal yang terhubung dengan kerja konservasi." : "Support local livelihoods connected to conservation work.",
-      tone: "sand"
-    });
-  }
-
-  if (haystack.includes("climate") || haystack.includes("mangrove") || haystack.includes("carbon")) {
-    facts.push({
-      code: "13",
-      label: locale === "id" ? "Penanganan perubahan iklim" : "Climate action",
-      description: locale === "id" ? "Berkontribusi pada perlindungan ekosistem dengan manfaat iklim." : "Contribute to ecosystem protection with climate co-benefits.",
-      tone: "kelp"
-    });
-  }
-
-  if (haystack.includes("coral") || haystack.includes("reef") || haystack.includes("marine") || haystack.includes("ocean")) {
-    facts.push({
-      code: "14",
-      label: locale === "id" ? "Ekosistem laut" : "Life below water",
-      description: locale === "id" ? "Melindungi, memulihkan, dan memantau ekosistem pesisir dan laut." : "Protect, restore, and monitor coastal and marine ecosystems.",
-      tone: "ocean"
-    });
-  }
-
-  if (haystack.includes("farm") || haystack.includes("forest") || haystack.includes("land") || haystack.includes("garden")) {
-    facts.push({
-      code: "15",
-      label: locale === "id" ? "Ekosistem daratan" : "Life on land",
-      description: locale === "id" ? "Melindungi dan memulihkan ekosistem daratan melalui aksi yang dipimpin mitra." : "Protect and restore terrestrial ecosystems through host-led action.",
-      tone: "kelp"
-    });
-  }
-
-  const uniqueFacts = uniq(facts.map((fact) => fact.code))
-    .map((code) => facts.find((fact) => fact.code === code))
-    .filter((fact): fact is ExpeditionSdgFact => Boolean(fact));
-
-  return uniqueFacts.slice(0, 4);
+  return facts;
 }
-

@@ -363,7 +363,7 @@ export default async function ExpeditionDetailPage({
           visaGuidance: "Panduan visa & masuk",
           packingHighlights: "Perlengkapan penting",
           sdgTitle: "Tujuan Pembangunan Berkelanjutan PBB",
-          sdgBody: "Tujuan di bawah ini diturunkan hanya dari detail yang diberikan mitra atau target dampak yang tercatat.",
+          sdgBody: "These SDG themes are linked to field evidence reviewed by Terumbu. This is not UN certification of SDG achievement.",
           photos: "Foto",
           travelerMoments: "Momen peserta",
           travelerMomentsBody: "Media dikirim oleh peserta yang telah menyelesaikan ekspedisi dan ditinjau Terumbu sebelum dipublikasikan.",
@@ -457,7 +457,7 @@ export default async function ExpeditionDetailPage({
           visaGuidance: "Visa & entry guidance",
           packingHighlights: "Packing highlights",
           sdgTitle: "UN Sustainable Development Goals",
-          sdgBody: "Goals shown here are derived only from host-provided details or recorded impact targets.",
+          sdgBody: "These SDG themes are linked to field evidence reviewed by Terumbu. This is not UN certification of SDG achievement.",
           photos: "Photos",
           travelerMoments: "Traveler moments",
           travelerMomentsBody: "Media submitted by completed participants and reviewed by Terumbu before publication.",
@@ -509,9 +509,7 @@ export default async function ExpeditionDetailPage({
   const monthAvailability = buildExpeditionMonthAvailability(expedition.departures, 6, locale);
   const stayRange = buildExpeditionStayRange(expedition.durationDays, expedition.marketplace.travelLengthLabel, locale);
   const sdgFacts = buildExpeditionSdgFacts({
-    tags: expedition.tags,
-    sustainability: expedition.sustainability,
-    impactTargets: expedition.impact.targets,
+    claims: expedition.sdgClaims,
     locale
   });
   const ratingLabel = expedition.reviewCount > 0
@@ -957,6 +955,7 @@ export default async function ExpeditionDetailPage({
                   <div>
                     <p className="text-xl font-bold text-ocean-900">{goal.label}</p>
                     <p className="mt-2 text-base leading-7 text-ocean-900/62">{goal.description}</p>
+                    <Link href={goal.evidenceHref} className="mt-3 inline-block text-sm font-semibold text-ocean-700 underline underline-offset-4">{locale === "id" ? "Lihat bukti ditinjau" : "View reviewed evidence"}</Link>
                   </div>
                 </div>
               ))}

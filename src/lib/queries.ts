@@ -153,6 +153,7 @@ import { corporateCapabilitiesForPermission, corporatePermissionLabel } from "@/
 import { corporateReportFormatLabel, corporateReportTypeLabel, scheduledReportIsDue } from "@/lib/corporate-report-lifecycle";
 import { evidenceReviewActionLabel, evidenceReviewStage, evidenceStatusLabel, evidenceVerificationStatuses } from "@/lib/evidence-review-workflow";
 import { getPublishedExpeditionMedia } from "@/lib/expedition-media";
+import { approvedSdgCodesFromEvidence } from "@/lib/sdg-claims";
 import {
   buildDefaultExpeditionDetailMetadata,
   expeditionMetadataEditorJson,
@@ -1787,7 +1788,7 @@ export async function getExpeditionDetail(slug: string) {
     return null;
   }
 
-  const [departures, relatedSites, updateRows, evidenceRows, courseRows, relatedExpeditionRows, reviewRows, participantSummaryRows, travelerMediaRows, requiredAcademyCourseRows] = await Promise.all([
+  const [departures, relatedSites, updateRows, evidenceRows, sdgEvidenceRows, courseRows, relatedExpeditionRows, reviewRows, participantSummaryRows, travelerMediaRows, requiredAcademyCourseRows] = await Promise.all([
     db
       .select({
         id: expeditionDepartures.id,
@@ -1835,6 +1836,24 @@ export async function getExpeditionDetail(slug: string) {
           .where(and(eq(projectEvidence.campaignId, row.relatedCampaignId), eq(projectEvidence.verificationStatus, "verified")))
           .orderBy(desc(projectEvidence.verifiedAt))
           .limit(4)
+      : Promise.resolve([]),
+    row.relatedCampaignId
+      ? db
+          .select({
+            evidenceCode: projectEvidence.evidenceCode,
+            verificationStatus: projectEvidence.verificationStatus,
+            verifiedAt: projectEvidence.verifiedAt,
+            reviewedAt: projectEvidence.reviewedAt,
+            reviewedByUserId: projectEvidence.reviewedByUserId,
+            metadata: projectEvidence.metadata
+          })
+          .from(projectEvidence)
+          .where(and(
+            eq(projectEvidence.campaignId, row.relatedCampaignId),
+            eq(projectEvidence.verificationStatus, "verified"),
+            sql`${projectEvidence.metadata} -> 'sdgApproval' is not null`
+          ))
+          .orderBy(desc(projectEvidence.reviewedAt))
       : Promise.resolve([]),
     getCourses(),
     getExpeditionCards(4, row.region),
@@ -2091,6 +2110,12 @@ export async function getExpeditionDetail(slug: string) {
     safety: expeditionMetadata.safety,
     emergencyPlanSummary: expeditionMetadata.emergencyPlanSummary,
     sustainability: expeditionMetadata.sustainability,
+    sdgClaims: sdgEvidenceRows.flatMap((evidence) => {
+      const href = evidenceSourceHref(row.relatedCampaignSlug, evidence.evidenceCode);
+      return href
+        ? approvedSdgCodesFromEvidence(evidence).map((code) => ({ code, evidenceHref: href }))
+        : [];
+    }),
     route: {
       ...expeditionMetadata.route,
       sites: relatedSites
