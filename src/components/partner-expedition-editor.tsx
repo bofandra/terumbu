@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { FormTabs } from "@/components/ui/form-tabs";
 import { ExpeditionMarketplaceFields } from "@/components/expedition-marketplace-fields";
 import { ExpeditionBookingChangeInbox } from "@/components/expedition-booking-change-inbox";
+import { PartnerExpeditionLiveDraftCheck } from "@/components/partner-expedition-live-draft-check";
 import { processPartnerExpeditionInterestRequestAction } from "@/lib/expedition-interest-actions";
 import {
   createPartnerExpeditionAction,
@@ -641,6 +642,8 @@ function ExpeditionDetailForm({
       </section>
 
       <DetailFields detail={detail} marketplace={expedition.marketplaceMetadata!} arrivalHubs={destinations.find((destination) => destination.id === expedition.destinationId)?.arrivalHubs ?? []} />
+
+      <PartnerExpeditionLiveDraftCheck />
 
       <p className="rounded-lg bg-sand-50 p-3 text-xs font-semibold leading-5 text-ocean-900/65">Submit for review only when every item in Publication readiness is complete. Saving as a draft remains available while you fill in the details.</p>
 
