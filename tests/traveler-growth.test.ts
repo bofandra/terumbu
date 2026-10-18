@@ -9,11 +9,35 @@ test("display currency conversion preserves canonical amount when currency match
   assert.equal(secondaryPriceLabel(125, "USD", "USD"), null);
 });
 
-test("display currency conversion returns an approximate alternate display", () => {
-  const idr = convertDisplayAmount(10, "USD", "IDR");
+test("display currency conversion never invents an estimate without a current sourced quote", () => {
+  const snapshot = Object.fromEntries(["NEXT_PUBLIC_FX_SOURCE", "NEXT_PUBLIC_FX_AS_OF", "NEXT_PUBLIC_FX_USD_EUR", "NEXT_PUBLIC_FX_USD_IDR", "NEXT_PUBLIC_FX_USD_JPY"].map((key) => [key, process.env[key]]));
+  try {
+    delete process.env.NEXT_PUBLIC_FX_SOURCE;
+    delete process.env.NEXT_PUBLIC_FX_AS_OF;
+    delete process.env.NEXT_PUBLIC_FX_USD_EUR;
+    delete process.env.NEXT_PUBLIC_FX_USD_IDR;
+    delete process.env.NEXT_PUBLIC_FX_USD_JPY;
+    assert.equal(convertDisplayAmount(10, "USD", "IDR"), null);
+    assert.equal(secondaryPriceLabel(10, "USD", "IDR"), null);
 
-  assert.ok(idr > 100000);
-  assert.match(secondaryPriceLabel(10, "USD", "IDR") ?? "", /IDR/);
+    process.env.NEXT_PUBLIC_FX_SOURCE = "Example rate provider";
+    process.env.NEXT_PUBLIC_FX_AS_OF = new Date().toISOString().slice(0, 10);
+    process.env.NEXT_PUBLIC_FX_USD_EUR = "0.85";
+    process.env.NEXT_PUBLIC_FX_USD_IDR = "16750";
+    process.env.NEXT_PUBLIC_FX_USD_JPY = "149";
+    assert.equal(convertDisplayAmount(10, "USD", "IDR"), 167500);
+    assert.match(secondaryPriceLabel(10, "USD", "IDR") ?? "", /IDR.*FX/);
+
+    process.env.NEXT_PUBLIC_FX_AS_OF = "2020-01-01";
+    assert.equal(convertDisplayAmount(10, "USD", "IDR"), null);
+    process.env.NEXT_PUBLIC_FX_AS_OF = "2026-02-30";
+    assert.equal(convertDisplayAmount(10, "USD", "IDR"), null);
+    assert.equal(convertDisplayAmount(10, "UNKNOWN", "USD"), null);
+  } finally {
+    for (const [key, value] of Object.entries(snapshot)) {
+      if (value === undefined) delete process.env[key]; else process.env[key] = value;
+    }
+  }
 });
 
 test("referral codes are deterministic and do not expose the raw user id", () => {

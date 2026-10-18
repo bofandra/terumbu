@@ -9,6 +9,7 @@ import {
   type ExpeditionSearchFilters
 } from "@/lib/expedition-marketplace";
 import { cn } from "@/lib/utils";
+import { getDisplayFxSnapshot } from "@/lib/currency-display";
 
 type ExpeditionMarketplaceFiltersProps = {
   filters: ExpeditionSearchFilters;
@@ -124,7 +125,12 @@ function FilterFields({ filters, facets }: { filters: ExpeditionSearchFilters; f
         <label className="grid gap-1 text-sm font-bold">Travelers<input className="min-h-11 rounded-lg border p-2" type="number" min="1" max="12" name="participants" defaultValue={filters.participants} placeholder="Any group size" /></label>
         <label className="grid gap-1 text-sm font-bold">Maximum price per person<input className="min-h-11 rounded-lg border p-2" type="number" min="0" step="0.01" name="maxPrice" defaultValue={filters.maxPrice} placeholder="Any budget" /></label>
         <label className="grid gap-1 text-sm font-bold">Budget currency<select className="min-h-11 rounded-lg border p-2" name="budgetCurrency" defaultValue={filters.budgetCurrency ?? "USD"}>{["USD", "IDR", "EUR", "JPY"].map(value => <option key={value}>{value}</option>)}</select></label>
-        <p className="text-xs text-ocean-900/60">Trips must fit entirely within your dates. Currency conversions are approximate; checkout uses the listed currency.</p>
+        <p className="text-xs text-ocean-900/60">Trips must fit entirely within your dates. Currency conversions are approximate and require a recent source-dated quote; checkout always uses the original listed currency.</p>
+        {filters.maxPrice !== undefined && !getDisplayFxSnapshot() ? (
+          <p role="status" className="rounded-lg border border-coral-500/25 bg-sand-50 p-3 text-xs font-semibold leading-5 text-ocean-900">
+            Live exchange-rate estimates are currently unavailable. A budget filter will only match trips whose listed currency already matches your budget currency; some cross-currency trips may be omitted. Remove the budget filter to see all trips.
+          </p>
+        ) : null}
         <SelectFilter label="Program Types" name="programType" value={filters.programType} options={facets.programTypes} placeholder="Any program" />
         <SelectFilter label="Highlights" name="highlight" value={filters.highlight} options={facets.highlights} placeholder="Any highlight" />
         <SelectFilter label="Purpose of the trip" name="purpose" value={filters.purpose} options={facets.purposes} placeholder="Any purpose" />
