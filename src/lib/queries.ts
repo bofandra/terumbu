@@ -153,6 +153,7 @@ import { corporateCapabilitiesForPermission, corporatePermissionLabel } from "@/
 import { corporateReportFormatLabel, corporateReportTypeLabel, scheduledReportIsDue } from "@/lib/corporate-report-lifecycle";
 import { evidenceReviewActionLabel, evidenceReviewStage, evidenceStatusLabel, evidenceVerificationStatuses } from "@/lib/evidence-review-workflow";
 import { getPublishedExpeditionMedia } from "@/lib/expedition-media";
+import { pendingPaymentHeldSeats } from "@/lib/expedition-held-seats";
 import { approvedSdgCodesFromEvidence } from "@/lib/sdg-claims";
 import {
   buildDefaultExpeditionDetailMetadata,
@@ -1670,7 +1671,7 @@ export async function getExpeditionCards(limitOrOptions?: number | ExpeditionCar
         endsAt: expeditionDepartures.endsAt,
         // Qualify the outer id in SQL: single-table field interpolation otherwise
         // removes its table qualifier and resolves it to the inner booking id.
-        heldSeats: sql<number>`coalesce((select sum(b.participants_count) from expedition_bookings b where b.departure_id = expedition_departures.id and b.status = 'pending_payment' and b.payment_status in ('created', 'pending') and b.hold_expires_at > now()), 0)::int`
+        heldSeats: pendingPaymentHeldSeats
       })
       .from(expeditionDepartures)
       .orderBy(asc(expeditionDepartures.startsAt))
@@ -9907,6 +9908,7 @@ export async function getPartnerPortalData(userId?: string) {
         endsAt: expeditionDepartures.endsAt,
         capacity: expeditionDepartures.capacity,
         seatsBooked: expeditionDepartures.seatsBooked,
+        heldSeats: pendingPaymentHeldSeats,
         status: expeditionDepartures.status,
         departureMetadata: expeditionDepartures.metadata
       })
@@ -10112,6 +10114,7 @@ export async function getPartnerPortalData(userId?: string) {
         endsAt: Date;
         capacity: number;
         seatsBooked: number;
+        heldSeats: number;
         availableSeats: number;
         status: string;
         bookingCount: number;
@@ -10197,7 +10200,8 @@ export async function getPartnerPortalData(userId?: string) {
         endsAt: row.endsAt,
         capacity: row.capacity,
         seatsBooked: row.seatsBooked,
-        availableSeats: Math.max(0, row.capacity - row.seatsBooked),
+        heldSeats: row.heldSeats,
+        availableSeats: Math.max(0, row.capacity - row.seatsBooked - row.heldSeats),
         status: row.status,
         bookingCount: departureBookingCounts.get(row.departureId) ?? 0,
         meetingPoint: getMetadataString(row.departureMetadata, "meetingPoint"),
@@ -12191,6 +12195,7 @@ export async function getAdminExpeditionWorkspaceData(
         endsAt: expeditionDepartures.endsAt,
         capacity: expeditionDepartures.capacity,
         seatsBooked: expeditionDepartures.seatsBooked,
+        heldSeats: pendingPaymentHeldSeats,
         status: expeditionDepartures.status,
         metadata: expeditionDepartures.metadata
       })
@@ -12319,7 +12324,7 @@ export async function getAdminExpeditionWorkspaceData(
       const availability = expeditionDepartureAvailability({
         status: row.status,
         capacity: row.capacity,
-        seatsBooked: row.seatsBooked,
+        seatsBooked: row.seatsBooked + row.heldSeats,
         minParticipants
       });
 
@@ -12329,6 +12334,7 @@ export async function getAdminExpeditionWorkspaceData(
         endsAt: row.endsAt,
         capacity: row.capacity,
         seatsBooked: row.seatsBooked,
+        heldSeats: row.heldSeats,
         availableSeats: availability.availableSeats,
         status: row.status,
         bookingCount: departureBookingCounts.get(row.id) ?? 0,
