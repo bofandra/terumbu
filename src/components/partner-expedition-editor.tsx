@@ -924,7 +924,7 @@ export function PartnerExpeditionDetailWorkspace({
         imageUrl: expedition.imageUrl,
         relatedCampaignStatus: campaign?.status,
         destinationStatus: destination?.status,
-        departureCount: expedition.departures.length
+        departures: expedition.departures
       })
     : null;
 

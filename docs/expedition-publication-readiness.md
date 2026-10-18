@@ -6,7 +6,7 @@ Partner expedition editor now shows a checklist derived from **saved records**. 
 - Destination managed and published by an admin
 - Related conservation campaign public (published, funded, or completed)
 - Genuine hero image supplied by the partner
-- At least one departure with capacity/dates
+- At least one future, valid, **open** departure with capacity for one more traveler (after bookings and any held seats)
 - Guide languages, participant requirements, safety and emergency plan
 - Day-by-day itinerary, accommodation, arrival guidance
 - Visa/insurance/timezone guidance, packing list and cancellation terms
@@ -18,5 +18,5 @@ The checklist currently reflects the latest saved record. It is not a live unsav
 ## Boundaries
 - A completed checklist means required fields were populated, not that the partner's assertions have been independently verified.
 - Existing claims and SDG facts still require separately reviewed evidence.
-- A future improvement should replace the “one departure” rule with an upcoming bookable departure policy, coordinated with existing booking and cancellation logic.
+- The upcoming bookable departure rule uses the same open/available/date filter as the marketplace. Historical published expeditions remain visible according to the existing public listing policy; this change gates new review and approval decisions.
 - Booking payments and production Midtrans flags remain unchanged and disabled.

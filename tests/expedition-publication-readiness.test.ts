@@ -44,7 +44,7 @@ test("publication checklist explains missing fields without fabricating facts", 
     imageUrl: null,
     destinationStatus: "draft",
     relatedCampaignStatus: "draft",
-    departureCount: 0
+    departures: []
   });
   assert.equal(r.ready, false);
   assert.equal(r.completed, 0);
@@ -59,7 +59,8 @@ test("publication checklist passes only with all managed traveler and operationa
     imageUrl: "/media/trip.jpg",
     destinationStatus: "published",
     relatedCampaignStatus: "funded",
-    departureCount: 1
+    departures: [{ startsAt: new Date("2026-11-20T01:00:00.000Z"), endsAt: new Date("2026-11-23T01:00:00.000Z"), status: "open", capacity: 8, seatsBooked: 1 }],
+    now: new Date("2026-10-18T00:00:00.000Z")
   });
   assert.equal(r.ready, true);
   assert.equal(r.completed, r.total);
@@ -69,6 +70,40 @@ test("publication checklist passes only with all managed traveler and operationa
     imageUrl: "/media/trip.jpg",
     destinationStatus: "published",
     relatedCampaignStatus: "funded",
-    departureCount: 0
+    departures: []
+  }).ready, false);
+});
+
+test("past, cancelled, full, waitlisted and invalid departures cannot pass publication", () => {
+  const now = new Date("2026-10-18T00:00:00.000Z");
+  const future = { startsAt: new Date("2026-11-20T01:00:00.000Z"), endsAt: new Date("2026-11-22T01:00:00.000Z"), status: "open", capacity: 8, seatsBooked: 0 };
+  const scenarios = [
+    { ...future, startsAt: new Date("2026-09-20T01:00:00.000Z"), endsAt: new Date("2026-09-22T01:00:00.000Z") },
+    { ...future, status: "cancelled" },
+    { ...future, status: "waitlist" },
+    { ...future, status: "full" },
+    { ...future, seatsBooked: 8 },
+    { ...future, endsAt: new Date("2026-11-19T01:00:00.000Z") }
+  ];
+  for (const departure of scenarios) {
+    const result = expeditionPublicationReadiness({ metadata: readyMetadata, imageUrl: "/media/trip.jpg", destinationStatus: "published", relatedCampaignStatus: "published", departures: [departure], now });
+    assert.equal(result.ready, false, `Should reject ${departure.status} departure ${departure.startsAt}`);
+    assert.ok(result.missing.some((item) => item.id === "departure"));
+  }
+  assert.equal(expeditionPublicationReadiness({
+    metadata: readyMetadata,
+    imageUrl: "/media/trip.jpg",
+    destinationStatus: "published",
+    relatedCampaignStatus: "published",
+    departures: [{ ...future, seatsBooked: 7 }],
+    now
+  }).ready, true);
+  assert.equal(expeditionPublicationReadiness({
+    metadata: readyMetadata,
+    imageUrl: "/media/trip.jpg",
+    destinationStatus: "published",
+    relatedCampaignStatus: "published",
+    departures: [{ ...future, heldSeats: 8 }],
+    now
   }).ready, false);
 });

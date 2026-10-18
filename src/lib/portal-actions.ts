@@ -3534,12 +3534,17 @@ export async function updatePartnerExpeditionAction(formData: FormData) {
       currency,
       maxCapacity
     });
-    const [departureSummary, relatedCampaign] = await Promise.all([
+    const [publicationDepartures, relatedCampaign] = await Promise.all([
       db
-        .select({ total: sql<number>`count(*)::int` })
+        .select({
+          startsAt: expeditionDepartures.startsAt,
+          endsAt: expeditionDepartures.endsAt,
+          status: expeditionDepartures.status,
+          capacity: expeditionDepartures.capacity,
+          seatsBooked: expeditionDepartures.seatsBooked
+        })
         .from(expeditionDepartures)
-        .where(eq(expeditionDepartures.expeditionId, expeditionId))
-        .then((rows) => rows[0]),
+        .where(eq(expeditionDepartures.expeditionId, expeditionId)),
       db
         .select({ status: campaigns.status })
         .from(campaigns)
@@ -3553,7 +3558,7 @@ export async function updatePartnerExpeditionAction(formData: FormData) {
       imageUrl,
       destinationStatus: "published",
       relatedCampaignStatus: relatedCampaign?.status,
-      departureCount: Number(departureSummary?.total ?? 0)
+      departures: publicationDepartures
     });
 
     if (!publication.ready) {
@@ -3666,8 +3671,14 @@ export async function updateExpeditionPublicationStatusAction(formData: FormData
   }
 
   if (decision === "publish") {
-    const [departureSummary] = await db
-      .select({ total: sql<number>`count(*)::int` })
+    const publicationDepartures = await db
+      .select({
+        startsAt: expeditionDepartures.startsAt,
+        endsAt: expeditionDepartures.endsAt,
+        status: expeditionDepartures.status,
+        capacity: expeditionDepartures.capacity,
+        seatsBooked: expeditionDepartures.seatsBooked
+      })
       .from(expeditionDepartures)
       .where(eq(expeditionDepartures.expeditionId, expedition.id));
 
@@ -3688,7 +3699,7 @@ export async function updateExpeditionPublicationStatusAction(formData: FormData
       imageUrl: expedition.imageUrl,
       destinationStatus: expedition.destinationStatus,
       relatedCampaignStatus: expedition.relatedCampaignStatus,
-      departureCount: Number(departureSummary?.total ?? 0)
+      departures: publicationDepartures
     });
 
     if (!publication.ready) {
