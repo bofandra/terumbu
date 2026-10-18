@@ -26,6 +26,7 @@ const errorMessages: Record<string, string> = {
   "expedition-campaign-required": "This expedition must be linked to one of your campaigns before partner editing is available.",
   "expedition-invalid": "Enter a title, slug, region, duration, price, summary, and related campaign.",
   "expedition-missing": "Expedition record was not found.",
+  "expedition-not-ready": "Publication review requires a published destination and campaign, hero image, departure, and all traveler-readiness details. See the Publication readiness checklist above.",
   "expedition-slug": "That expedition slug is already in use.",
   "image-size": "Uploaded image is too large.",
   "image-type": "Upload a supported image file.",

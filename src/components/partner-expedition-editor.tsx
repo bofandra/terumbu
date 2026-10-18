@@ -19,6 +19,7 @@ import {
 } from "@/lib/portal-actions";
 import type { ExpeditionDetailMetadata } from "@/lib/expedition-metadata";
 import type { ExpeditionMarketplaceMetadata } from "@/lib/expedition-marketplace";
+import { expeditionPublicationReadiness } from "@/lib/expedition-publication-readiness";
 import { formatCurrency } from "@/lib/utils";
 
 type Expedition = PartnerPortalData["expeditions"][number];
@@ -617,6 +618,8 @@ function ExpeditionDetailForm({
 
       <DetailFields detail={detail} marketplace={expedition.marketplaceMetadata!} />
 
+      <p className="rounded-lg bg-sand-50 p-3 text-xs font-semibold leading-5 text-ocean-900/65">Submit for review only when every item in Publication readiness is complete. Saving as a draft remains available while you fill in the details.</p>
+
       <div className="sticky bottom-4 z-10 flex justify-end">
         <Button type="submit" className="shadow-soft">
           <Save className="size-4" aria-hidden="true" />
@@ -711,12 +714,9 @@ function DepartureForms({ expedition, returnTo }: { expedition: Expedition; retu
               <input name="endsAt" type="datetime-local" className={inputClassName} required />
             </Field>
           </div>
-          <div className="grid gap-3 md:grid-cols-3">
+          <div className="grid gap-3 md:grid-cols-2">
             <Field label="Capacity">
               <input name="capacity" type="number" min={1} defaultValue={12} className={inputClassName} required />
-            </Field>
-            <Field label="Booked seats">
-              <input name="seatsBooked" type="number" min={0} defaultValue={0} className={inputClassName} />
             </Field>
             <Field label="Status">
               <select name="status" defaultValue="open" className={inputClassName}>
@@ -916,6 +916,17 @@ export function PartnerExpeditionDetailWorkspace({
   const requestsReturnTo = `${basePath}?tab=requests`;
   const bookingsReturnTo = `${basePath}?tab=bookings`;
   const nextDeparture = [...expedition.departures].sort((a, b) => a.startsAt.getTime() - b.startsAt.getTime())[0];
+  const campaign = campaigns.find((item) => item.id === expedition.relatedCampaignId);
+  const destination = destinations.find((item) => item.id === expedition.destinationId);
+  const publication = expedition.detailMetadata
+    ? expeditionPublicationReadiness({
+        metadata: expedition.detailMetadata,
+        imageUrl: expedition.imageUrl,
+        relatedCampaignStatus: campaign?.status,
+        destinationStatus: destination?.status,
+        departureCount: expedition.departures.length
+      })
+    : null;
 
   return (
     <div className="space-y-6">
@@ -971,6 +982,43 @@ export function PartnerExpeditionDetailWorkspace({
             <p className="mt-2 text-xl font-bold text-ocean-900">{expedition.interestRequests.length.toLocaleString("id-ID")}</p>
           </article>
         </div>
+      </section>
+
+      <section aria-label="Publication readiness" className="rounded-xl border border-ocean-900/10 bg-white p-5 shadow-soft">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h2 className="text-xl font-bold text-ocean-900">Publication readiness</h2>
+            <p className="mt-2 max-w-3xl text-sm leading-6 text-ocean-900/65">
+              This checklist uses saved expedition, campaign and destination data. Complete the missing items before requesting platform review; no public details are invented for missing fields.
+            </p>
+          </div>
+          {publication ? (
+            <p className="rounded-full bg-sand-50 px-4 py-2 text-sm font-bold text-ocean-900">
+              {publication.completed} / {publication.total} requirements
+            </p>
+          ) : null}
+        </div>
+        {publication ? (
+          publication.ready ? (
+            <p className="mt-4 rounded-lg border border-kelp-700/20 bg-kelp-100 p-4 text-sm font-semibold text-kelp-700">
+              All recorded requirements are complete. Choose Submit for review from Trip content; publication still requires platform admin approval.
+            </p>
+          ) : (
+            <ul className="mt-5 grid gap-3 md:grid-cols-2">
+              {publication.missing.map((item) => (
+                <li key={item.id} className="rounded-lg border border-ocean-900/10 bg-sand-50 p-3">
+                  <p className="font-bold text-ocean-900">{item.label}</p>
+                  <p className="mt-1 text-sm leading-6 text-ocean-900/65">{item.guidance}</p>
+                  <Link href={`${basePath}?tab=${item.tab}`} className="mt-2 inline-flex text-sm font-bold text-coral-700 underline underline-offset-4">
+                    {item.tab === "departures" ? "Open departures" : "Edit trip content"}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          )
+        ) : (
+          <p className="mt-4 text-sm font-semibold text-ocean-900/65">Create the expedition public metadata to view the publication checklist.</p>
+        )}
       </section>
 
       <FormTabs
