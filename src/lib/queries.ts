@@ -12391,21 +12391,15 @@ export async function getAdminExpeditionWorkspaceData(
       price: basePrice,
       currency: expeditionRow.currency,
       maxCapacity,
-      galleryImages: [
-        {
-          src: expeditionRow.imageUrl ?? "https://images.unsplash.com/photo-1582967788606-a171c1080cb0?auto=format&fit=crop&w=1400&q=80",
-          label: "Destination",
-          caption: `${expeditionRow.region} expedition landscape`,
-          provenance: "Partner-managed public detail image"
-        }
-      ],
-      tripUpdates: [
-        {
-          title: "Seasonal weather advisory",
-          date: "2026-06-01T00:00:00.000Z",
-          body: "Boat schedules may shift when sea conditions require safer departure windows."
-        }
-      ]
+      galleryImages: expeditionRow.imageUrl
+        ? [{
+            src: expeditionRow.imageUrl,
+            label: "Expedition",
+            caption: expeditionRow.title,
+            provenance: "Partner-managed expedition image"
+          }]
+        : [],
+      tripUpdates: []
     })
   );
 
