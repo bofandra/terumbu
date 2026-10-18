@@ -1607,13 +1607,17 @@ export async function getDestinationOptions() {
       slug: destinations.slug,
       province: destinations.province,
       islandGroup: destinations.islandGroup,
-      status: destinations.status
+      status: destinations.status,
+      arrivalHubs: destinations.arrivalHubs
     })
     .from(destinations)
     .where(eq(destinations.status, "published"))
     .orderBy(asc(destinations.name));
 
-  return rows;
+  return rows.map((destination) => ({
+    ...destination,
+    arrivalHubs: destinationArrivalHubs(destination.arrivalHubs)
+  }));
 }
 
 type ExpeditionCardsOptions = {
