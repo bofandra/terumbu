@@ -60,7 +60,7 @@ import { cn, formatCurrency } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
-const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://terumbu.eco";
+const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://terumbu.world";
 
 function formatDate(value: Date, locale: "en" | "id") {
   return value.toLocaleDateString(locale === "id" ? "id-ID" : "en-US", { dateStyle: "medium" });

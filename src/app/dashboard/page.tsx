@@ -342,7 +342,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
   const passportShareToken = data.profile?.passportShareToken ?? null;
   const canSharePassport = Boolean(data.profile?.publicSlug && passportVisibility !== "private" && (passportVisibility !== "link" || passportShareToken));
   const passportShareUrl = publicPassportShareUrl({
-    origin: process.env.NEXT_PUBLIC_APP_URL ?? "https://terumbu.eco",
+    origin: process.env.NEXT_PUBLIC_APP_URL ?? "https://terumbu.world",
     publicSlug: data.profile?.publicSlug,
     visibility: passportVisibility,
     shareToken: passportShareToken

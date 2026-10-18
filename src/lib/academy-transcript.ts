@@ -115,11 +115,11 @@ export function academyCourseTranscriptFilename(record: Pick<AcademyTranscriptRe
   return `terumbu-academy-transcript-${safeFileSlug(record.learnerName, "learner")}-${safeFileSlug(course.courseSlug || course.courseTitle, "course")}.pdf`;
 }
 
-export function academyTranscriptCertificateUrl(course: Pick<AcademyTranscriptCourse, "certificatePublicSlug">, origin = "https://terumbu.eco") {
+export function academyTranscriptCertificateUrl(course: Pick<AcademyTranscriptCourse, "certificatePublicSlug">, origin = "https://terumbu.world") {
   return course.certificatePublicSlug ? `${origin}/certificates/verify/${course.certificatePublicSlug}` : null;
 }
 
-export function buildAcademyTranscriptCsv(record: AcademyTranscriptRecord, origin = "https://terumbu.eco") {
+export function buildAcademyTranscriptCsv(record: AcademyTranscriptRecord, origin = "https://terumbu.world") {
   const rows = [
     csvRow(["Terumbu Academy Transcript"]),
     csvRow(["Learner", record.learnerName]),
@@ -168,7 +168,7 @@ export function buildAcademyTranscriptCsv(record: AcademyTranscriptRecord, origi
   return `${rows.join("\n")}\n`;
 }
 
-export function buildAcademyCourseTranscriptPdf(record: AcademyTranscriptRecord, course: AcademyTranscriptCourse, origin = "https://terumbu.eco") {
+export function buildAcademyCourseTranscriptPdf(record: AcademyTranscriptRecord, course: AcademyTranscriptCourse, origin = "https://terumbu.world") {
   const certificateUrl = academyTranscriptCertificateUrl(course, origin);
   const rows = [
     ["Learner", record.learnerName],

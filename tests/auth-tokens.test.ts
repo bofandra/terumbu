@@ -57,7 +57,7 @@ test("password recovery chooses reset for password users and setup for passwordl
 
 test("auth URLs use a safe application base URL", () => {
   assert.equal(authAppBaseUrl("http://localhost:3000/"), "http://localhost:3000");
-  assert.equal(authAppBaseUrl("ftp://terumbu.eco"), "https://terumbu.eco");
-  assert.equal(authAppBaseUrl("not a url"), "https://terumbu.eco");
-  assert.equal(authActionUrl("/reset-password", "abc123", "https://terumbu.eco"), "https://terumbu.eco/reset-password?token=abc123");
+  assert.equal(authAppBaseUrl("ftp://terumbu.eco"), "https://terumbu.world");
+  assert.equal(authAppBaseUrl("not a url"), "https://terumbu.world");
+  assert.equal(authActionUrl("/reset-password", "abc123", "https://terumbu.world"), "https://terumbu.world/reset-password?token=abc123");
 });

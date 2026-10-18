@@ -1533,7 +1533,7 @@ async function seed() {
           marketplace: {
             typeLabel: "Eco Village",
             programTypes: ["Eco Program", "Work exchange"],
-            highlights: ["Higher chance of approval", "Top Hosts"],
+            highlights: ["Top Hosts"],
             purposes: ["Connect with nature", "Learn about sustainability", "Expand your environmental consciousness"],
             helpActivities: ["Farming & Eco Activities", "Reef Monitoring", "Community Work", "Photography"],
             styles: ["Contact with nature", "Rural", "Beach"],
@@ -1543,7 +1543,7 @@ async function seed() {
             mealsIncluded: "3 meals",
             digitalNomadAmenities: ["Basic Internet Access"],
             benefits: ["Use our equipped kitchen", "Free Hiking Tours", "Certificate"],
-            badges: ["Sustainable project", "Top Host", "Higher approval"],
+            badges: [],
             additionalFee: null
           }
         }
@@ -1565,7 +1565,7 @@ async function seed() {
           marketplace: {
             typeLabel: "Community",
             programTypes: ["Eco Program", "Social Impact"],
-            highlights: ["Higher chance of approval"],
+            highlights: [],
             purposes: ["Connect with the locals", "Learn about sustainability"],
             helpActivities: ["Reef Monitoring", "Documentation", "Community Work"],
             styles: ["Contact with nature", "Beach", "Family"],
@@ -1575,7 +1575,7 @@ async function seed() {
             mealsIncluded: "2 meals",
             digitalNomadAmenities: ["Basic Internet Access"],
             benefits: ["Language lessons", "Free Events"],
-            badges: ["Sustainable project", "Higher approval"],
+            badges: [],
             additionalFee: null
           }
         }
@@ -1596,7 +1596,7 @@ async function seed() {
           marketplace: {
             typeLabel: "Eco Village",
             programTypes: ["Social Impact", "Eco Program"],
-            highlights: ["Top Hosts", "Higher chance of approval"],
+            highlights: ["Top Hosts"],
             purposes: ["Connect with the locals", "Practice English", "Make a real social impact"],
             helpActivities: ["Teaching", "Sports", "Gardening", "Social Work"],
             styles: ["Rural", "Family", "Contact with nature"],
@@ -1606,7 +1606,7 @@ async function seed() {
             mealsIncluded: "3 meals",
             digitalNomadAmenities: ["Basic Internet Access"],
             benefits: ["Language lessons", "Certificate", "Free Events"],
-            badges: ["Sustainable project", "Top Host", "Higher approval"],
+            badges: [],
             additionalFee: null
           }
         }
@@ -1627,7 +1627,7 @@ async function seed() {
           marketplace: {
             typeLabel: "Farm",
             programTypes: ["Eco Program", "Work exchange"],
-            highlights: ["Higher chance of approval"],
+            highlights: [],
             purposes: ["Connect with nature", "Learn about sustainability"],
             helpActivities: ["Farming & Eco Activities", "Gardening", "Social Work"],
             styles: ["Rural", "Vegetarian / Vegan", "Contact with nature"],
@@ -1637,7 +1637,7 @@ async function seed() {
             mealsIncluded: "3 meals",
             digitalNomadAmenities: ["Basic Internet Access", "Dedicated Workspace"],
             benefits: ["Use our equipped kitchen", "Free Laundry"],
-            badges: ["Sustainable project", "Higher approval"],
+            badges: [],
             additionalFee: {
               amount: 10,
               currency: "USD",
@@ -1675,7 +1675,7 @@ async function seed() {
             mealsIncluded: "3 meals",
             digitalNomadAmenities: ["Fast Internet Access", "Dedicated Workspace"],
             benefits: ["Discounts on Accommodation", "Free Tours"],
-            badges: ["Sustainable project", "Needs help immediately", "New"],
+            badges: [],
             additionalFee: null
           }
         }
@@ -1697,7 +1697,7 @@ async function seed() {
           marketplace: {
             typeLabel: "NGO",
             programTypes: ["Social Impact", "Eco Program"],
-            highlights: ["Higher chance of approval"],
+            highlights: [],
             purposes: ["Make a real social impact", "Expand your environmental consciousness"],
             helpActivities: ["Ocean Cleanup", "Community Work", "Photography", "Administration"],
             styles: ["Beach", "City & Town", "Contact with nature"],
@@ -1707,7 +1707,7 @@ async function seed() {
             mealsIncluded: "2 meals",
             digitalNomadAmenities: ["Basic Internet Access"],
             benefits: ["Free Events", "Certificate", "Pick Up"],
-            badges: ["Sustainable project", "Higher approval"],
+            badges: [],
             additionalFee: null
           }
         }

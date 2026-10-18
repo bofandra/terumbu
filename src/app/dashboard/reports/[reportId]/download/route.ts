@@ -6,7 +6,7 @@ import { getMonthlyImpactReportDownload } from "@/lib/queries";
 
 export const dynamic = "force-dynamic";
 
-const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://terumbu.eco";
+const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://terumbu.world";
 
 export async function GET(_request: Request, { params }: { params: Promise<{ reportId: string }> }) {
   const user = await requireUser("/dashboard");

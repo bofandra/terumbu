@@ -17,7 +17,7 @@ import { getCertificateVerification } from "@/lib/queries";
 export const dynamic = "force-dynamic";
 
 const heroImage = "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=1800&q=80";
-const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://terumbu.eco";
+const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://terumbu.world";
 const certificatePrintStyles = `
 @media print {
   @page {

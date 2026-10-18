@@ -2,7 +2,7 @@ import type { MetadataRoute } from "next";
 
 import { getPublicSitemapRecords, getPublishedDestinations } from "@/lib/queries";
 
-const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://terumbu.eco";
+const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://terumbu.world";
 
 export const dynamic = "force-dynamic";
 

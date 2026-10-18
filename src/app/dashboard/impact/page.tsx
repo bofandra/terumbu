@@ -211,7 +211,7 @@ export default async function DashboardImpactPage() {
   const passportUrl =
     data.profile?.publicSlug
       ? publicPassportShareUrl({
-          origin: process.env.NEXT_PUBLIC_APP_URL ?? "https://terumbu.eco",
+          origin: process.env.NEXT_PUBLIC_APP_URL ?? "https://terumbu.world",
           publicSlug: data.profile.publicSlug,
           visibility: data.profile.passportVisibility ?? "private",
           shareToken: data.profile.passportShareToken
