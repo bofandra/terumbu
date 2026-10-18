@@ -92,9 +92,9 @@ export function PartnerExpeditionCreateForm({
           <Field label="Title">
             <input name="title" placeholder="Raja Ampat Coral Restoration Expedition" className={inputClassName} required />
           </Field>
-          <Field label="Slug">
-            <input name="slug" placeholder="raja-ampat-coral-restoration" className={inputClassName} required />
-            <span className="text-xs font-semibold text-ocean-900/48">Use a stable URL slug. Public facts are never inferred from this field.</span>
+          <Field label="URL slug (optional)">
+            <input name="slug" placeholder="Automatically generated from title" className={inputClassName} />
+            <span className="text-xs font-semibold text-ocean-900/48">Leave blank to generate from the title. Custom values must be unique; public facts are not inferred from this field.</span>
           </Field>
         </div>
         <div className="grid gap-3 md:grid-cols-2">
