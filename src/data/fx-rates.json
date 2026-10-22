@@ -1,10 +1,10 @@
 {
-  "asOf": "",
-  "source": "",
+  "asOf": "2026-10-22",
+  "source": "Frankfurter (official-source blended reference rates)",
   "usdRates": {
     "USD": 1,
-    "EUR": 0,
-    "IDR": 0,
-    "JPY": 0
+    "EUR": 0.89032,
+    "IDR": 17991,
+    "JPY": 158.13
   }
 }
