@@ -13,8 +13,8 @@ import {
 export async function setPublicPreferencesAction(formData: FormData) {
   const localeRaw = String(formData.get("locale") ?? "");
   const currencyRaw = String(formData.get("currency") ?? "");
-  const locale = supportedLocales.includes(localeRaw as SupportedLocale) ? (localeRaw as SupportedLocale) : "en";
-  const currency = supportedDisplayCurrencies.includes(currencyRaw as DisplayCurrency) ? (currencyRaw as DisplayCurrency) : "USD";
+  const locale = supportedLocales.includes(localeRaw as SupportedLocale) ? (localeRaw as SupportedLocale) : "id";
+  const currency = supportedDisplayCurrencies.includes(currencyRaw as DisplayCurrency) ? (currencyRaw as DisplayCurrency) : "IDR";
   const store = await cookies();
 
   store.set("terumbu_locale", locale, {

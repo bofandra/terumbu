@@ -3,7 +3,7 @@
 import { FileBadge, Heart, LayoutDashboard, LogOut, Menu, Settings, UserCircle, X } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 
 import { navItems } from "@/lib/data";
 import { logoutAction } from "@/lib/auth-actions";
@@ -34,8 +34,8 @@ function levelLabel(heroLevel: number | null) {
 
 export function SiteHeader({
   user,
-  locale = "en",
-  displayCurrency = "USD"
+  locale = "id",
+  displayCurrency = "IDR"
 }: {
   user?: SiteHeaderUser | null;
   locale?: "en" | "id";
@@ -93,6 +93,10 @@ export function SiteHeader({
   }
   const initials = user ? initialsForDisplayName(user.displayName) : null;
 
+  useEffect(() => {
+    document.documentElement.lang = locale;
+  }, [locale]);
+
   return (
     <header className="sticky top-0 z-50 border-b border-white/15 bg-ocean-900/90 text-white backdrop-blur-xl">
       <div className="mx-auto flex h-20 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
@@ -143,7 +147,7 @@ export function SiteHeader({
               onChange={(event) => event.currentTarget.form?.requestSubmit()}
               className="rounded-full bg-transparent px-2 py-2 text-xs font-bold text-white outline-none disabled:opacity-60"
             >
-              {["USD", "EUR", "IDR", "JPY"].map((currency) => (
+              {["IDR", "USD", "JPY", "EUR"].map((currency) => (
                 <option key={currency} value={currency} className="text-ocean-900">{currency}</option>
               ))}
             </select>
@@ -236,7 +240,7 @@ export function SiteHeader({
                 onChange={(event) => event.currentTarget.form?.requestSubmit()}
                 className="min-h-10 rounded-lg bg-white px-2 text-sm font-bold text-ocean-900 disabled:opacity-60"
               >
-                {["USD", "EUR", "IDR", "JPY"].map((currency) => <option key={currency} value={currency}>{currency}</option>)}
+                {["IDR", "USD", "JPY", "EUR"].map((currency) => <option key={currency} value={currency}>{currency}</option>)}
               </select>
             </form>
             {localizedNavItems.map((item) => (

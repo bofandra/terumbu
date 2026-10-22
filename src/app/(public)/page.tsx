@@ -1,4 +1,6 @@
-import { ArrowRight, BadgeCheck, BookOpen, CalendarDays, Compass, HeartHandshake, MapPinned, PlayCircle, Search, Star, Users } from "lucide-react";
+import type { Metadata } from "next";
+import Image from "next/image";
+import { ArrowRight, BadgeCheck, BookOpen, Compass, HeartHandshake, MapPinned, PlayCircle, Search } from "lucide-react";
 
 import { CampaignCard } from "@/components/campaign-card";
 import { ExpeditionTravelSearchFields } from "@/components/expedition-travel-search-fields";
@@ -16,7 +18,6 @@ import {
   getExpeditionCards,
   getFeaturedFieldUpdate,
   getFeaturedPublicPassport,
-  getHomepageReviewSummary,
   getHomepagePartners,
   getImpactMapSites,
   getImpactStats
@@ -24,6 +25,39 @@ import {
 import { getPreferredDisplayCurrency, getPreferredLocale, localeTag, t } from "@/lib/user-preferences";
 
 export const dynamic = "force-dynamic";
+
+const homepageSeo = {
+  id: {
+    title: "Ekspedisi Konservasi Pesisir Indonesia | Terumbu.eco",
+    description: "Ikuti ekspedisi konservasi, dukung proyek pesisir terverifikasi, dan pantau bukti dampak nyata bagi ekosistem Indonesia bersama Terumbu.eco."
+  },
+  en: {
+    title: "Conservation Expeditions in Indonesia | Terumbu.eco",
+    description: "Join conservation expeditions, support verified coastal projects, and track evidence of real impact for Indonesia’s ecosystems with Terumbu.eco."
+  }
+} as const;
+
+export async function generateMetadata(): Promise<Metadata> {
+  const locale = await getPreferredLocale();
+  const seo = homepageSeo[locale];
+
+  return {
+    title: { absolute: seo.title },
+    description: seo.description,
+    openGraph: {
+      title: seo.title,
+      description: seo.description,
+      locale: locale === "id" ? "id_ID" : "en_US",
+      type: "website",
+      siteName: "Terumbu.eco"
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: seo.title,
+      description: seo.description
+    }
+  };
+}
 
 const fallbackPassport: PassportPreviewData = {
   displayName: "Your Ocean Hero profile",
@@ -46,7 +80,7 @@ const fallbackPassport: PassportPreviewData = {
 };
 
 export default async function HomePage() {
-  const [locale, displayCurrency, stats, campaigns, expeditions, impactSites, passport, fieldUpdate, reviewSummary, partners] = await Promise.all([
+  const [locale, displayCurrency, stats, campaigns, expeditions, impactSites, passport, fieldUpdate, partners] = await Promise.all([
     getPreferredLocale(),
     getPreferredDisplayCurrency(),
     getImpactStats(),
@@ -55,7 +89,6 @@ export default async function HomePage() {
     getImpactMapSites(),
     getFeaturedPublicPassport(),
     getFeaturedFieldUpdate(),
-    getHomepageReviewSummary(),
     getHomepagePartners()
   ]);
   const messages = t(locale);
@@ -71,21 +104,12 @@ export default async function HomePage() {
   return (
     <>
       <section className="relative flex min-h-[calc(100svh-5rem)] items-center overflow-hidden bg-ocean-900">
-        {heroImageUrl ? (
-          <div
-            className="absolute inset-0 bg-cover bg-center"
-            style={{ backgroundImage: `url('${heroImageUrl}')` }}
-          />
-        ) : null}
+        {heroImageUrl ? <Image src={heroImageUrl} alt={locale === "id" ? "Penyelam menjelajahi terumbu karang berwarna-warni di Indonesia" : "Diver exploring a colourful coral reef in Indonesia"} fill priority unoptimized className="absolute inset-0 object-cover" sizes="100vw" /> : null}
         <div className="absolute inset-0 bg-gradient-to-br from-ocean-900/95 via-ocean-900/62 to-coral-700/34" />
         <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-sand-50 to-transparent" />
 
         <div className="relative mx-auto grid max-w-7xl gap-12 px-4 py-20 sm:px-6 lg:grid-cols-[1.1fr_0.9fr] lg:px-8">
           <div className="max-w-3xl text-white">
-            <p className="inline-flex items-center gap-2 rounded-full border border-white/30 bg-white/10 px-4 py-2 text-sm font-semibold backdrop-blur">
-              <MapPinned size={17} aria-hidden="true" />
-              {messages.home.badge}
-            </p>
             <h1 className="mt-7 text-5xl font-bold tracking-normal sm:text-6xl lg:text-7xl">
               {messages.home.title}
             </h1>
@@ -95,12 +119,12 @@ export default async function HomePage() {
             <form action="/expeditions" className="mt-9 grid gap-2 rounded-2xl border border-white/24 bg-white/12 p-3 backdrop-blur-xl sm:grid-cols-[1fr_1fr_auto]">
               <div className="sm:col-span-3"><ExpeditionTravelSearchFields locale={locale} /></div>
               <label className="relative">
-                <span className="sr-only">Where in Indonesia?</span>
+                <span className="sr-only">{locale === "id" ? "Mau menjelajah ke mana?" : "Where do you want to explore?"}</span>
                 <MapPinned className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-ocean-900/45" aria-hidden="true" />
                 <input name="destination" placeholder={messages.home.destinationPlaceholder} className="min-h-12 w-full rounded-xl border-0 bg-white pl-9 pr-3 text-sm font-semibold text-ocean-900 outline-none ring-1 ring-white/20 focus:ring-2 focus:ring-coral-300" />
               </label>
               <label className="relative">
-                <span className="sr-only">What do you want to do?</span>
+                <span className="sr-only">{locale === "id" ? "Aktivitas yang ingin kamu coba" : "Activity you want to try"}</span>
                 <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-ocean-900/45" aria-hidden="true" />
                 <input name="q" placeholder={messages.home.activityPlaceholder} className="min-h-12 w-full rounded-xl border-0 bg-white pl-9 pr-3 text-sm font-semibold text-ocean-900 outline-none ring-1 ring-white/20 focus:ring-2 focus:ring-coral-300" />
               </label>
@@ -108,24 +132,11 @@ export default async function HomePage() {
                 {messages.home.searchTrips} <ArrowRight size={17} aria-hidden="true" />
               </button>
             </form>
-            <div className="mt-7 flex flex-wrap items-center gap-4 text-sm font-semibold text-white/82">
-              {reviewSummary ? (
-                <span className="inline-flex items-center gap-2">
-                  <Star size={16} fill="currentColor" className="text-coral-300" aria-hidden="true" />
-                  {reviewSummary.label}
-                </span>
-              ) : null}
-              <span className="inline-flex items-center gap-2">
-                <Users size={16} aria-hidden="true" />
-                {messages.home.audience}
-              </span>
-            </div>
           </div>
 
           {fieldUpdate ? (
             <div className="hidden items-end lg:flex">
               <div className="w-full rounded-2xl border border-white/20 bg-white/12 p-5 text-white backdrop-blur-xl">
-                <p className="text-sm font-bold uppercase tracking-[0.16em] text-coral-100">{messages.home.fieldUpdate}</p>
                 <p className="mt-4 text-2xl font-bold tracking-normal">{fieldUpdate.title}</p>
                 <ProgressMeter value={fieldUpdate.progress} label={`${fieldUpdate.title} progress`} className="mt-6 h-3" trackClassName="bg-white/18" />
                 <p className="mt-4 text-sm leading-6 text-white/72">{fieldUpdate.description}</p>
@@ -144,7 +155,7 @@ export default async function HomePage() {
       <section className="bg-white py-20">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="flex flex-col justify-between gap-6 md:flex-row md:items-end">
-            <SectionHeading eyebrow={messages.home.featuredEyebrow} title={messages.home.featuredTitle}>
+            <SectionHeading title={messages.home.featuredTitle}>
               {messages.home.featuredDescription}
             </SectionHeading>
             <ButtonLink href="/expeditions" tone="secondary">
@@ -159,7 +170,7 @@ export default async function HomePage() {
 
       <section className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8">
         <div className="flex flex-col justify-between gap-6 md:flex-row md:items-end">
-          <SectionHeading eyebrow={messages.home.supportEyebrow} title={messages.home.supportTitle}>
+          <SectionHeading title={messages.home.supportTitle}>
             {messages.home.supportDescription}
           </SectionHeading>
           <ButtonLink href="/campaigns" tone="secondary">
@@ -176,17 +187,17 @@ export default async function HomePage() {
 
 
       <section className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8">
-        <SectionHeading eyebrow={messages.home.impactMapEyebrow} title={messages.home.impactMapTitle}>
+        <SectionHeading title={messages.home.impactMapTitle}>
           {messages.home.impactMapDescription}
         </SectionHeading>
         <div className="mt-10">
-          <ImpactMapPreview sites={impactSites} />
+          <ImpactMapPreview sites={impactSites} locale={locale} />
         </div>
       </section>
 
       <section className="bg-ocean-50 py-20">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <SectionHeading eyebrow={messages.home.howEyebrow} title={messages.home.howTitle} />
+          <SectionHeading title={messages.home.howTitle} />
           <div className="mt-10 grid gap-5 md:grid-cols-2 lg:grid-cols-4">
             {journey.map((item) => {
               const Icon = item.icon;
@@ -207,14 +218,14 @@ export default async function HomePage() {
 
       <section className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8">
         <div className="grid gap-10 lg:grid-cols-[0.9fr_1.1fr] lg:items-center">
-          <SectionHeading eyebrow={messages.home.passportEyebrow} title={messages.home.passportTitle}>
+          <SectionHeading title={messages.home.passportTitle}>
             {messages.home.passportDescription}
           </SectionHeading>
           <PassportPreview passport={passport?.preview ?? fallbackPassport} />
         </div>
       </section>
 
-      <PartnerLogoStrip partners={partners} />
+      <PartnerLogoStrip partners={partners} locale={locale} />
     </>
   );
 }

@@ -14,12 +14,14 @@ type FeaturedExpeditionRailProps = {
 };
 
 export function FeaturedExpeditionRail({ expeditions, displayCurrency = "USD", locale = "en-US" }: FeaturedExpeditionRailProps) {
+  const isIndonesian = locale.startsWith("id");
+
   if (expeditions.length === 0) {
     return (
       <div className="rounded-2xl border border-ocean-900/10 bg-white p-8 text-center shadow-soft">
-        <h3 className="text-xl font-bold tracking-normal text-ocean-900">Expedition departures are being scheduled</h3>
+        <h3 className="text-xl font-bold tracking-normal text-ocean-900">{isIndonesian ? "Keberangkatan ekspedisi sedang disiapkan" : "Expedition departures are being scheduled"}</h3>
         <p className="mt-2 text-sm leading-6 text-ocean-900/64">
-          New conservation trips will appear here once partner dates and capacities are confirmed.
+          {isIndonesian ? "Ekspedisi konservasi baru akan muncul setelah tanggal dan kapasitas mitra dikonfirmasi." : "New conservation trips will appear here once partner dates and capacities are confirmed."}
         </p>
       </div>
     );
@@ -39,7 +41,7 @@ export function FeaturedExpeditionRail({ expeditions, displayCurrency = "USD", l
           {expedition.imageUrl ? (
             <Image
               src={expedition.imageUrl}
-              alt=""
+              alt={isIndonesian ? `Penyelam di antara terumbu karang ${expedition.region}` : `Diver among ${expedition.region} coral reefs`}
               fill
               className="object-cover transition duration-500 group-hover:scale-105"
               sizes="(min-width: 1024px) 31vw, 85vw"
@@ -65,9 +67,9 @@ export function FeaturedExpeditionRail({ expeditions, displayCurrency = "USD", l
               </span>
             </div>
             <p className="mt-3 text-sm text-white/74">
-              From <span className="text-base font-bold text-white">{formatCurrency(expedition.price, expedition.currency)}</span>
+              {isIndonesian ? "Mulai dari" : "From"} <span className="text-base font-bold text-white">{formatCurrency(expedition.price, expedition.currency)}</span>
             </p>
-            {secondaryPrice ? <p className="mt-1 text-xs font-bold text-coral-100">{secondaryPrice} estimated</p> : null}
+            {secondaryPrice ? <p className="mt-1 text-xs font-bold text-coral-100">{secondaryPrice} {isIndonesian ? "perkiraan" : "estimated"}</p> : null}
           </div>
         </Link>
         );
@@ -77,11 +79,11 @@ export function FeaturedExpeditionRail({ expeditions, displayCurrency = "USD", l
         href="/expeditions"
         className="flex min-h-[360px] min-w-[260px] snap-start flex-col justify-between rounded-2xl border border-dashed border-ocean-900/18 bg-white p-6 text-ocean-900 transition hover:border-coral-500 hover:text-coral-700"
       >
-        <span className="text-sm font-bold uppercase tracking-[0.16em] text-ocean-900/50">More trips</span>
+        <span className="text-sm font-bold uppercase tracking-[0.16em] text-ocean-900/50">{isIndonesian ? "Ekspedisi lainnya" : "More trips"}</span>
         <span>
-          <span className="block text-2xl font-bold tracking-normal">See every conservation departure</span>
+          <span className="block text-2xl font-bold tracking-normal">{isIndonesian ? "Temukan keberangkatan berikutnya." : "Find your next departure."}</span>
           <span className="mt-3 block text-sm leading-6 text-ocean-900/64">
-            Browse dates, regions, seats, and field activities linked to real restoration work.
+            {isIndonesian ? "Temukan lebih banyak cara untuk terhubung dengan alam dan mendukung konservasi." : "Discover more ways to connect with nature and support conservation."}
           </span>
         </span>
       </Link>
