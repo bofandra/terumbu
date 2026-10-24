@@ -1,10 +1,8 @@
 name: External Worker Watch
 
 # Runs on GitHub-hosted infrastructure, independent of Terumbu's VPS cron.
-# Scheduled runs may be delayed by GitHub; this is not a hard real-time SLA.
+# Scheduled monitoring temporarily paused (2026-10-24); manual runs remain available.
 on:
-  schedule:
-    - cron: "13,43 * * * *"
   workflow_dispatch:
 
 permissions:
