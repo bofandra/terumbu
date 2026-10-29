@@ -53,7 +53,7 @@ import {
   type ExpeditionFact
 } from "@/lib/expedition-detail-view";
 import { getSessionUser } from "@/lib/auth";
-import { convertDisplayAmount, formatDisplayCurrency } from "@/lib/currency-display";
+import { secondaryPriceLabel } from "@/lib/currency-display";
 import { getExpeditionDetail, getExpeditionSaveState } from "@/lib/queries";
 import { referralCodeForUser } from "@/lib/referrals";
 import { getPreferredDisplayCurrency, getPreferredLocale, localeTag } from "@/lib/user-preferences";
@@ -310,11 +310,10 @@ export default async function ExpeditionDetailPage({
   const questionNextPath = `${expeditionPath}#ask-question`;
   const isIndonesian = locale === "id";
   const localeName = localeTag(locale);
-  const displayAmount = (value: number, currency: string) => {
-    const converted = convertDisplayAmount(value, currency, displayCurrency);
-    return converted === null ? formatCurrency(value, currency) : formatDisplayCurrency(converted, displayCurrency, localeName);
-  };
-  const originalPrice = expedition.currency.toUpperCase() === displayCurrency ? null : formatCurrency(expedition.price, expedition.currency);
+  const secondaryPrice = secondaryPriceLabel(expedition.price, expedition.currency, displayCurrency, localeName);
+  const secondaryAdditionalFee = expedition.marketplace.additionalFee
+    ? secondaryPriceLabel(expedition.marketplace.additionalFee.amount, expedition.marketplace.additionalFee.currency, displayCurrency, localeName)
+    : null;
   const labels =
     isIndonesian
       ? {
@@ -638,8 +637,8 @@ export default async function ExpeditionDetailPage({
               <div className="mt-7 flex flex-wrap items-end justify-between gap-5 rounded-2xl border border-ocean-900/10 bg-white p-5 shadow-sm">
                 <div>
                   <p className="text-xs font-bold uppercase tracking-[0.12em] text-ocean-900/48">{isIndonesian ? "Harga mulai" : "Price from"}</p>
-                  <p className="mt-1 text-2xl font-bold text-ocean-900">{displayAmount(expedition.price, expedition.currency)}</p>
-                  {originalPrice ? <p className="mt-1 text-xs font-bold text-kelp-700">{isIndonesian ? "Harga asli" : "Original price"}: {originalPrice}</p> : null}
+                  <p className="mt-1 text-2xl font-bold text-ocean-900">{formatCurrency(expedition.price, expedition.currency)}</p>
+                  {secondaryPrice ? <p className="mt-1 text-xs font-bold text-kelp-700">{secondaryPrice} {isIndonesian ? "estimasi" : "estimated"}</p> : null}
                 </div>
                 <ButtonLink href={primaryActionHref} className="rounded-full">{primaryActionLabel}<ArrowRight size={17} aria-hidden="true" /></ButtonLink>
               </div>
@@ -696,9 +695,9 @@ export default async function ExpeditionDetailPage({
                   <div>
                     <p className="text-lg font-bold text-ocean-900">{labels.amount}</p>
                     <p className="mt-6 text-4xl font-light text-sky-700">
-                      {displayAmount(expedition.marketplace.additionalFee.amount, expedition.marketplace.additionalFee.currency)}
+                      {formatCurrency(expedition.marketplace.additionalFee.amount, expedition.marketplace.additionalFee.currency)}
                     </p>
-                    {expedition.marketplace.additionalFee.currency.toUpperCase() !== displayCurrency ? <p className="mt-2 text-sm font-bold text-kelp-700">{isIndonesian ? "Harga asli" : "Original price"}: {formatCurrency(expedition.marketplace.additionalFee.amount, expedition.marketplace.additionalFee.currency)}</p> : null}
+                    {secondaryAdditionalFee ? <p className="mt-2 text-sm font-bold text-kelp-700">{secondaryAdditionalFee} {isIndonesian ? "estimasi" : "estimated"}</p> : null}
                     <p className="mt-2 text-base text-ocean-900/58">{expedition.marketplace.additionalFee.period}</p>
                   </div>
                   <div>
@@ -1098,7 +1097,7 @@ export default async function ExpeditionDetailPage({
             <>
           <DetailDivider />
           <section id="impact" className="scroll-mt-36 py-10 sm:py-14">
-            <SectionHeader title={labels.impactTitle} body={`${displayAmount(expedition.impact.conservationContribution, expedition.currency)} ${labels.impactContribution} ${expedition.impact.summary}`} />
+            <SectionHeader title={labels.impactTitle} body={`${formatCurrency(expedition.impact.conservationContribution, expedition.currency)} ${labels.impactContribution} ${expedition.impact.summary}`} />
             <div className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
               {expedition.impact.targets.map((target) => (
                 <div key={target.label} className="border-l-2 border-kelp-500 pl-4">
