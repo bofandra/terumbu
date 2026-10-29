@@ -80,6 +80,11 @@ const expected = [
     "pr": 155,
     "branch": "ops/one-time-approved-production-release-20261018",
     "sha": "ffbbbb433fa6b8b0136f654039693a06844e0a5a"
+  },
+  {
+    "pr": 157,
+    "branch": "ops/pr-confirmed-branch-pruning-20261029",
+    "sha": "69f00cb1952c6e537d8a5a069df19feced26b0ae"
   }
 ];
 const apply = process.argv.includes("--apply");
