@@ -25,21 +25,18 @@ async function request(path, method = "GET") {
 }
 const current = await request("branches/main");
 if (current.commit.sha !== process.env.GITHUB_SHA) throw new Error("main has moved since workflow start");
-const [closed, open] = await Promise.all([
-  request("pulls?state=closed&per_page=100"),
+const [pr159, pr158, pr160, open] = await Promise.all([
+  request("pulls/159"),
+  request("pulls/158"),
+  request("pulls/160"),
   request("pulls?state=open&per_page=100")
 ]);
-if (closed.length >= 100 || open.length >= 100) throw new Error("PR result is truncated: abort");
-const expectedPrNumbers = new Map([
-  ["ops/prune-obsolete-fx-20261029", 159],
-  ["codex/seo-homepage-metadata", 158]
-]);
+if (!Array.isArray(open) || open.length >= 100) throw new Error("Open PR result is truncated: abort");
+const knownPrs = [pr159, pr158, pr160];
 const verified = [];
-for (const name of names) {
-  const matches = closed.filter((pr) => pr.head.ref === name && pr.head.repo?.full_name === repo);
-  if (matches.length !== 1) throw new Error("No unique merged PR for " + name);
-  const pr = matches[0];
-  if (expectedPrNumbers.has(name) && pr.number !== expectedPrNumbers.get(name)) throw new Error("Unexpected PR for " + name);
+for (const [index, name] of names.entries()) {
+  const pr = knownPrs[index];
+  if (pr.head.ref !== name || pr.head.repo?.full_name !== repo) throw new Error("Unexpected merged PR head for " + name);
   if (!pr.merged_at || pr.base.ref !== "main") throw new Error("Not merged into main: " + name);
   if (open.some((entry) => entry.head.ref === name)) throw new Error("Branch in open PR: " + name);
   const branch = await request("branches/" + encodeURIComponent(name));
