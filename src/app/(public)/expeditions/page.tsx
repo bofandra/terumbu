@@ -143,7 +143,7 @@ export default async function ExpeditionsPage({ searchParams }: ExpeditionsPageP
           </div>
           <div className="relative min-h-[360px] overflow-hidden rounded-[45%_45%_1.25rem_1.25rem] bg-ocean-900 shadow-soft sm:min-h-[470px]">
             {heroImage ? (
-              <Image src={heroImage} alt={isIndonesian ? "Peserta ekspedisi Terumbu di lokasi konservasi pesisir" : "Terumbu expedition participants at a coastal conservation site"} fill priority className="object-cover" sizes="(max-width: 1024px) 100vw, 42vw" />
+              <Image src={heroImage} alt={isIndonesian ? "Foto dari ekspedisi yang tersedia di Terumbu" : "Photo from an available Terumbu expedition"} fill priority className="object-cover" sizes="(max-width: 1024px) 100vw, 42vw" />
             ) : (
               <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,#78cfc7,transparent_35%),linear-gradient(155deg,#0b5d64,#04252f)]" />
             )}
