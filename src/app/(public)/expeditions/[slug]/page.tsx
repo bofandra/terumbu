@@ -53,6 +53,7 @@ import {
   type ExpeditionFact
 } from "@/lib/expedition-detail-view";
 import { getSessionUser } from "@/lib/auth";
+import { convertDisplayAmount, formatDisplayCurrency } from "@/lib/currency-display";
 import { getExpeditionDetail, getExpeditionSaveState } from "@/lib/queries";
 import { referralCodeForUser } from "@/lib/referrals";
 import { getPreferredDisplayCurrency, getPreferredLocale, localeTag } from "@/lib/user-preferences";
@@ -308,6 +309,12 @@ export default async function ExpeditionDetailPage({
   const requestNextPath = `${expeditionPath}#availability`;
   const questionNextPath = `${expeditionPath}#ask-question`;
   const isIndonesian = locale === "id";
+  const localeName = localeTag(locale);
+  const displayAmount = (value: number, currency: string) => {
+    const converted = convertDisplayAmount(value, currency, displayCurrency);
+    return converted === null ? formatCurrency(value, currency) : formatDisplayCurrency(converted, displayCurrency, localeName);
+  };
+  const originalPrice = expedition.currency.toUpperCase() === displayCurrency ? null : formatCurrency(expedition.price, expedition.currency);
   const labels =
     isIndonesian
       ? {
@@ -363,7 +370,7 @@ export default async function ExpeditionDetailPage({
           visaGuidance: "Panduan visa & masuk",
           packingHighlights: "Perlengkapan penting",
           sdgTitle: "Tujuan Pembangunan Berkelanjutan PBB",
-          sdgBody: "These SDG themes are linked to field evidence reviewed by Terumbu. This is not UN certification of SDG achievement.",
+          sdgBody: "Tema SDG ini terkait dengan bukti lapangan yang ditinjau Terumbu. Informasi ini bukan sertifikasi capaian SDG dari PBB.",
           photos: "Foto",
           travelerMoments: "Momen peserta",
           travelerMomentsBody: "Media dikirim oleh peserta yang telah menyelesaikan ekspedisi dan ditinjau Terumbu sebelum dipublikasikan.",
@@ -436,7 +443,7 @@ export default async function ExpeditionDetailPage({
           expeditionCalendarDescription: "Terumbu.eco conservation expedition",
           name: "Name",
           email: "Email",
-          joinWaitlist: "{labels.joinWaitlist}",
+          joinWaitlist: "Join waitlist",
           noDepartures: "No public departures are currently scheduled.",
           noDeparturesHelp: "Leave your details and we will contact you when a new date opens.",
           requestPrivate: "Request private departure",
@@ -600,7 +607,7 @@ export default async function ExpeditionDetailPage({
       />
       <JsonLd data={expeditionStructuredData} />
       <main className="bg-white pb-24">
-        <section className="border-b border-ocean-900/10 bg-white">
+        <section className="overflow-hidden border-b border-ocean-900/10 bg-sand-50">
           <div className="mx-auto max-w-7xl px-4 pt-6 sm:px-6 lg:px-8">
             <nav className="flex flex-wrap items-center gap-2 text-sm font-semibold text-ocean-900/54" aria-label={isIndonesian ? "Breadcrumb navigasi" : "Breadcrumb"}>
               <Link href="/" className="hover:text-sky-700">{labels.home}</Link>
@@ -611,38 +618,43 @@ export default async function ExpeditionDetailPage({
             </nav>
           </div>
 
-          <div className="mx-auto grid max-w-7xl gap-10 px-4 py-10 sm:px-6 lg:grid-cols-[0.98fr_1fr] lg:items-start lg:px-8">
+          <div className="mx-auto grid max-w-7xl gap-10 px-4 pb-14 pt-8 sm:px-6 lg:grid-cols-[0.92fr_1.08fr] lg:items-center lg:px-8 lg:pb-20 lg:pt-10">
             <ExpeditionHeroGallery images={expedition.galleryImages} region={expedition.region} locale={locale} />
 
             <div className="min-w-0 lg:pt-1">
-              <p className="text-lg font-semibold text-ocean-900/72">
+              <p className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[0.16em] text-sky-700">
+                <span className="h-0.5 w-7 bg-coral-500" aria-hidden="true" />
                 {expedition.marketplace.typeLabel ? <>{expedition.marketplace.typeLabel} &bull; </> : null}{expedition.region}, Indonesia
               </p>
-              <div className="mt-4 flex flex-wrap items-center gap-2 text-sm font-semibold text-ocean-900/58">
+              <div className="mt-5 flex flex-wrap items-center gap-2 text-sm font-semibold text-ocean-900/58">
                 <span className="flex items-center gap-1">
                   {expedition.reviewCount > 0 ? stars(expedition.rating) : <Users size={18} aria-hidden="true" className="text-ocean-900/46" />}
                 </span>
                 <span>{ratingLabel}</span>
                 <span className="inline-flex size-6 items-center justify-center rounded-full border border-ocean-900/20 text-xs font-bold">?</span>
               </div>
-              <h1 className="mt-6 max-w-3xl text-4xl font-bold tracking-normal text-ocean-900 sm:text-5xl lg:text-[3.35rem] lg:leading-[1.15]">{expedition.title}</h1>
+              <h1 className="mt-6 max-w-3xl text-5xl font-bold leading-[0.98] tracking-[-0.045em] text-ocean-900 sm:text-6xl">{expedition.title}</h1>
               <p className="mt-5 max-w-2xl text-lg leading-8 text-ocean-900/64">{expedition.summary}</p>
-              <div className="mt-6">
-                <ExpeditionShareButtons slug={expedition.slug} title={expedition.title} referralCode={shareReferralCode} compact locale={locale} />
+              <div className="mt-7 flex flex-wrap items-end justify-between gap-5 rounded-2xl border border-ocean-900/10 bg-white p-5 shadow-sm">
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-[0.12em] text-ocean-900/48">{isIndonesian ? "Harga mulai" : "Price from"}</p>
+                  <p className="mt-1 text-2xl font-bold text-ocean-900">{displayAmount(expedition.price, expedition.currency)}</p>
+                  {originalPrice ? <p className="mt-1 text-xs font-bold text-kelp-700">{isIndonesian ? "Harga asli" : "Original price"}: {originalPrice}</p> : null}
+                </div>
+                <ButtonLink href={primaryActionHref} className="rounded-full">{primaryActionLabel}<ArrowRight size={17} aria-hidden="true" /></ButtonLink>
               </div>
 
-              <div className="mt-8 grid gap-6">
+              <div className="mt-5"><ExpeditionShareButtons slug={expedition.slug} title={expedition.title} referralCode={shareReferralCode} compact locale={locale} /></div>
+
+              <div className="mt-8 grid gap-4 sm:grid-cols-3">
                 {heroBadges.map((badge, index) => {
                   const Icon = index === 0 ? Leaf : index === 1 ? BadgeCheck : Users;
 
                   return (
-                    <div key={badge} className="grid grid-cols-[32px_minmax(0,1fr)] gap-4">
-                      <Icon size={26} strokeWidth={1.8} aria-hidden="true" className={cn(index === 1 ? "text-purple-500" : "text-sky-700")} />
+                    <div key={badge} className="border-t border-ocean-900/12 pt-4">
+                      <Icon size={23} strokeWidth={1.8} aria-hidden="true" className={cn(index === 1 ? "text-purple-500" : "text-sky-700")} />
                       <div>
-                        <p className="text-lg font-bold text-ocean-900">{badge}</p>
-                        <p className="mt-1 text-base leading-7 text-ocean-900/58">
-                          {labels.hostInfo}
-                        </p>
+                        <p className="mt-3 text-sm font-bold text-ocean-900">{badge}</p>
                       </div>
                     </div>
                   );
@@ -684,8 +696,9 @@ export default async function ExpeditionDetailPage({
                   <div>
                     <p className="text-lg font-bold text-ocean-900">{labels.amount}</p>
                     <p className="mt-6 text-4xl font-light text-sky-700">
-                      {formatCurrency(expedition.marketplace.additionalFee.amount, expedition.marketplace.additionalFee.currency)}
+                      {displayAmount(expedition.marketplace.additionalFee.amount, expedition.marketplace.additionalFee.currency)}
                     </p>
+                    {expedition.marketplace.additionalFee.currency.toUpperCase() !== displayCurrency ? <p className="mt-2 text-sm font-bold text-kelp-700">{isIndonesian ? "Harga asli" : "Original price"}: {formatCurrency(expedition.marketplace.additionalFee.amount, expedition.marketplace.additionalFee.currency)}</p> : null}
                     <p className="mt-2 text-base text-ocean-900/58">{expedition.marketplace.additionalFee.period}</p>
                   </div>
                   <div>
@@ -1085,7 +1098,7 @@ export default async function ExpeditionDetailPage({
             <>
           <DetailDivider />
           <section id="impact" className="scroll-mt-36 py-10 sm:py-14">
-            <SectionHeader title={labels.impactTitle} body={`${formatCurrency(expedition.impact.conservationContribution, expedition.currency)} ${labels.impactContribution} ${expedition.impact.summary}`} />
+            <SectionHeader title={labels.impactTitle} body={`${displayAmount(expedition.impact.conservationContribution, expedition.currency)} ${labels.impactContribution} ${expedition.impact.summary}`} />
             <div className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
               {expedition.impact.targets.map((target) => (
                 <div key={target.label} className="border-l-2 border-kelp-500 pl-4">

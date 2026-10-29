@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 
 import { MetricValue } from "@/components/ui/metric-value";
-import { secondaryPriceLabel } from "@/lib/currency-display";
+import { convertDisplayAmount, formatDisplayCurrency } from "@/lib/currency-display";
 import { removeSavedExpeditionAction, saveExpeditionAction } from "@/lib/retention-actions";
 import type { DisplayCurrency } from "@/lib/user-preferences";
 import { cn, formatCurrency } from "@/lib/utils";
@@ -63,6 +63,11 @@ function checkoutHref(expeditionSlug: string, departureId: string | null, partic
   }
 
   return `/checkout/expedition?${params.toString()}`;
+}
+
+function displayMoney(value: number, sourceCurrency: string, displayCurrency: DisplayCurrency, locale: string) {
+  const converted = convertDisplayAmount(value, sourceCurrency, displayCurrency);
+  return converted === null ? formatCurrency(value, sourceCurrency) : formatDisplayCurrency(converted, displayCurrency, locale);
 }
 
 function Stepper({
@@ -128,8 +133,8 @@ export function ExpeditionBookingCard({
   isSaved = false,
   expeditionPath,
   referralCode,
-  displayCurrency = "USD",
-  locale = "en-US",
+  displayCurrency = "IDR",
+  locale = "id-ID",
   academyEligibility = "not_required",
   requiredAcademyCourse = null,
   initialDepartureId,
@@ -221,8 +226,8 @@ export function ExpeditionBookingCard({
   const bookingDisabled = !selectedDeparture || selectedDeparture.availableSeats <= 0 || !participantsWithinCapacity || selectedDeparture.status !== "open";
   const total = useMemo(() => price * participants + equipmentRental + platformFee, [equipmentRental, participants, platformFee, price]);
   const href = checkoutHref(slug, selectedDeparture?.id ?? null, participants, referralCode);
-  const secondaryPrice = secondaryPriceLabel(price, currency, displayCurrency, locale);
-  const secondaryTotal = secondaryPriceLabel(total, currency, displayCurrency, locale);
+  const money = (value: number) => displayMoney(value, currency, displayCurrency, locale);
+  const sourcePriceNote = currency.toUpperCase() === displayCurrency ? null : formatCurrency(price, currency);
 
   return (
     <aside
@@ -236,10 +241,10 @@ export function ExpeditionBookingCard({
       <div className="border-b border-ocean-900/10 pb-4">
         <p className="text-sm font-semibold text-ocean-900/58">{labels.from}</p>
         <MetricValue className="mt-1 text-2xl text-ocean-900 sm:text-3xl">
-          {formatCurrency(price, currency)}
+          {money(price)}
           <span className="block text-base font-semibold text-ocean-900/58">{labels.perPerson}</span>
         </MetricValue>
-        {secondaryPrice ? <p className="mt-1 text-sm font-bold text-kelp-700">{secondaryPrice} {labels.estimated}</p> : null}
+        {sourcePriceNote ? <p className="mt-1 text-xs font-bold text-kelp-700">{isIndonesian ? "Harga asli" : "Original price"}: {sourcePriceNote}</p> : null}
         <p className="mt-2 text-sm font-semibold text-ocean-900/58">{labels.included}</p>
       </div>
 
@@ -282,7 +287,7 @@ export function ExpeditionBookingCard({
                       {departure.availableSeats > 0 ? `${departure.availableSeats} ${labels.placesLeft} · ${departure.statusLabel}` : labels.full}
                     </span>
                   </span>
-                  <span className="min-w-0 break-words font-bold text-ocean-900 [overflow-wrap:anywhere] sm:text-right">{formatCurrency(price, currency)}</span>
+                  <span className="min-w-0 break-words font-bold text-ocean-900 [overflow-wrap:anywhere] sm:text-right">{money(price)}</span>
                 </span>
               </label>
               );
@@ -313,22 +318,21 @@ export function ExpeditionBookingCard({
       <div className="mt-5 border-t border-ocean-900/10 pt-4">
         <div className="grid gap-2 text-sm">
           <div className="flex justify-between gap-3">
-            <span className="min-w-0 text-ocean-900/62">{participants} {labels.participantWord} x {formatCurrency(price, currency)}</span>
-            <span className="min-w-0 break-words text-right font-bold text-ocean-900 [overflow-wrap:anywhere]">{formatCurrency(price * participants, currency)}</span>
+            <span className="min-w-0 text-ocean-900/62">{participants} {labels.participantWord} x {money(price)}</span>
+            <span className="min-w-0 break-words text-right font-bold text-ocean-900 [overflow-wrap:anywhere]">{money(price * participants)}</span>
           </div>
           <div className="flex justify-between gap-3">
             <span className="text-ocean-900/62">{labels.equipment}</span>
-            <span className="min-w-0 break-words text-right font-bold text-ocean-900 [overflow-wrap:anywhere]">{formatCurrency(equipmentRental, currency)}</span>
+            <span className="min-w-0 break-words text-right font-bold text-ocean-900 [overflow-wrap:anywhere]">{money(equipmentRental)}</span>
           </div>
           <div className="flex justify-between gap-3">
             <span className="text-ocean-900/62">{labels.fees}</span>
-            <span className="min-w-0 break-words text-right font-bold text-ocean-900 [overflow-wrap:anywhere]">{formatCurrency(platformFee, currency)}</span>
+            <span className="min-w-0 break-words text-right font-bold text-ocean-900 [overflow-wrap:anywhere]">{money(platformFee)}</span>
           </div>
           <div className="flex justify-between gap-3 border-t border-ocean-900/10 pt-3 text-lg">
             <span className="font-bold text-ocean-900">{labels.total}</span>
             <span className="min-w-0 break-words text-right font-bold text-ocean-900 [overflow-wrap:anywhere]">
-              {formatCurrency(total, currency)}
-              {secondaryTotal ? <span className="mt-0.5 block text-xs font-bold text-kelp-700">{secondaryTotal}</span> : null}
+              {money(total)}
             </span>
           </div>
         </div>
@@ -387,7 +391,7 @@ export function ExpeditionBookingCard({
         ))}
       </div>
       <p className="mt-4 border-t border-ocean-900/10 pt-4 text-xs font-semibold leading-5 text-ocean-900/62">
-        {formatCurrency(conservationContribution, currency)} {labels.contributionPrefix}
+        {money(conservationContribution)} {labels.contributionPrefix}
       </p>
     </aside>
   );
@@ -398,7 +402,9 @@ export function ExpeditionMobileBookingBar(props: ExpeditionBookingCardProps) {
     ?? props.departures.find((departure) => departure.status === "open" && departure.availableSeats > 0) ?? null;
   const firstDeparture = bookableDeparture ?? props.departures[0] ?? null;
   const isIndonesian = (props.locale ?? "en-US").toLowerCase().startsWith("id");
-  const secondaryPrice = secondaryPriceLabel(props.price, props.currency, props.displayCurrency ?? "USD", props.locale ?? "en-US");
+  const displayCurrency = props.displayCurrency ?? "IDR";
+  const locale = props.locale ?? "id-ID";
+  const mobilePrice = displayMoney(props.price, props.currency, displayCurrency, locale);
 
   return (
     <div className="fixed inset-x-0 bottom-0 z-40 border-t border-ocean-900/10 bg-white/96 p-3 shadow-soft backdrop-blur lg:hidden">
@@ -406,11 +412,11 @@ export function ExpeditionMobileBookingBar(props: ExpeditionBookingCardProps) {
         <div className="min-w-0">
           <p className="text-xs font-semibold text-ocean-900/54">{isIndonesian ? "Mulai dari" : "From"}</p>
           <p className="min-w-0 break-words font-bold text-ocean-900 [overflow-wrap:anywhere]">
-            {formatCurrency(props.price, props.currency)} / {isIndonesian ? "orang" : "person"}
+            {mobilePrice} / {isIndonesian ? "orang" : "person"}
           </p>
-          {secondaryPrice ? (
+          {props.currency.toUpperCase() !== displayCurrency ? (
             <p className="text-xs font-bold text-kelp-700">
-              {secondaryPrice} {isIndonesian ? "estimasi" : "estimated"}
+              {isIndonesian ? "Harga asli" : "Original price"}: {formatCurrency(props.price, props.currency)}
             </p>
           ) : null}
           <p className="truncate text-xs text-ocean-900/54">

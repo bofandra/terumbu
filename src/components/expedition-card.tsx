@@ -4,7 +4,7 @@ import Link from "next/link";
 
 import { ButtonLink } from "@/components/ui/button";
 import type { ExpeditionCardData } from "@/lib/domain";
-import { secondaryPriceLabel } from "@/lib/currency-display";
+import { convertDisplayAmount, formatDisplayCurrency } from "@/lib/currency-display";
 import type { DisplayCurrency } from "@/lib/user-preferences";
 import { formatCurrency } from "@/lib/utils";
 
@@ -14,11 +14,15 @@ type ExpeditionCardProps = {
   locale?: string;
 };
 
-export function ExpeditionCard({ expedition, displayCurrency = "USD", locale = "en-US" }: ExpeditionCardProps) {
+export function ExpeditionCard({ expedition, displayCurrency = "IDR", locale = "id-ID" }: ExpeditionCardProps) {
   const marketplace = expedition.marketplace;
   const helpActivities = marketplace.helpActivities.slice(0, 2);
   const remainingActivities = Math.max(marketplace.helpActivities.length - helpActivities.length, 0);
-  const secondaryPrice = secondaryPriceLabel(expedition.price, expedition.currency, displayCurrency, locale);
+  const convertedPrice = convertDisplayAmount(expedition.price, expedition.currency, displayCurrency);
+  const displayedPrice = convertedPrice === null
+    ? formatCurrency(expedition.price, expedition.currency)
+    : formatDisplayCurrency(convertedPrice, displayCurrency, locale);
+  const originalPrice = expedition.currency.toUpperCase() === displayCurrency ? null : formatCurrency(expedition.price, expedition.currency);
   const isIndonesian = locale.toLowerCase().startsWith("id");
   const query = new URLSearchParams();
   if (expedition.matchingDepartureId) query.set("departure", expedition.matchingDepartureId);
@@ -89,11 +93,11 @@ export function ExpeditionCard({ expedition, displayCurrency = "USD", locale = "
           <div>
             <p className="min-w-0 break-words text-sm text-ocean-900/58 [overflow-wrap:anywhere]">
               {isIndonesian ? "Mulai dari" : "From"}{" "}
-              <span className="text-lg font-bold text-ocean-900">{formatCurrency(expedition.price, expedition.currency)}</span>
+              <span className="text-lg font-bold text-ocean-900">{displayedPrice}</span>
             </p>
-            {secondaryPrice ? (
+            {originalPrice ? (
               <p className="mt-0.5 text-xs font-bold text-kelp-700">
-                {secondaryPrice} {isIndonesian ? "estimasi" : "estimated"}
+                {isIndonesian ? "Harga asli" : "Original price"}: {originalPrice}
               </p>
             ) : null}
           </div>
