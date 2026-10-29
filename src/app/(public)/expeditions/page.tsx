@@ -1,6 +1,10 @@
-import { Compass, Leaf, Search, ShieldCheck, Users } from "lucide-react";
+import { ArrowUpRight, Compass, Leaf, Search, ShieldCheck, Users } from "lucide-react";
+import type { Metadata } from "next";
+import Image from "next/image";
+import Link from "next/link";
 
 import { ExpeditionCard } from "@/components/expedition-card";
+import { JsonLd } from "@/components/json-ld";
 import { ExpeditionTravelSearchFields } from "@/components/expedition-travel-search-fields";
 import {
   ExpeditionActiveFilterChips,
@@ -12,11 +16,30 @@ import { parseExpeditionSearchFilters } from "@/lib/expedition-marketplace";
 import { getExpeditionMarketplaceResults } from "@/lib/queries";
 import { getPreferredDisplayCurrency, getPreferredLocale, localeTag, t } from "@/lib/user-preferences";
 
-export const metadata = {
-  title: "Expeditions"
-};
-
 export const dynamic = "force-dynamic";
+
+const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://terumbu.world";
+
+export async function generateMetadata(): Promise<Metadata> {
+  const locale = await getPreferredLocale();
+  const isIndonesian = locale === "id";
+
+  return {
+    title: isIndonesian ? "Ekspedisi Konservasi Pesisir Indonesia" : "Conservation Expeditions in Indonesia",
+    description: isIndonesian
+      ? "Temukan trip konservasi bersama mitra lokal, cek kegiatan lapangan, harga, dan jadwal keberangkatan di Terumbu.world."
+      : "Find conservation trips with local partners, then compare field activities, prices, and departure dates on Terumbu.world.",
+    alternates: { canonical: "/expeditions" },
+    openGraph: {
+      title: isIndonesian ? "Ekspedisi Konservasi Pesisir Indonesia | Terumbu.world" : "Conservation Expeditions in Indonesia | Terumbu.world",
+      description: isIndonesian
+        ? "Lihat pesisir lebih dekat bersama pemandu dan mitra lokal Terumbu."
+        : "See Indonesia’s coasts up close with Terumbu’s local guides and partners.",
+      type: "website",
+      url: "/expeditions"
+    }
+  };
+}
 
 type ExpeditionsPageProps = {
   searchParams?: Promise<Record<string, string | string[] | undefined>>;
@@ -33,23 +56,46 @@ export default async function ExpeditionsPage({ searchParams }: ExpeditionsPageP
   const { expeditions, total, facets } = results;
   const messages = t(locale).expeditions;
   const localeName = localeTag(locale);
+  const isIndonesian = locale === "id";
+  const heroImage = expeditions.find((expedition) => expedition.imageUrl)?.imageUrl;
+  const collectionUrl = new URL("/expeditions", appUrl).toString();
+  const structuredData = {
+    "@context": "https://schema.org",
+    "@type": "CollectionPage",
+    name: isIndonesian ? "Ekspedisi konservasi Terumbu" : "Terumbu conservation expeditions",
+    description: messages.intro,
+    url: collectionUrl,
+    mainEntity: {
+      "@type": "ItemList",
+      numberOfItems: expeditions.length,
+      itemListElement: expeditions.map((expedition, index) => ({
+        "@type": "ListItem",
+        position: index + 1,
+        name: expedition.title,
+        url: new URL(`/expeditions/${expedition.slug}`, appUrl).toString()
+      }))
+    }
+  };
 
   return (
-    <main className="bg-mist-50">
-      <section className="border-b border-ocean-900/10 bg-white">
-        <div className="mx-auto grid max-w-7xl gap-6 px-4 py-8 sm:px-6 lg:grid-cols-[minmax(0,1fr)_340px] lg:px-8">
-          <div>
-            <p className="inline-flex items-center gap-2 rounded-full bg-kelp-100 px-3 py-1 text-sm font-bold text-kelp-700">
+    <>
+      <JsonLd data={structuredData} />
+      <main className="bg-mist-50">
+      <section className="overflow-hidden border-b border-ocean-900/10 bg-sand-50">
+        <div className="mx-auto grid max-w-7xl gap-10 px-4 py-12 sm:px-6 sm:py-16 lg:grid-cols-[minmax(0,0.92fr)_minmax(360px,0.78fr)] lg:items-center lg:px-8 lg:py-20">
+          <div className="relative z-[1]">
+            <p className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[0.16em] text-sky-700">
+              <span className="h-0.5 w-7 bg-coral-500" aria-hidden="true" />
               <Leaf className="size-4" aria-hidden="true" />
               {messages.badge}
             </p>
-            <h1 className="mt-5 max-w-4xl text-4xl font-bold tracking-normal text-ocean-900 sm:text-5xl">
+            <h1 className="mt-6 max-w-3xl text-5xl font-bold leading-[0.98] tracking-[-0.045em] text-ocean-900 sm:text-6xl lg:text-7xl">
               {messages.title}
             </h1>
-            <p className="mt-4 max-w-2xl text-base leading-7 text-ocean-900/66 sm:text-lg">
+            <p className="mt-6 max-w-xl text-base leading-7 text-ocean-900/66 sm:text-lg">
               {messages.intro}
             </p>
-            <div className="mt-6 flex flex-wrap gap-x-5 gap-y-2">
+            <div className="mt-7 flex flex-wrap gap-x-5 gap-y-3">
               {[
                 { label: messages.verifiedPartners, icon: ShieldCheck },
                 { label: messages.impactTrips, icon: Compass },
@@ -65,13 +111,12 @@ export default async function ExpeditionsPage({ searchParams }: ExpeditionsPageP
                 );
               })}
             </div>
-          </div>
-          <form action="/expeditions" className="rounded-xl border border-ocean-900/10 bg-mist-50 p-4">
+            <form action="/expeditions" className="mt-8 rounded-2xl border border-ocean-900/10 bg-white p-4 shadow-soft sm:p-5">
             {Object.entries(filters).filter(([key]) => !["q", "destination", "dateFrom", "dateTo", "participants"].includes(key)).map(([key, value]) => value !== undefined && <input key={key} type="hidden" name={key} value={String(value)} />)}
-            <p className="text-sm font-bold text-ocean-900">Start searching</p>
-            <div className="mt-3 grid gap-3">
+            <p className="text-sm font-bold text-ocean-900">{messages.searchTitle}</p>
+            <div className="mt-3 grid gap-3 sm:grid-cols-2">
               <label className="relative">
-                <span className="sr-only">Keyword</span>
+                <span className="sr-only">{messages.keyword}</span>
                 <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-ocean-900/42" aria-hidden="true" />
                 <input
                   name="q"
@@ -81,7 +126,7 @@ export default async function ExpeditionsPage({ searchParams }: ExpeditionsPageP
                 />
               </label>
               <label>
-                <span className="sr-only">Destination</span>
+                <span className="sr-only">{messages.destination}</span>
                 <input
                   name="destination"
                   defaultValue={filters.destination ?? ""}
@@ -89,12 +134,35 @@ export default async function ExpeditionsPage({ searchParams }: ExpeditionsPageP
                   className="min-h-12 w-full rounded-lg border border-ocean-900/12 bg-white px-3 text-sm font-semibold text-ocean-900 outline-none focus:border-kelp-500"
                 />
               </label>
-              <button type="submit" className="flex min-h-12 items-center justify-center rounded-lg bg-kelp-500 px-4 text-sm font-bold text-white shadow-sm hover:bg-kelp-700">
+              <button type="submit" className="flex min-h-12 items-center justify-center rounded-full bg-ocean-700 px-5 text-sm font-bold text-white shadow-sm hover:bg-ocean-900 sm:col-span-2">
                 {messages.search}
               </button>
               <ExpeditionTravelSearchFields filters={filters} locale={locale} />
             </div>
           </form>
+          </div>
+          <div className="relative min-h-[360px] overflow-hidden rounded-[45%_45%_1.25rem_1.25rem] bg-ocean-900 shadow-soft sm:min-h-[470px]">
+            {heroImage ? (
+              <Image src={heroImage} alt={isIndonesian ? "Foto dari ekspedisi yang tersedia di Terumbu" : "Photo from an available Terumbu expedition"} fill priority className="object-cover" sizes="(max-width: 1024px) 100vw, 42vw" />
+            ) : (
+              <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,#78cfc7,transparent_35%),linear-gradient(155deg,#0b5d64,#04252f)]" />
+            )}
+            <div className="absolute inset-0 bg-gradient-to-t from-ocean-950/80 via-transparent to-transparent" />
+            <div className="absolute inset-x-6 bottom-6 text-white">
+              <p className="text-lg font-bold text-sand-100">{isIndonesian ? "Berangkat sebagai tamu." : "Arrive as a guest."}</p>
+              <p className="mt-1 max-w-sm text-sm leading-6 text-white/72">{isIndonesian ? "Pemandu lokal membantu kamu membaca tempatnya." : "A local guide helps you understand the place."}</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="mx-auto max-w-7xl px-4 pt-14 sm:px-6 lg:px-8">
+        <div className="flex flex-col justify-between gap-4 border-b border-ocean-900/10 pb-7 lg:flex-row lg:items-end">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-[0.16em] text-sky-700">{messages.catalogueEyebrow}</p>
+            <h2 className="mt-3 text-3xl font-bold tracking-[-0.035em] text-ocean-900 sm:text-5xl">{messages.catalogueTitle}</h2>
+          </div>
+          <p className="max-w-xl text-base leading-7 text-ocean-900/62">{messages.catalogueIntro}</p>
         </div>
       </section>
 
@@ -127,12 +195,62 @@ export default async function ExpeditionsPage({ searchParams }: ExpeditionsPageP
             <div className="mt-5 rounded-xl border border-dashed border-ocean-900/18 bg-white p-8 text-center shadow-sm">
               <p className="text-xl font-bold tracking-normal text-ocean-900">{messages.noResults}</p>
               <p className="mx-auto mt-2 max-w-lg text-sm leading-6 text-ocean-900/62">
-                Try removing a filter, broadening the destination, or searching by a conservation activity like reef monitoring or community work.
+                {isIndonesian ? "Coba hapus satu filter, perluas destinasi, atau cari kegiatan seperti monitoring terumbu dan kerja komunitas." : "Try removing a filter, broadening the destination, or searching for an activity such as reef monitoring or community work."}
               </p>
             </div>
           ) : null}
         </div>
       </section>
-    </main>
+      <section className="mt-8 bg-ocean-50 py-16 sm:py-20">
+        <div className="mx-auto grid max-w-7xl gap-10 px-4 sm:px-6 lg:grid-cols-[0.78fr_1.22fr] lg:px-8">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-[0.16em] text-sky-700">{messages.approachEyebrow}</p>
+            <h2 className="mt-3 text-3xl font-bold tracking-[-0.035em] text-ocean-900 sm:text-5xl">{messages.approachTitle}</h2>
+            <p className="mt-5 max-w-md text-base leading-7 text-ocean-900/62">{messages.approachIntro}</p>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2">
+            {messages.approachItems.map((item) => (
+              <article key={item.title} className="border-t-2 border-sky-700 bg-white p-5">
+                <h3 className="text-lg font-bold text-ocean-900">{item.title}</h3>
+                <p className="mt-2 text-sm leading-6 text-ocean-900/62">{item.body}</p>
+              </article>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="bg-white py-16 sm:py-20">
+        <div className="mx-auto grid max-w-7xl gap-10 px-4 sm:px-6 lg:grid-cols-[0.78fr_1.22fr] lg:px-8">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-[0.16em] text-sky-700">{messages.faqEyebrow}</p>
+            <h2 className="mt-3 text-3xl font-bold tracking-[-0.035em] text-ocean-900 sm:text-5xl">{messages.faqTitle}</h2>
+          </div>
+          <div>
+            {messages.faqs.map((item) => (
+              <details key={item.question} className="group border-t border-ocean-900/12 py-5 last:border-b">
+                <summary className="flex cursor-pointer list-none items-center justify-between gap-4 font-bold text-ocean-900">
+                  {item.question}<span className="text-xl text-coral-500 group-open:rotate-45" aria-hidden="true">+</span>
+                </summary>
+                <p className="mt-3 max-w-2xl text-sm leading-6 text-ocean-900/62">{item.answer}</p>
+              </details>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="bg-ocean-700 py-14 text-white sm:py-16">
+        <div className="mx-auto flex max-w-7xl flex-col justify-between gap-8 px-4 sm:px-6 lg:flex-row lg:items-end lg:px-8">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-[0.16em] text-sand-300">{messages.ctaEyebrow}</p>
+            <h2 className="mt-3 max-w-3xl text-3xl font-bold tracking-[-0.035em] sm:text-5xl">{messages.ctaTitle}</h2>
+            <p className="mt-4 max-w-xl text-base leading-7 text-white/72">{messages.ctaBody}</p>
+          </div>
+          <Link href="/contact" className="inline-flex min-h-12 shrink-0 items-center justify-center gap-2 rounded-full bg-sand-100 px-6 text-sm font-bold text-ocean-900 hover:bg-white">
+            {messages.ctaLabel}<ArrowUpRight size={17} aria-hidden="true" />
+          </Link>
+        </div>
+      </section>
+      </main>
+    </>
   );
 }

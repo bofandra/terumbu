@@ -31,6 +31,9 @@ export function CampaignCard({ campaign, locale = "en" }: CampaignCardProps) {
           donate: "Donate",
           progress: "funding progress"
         };
+  const imageAlt = locale === "id"
+    ? `${campaign.title} di ${campaign.region}`
+    : `${campaign.title} in ${campaign.region}`;
 
   return (
     <article className="overflow-hidden rounded-2xl border border-ocean-900/10 bg-white shadow-soft">
@@ -38,7 +41,7 @@ export function CampaignCard({ campaign, locale = "en" }: CampaignCardProps) {
         {campaign.imageUrl ? (
           <Image
             src={campaign.imageUrl}
-            alt={`${campaign.title} — ${campaign.region}`}
+            alt={imageAlt}
             width={800}
             height={450}
             unoptimized

@@ -18,6 +18,7 @@ export function ExpeditionCard({ expedition, displayCurrency = "USD", locale = "
   const marketplace = expedition.marketplace;
   const helpActivities = marketplace.helpActivities.slice(0, 2);
   const remainingActivities = Math.max(marketplace.helpActivities.length - helpActivities.length, 0);
+  const displayedPrice = formatCurrency(expedition.price, expedition.currency);
   const secondaryPrice = secondaryPriceLabel(expedition.price, expedition.currency, displayCurrency, locale);
   const isIndonesian = locale.toLowerCase().startsWith("id");
   const query = new URLSearchParams();
@@ -89,13 +90,9 @@ export function ExpeditionCard({ expedition, displayCurrency = "USD", locale = "
           <div>
             <p className="min-w-0 break-words text-sm text-ocean-900/58 [overflow-wrap:anywhere]">
               {isIndonesian ? "Mulai dari" : "From"}{" "}
-              <span className="text-lg font-bold text-ocean-900">{formatCurrency(expedition.price, expedition.currency)}</span>
+              <span className="text-lg font-bold text-ocean-900">{displayedPrice}</span>
             </p>
-            {secondaryPrice ? (
-              <p className="mt-0.5 text-xs font-bold text-kelp-700">
-                {secondaryPrice} {isIndonesian ? "estimasi" : "estimated"}
-              </p>
-            ) : null}
+            {secondaryPrice ? <p className="mt-0.5 text-xs font-bold text-kelp-700">{secondaryPrice} {isIndonesian ? "estimasi" : "estimated"}</p> : null}
           </div>
           <ButtonLink href={tripHref} tone="secondary">
             {isIndonesian ? "Lihat detail" : "View details"}
