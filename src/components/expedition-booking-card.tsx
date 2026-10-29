@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 
 import { MetricValue } from "@/components/ui/metric-value";
-import { convertDisplayAmount, formatDisplayCurrency } from "@/lib/currency-display";
+import { secondaryPriceLabel } from "@/lib/currency-display";
 import { removeSavedExpeditionAction, saveExpeditionAction } from "@/lib/retention-actions";
 import type { DisplayCurrency } from "@/lib/user-preferences";
 import { cn, formatCurrency } from "@/lib/utils";
@@ -63,11 +63,6 @@ function checkoutHref(expeditionSlug: string, departureId: string | null, partic
   }
 
   return `/checkout/expedition?${params.toString()}`;
-}
-
-function displayMoney(value: number, sourceCurrency: string, displayCurrency: DisplayCurrency, locale: string) {
-  const converted = convertDisplayAmount(value, sourceCurrency, displayCurrency);
-  return converted === null ? formatCurrency(value, sourceCurrency) : formatDisplayCurrency(converted, displayCurrency, locale);
 }
 
 function Stepper({
@@ -133,8 +128,8 @@ export function ExpeditionBookingCard({
   isSaved = false,
   expeditionPath,
   referralCode,
-  displayCurrency = "IDR",
-  locale = "id-ID",
+  displayCurrency = "USD",
+  locale = "en-US",
   academyEligibility = "not_required",
   requiredAcademyCourse = null,
   initialDepartureId,
@@ -226,8 +221,9 @@ export function ExpeditionBookingCard({
   const bookingDisabled = !selectedDeparture || selectedDeparture.availableSeats <= 0 || !participantsWithinCapacity || selectedDeparture.status !== "open";
   const total = useMemo(() => price * participants + equipmentRental + platformFee, [equipmentRental, participants, platformFee, price]);
   const href = checkoutHref(slug, selectedDeparture?.id ?? null, participants, referralCode);
-  const money = (value: number) => displayMoney(value, currency, displayCurrency, locale);
-  const sourcePriceNote = currency.toUpperCase() === displayCurrency ? null : formatCurrency(price, currency);
+  const money = (value: number) => formatCurrency(value, currency);
+  const secondaryPrice = secondaryPriceLabel(price, currency, displayCurrency, locale);
+  const secondaryTotal = secondaryPriceLabel(total, currency, displayCurrency, locale);
 
   return (
     <aside
@@ -244,7 +240,7 @@ export function ExpeditionBookingCard({
           {money(price)}
           <span className="block text-base font-semibold text-ocean-900/58">{labels.perPerson}</span>
         </MetricValue>
-        {sourcePriceNote ? <p className="mt-1 text-xs font-bold text-kelp-700">{isIndonesian ? "Harga asli" : "Original price"}: {sourcePriceNote}</p> : null}
+        {secondaryPrice ? <p className="mt-1 text-xs font-bold text-kelp-700">{secondaryPrice} {labels.estimated}</p> : null}
         <p className="mt-2 text-sm font-semibold text-ocean-900/58">{labels.included}</p>
       </div>
 
@@ -333,6 +329,7 @@ export function ExpeditionBookingCard({
             <span className="font-bold text-ocean-900">{labels.total}</span>
             <span className="min-w-0 break-words text-right font-bold text-ocean-900 [overflow-wrap:anywhere]">
               {money(total)}
+              {secondaryTotal ? <span className="mt-0.5 block text-xs font-bold text-kelp-700">{secondaryTotal} {labels.estimated}</span> : null}
             </span>
           </div>
         </div>
@@ -402,9 +399,10 @@ export function ExpeditionMobileBookingBar(props: ExpeditionBookingCardProps) {
     ?? props.departures.find((departure) => departure.status === "open" && departure.availableSeats > 0) ?? null;
   const firstDeparture = bookableDeparture ?? props.departures[0] ?? null;
   const isIndonesian = (props.locale ?? "en-US").toLowerCase().startsWith("id");
-  const displayCurrency = props.displayCurrency ?? "IDR";
-  const locale = props.locale ?? "id-ID";
-  const mobilePrice = displayMoney(props.price, props.currency, displayCurrency, locale);
+  const displayCurrency = props.displayCurrency ?? "USD";
+  const locale = props.locale ?? "en-US";
+  const mobilePrice = formatCurrency(props.price, props.currency);
+  const secondaryPrice = secondaryPriceLabel(props.price, props.currency, displayCurrency, locale);
 
   return (
     <div className="fixed inset-x-0 bottom-0 z-40 border-t border-ocean-900/10 bg-white/96 p-3 shadow-soft backdrop-blur lg:hidden">
@@ -414,11 +412,7 @@ export function ExpeditionMobileBookingBar(props: ExpeditionBookingCardProps) {
           <p className="min-w-0 break-words font-bold text-ocean-900 [overflow-wrap:anywhere]">
             {mobilePrice} / {isIndonesian ? "orang" : "person"}
           </p>
-          {props.currency.toUpperCase() !== displayCurrency ? (
-            <p className="text-xs font-bold text-kelp-700">
-              {isIndonesian ? "Harga asli" : "Original price"}: {formatCurrency(props.price, props.currency)}
-            </p>
-          ) : null}
+          {secondaryPrice ? <p className="text-xs font-bold text-kelp-700">{secondaryPrice} {isIndonesian ? "estimasi" : "estimated"}</p> : null}
           <p className="truncate text-xs text-ocean-900/54">
             {firstDeparture
               ? `${firstDeparture.dateRangeLabel} · ${firstDeparture.availableSeats} ${isIndonesian ? "tempat tersisa" : "places left"}`
