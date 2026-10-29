@@ -100,11 +100,11 @@ export function SiteHeader({
   return (
     <header className="sticky top-0 z-50 border-b border-white/15 bg-ocean-900/90 text-white backdrop-blur-xl">
       <div className="mx-auto flex h-20 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
-        <Link href="/" className="flex items-center gap-3" aria-label="Terumbu.eco home">
+        <Link href="/" className="flex items-center gap-3" aria-label="Terumbu.world home">
           <span className="flex size-10 items-center justify-center rounded-full bg-kelp-500 text-white">
             <Heart size={19} aria-hidden="true" />
           </span>
-          <span className="text-lg font-bold tracking-normal">Terumbu.eco</span>
+          <span className="text-lg font-bold tracking-normal">Terumbu.world</span>
         </Link>
 
         <nav className="hidden items-center gap-1 xl:flex" aria-label="Main navigation">
