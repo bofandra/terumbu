@@ -28,12 +28,12 @@ export const dynamic = "force-dynamic";
 
 const homepageSeo = {
   id: {
-    title: "Ekspedisi Konservasi Pesisir Indonesia | Terumbu.eco",
-    description: "Ikuti ekspedisi konservasi, dukung proyek pesisir terverifikasi, dan pantau bukti dampak nyata bagi ekosistem Indonesia bersama Terumbu.eco."
+    title: "Ekspedisi Konservasi Pesisir Indonesia | Terumbu.world",
+    description: "Ikuti ekspedisi konservasi, dukung proyek konservasi pesisir, dan pantau bukti dampak nyata bagi ekosistem Indonesia bersama Terumbu.world."
   },
   en: {
-    title: "Conservation Expeditions in Indonesia | Terumbu.eco",
-    description: "Join conservation expeditions, support verified coastal projects, and track evidence of real impact for Indonesia’s ecosystems with Terumbu.eco."
+    title: "Conservation Expeditions in Indonesia | Terumbu.world",
+    description: "Join conservation expeditions, support coastal conservation projects, and track evidence of real impact for Indonesia’s ecosystems with Terumbu.world."
   }
 } as const;
 
@@ -49,7 +49,7 @@ export async function generateMetadata(): Promise<Metadata> {
       description: seo.description,
       locale: locale === "id" ? "id_ID" : "en_US",
       type: "website",
-      siteName: "Terumbu.eco"
+      siteName: "Terumbu.world"
     },
     twitter: {
       card: "summary_large_image",
