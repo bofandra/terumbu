@@ -1,5 +1,7 @@
 # Midtrans Integration PR Stack: Review and Merge Order
 
+> Historical release sequencing note: since 2026-10-29, pushes to `main` auto-deploy after successful CI/E2E. The earlier manual-only PR #125 behavior below is retained as historical context; see `DEPLOYMENT.md` for current policy.
+
 **Status as of 13 October 2026:** draft, not merged, not deployed and
 **NO-GO** for real production transactions. This document is an integration
 plan, not an instruction to merge immediately.
