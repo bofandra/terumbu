@@ -105,17 +105,19 @@ Workflow file:
 
 - `.github/workflows/deploy.yml`
 
-When code reaches `main`, GitHub Actions runs Verify and critical-path E2E.
-**Deploying to the VPS requires a separate approved manual workflow_dispatch**
-of `.github/workflows/deploy.yml`. Merging to `main` never uploads
-production credentials or deploys by itself.
+Every push to `main` runs Verify and critical-path E2E, then **automatically
+deploys the exact commit to the production VPS only if both checks pass**.
+Pull requests run CI only; they cannot deploy. The deployed SHA must match
+the event, checked-out code and VPS checkout; stale commits fail closed.
 
-The owner explicitly approves the release and selects the full current `main`
-SHA with `confirm_prod_deploy=true`. The `release_ticket` input is optional;
-when omitted, the workflow run ID is the release reference. The `production`
-environment permits the `main` branch; additional reviewers are optional.
+Manual `workflow_dispatch` on `main` remains available for recovery and
+requires an exact 40-character main SHA and `confirm_prod_deploy=true`.
+The optional `release_ticket` defaults to the workflow run ID. The `production`
+environment must permit `main`; if required reviewers are configured, GitHub
+will pause automatic deployments for approval. Remove required reviewers
+in environment settings for fully unattended deployment.
 
-A manually initiated release:
+An automated or manually initiated release:
 
 1. Checks out the repository.
 2. Installs dependencies with `npm ci`.
