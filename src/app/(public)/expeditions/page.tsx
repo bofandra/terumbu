@@ -27,11 +27,11 @@ export async function generateMetadata(): Promise<Metadata> {
   return {
     title: isIndonesian ? "Ekspedisi Konservasi Pesisir Indonesia" : "Conservation Expeditions in Indonesia",
     description: isIndonesian
-      ? "Temukan trip konservasi bersama mitra lokal terverifikasi, cek kegiatan lapangan, harga, dan jadwal keberangkatan di Terumbu.eco."
-      : "Find conservation trips with verified local partners, then compare field activities, prices, and departure dates on Terumbu.eco.",
+      ? "Temukan trip konservasi bersama mitra lokal, cek kegiatan lapangan, harga, dan jadwal keberangkatan di Terumbu.world."
+      : "Find conservation trips with local partners, then compare field activities, prices, and departure dates on Terumbu.world.",
     alternates: { canonical: "/expeditions" },
     openGraph: {
-      title: isIndonesian ? "Ekspedisi Konservasi Pesisir Indonesia | Terumbu.eco" : "Conservation Expeditions in Indonesia | Terumbu.eco",
+      title: isIndonesian ? "Ekspedisi Konservasi Pesisir Indonesia | Terumbu.world" : "Conservation Expeditions in Indonesia | Terumbu.world",
       description: isIndonesian
         ? "Lihat pesisir lebih dekat bersama pemandu dan mitra lokal Terumbu."
         : "See Indonesia’s coasts up close with Terumbu’s local guides and partners.",
