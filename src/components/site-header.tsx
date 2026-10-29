@@ -34,8 +34,8 @@ function levelLabel(heroLevel: number | null) {
 
 export function SiteHeader({
   user,
-  locale = "id",
-  displayCurrency = "IDR"
+  locale = "en",
+  displayCurrency = "USD"
 }: {
   user?: SiteHeaderUser | null;
   locale?: "en" | "id";
