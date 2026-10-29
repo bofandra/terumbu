@@ -8,25 +8,25 @@ const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://terumbu.world";
 export const metadata: Metadata = {
   metadataBase: new URL(appUrl),
   title: {
-    default: "Ekspedisi Konservasi Pesisir Indonesia | Terumbu.world",
+    default: "Conservation Expeditions in Indonesia | Terumbu.world",
     template: "%s | Terumbu.world"
   },
   description:
-    "Ikuti ekspedisi konservasi, dukung proyek konservasi pesisir, dan pantau bukti dampak nyata bagi ekosistem Indonesia bersama Terumbu.world.",
+    "Explore conservation expeditions in Indonesia, support coastal projects, and follow evidence of ecological impact with Terumbu.world.",
   openGraph: {
     type: "website",
     siteName: "Terumbu.world",
-    title: "Ekspedisi Konservasi Pesisir Indonesia | Terumbu.world",
+    title: "Conservation Expeditions in Indonesia | Terumbu.world",
     description:
-      "Ikuti ekspedisi konservasi, dukung proyek konservasi pesisir, dan pantau bukti dampak nyata bagi ekosistem Indonesia bersama Terumbu.world.",
-    locale: "id_ID",
+      "Explore conservation expeditions in Indonesia, support coastal projects, and follow evidence of ecological impact with Terumbu.world.",
+    locale: "en_US",
     url: appUrl
   },
   twitter: {
     card: "summary_large_image",
-    title: "Ekspedisi Konservasi Pesisir Indonesia | Terumbu.world",
+    title: "Conservation Expeditions in Indonesia | Terumbu.world",
     description:
-      "Ikuti ekspedisi konservasi, dukung proyek konservasi pesisir, dan pantau bukti dampak nyata bagi ekosistem Indonesia bersama Terumbu.world."
+      "Explore conservation expeditions in Indonesia, support coastal projects, and follow evidence of ecological impact with Terumbu.world."
   }
 };
 
