@@ -9,13 +9,13 @@ export type DisplayCurrency = (typeof supportedDisplayCurrencies)[number];
 export async function getPreferredLocale(): Promise<SupportedLocale> {
   const store = await cookies();
   const value = store.get("terumbu_locale")?.value;
-  return supportedLocales.includes(value as SupportedLocale) ? (value as SupportedLocale) : "id";
+  return supportedLocales.includes(value as SupportedLocale) ? (value as SupportedLocale) : "en";
 }
 
 export async function getPreferredDisplayCurrency(): Promise<DisplayCurrency> {
   const store = await cookies();
   const value = store.get("terumbu_currency")?.value;
-  return supportedDisplayCurrencies.includes(value as DisplayCurrency) ? (value as DisplayCurrency) : "IDR";
+  return supportedDisplayCurrencies.includes(value as DisplayCurrency) ? (value as DisplayCurrency) : "USD";
 }
 
 export function localeTag(locale: SupportedLocale) {
