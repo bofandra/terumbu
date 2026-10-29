@@ -1,0 +1,34 @@
+name: One-time obsolete FX proposal branch cleanup
+
+on:
+  push:
+    branches: [main]
+    paths: [".github/workflows/prune-obsolete-fx-branches.yml"]
+
+permissions:
+  contents: write
+  pull-requests: read
+
+concurrency:
+  group: terumbu-one-time-obsolete-fx-prune
+  cancel-in-progress: false
+
+jobs:
+  prune:
+    if: github.repository == 'bofandra/terumbu' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      GITHUB_TOKEN: ${{ github.token }}
+      GITHUB_REPOSITORY: ${{ github.repository }}
+      GITHUB_SHA: ${{ github.sha }}
+      GITHUB_API_URL: ${{ github.api_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Verify six obsolete FX refs without deletion
+        run: node scripts/prune-obsolete-fx-branches.mjs --dry-run
+      - name: Delete only six pre-verified exact refs
+        run: node scripts/prune-obsolete-fx-branches.mjs --apply
