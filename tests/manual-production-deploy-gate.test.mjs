@@ -35,15 +35,22 @@ test("manual production gate permits an exact SHA, approval and an optional rele
   assert.match(sha, /^[a-f0-9]{40}$/);
   const result = probe();
   assert.equal(result.status, 0, result.stderr);
-  assert.match(result.stdout, /Manual production deployment authorization passed/);
+  assert.match(result.stdout, /Production deployment authorization passed/);
   assert.ok(!result.stdout.includes("MIDTRANS_SERVER_KEY"));
 });
 
-test("push and PR events cannot trigger production deployment, even on main", () => {
-  for (const eventName of ["push", "pull_request", "schedule", "workflow_run", ""]) {
-    const result = probe({ GITHUB_EVENT_NAME: eventName });
-    assert.equal(result.status, 1, "event=" + eventName);
+test("main push authorizes automatic release without manual confirmation", () => {
+  const result = probe({ GITHUB_EVENT_NAME: "push", REQUESTED_CONFIRM: "" });
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, /Trigger: push/);
+});
+
+test("pull requests, schedules, tags and non-main pushes never deploy", () => {
+  for (const eventName of ["pull_request", "schedule", "workflow_run", ""]) {
+    assert.equal(probe({ GITHUB_EVENT_NAME: eventName }).status, 1, eventName);
   }
+  assert.equal(probe({ GITHUB_EVENT_NAME: "push", GITHUB_REF: "refs/heads/feature" }).status, 1);
+  assert.equal(probe({ GITHUB_EVENT_NAME: "push", GITHUB_REF: "refs/tags/v1" }).status, 1);
 });
 
 test("dispatch is main-only and demands an explicitly checked confirmation", () => {
@@ -55,23 +62,25 @@ test("dispatch is main-only and demands an explicitly checked confirmation", () 
   }
 });
 
-test("release must match both selected event SHA and checked-out repository content", () => {
+test("push and manual releases reject stale, malformed or mismatched commit SHA", () => {
   const different = (sha[0] === "a" ? "b" : "a") + sha.slice(1);
-  for (const flags of [
-    { REQUESTED_SHA: different },
-    { GITHUB_SHA: different },
-    { REQUESTED_SHA: sha.slice(1) },
-    { REQUESTED_SHA: "" },
-    { REQUESTED_SHA: sha.toUpperCase() }
-  ]) {
-    assert.equal(probe(flags).status, 1, JSON.stringify(flags));
+  for (const eventName of ["push", "workflow_dispatch"]) {
+    for (const flags of [
+      { REQUESTED_SHA: different },
+      { GITHUB_SHA: different },
+      { REQUESTED_SHA: sha.slice(1) },
+      { REQUESTED_SHA: "" },
+      { REQUESTED_SHA: sha.toUpperCase() }
+    ]) {
+      assert.equal(probe({ GITHUB_EVENT_NAME: eventName, ...flags }).status, 1, `${eventName}: ${JSON.stringify(flags)}`);
+    }
   }
 });
 
 test("direct approval can use a generated reference without an internal release ticket", () => {
   const result = probe({ CHANGE_TICKET: "" });
   assert.equal(result.status, 0, result.stderr);
-  assert.match(result.stdout, new RegExp(`Release reference: manual-${sha.slice(0, 12)}`));
+  assert.match(result.stdout, new RegExp(`Release reference: release-${sha.slice(0, 12)}`));
 });
 
 test("unsafe supplied release references are rejected before SSH or migration", () => {
@@ -83,7 +92,7 @@ test("unsafe supplied release references are rejected before SSH or migration", 
   }
 });
 
-test("workflow preserves automatic CI but production release requires manual dispatch", () => {
+test("workflow auto-deploys main after CI and permits confirmed manual recovery", () => {
   const workflow = readFileSync(join(root, ".github/workflows/deploy.yml"), "utf8");
   assert.match(workflow, /on:\s*\n\s+push:\s*\n\s+branches:\s*\n\s+- main/);
   assert.match(workflow, /pull_request:\s*\n\s+branches:\s*\n\s+- main/);
@@ -97,7 +106,7 @@ test("workflow preserves automatic CI but production release requires manual dis
   const deploySection = workflow.split(/\n  deploy:\s*\n/)[1]?.split(/\n  external_worker_watch:\s*\n/)[0];
   assert.ok(deploySection, "deploy job missing");
   assert.match(deploySection, /needs: \[verify, e2e\]/);
-  assert.match(deploySection, /if: github\.event_name == 'workflow_dispatch' && github\.ref == 'refs\/heads\/main' && inputs\.confirm_prod_deploy == true/);
+  assert.match(deploySection, /if: github\.ref == 'refs\/heads\/main' && \(github\.event_name == 'push' \|\| \(github\.event_name == 'workflow_dispatch' && inputs\.confirm_prod_deploy == true\)\)/);
   assert.match(deploySection, /environment: production/);
   const manualGuard = deploySection.indexOf("bash scripts/validate-manual-deploy.sh");
   const ssh = deploySection.indexOf("- name: Configure SSH");
@@ -105,13 +114,14 @@ test("workflow preserves automatic CI but production release requires manual dis
   const upload = deploySection.indexOf("- name: Upload production env");
   const migration = deploySection.indexOf("- name: Deploy");
   assert.ok(upload > ssh && migration > upload);
-  assert.match(deploySection, /DEPLOY_VERSION: \$\{\{ inputs\.release_sha \}\}/);
+  assert.match(deploySection, /DEPLOY_VERSION: \$\{\{ github\.event_name == 'push' && github\.sha \|\| inputs\.release_sha \}\}/);
+  assert.match(deploySection, /REQUESTED_SHA: \$\{\{ github\.event_name == 'push' && github\.sha \|\| inputs\.release_sha \}\}/);
   const observer = workflow.split(/\n  external_worker_watch:\s*\n/)[1];
   assert.match(observer, /needs: \[deploy\]/);
   assert.equal((observer.match(/^\s+permissions:/gm) || []).length, 1,
     "GitHub Actions rejects duplicate YAML permissions keys");
   assert.match(observer, /permissions:\s*\n\s+contents: read\s*\n\s+issues: write/);
-  assert.match(observer, /if: github\.event_name == 'workflow_dispatch' && github\.ref == 'refs\/heads\/main'/);
+  assert.match(observer, /if: github\.ref == 'refs\/heads\/main' && \(github\.event_name == 'push' \|\| github\.event_name == 'workflow_dispatch'\)/);
   assert.match(observer, /node scripts\/monitor-midtrans-refund-sla\.mjs/);
   assert.match(workflow, /bash -n [^\n]*scripts\/validate-manual-deploy\.sh/);
 });
