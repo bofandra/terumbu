@@ -31,3 +31,5 @@ jobs:
         run: node scripts/prune-pr-confirmed-branches.mjs --dry-run
       - name: Prune verified obsolete refs only
         run: node scripts/prune-pr-confirmed-branches.mjs --apply
+
+# Final exact-PR branch self-cleanup: includes now-merged PR #157 head.
