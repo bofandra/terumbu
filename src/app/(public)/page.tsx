@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Image from "next/image";
-import { ArrowRight, BadgeCheck, BookOpen, Compass, HeartHandshake, MapPinned, PlayCircle, Search } from "lucide-react";
+import { ArrowRight, BadgeCheck, BookOpen, Compass, HeartHandshake, MapPinned, PlayCircle, Search, Star, Users } from "lucide-react";
 
 import { CampaignCard } from "@/components/campaign-card";
 import { ExpeditionTravelSearchFields } from "@/components/expedition-travel-search-fields";
@@ -18,6 +18,7 @@ import {
   getExpeditionCards,
   getFeaturedFieldUpdate,
   getFeaturedPublicPassport,
+  getHomepageReviewSummary,
   getHomepagePartners,
   getImpactMapSites,
   getImpactStats
@@ -80,7 +81,7 @@ const fallbackPassport: PassportPreviewData = {
 };
 
 export default async function HomePage() {
-  const [locale, displayCurrency, stats, campaigns, expeditions, impactSites, passport, fieldUpdate, partners] = await Promise.all([
+  const [locale, displayCurrency, stats, campaigns, expeditions, impactSites, passport, fieldUpdate, reviewSummary, partners] = await Promise.all([
     getPreferredLocale(),
     getPreferredDisplayCurrency(),
     getImpactStats(),
@@ -89,6 +90,7 @@ export default async function HomePage() {
     getImpactMapSites(),
     getFeaturedPublicPassport(),
     getFeaturedFieldUpdate(),
+    getHomepageReviewSummary(),
     getHomepagePartners()
   ]);
   const messages = t(locale);
@@ -104,7 +106,9 @@ export default async function HomePage() {
   return (
     <>
       <section className="relative flex min-h-[calc(100svh-5rem)] items-center overflow-hidden bg-ocean-900">
-        {heroImageUrl ? <Image src={heroImageUrl} alt={locale === "id" ? "Penyelam menjelajahi terumbu karang berwarna-warni di Indonesia" : "Diver exploring a colourful coral reef in Indonesia"} fill priority unoptimized className="absolute inset-0 object-cover" sizes="100vw" /> : null}
+        {heroImageUrl ? (
+          <Image src={heroImageUrl} alt={locale === "id" ? "Dokumentasi lapangan dari mitra" : "Partner-managed field documentation"} fill priority unoptimized className="absolute inset-0 object-cover" sizes="100vw" />
+        ) : null}
         <div className="absolute inset-0 bg-gradient-to-br from-ocean-900/95 via-ocean-900/62 to-coral-700/34" />
         <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-sand-50 to-transparent" />
 
@@ -132,6 +136,18 @@ export default async function HomePage() {
                 {messages.home.searchTrips} <ArrowRight size={17} aria-hidden="true" />
               </button>
             </form>
+            <div className="mt-7 flex flex-wrap items-center gap-4 text-sm font-semibold text-white/82">
+              {reviewSummary ? (
+                <span className="inline-flex items-center gap-2">
+                  <Star size={16} fill="currentColor" className="text-coral-300" aria-hidden="true" />
+                  {reviewSummary.label}
+                </span>
+              ) : null}
+              <span className="inline-flex items-center gap-2">
+                <Users size={16} aria-hidden="true" />
+                {messages.home.audience}
+              </span>
+            </div>
           </div>
 
           {fieldUpdate ? (
