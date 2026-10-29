@@ -245,12 +245,15 @@ http://localhost:3100
 
 ### Production Deploy
 
-Pushes to `main` run CI. Production deployment requires a separate manual
-workflow dispatch for the exact current `main` SHA with explicit owner approval.
-The release reference is optional; the workflow records its run ID when omitted.
+Every push or merged PR to `main` automatically runs verification and critical-path
+E2E tests. When both pass, GitHub Actions deploys that exact commit to the
+production VPS and runs public smoke checks and worker monitoring. Pull requests
+never deploy. Confirmed manual dispatch remains available for recovery.
+GitHub `production` environment protections still apply; remove required reviewers
+in environment settings if completely unattended deployment is desired.
 See [deployment policy](docs/midtrans-safe-merge-manual-deploy.md).
 
-An approved manual release:
+A successful production deployment:
 
 1. Installs dependencies.
 2. Runs typecheck, lint, unit/operations tests, PostgreSQL E2E, and build.
