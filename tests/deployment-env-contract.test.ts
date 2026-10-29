@@ -76,7 +76,7 @@ test("post-deploy external worker watch runs after successful main push or manua
   assert.ok(postDeploy, "post-deploy monitor job must exist");
   assert.match(postDeploy, /needs: \[deploy\]/);
   assert.match(postDeploy, /if: github\.ref == 'refs\/heads\/main' && \(github\.event_name == 'push' \|\| github\.event_name == 'workflow_dispatch'\)/);
-  assert.doesNotMatch(postDeploy, /if: github\.ref == 'refs\/heads\/main'/);
+  assert.doesNotMatch(postDeploy, /if: github\.ref == 'refs\/heads\/main'\s*$/m);
   assert.match(postDeploy, /group: terumbu-external-worker-watch/);
   assert.match(postDeploy, /issues: write/);
   assert.match(postDeploy, /MONITOR_ASSIGNEE:/);
