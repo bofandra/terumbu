@@ -67,7 +67,7 @@ test("hourly worker invokes authenticated corporate report generation", () => {
   assert.match(cronRoute, /status: 500/);
 });
 
-test("post-deploy external worker watch runs only after explicitly authorized production deployment", () => {
+test("post-deploy external worker watch runs after successful main push or manual deployment", () => {
   const workflow = read(".github/workflows/deploy.yml");
   const scheduled = read(".github/workflows/worker-health-watch.yml");
   const script = read("scripts/monitor-worker-heartbeats.mjs");
@@ -75,7 +75,7 @@ test("post-deploy external worker watch runs only after explicitly authorized pr
   const postDeploy = workflow.split("  external_worker_watch:")[1];
   assert.ok(postDeploy, "post-deploy monitor job must exist");
   assert.match(postDeploy, /needs: \[deploy\]/);
-  assert.match(postDeploy, /if: github\.event_name == 'workflow_dispatch' && github\.ref == 'refs\/heads\/main'/);
+  assert.match(postDeploy, /if: github\.ref == 'refs\/heads\/main' && \(github\.event_name == 'push' \|\| github\.event_name == 'workflow_dispatch'\)/);
   assert.doesNotMatch(postDeploy, /if: github\.ref == 'refs\/heads\/main'/);
   assert.match(postDeploy, /group: terumbu-external-worker-watch/);
   assert.match(postDeploy, /issues: write/);
