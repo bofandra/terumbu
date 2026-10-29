@@ -123,17 +123,16 @@ jobs:
     name: Deploy to VPS
     runs-on: ubuntu-24.04
     needs: [verify, e2e]
-    # Code merges/pushes to main run CI only. Deploy requires a separate,
-    # explicit main-branch workflow_dispatch with owner confirmation.
-    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && inputs.confirm_prod_deploy == true
+    # Main pushes auto-deploy after Verify and E2E; confirmed manual recovery remains available.
+    if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.confirm_prod_deploy == true))
     environment: production
     steps:
       - name: Checkout
         uses: actions/checkout@v7
 
-      - name: Verify explicit commit and deployment approval
+      - name: Verify main-branch deployment event and exact revision
         env:
-          REQUESTED_SHA: ${{ inputs.release_sha }}
+          REQUESTED_SHA: ${{ github.event_name == 'push' && github.sha || inputs.release_sha }}
           CHANGE_TICKET: ${{ inputs.release_ticket || format('github-run-{0}', github.run_id) }}
           REQUESTED_CONFIRM: ${{ inputs.confirm_prod_deploy }}
         run: bash scripts/validate-manual-deploy.sh
@@ -342,7 +341,7 @@ jobs:
           VPS_USER: ${{ secrets.VPS_USER }}
           DEPLOY_REPO: https://github.com/${{ github.repository }}.git
           DEPLOY_REF: ${{ github.ref_name }}
-          DEPLOY_VERSION: ${{ inputs.release_sha }}
+          DEPLOY_VERSION: ${{ github.event_name == 'push' && github.sha || inputs.release_sha }}
         run: |
           set -euo pipefail
           ssh -i ~/.ssh/terumbu_deploy_key "${VPS_USER}@${VPS_HOST}" \
@@ -359,7 +358,7 @@ jobs:
     name: External Worker Watch (post-deploy)
     runs-on: ubuntu-24.04
     needs: [deploy]
-    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
     # Serialize issue operations against the scheduled, independent workflow.
     concurrency:
       group: terumbu-external-worker-watch
