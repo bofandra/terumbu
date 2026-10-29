@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 
 import "@/app/globals.css";
+import { getPreferredLocale } from "@/lib/user-preferences";
 
 const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://terumbu.world";
 
@@ -11,13 +12,13 @@ export const metadata: Metadata = {
     template: "%s | Terumbu.world"
   },
   description:
-    "Ikuti ekspedisi konservasi, dukung proyek pesisir terverifikasi, dan pantau bukti dampak nyata bagi ekosistem Indonesia bersama Terumbu.world.",
+    "Ikuti ekspedisi konservasi, dukung proyek konservasi pesisir, dan pantau bukti dampak nyata bagi ekosistem Indonesia bersama Terumbu.world.",
   openGraph: {
     type: "website",
     siteName: "Terumbu.world",
     title: "Ekspedisi Konservasi Pesisir Indonesia | Terumbu.world",
     description:
-      "Ikuti ekspedisi konservasi, dukung proyek pesisir terverifikasi, dan pantau bukti dampak nyata bagi ekosistem Indonesia bersama Terumbu.world.",
+      "Ikuti ekspedisi konservasi, dukung proyek konservasi pesisir, dan pantau bukti dampak nyata bagi ekosistem Indonesia bersama Terumbu.world.",
     locale: "id_ID",
     url: appUrl
   },
@@ -25,13 +26,14 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: "Ekspedisi Konservasi Pesisir Indonesia | Terumbu.world",
     description:
-      "Ikuti ekspedisi konservasi, dukung proyek pesisir terverifikasi, dan pantau bukti dampak nyata bagi ekosistem Indonesia bersama Terumbu.world."
+      "Ikuti ekspedisi konservasi, dukung proyek konservasi pesisir, dan pantau bukti dampak nyata bagi ekosistem Indonesia bersama Terumbu.world."
   }
 };
 
 export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+  const locale = await getPreferredLocale();
   return (
-    <html lang="id">
+    <html lang={locale}>
       <body>{children}</body>
     </html>
   );
