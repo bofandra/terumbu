@@ -41,7 +41,7 @@ export function FeaturedExpeditionRail({ expeditions, displayCurrency = "USD", l
           {expedition.imageUrl ? (
             <Image
               src={expedition.imageUrl}
-              alt={isIndonesian ? `Penyelam di antara terumbu karang ${expedition.region}` : `Diver among ${expedition.region} coral reefs`}
+              alt={`${expedition.title} — ${expedition.region}`}
               fill
               className="object-cover transition duration-500 group-hover:scale-105"
               sizes="(min-width: 1024px) 31vw, 85vw"
