@@ -1,108 +1,69 @@
-# Terumbu — Safe Merge and Manual Production Deployment
+# Terumbu — Automatic Main-Branch Production Deployment
 
-## Decision and scope
+## Current policy (2026-10-29)
 
-Code deployment and activation of production payments are separate decisions.
-An explicit owner-approved release can deploy the selected `main` commit with
-payment and refund switches disabled. Production payment activation still needs
-its own merchant UAT and financial release approvals.
+Pushes and merged PRs to `main` automatically deploy after successful Verify
+(typecheck, lint, unit tests, build) and PostgreSQL Playwright critical-path
+E2E tests. PRs targeting `main` run tests but never deploy. Manual workflow
+dispatch remains available for recovery with explicit confirmation and
+an exact commit SHA.
 
-The owner-approved policy accepts direct release approval. An internal ticket
-and an additional environment reviewer are optional. The workflow records the
-selected commit, requesting actor, explicit confirmation and release reference;
-when a reference is omitted, it uses the workflow run ID.
+Application code deployment does **not** enable production payment or refunds.
+Merchant sandbox UAT, release, finance and operational approvals remain separate.
+The existing fail-closed Midtrans gate remains mandatory.
 
-## Why the change is necessary
+## Trigger matrix
 
-The previous `.github/workflows/deploy.yml` triggered a `deploy` job on
-every successful `push` to `main`. Thus a single reviewed PR merge could
-replace application containers, apply forward-only database migrations and
-start/stop workers without a separate operational release decision.
+| Event | CI/E2E | VPS deploy | Post-deploy monitor |
+| --- | --- | --- | --- |
+| Pull request targeting `main` | Automatic | Never | Never |
+| Push/merge to `main` | Automatic | After successful checks | After successful deploy |
+| Confirmed manual dispatch on `main` | Automatic | After successful checks | After successful deploy |
+| Non-main push, PR, unconfirmed dispatch, schedule | CI as applicable | Denied | Never |
 
-After this change:
+## Production safeguards
 
-| Event | Typecheck, lint, tests, build | PostgreSQL Playwright E2E | VPS deploy | Post-deploy monitoring |
-| --- | --- | --- | --- | --- |
-| PR targeting `main` | Automatic | Automatic | **Never** | **Never** |
-| Push/merge to `main` | Automatic | Automatic | **Never** | **Never** |
-| Explicit workflow dispatch on `main`, with exact SHA and confirmation | Automatic | Automatic | After successful CI and explicit release approval | After successful deploy |
-| Dispatch from another branch or with missing confirmation | CI can run | CI can run | **Denied** | **Never** |
+1. Production deployment requires `refs/heads/main` and checks an exact
+   lowercase 40-character event SHA against checked-out Git code before
+   SSH, migrations or production secrets are used.
+2. A queued push whose commit is no longer the VPS's fetched current `main`
+   fails safely; releases are serialized and ongoing migrations are not
+   interrupted by GitHub's concurrency cancellation.
+3. Production uses pinned SSH known-hosts, an environment-scoped secret
+   configuration, separate payment release gates, pre-migration PostgreSQL
+   backup, commit-matching local/public smoke checks, and application rollback.
+4. Database migrations are forward-only. Automatic application rollback
+   does not automatically restore database writes or schema.
+5. External worker and refund SLA monitoring starts after a successful deploy.
 
-A GitHub `production` environment is used and its deployment branch policy is
-restricted to `main`. The workflow also checks the branch before deploying.
-Additional environment reviewers may be configured when the owner wants a
-second approval; direct owner approval is sufficient under the current policy.
+## GitHub environment configuration
 
-## Approved deployment procedure
+Keep the `production` environment restricted to branch `main` and preserve
+all required secrets. If GitHub `production` Required reviewers are enabled,
+GitHub will still request human approval before automatic deployments.
+To fully automate releases, remove Required reviewers in GitHub repository
+Settings → Environments → production. Workflow code cannot override this
+setting. The workflow still enforces `main`, CI/E2E success, pinned SSH
+host verification and the separate payment safety gate.
 
-1. Finish code review, merging, migration compatibility and rollback plan.
-   Confirm that merging feature code with flags off will not create sensitive
-   side effects in the existing production environment.
-2. Confirm the payment configuration passes `validate-midtrans-release.sh`.
-   For a release that enables production payments, complete the merchant UAT
-   and independent financial approvals in `docs/midtrans-sandbox-uat-evidence.md`.
-3. Optionally supply a reference of 6–80 ASCII letters, digits, hyphens or
-   underscores. The workflow run ID becomes the reference when omitted.
-   Never embed PII, credentials, order IDs or bank details in reference inputs.
-4. In GitHub → Actions → **CI/CD** → **Run workflow**, select **main**.
-5. Supply the complete 40-character **current main SHA** as `release_sha`,
-   optionally fill `release_ticket`, and explicitly check `confirm_prod_deploy`
-   after obtaining the owner's release approval. Green CI alone is insufficient.
-6. Review the deployment authorization and CI results. If the environment has
-   additional reviewers configured, obtain that review before proceeding.
-7. The workflow checks the exact SHA against the GitHub event and checked-out
-   tree **before SSH configuration**. Then it renders the production env,
-   verifies Midtrans's separate fail-closed release gate **before uploading
-   credentials**, and deploys that exact version to the VPS.
-8. Confirm production smoke tests, migration compatibility and both worker
-   heartbeats. Post-deploy external checks cover the worker monitor and a
-   separate refund-SLA monitor. Any alert requires operator follow-up.
-9. Keep payment/refund production flags disabled until a separate,
-   explicitly approved payment product go-live decision. Deploying code
-   alone does not authorize live payments.
+Manual recovery uses GitHub Actions → CI/CD → Run workflow, selects `main`,
+supplies the current 40-character `release_sha`, optionally sets a
+`release_ticket` (safe characters only), and checks `confirm_prod_deploy`.
+Ordinary pushes need no inputs, confirmation or separate release step.
 
-The exact SHA check ensures someone cannot manually choose an arbitrary
-commit while retaining a different approved release reference. If `main`
-changes after the workflow starts and the VPS fetches a newer revision,
-`scripts/deploy-vps.sh` refuses a mismatched revision.
+## Automated regression tests
 
-## Negative checks, run automatically in CI
+`tests/manual-production-deploy-gate.test.mjs` covers a successful main
+push without manual confirmation, denied PR and non-main triggers, SHA
+mismatches, invalid references and manual recovery restrictions.
+`tests/deployment-env-contract.test.ts` checks the post-deploy monitor gate.
 
-`tests/manual-production-deploy-gate.test.mjs` verifies:
+## Payment and incident boundaries
 
-- A push to `main`, PR event, scheduled event, or any other event **cannot**
-  satisfy the deployment authorization.
-- Manual dispatch from a feature branch is denied.
-- Missing/false confirmation, partial SHA, wrong SHA, stale SHA and
-  unsafe supplied release references are rejected.
-- Direct confirmation without an internal ticket is accepted and produces a
-  generated release reference.
-- The deployment workflow preserves automatic CI for PRs and pushes,
-  requires `workflow_dispatch` on `main`, includes `needs: [verify,e2e]`,
-  and places a production environment and authorization step
-  **ahead of SSH and the VPS**.
-- The selected SHA is used as `DEPLOY_VERSION`.
-- Post-deployment worker and refund SLA checks cannot run without a
-  successful manual deployment.
-
-All negative tests use local simulated environment variables and the Git
-commit of the CI runner; they do not access the production VPS or credentials.
-
-## Operational limitations
-
-The script validates the **format and consistency** of the explicit approval
-and selected commit. The GitHub workflow log records who initiated the release.
-It does not authenticate optional external references or certify merchant UAT.
-Independent financial release review remains required for activating production
-payments; it is separate from code-only deployment with those switches disabled.
-
-Application rollback does not undo forward-only Drizzle migrations. Take
-and verify a database backup and confirm compatibility with the previous
-application image before approving any deployment.
-
-The public merchant sandbox probe is GET-only and does not prove a
-transaction/refund journey. Maintain **NO-GO** until Issue #114, real merchant
-UAT, safe compensation and customer refund resolution are signed off.
+Never enable production payments/refunds merely because a code change
+deployed successfully. Maintain NO-GO until genuine merchant UAT and
+finance/operations approvals have been recorded. Investigate any failed
+CI, deployment or smoke run rather than weakening safety checks.
 
 ## SSH host identity: required for any production VPS release
 
@@ -126,9 +87,9 @@ The example is intentionally not a usable host key. To enroll the real VPS:
    `VPS_SSH_KNOWN_HOSTS` secret scoped to GitHub's protected
    **production** environment; do not store the private host key or
    use the public client/deploy key in its place.
-3. Restrict production environment deployment branches to `main`; additional
-   reviewers are optional under the owner-approved policy. Maintain the separate
-   manual exact-SHA and Midtrans UAT/release approvals.
+3. Restrict production environment deployments to `main`. Disable Required
+   reviewers only if unattended automatic deployment is intended. Maintain
+   exact-SHA validation and the separate Midtrans UAT/release approvals.
 4. If the key is absent, changes, fails validation, or the hostname differs,
    the workflow **fails before writing the deployment private key or
    opening a connection to the VPS**. Investigate unexpected changes out
