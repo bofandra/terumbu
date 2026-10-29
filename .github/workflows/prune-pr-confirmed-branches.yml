@@ -1,0 +1,33 @@
+name: Prune exact PR-confirmed merged branches (one-time)
+
+on:
+  push:
+    branches: [main]
+    paths: [".github/workflows/prune-pr-confirmed-branches.yml"]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: terumbu-pr-confirmed-branch-prune
+  cancel-in-progress: false
+
+jobs:
+  prune:
+    if: github.repository == 'bofandra/terumbu' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      GITHUB_TOKEN: ${{ github.token }}
+      GITHUB_REPOSITORY: ${{ github.repository }}
+      GITHUB_SHA: ${{ github.sha }}
+      GITHUB_API_URL: ${{ github.api_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Preflight all merged-PR evidence without deletion
+        run: node scripts/prune-pr-confirmed-branches.mjs --dry-run
+      - name: Prune verified obsolete refs only
+        run: node scripts/prune-pr-confirmed-branches.mjs --apply
