@@ -11,7 +11,7 @@ if (process.env.GITHUB_REPOSITORY !== repo || !process.env.GITHUB_TOKEN) {
   throw new Error("This cleanup requires the expected repository and GitHub token");
 }
 const origin = (process.env.GITHUB_API_URL || "https://api.github.com") + "/repos/" + repo + "/";
-async function request(path, method = "GET") {
+async function request(path, method = "GET", allowMissing = false) {
   const response = await fetch(origin + path, {
     method,
     headers: {
@@ -20,6 +20,7 @@ async function request(path, method = "GET") {
       "X-GitHub-Api-Version": "2022-11-28"
     }
   });
+  if (allowMissing && method === "GET" && response.status === 404) return null;
   if (!response.ok) throw new Error(method + " " + path + ": " + response.status);
   return response.status === 204 ? null : response.json();
 }
@@ -39,7 +40,11 @@ for (const [index, name] of names.entries()) {
   if (pr.head.ref !== name || pr.head.repo?.full_name !== repo) throw new Error("Unexpected merged PR head for " + name);
   if (!pr.merged_at || pr.base.ref !== "main") throw new Error("Not merged into main: " + name);
   if (open.some((entry) => entry.head.ref === name)) throw new Error("Branch in open PR: " + name);
-  const branch = await request("branches/" + encodeURIComponent(name));
+  const branch = await request("branches/" + encodeURIComponent(name), "GET", true);
+  if (!branch) {
+    console.log("Already removed after merge: " + name);
+    continue;
+  }
   if (pr.head.sha !== branch.commit.sha) throw new Error("Branch moved after merge: " + name);
   const comparison = await request("compare/main..." + encodeURIComponent(name));
   if (comparison.ahead_by !== 0) throw new Error("Branch has unmerged history: " + name);
