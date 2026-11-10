@@ -9780,6 +9780,7 @@ export async function getPartnerPortalData(userId?: string) {
       .select({
         id: projectEvidence.id,
         campaignId: projectEvidence.campaignId,
+        impactSiteId: projectEvidence.impactSiteId,
         title: projectEvidence.title,
         evidenceCode: projectEvidence.evidenceCode,
         evidenceType: projectEvidence.evidenceType,
