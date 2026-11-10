@@ -387,7 +387,7 @@ export function buildExpeditionMarketplaceFacets(
   };
 }
 
-export function sortExpeditionMarketplaceItems<T extends { price: number; title: string; marketplace: ExpeditionMarketplaceMetadata; nextDepartureStartsAt?: Date | null }>(
+export function sortExpeditionMarketplaceItems<T extends { price: number; title: string; duration?: string; marketplace: ExpeditionMarketplaceMetadata; nextDepartureStartsAt?: Date | null }>(
   items: T[],
   sort?: string
 ) {
@@ -397,6 +397,10 @@ export function sortExpeditionMarketplaceItems<T extends { price: number; title:
     sorted.sort((a, b) => a.price - b.price || a.title.localeCompare(b.title));
   } else if (sort === "hours_asc") {
     sorted.sort((a, b) => a.marketplace.collaborationHoursPerWeek - b.marketplace.collaborationHoursPerWeek || a.title.localeCompare(b.title));
+  } else if (sort === "duration_asc") {
+    // The public card duration is generated from the authoritative durationDays record.
+    const days = (item: T) => Number.parseInt(item.duration ?? "", 10) || Number.MAX_SAFE_INTEGER;
+    sorted.sort((a, b) => days(a) - days(b) || a.title.localeCompare(b.title));
   } else if (sort === "soonest") {
     sorted.sort((a, b) => (a.nextDepartureStartsAt?.getTime() ?? Number.MAX_SAFE_INTEGER) - (b.nextDepartureStartsAt?.getTime() ?? Number.MAX_SAFE_INTEGER));
   } else {
