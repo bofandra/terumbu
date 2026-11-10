@@ -91,7 +91,7 @@ function SelectFilter({
         <option value="">{placeholder}</option>
         {options.slice(0, 12).map((option) => (
           <option key={option.value} value={option.value}>
-            {locale === "id" ? ({ "": "Rekomendasi", soonest: "Keberangkatan terdekat", price_asc: "Harga terendah", hours_asc: "Jam tersedikit", duration_asc: "Durasi tersingkat" } as Record<string, string>)[option.value] : option.label} ({option.count})
+            {option.label} ({option.count})
           </option>
         ))}
       </select>
@@ -261,7 +261,7 @@ export function ExpeditionSortControl({ filters, locale = "en" }: { filters: Exp
       >
         {sortOptions.map((option) => (
           <option key={option.value} value={option.value}>
-            {option.label}
+            {locale === "id" ? ({ "": "Rekomendasi", soonest: "Keberangkatan terdekat", price_asc: "Harga terendah", hours_asc: "Jam tersedikit", duration_asc: "Durasi tersingkat" } as Record<string, string>)[option.value] : option.label}
           </option>
         ))}
       </select>
