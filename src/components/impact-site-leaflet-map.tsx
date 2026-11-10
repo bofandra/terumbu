@@ -5,6 +5,7 @@ import type { Map as LeafletMap, Marker } from "leaflet";
 import "leaflet/dist/leaflet.css";
 
 import type { ImpactSiteData } from "@/lib/domain";
+import { isIndonesianImpactSiteLocation } from "@/lib/impact-map-location";
 import type { SupportedLocale } from "@/lib/user-preferences";
 
 type ImpactSiteLeafletMapProps = {
@@ -14,11 +15,6 @@ type ImpactSiteLeafletMapProps = {
   onSelect: (id: string) => void;
   locale: SupportedLocale;
 };
-
-function validPosition(site: ImpactSiteData) {
-  return Number.isFinite(site.latitude) && Number.isFinite(site.longitude)
-    && Math.abs(site.latitude) <= 90 && Math.abs(site.longitude) <= 180;
-}
 
 function sitePin(L: typeof import("leaflet"), site: ImpactSiteData, selected: boolean) {
   const evidenceStatus = site.verifiedEvidenceCount > 0 ? "verified" : "review";
@@ -69,7 +65,7 @@ export function ImpactSiteLeafletMap({ sites, visibleSites, selectedSiteId, onSe
 
         const coords: [number, number][] = [];
         for (const site of sites) {
-          if (!validPosition(site)) continue;
+          if (!isIndonesianImpactSiteLocation(site)) continue;
           const position: [number, number] = [site.latitude, site.longitude];
           coords.push(position);
           const marker = L.marker(position, {

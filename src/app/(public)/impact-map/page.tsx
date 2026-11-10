@@ -4,6 +4,7 @@ import { ArrowRight, BadgeCheck, BookOpenCheck, Camera, MapPinned, ShieldCheck }
 
 import { ImpactMapPreview } from "@/components/impact-map-preview";
 import { getImpactMapSites } from "@/lib/queries";
+import { summarizeImpactSites } from "@/lib/impact-map-location";
 import { getPreferredLocale } from "@/lib/user-preferences";
 
 export const dynamic = "force-dynamic";
@@ -20,8 +21,7 @@ export async function generateMetadata(): Promise<Metadata> {
 export default async function ImpactMapPage() {
   const [sites, locale] = await Promise.all([getImpactMapSites(), getPreferredLocale()]);
   const id = locale === "id";
-  const withVerifiedEvidence = sites.filter((site) => site.verifiedEvidenceCount > 0).length;
-  const verifiedEvidenceCount = sites.reduce((total, site) => total + site.verifiedEvidenceCount, 0);
+  const { withVerifiedEvidence, verifiedEvidenceCount } = summarizeImpactSites(sites);
   const evidenceUpdates = sites.filter((site) => site.latestEvidence).slice(0, 3);
 
   return (
