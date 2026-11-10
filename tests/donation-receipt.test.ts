@@ -51,7 +51,7 @@ test("donation receipt download pdf includes receipt details", () => {
   const pdfText = Buffer.from(pdf).toString("latin1");
 
   assert.match(pdfText, /^%PDF-1\.4/);
-  assert.match(pdfText, /Terumbu\.eco Donation Receipt/);
+  assert.match(pdfText, /Terumbu\.world Donation Receipt/);
   assert.match(pdfText, /TRB\\\(script\\\)/);
   assert.match(pdfText, /Raka \\\\ Team/);
   assert.match(pdfText, /Campaign \\\(One\\\)/);
