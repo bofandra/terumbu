@@ -80,3 +80,15 @@ test("marketplace sorting keeps top hosts recommended first", () => {
   assert.equal(sorted[0].title, "A");
   assert.equal(sortExpeditionMarketplaceItems(sorted, "price_asc")[0].title, "B");
 });
+
+test("expeditions can be sorted by actual duration from published records", () => {
+  const sample = [
+    { title: "Long", duration: "7 days / 6 nights", price: 100, marketplace: defaults },
+    { title: "Short", duration: "2 days / 1 night", price: 200, marketplace: defaults },
+    { title: "Unspecified", price: 50, marketplace: defaults }
+  ];
+  assert.deepEqual(
+    sortExpeditionMarketplaceItems(sample, "duration_asc").map((item) => item.title),
+    ["Short", "Long", "Unspecified"]
+  );
+});
