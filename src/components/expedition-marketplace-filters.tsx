@@ -22,7 +22,8 @@ const sortOptions = [
   { value: "", label: "Recommended" },
   { value: "soonest", label: "Soonest departure" },
   { value: "price_asc", label: "Lowest price" },
-  { value: "hours_asc", label: "Fewest hours" }
+  { value: "hours_asc", label: "Fewest hours" },
+  { value: "duration_asc", label: "Shortest duration" }
 ];
 
 function removeFilterHref(filters: ExpeditionSearchFilters, key: keyof ExpeditionSearchFilters) {
@@ -90,7 +91,7 @@ function SelectFilter({
         <option value="">{placeholder}</option>
         {options.slice(0, 12).map((option) => (
           <option key={option.value} value={option.value}>
-            {locale === "id" ? ({ "": "Rekomendasi", soonest: "Keberangkatan terdekat", price_asc: "Harga terendah", hours_asc: "Jam tersedikit" } as Record<string, string>)[option.value] : option.label} ({option.count})
+            {locale === "id" ? ({ "": "Rekomendasi", soonest: "Keberangkatan terdekat", price_asc: "Harga terendah", hours_asc: "Jam tersedikit", duration_asc: "Durasi tersingkat" } as Record<string, string>)[option.value] : option.label} ({option.count})
           </option>
         ))}
       </select>
