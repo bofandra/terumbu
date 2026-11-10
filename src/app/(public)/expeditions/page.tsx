@@ -100,9 +100,9 @@ export default async function ExpeditionsPage({ searchParams }: ExpeditionsPageP
             </p>
             <div className="mt-7 flex flex-wrap gap-x-5 gap-y-3">
               {[
-                { label: messages.verifiedPartners, icon: ShieldCheck },
-                { label: messages.impactTrips, icon: Compass },
-                { label: messages.smallGroups, icon: Users }
+                { label: isIndonesian ? "Informasi dari mitra" : "Partner-managed information", icon: ShieldCheck },
+                { label: isIndonesian ? "Jelajahi kegiatan lapangan" : "Explore field activities", icon: Compass },
+                { label: isIndonesian ? "Periksa kapasitas peserta" : "Check group capacity", icon: Users }
               ].map((item) => {
                 const Icon = item.icon;
 

@@ -23,9 +23,9 @@ export function SiteFooter({ locale = "en" }: { locale?: SupportedLocale }) {
           dashboard: "Dasbor",
           myImpact: "Dampak Saya",
           corporate: "Corporate",
-          verifiedPartners: "Mitra terverifikasi",
-          fieldEvidence: "Bukti lapangan",
-          transparency: "Transparansi keuangan"
+          verifiedPartners: "Direktori mitra",
+          fieldEvidence: "Catatan bukti publik",
+          transparency: "Kebijakan donasi"
         }
       : {
           description: "Conservation funding, field experiences, learning, and verified impact records for Indonesia's coastal ecosystems.",
@@ -44,9 +44,9 @@ export function SiteFooter({ locale = "en" }: { locale?: SupportedLocale }) {
           dashboard: "Dashboard",
           myImpact: "My Impact",
           corporate: "Corporate",
-          verifiedPartners: "Verified partners",
-          fieldEvidence: "Field evidence",
-          transparency: "Financial transparency"
+          verifiedPartners: "Partner directory",
+          fieldEvidence: "Public field evidence",
+          transparency: "Donation policy"
         };
 
   return (
@@ -85,9 +85,9 @@ export function SiteFooter({ locale = "en" }: { locale?: SupportedLocale }) {
           <div>
             <h2 className="text-sm font-semibold text-white">{labels.trust}</h2>
             <ul className="mt-4 space-y-3 text-sm text-white/70">
-              <li>{labels.verifiedPartners}</li>
-              <li>{labels.fieldEvidence}</li>
-              <li>{labels.transparency}</li>
+              <li><Link href="/partners" className="hover:text-[#c9f341]">{labels.verifiedPartners}</Link></li>
+              <li><Link href={publicLocaleHref(locale, "/impact-map")} className="hover:text-[#c9f341]">{labels.fieldEvidence}</Link></li>
+              <li><Link href="/donation-policy" className="hover:text-[#c9f341]">{labels.transparency}</Link></li>
             </ul>
           </div>
         </div>

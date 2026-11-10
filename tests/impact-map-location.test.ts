@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 
-import { isIndonesianImpactSiteLocation, publicMapCoordinates, summarizeImpactSites } from "../src/lib/impact-map-location";
+import { approvedPublicPrecision, isIndonesianImpactSiteLocation, publicMapCoordinates, summarizeImpactSites } from "../src/lib/impact-map-location";
 
 test("the public impact map accepts Indonesian coordinates and rejects unlocated or out-of-region records", () => {
   assert.equal(isIndonesianImpactSiteLocation({ latitude: -0.2349, longitude: 130.5166 }), true);
@@ -42,4 +42,11 @@ test("partner portal does not require a manual evidence count", () => {
   const ui = readFileSync("src/components/partner-portal-ui.tsx", "utf8");
   assert.doesNotMatch(ui, /name="evidenceCount"/);
   assert.match(ui, /name="publicLocationPrecision"/);
+});
+
+test("precise public coordinates require BOTH partner opt-in and platform field verification", () => {
+  assert.equal(approvedPublicPrecision(null, "field"), "approximate");
+  assert.equal(approvedPublicPrecision("precise", "basic"), "approximate");
+  assert.equal(approvedPublicPrecision("precise", "document"), "approximate");
+  assert.equal(approvedPublicPrecision("precise", "field"), "precise");
 });

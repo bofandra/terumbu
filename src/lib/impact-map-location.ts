@@ -33,3 +33,9 @@ export function publicMapCoordinates(
     longitude: Math.round(site.longitude * 10) / 10
   };
 }
+
+/** Both explicit partner selection and field-level governance approval are
+ * needed before an exact location is published. */
+export function approvedPublicPrecision(requested: string | null, verifiedLevel: string | null) {
+  return requested === "precise" && verifiedLevel === "field" ? "precise" : "approximate";
+}

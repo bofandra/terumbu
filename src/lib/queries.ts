@@ -3,7 +3,7 @@ import { and, asc, desc, eq, gte, inArray, isNotNull, lte, or, sql } from "drizz
 import { db } from "@/db/client";
 import { expeditionDepartureMatchesSearch } from "@/lib/expedition-marketplace";
 import { impactSiteCampaignScopeKey } from "@/lib/impact-site-scope";
-import { publicMapCoordinates } from "@/lib/impact-map-location";
+import { approvedPublicPrecision, publicMapCoordinates } from "@/lib/impact-map-location";
 import {
   assessmentAttempts,
   assessmentChoices,
@@ -2333,7 +2333,10 @@ export async function getImpactMapSites(campaignId?: string, expeditionId?: stri
     // Enforce public coordinate privacy on the server, before props are sent to browsers.
     const publicLocation = publicMapCoordinates(
       { latitude: toNumber(site.latitude), longitude: toNumber(site.longitude) },
-      getMetadataString(site.metadata, "publicLocationPrecision")
+      approvedPublicPrecision(
+        getMetadataString(site.metadata, "publicLocationPrecision"),
+        getMetadataString(site.metadata, "verification")
+      )
     );
 
     return {

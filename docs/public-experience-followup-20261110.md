@@ -13,7 +13,7 @@ Complete the unfinished items from PR #162 while preserving Terumbu's existing l
 ## Public location privacy
 - `publicLocationPrecision` is stored in Impact Site metadata as `approximate` or `precise`.
 - All existing sites without explicit metadata default to **approximate**, rounded to one decimal degree (around 10 km granularity).
-- Only an explicit `precise` selection by an authorized partner exposes exact coordinates; public data loaders apply the privacy transform on the server.
+- Only an explicit `precise` selection by an authorized partner **and** platform field verification exposes exact coordinates; public data loaders enforce both on the server.
 - These display values are not intended for navigating to protected restoration locations.
 
 ## Presentation & international SEO

@@ -602,10 +602,10 @@ function ImpactSiteFields({
       </div>
       <PartnerImpactSiteCoordinatePicker latitude={site?.latitude} longitude={site?.longitude} disabled={disabled} />
       <div className="mt-3 rounded-xl border border-ocean-900/10 bg-ocean-50 p-4">
-        <Field label="Public map location" help="Protect sensitive restoration sites. Approximate is recommended and is the default. Exact coordinates stay private unless you explicitly choose precise.">
+        <Field label="Public map location" help="Protect sensitive restoration sites. Approximate is recommended and is the default. Exact coordinates only become public with explicit selection and platform field verification.">
           <select name="publicLocationPrecision" defaultValue={site?.publicLocationPrecision ?? "approximate"} className={inputClassName} disabled={disabled}>
             <option value="approximate">Approximate — around 10 km precision (recommended)</option>
-            <option value="precise">Precise — public may view exact coordinates</option>
+            <option value="precise">Precise — requires platform field verification</option>
           </select>
         </Field>
       </div>
