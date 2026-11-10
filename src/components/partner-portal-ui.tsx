@@ -16,6 +16,7 @@ import type { ReactNode } from "react";
 
 import { PartnerCampaignImpactPlanningFields } from "@/components/partner-campaign-impact-planning-fields";
 import { PartnerCampaignImpactSiteSelector } from "@/components/partner-campaign-impact-site-selector";
+import { PartnerImpactSiteCoordinatePicker } from "@/components/partner-impact-site-coordinate-picker";
 import { Button } from "@/components/ui/button";
 import { MetricValue } from "@/components/ui/metric-value";
 import { ProgressMeter } from "@/components/ui/progress-meter";
@@ -599,12 +600,13 @@ function ImpactSiteFields({
           </select>
         </Field>
       </div>
-      <div className="grid gap-3 md:grid-cols-2">
-        <Field label="Latitude" required>
-          <input name="latitude" type="number" min="-90" max="90" step="0.000001" defaultValue={site?.latitude} placeholder="-0.234900" className={inputClassName} disabled={disabled} required />
-        </Field>
-        <Field label="Longitude" required>
-          <input name="longitude" type="number" min="-180" max="180" step="0.000001" defaultValue={site?.longitude} placeholder="130.516600" className={inputClassName} disabled={disabled} required />
+      <PartnerImpactSiteCoordinatePicker latitude={site?.latitude} longitude={site?.longitude} disabled={disabled} />
+      <div className="mt-3 rounded-xl border border-ocean-900/10 bg-ocean-50 p-4">
+        <Field label="Public map location" help="Protect sensitive restoration sites. Approximate is recommended and is the default. Exact coordinates only become public with explicit selection and platform field verification.">
+          <select name="publicLocationPrecision" defaultValue={site?.publicLocationPrecision ?? "approximate"} className={inputClassName} disabled={disabled}>
+            <option value="approximate">Approximate — around 10 km precision (recommended)</option>
+            <option value="precise">Precise — requires platform field verification</option>
+          </select>
         </Field>
       </div>
       <details className="rounded-lg border border-ocean-900/10 bg-sand-50 p-4" open={Boolean(site)}>
@@ -613,10 +615,8 @@ function ImpactSiteFields({
           <Field label="Progress">
             <input name="progress" type="number" min="0" max="100" step="1" defaultValue={site?.progress ?? 0} className={inputClassName} disabled={disabled} />
           </Field>
-          <Field label="Review records">
-            <input name="evidenceCount" type="number" min="0" step="1" defaultValue={site?.evidenceCount ?? 0} className={inputClassName} disabled={disabled} />
-          </Field>
-          <Field label="Latest survey">
+          <div className="rounded-lg border border-kelp-300 bg-white px-4 py-3 text-sm text-ocean-900/70">Activity records are calculated automatically from linked evidence. No manual count is needed.</div>
+          <Field label="Last survey (fallback only)" help="A date from verified field evidence takes precedence automatically. Use this only if no such evidence is available.">
             <input name="latestSurvey" type="date" defaultValue={site?.latestSurvey ?? ""} className={inputClassName} disabled={disabled} />
           </Field>
         </div>

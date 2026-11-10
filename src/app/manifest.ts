@@ -2,7 +2,7 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "Terumbu.eco",
+    name: "Terumbu.world",
     short_name: "Terumbu",
     description: "Conservation funding, expeditions, academy learning, and verified impact tracking.",
     start_url: "/",

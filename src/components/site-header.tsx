@@ -8,6 +8,7 @@ import { useEffect, useState, useTransition } from "react";
 import { navItems } from "@/lib/data";
 import { logoutAction } from "@/lib/auth-actions";
 import { cn } from "@/lib/utils";
+import { publicLocaleHref, stripPublicLocale } from "@/lib/public-localized-routes";
 import { setPublicPreferencesAction } from "@/lib/user-preferences-actions";
 
 type SiteHeaderUser = {
@@ -42,6 +43,7 @@ export function SiteHeader({
   displayCurrency?: "USD" | "EUR" | "IDR" | "JPY";
 }) {
   const pathname = usePathname();
+  const basePath = stripPublicLocale(pathname);
   const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
@@ -87,8 +89,11 @@ export function SiteHeader({
 
   function updatePreferences(formData: FormData) {
     startTransition(async () => {
+      const nextLocale = formData.get("locale") === "id" ? "id" : "en";
       await setPublicPreferencesAction(formData);
-      router.refresh();
+      const nextPath = publicLocaleHref(nextLocale, basePath);
+      if (nextPath !== pathname) router.replace(nextPath);
+      else router.refresh();
     });
   }
   const initials = user ? initialsForDisplayName(user.displayName) : null;
@@ -98,23 +103,23 @@ export function SiteHeader({
   }, [locale]);
 
   return (
-    <header className="sticky top-0 z-50 border-b border-white/15 bg-ocean-900/90 text-white backdrop-blur-xl">
+    <header className="sticky top-0 z-50 border-b border-white/15 bg-[#062d7f]/95 text-white shadow-[0_8px_30px_rgba(2,17,62,.12)] backdrop-blur-xl">
       <div className="mx-auto flex h-20 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
         <Link href="/" className="flex items-center gap-3" aria-label="Terumbu.world home">
-          <span className="flex size-10 items-center justify-center rounded-full bg-kelp-500 text-white">
+          <span className="flex size-10 items-center justify-center rounded-full bg-[#c9f341] text-[#062d7f]">
             <Heart size={19} aria-hidden="true" />
           </span>
-          <span className="text-lg font-bold tracking-normal">Terumbu.world</span>
+          <span className="text-lg font-black tracking-[-0.035em]">Terumbu.world</span>
         </Link>
 
         <nav className="hidden items-center gap-1 xl:flex" aria-label="Main navigation">
           {localizedNavItems.map((item) => {
-            const isActive = item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
+            const isActive = item.href === "/" ? basePath === "/" : basePath.startsWith(item.href);
 
             return (
               <Link
                 key={item.href}
-                href={item.href}
+                href={publicLocaleHref(locale, item.href)}
                 className={cn(
                   "rounded-full px-4 py-2 text-sm font-medium text-white/78 transition hover:bg-white/10 hover:text-white",
                   isActive && "bg-white/12 text-white"
@@ -198,7 +203,7 @@ export function SiteHeader({
               </Link>
               <Link
                 href="/signup"
-                className="inline-flex min-h-11 items-center justify-center rounded-full bg-coral-500 px-4 py-2 text-sm font-bold text-white transition hover:bg-coral-700"
+                className="inline-flex min-h-11 items-center justify-center rounded-full bg-[#c9f341] px-4 py-2 text-sm font-black text-[#062d7f] transition hover:bg-white"
               >
                 {labels.join}
               </Link>
@@ -218,7 +223,7 @@ export function SiteHeader({
       </div>
 
       {isOpen ? (
-        <div id="public-mobile-navigation" className="border-t border-white/10 bg-ocean-900 px-4 py-5 xl:hidden">
+        <div id="public-mobile-navigation" className="border-t border-white/10 bg-[#062d7f] px-4 py-5 xl:hidden">
           <nav className="grid gap-2" aria-label="Mobile navigation">
             <form action={updatePreferences} className="mb-3 grid grid-cols-2 gap-2 rounded-xl border border-white/12 bg-white/8 p-2">
               <select
@@ -246,7 +251,7 @@ export function SiteHeader({
             {localizedNavItems.map((item) => (
               <Link
                 key={item.href}
-                href={item.href}
+                href={publicLocaleHref(locale, item.href)}
                 className="rounded-xl px-3 py-3 text-sm font-semibold text-white/88 hover:bg-white/10"
                 onClick={() => setIsOpen(false)}
               >
@@ -290,7 +295,7 @@ export function SiteHeader({
                 </Link>
                 <Link
                   href="/signup"
-                  className="rounded-xl bg-coral-500 px-3 py-3 text-center text-sm font-bold text-white hover:bg-coral-700"
+                  className="rounded-xl bg-[#c9f341] px-3 py-3 text-center text-sm font-black text-[#062d7f] hover:bg-white"
                   onClick={() => setIsOpen(false)}
                 >
                   {labels.join}

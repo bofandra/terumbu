@@ -3,6 +3,7 @@ import { and, asc, desc, eq, gte, inArray, isNotNull, lte, or, sql } from "drizz
 import { db } from "@/db/client";
 import { expeditionDepartureMatchesSearch } from "@/lib/expedition-marketplace";
 import { impactSiteCampaignScopeKey } from "@/lib/impact-site-scope";
+import { approvedPublicPrecision, publicMapCoordinates } from "@/lib/impact-map-location";
 import {
   assessmentAttempts,
   assessmentChoices,
@@ -2329,6 +2330,14 @@ export async function getImpactMapSites(campaignId?: string, expeditionId?: stri
       0
     );
     const evidenceCount = verifiedEvidenceCount + pendingEvidenceCount;
+    // Enforce public coordinate privacy on the server, before props are sent to browsers.
+    const publicLocation = publicMapCoordinates(
+      { latitude: toNumber(site.latitude), longitude: toNumber(site.longitude) },
+      approvedPublicPrecision(
+        getMetadataString(site.metadata, "publicLocationPrecision"),
+        getMetadataString(site.metadata, "verification")
+      )
+    );
 
     return {
       id: site.id,
@@ -2338,8 +2347,8 @@ export async function getImpactMapSites(campaignId?: string, expeditionId?: stri
       campaignSlug: site.campaignSlug,
       campaignTitle: site.campaignTitle,
       progress: getMetadataNumber(site.metadata, "progress"),
-      latitude: toNumber(site.latitude),
-      longitude: toNumber(site.longitude),
+      latitude: publicLocation.latitude,
+      longitude: publicLocation.longitude,
       verification: verificationLabel(normalizeImpactSiteVerificationStatus(getMetadataString(site.metadata, "verification"))),
       // Count only evidence from the linked public campaigns, never site-wide
       // legacy metadata (which can misattribute records to another campaign).
@@ -7822,13 +7831,15 @@ function adminImpactSiteSelect() {
   };
 }
 
-function toAdminImpactSiteListRow(site: AdminImpactSiteDbRow) {
+const adminImpactEvidenceCount = sql<number>`(select count(*)::int from ${projectEvidence} where ${projectEvidence.impactSiteId} = ${impactSites.id})`;
+
+function toAdminImpactSiteListRow(site: AdminImpactSiteDbRow & { recordCount?: number }) {
   return {
     ...site,
     latitude: toNumber(site.latitude),
     longitude: toNumber(site.longitude),
     progress: getMetadataNumber(site.metadata, "progress"),
-    evidenceCount: getMetadataNumber(site.metadata, "evidenceCount"),
+    evidenceCount: site.recordCount ?? getMetadataNumber(site.metadata, "evidenceCount"),
     latestSurvey: getMetadataString(site.metadata, "latestSurvey"),
     verification: getMetadataString(site.metadata, "verification") ?? "basic"
   };
@@ -7892,7 +7903,7 @@ export async function getAdminImpactSitesPage(params: AdminImpactSiteFilters = {
   };
   const whereClause = adminImpactSiteWhere(filters);
   const progressValue = sql<number>`case when coalesce(${impactSites.metadata}->>'progress', '') ~ '^[0-9]+(\\.[0-9]+)?$' then (${impactSites.metadata}->>'progress')::numeric else 0 end`;
-  const evidenceValue = sql<number>`case when coalesce(${impactSites.metadata}->>'evidenceCount', '') ~ '^[0-9]+$' then (${impactSites.metadata}->>'evidenceCount')::integer else 0 end`;
+  const evidenceValue = adminImpactEvidenceCount;
 
   const [totalRows, summaryRows] = await Promise.all([
     db
@@ -7913,7 +7924,7 @@ export async function getAdminImpactSitesPage(params: AdminImpactSiteFilters = {
   const totalItems = Number(totalRows[0]?.total ?? 0);
   const pagination = adminPaginationMeta(totalItems, query);
   const siteRows = await db
-    .select(adminImpactSiteSelect())
+    .select({ ...adminImpactSiteSelect(), recordCount: adminImpactEvidenceCount })
     .from(impactSites)
     .leftJoin(campaigns, eq(impactSites.campaignId, campaigns.id))
     .where(whereClause)
@@ -7953,7 +7964,7 @@ export async function getAdminImpactSiteEditorData(impactSiteId?: string) {
       .orderBy(asc(campaigns.title)),
     selectedSiteId
       ? db
-          .select(adminImpactSiteSelect())
+          .select({ ...adminImpactSiteSelect(), recordCount: adminImpactEvidenceCount })
           .from(impactSites)
           .leftJoin(campaigns, eq(impactSites.campaignId, campaigns.id))
           .where(eq(impactSites.id, selectedSiteId))
@@ -9774,6 +9785,7 @@ export async function getPartnerPortalData(userId?: string) {
       .select({
         id: projectEvidence.id,
         campaignId: projectEvidence.campaignId,
+        impactSiteId: projectEvidence.impactSiteId,
         title: projectEvidence.title,
         evidenceCode: projectEvidence.evidenceCode,
         evidenceType: projectEvidence.evidenceType,
@@ -10420,8 +10432,17 @@ export async function getPartnerPortalData(userId?: string) {
       latitude: toNumber(site.latitude),
       longitude: toNumber(site.longitude),
       progress: getMetadataNumber(site.metadata, "progress"),
-      evidenceCount: getMetadataNumber(site.metadata, "evidenceCount"),
-      latestSurvey: getMetadataString(site.metadata, "latestSurvey"),
+      // Never ask a partner to manually reconcile counts already in the evidence table.
+      evidenceCount: evidenceRows.filter((row) => row.impactSiteId === site.id && row.campaignId === site.campaignId).length,
+      publicLocationPrecision: getMetadataString(site.metadata, "publicLocationPrecision") === "precise" ? "precise" : "approximate",
+      // Verified field evidence with an explicit survey date is authoritative.
+      // Legacy manual dates remain fallback until every site has reviewed surveys.
+      latestSurvey: evidenceRows
+        .filter((row) => row.impactSiteId === site.id && row.campaignId === site.campaignId && row.verificationStatus === "verified")
+        .map((row) => getMetadataString(row.metadata, "surveyDate"))
+        .filter((value): value is string => Boolean(value))
+        .sort()
+        .at(-1) ?? getMetadataString(site.metadata, "latestSurvey"),
       verification: getMetadataString(site.metadata, "verification") ?? "basic"
     })),
     restorationBatches: restorationBatchRows,

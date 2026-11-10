@@ -32,7 +32,7 @@ test("donation receipt helpers produce stable public labels", () => {
   assert.equal(donationReceiptFilename(receipt), "terumbu-receipt-trb-rcp-2026-0001.pdf");
   assert.equal(donationReceiptHolderName(receipt), "Raka Pramana");
   assert.equal(donationReceiptHolderName({ donorName: null, donorEmail: "supporter@example.test" }), "supporter@example.test");
-  assert.equal(donationReceiptHolderName({ donorName: null, donorEmail: null }), "Terumbu.eco supporter");
+  assert.equal(donationReceiptHolderName({ donorName: null, donorEmail: null }), "Terumbu.world supporter");
   assert.equal(donationReceiptProviderReference(receipt), "demo-ref-1");
   assert.equal(donationReceiptProviderReference({ payload: {} }), "Recorded");
 });
@@ -51,7 +51,7 @@ test("donation receipt download pdf includes receipt details", () => {
   const pdfText = Buffer.from(pdf).toString("latin1");
 
   assert.match(pdfText, /^%PDF-1\.4/);
-  assert.match(pdfText, /Terumbu\.eco Donation Receipt/);
+  assert.match(pdfText, /Terumbu\.world Donation Receipt/);
   assert.match(pdfText, /TRB\\\(script\\\)/);
   assert.match(pdfText, /Raka \\\\ Team/);
   assert.match(pdfText, /Campaign \\\(One\\\)/);

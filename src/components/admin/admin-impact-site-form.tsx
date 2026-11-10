@@ -21,12 +21,11 @@ export type AdminImpactSiteFormValues = {
   longitude?: string | number | null;
   verification?: string | null;
   progress?: string | number | null;
-  evidenceCount?: string | number | null;
   latestSurvey?: string | null;
 };
 
 export type AdminImpactSiteFieldErrors = Partial<Record<
-  "name" | "region" | "latitude" | "longitude" | "progress" | "evidenceCount",
+  "name" | "region" | "latitude" | "longitude" | "progress",
   string
 >>;
 
@@ -83,16 +82,13 @@ export function validateAdminImpactSiteFormValues(values: AdminImpactSiteFormVal
   const latitude = Number(String(values.latitude ?? "").replace(/,/g, "."));
   const longitude = Number(String(values.longitude ?? "").replace(/,/g, "."));
   const progressRaw = String(values.progress ?? "0").trim();
-  const evidenceRaw = String(values.evidenceCount ?? "0").trim();
   const progress = Number(progressRaw || "0");
-  const evidenceCount = Number(evidenceRaw || "0");
 
   if (!name) errors.name = "Enter a site name.";
   if (!region) errors.region = "Enter a region.";
   if (!Number.isFinite(latitude) || latitude < -90 || latitude > 90) errors.latitude = "Enter a latitude from -90 to 90.";
   if (!Number.isFinite(longitude) || longitude < -180 || longitude > 180) errors.longitude = "Enter a longitude from -180 to 180.";
   if (!Number.isInteger(progress) || progress < 0 || progress > 100) errors.progress = "Enter progress from 0 to 100.";
-  if (!Number.isInteger(evidenceCount) || evidenceCount < 0) errors.evidenceCount = "Enter a whole-number activity count of 0 or more.";
 
   return errors;
 }
@@ -108,8 +104,7 @@ export function AdminImpactSiteErrorSummary({ errors }: { errors: AdminImpactSit
     latitude: "Latitude",
     longitude: "Longitude",
     progress: "Progress",
-    evidenceCount: "Activity records"
-  };
+    };
 
   return (
     <div role="alert" className="rounded-lg border border-coral-700/20 bg-coral-100 px-4 py-3 text-sm text-coral-700">

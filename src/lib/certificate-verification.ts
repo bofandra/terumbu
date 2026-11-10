@@ -82,7 +82,7 @@ export function buildCertificateDownloadHtml(certificate: CertificateVerificatio
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>${escapeHtml(certificate.certificateNumber)} - Terumbu.eco Certificate</title>
+  <title>${escapeHtml(certificate.certificateNumber)} - Terumbu.world Certificate</title>
   <style>
     * { box-sizing: border-box; }
     @page { size: A4 landscape; margin: 10mm; }
@@ -108,7 +108,7 @@ export function buildCertificateDownloadHtml(certificate: CertificateVerificatio
 </head>
 <body>
   <main>
-    <p class="eyebrow">Terumbu.eco Verified Learning Credential</p>
+    <p class="eyebrow">Terumbu.world Verified Learning Credential</p>
     <h1>${escapeHtml(holderName)}</h1>
     <h2>${escapeHtml(credentialName)}</h2>
     <dl>
@@ -123,7 +123,7 @@ export function buildCertificateDownloadHtml(certificate: CertificateVerificatio
       <dt>Verification URL</dt>
       <dd><a href="${escapeHtml(verificationUrl)}">${escapeHtml(verificationUrl)}</a></dd>
     </dl>
-    <p class="seal">This certificate record is verifiable through Terumbu.eco. It confirms course completion and does not represent professional licensing.</p>
+    <p class="seal">This certificate record is verifiable through Terumbu.world. It confirms course completion and does not represent professional licensing.</p>
   </main>
 </body>
 </html>`;

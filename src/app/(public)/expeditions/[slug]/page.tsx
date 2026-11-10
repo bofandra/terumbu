@@ -26,6 +26,8 @@ import {
   type LucideIcon
 } from "lucide-react";
 import type { Metadata } from "next";
+import { publicLanguageAlternates } from "@/lib/public-localized-routes";
+import { publicCanonicalPath } from "@/lib/public-canonical-path";
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -184,16 +186,18 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   }
 
   const imageUrl = expedition.galleryImages[0]?.src;
+  const path = `/expeditions/${expedition.slug}`;
+  const canonical = await publicCanonicalPath(path);
 
   return {
     title: expedition.title,
     description: expedition.summary,
-    alternates: { canonical: `/expeditions/${expedition.slug}` },
+    alternates: { canonical, languages: publicLanguageAlternates(path) },
     openGraph: {
       title: expedition.title,
       description: expedition.summary,
       type: "website",
-      url: `/expeditions/${expedition.slug}`,
+      url: canonical,
       images: imageUrl ? [{ url: imageUrl }] : undefined
     },
     twitter: {

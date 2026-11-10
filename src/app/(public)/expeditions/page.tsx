@@ -13,6 +13,8 @@ import {
   ExpeditionSortControl
 } from "@/components/expedition-marketplace-filters";
 import { parseExpeditionSearchFilters } from "@/lib/expedition-marketplace";
+import { publicLanguageAlternates } from "@/lib/public-localized-routes";
+import { publicCanonicalPath } from "@/lib/public-canonical-path";
 import { getExpeditionMarketplaceResults } from "@/lib/queries";
 import { getPreferredDisplayCurrency, getPreferredLocale, localeTag, t } from "@/lib/user-preferences";
 
@@ -23,20 +25,21 @@ const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://terumbu.world";
 export async function generateMetadata(): Promise<Metadata> {
   const locale = await getPreferredLocale();
   const isIndonesian = locale === "id";
+  const canonical = await publicCanonicalPath("/expeditions");
 
   return {
     title: isIndonesian ? "Ekspedisi Konservasi Pesisir Indonesia" : "Conservation Expeditions in Indonesia",
     description: isIndonesian
       ? "Temukan trip konservasi bersama mitra lokal, cek kegiatan lapangan, harga, dan jadwal keberangkatan di Terumbu.world."
       : "Find conservation trips with local partners, then compare field activities, prices, and departure dates on Terumbu.world.",
-    alternates: { canonical: "/expeditions" },
+    alternates: { canonical, languages: publicLanguageAlternates("/expeditions") },
     openGraph: {
       title: isIndonesian ? "Ekspedisi Konservasi Pesisir Indonesia | Terumbu.world" : "Conservation Expeditions in Indonesia | Terumbu.world",
       description: isIndonesian
         ? "Lihat pesisir lebih dekat bersama pemandu dan mitra lokal Terumbu."
         : "See Indonesia’s coasts up close with Terumbu’s local guides and partners.",
       type: "website",
-      url: "/expeditions"
+      url: canonical
     }
   };
 }
@@ -97,9 +100,9 @@ export default async function ExpeditionsPage({ searchParams }: ExpeditionsPageP
             </p>
             <div className="mt-7 flex flex-wrap gap-x-5 gap-y-3">
               {[
-                { label: messages.verifiedPartners, icon: ShieldCheck },
-                { label: messages.impactTrips, icon: Compass },
-                { label: messages.smallGroups, icon: Users }
+                { label: isIndonesian ? "Informasi dari mitra" : "Partner-managed information", icon: ShieldCheck },
+                { label: isIndonesian ? "Jelajahi kegiatan lapangan" : "Explore field activities", icon: Compass },
+                { label: isIndonesian ? "Periksa kapasitas peserta" : "Check group capacity", icon: Users }
               ].map((item) => {
                 const Icon = item.icon;
 

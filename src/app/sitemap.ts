@@ -1,6 +1,7 @@
 import type { MetadataRoute } from "next";
 
 import { getPublicSitemapRecords, getPublishedDestinations } from "@/lib/queries";
+import { isLocalizedPublicPath, publicLanguageAlternates, publicLocaleHref } from "@/lib/public-localized-routes";
 
 const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://terumbu.world";
 
@@ -30,7 +31,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   return [
     ...publicSitemapPaths.map((path) => ({
-      url: `${baseUrl}${path}`,
+      url: `${baseUrl}${isLocalizedPublicPath(path || "/") ? publicLocaleHref("en", path || "/") : path}`,
+      alternates: isLocalizedPublicPath(path || "/") ? { languages: Object.fromEntries(Object.entries(publicLanguageAlternates(path || "/")).map(([key, value]) => [key, `${baseUrl}${value}`])) } : undefined,
       changeFrequency: path === "" ? ("daily" as const) : ("weekly" as const),
       priority: path === "" ? 1 : 0.8
     })),
@@ -41,7 +43,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.9
     })),
     ...records.expeditions.map((expedition) => ({
-      url: `${baseUrl}/expeditions/${expedition.slug}`,
+      url: `${baseUrl}${publicLocaleHref("en", `/expeditions/${expedition.slug}`)}`,
+      alternates: { languages: Object.fromEntries(Object.entries(publicLanguageAlternates(`/expeditions/${expedition.slug}`)).map(([key, value]) => [key, `${baseUrl}${value}`])) },
       lastModified: expedition.updatedAt,
       changeFrequency: "weekly" as const,
       priority: 0.9

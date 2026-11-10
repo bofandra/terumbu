@@ -2,7 +2,7 @@
 
 import { Camera, X } from "lucide-react";
 import Image from "next/image";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 type GalleryImage = {
   src: string;
@@ -19,7 +19,25 @@ type ExpeditionHeroGalleryProps = {
 
 export function ExpeditionHeroGallery({ images, region, locale = "en" }: ExpeditionHeroGalleryProps) {
   const [open, setOpen] = useState(false);
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const hasOpenedRef = useRef(false);
   const main = images[0];
+
+  useEffect(() => {
+    if (!open) return;
+    hasOpenedRef.current = true;
+    closeButtonRef.current?.focus();
+    function onEscape(event: KeyboardEvent) {
+      if (event.key === "Escape") setOpen(false);
+    }
+    window.addEventListener("keydown", onEscape);
+    return () => window.removeEventListener("keydown", onEscape);
+  }, [open]);
+
+  useEffect(() => {
+    if (!open && hasOpenedRef.current) triggerRef.current?.focus({ preventScroll: true });
+  }, [open]);
   const labels =
     locale === "id"
       ? {
@@ -44,13 +62,14 @@ export function ExpeditionHeroGallery({ images, region, locale = "en" }: Expedit
   return (
     <>
       <button
+        ref={triggerRef}
         type="button"
-        className="group relative h-[340px] w-full overflow-hidden rounded-md bg-ocean-900 text-left disabled:cursor-default sm:h-[430px] lg:h-[480px]"
+        className="group relative h-[340px] w-full overflow-hidden rounded-[2rem] bg-[#062d7f] text-left shadow-soft disabled:cursor-default sm:h-[430px] lg:h-[480px]"
         onClick={() => main && setOpen(true)}
         disabled={!main}
       >
         {main ? <Image src={main.src} alt={main.caption} fill className="object-cover transition duration-500 group-hover:scale-[1.03]" sizes="(min-width: 1024px) 48vw, 100vw" priority /> : null}
-        <div className="absolute inset-0 bg-gradient-to-t from-ocean-900/18 via-transparent to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-t from-[#062d7f]/65 via-transparent to-transparent" />
         <span className="absolute bottom-5 right-5 inline-flex min-h-11 items-center gap-2 rounded-full bg-white px-5 text-sm font-bold text-ocean-900 shadow-soft">
           <Camera size={16} aria-hidden="true" />
           {main ? `${labels.viewAll} ${images.length} ${labels.photos}` : labels.noPhotos}
@@ -59,14 +78,14 @@ export function ExpeditionHeroGallery({ images, region, locale = "en" }: Expedit
       </button>
 
       {open ? (
-        <div className="fixed inset-0 z-50 overflow-y-auto bg-ocean-950/80 p-4 backdrop-blur" role="dialog" aria-modal="true" aria-label={labels.dialog}>
-          <div className="mx-auto max-w-5xl rounded-2xl bg-white p-4 shadow-soft">
+        <div className="fixed inset-0 z-[100] overflow-y-auto bg-[#031b4c]/90 p-4 backdrop-blur" role="dialog" aria-modal="true" aria-label={labels.dialog}>
+          <div className="mx-auto max-w-5xl rounded-3xl bg-white p-5 shadow-soft sm:p-7">
             <div className="flex items-center justify-between gap-4">
               <div>
                 <p className="text-sm font-bold uppercase tracking-[0.16em] text-coral-700">{labels.gallery}</p>
                 <p className="mt-1 text-sm text-ocean-900/62">{labels.provenance}</p>
               </div>
-              <button type="button" className="flex size-10 items-center justify-center rounded-full bg-ocean-50" aria-label={labels.close} onClick={() => setOpen(false)}>
+              <button ref={closeButtonRef} type="button" className="flex size-11 items-center justify-center rounded-full bg-[#eaf2ff] text-[#062d7f]" aria-label={labels.close} onClick={() => setOpen(false)}>
                 <X size={18} aria-hidden="true" />
               </button>
             </div>
