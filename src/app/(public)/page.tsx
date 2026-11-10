@@ -215,6 +215,7 @@ export default async function HomePage() {
           <ImpactMapPreview sites={impactSites} locale={locale} />
           <div className="mt-7 text-right"><Link href="/impact-map" className="inline-flex min-h-11 items-center gap-2 rounded-full bg-[#0757e5] px-6 text-sm font-bold text-white hover:bg-[#062d7f]">{locale === "id" ? "Lihat peta dampak lengkap" : "Explore the full impact map"} <ArrowRight size={16} aria-hidden="true" /></Link></div>
         </div>
+        </div>
       </section>
 
       <section className="terumbu-editorial bg-[#062d7f] py-20 text-white sm:py-24">
