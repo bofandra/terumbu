@@ -26,7 +26,8 @@ import {
   type LucideIcon
 } from "lucide-react";
 import type { Metadata } from "next";
-import { publicCanonicalPath, publicLanguageAlternates } from "@/lib/public-localized-routes";
+import { publicLanguageAlternates } from "@/lib/public-localized-routes";
+import { publicCanonicalPath } from "@/lib/public-canonical-path";
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";

@@ -14,7 +14,8 @@ import { StatStrip } from "@/components/stat-strip";
 import { ButtonLink } from "@/components/ui/button";
 import { ProgressMeter } from "@/components/ui/progress-meter";
 import type { PassportPreviewData } from "@/lib/domain";
-import { publicCanonicalPath, publicLanguageAlternates } from "@/lib/public-localized-routes";
+import { publicLanguageAlternates } from "@/lib/public-localized-routes";
+import { publicCanonicalPath } from "@/lib/public-canonical-path";
 import {
   getCampaignCards,
   getExpeditionCards,

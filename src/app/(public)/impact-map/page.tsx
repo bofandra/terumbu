@@ -6,7 +6,8 @@ import { ImpactMapPreview } from "@/components/impact-map-preview";
 import { getImpactMapSites } from "@/lib/queries";
 import { summarizeImpactSites } from "@/lib/impact-map-location";
 import { getPreferredLocale } from "@/lib/user-preferences";
-import { publicCanonicalPath, publicLanguageAlternates } from "@/lib/public-localized-routes";
+import { publicLanguageAlternates } from "@/lib/public-localized-routes";
+import { publicCanonicalPath } from "@/lib/public-canonical-path";
 
 export const dynamic = "force-dynamic";
 

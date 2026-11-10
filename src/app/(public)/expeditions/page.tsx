@@ -13,7 +13,8 @@ import {
   ExpeditionSortControl
 } from "@/components/expedition-marketplace-filters";
 import { parseExpeditionSearchFilters } from "@/lib/expedition-marketplace";
-import { publicCanonicalPath, publicLanguageAlternates } from "@/lib/public-localized-routes";
+import { publicLanguageAlternates } from "@/lib/public-localized-routes";
+import { publicCanonicalPath } from "@/lib/public-canonical-path";
 import { getExpeditionMarketplaceResults } from "@/lib/queries";
 import { getPreferredDisplayCurrency, getPreferredLocale, localeTag, t } from "@/lib/user-preferences";
 

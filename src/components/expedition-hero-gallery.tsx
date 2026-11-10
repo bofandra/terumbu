@@ -21,10 +21,12 @@ export function ExpeditionHeroGallery({ images, region, locale = "en" }: Expedit
   const [open, setOpen] = useState(false);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
+  const hasOpenedRef = useRef(false);
   const main = images[0];
 
   useEffect(() => {
     if (!open) return;
+    hasOpenedRef.current = true;
     closeButtonRef.current?.focus();
     function onEscape(event: KeyboardEvent) {
       if (event.key === "Escape") setOpen(false);
@@ -34,7 +36,7 @@ export function ExpeditionHeroGallery({ images, region, locale = "en" }: Expedit
   }, [open]);
 
   useEffect(() => {
-    if (!open) triggerRef.current?.focus({ preventScroll: true });
+    if (!open && hasOpenedRef.current) triggerRef.current?.focus({ preventScroll: true });
   }, [open]);
   const labels =
     locale === "id"
