@@ -1,0 +1,112 @@
+import { T, type L } from '@/lib/bilingual';
+
+export const pramuka = {
+  slug: 'pulau-pramuka',
+  priceIdr: 750000,
+  seo: {
+    id: { title: 'Ekspedisi Edukasi Laut Pulau Pramuka | Terumbu', description: 'Ikuti ekspedisi edukasi laut di Pulau Pramuka bersama pemandu lokal. Kenali mangrove, terumbu, kehidupan pesisir, dan aksi konservasi dalam satu hari yang bisa disesuaikan untuk sekolah atau kelompok.' },
+    en: { title: 'Marine Learning Expedition on Pramuka Island | Terumbu', description: 'Spend a day learning about mangroves, reefs, coastal life, and conservation action on Pramuka Island with a local guide.' },
+  } as L<{ title: string; description: string }>,
+  ogDescription: T('Satu hari untuk mengenal pesisir Pulau Pramuka, mendengar cerita warga, dan ikut aksi konservasi bersama pemandu lokal.', 'One day to meet the Pramuka Island coast, hear from residents, and join conservation action with a local guide.'),
+  ogImage: '/assets/expeditions/boat-group.jpeg',
+  ogImageAlt: T('Peserta ekspedisi belajar laut di atas perahu menuju Pulau Pramuka', 'Participants learning about the sea on a boat to Pramuka Island'),
+  jsonLdDescription: 'Ekspedisi satu hari untuk mengenal mangrove, terumbu, kehidupan pesisir, dan aksi konservasi bersama pemandu lokal.',
+  jsonLdName: 'Ekspedisi edukasi laut Pulau Pramuka',
+
+  crumb: T('Ekspedisi edukasi laut', 'Marine learning trip'),
+  breadcrumbAria: T('Breadcrumb', 'Breadcrumb'),
+  hero: {
+    eyebrow: T('Ekspedisi edukasi laut · Pulau Pramuka', 'Marine learning trip · Pramuka Island'),
+    h1a: T('Kenali & Belajar', 'Meet & learn'),
+    h1b: T('kehidupan pesisir lebih dekat.', 'coastal life up close.'),
+    copy: T('Menjelajahi kehidupan pesisir Pulau Pramuka lebih dalam, mulai dari mengenali ekosistem mangrove, terumbu karang, dan berinteraksi dengan kehidupan warga lokal dengan pemandu profesional.', 'Explore the coastal life of Pramuka Island more deeply, from learning about mangrove and coral reef ecosystems to meeting local residents with a professional guide.'),
+    primary: T('Mulai rencanakan trip', 'Start planning your trip'),
+    secondary: T('Temukan ekspedisi lainnya', 'Find more expeditions'),
+    galleryAria: T('Galeri foto ekspedisi Pulau Pramuka', 'Pramuka Island expedition photo gallery'),
+    dotsAria: T('Pilihan foto ekspedisi', 'Expedition photo choices'),
+    photoLabel: (n: number): L => ({ id: `Foto ${n}`, en: `Photo ${n}` }),
+    stickerTop: T('1 hari', '1 day'),
+    stickerSub: T('dipandu lokal', 'local guide'),
+    slides: [
+      { src: '/assets/expeditions/boat-group.jpeg', alt: T('Peserta ekspedisi belajar laut di atas perahu menuju Pulau Pramuka', 'Participants learning about the sea on a boat to Pramuka Island') },
+      { src: '/assets/expeditions/mangrove-group.jpeg', alt: T('Peserta menjelajahi kawasan mangrove di Pulau Pramuka', 'Participants exploring the mangrove area on Pramuka Island') },
+      { src: '/assets/expeditions/mangrove-nursery.jpeg', alt: T('Peserta mempelajari pembibitan mangrove bersama mitra lokal', 'Participants learning about a mangrove nursery with local partners') },
+      { src: '/assets/expeditions/youth-rangers-mangrove-2026.jpg', alt: T('Peserta belajar di antara akar mangrove', 'Participants learning among mangrove roots') },
+      { src: '/assets/expeditions/sunset-youth.jpeg', alt: T('Peserta menikmati suasana pesisir saat matahari terbenam', 'Participants enjoying the coast at sunset') },
+    ],
+  },
+  facts: {
+    aria: T('Ringkasan ekspedisi', 'Expedition summary'),
+    duration: T('Durasi', 'Duration'), durationValue: T('1 hari', '1 day'),
+    goodFor: T('Cocok untuk', 'Good for'), goodForValue: T('Sekolah dan kelompok', 'Schools and groups'),
+    focus: T('Fokus', 'Focus'), focusValue: T('Terumbu · mangrove · warga', 'Reef · mangroves · residents'),
+    price: T('Harga mulai', 'Starting price'), perPerson: T('/ peserta', '/ person'),
+  },
+  intro: {
+    h2: T('Berbagai pengalaman seru menantimu', 'Many exciting experiences await'),
+    paragraphs: [
+      T('Pernah bertanya apa yang hidup di antara akar mangrove? Mengapa terumbu karang penting bagi kehidupan laut? Atau bagaimana warga pulau menjaga lingkungan yang menjadi bagian dari kehidupan mereka?', 'Have you ever wondered what lives among mangrove roots? Why coral reefs matter to marine life? Or how island residents care for the environment that is part of their everyday lives?'),
+      T('Temukan jawabannya langsung di Pulau Pramuka.', 'Find the answers on Pramuka Island.'),
+      T('Dalam satu hari, kamu akan diajak menjelajahi lingkungan pesisir melalui perjalanan yang menggabungkan eksplorasi, pembelajaran, dan interaksi bersama masyarakat lokal.', 'In one day, explore the coast through a journey that combines discovery, learning, and time with the local community.'),
+      T('Setiap titik kunjungan menghadirkan pengalaman berbeda. Ada yang bisa diamati, ada yang bisa dipelajari, dan ada cerita yang hanya bisa kamu dengar langsung dari orang-orang setempat.', 'Every stop brings a different experience: things to observe, lessons to learn, and stories you can hear directly from local people.'),
+      T('Pilih pengalaman yang sesuai dengan kebutuhan kelompokmu. Baik untuk school trip, team day, komunitas, keluarga, maupun perjalanan kelompok kecil. Kamu bisa mendiskusikan tanggal, titik temu, aktivitas, dan anggaran bersama tim Terumbu sebelum perjalanan dimulai.', 'Choose an experience that fits your group. It works for school trips, team days, communities, families, and small groups. Discuss dates, meeting points, activities, and budget with the Terumbu team before you go.'),
+    ],
+  },
+  itinerary: {
+    h2: T('Alur kegiatan ekspedisi', 'Expedition itinerary'),
+    lede: T('Rangkaian berikut merupakan gambaran aktivitas selama satu hari. Pelaksanaan dan urutan kegiatan menyesuaikan cuaca, pasang surut, serta kondisi lapangan.', 'The following sequence outlines a day of activities. The timing and order will adapt to weather, tides, and field conditions.'),
+    steps: [
+      { title: T('Start your journey — Kenali pulaunya', 'Start your journey — Get to know the island'), body: T('Bertemu tim dan pemandu lokal, mengikuti pembekalan, lalu mengenal lingkungan sekitar sebelum memulai eksplorasi.', 'Meet the team and local guide, join a briefing, and get to know the surroundings before exploring.') },
+      { title: T('Explore the ecosystem — Temukan kehidupan pesisir', 'Explore the ecosystem — Discover coastal life'), body: T('Jelajahi mangrove, pantai, atau terumbu dangkal. Amati biota dan pelajari bagaimana ekosistem tersebut saling terhubung.', 'Explore mangroves, the beach, or a shallow reef. Observe marine life and learn how the ecosystems connect.') },
+      { title: T('Meet the locals — Dengarkan cerita setempat', 'Meet the locals — Hear local stories'), body: T('Berinteraksi dengan mitra lokal dan temukan perspektif baru tentang kehidupan masyarakat yang tumbuh bersama laut.', 'Meet local partners and discover new perspectives on communities that have grown with the sea.') },
+      { title: T('Join the experience — Ikut kegiatan lapangan', 'Join the experience — Take part in the field activity'), body: T('Ambil bagian dalam aktivitas pembelajaran atau konservasi yang telah disesuaikan dengan kondisi lokasi dan kebutuhan kelompok.', 'Take part in a learning or conservation activity adapted to the site and your group’s needs.') },
+    ],
+    note: T('Catatan: Urutan kegiatan dapat berubah mengikuti cuaca, pasang surut, dan kondisi lapangan.', 'Note: The order may change with weather, tides, and field conditions.'),
+  },
+  prepare: {
+    h2: T('Setiap trip disesuaikan dengan kebutuhan kamu', 'Every trip is tailored to your needs'),
+    lede: T('Kami ingin setiap peserta merasa nyaman dan siap mengikuti kegiatan. Karena itu, tim Terumbu akan membantu mengatur kebutuhan perjalanan sebelum hari keberangkatan.', 'We want every participant to feel comfortable and ready. The Terumbu team will help arrange your trip needs before departure.'),
+    needTitle: T('Yang perlu kami ketahui:', 'What we need to know:'),
+    need: [
+      T('Jumlah peserta dan rentang usia.', 'Number of participants and age range.'),
+      T('Tujuan pembelajaran atau kegiatan kelompok.', 'Learning or group activity goals.'),
+      T('Tanggal dan preferensi durasi aktivitas.', 'Preferred date and activity duration.'),
+      T('Kebutuhan aksesibilitas dan kenyamanan peserta saat berada di air.', 'Accessibility needs and participant comfort in the water.'),
+    ],
+    helpTitle: T('Yang akan kami bantu siapkan:', 'What we will help prepare:'),
+    help: [
+      T('Informasi titik temu dan transportasi.', 'Meeting point and transport information.'),
+      T('Rangkaian kegiatan dan pembekalan keselamatan.', 'Activity sequence and safety briefing.'),
+      T('Daftar perlengkapan pribadi serta fasilitas yang disediakan.', 'Personal equipment list and provided facilities.'),
+      T('Proposal biaya dan informasi pemesanan.', 'Price proposal and booking information.'),
+    ],
+  },
+  impact: {
+    h2: T('Trip & konservasi bersama Terumbu', 'Trips and conservation with Terumbu'),
+    copy1: T('Mengenal ekosistem pesisir adalah salah satu langkah untuk memahami mengapa lingkungan perlu dijaga. Melalui perjalanan ini, kamu juga akan mengenal kerja konservasi bersama mitra lokal.', 'Learning about coastal ecosystems is one step towards understanding why they need care. Through this trip, you will also discover conservation work with local partners.'),
+    copy2: T('Cerita, dokumentasi, dan perkembangan proyek konservasi dapat kamu ikuti melalui Peta Dampak Terumbu.', 'Follow conservation stories, documentation, and project updates through Terumbu’s Impact Map.'),
+    link: T('Lihat jejak dampaknya', 'See the impact trail'),
+    items: [
+      { title: T('Mengenal kondisi ekosistem', 'Understand the ecosystem'), body: T('Mengamati langsung mangrove, terumbu, dan lingkungan pesisir sebagai bagian dari pembelajaran.', 'Observe mangroves, reefs, and coastal environments directly as part of the learning experience.') },
+      { title: T('Memahami peran mitra lokal', 'Understand local partners'), body: T('Mengenal individu dan organisasi yang bekerja bersama masyarakat dalam menjaga ekosistem pesisir.', 'Meet the people and organisations working with communities to care for coastal ecosystems.') },
+      { title: T('Mengalami kegiatan konservasi', 'Experience conservation work'), body: T('Mengikuti aktivitas lapangan yang disesuaikan dengan kebutuhan dan kondisi lokasi.', 'Join a field activity adapted to the site and your group’s needs.') },
+      { title: T('Mengikuti perkembangan proyek', 'Follow project progress'), body: T('Mengakses dokumentasi dan informasi perkembangan konservasi melalui Peta Dampak Terumbu.', 'Access conservation documentation and project updates through Terumbu’s Impact Map.') },
+    ],
+  },
+  faq: {
+    h2: T('Frequently Asked Questions', 'Frequently Asked Questions'),
+    lede: T('Setiap trip ekspedisi & individu punya kebutuhan berbeda. Berikut beberapa hal yang perlu kamu ketahui sebelum merencanakan trip ekspedisi.', 'Every expedition and individual has different needs. Here are a few things to know before planning your trip.'),
+    items: [
+      { q: T('Apakah ini hanya untuk sekolah?', 'Is this only for schools?'), a: T('Nggak. Formatnya bisa dipakai untuk sekolah, komunitas, tim kantor, keluarga, atau wisatawan.', 'No. It can work for schools, communities, office teams, families, or travellers.') },
+      { q: T('Harus bisa berenang?', 'Do I need to be able to swim?'), a: T('Nggak selalu. Kegiatan di air dibahas saat perencanaan. Kalau perlu, alurnya bisa dibuat tanpa aktivitas air.', 'Not always. Water activities are discussed during planning. The itinerary can be arranged without them if needed.') },
+      { q: T('Berapa biaya ekspedisinya?', 'How much does the expedition cost?'), a: T('Harga mulai adalah contoh per peserta. Biaya final mengikuti jumlah peserta, waktu, transportasi, akomodasi, dan kegiatan yang dipilih. Tim Terumbu menyiapkan proposal setelah percakapan awal.', 'The starting price is an example per person. The final cost depends on group size, timing, transport, accommodation, and selected activities. The Terumbu team will prepare a proposal after an initial conversation.') },
+      { q: T('Apakah alurnya bisa berubah?', 'Can the itinerary change?'), a: T('Bisa. Pasang surut, cuaca, dan kondisi lapangan ikut menentukan kegiatan hari itu. Pemandu akan menjelaskan perubahan sebelum aktivitas dimulai.', 'Yes. Tides, weather, and field conditions shape the day. The guide will explain changes before an activity starts.') },
+    ],
+  },
+  cta: {
+    h2: T('Rencanakan trip ekspedisi kamu sekarang juga!', 'Plan your expedition trip now!'),
+    copy: T('Ceritakan rencana perjalananmu. Mulai dari jumlah peserta, tanggal keberangkatan, hingga hal-hal yang ingin dipelajari. Tim Terumbu siap membantu menyusun trip yang sesuai dengan kebutuhanmu.', 'Tell us about your travel plan, from group size and departure date to what you want to learn. The Terumbu team is ready to shape a trip that fits your needs.'),
+    button: T('Diskusikan perjalananmu bersama Terumbu', 'Discuss your trip with Terumbu'),
+    waText: 'Hai Terumbu, saya ingin mendiskusikan perjalanan ekspedisi Pulau Pramuka.',
+  },
+};

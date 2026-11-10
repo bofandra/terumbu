@@ -1,0 +1,532 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Peta Dampak Konservasi Pesisir Indonesia | Terumbu.eco</title>
+  <meta name="description" content="Lihat lokasi konservasi pesisir Indonesia, baca catatan dari lapangan, dan cek status verifikasi restorasi mangrove, terumbu karang, serta bersih pantai bersama Terumbu.eco.">
+  <link rel="canonical" href="https://terumbu.world/impact-map">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Terumbu.eco">
+  <meta property="og:title" content="Peta Dampak Konservasi Pesisir Indonesia | Terumbu.eco">
+  <meta property="og:description" content="Lihat lokasi, catatan lapangan, dan status verifikasi proyek konservasi pesisir Indonesia.">
+  <meta property="og:url" content="https://terumbu.world/impact-map">
+  <meta property="og:locale" content="id_ID">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="icon" href="reference-assets/cropped-Logo-Terumbu-2_main-1.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+  <script type="application/ld+json">
+  {"@context":"https://schema.org","@graph":[
+    {"@type":"WebPage","name":"Peta Dampak Konservasi Pesisir Indonesia","url":"https://terumbu.world/impact-map","description":"Lihat lokasi konservasi pesisir Indonesia, baca catatan dari lapangan, dan cek status verifikasi proyek.","inLanguage":"id","breadcrumb":{"@id":"https://terumbu.world/impact-map#breadcrumb"}},
+    {"@type":"BreadcrumbList","@id":"https://terumbu.world/impact-map#breadcrumb","itemListElement":[{"@type":"ListItem","position":1,"name":"Beranda","item":"https://terumbu.world/"},{"@type":"ListItem","position":2,"name":"Peta Dampak","item":"https://terumbu.world/impact-map"}]},
+    {"@type":"FAQPage","mainEntity":[
+      {"@type":"Question","name":"Seberapa akurat lokasi di peta?","acceptedAnswer":{"@type":"Answer","text":"Posisi di peta sengaja kami perkirakan. Koordinat persisnya tidak dibuka supaya kawasan ekologis yang sensitif tetap terlindungi."}},
+      {"@type":"Question","name":"Apa bedanya level verifikasi proyek dengan status catatan aktivitas?","acceptedAnswer":{"@type":"Answer","text":"Level verifikasi proyek menunjukkan jenis pemeriksaan yang sudah dilewati proyek. Status catatan aktivitas menunjukkan apakah satu catatan lapangan sudah terverifikasi atau masih ditinjau."}},
+      {"@type":"Question","name":"Kenapa ada lokasi yang statusnya masih ditinjau?","acceptedAnswer":{"@type":"Answer","text":"Kegiatannya sudah tercatat, tapi bukti lapangannya belum selesai kami tinjau. Tetap kami tampilkan supaya kamu tahu mana yang sudah terverifikasi dan mana yang belum."}},
+      {"@type":"Question","name":"Seberapa sering data diperbarui?","acceptedAnswer":{"@type":"Answer","text":"Peta mengikuti catatan proyek yang sudah dipublikasikan. Kalau ada, tanggal survei atau kegiatan terbaru tampil di detail lokasi."}},
+      {"@type":"Question","name":"Bagaimana cara ikut membantu?","acceptedAnswer":{"@type":"Answer","text":"Kamu bisa mendukung kampanye, ikut ekspedisi konservasi, atau mulai belajar lewat Terumbu Academy."}}
+    ]}
+  ]}
+  </script>
+  <style>
+    /* Mengikuti sistem desain expeditions.html: Space Grotesk + DM Sans, ocean / lime / coral */
+    :root {
+      --color-ink: oklch(20% .02 250);
+      --color-ink-soft: oklch(45% .025 250);
+      --color-paper: oklch(99% .005 95);
+      --color-paper-warm: oklch(96.5% .012 95);
+      --color-paper-blue: oklch(96% .025 235);
+      --color-ocean: oklch(49% .19 258);
+      --color-ocean-deep: oklch(28% .13 260);
+      --color-lime: oklch(88% .18 112);
+      --color-coral: oklch(67% .17 32);
+      --color-coral-text: oklch(52% .17 32);
+      --color-rule: oklch(86% .02 250);
+      --color-focus: oklch(88% .18 112);
+      --font-display: "Space Grotesk", Arial, sans-serif;
+      --font-body: "DM Sans", Arial, sans-serif;
+      --radius-md: 1rem; --radius-pill: 999px;
+      --shadow-soft: 0 18px 50px oklch(20% .04 250 / .12);
+      --ease-out: cubic-bezier(.16, 1, .3, 1);
+    }
+    *, *::before, *::after { box-sizing: border-box; }
+    html, body { overflow-x: clip; }
+    html { scroll-behavior: smooth; }
+    body { margin: 0; color: var(--color-ink); background: var(--color-paper); font: 400 17px/1.65 var(--font-body); }
+    a { color: inherit; }
+    img { display: block; max-width: 100%; }
+    .skip { position: absolute; left: 1rem; top: 1rem; z-index: 2000; padding: .6rem 1rem; border-radius: var(--radius-pill); background: var(--color-lime); transform: translateY(-150%); }
+    .skip:focus { transform: none; }
+    .shell { width: min(1160px, calc(100% - 2.5rem)); margin-inline: auto; }
+    .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
+    :where(a, button, select, summary):focus-visible { outline: 3px solid var(--color-focus); outline-offset: 3px; }
+    h1, h2, h3 { margin: 0; font-family: var(--font-display); font-weight: 700; line-height: 1.05; letter-spacing: -.035em; }
+    h1 { max-width: 650px; font-size: clamp(2.7rem, 4.6vw, 4.6rem); }
+    h2 { font-size: clamp(2.05rem, 3.6vw, 3.4rem); }
+    h3 { font-size: clamp(1.2rem, 2vw, 1.5rem); }
+
+    /* header */
+    .site-header { position: sticky; top: 0; z-index: 1000; border-bottom: 1px solid var(--color-rule); background: oklch(99% .005 95 / .92); backdrop-filter: blur(16px); }
+    .nav { min-height: 76px; display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
+    .wordmark img { width: 154px; height: auto; }
+    .nav-links { display: flex; align-items: center; gap: 1.5rem; color: var(--color-ink-soft); font-size: .91rem; }
+    .nav-links a { text-decoration: none; }
+    .nav-links a:hover { color: var(--color-ocean); }
+    .nav-controls { display: flex; align-items: center; gap: .45rem; }
+    .select-control { position: relative; }
+    .select-control select { min-height: 38px; padding: 0 1.8rem 0 .7rem; border: 1px solid var(--color-rule); border-radius: var(--radius-pill); background: var(--color-paper); color: var(--color-ink); font: 700 .75rem var(--font-body); appearance: none; cursor: pointer; }
+    .select-control::after { position: absolute; top: 50%; right: .65rem; color: var(--color-ocean); content: "⌄"; font-size: .75rem; pointer-events: none; transform: translateY(-58%); }
+    .button, .nav-cta { display: inline-flex; min-height: 46px; align-items: center; justify-content: center; gap: .5rem; padding: 0 1.2rem; border: 1px solid transparent; border-radius: var(--radius-pill); font: 700 .88rem var(--font-body); text-decoration: none; cursor: pointer; transition: transform .2s var(--ease-out), background-color .2s var(--ease-out), color .2s var(--ease-out), border-color .2s var(--ease-out); }
+    .nav-cta, .button-primary { color: var(--color-paper); background: var(--color-ocean); }
+    .nav-cta:hover, .button-primary:hover { background: var(--color-ocean-deep); transform: translateY(-2px); }
+    .button-secondary { border-color: var(--color-rule); background: transparent; color: var(--color-ink); }
+    .button-secondary:hover { border-color: var(--color-ocean); color: var(--color-ocean); transform: translateY(-2px); }
+    .button-lime { background: var(--color-lime); color: var(--color-ink); }
+    .button-lime:hover { background: var(--color-paper); transform: translateY(-2px); }
+
+    /* hero */
+    .hero { padding: clamp(4rem, 9vw, 7.5rem) 0 4rem; background: var(--color-paper-warm); }
+    .hero-grid { display: grid; grid-template-columns: minmax(0, .85fr) minmax(0, 1.15fr); gap: clamp(2rem, 6vw, 6rem); align-items: end; }
+    .hero-copy { max-width: 540px; margin: 1.4rem 0 0; color: var(--color-ink-soft); font-size: clamp(1rem, 1.4vw, 1.18rem); }
+    .hero-actions { display: flex; flex-wrap: wrap; gap: .75rem; margin-top: 2rem; }
+    .trust { display: flex; flex-wrap: wrap; gap: .4rem 1.2rem; margin: 1.6rem 0 0; padding: 0; list-style: none; color: var(--color-ink-soft); font-size: .85rem; font-weight: 500; }
+    .trust li::before { margin-right: .4rem; color: var(--color-ocean); content: "✓"; font-weight: 700; }
+    .hero-photo { position: relative; min-height: 430px; margin: 0; overflow: hidden; border-radius: 48% 48% 1rem 1rem; background: var(--color-ocean-deep); box-shadow: var(--shadow-soft); }
+    .hero-photo img { width: 100%; height: 100%; min-height: 430px; object-fit: cover; }
+    .hero-photo::after { position: absolute; inset: 0; content: ""; background: linear-gradient(180deg, oklch(20% .1 260 / 0) 35%, oklch(20% .13 260 / .72)); }
+    .hero-caption { position: absolute; right: 1.5rem; bottom: 1.4rem; left: 1.5rem; z-index: 1; color: var(--color-paper); }
+    .hero-caption strong { display: block; margin-bottom: .2rem; color: var(--color-lime); font-family: var(--font-display); font-size: 1.15rem; }
+    .hero-caption span { color: oklch(99% .005 95 / .85); font-size: .9rem; }
+
+    /* stat rail */
+    .stat-rail { background: var(--color-ocean-deep); color: var(--color-paper); }
+    .stat-list { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); margin: 0; padding: 0; list-style: none; }
+    .stat-list li { padding: 1.6rem 1.4rem; border-left: 1px solid oklch(99% .005 95 / .16); }
+    .stat-list li:first-child { border-left: 0; padding-left: 0; }
+    .stat-list strong { display: block; color: var(--color-lime); font: 700 clamp(2rem, 3.4vw, 2.9rem)/1 var(--font-display); letter-spacing: -.03em; }
+    .stat-list span { display: block; margin-top: .45rem; color: oklch(99% .005 95 / .82); font-size: .9rem; line-height: 1.4; }
+    .stat-note { margin: 0; padding: 0 0 1.4rem; color: oklch(99% .005 95 / .7); font-size: .8rem; }
+
+    /* explorer */
+    .explorer { padding: clamp(4rem, 8vw, 7rem) 0; }
+    .section-head { display: flex; align-items: end; justify-content: space-between; gap: 2rem; margin-bottom: 2.25rem; }
+    .section-head p { max-width: 430px; margin: 0; color: var(--color-ink-soft); }
+    .explorer-layout { display: grid; grid-template-columns: 300px minmax(0, 1fr); gap: 1rem; align-items: start; }
+    .side { display: grid; gap: 1rem; }
+    .panel { padding: 1rem; border: 1px solid var(--color-rule); border-radius: var(--radius-md); background: var(--color-paper); }
+    .panel-head strong { display: block; color: var(--color-ocean-deep); font-size: .9rem; }
+    .panel-head span { display: block; margin-top: .15rem; color: var(--color-ink-soft); font-size: .8rem; }
+    .filter-group { margin-top: .9rem; }
+    .filter-group > span { display: block; margin-bottom: .45rem; color: var(--color-ocean-deep); font-size: .78rem; font-weight: 700; }
+    .chips { display: flex; flex-wrap: wrap; gap: .4rem; }
+    .chip { min-height: 38px; padding: 0 .85rem; border: 1px solid var(--color-rule); border-radius: var(--radius-pill); background: var(--color-paper); color: var(--color-ink); font: 600 .8rem var(--font-body); cursor: pointer; transition: background-color .2s, color .2s, border-color .2s; }
+    .chip:hover { border-color: var(--color-ocean); }
+    .chip[aria-pressed="true"] { border-color: var(--color-ocean-deep); background: var(--color-ocean-deep); color: var(--color-paper); }
+    .site-list { display: grid; gap: .5rem; margin: .9rem 0 0; padding: 0; list-style: none; }
+    .site-row { width: 100%; padding: .8rem .9rem; border: 1px solid var(--color-rule); border-radius: .75rem; background: var(--color-paper); text-align: left; font: inherit; cursor: pointer; transition: border-color .2s, background-color .2s; }
+    .site-row:hover { border-color: var(--color-ocean); }
+    .site-row[aria-current="true"] { border-color: var(--color-ocean); background: var(--color-paper-blue); }
+    .site-row b { display: block; font: 700 .95rem/1.25 var(--font-display); }
+    .site-row small { display: block; margin-top: .2rem; color: var(--color-ink-soft); font-size: .78rem; }
+    .meter { height: 6px; margin-top: .6rem; overflow: hidden; border-radius: var(--radius-pill); background: var(--color-paper-blue); }
+    .meter i { display: block; height: 100%; width: var(--w); border-radius: inherit; background: var(--color-ocean); }
+    .empty { margin: .9rem 0 0; color: var(--color-ink-soft); font-size: .9rem; }
+    .main-col { display: grid; gap: 1rem; min-width: 0; }
+    .map-wrap { position: relative; overflow: hidden; border: 1px solid var(--color-rule); border-radius: var(--radius-md); background: var(--color-paper-blue); }
+    #map { height: 440px; width: 100%; z-index: 0; }
+    .map-legend { display: flex; flex-wrap: wrap; gap: .4rem 1.2rem; padding: .7rem 1rem; border-top: 1px solid var(--color-rule); background: var(--color-paper); color: var(--color-ink-soft); font-size: .8rem; }
+    .map-legend span::before { display: inline-block; width: 10px; height: 10px; margin-right: .4rem; border-radius: 50%; content: ""; background: var(--dot); }
+    .map-fallback { position: absolute; inset: 0; display: none; place-items: center; padding: 2rem; text-align: center; color: var(--color-ink-soft); font-size: .9rem; }
+    .no-map .map-fallback { display: grid; }
+    .pin { display: grid; place-items: center; width: 34px; height: 34px; border: 3px solid #fff; border-radius: 50%; background: var(--color-ocean); box-shadow: 0 6px 16px oklch(20% .1 260 / .35); color: #fff; font: 700 .8rem var(--font-display); transition: transform .2s var(--ease-out); }
+    .pin::after { width: 10px; height: 10px; border-radius: 50%; background: #fff; content: ""; }
+    .pin.review { background: var(--color-coral-text); }
+    .pin.active { transform: scale(1.25); box-shadow: 0 0 0 5px var(--color-lime), 0 6px 16px oklch(20% .1 260 / .35); }
+    .leaflet-container { font-family: var(--font-body); }
+
+    /* selected detail */
+    .detail { padding: 1.4rem; }
+    .detail-top { display: flex; flex-wrap: wrap; align-items: start; justify-content: space-between; gap: .75rem; }
+    .detail h3 { font-size: clamp(1.5rem, 2.4vw, 2rem); }
+    .detail-region { margin: .35rem 0 0; color: var(--color-ocean); font-size: .78rem; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; }
+    .tag { display: inline-block; padding: .3rem .7rem; border-radius: var(--radius-pill); background: var(--color-lime); font-size: .72rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+    .detail-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1rem; margin: 1.2rem 0 0; }
+    .detail-grid div { padding-top: .8rem; border-top: 2px solid var(--color-ocean); }
+    .detail-grid dt { color: var(--color-ink-soft); font-size: .78rem; }
+    .detail-grid dd { margin: .25rem 0 0; font: 700 1.05rem/1.3 var(--font-display); }
+    .status-ok::before, .status-review::before { margin-right: .4rem; font-weight: 700; }
+    .status-ok::before { color: oklch(48% .14 150); content: "✓"; }
+    .status-review::before { color: var(--color-coral-text); content: "◌"; }
+    .detail .meter { height: 8px; margin-top: 1.2rem; }
+    .latest { margin-top: 1.2rem; padding: 1rem 1.1rem; border-radius: .85rem; background: var(--color-paper-blue); }
+    .latest small { color: var(--color-ocean-deep); font-size: .74rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
+    .latest strong { display: block; margin-top: .3rem; font: 700 1.1rem/1.3 var(--font-display); }
+    .latest p { margin: .25rem 0 0; color: var(--color-ink-soft); font-size: .9rem; }
+    .detail-actions { display: flex; flex-wrap: wrap; gap: .6rem; margin-top: 1.2rem; }
+
+    /* sections */
+    .notes { padding: clamp(3.5rem, 7vw, 6rem) 0; background: var(--color-paper-blue); }
+    .note-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1rem; margin-top: 2.25rem; }
+    .note { display: flex; flex-direction: column; overflow: hidden; border: 1px solid var(--color-rule); border-radius: var(--radius-md); background: var(--color-paper); transition: transform .2s var(--ease-out), box-shadow .2s var(--ease-out); }
+    .note:hover { transform: translateY(-3px); box-shadow: var(--shadow-soft); }
+    .note-top { display: flex; align-items: end; justify-content: space-between; min-height: 130px; padding: 1.1rem; background: var(--color-ocean-deep); color: var(--color-lime); }
+    .note-top svg { width: 44px; height: 44px; }
+    .note-top b { font: 700 2.4rem/1 var(--font-display); letter-spacing: -.03em; }
+    .note-top.pending { background: var(--color-paper-warm); color: var(--color-coral-text); border-bottom: 1px solid var(--color-rule); }
+    .note-body { display: flex; flex: 1; flex-direction: column; padding: 1.1rem 1.2rem 1.3rem; }
+    .note-body .loc { margin-bottom: .5rem; color: var(--color-ocean); font-size: .76rem; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; }
+    .note-body p { margin: .7rem 0 1.1rem; color: var(--color-ink-soft); font-size: .93rem; }
+    .note-body a { margin-top: auto; color: var(--color-ocean); font-size: .88rem; font-weight: 700; text-decoration: none; }
+    .note-body a:hover { color: var(--color-ocean-deep); text-decoration: underline; }
+    .read { padding: clamp(4rem, 8vw, 7rem) 0; }
+    .read-grid { display: grid; grid-template-columns: .8fr 1.2fr; gap: clamp(2rem, 7vw, 8rem); align-items: start; }
+    .read-lead p { max-width: 430px; margin: 1.2rem 0 0; color: var(--color-ink-soft); }
+    .read-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; margin: 0; padding: 0; list-style: none; }
+    .read-item { padding: 1.2rem; border-top: 2px solid var(--color-ocean); }
+    .read-item svg { width: 38px; height: 38px; display: block; margin-bottom: .85rem; color: var(--color-ocean); }
+    .read-item svg * { vector-effect: non-scaling-stroke; }
+    .read-item strong { display: block; margin-bottom: .45rem; font: 700 1.2rem/1.2 var(--font-display); }
+    .read-item p { margin: 0; color: var(--color-ink-soft); font-size: .92rem; }
+    .levels { padding: clamp(3rem, 6vw, 5rem) 0; background: var(--color-paper-warm); }
+    .level-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; margin-top: 1.6rem; }
+    .level-card { padding: 1.4rem; border: 1px solid var(--color-rule); border-radius: var(--radius-md); background: var(--color-paper); }
+    .level-card h3 { margin-bottom: .6rem; }
+    .level-card p { margin: 0; color: var(--color-ink-soft); font-size: .93rem; }
+    .level-card ul { margin: .8rem 0 0; padding-left: 1.1rem; color: var(--color-ink-soft); font-size: .93rem; }
+    .faq { padding: clamp(4rem, 8vw, 7rem) 0; }
+    .faq-grid { display: grid; grid-template-columns: .8fr 1.2fr; gap: clamp(2rem, 7vw, 7rem); }
+    .faq-lead p { max-width: 390px; margin: 1.2rem 0 0; color: var(--color-ink-soft); }
+    details { border-top: 1px solid var(--color-rule); }
+    details:last-child { border-bottom: 1px solid var(--color-rule); }
+    summary { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 1.15rem 0; cursor: pointer; font-family: var(--font-display); font-size: 1.08rem; font-weight: 500; list-style: none; }
+    summary::-webkit-details-marker { display: none; }
+    summary::after { color: var(--color-coral-text); content: "+"; font: 400 1.5rem var(--font-body); }
+    details[open] summary::after { content: "−"; }
+    details p { max-width: 650px; margin: -.3rem 2rem 1.2rem 0; color: var(--color-ink-soft); font-size: .95rem; }
+    .final-cta { padding: clamp(4rem, 8vw, 7rem) 0; background: var(--color-ocean); color: var(--color-paper); }
+    .final-cta-inner { display: flex; align-items: end; justify-content: space-between; gap: 2rem; }
+    .final-cta h2 { max-width: 630px; }
+    .final-cta p { max-width: 480px; margin: 1rem 0 0; color: oklch(99% .005 95 / .85); }
+    .final-actions { display: flex; flex-wrap: wrap; gap: .75rem; flex-shrink: 0; }
+    .final-cta .button-secondary { border-color: oklch(99% .005 95 / .5); color: var(--color-paper); }
+    .final-cta .button-secondary:hover { border-color: var(--color-lime); color: var(--color-lime); }
+    footer { padding: 54px 0 24px; background: var(--color-ocean-deep); color: var(--color-paper); }
+    .footer-grid { display: grid; grid-template-columns: 1.5fr repeat(2, 1fr); gap: 32px; }
+    .footer-brand { max-width: 285px; }
+    .footer-brand img { width: 154px; height: auto; aspect-ratio: 2560 / 514; object-fit: contain; filter: brightness(0) invert(1); }
+    .footer-brand p { margin: 14px 0 0; color: oklch(99% .005 95 / .75); font-size: .82rem; line-height: 1.55; }
+    .footer-grid > div:not(.footer-brand) { display: flex; flex-direction: column; gap: 8px; color: oklch(99% .005 95 / .8); font-size: .85rem; }
+    .footer-grid a { color: inherit; text-decoration: none; }
+    .footer-grid a:hover { color: var(--color-lime); }
+    .footer-label { margin: 0 0 7px; color: var(--color-lime); font-size: .72rem; font-weight: 700; letter-spacing: .13em; text-transform: uppercase; }
+    .footer-bottom { display: flex; justify-content: space-between; gap: 15px; margin-top: 42px; padding-top: 17px; border-top: 1px solid oklch(99% .005 95 / .15); color: oklch(80% .08 255); font-size: .78rem; }
+
+    @media (max-width: 960px) { .note-grid { grid-template-columns: 1fr 1fr; } .stat-list { grid-template-columns: 1fr 1fr; } .stat-list li:nth-child(3) { border-left: 0; padding-left: 0; } .stat-list li:nth-child(n+3) { border-top: 1px solid oklch(99% .005 95 / .16); } }
+    @media (max-width: 820px) {
+      .nav-links, .nav-controls .nav-cta { display: none; }
+      .hero-grid, .read-grid, .faq-grid, .explorer-layout { grid-template-columns: 1fr; }
+      .hero-photo, .hero-photo img { min-height: 330px; }
+      .final-cta-inner, .section-head { align-items: start; flex-direction: column; }
+      .side { display: contents; }
+      .filters-panel { order: 1; } .main-col { order: 2; } .list-panel { order: 3; }
+      .level-grid, .detail-grid { grid-template-columns: 1fr; }
+      #map { height: 340px; }
+    }
+    @media (max-width: 560px) {
+      .shell { width: min(100% - 1.5rem, 1160px); }
+      .nav { min-height: 66px; }
+      .hero { padding-top: 3.5rem; }
+      h1 { font-size: clamp(2.5rem, 12vw, 3.4rem); }
+      .hero-actions, .hero-actions .button { width: 100%; }
+      .hero-photo, .hero-photo img { min-height: 270px; }
+      .hero-photo { border-radius: 38% 38% .75rem .75rem; }
+      .note-grid, .read-list { grid-template-columns: 1fr; }
+      .footer-grid { grid-template-columns: 1fr 1fr; gap: 20px; } .footer-brand { grid-column: 1 / -1; }
+      .footer-bottom { flex-direction: column; gap: 7px; }
+      .final-actions, .final-actions .button, .detail-actions .button { width: 100%; }
+    }
+    @media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; animation-duration: .01ms !important; } }
+  </style>
+</head>
+<body>
+  <a class="skip" href="#main" data-i18n="skip">Langsung ke isi</a>
+  <header class="site-header"><div class="shell nav">
+    <a class="wordmark" href="https://terumbu.world/" aria-label="Terumbu.eco, ke beranda"><img src="reference-assets/cropped-Logo-Terumbu-2_main-1.png" alt="Terumbu.eco" width="154" height="31"></a>
+    <nav class="nav-links" aria-label="Navigasi utama"><a href="https://terumbu.world/expeditions" data-i18n="nav.exp">Ekspedisi Konservasi</a><a href="https://terumbu.world/campaigns" data-i18n="nav.camp">Dukung Kampanye</a><a href="https://terumbu.world/impact-map" aria-current="page" data-i18n="nav.impact">Jejak Dampak</a><a href="https://terumbu.world/academy" data-i18n="nav.academy">Terumbu Academy</a></nav>
+    <div class="nav-controls">
+      <label class="select-control"><span class="sr-only" data-i18n="chooseLang">Pilih bahasa</span><select id="language-select"><option value="id">ID</option><option value="en">EN</option></select></label>
+      <label class="select-control"><span class="sr-only" data-i18n="chooseCur">Pilih mata uang</span><select id="currency-select"><option value="IDR">IDR</option><option value="USD">USD</option><option value="JPY">JPY</option><option value="EUR">EUR</option></select></label>
+      <a class="nav-cta" href="https://terumbu.world/expeditions"><span data-i18n="nav.cta">Rencanakan perjalanan</span> <span aria-hidden="true">↗</span></a>
+    </div>
+  </div></header>
+
+  <main id="main">
+    <section class="hero"><div class="shell hero-grid">
+      <div>
+        <h1 data-i18n="hero.title">Lihat langsung dampak konservasi di pesisir Indonesia</h1>
+        <p class="hero-copy" data-i18n="hero.copy">Dari bersih pantai di Komodo sampai persemaian mangrove di Bali Utara. Lihat di mana kegiatannya, baca catatan dari lapangan, dan cek sendiri mana yang sudah terverifikasi.</p>
+        <div class="hero-actions"><a class="button button-primary" href="#peta"><span data-i18n="hero.cta1">Jelajahi peta</span> <span aria-hidden="true">↘</span></a><a class="button button-secondary" href="https://terumbu.world/campaigns" data-i18n="hero.cta2">Dukung kampanye</a></div>
+        <ul class="trust"><li data-i18n="hero.t1">Posisi di peta sengaja diperkirakan</li><li data-i18n="hero.t2">Setiap catatan bisa dilacak sumbernya</li><li data-i18n="hero.t3">Data dari catatan proyek yang sudah dipublikasikan</li></ul>
+      </div>
+      <figure class="hero-photo"><img src="reference-assets/youth-gallery/mangrove-conservation-2026.jpg" alt="Peserta berjalan di area konservasi mangrove bersama pemandu lokal" fetchpriority="high"><figcaption class="hero-caption"><strong data-i18n="hero.capTitle">Dari lapangan, langsung ke layarmu</strong><span data-i18n="hero.capBody">Tiap pin di peta terhubung ke catatan kegiatan yang bisa kamu buka kapan saja.</span></figcaption></figure>
+    </div></section>
+
+    <section class="stat-rail" aria-label="Ringkasan peta dampak"><div class="shell">
+      <ul class="stat-list">
+        <li><strong>3</strong><span data-i18n="stat.sites">lokasi konservasi di peta</span></li>
+        <li><strong>2</strong><span data-i18n="stat.verified">lokasi yang buktinya sudah terverifikasi</span></li>
+        <li><strong>1</strong><span data-i18n="stat.review">lokasi yang catatannya masih ditinjau</span></li>
+        <li><strong>420 kg</strong><span data-i18n="stat.waste">sampah terpilah di Rute Bersih Pantai Komodo</span></li>
+      </ul>
+      <p class="stat-note" data-i18n="stat.note">Angka diambil dari catatan proyek yang sudah dipublikasikan. Yang masih ditinjau tidak kami hitung sebagai terverifikasi.</p>
+    </div></section>
+
+    <section class="explorer" id="peta"><div class="shell">
+      <div class="section-head"><h2 data-i18n="ex.title">Cari proyek sesuai jenis kegiatan dan status buktinya</h2><p data-i18n="ex.copy">Klik pin atau pilih dari daftar untuk melihat detailnya. Posisi di peta sengaja kami perkirakan supaya kawasan yang sensitif tetap aman.</p></div>
+      <div class="explorer-layout">
+        <div class="side">
+          <div class="panel filters-panel">
+            <div class="panel-head"><strong data-i18n="ex.filters">Filter peta</strong><span data-i18n="ex.filtersSub">Pilih yang mau ditampilkan</span></div>
+            <div class="filter-group"><span data-i18n="ex.type">Jenis kegiatan</span><div class="chips" id="type-chips" role="group" aria-label="Jenis kegiatan"></div></div>
+            <div class="filter-group"><span data-i18n="ex.status">Status bukti</span><div class="chips" id="status-chips" role="group" aria-label="Status bukti"></div></div>
+          </div>
+          <div class="panel list-panel">
+            <div class="panel-head"><strong data-i18n="ex.list">Daftar lokasi</strong><span id="count" aria-live="polite"></span></div>
+            <ul class="site-list" id="site-list"></ul>
+            <p class="empty" id="empty" hidden data-i18n="ex.empty">Belum ada lokasi yang cocok. Coba ganti filternya.</p>
+          </div>
+        </div>
+        <div class="main-col">
+          <div class="map-wrap" id="map-wrap">
+            <div id="map" role="region" aria-label="Peta lokasi konservasi pesisir Indonesia"></div>
+            <div class="map-fallback" data-i18n="ex.noMap">Petanya belum bisa dimuat. Kamu tetap bisa melihat detail proyek lewat daftar lokasi.</div>
+            <div class="map-legend"><span style="--dot:var(--color-ocean)" data-i18n="ex.legendOk">Catatan terverifikasi</span><span style="--dot:var(--color-coral-text)" data-i18n="ex.legendReview">Catatan masih ditinjau</span></div>
+          </div>
+          <article class="panel detail" id="detail" aria-live="polite"></article>
+        </div>
+      </div>
+    </div></section>
+
+    <section class="notes"><div class="shell">
+      <div class="section-head" style="margin-bottom:0"><h2 data-i18n="notes.title">Catatan dari lapangan</h2><p data-i18n="notes.copy">Setiap catatan memuat satu angka atau temuan dari lapangan, lengkap dengan status verifikasinya.</p></div>
+      <div class="note-grid">
+        <article class="note"><div class="note-top"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 15c2.2-3 4.4-3 6.7 0s4.5 3 6.7 0 4.4-3 6.6 0"/><path d="M5 19c2-2.5 4-2.5 6 0s4 2.5 6 0 4-2.5 6 0"/><path d="M12 3v7M9 6l3-3 3 3"/></svg><b>420 kg</b></div><div class="note-body"><div class="loc" data-i18n="n1.loc">Nusa Tenggara Timur · terverifikasi</div><h3 data-i18n="n1.title">Peluncuran bersih pantai sekolah Komodo</h3><p data-i18n="n1.body">Sampah yang berhasil dipilah di Rute Bersih Pantai Komodo, dengan survei terakhir tercatat 19 September 2026.</p><a href="https://terumbu.world/campaigns/cleanup-komodo-coast" data-i18n="notes.open">Buka catatan sumber ↗</a></div></article>
+        <article class="note"><div class="note-top"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21v-9"/><path d="M12 12c-4 0-6-2.5-6-6 4 0 6 2 6 6Z"/><path d="M12 14c3.5 0 6-2 6-5.5-3.5 0-6 2-6 5.5Z"/><path d="M6 21h12"/></svg><b>89%</b></div><div class="note-body"><div class="loc" data-i18n="n2.loc">Bali · terverifikasi</div><h3 data-i18n="n2.title">Audit persemaian mangrove Bali Utara</h3><p data-i18n="n2.body">Berapa persen bibit mangrove di persemaian yang bertahan hidup. Ini kabar terbaru yang sudah dipublikasikan untuk sabuk mangrove Bali Utara.</p><a href="https://terumbu.world/campaigns/mangrove-shield-bali" data-i18n="notes.open">Buka catatan sumber ↗</a></div></article>
+        <article class="note"><div class="note-top pending"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg><b>Review</b></div><div class="note-body"><div class="loc" data-i18n="n3.loc">Papua Barat Daya · masih ditinjau</div><h3 data-i18n="n3.title">Taman Terumbu Raja Ampat</h3><p data-i18n="n3.body">Kegiatan monitoring sudah tercatat, tapi bukti lapangannya masih kami tinjau. Statusnya akan berubah jadi terverifikasi setelah selesai.</p><a href="https://terumbu.world/campaigns/restore-raja-ampat-reefs" data-i18n="notes.project">Lihat proyek ↗</a></div></article>
+      </div>
+    </div></section>
+
+    <section class="read" id="cara-baca"><div class="shell read-grid">
+      <div class="read-lead"><h2 data-i18n="read.title">Baca dampaknya lewat konteks, bukan cuma angka</h2><p data-i18n="read.copy">Angka besar itu gampang dibuat. Makanya di tiap lokasi kami tunjukkan juga status bukti, waktu survei, dan catatan kegiatannya.</p></div>
+      <ul class="read-list">
+        <li class="read-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s7-5.6 7-11a7 7 0 1 0-14 0c0 5.4 7 11 7 11Z"/><circle cx="12" cy="10" r="2.5"/></svg><strong data-i18n="read.1t">Mulai dari tempatnya</strong><p data-i18n="read.1b">Pilih lokasi sesuai jenis kegiatannya: bersih pantai, mangrove, atau terumbu karang.</p></li>
+        <li class="read-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 3 7 3v5c0 4.5-2.8 7.8-7 10-4.2-2.2-7-5.5-7-10V6l7-3Z"/><path d="m8.5 12 2.2 2.2 4.8-5"/></svg><strong data-i18n="read.2t">Cek status buktinya</strong><p data-i18n="read.2b">Lihat mana catatan yang sudah terverifikasi dan mana yang masih ditinjau.</p></li>
+        <li class="read-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v15H6.5A2.5 2.5 0 0 0 4 20.5v-15Z"/><path d="M4 20.5A2.5 2.5 0 0 1 6.5 18H20"/><path d="M8 8h8M8 12h5"/></svg><strong data-i18n="read.3t">Buka catatan sumbernya</strong><p data-i18n="read.3b">Setiap catatan terhubung ke halaman proyeknya, jadi kamu bisa cek sendiri asalnya.</p></li>
+        <li class="read-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 11c0 5.6-7 10-7 10Z"/></svg><strong data-i18n="read.4t">Pilih langkah berikutnya</strong><p data-i18n="read.4b">Dukung kampanye, ikut ekspedisi, atau belajar dulu lewat Terumbu Academy.</p></li>
+      </ul>
+    </div></section>
+
+    <section class="levels"><div class="shell">
+      <h2 data-i18n="lv.title">Dua istilah yang sering tertukar</h2>
+      <div class="level-grid">
+        <div class="level-card"><h3 data-i18n="lv.1t">Level verifikasi proyek</h3><p data-i18n="lv.1b">Menunjukkan jenis pemeriksaan yang sudah dilewati sebuah proyek. Di peta ini ada tiga level:</p><ul><li data-i18n="lv.1a">Basic verified</li><li data-i18n="lv.1c">Document verified</li><li data-i18n="lv.1d">Field verified</li></ul></div>
+        <div class="level-card"><h3 data-i18n="lv.2t">Status catatan aktivitas</h3><p data-i18n="lv.2b">Menunjukkan apakah satu catatan kegiatan di lapangan sudah terverifikasi atau masih ditinjau. Proyek bisa saja berlevel tinggi, tapi catatan terbarunya masih menunggu peninjauan. Contohnya Raja Ampat.</p></div>
+      </div>
+    </div></section>
+
+    <section class="faq" id="faq"><div class="shell faq-grid">
+      <div class="faq-lead"><h2 data-i18n="faq.title">Pertanyaan yang sering muncul soal peta dampak</h2><p data-i18n="faq.copy">Belum nemu jawabannya? Tanya saja ke tim Terumbu, kami bantu jelaskan.</p></div>
+      <div id="faq-list">
+        <details><summary data-i18n="faq.q1">Seberapa akurat lokasi di peta?</summary><p data-i18n="faq.a1">Posisi di peta sengaja kami perkirakan. Koordinat persisnya tidak dibuka supaya kawasan ekologis yang sensitif tetap terlindungi.</p></details>
+        <details><summary data-i18n="faq.q2">Apa bedanya level verifikasi proyek dengan status catatan aktivitas?</summary><p data-i18n="faq.a2">Level verifikasi proyek menunjukkan jenis pemeriksaan yang sudah dilewati proyek. Status catatan aktivitas menunjukkan apakah satu catatan lapangan sudah terverifikasi atau masih ditinjau.</p></details>
+        <details><summary data-i18n="faq.q3">Kenapa ada lokasi yang statusnya masih ditinjau?</summary><p data-i18n="faq.a3">Kegiatannya sudah tercatat, tapi bukti lapangannya belum selesai kami tinjau. Tetap kami tampilkan supaya kamu tahu mana yang sudah terverifikasi dan mana yang belum.</p></details>
+        <details><summary data-i18n="faq.q4">Seberapa sering data diperbarui?</summary><p data-i18n="faq.a4">Peta mengikuti catatan proyek yang sudah dipublikasikan. Kalau ada, tanggal survei atau kegiatan terbaru tampil di detail lokasi.</p></details>
+        <details><summary data-i18n="faq.q5">Bagaimana cara ikut membantu?</summary><p data-i18n="faq.a5">Kamu bisa mendukung kampanye, ikut ekspedisi konservasi, atau mulai belajar lewat Terumbu Academy.</p></details>
+      </div>
+    </div></section>
+
+    <section class="final-cta"><div class="shell final-cta-inner">
+      <div><h2 data-i18n="cta.title">Mulai dari satu lokasi, lanjut jadi kontribusi yang lebih panjang</h2><p data-i18n="cta.copy">Pilih proyek yang paling dekat dengan minatmu, lalu ikuti kabar lapangannya.</p></div>
+      <div class="final-actions"><a class="button button-lime" href="https://terumbu.world/campaigns"><span data-i18n="cta.b1">Lihat proyek yang bisa didukung</span> <span aria-hidden="true">↗</span></a><a class="button button-secondary" href="https://terumbu.world/expeditions" data-i18n="cta.b2">Cari ekspedisi</a></div>
+    </div></section>
+  </main>
+
+  <footer>
+    <div class="shell footer-grid">
+      <div class="footer-brand"><a href="https://terumbu.world/" aria-label="Terumbu.eco, ke beranda"><img src="reference-assets/cropped-Logo-Terumbu-2_main-1.png" alt="Terumbu.eco" width="154" height="31"></a><p data-i18n="f.desc">Pendanaan konservasi, pengalaman lapangan, pembelajaran, dan rekam dampak terverifikasi untuk ekosistem pesisir Indonesia.</p></div>
+      <div><p class="footer-label">Platform</p><a href="https://terumbu.world/expeditions" data-i18n="nav.exp">Ekspedisi Konservasi</a><a href="https://terumbu.world/campaigns" data-i18n="nav.camp">Dukung Kampanye</a><a href="https://terumbu.world/impact-map" data-i18n="nav.impact">Jejak Dampak</a><a href="https://terumbu.world/academy" data-i18n="nav.academy">Terumbu Academy</a></div>
+      <div><p class="footer-label" data-i18n="f.about">Tentang Kami</p><a href="https://terumbu.world/signup" data-i18n="f.join">Gabung Terumbu</a><a href="https://terumbu.world/corporate" data-i18n="f.corp">Bisnis &amp; Korporasi</a><a href="https://terumbu.world/partners" data-i18n="f.partners">Mitra Kami</a><a href="https://terumbu.world/privacy" data-i18n="f.privacy">Kebijakan Privasi &amp; Transparansi</a></div>
+    </div>
+    <div class="shell footer-bottom"><span>© 2026 Terumbu Lestari Nusantara</span></div>
+  </footer>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+  <script>
+  const T = {
+    id: {
+      skip:'Langsung ke isi', chooseLang:'Pilih bahasa', chooseCur:'Pilih mata uang',
+      'nav.exp':'Ekspedisi Konservasi','nav.camp':'Dukung Kampanye','nav.impact':'Jejak Dampak','nav.academy':'Terumbu Academy','nav.cta':'Rencanakan perjalanan',
+      'hero.title':'Lihat langsung dampak konservasi di pesisir Indonesia',
+      'hero.copy':'Dari bersih pantai di Komodo sampai persemaian mangrove di Bali Utara. Lihat di mana kegiatannya, baca catatan dari lapangan, dan cek sendiri mana yang sudah terverifikasi.',
+      'hero.cta1':'Jelajahi peta','hero.cta2':'Dukung kampanye','hero.t1':'Posisi di peta sengaja diperkirakan','hero.t2':'Setiap catatan bisa dilacak sumbernya','hero.t3':'Data dari catatan proyek yang sudah dipublikasikan',
+      'hero.capTitle':'Dari lapangan, langsung ke layarmu','hero.capBody':'Tiap pin di peta terhubung ke catatan kegiatan yang bisa kamu buka kapan saja.',
+      'stat.sites':'lokasi konservasi di peta','stat.verified':'lokasi yang buktinya sudah terverifikasi','stat.review':'lokasi yang catatannya masih ditinjau','stat.waste':'sampah terpilah di Rute Bersih Pantai Komodo',
+      'stat.note':'Angka diambil dari catatan proyek yang sudah dipublikasikan. Yang masih ditinjau tidak kami hitung sebagai terverifikasi.',
+      'ex.title':'Cari proyek sesuai jenis kegiatan dan status buktinya','ex.copy':'Klik pin atau pilih dari daftar untuk melihat detailnya. Posisi di peta sengaja kami perkirakan supaya kawasan yang sensitif tetap aman.',
+      'ex.filters':'Filter peta','ex.filtersSub':'Pilih yang mau ditampilkan','ex.type':'Jenis kegiatan','ex.status':'Status bukti','ex.list':'Daftar lokasi',
+      'ex.empty':'Belum ada lokasi yang cocok. Coba ganti filternya.','ex.noMap':'Petanya belum bisa dimuat. Kamu tetap bisa melihat detail proyek lewat daftar lokasi.',
+      'ex.legendOk':'Catatan terverifikasi','ex.legendReview':'Catatan masih ditinjau',
+      'notes.title':'Catatan dari lapangan','notes.copy':'Setiap catatan memuat satu angka atau temuan dari lapangan, lengkap dengan status verifikasinya.','notes.open':'Buka catatan sumber ↗','notes.project':'Lihat proyek ↗',
+      'n1.loc':'Nusa Tenggara Timur · terverifikasi','n1.title':'Peluncuran bersih pantai sekolah Komodo','n1.body':'Sampah yang berhasil dipilah di Rute Bersih Pantai Komodo, dengan survei terakhir tercatat 19 September 2026.',
+      'n2.loc':'Bali · terverifikasi','n2.title':'Audit persemaian mangrove Bali Utara','n2.body':'Berapa persen bibit mangrove di persemaian yang bertahan hidup. Ini kabar terbaru yang sudah dipublikasikan untuk sabuk mangrove Bali Utara.',
+      'n3.loc':'Papua Barat Daya · masih ditinjau','n3.title':'Taman Terumbu Raja Ampat','n3.body':'Kegiatan monitoring sudah tercatat, tapi bukti lapangannya masih kami tinjau. Statusnya akan berubah jadi terverifikasi setelah selesai.',
+      'read.title':'Baca dampaknya lewat konteks, bukan cuma angka','read.copy':'Angka besar itu gampang dibuat. Makanya di tiap lokasi kami tunjukkan juga status bukti, waktu survei, dan catatan kegiatannya.',
+      'read.1t':'Mulai dari tempatnya','read.1b':'Pilih lokasi sesuai jenis kegiatannya: bersih pantai, mangrove, atau terumbu karang.',
+      'read.2t':'Cek status buktinya','read.2b':'Lihat mana catatan yang sudah terverifikasi dan mana yang masih ditinjau.',
+      'read.3t':'Buka catatan sumbernya','read.3b':'Setiap catatan terhubung ke halaman proyeknya, jadi kamu bisa cek sendiri asalnya.',
+      'read.4t':'Pilih langkah berikutnya','read.4b':'Dukung kampanye, ikut ekspedisi, atau belajar dulu lewat Terumbu Academy.',
+      'lv.title':'Dua istilah yang sering tertukar','lv.1t':'Level verifikasi proyek','lv.1b':'Menunjukkan jenis pemeriksaan yang sudah dilewati sebuah proyek. Di peta ini ada tiga level:','lv.1a':'Basic verified','lv.1c':'Document verified','lv.1d':'Field verified',
+      'lv.2t':'Status catatan aktivitas','lv.2b':'Menunjukkan apakah satu catatan kegiatan di lapangan sudah terverifikasi atau masih ditinjau. Proyek bisa saja berlevel tinggi, tapi catatan terbarunya masih menunggu peninjauan. Contohnya Raja Ampat.',
+      'faq.title':'Pertanyaan yang sering muncul soal peta dampak','faq.copy':'Belum nemu jawabannya? Tanya saja ke tim Terumbu, kami bantu jelaskan.',
+      'faq.q1':'Seberapa akurat lokasi di peta?','faq.a1':'Posisi di peta sengaja kami perkirakan. Koordinat persisnya tidak dibuka supaya kawasan ekologis yang sensitif tetap terlindungi.',
+      'faq.q2':'Apa bedanya level verifikasi proyek dengan status catatan aktivitas?','faq.a2':'Level verifikasi proyek menunjukkan jenis pemeriksaan yang sudah dilewati proyek. Status catatan aktivitas menunjukkan apakah satu catatan lapangan sudah terverifikasi atau masih ditinjau.',
+      'faq.q3':'Kenapa ada lokasi yang statusnya masih ditinjau?','faq.a3':'Kegiatannya sudah tercatat, tapi bukti lapangannya belum selesai kami tinjau. Tetap kami tampilkan supaya kamu tahu mana yang sudah terverifikasi dan mana yang belum.',
+      'faq.q4':'Seberapa sering data diperbarui?','faq.a4':'Peta mengikuti catatan proyek yang sudah dipublikasikan. Kalau ada, tanggal survei atau kegiatan terbaru tampil di detail lokasi.',
+      'faq.q5':'Bagaimana cara ikut membantu?','faq.a5':'Kamu bisa mendukung kampanye, ikut ekspedisi konservasi, atau mulai belajar lewat Terumbu Academy.',
+      'cta.title':'Mulai dari satu lokasi, lanjut jadi kontribusi yang lebih panjang','cta.copy':'Pilih proyek yang paling dekat dengan minatmu, lalu ikuti kabar lapangannya.','cta.b1':'Lihat proyek yang bisa didukung','cta.b2':'Cari ekspedisi',
+      'f.desc':'Pendanaan konservasi, pengalaman lapangan, pembelajaran, dan rekam dampak terverifikasi untuk ekosistem pesisir Indonesia.','f.about':'Tentang Kami','f.join':'Gabung Terumbu','f.corp':'Bisnis & Korporasi','f.partners':'Mitra Kami','f.privacy':'Kebijakan Privasi & Transparansi',
+      d:{all:'Semua',Cleanup:'Bersih pantai',Mangrove:'Mangrove',Coral:'Terumbu karang',verified:'Terverifikasi',review:'Masih ditinjau',count:n=>n+' lokasi',
+        milestone:'Progres milestone',level:'Level verifikasi proyek',records:'Catatan aktivitas',recVerified:'1 terverifikasi',recReview:'1 masih ditinjau',latest:'Aktivitas terbaru',survey:'Survei terakhir',
+        source:'Buka catatan sumber',project:'Lihat proyek',donate:'Dukung proyek ini',progress:'progres',mapPin:'Pilih '}
+    },
+    en: {
+      skip:'Skip to content', chooseLang:'Choose language', chooseCur:'Choose currency',
+      'nav.exp':'Conservation Expeditions','nav.camp':'Support a Campaign','nav.impact':'Impact Trail','nav.academy':'Terumbu Academy','nav.cta':'Plan your trip',
+      'hero.title':'Trace conservation impact along Indonesia’s coast',
+      'hero.copy':'From beach cleanups in Komodo to mangrove nurseries in North Bali: see where the work happens, read the field notes, and check the verification status yourself.',
+      'hero.cta1':'Explore the map','hero.cta2':'Support a campaign','hero.t1':'Public locations are approximate','hero.t2':'Field notes can be traced back','hero.t3':'Data comes from published project records',
+      'hero.capTitle':'From the field to your screen','hero.capBody':'Every pin on the map links to an activity record you can open again.',
+      'stat.sites':'public conservation sites','stat.verified':'sites with verified evidence','stat.review':'site with a record in review','stat.waste':'of waste sorted on the Komodo Cleanup Route',
+      'stat.note':'Figures follow published project records. Anything still awaiting review is not counted as verified.',
+      'ex.title':'Find projects by activity type and evidence status','ex.copy':'Pick a pin or a site in the list to open its details. Map positions are intentionally approximate to protect sensitive areas.',
+      'ex.filters':'Map filters','ex.filtersSub':'Narrow down the sites shown','ex.type':'Activity type','ex.status':'Evidence status','ex.list':'Site list',
+      'ex.empty':'No sites match these filters yet. Try changing them.','ex.noMap':'The map could not load. Use the site list to see each project’s details.',
+      'ex.legendOk':'Verified record','ex.legendReview':'Record in review',
+      'notes.title':'Field notes you can trace','notes.copy':'Each note links field activity to one number or finding, together with its verification status.','notes.open':'Open source record ↗','notes.project':'View project ↗',
+      'n1.loc':'East Nusa Tenggara · verified','n1.title':'Komodo school cleanup launch','n1.body':'Waste sorted on the Komodo Cleanup Route. Latest survey recorded on 19 September 2026.',
+      'n2.loc':'Bali · verified','n2.title':'North Bali mangrove nursery audit','n2.body':'Survival rate of mangrove seedlings in the nursery. This is the latest published update for the North Bali mangrove belt.',
+      'n3.loc':'Southwest Papua · in review','n3.title':'Raja Ampat Reef Garden','n3.body':'Monitoring activity is recorded, but its field evidence is still being reviewed. We will mark it verified once that is done.',
+      'read.title':'How to read impact calmly, beyond the numbers','read.copy':'Big numbers are easy to produce. So each site also shows its evidence status, survey timing, and activity notes.',
+      'read.1t':'Start with the place','read.1b':'Find sites by activity: beach cleanup, mangrove, or coral.',
+      'read.2t':'Check the evidence status','read.2b':'Tell verified records apart from those still awaiting review.',
+      'read.3t':'Open the source record','read.3b':'Each record links to its project page, so you can trace where it came from.',
+      'read.4t':'Choose your next step','read.4b':'Support a campaign, join an expedition, or start with Terumbu Academy.',
+      'lv.title':'Two things people often mix up','lv.1t':'Project verification level','lv.1b':'Shows the type of check a project has passed. On this map you will see three levels:','lv.1a':'Basic verified','lv.1c':'Document verified','lv.1d':'Field verified',
+      'lv.2t':'Activity record status','lv.2b':'Shows whether one field activity record is verified or still in review. A project can have a high verification level while its latest record still awaits review. Raja Ampat is an example.',
+      'faq.title':'Common questions about the impact map','faq.copy':'Can’t find your answer? Ask the Terumbu team and we will help.',
+      'faq.q1':'How accurate are the locations on the map?','faq.a1':'Public locations are intentionally approximate. We do not share precise coordinates for sensitive ecological areas.',
+      'faq.q2':'What is the difference between project verification level and activity record status?','faq.a2':'The project verification level shows the type of check a project has passed. The activity record status shows whether a single field record is verified or still in review.',
+      'faq.q3':'Why is a site still marked as in review?','faq.a3':'The activity there is recorded, but its field evidence has not finished review. We still show it so you can see what is verified and what is not.',
+      'faq.q4':'How often is the data updated?','faq.a4':'The map follows published project records. The latest survey or activity date appears in each site’s details when available.',
+      'faq.q5':'How can I take part?','faq.a5':'You can support a campaign, join a conservation expedition, or learn through Terumbu Academy.',
+      'cta.title':'One site can be the start of a longer contribution','cta.copy':'Pick the project closest to your interests, then follow its field updates.','cta.b1':'See projects to support','cta.b2':'Find an expedition',
+      'f.desc':'Conservation funding, field experiences, learning, and verified impact records for Indonesia’s coastal ecosystems.','f.about':'About Us','f.join':'Join Terumbu','f.corp':'Business & Corporate','f.partners':'Our Partners','f.privacy':'Privacy & Transparency',
+      d:{all:'All',Cleanup:'Beach cleanup',Mangrove:'Mangrove',Coral:'Coral',verified:'Verified',review:'Needs review',count:n=>n+(n===1?' site':' sites'),
+        milestone:'Milestone progress',level:'Project verification level',records:'Activity records',recVerified:'1 verified',recReview:'1 in review',latest:'Latest activity',survey:'Latest survey',
+        source:'Open source record',project:'View project',donate:'Support this project',progress:'progress',mapPin:'Select '}
+    }
+  };
+  const TITLES = {
+    id:['Peta Dampak Konservasi Pesisir Indonesia | Terumbu.eco','Lihat lokasi konservasi pesisir Indonesia, baca catatan dari lapangan, dan cek status verifikasi restorasi mangrove, terumbu karang, serta bersih pantai bersama Terumbu.eco.'],
+    en:['Coastal Conservation Impact Map in Indonesia | Terumbu.eco','Explore coastal conservation sites in Indonesia, read field notes, and check the verification status of mangrove, coral, and beach cleanup work with Terumbu.eco.']
+  };
+  /* Koordinat sengaja dibulatkan (perkiraan) */
+  const SITES = [
+    {id:'komodo',type:'Cleanup',lat:-8.5,lng:119.5,status:'verified',progress:48,evidence:1,
+      name:'Komodo Cleanup Route',region:{id:'Nusa Tenggara Timur',en:'East Nusa Tenggara'},level:{id:'Basic verified',en:'Basic verified'},
+      latest:{id:'Peluncuran bersih pantai sekolah Komodo',en:'Komodo school cleanup launch'},metric:{id:'Sampah dipilah: 420 kg',en:'Waste sorted: 420 kg'},survey:{id:'19 Sep 2026',en:'19 Sep 2026'},
+      href:'https://terumbu.world/campaigns/cleanup-komodo-coast'},
+    {id:'bali',type:'Mangrove',lat:-8.1,lng:115.1,status:'verified',progress:61,evidence:1,
+      name:'North Bali Mangrove Belt',region:{id:'Bali',en:'Bali'},level:{id:'Document verified',en:'Document verified'},
+      latest:{id:'Audit persemaian mangrove Bali Utara',en:'North Bali mangrove nursery audit'},metric:{id:'Tingkat hidup: 89%',en:'Survival rate: 89%'},survey:null,
+      href:'https://terumbu.world/campaigns/mangrove-shield-bali'},
+    {id:'raja',type:'Coral',lat:-0.6,lng:130.5,status:'review',progress:72,evidence:0,
+      name:'Raja Ampat Reef Garden',region:{id:'Papua Barat Daya',en:'Southwest Papua'},level:{id:'Field verified',en:'Field verified'},
+      latest:{id:'Monitoring menunggu peninjauan',en:'Monitoring activity awaiting review'},metric:{id:'Bukti lapangan masih menunggu verifikasi',en:'Awaiting verified field evidence'},survey:null,
+      href:'https://terumbu.world/campaigns/restore-raja-ampat-reefs'}
+  ];
+  let lang = 'id', type = 'all', status = 'all', selected = 'komodo', map = null, markers = {};
+  try { const s = localStorage.getItem('terumbu_locale'); if (s === 'en' || s === 'id') lang = s; } catch (e) {}
+  const $ = id => document.getElementById(id);
+  const t = k => T[lang][k] ?? k;
+  const d = () => T[lang].d;
+  const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+  const visible = s => (type === 'all' || s.type === type) && (status === 'all' || s.status === status);
+
+  function chips(el, items, current, onPick) {
+    el.innerHTML = items.map(([v, label]) => `<button type="button" class="chip" data-v="${v}" aria-pressed="${v === current}">${esc(label)}</button>`).join('');
+    el.querySelectorAll('button').forEach(b => b.addEventListener('click', () => onPick(b.dataset.v)));
+  }
+  function icon(site) {
+    const cls = 'pin ' + site.status + (site.id === selected ? ' active' : '');
+    return L.divIcon({className:'', html:`<div class="${cls}"></div>`, iconSize:[34,34], iconAnchor:[17,17]});
+  }
+  function initMap() {
+    if (!window.L) { $('map-wrap').classList.add('no-map'); return; }
+    try {
+      map = L.map('map', {scrollWheelZoom:false, zoomControl:true}).setView([-4.5, 120], 4);
+      L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {maxZoom:10, attribution:'© OpenStreetMap contributors'}).addTo(map);
+      SITES.forEach(s => {
+        const m = L.marker([s.lat, s.lng], {icon:icon(s), title:s.name, alt:s.name, keyboard:true}).addTo(map);
+        m.on('click', () => { selected = s.id; render(); });
+        markers[s.id] = m;
+      });
+    } catch (e) { $('map-wrap').classList.add('no-map'); }
+  }
+  function render() {
+    const D = d();
+    chips($('type-chips'), [['all',D.all],['Cleanup',D.Cleanup],['Mangrove',D.Mangrove],['Coral',D.Coral]], type, v => { type = v; render(); });
+    chips($('status-chips'), [['all',D.all],['verified',D.verified],['review',D.review]], status, v => { status = v; render(); });
+    const list = SITES.filter(visible);
+    if (!list.some(s => s.id === selected)) selected = list[0]?.id || null;
+    $('count').textContent = D.count(list.length);
+    $('empty').hidden = list.length > 0;
+    $('site-list').innerHTML = list.map(s => `<li><button type="button" class="site-row" data-id="${s.id}" ${s.id === selected ? 'aria-current="true"' : ''}><b>${esc(s.name)}</b><small>${esc(s.region[lang])} · ${esc(D[s.type])}</small><div class="meter" style="--w:${s.progress}%"><i></i></div></button></li>`).join('');
+    $('site-list').querySelectorAll('.site-row').forEach(b => b.addEventListener('click', () => { selected = b.dataset.id; render(); if (map && markers[selected]) map.panTo(markers[selected].getLatLng()); }));
+    Object.entries(markers).forEach(([id, m]) => { const s = SITES.find(x => x.id === id); const show = visible(s); if (show && !map.hasLayer(m)) m.addTo(map); if (!show && map.hasLayer(m)) map.removeLayer(m); m.setIcon(icon(s)); });
+    const s = SITES.find(x => x.id === selected);
+    if (!s) { $('detail').innerHTML = ''; return; }
+    const ok = s.status === 'verified';
+    $('detail').innerHTML = `
+      <div class="detail-top"><div><h3>${esc(s.name)}</h3><p class="detail-region">${esc(s.region[lang])}</p></div><span class="tag">${esc(D[s.type])}</span></div>
+      <dl class="detail-grid">
+        <div><dt>${D.milestone}</dt><dd>${s.progress}%</dd></div>
+        <div><dt>${D.level}</dt><dd>${esc(s.level[lang])}</dd></div>
+        <div><dt>${D.records}</dt><dd class="${ok ? 'status-ok' : 'status-review'}">${ok ? D.recVerified : D.recReview}</dd></div>
+      </dl>
+      <div class="meter" role="img" aria-label="${s.progress}% ${D.progress}" style="--w:${s.progress}%"><i></i></div>
+      <div class="latest"><small>${D.latest}</small><strong>${esc(s.latest[lang])}</strong><p>${esc(s.metric[lang])}${s.survey ? ' · ' + D.survey + ': ' + esc(s.survey[lang]) : ''}</p></div>
+      <div class="detail-actions"><a class="button button-primary" href="${s.href}">${ok ? D.source : D.project} <span aria-hidden="true">↗</span></a><a class="button button-secondary" href="https://terumbu.world/campaigns">${D.donate}</a></div>`;
+  }
+  function applyLang() {
+    document.documentElement.lang = lang;
+    document.querySelectorAll('[data-i18n]').forEach(el => { const v = T[lang][el.dataset.i18n]; if (typeof v === 'string') el.textContent = v; });
+    document.title = TITLES[lang][0];
+    document.querySelector('meta[name="description"]').content = TITLES[lang][1];
+    $('language-select').value = lang;
+    const lblType = $('type-chips'), lblStatus = $('status-chips');
+    lblType.setAttribute('aria-label', t('ex.type')); lblStatus.setAttribute('aria-label', t('ex.status'));
+    $('map').setAttribute('aria-label', lang === 'id' ? 'Peta lokasi konservasi pesisir Indonesia' : 'Map of coastal conservation sites in Indonesia');
+    render();
+  }
+  try { const c = localStorage.getItem('terumbu-currency'); if (c) $('currency-select').value = c; } catch (e) {}
+  $('currency-select').addEventListener('change', e => { try { localStorage.setItem('terumbu-currency', e.target.value); } catch (x) {} });
+  $('language-select').addEventListener('change', e => { lang = e.target.value; try { localStorage.setItem('terumbu_locale', lang); } catch (x) {} applyLang(); });
+  initMap();
+  applyLang();
+  </script>
+</body>
+</html>

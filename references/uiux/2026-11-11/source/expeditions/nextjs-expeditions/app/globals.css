@@ -1,0 +1,5 @@
+/* Global base only. Each page's visual styles are scoped under .pg-list / .pg-detail (see /styles). */
+*, *::before, *::after { box-sizing: border-box; }
+html { scroll-behavior: smooth; overflow-x: clip; }
+body { margin: 0; overflow-x: clip; }
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
