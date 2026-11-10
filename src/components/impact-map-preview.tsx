@@ -1,6 +1,6 @@
 "use client";
 
-import { Camera, CheckCircle2, ExternalLink, HeartHandshake, MapPin, SlidersHorizontal } from "lucide-react";
+import { ExternalLink, HeartHandshake, MapPin, SlidersHorizontal } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { useMemo, useState } from "react";
