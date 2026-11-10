@@ -10430,7 +10430,14 @@ export async function getPartnerPortalData(userId?: string) {
       // Never ask a partner to manually reconcile counts already in the evidence table.
       evidenceCount: evidenceRows.filter((row) => row.impactSiteId === site.id && row.campaignId === site.campaignId).length,
       publicLocationPrecision: getMetadataString(site.metadata, "publicLocationPrecision") === "precise" ? "precise" : "approximate",
-      latestSurvey: getMetadataString(site.metadata, "latestSurvey"),
+      // Verified field evidence with an explicit survey date is authoritative.
+      // Legacy manual dates remain fallback until every site has reviewed surveys.
+      latestSurvey: evidenceRows
+        .filter((row) => row.impactSiteId === site.id && row.campaignId === site.campaignId && row.verificationStatus === "verified")
+        .map((row) => getMetadataString(row.metadata, "surveyDate"))
+        .filter((value): value is string => Boolean(value))
+        .sort()
+        .at(-1) ?? getMetadataString(site.metadata, "latestSurvey"),
       verification: getMetadataString(site.metadata, "verification") ?? "basic"
     })),
     restorationBatches: restorationBatchRows,

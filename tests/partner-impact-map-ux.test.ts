@@ -12,5 +12,6 @@ test("partners can select precise internal coordinates without manually entering
   assert.match(picker, /name="longitude"/);
   assert.match(picker, /instance\.on\("click"/);
   assert.match(actions, /publicLocationPrecision/);
+  assert.match(ui, /Last survey \(fallback only\)/);
   assert.match(actions, /parseCoordinate\(formData\.get\("latitude"\), -11, 6\)/);
 });

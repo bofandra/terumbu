@@ -616,7 +616,7 @@ function ImpactSiteFields({
             <input name="progress" type="number" min="0" max="100" step="1" defaultValue={site?.progress ?? 0} className={inputClassName} disabled={disabled} />
           </Field>
           <div className="rounded-lg border border-kelp-300 bg-white px-4 py-3 text-sm text-ocean-900/70">Activity records are calculated automatically from linked evidence. No manual count is needed.</div>
-          <Field label="Latest survey">
+          <Field label="Last survey (fallback only)" help="A date from verified field evidence takes precedence automatically. Use this only if no such evidence is available.">
             <input name="latestSurvey" type="date" defaultValue={site?.latestSurvey ?? ""} className={inputClassName} disabled={disabled} />
           </Field>
         </div>
