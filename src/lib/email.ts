@@ -17,7 +17,7 @@ function renderText(template: string, payload: Record<string, unknown>) {
     .map(([key, value]) => `${key}: ${String(value)}`)
     .join("\n");
 
-  return `Terumbu.eco ${template.replace(/_/g, " ")}\n\n${details}`;
+  return `Terumbu.world ${template.replace(/_/g, " ")}\n\n${details}`;
 }
 
 function failurePayload(payload: Record<string, unknown>, deliveryError: string, extra: Record<string, unknown> = {}) {
