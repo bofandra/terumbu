@@ -6,50 +6,16 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 
 import { ProgressMeter } from "@/components/ui/progress-meter";
+import { ImpactSiteLeafletMap } from "@/components/impact-site-leaflet-map";
 import { isVisualEvidenceUrl } from "@/lib/coral-monitoring";
 import type { ImpactSiteData } from "@/lib/domain";
 import type { SupportedLocale } from "@/lib/user-preferences";
 import { cn } from "@/lib/utils";
 
-const indonesiaBounds = {
-  minLat: -11,
-  maxLat: 6,
-  minLng: 94,
-  maxLng: 142
-};
-
 type ImpactMapPreviewProps = {
   sites: ImpactSiteData[];
   locale?: SupportedLocale;
 };
-
-function pinPosition(site: ImpactSiteData) {
-  const left = ((site.longitude - indonesiaBounds.minLng) / (indonesiaBounds.maxLng - indonesiaBounds.minLng)) * 100;
-  const top = ((indonesiaBounds.maxLat - site.latitude) / (indonesiaBounds.maxLat - indonesiaBounds.minLat)) * 100;
-
-  return {
-    left: `${Math.min(92, Math.max(8, left))}%`,
-    top: `${Math.min(86, Math.max(12, top))}%`
-  };
-}
-
-function pinTone(type: string) {
-  const normalized = type.toLowerCase();
-
-  if (normalized.includes("mangrove")) {
-    return "bg-kelp-500 text-white ring-kelp-100";
-  }
-
-  if (normalized.includes("cleanup")) {
-    return "bg-coral-500 text-white ring-coral-100";
-  }
-
-  if (normalized.includes("community")) {
-    return "bg-ocean-700 text-white ring-ocean-100";
-  }
-
-  return "bg-white text-coral-500 ring-white/60";
-}
 
 export function ImpactMapPreview({ sites, locale = "en" }: ImpactMapPreviewProps) {
   const labels =
@@ -118,7 +84,7 @@ export function ImpactMapPreview({ sites, locale = "en" }: ImpactMapPreviewProps
         };
   const [activeFilter, setActiveFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<"all" | "verified" | "review">("all");
-  const [selectedName, setSelectedName] = useState<string | null>(sites[0]?.name ?? null);
+  const [selectedSiteId, setSelectedSiteId] = useState<string | null>(sites[0]?.id ?? null);
   const typeFilters = useMemo(() => Array.from(new Set(sites.map((site) => site.type))), [sites]);
   const visibleSites = sites.filter((site) => {
     const typeMatches = activeFilter === "all" || site.type === activeFilter;
@@ -129,7 +95,7 @@ export function ImpactMapPreview({ sites, locale = "en" }: ImpactMapPreviewProps
 
     return typeMatches && statusMatches;
   });
-  const selectedSite = visibleSites.find((site) => site.name === selectedName) ?? visibleSites[0] ?? null;
+  const selectedSite = visibleSites.find((site) => site.id === selectedSiteId) ?? visibleSites[0] ?? null;
 
   if (sites.length === 0) {
     return (
@@ -145,59 +111,7 @@ export function ImpactMapPreview({ sites, locale = "en" }: ImpactMapPreviewProps
 
   return (
     <div className="grid gap-5 lg:grid-cols-[1.25fr_0.75fr]">
-      <div className="relative min-h-[420px] overflow-hidden rounded-2xl border border-ocean-900/10 bg-ocean-900 shadow-soft">
-        <iframe
-          title={labels.iframeTitle}
-          className="absolute inset-0 h-full w-full border-0 opacity-70"
-          loading="lazy"
-          src="https://www.openstreetmap.org/export/embed.html?bbox=94%2C-11%2C142%2C6&layer=mapnik"
-        />
-        <div className="absolute inset-0 bg-[linear-gradient(135deg,rgba(7,52,63,0.76),rgba(24,143,138,0.42))]" />
-
-        {visibleSites.map((site) => {
-          const position = pinPosition(site);
-
-          return (
-            <button
-              key={site.id}
-              type="button"
-              aria-label={`${labels.showDetails} ${site.name}`}
-              title={site.name}
-              className={cn(
-                "absolute z-10 -translate-x-1/2 -translate-y-1/2 rounded-full p-1 shadow-soft ring-4 transition hover:scale-110 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-coral-500",
-                pinTone(site.type),
-                selectedSite?.id === site.id && "scale-110 ring-white"
-              )}
-              style={position}
-              onClick={() => setSelectedName(site.name)}
-            >
-              <span className="flex size-11 items-center justify-center rounded-full">
-                <MapPin size={22} aria-hidden="true" />
-              </span>
-            </button>
-          );
-        })}
-
-        {selectedSite ? (
-          <div
-            className="absolute z-20 max-w-[250px] -translate-x-1/2 translate-y-8 rounded-xl bg-white/95 p-3 text-left shadow-soft ring-1 ring-ocean-900/10 backdrop-blur"
-            style={pinPosition(selectedSite)}
-          >
-            <p className="text-xs font-bold uppercase tracking-[0.12em] text-coral-700">{labels.popover}</p>
-            <p className="mt-1 text-sm font-bold text-ocean-900">{selectedSite.name}</p>
-            <p className="mt-1 text-xs text-ocean-900/58">
-              {selectedSite.latestEvidence ? `${selectedSite.latestEvidence.stageLabel} / ${selectedSite.latestEvidence.verificationStatus}` : labels.pending}
-            </p>
-          </div>
-        ) : null}
-
-        <div className="absolute bottom-5 left-5 right-5 rounded-2xl bg-white/92 p-5 backdrop-blur">
-          <p className="text-sm font-bold uppercase tracking-[0.16em] text-coral-700">{labels.liveMap}</p>
-          <p className="mt-2 max-w-xl text-2xl font-bold tracking-normal text-ocean-900">
-            {selectedSite ? selectedSite.name : labels.verifiedSites}, {labels.liveMapSuffix}
-          </p>
-        </div>
-      </div>
+      <ImpactSiteLeafletMap sites={sites} visibleSites={visibleSites} selectedSiteId={selectedSite?.id ?? null} onSelect={setSelectedSiteId} locale={locale} />
 
       <div className="rounded-2xl border border-ocean-900/10 bg-white p-5 shadow-soft">
         <div className="grid gap-3">
@@ -216,7 +130,7 @@ export function ImpactMapPreview({ sites, locale = "en" }: ImpactMapPreviewProps
                 )}
                 onClick={() => {
                   setActiveFilter(filter.value);
-                  setSelectedName(null);
+                  setSelectedSiteId(null);
                 }}
               >
                 {filter.label}
@@ -238,7 +152,7 @@ export function ImpactMapPreview({ sites, locale = "en" }: ImpactMapPreviewProps
                 )}
                 onClick={() => {
                   setStatusFilter(filter.value);
-                  setSelectedName(null);
+                  setSelectedSiteId(null);
                 }}
               >
                 {filter.label}
@@ -377,9 +291,9 @@ export function ImpactMapPreview({ sites, locale = "en" }: ImpactMapPreviewProps
               type="button"
               className={cn(
                 "w-full rounded-xl border p-4 text-left transition hover:border-coral-500",
-                selectedSite?.name === site.name ? "border-coral-500 bg-coral-100/35" : "border-ocean-900/10"
+                selectedSite?.id === site.id ? "border-coral-500 bg-coral-100/35" : "border-ocean-900/10"
               )}
-              onClick={() => setSelectedName(site.name)}
+              onClick={() => setSelectedSiteId(site.id)}
             >
               <div className="flex items-start justify-between gap-3">
                 <div>

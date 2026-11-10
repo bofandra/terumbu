@@ -52,3 +52,43 @@ img {
   background: #ff9d83;
   color: #07343f;
 }
+
+/* The editorial palette in the supplied Terumbu concepts. Keep existing
+   operator dashboards on their established token set. */
+:root {
+  --terumbu-blue: #0757e5;
+  --terumbu-navy: #062d7f;
+  --terumbu-lime: #c9f341;
+}
+.terumbu-editorial h1,
+.terumbu-editorial h2 {
+  letter-spacing: -0.045em;
+}
+.terumbu-map-pin {
+  border: 0 !important;
+  background: none !important;
+}
+.terumbu-map-pin span {
+  display: block;
+  position: relative;
+  width: 34px;
+  height: 34px;
+  border: 5px solid white;
+  border-radius: 50% 50% 50% 8px;
+  transform: rotate(-45deg);
+  background: #f45d48;
+  box-shadow: 0 4px 15px rgba(7,52,63,.4);
+}
+.terumbu-map-pin.verified span { background: #4a8f57; }
+.terumbu-map-pin.is-selected span { outline: 4px solid #c9f341; box-shadow: 0 5px 20px rgba(7,52,63,.6); }
+.terumbu-map-pin span::after {
+  content: "";
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  background: #fff;
+  border-radius: 50%;
+  left: 8px;
+  top: 8px;
+}
+.terumbu-map-pin:focus-visible span { outline: 4px solid #0757e5; }
