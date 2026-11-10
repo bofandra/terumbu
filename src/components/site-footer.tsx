@@ -95,4 +95,3 @@ export function SiteFooter({ locale = "en" }: { locale?: SupportedLocale }) {
     </footer>
   );
 }
-\n
