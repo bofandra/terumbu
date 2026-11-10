@@ -607,15 +607,21 @@ function ImpactSiteFields({
           <input name="longitude" type="number" min="-180" max="180" step="0.000001" defaultValue={site?.longitude} placeholder="130.516600" className={inputClassName} disabled={disabled} required />
         </Field>
       </div>
+<div className="mt-3 rounded-xl border border-ocean-900/10 bg-ocean-50 p-4">
+        <Field label="Public map location" help="Protect sensitive restoration sites. Approximate is recommended and is the default. Exact coordinates stay private unless you explicitly choose precise.">
+          <select name="publicLocationPrecision" defaultValue={site?.publicLocationPrecision ?? "approximate"} className={inputClassName} disabled={disabled}>
+            <option value="approximate">Approximate — around 10 km precision (recommended)</option>
+            <option value="precise">Precise — public may view exact coordinates</option>
+          </select>
+        </Field>
+      </div>
       <details className="rounded-lg border border-ocean-900/10 bg-sand-50 p-4" open={Boolean(site)}>
         <summary className="cursor-pointer text-sm font-bold text-ocean-900">Advanced tracking fields</summary>
         <div className="mt-4 grid gap-3 md:grid-cols-3">
           <Field label="Progress">
             <input name="progress" type="number" min="0" max="100" step="1" defaultValue={site?.progress ?? 0} className={inputClassName} disabled={disabled} />
           </Field>
-          <Field label="Review records">
-            <input name="evidenceCount" type="number" min="0" step="1" defaultValue={site?.evidenceCount ?? 0} className={inputClassName} disabled={disabled} />
-          </Field>
+          <div className="rounded-lg border border-kelp-300 bg-white px-4 py-3 text-sm text-ocean-900/70">Activity records are calculated automatically from linked evidence. No manual count is needed.</div>
           <Field label="Latest survey">
             <input name="latestSurvey" type="date" defaultValue={site?.latestSurvey ?? ""} className={inputClassName} disabled={disabled} />
           </Field>

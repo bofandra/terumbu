@@ -514,17 +514,18 @@ function parseOptionalCount(value: FormDataEntryValue | null) {
 
 function impactSiteMetadataFromForm(formData: FormData) {
   const progress = parsePercent(formData.get("progress"));
-  const evidenceCount = parseOptionalCount(formData.get("evidenceCount"));
   const latestSurvey = nullableText(formData, "latestSurvey");
+  const publicLocationPrecision = formData.get("publicLocationPrecision") === "precise" ? "precise" : "approximate";
 
-  if (progress === null || evidenceCount === null) {
+  if (progress === null) {
     return null;
   }
 
   return {
     progress,
-    evidenceCount,
+    evidenceCount: 0, // legacy metadata is not a public activity-count source
     latestSurvey,
+    publicLocationPrecision,
     verification: "basic" as const
   };
 }
@@ -2255,7 +2256,8 @@ export async function createPartnerCampaignAction(formData: FormData) {
           longitude: parseCoordinate(formData.get("impactSiteLongitude"), -180, 180),
           metadata: {
             progress: parsePercent(formData.get("impactSiteProgress")) ?? 0,
-            evidenceCount: parseOptionalCount(formData.get("impactSiteEvidenceCount")) ?? 0,
+            evidenceCount: 0, // counts come from linked project_evidence rows
+            publicLocationPrecision: "approximate" as const,
             latestSurvey: nullableText(formData, "impactSiteLatestSurvey"),
             verification: "basic" as const
           }
@@ -2739,6 +2741,10 @@ export async function updatePartnerImpactSiteAction(formData: FormData) {
       ? (existingSite.metadata as Record<string, unknown>)
       : {};
   values.metadata.verification = normalizeImpactSiteVerificationStatus(existingMetadata.verification) as typeof values.metadata.verification;
+  // Partner edits never rewrite audit-managed evidence counts. Preserve legacy
+  // metadata only for any historical consumers; public and partner counts are derived.
+  values.metadata.evidenceCount = typeof existingMetadata.evidenceCount === "number" && Number.isFinite(existingMetadata.evidenceCount)
+    ? existingMetadata.evidenceCount : 0;
 
   await db.transaction(async (tx) => {
     await tx

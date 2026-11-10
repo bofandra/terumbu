@@ -3,6 +3,7 @@ import { and, asc, desc, eq, gte, inArray, isNotNull, lte, or, sql } from "drizz
 import { db } from "@/db/client";
 import { expeditionDepartureMatchesSearch } from "@/lib/expedition-marketplace";
 import { impactSiteCampaignScopeKey } from "@/lib/impact-site-scope";
+import { publicMapCoordinates } from "@/lib/impact-map-location";
 import {
   assessmentAttempts,
   assessmentChoices,
@@ -2329,6 +2330,11 @@ export async function getImpactMapSites(campaignId?: string, expeditionId?: stri
       0
     );
     const evidenceCount = verifiedEvidenceCount + pendingEvidenceCount;
+    // Enforce public coordinate privacy on the server, before props are sent to browsers.
+    const publicLocation = publicMapCoordinates(
+      { latitude: toNumber(site.latitude), longitude: toNumber(site.longitude) },
+      getMetadataString(site.metadata, "publicLocationPrecision")
+    );
 
     return {
       id: site.id,
@@ -2338,8 +2344,8 @@ export async function getImpactMapSites(campaignId?: string, expeditionId?: stri
       campaignSlug: site.campaignSlug,
       campaignTitle: site.campaignTitle,
       progress: getMetadataNumber(site.metadata, "progress"),
-      latitude: toNumber(site.latitude),
-      longitude: toNumber(site.longitude),
+      latitude: publicLocation.latitude,
+      longitude: publicLocation.longitude,
       verification: verificationLabel(normalizeImpactSiteVerificationStatus(getMetadataString(site.metadata, "verification"))),
       // Count only evidence from the linked public campaigns, never site-wide
       // legacy metadata (which can misattribute records to another campaign).
@@ -10420,7 +10426,9 @@ export async function getPartnerPortalData(userId?: string) {
       latitude: toNumber(site.latitude),
       longitude: toNumber(site.longitude),
       progress: getMetadataNumber(site.metadata, "progress"),
-      evidenceCount: getMetadataNumber(site.metadata, "evidenceCount"),
+      // Never ask a partner to manually reconcile counts already in the evidence table.
+      evidenceCount: evidenceRows.filter((row) => row.impactSiteId === site.id && row.campaignId === site.campaignId).length,
+      publicLocationPrecision: getMetadataString(site.metadata, "publicLocationPrecision") === "precise" ? "precise" : "approximate",
       latestSurvey: getMetadataString(site.metadata, "latestSurvey"),
       verification: getMetadataString(site.metadata, "verification") ?? "basic"
     })),
