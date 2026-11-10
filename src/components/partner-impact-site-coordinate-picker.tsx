@@ -20,7 +20,7 @@ export function PartnerImpactSiteCoordinatePicker({ latitude, longitude, disable
   const map = useRef<LeafletMap | null>(null);
   const marker = useRef<Marker | null>(null);
   const initial = useRef({ lat, lng });
-  initial.current = { lat, lng };
+  useEffect(() => { initial.current = { lat, lng }; }, [lat, lng]);
 
   useEffect(() => {
     if (!open || disabled) return;
