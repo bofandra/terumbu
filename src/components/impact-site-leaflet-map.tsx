@@ -43,7 +43,7 @@ export function ImpactSiteLeafletMap({ sites, visibleSites, selectedSiteId, onSe
   const onSelectRef = useRef(onSelect);
   const [ready, setReady] = useState(false);
   const [failed, setFailed] = useState(false);
-  onSelectRef.current = onSelect;
+  useEffect(() => { onSelectRef.current = onSelect; }, [onSelect]);
 
   useEffect(() => {
     let cancelled = false;

@@ -177,7 +177,7 @@ export function ImpactMapPreview({ sites, locale = "en" }: ImpactMapPreviewProps
               <div className="rounded-xl bg-white p-4">
                 <CheckCircle2 className="text-kelp-500" size={20} aria-hidden="true" />
                 <p className="mt-3 text-sm font-bold text-ocean-900">{selectedSite.progress}% {labels.milestone}</p>
-                <p className="mt-1 text-xs leading-5 text-ocean-900/60">{selectedSite.verification}</p>
+                <p className="mt-1 text-xs leading-5 text-ocean-900/60">{selectedSite.verifiedEvidenceCount} {labels.verified} · {selectedSite.pendingEvidenceCount} {labels.inReview}</p>
               </div>
               <div className="rounded-xl bg-white p-4">
                 <Camera className="text-coral-500" size={20} aria-hidden="true" />

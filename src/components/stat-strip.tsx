@@ -24,7 +24,7 @@ type StatStripProps = {
 export function StatStrip({ stats }: StatStripProps) {
   return (
     <section className="relative z-10 mx-auto -mt-10 max-w-7xl px-4 sm:px-6 lg:px-8">
-      <div className="grid gap-3 rounded-2xl border border-white/70 bg-white/92 p-3 shadow-soft backdrop-blur md:grid-cols-4">
+      <div className="grid gap-3 rounded-2xl border border-white/70 bg-white/92 p-3 shadow-soft backdrop-blur md:grid-cols-2 lg:grid-cols-3">
         {stats.map((stat) => {
           const Icon = toneIcon[stat.tone];
 

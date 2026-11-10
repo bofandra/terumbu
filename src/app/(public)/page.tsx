@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Image from "next/image";
+import Link from "next/link";
 import { ArrowRight, BadgeCheck, BookOpen, Compass, HeartHandshake, MapPinned, PlayCircle, Search, Star, Users } from "lucide-react";
 
 import { CampaignCard } from "@/components/campaign-card";
@@ -105,22 +106,24 @@ export default async function HomePage() {
 
   return (
     <>
-      <section className="relative flex min-h-[calc(100svh-5rem)] items-center overflow-hidden bg-ocean-900">
+      <section className="terumbu-editorial relative flex min-h-[calc(100svh-5rem)] items-center overflow-hidden bg-[#062d7f]">
         {heroImageUrl ? (
           <Image src={heroImageUrl} alt={locale === "id" ? "Dokumentasi lapangan dari mitra" : "Partner-managed field documentation"} fill priority unoptimized className="absolute inset-0 object-cover" sizes="100vw" />
         ) : null}
-        <div className="absolute inset-0 bg-gradient-to-br from-ocean-900/95 via-ocean-900/62 to-coral-700/34" />
-        <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-sand-50 to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-br from-[#062d7f]/95 via-[#063b9a]/85 to-[#0757e5]/75" />
+        <div className="pointer-events-none absolute -right-36 -top-44 size-[650px] rounded-full border-[120px] border-white/5" />
+        <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-white to-transparent" />
 
-        <div className="relative mx-auto grid max-w-7xl gap-12 px-4 py-20 sm:px-6 lg:grid-cols-[1.1fr_0.9fr] lg:px-8">
+        <div className="relative mx-auto grid max-w-7xl gap-12 px-4 py-20 sm:px-6 sm:py-24 lg:grid-cols-[1.12fr_0.88fr] lg:items-end lg:px-8">
           <div className="max-w-3xl text-white">
-            <h1 className="mt-7 text-5xl font-bold tracking-normal sm:text-6xl lg:text-7xl">
+            <p className="inline-flex items-center gap-2 text-xs font-black uppercase tracking-[0.2em] text-[#c9f341]"><Compass size={17} aria-hidden="true" /> TERUMBU · {locale === "id" ? "Wisata konservasi Indonesia" : "Conservation travel in Indonesia"}</p>
+            <h1 className="mt-6 max-w-4xl text-5xl font-black leading-[1.05] tracking-[-0.045em] sm:text-6xl lg:text-[5.25rem]">
               {messages.home.title}
             </h1>
             <p className="mt-6 max-w-2xl text-lg leading-8 text-white/82 sm:text-xl">
               {messages.home.intro}
             </p>
-            <form action="/expeditions" className="mt-9 grid gap-2 rounded-2xl border border-white/24 bg-white/12 p-3 backdrop-blur-xl sm:grid-cols-[1fr_1fr_auto]">
+            <form action="/expeditions" className="mt-9 grid gap-2 rounded-3xl border border-white/30 bg-white/15 p-3 shadow-[0_25px_60px_rgba(2,17,62,.24)] backdrop-blur-xl sm:grid-cols-[1fr_1fr_auto]">
               <div className="sm:col-span-3"><ExpeditionTravelSearchFields locale={locale} /></div>
               <label className="relative">
                 <span className="sr-only">{locale === "id" ? "Mau menjelajah ke mana?" : "Where do you want to explore?"}</span>
@@ -132,11 +135,15 @@ export default async function HomePage() {
                 <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-ocean-900/45" aria-hidden="true" />
                 <input name="q" placeholder={messages.home.activityPlaceholder} className="min-h-12 w-full rounded-xl border-0 bg-white pl-9 pr-3 text-sm font-semibold text-ocean-900 outline-none ring-1 ring-white/20 focus:ring-2 focus:ring-coral-300" />
               </label>
-              <button type="submit" className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-coral-500 px-5 text-sm font-bold text-white hover:bg-coral-700">
+              <button type="submit" className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-[#c9f341] px-5 text-sm font-black text-[#062d7f] hover:bg-white">
                 {messages.home.searchTrips} <ArrowRight size={17} aria-hidden="true" />
               </button>
             </form>
-            <div className="mt-7 flex flex-wrap items-center gap-4 text-sm font-semibold text-white/82">
+            <div className="mt-7 flex flex-wrap gap-3">
+              <Link href="/impact-map" className="inline-flex min-h-11 items-center gap-2 rounded-full border border-white/40 px-5 py-2 text-sm font-bold text-white hover:bg-white/10"><BadgeCheck size={17} aria-hidden="true" />{locale === "id" ? "Jelajahi bukti dampak" : "Explore impact evidence"}</Link>
+              <Link href="/academy" className="inline-flex min-h-11 items-center gap-2 rounded-full border border-white/40 px-5 py-2 text-sm font-bold text-white hover:bg-white/10"><BookOpen size={17} aria-hidden="true" />{locale === "id" ? "Belajar konservasi" : "Learn conservation"}</Link>
+            </div>
+            <div className="mt-6 flex flex-wrap items-center gap-4 text-sm font-semibold text-white/82">
               {reviewSummary ? (
                 <span className="inline-flex items-center gap-2">
                   <Star size={16} fill="currentColor" className="text-coral-300" aria-hidden="true" />
@@ -152,7 +159,7 @@ export default async function HomePage() {
 
           {fieldUpdate ? (
             <div className="hidden items-end lg:flex">
-              <div className="w-full rounded-2xl border border-white/20 bg-white/12 p-5 text-white backdrop-blur-xl">
+              <div className="w-full rounded-3xl border border-white/25 bg-white/15 p-6 text-white shadow-[0_30px_70px_rgba(0,0,0,.25)] backdrop-blur-xl">
                 <p className="mt-4 text-2xl font-bold tracking-normal">{fieldUpdate.title}</p>
                 <ProgressMeter value={fieldUpdate.progress} label={`${fieldUpdate.title} progress`} className="mt-6 h-3" trackClassName="bg-white/18" />
                 <p className="mt-4 text-sm leading-6 text-white/72">{fieldUpdate.description}</p>
@@ -168,7 +175,7 @@ export default async function HomePage() {
 
       <StatStrip stats={stats} />
 
-      <section className="bg-white py-20">
+      <section className="terumbu-editorial bg-white py-20 sm:py-24">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="flex flex-col justify-between gap-6 md:flex-row md:items-end">
             <SectionHeading title={messages.home.featuredTitle}>
@@ -184,7 +191,7 @@ export default async function HomePage() {
         </div>
       </section>
 
-      <section className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8">
+      <section className="terumbu-editorial bg-[#f5f8fb] py-20 sm:py-24"><div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="flex flex-col justify-between gap-6 md:flex-row md:items-end">
           <SectionHeading title={messages.home.supportTitle}>
             {messages.home.supportDescription}
@@ -197,29 +204,28 @@ export default async function HomePage() {
           {campaigns.map((campaign) => (
             <CampaignCard key={campaign.slug} campaign={campaign} locale={locale} />
           ))}
-        </div>
+        </div></div>
       </section>
 
-
-
-      <section className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8">
+      <section className="terumbu-editorial bg-[#eaf2ff] py-20 sm:py-24"><div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <SectionHeading title={messages.home.impactMapTitle}>
           {messages.home.impactMapDescription}
         </SectionHeading>
         <div className="mt-10">
           <ImpactMapPreview sites={impactSites} locale={locale} />
+          <div className="mt-7 text-right"><Link href="/impact-map" className="inline-flex min-h-11 items-center gap-2 rounded-full bg-[#0757e5] px-6 text-sm font-bold text-white hover:bg-[#062d7f]">{locale === "id" ? "Lihat peta dampak lengkap" : "Explore the full impact map"} <ArrowRight size={16} aria-hidden="true" /></Link></div>
         </div>
       </section>
 
-      <section className="bg-ocean-50 py-20">
+      <section className="terumbu-editorial bg-[#062d7f] py-20 text-white sm:py-24">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <SectionHeading title={messages.home.howTitle} />
+          <h2 className="max-w-4xl text-3xl font-black leading-tight text-white sm:text-5xl">{messages.home.howTitle}</h2>
           <div className="mt-10 grid gap-5 md:grid-cols-2 lg:grid-cols-4">
             {journey.map((item) => {
               const Icon = item.icon;
 
               return (
-                <div key={item.title} className="rounded-2xl border border-ocean-900/10 bg-white p-5 shadow-soft">
+                <div key={item.title} className="rounded-3xl border border-white/10 bg-white p-6 text-ocean-900 shadow-soft">
                   <span className="flex size-12 items-center justify-center rounded-full bg-coral-100 text-coral-700">
                     <Icon size={23} aria-hidden="true" />
                   </span>
@@ -232,7 +238,7 @@ export default async function HomePage() {
         </div>
       </section>
 
-      <section className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8">
+      <section className="terumbu-editorial mx-auto max-w-7xl px-4 py-20 sm:px-6 sm:py-24 lg:px-8">
         <div className="grid gap-10 lg:grid-cols-[0.9fr_1.1fr] lg:items-center">
           <SectionHeading title={messages.home.passportTitle}>
             {messages.home.passportDescription}

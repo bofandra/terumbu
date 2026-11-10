@@ -80,19 +80,19 @@ export default async function ExpeditionsPage({ searchParams }: ExpeditionsPageP
   return (
     <>
       <JsonLd data={structuredData} />
-      <main className="bg-mist-50">
-      <section className="overflow-hidden border-b border-ocean-900/10 bg-sand-50">
-        <div className="mx-auto grid max-w-7xl gap-10 px-4 py-12 sm:px-6 sm:py-16 lg:grid-cols-[minmax(0,0.92fr)_minmax(360px,0.78fr)] lg:items-center lg:px-8 lg:py-20">
+      <main className="terumbu-editorial bg-mist-50">
+      <section className="relative overflow-hidden bg-[#062d7f] text-white">
+        <div className="pointer-events-none absolute -right-24 -top-48 size-[570px] rounded-full border-[90px] border-white/5" /><div className="relative mx-auto grid max-w-7xl gap-10 px-4 py-14 sm:px-6 sm:py-20 lg:grid-cols-[minmax(0,0.98fr)_minmax(360px,0.82fr)] lg:items-center lg:px-8 lg:py-24">
           <div className="relative z-[1]">
-            <p className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[0.16em] text-sky-700">
-              <span className="h-0.5 w-7 bg-coral-500" aria-hidden="true" />
+            <p className="inline-flex items-center gap-2 text-xs font-black uppercase tracking-[0.16em] text-[#c9f341]">
+              <span className="h-0.5 w-7 bg-[#c9f341]" aria-hidden="true" />
               <Leaf className="size-4" aria-hidden="true" />
               {messages.badge}
             </p>
-            <h1 className="mt-6 max-w-3xl text-5xl font-bold leading-[0.98] tracking-[-0.045em] text-ocean-900 sm:text-6xl lg:text-7xl">
+            <h1 className="mt-6 max-w-3xl text-5xl font-black leading-[1.02] tracking-[-0.045em] text-white sm:text-6xl lg:text-7xl">
               {messages.title}
             </h1>
-            <p className="mt-6 max-w-xl text-base leading-7 text-ocean-900/66 sm:text-lg">
+            <p className="mt-6 max-w-xl text-base leading-7 text-white/80 sm:text-lg">
               {messages.intro}
             </p>
             <div className="mt-7 flex flex-wrap gap-x-5 gap-y-3">
@@ -104,14 +104,14 @@ export default async function ExpeditionsPage({ searchParams }: ExpeditionsPageP
                 const Icon = item.icon;
 
                 return (
-                  <span key={item.label} className="inline-flex items-center gap-2 text-sm font-bold text-ocean-900/72">
-                    <Icon className="size-4 text-kelp-500" aria-hidden="true" />
+                  <span key={item.label} className="inline-flex items-center gap-2 text-sm font-bold text-white/85">
+                    <Icon className="size-4 text-[#c9f341]" aria-hidden="true" />
                     {item.label}
                   </span>
                 );
               })}
             </div>
-            <form action="/expeditions" className="mt-8 rounded-2xl border border-ocean-900/10 bg-white p-4 shadow-soft sm:p-5">
+            <form action="/expeditions" className="mt-8 rounded-3xl border border-white/25 bg-white p-4 text-ocean-900 shadow-[0_25px_65px_rgba(2,17,62,.25)] sm:p-5">
             {Object.entries(filters).filter(([key]) => !["q", "destination", "dateFrom", "dateTo", "participants"].includes(key)).map(([key, value]) => value !== undefined && <input key={key} type="hidden" name={key} value={String(value)} />)}
             <p className="text-sm font-bold text-ocean-900">{messages.searchTitle}</p>
             <div className="mt-3 grid gap-3 sm:grid-cols-2">
@@ -134,14 +134,14 @@ export default async function ExpeditionsPage({ searchParams }: ExpeditionsPageP
                   className="min-h-12 w-full rounded-lg border border-ocean-900/12 bg-white px-3 text-sm font-semibold text-ocean-900 outline-none focus:border-kelp-500"
                 />
               </label>
-              <button type="submit" className="flex min-h-12 items-center justify-center rounded-full bg-ocean-700 px-5 text-sm font-bold text-white shadow-sm hover:bg-ocean-900 sm:col-span-2">
+              <button type="submit" className="flex min-h-12 items-center justify-center rounded-full bg-[#0757e5] px-5 text-sm font-bold text-white shadow-sm hover:bg-[#062d7f] sm:col-span-2">
                 {messages.search}
               </button>
               <ExpeditionTravelSearchFields filters={filters} locale={locale} />
             </div>
           </form>
           </div>
-          <div className="relative min-h-[360px] overflow-hidden rounded-[45%_45%_1.25rem_1.25rem] bg-ocean-900 shadow-soft sm:min-h-[470px]">
+          <div className="relative min-h-[360px] overflow-hidden rounded-[42%_42%_1.75rem_1.75rem] bg-ocean-900 shadow-soft sm:min-h-[470px]">
             {heroImage ? (
               <Image src={heroImage} alt={isIndonesian ? "Foto dari ekspedisi yang tersedia di Terumbu" : "Photo from an available Terumbu expedition"} fill priority className="object-cover" sizes="(max-width: 1024px) 100vw, 42vw" />
             ) : (
@@ -156,7 +156,7 @@ export default async function ExpeditionsPage({ searchParams }: ExpeditionsPageP
         </div>
       </section>
 
-      <section className="mx-auto max-w-7xl px-4 pt-14 sm:px-6 lg:px-8">
+      <section id="catalogue" className="mx-auto max-w-7xl scroll-mt-24 px-4 pt-14 sm:px-6 lg:px-8">
         <div className="flex flex-col justify-between gap-4 border-b border-ocean-900/10 pb-7 lg:flex-row lg:items-end">
           <div>
             <p className="text-xs font-bold uppercase tracking-[0.16em] text-sky-700">{messages.catalogueEyebrow}</p>
@@ -185,9 +185,9 @@ export default async function ExpeditionsPage({ searchParams }: ExpeditionsPageP
             <ExpeditionSortControl filters={filters} />
           </div>
 
-          <div className="mt-5 grid gap-5">
+          <div className="mt-5 grid gap-5 md:grid-cols-2">
             {expeditions.map((expedition) => (
-              <ExpeditionCard key={expedition.slug} expedition={expedition} displayCurrency={displayCurrency} locale={localeName} />
+              <ExpeditionCard key={expedition.slug} expedition={expedition} tile displayCurrency={displayCurrency} locale={localeName} />
             ))}
           </div>
 
@@ -238,15 +238,15 @@ export default async function ExpeditionsPage({ searchParams }: ExpeditionsPageP
         </div>
       </section>
 
-      <section className="bg-ocean-700 py-14 text-white sm:py-16">
+      <section className="bg-[#062d7f] py-14 text-white sm:py-16">
         <div className="mx-auto flex max-w-7xl flex-col justify-between gap-8 px-4 sm:px-6 lg:flex-row lg:items-end lg:px-8">
           <div>
             <p className="text-xs font-bold uppercase tracking-[0.16em] text-sand-300">{messages.ctaEyebrow}</p>
             <h2 className="mt-3 max-w-3xl text-3xl font-bold tracking-[-0.035em] sm:text-5xl">{messages.ctaTitle}</h2>
             <p className="mt-4 max-w-xl text-base leading-7 text-white/72">{messages.ctaBody}</p>
           </div>
-          <Link href="/contact" className="inline-flex min-h-12 shrink-0 items-center justify-center gap-2 rounded-full bg-sand-100 px-6 text-sm font-bold text-ocean-900 hover:bg-white">
-            {messages.ctaLabel}<ArrowUpRight size={17} aria-hidden="true" />
+          <Link href="/campaigns" className="inline-flex min-h-12 shrink-0 items-center justify-center gap-2 rounded-full bg-[#c9f341] px-6 text-sm font-bold text-[#062d7f] hover:bg-white">
+            {isIndonesian ? "Jelajahi kampanye" : "Explore campaigns"}<ArrowUpRight size={17} aria-hidden="true" />
           </Link>
         </div>
       </section>
