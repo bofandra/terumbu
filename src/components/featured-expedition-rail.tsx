@@ -6,6 +6,7 @@ import { secondaryPriceLabel } from "@/lib/currency-display";
 import type { ExpeditionCardData } from "@/lib/domain";
 import type { DisplayCurrency } from "@/lib/user-preferences";
 import { formatCurrency } from "@/lib/utils";
+import { publicLocaleHref } from "@/lib/public-localized-routes";
 
 type FeaturedExpeditionRailProps = {
   expeditions: ExpeditionCardData[];
@@ -35,7 +36,7 @@ export function FeaturedExpeditionRail({ expeditions, displayCurrency = "USD", l
         return (
         <Link
           key={expedition.slug}
-          href={`/expeditions/${expedition.slug}`}
+          href={publicLocaleHref(isIndonesian ? "id" : "en", `/expeditions/${expedition.slug}`)}
           className="group relative min-h-[360px] min-w-[290px] snap-start overflow-hidden rounded-3xl bg-ocean-900 shadow-soft ring-1 ring-ocean-900/10 transition hover:-translate-y-1 hover:ring-coral-500 sm:min-w-[340px] lg:min-w-[31%]"
         >
           {expedition.imageUrl ? (
@@ -76,7 +77,7 @@ export function FeaturedExpeditionRail({ expeditions, displayCurrency = "USD", l
       })}
 
       <Link
-        href="/expeditions"
+        href={publicLocaleHref(isIndonesian ? "id" : "en", "/expeditions")}
         className="flex min-h-[360px] min-w-[260px] snap-start flex-col justify-between rounded-2xl border border-dashed border-ocean-900/18 bg-white p-6 text-ocean-900 transition hover:border-coral-500 hover:text-coral-700"
       >
         <span className="text-sm font-bold uppercase tracking-[0.16em] text-ocean-900/50">{isIndonesian ? "Ekspedisi lainnya" : "More trips"}</span>

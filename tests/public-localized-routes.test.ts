@@ -13,6 +13,7 @@ test("only approved public routes receive localized aliases", () => {
   assert.equal(publicLocaleHref("en", "/"), "/en");
   assert.equal(publicLocaleHref("id", "/impact-map"), "/id/impact-map");
   assert.equal(publicLocaleHref("id", "/expeditions/reef-care"), "/id/expeditions/reef-care");
+  assert.equal(publicLocaleHref("en", "/expeditions/reef-care"), "/en/expeditions/reef-care");
   assert.equal(publicLocaleHref("id", "/login"), "/login");
   assert.equal(stripPublicLocale("/en/expeditions"), "/expeditions");
   assert.deepEqual(publicLanguageAlternates("/expeditions"), { en: "/en/expeditions", id: "/id/expeditions" });
