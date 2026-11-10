@@ -32,7 +32,7 @@ test("donation receipt helpers produce stable public labels", () => {
   assert.equal(donationReceiptFilename(receipt), "terumbu-receipt-trb-rcp-2026-0001.pdf");
   assert.equal(donationReceiptHolderName(receipt), "Raka Pramana");
   assert.equal(donationReceiptHolderName({ donorName: null, donorEmail: "supporter@example.test" }), "supporter@example.test");
-  assert.equal(donationReceiptHolderName({ donorName: null, donorEmail: null }), "Terumbu.eco supporter");
+  assert.equal(donationReceiptHolderName({ donorName: null, donorEmail: null }), "Terumbu.world supporter");
   assert.equal(donationReceiptProviderReference(receipt), "demo-ref-1");
   assert.equal(donationReceiptProviderReference({ payload: {} }), "Recorded");
 });

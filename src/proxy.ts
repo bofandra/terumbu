@@ -1,4 +1,6 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
+import { securityHeaders } from "@/lib/security-headers";
 
 /**
  * Localized public content aliases.
@@ -8,12 +10,18 @@ import { NextRequest, NextResponse } from "next/server";
  */
 export function proxy(request: NextRequest) {
   const match = request.nextUrl.pathname.match(/^\/(en|id)(\/.*)?$/);
-  if (!match) return NextResponse.next();
+  if (!match) {
+    const response = NextResponse.next();
+    for (const header of securityHeaders) response.headers.set(header.key, header.value);
+    return response;
+  }
 
   const locale = match[1]!;
   const internalPath = match[2] || "/";
   if (!(internalPath === "/" || internalPath === "/impact-map" || internalPath === "/expeditions" || /^\/expeditions\/[^/]+$/.test(internalPath))) {
-    return NextResponse.next();
+    const response = NextResponse.next();
+    for (const header of securityHeaders) response.headers.set(header.key, header.value);
+    return response;
   }
 
   const destination = request.nextUrl.clone();
@@ -25,9 +33,9 @@ export function proxy(request: NextRequest) {
   response.cookies.set("terumbu_locale", locale, {
     path: "/", maxAge: 60 * 60 * 24 * 365, sameSite: "lax", httpOnly: false
   });
+  for (const header of securityHeaders) response.headers.set(header.key, header.value);
   return response;
 }
 
-export const config = {
-  matcher: ["/en", "/id", "/en/impact-map", "/id/impact-map", "/en/expeditions/:path*", "/id/expeditions/:path*"]
-};
+// Continue applying security headers to all runtime routes, not just locale aliases.
+export const config = { matcher: ["/:path*"] };
