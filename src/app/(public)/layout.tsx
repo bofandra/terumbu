@@ -12,7 +12,7 @@ export default async function PublicLayout({ children }: Readonly<{ children: Re
   const dashboardHref = user ? await getDefaultAuthenticatedPath(user.id) : null;
 
   return (
-    <>
+    <div className="terumbu-public min-h-screen">
       <SiteHeader
         locale={locale}
         displayCurrency={displayCurrency}
@@ -29,6 +29,6 @@ export default async function PublicLayout({ children }: Readonly<{ children: Re
       />
       <main>{children}</main>
       <SiteFooter locale={locale} />
-    </>
+    </div>
   );
 }

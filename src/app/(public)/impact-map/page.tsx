@@ -6,6 +6,7 @@ import { ImpactMapPreview } from "@/components/impact-map-preview";
 import { getImpactMapSites } from "@/lib/queries";
 import { summarizeImpactSites } from "@/lib/impact-map-location";
 import { getPreferredLocale } from "@/lib/user-preferences";
+import { publicCanonicalPath, publicLanguageAlternates } from "@/lib/public-localized-routes";
 
 export const dynamic = "force-dynamic";
 
@@ -15,7 +16,8 @@ export async function generateMetadata(): Promise<Metadata> {
   const description = locale === "id"
     ? "Jelajahi lokasi konservasi, status bukti terverifikasi, dan dokumentasi aktivitas mitra Terumbu."
     : "Explore conservation sites, verified evidence status, and documented field activity from Terumbu partners.";
-  return { title, description, alternates: { canonical: "/impact-map" }, openGraph: { title, description, url: "/impact-map" } };
+  const canonical = await publicCanonicalPath("/impact-map");
+  return { title, description, alternates: { canonical, languages: publicLanguageAlternates("/impact-map") }, openGraph: { title, description, url: canonical } };
 }
 
 export default async function ImpactMapPage() {

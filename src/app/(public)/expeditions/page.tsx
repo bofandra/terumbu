@@ -13,6 +13,7 @@ import {
   ExpeditionSortControl
 } from "@/components/expedition-marketplace-filters";
 import { parseExpeditionSearchFilters } from "@/lib/expedition-marketplace";
+import { publicCanonicalPath, publicLanguageAlternates } from "@/lib/public-localized-routes";
 import { getExpeditionMarketplaceResults } from "@/lib/queries";
 import { getPreferredDisplayCurrency, getPreferredLocale, localeTag, t } from "@/lib/user-preferences";
 
@@ -23,20 +24,21 @@ const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "https://terumbu.world";
 export async function generateMetadata(): Promise<Metadata> {
   const locale = await getPreferredLocale();
   const isIndonesian = locale === "id";
+  const canonical = await publicCanonicalPath("/expeditions");
 
   return {
     title: isIndonesian ? "Ekspedisi Konservasi Pesisir Indonesia" : "Conservation Expeditions in Indonesia",
     description: isIndonesian
       ? "Temukan trip konservasi bersama mitra lokal, cek kegiatan lapangan, harga, dan jadwal keberangkatan di Terumbu.world."
       : "Find conservation trips with local partners, then compare field activities, prices, and departure dates on Terumbu.world.",
-    alternates: { canonical: "/expeditions" },
+    alternates: { canonical, languages: publicLanguageAlternates("/expeditions") },
     openGraph: {
       title: isIndonesian ? "Ekspedisi Konservasi Pesisir Indonesia | Terumbu.world" : "Conservation Expeditions in Indonesia | Terumbu.world",
       description: isIndonesian
         ? "Lihat pesisir lebih dekat bersama pemandu dan mitra lokal Terumbu."
         : "See Indonesia’s coasts up close with Terumbu’s local guides and partners.",
       type: "website",
-      url: "/expeditions"
+      url: canonical
     }
   };
 }

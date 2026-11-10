@@ -14,6 +14,7 @@ import { StatStrip } from "@/components/stat-strip";
 import { ButtonLink } from "@/components/ui/button";
 import { ProgressMeter } from "@/components/ui/progress-meter";
 import type { PassportPreviewData } from "@/lib/domain";
+import { publicCanonicalPath, publicLanguageAlternates } from "@/lib/public-localized-routes";
 import {
   getCampaignCards,
   getExpeditionCards,
@@ -42,16 +43,19 @@ const homepageSeo = {
 export async function generateMetadata(): Promise<Metadata> {
   const locale = await getPreferredLocale();
   const seo = homepageSeo[locale];
+  const canonical = await publicCanonicalPath("/");
 
   return {
     title: { absolute: seo.title },
     description: seo.description,
+    alternates: { canonical, languages: publicLanguageAlternates("/") },
     openGraph: {
       title: seo.title,
       description: seo.description,
       locale: locale === "id" ? "id_ID" : "en_US",
       type: "website",
-      siteName: "Terumbu.world"
+      siteName: "Terumbu.world",
+      url: canonical
     },
     twitter: {
       card: "summary_large_image",

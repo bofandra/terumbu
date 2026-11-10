@@ -92,3 +92,24 @@ img {
   top: 8px;
 }
 .terumbu-map-pin:focus-visible span { outline: 4px solid #0757e5; }
+
+/* Shared public shell, independent of operator/admin design tokens. */
+.terumbu-public {
+  --terumbu-surface: #f5f8ff;
+  --terumbu-ink: #062d7f;
+  background: var(--terumbu-surface);
+}
+.terumbu-public :where(h1, h2, h3) {
+  text-wrap: balance;
+}
+.terumbu-public :where(a, button, input, select, textarea):focus-visible {
+  outline: 3px solid #a5d700;
+  outline-offset: 3px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .terumbu-public :where(*, *::before, *::after) {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}
