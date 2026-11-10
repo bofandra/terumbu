@@ -127,7 +127,7 @@ export function ImpactSiteLeafletMap({ sites, visibleSites, selectedSiteId, onSe
   }, [ready, selectedSiteId]);
 
   return (
-    <div className="relative min-h-[440px] overflow-hidden rounded-3xl border border-ocean-900/10 bg-ocean-900 shadow-soft">
+    <div id="impact-interactive-map" className="relative min-h-[440px] scroll-mt-24 overflow-hidden rounded-3xl border border-ocean-900/10 bg-ocean-900 shadow-soft">
       <div ref={element} role="region"
         aria-label={locale === "id" ? "Peta interaktif lokasi konservasi di Indonesia" : "Interactive map of conservation sites in Indonesia"}
         className="relative z-0 h-[440px] w-full sm:h-[550px]" />
