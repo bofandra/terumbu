@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 
-import { isIndonesianImpactSiteLocation, summarizeImpactSites } from "../src/lib/impact-map-location";
+import { isIndonesianImpactSiteLocation, publicImpactCoordinate, summarizeImpactSites } from "../src/lib/impact-map-location";
 
 test("the public impact map accepts Indonesian coordinates and rejects unlocated or out-of-region records", () => {
   assert.equal(isIndonesianImpactSiteLocation({ latitude: -0.2349, longitude: 130.5166 }), true);
@@ -28,4 +28,14 @@ test("public pages do not reuse the static impact map demo or allow manual evide
   assert.match(leaflet, /import\("leaflet"\)/);
   assert.match(homepage, /getImpactStats\(\)/);
   assert.doesNotMatch(admin, /name="evidenceCount"/);
+});
+
+test("public impact pins use coarse precision and rejected evidence is not counted as pending", () => {
+  assert.equal(publicImpactCoordinate(-0.2349), -0.2);
+  assert.equal(publicImpactCoordinate(130.5166), 130.5);
+  assert.equal(publicImpactCoordinate(-6.9175), -6.9);
+  const queries = readFileSync("src/lib/queries.ts", "utf8");
+  assert.ok(queries.includes("latitude: publicImpactCoordinate(toNumber(site.latitude))"));
+  assert.ok(queries.includes('inArray(projectEvidence.verificationStatus, ["submitted", "in_review"])'));
+  assert.doesNotMatch(queries, /site.metadata, "latestSurvey"/);
 });
