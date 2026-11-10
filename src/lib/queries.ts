@@ -7831,13 +7831,15 @@ function adminImpactSiteSelect() {
   };
 }
 
-function toAdminImpactSiteListRow(site: AdminImpactSiteDbRow) {
+const adminImpactEvidenceCount = sql<number>`(select count(*)::int from ${projectEvidence} where ${projectEvidence.impactSiteId} = ${impactSites.id})`;
+
+function toAdminImpactSiteListRow(site: AdminImpactSiteDbRow & { recordCount?: number }) {
   return {
     ...site,
     latitude: toNumber(site.latitude),
     longitude: toNumber(site.longitude),
     progress: getMetadataNumber(site.metadata, "progress"),
-    evidenceCount: getMetadataNumber(site.metadata, "evidenceCount"),
+    evidenceCount: site.recordCount ?? getMetadataNumber(site.metadata, "evidenceCount"),
     latestSurvey: getMetadataString(site.metadata, "latestSurvey"),
     verification: getMetadataString(site.metadata, "verification") ?? "basic"
   };
@@ -7901,7 +7903,7 @@ export async function getAdminImpactSitesPage(params: AdminImpactSiteFilters = {
   };
   const whereClause = adminImpactSiteWhere(filters);
   const progressValue = sql<number>`case when coalesce(${impactSites.metadata}->>'progress', '') ~ '^[0-9]+(\\.[0-9]+)?$' then (${impactSites.metadata}->>'progress')::numeric else 0 end`;
-  const evidenceValue = sql<number>`case when coalesce(${impactSites.metadata}->>'evidenceCount', '') ~ '^[0-9]+$' then (${impactSites.metadata}->>'evidenceCount')::integer else 0 end`;
+  const evidenceValue = adminImpactEvidenceCount;
 
   const [totalRows, summaryRows] = await Promise.all([
     db
@@ -7922,7 +7924,7 @@ export async function getAdminImpactSitesPage(params: AdminImpactSiteFilters = {
   const totalItems = Number(totalRows[0]?.total ?? 0);
   const pagination = adminPaginationMeta(totalItems, query);
   const siteRows = await db
-    .select(adminImpactSiteSelect())
+    .select({ ...adminImpactSiteSelect(), recordCount: adminImpactEvidenceCount })
     .from(impactSites)
     .leftJoin(campaigns, eq(impactSites.campaignId, campaigns.id))
     .where(whereClause)
@@ -7962,7 +7964,7 @@ export async function getAdminImpactSiteEditorData(impactSiteId?: string) {
       .orderBy(asc(campaigns.title)),
     selectedSiteId
       ? db
-          .select(adminImpactSiteSelect())
+          .select({ ...adminImpactSiteSelect(), recordCount: adminImpactEvidenceCount })
           .from(impactSites)
           .leftJoin(campaigns, eq(impactSites.campaignId, campaigns.id))
           .where(eq(impactSites.id, selectedSiteId))
