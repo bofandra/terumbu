@@ -168,21 +168,21 @@ export default async function ExpeditionsPage({ searchParams }: ExpeditionsPageP
 
       <section className="mx-auto grid max-w-7xl gap-6 px-4 py-8 sm:px-6 lg:grid-cols-[310px_minmax(0,1fr)] lg:px-8">
         <aside className="hidden lg:block">
-          <ExpeditionMarketplaceFilters filters={filters} facets={facets} />
+          <ExpeditionMarketplaceFilters filters={filters} facets={facets} locale={locale} />
         </aside>
 
         <div className="min-w-0">
-          <ExpeditionMarketplaceMobileFilters filters={filters} facets={facets} />
+          <ExpeditionMarketplaceMobileFilters filters={filters} facets={facets} locale={locale} />
           <div className="mt-4 flex flex-col justify-between gap-4 rounded-xl border border-ocean-900/10 bg-white p-4 shadow-sm lg:mt-0 lg:flex-row lg:items-center">
             <div>
               <p className="text-xl font-bold tracking-normal text-ocean-900">
                 {total.toLocaleString(localeName)} {messages.found}
               </p>
               <div className="mt-3">
-                <ExpeditionActiveFilterChips filters={filters} />
+                <ExpeditionActiveFilterChips filters={filters} locale={locale} />
               </div>
             </div>
-            <ExpeditionSortControl filters={filters} />
+            <ExpeditionSortControl filters={filters} locale={locale} />
           </div>
 
           <div className="mt-5 grid gap-5 md:grid-cols-2">
@@ -245,8 +245,8 @@ export default async function ExpeditionsPage({ searchParams }: ExpeditionsPageP
             <h2 className="mt-3 max-w-3xl text-3xl font-bold tracking-[-0.035em] sm:text-5xl">{messages.ctaTitle}</h2>
             <p className="mt-4 max-w-xl text-base leading-7 text-white/72">{messages.ctaBody}</p>
           </div>
-          <Link href="/campaigns" className="inline-flex min-h-12 shrink-0 items-center justify-center gap-2 rounded-full bg-[#c9f341] px-6 text-sm font-bold text-[#062d7f] hover:bg-white">
-            {isIndonesian ? "Jelajahi kampanye" : "Explore campaigns"}<ArrowUpRight size={17} aria-hidden="true" />
+          <Link href="#catalogue" className="inline-flex min-h-12 shrink-0 items-center justify-center gap-2 rounded-full bg-[#c9f341] px-6 text-sm font-bold text-[#062d7f] hover:bg-white">
+            {isIndonesian ? "Pilih perjalanan dan hubungi mitra" : "Find a trip and contact its host"}<ArrowUpRight size={17} aria-hidden="true" />
           </Link>
         </div>
       </section>
