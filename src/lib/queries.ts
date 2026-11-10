@@ -3,6 +3,7 @@ import { and, asc, desc, eq, gte, inArray, isNotNull, lte, or, sql } from "drizz
 import { db } from "@/db/client";
 import { expeditionDepartureMatchesSearch } from "@/lib/expedition-marketplace";
 import { impactSiteCampaignScopeKey } from "@/lib/impact-site-scope";
+import { publicImpactCoordinate } from "@/lib/impact-map-location";
 import {
   assessmentAttempts,
   assessmentChoices,
@@ -2283,7 +2284,7 @@ export async function getImpactMapSites(campaignId?: string, expeditionId?: stri
         and(
           inArray(projectEvidence.impactSiteId, siteIds),
           inArray(projectEvidence.campaignId, campaignIds),
-          sql`${projectEvidence.verificationStatus} <> 'verified'`
+          inArray(projectEvidence.verificationStatus, ["submitted", "in_review"])
         )
       )
       .groupBy(projectEvidence.campaignId, projectEvidence.impactSiteId)
@@ -2338,15 +2339,15 @@ export async function getImpactMapSites(campaignId?: string, expeditionId?: stri
       campaignSlug: site.campaignSlug,
       campaignTitle: site.campaignTitle,
       progress: getMetadataNumber(site.metadata, "progress"),
-      latitude: toNumber(site.latitude),
-      longitude: toNumber(site.longitude),
+      latitude: publicImpactCoordinate(toNumber(site.latitude)),
+      longitude: publicImpactCoordinate(toNumber(site.longitude)),
       verification: verificationLabel(normalizeImpactSiteVerificationStatus(getMetadataString(site.metadata, "verification"))),
       // Count only evidence from the linked public campaigns, never site-wide
       // legacy metadata (which can misattribute records to another campaign).
       evidenceCount,
       verifiedEvidenceCount,
       pendingEvidenceCount,
-      latestSurvey: latestEvidence?.surveyDate ?? getMetadataString(site.metadata, "latestSurvey"),
+      latestSurvey: latestEvidence?.surveyDate ?? null,
       latestEvidence,
       beforeAfter,
       monitoringHistory,
