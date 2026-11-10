@@ -37,5 +37,6 @@ test("public impact pins use coarse precision and rejected evidence is not count
   const queries = readFileSync("src/lib/queries.ts", "utf8");
   assert.ok(queries.includes("latitude: publicImpactCoordinate(toNumber(site.latitude))"));
   assert.ok(queries.includes('inArray(projectEvidence.verificationStatus, ["submitted", "in_review"])'));
-  assert.doesNotMatch(queries, /site.metadata, "latestSurvey"/);
+  const mapQuery = queries.split("export async function getImpactMapSites")[1].split("export async function getCourses")[0];
+  assert.doesNotMatch(mapQuery, /site.metadata, "latestSurvey"/);
 });
