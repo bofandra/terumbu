@@ -204,7 +204,14 @@ export default async function HomePage() {
           {campaigns.map((campaign) => (
             <CampaignCard key={campaign.slug} campaign={campaign} locale={locale} />
           ))}
-        </div></div>
+        </div>
+        {campaigns.length === 0 ? (
+          <div className="mt-8 rounded-3xl border border-dashed border-ocean-900/20 bg-white p-8 text-center">
+            <h3 className="text-xl font-bold text-ocean-900">{locale === "id" ? "Kampanye publik sedang disiapkan" : "Public campaigns are being prepared"}</h3>
+            <p className="mx-auto mt-2 max-w-xl text-sm leading-6 text-ocean-900/65">{locale === "id" ? "Kampanye akan tampil setelah kontennya disetujui untuk publikasi." : "Campaigns appear here once their records are approved for publication."}</p>
+          </div>
+        ) : null}
+      </div>
       </section>
 
       <section className="terumbu-editorial bg-[#eaf2ff] py-20 sm:py-24"><div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">

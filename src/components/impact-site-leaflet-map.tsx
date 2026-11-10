@@ -37,6 +37,7 @@ export function ImpactSiteLeafletMap({ sites, visibleSites, selectedSiteId, onSe
   const markers = useRef<Map<string, Marker>>(new Map());
   const leaflet = useRef<typeof import("leaflet") | null>(null);
   const onSelectRef = useRef(onSelect);
+  const previousSelection = useRef(selectedSiteId);
   const [ready, setReady] = useState(false);
   const [failed, setFailed] = useState(false);
   useEffect(() => { onSelectRef.current = onSelect; }, [onSelect]);
@@ -112,6 +113,18 @@ export function ImpactSiteLeafletMap({ sites, visibleSites, selectedSiteId, onSe
       marker.setIcon(sitePin(L, site, site.id === selectedSiteId));
     }
   }, [ready, sites, visibleSites, selectedSiteId]);
+
+  // Choosing a site in the accessible list focuses the matching map marker.
+  // Skip the initial choice so the first view retains the national overview.
+  useEffect(() => {
+    const wasChanged = previousSelection.current !== selectedSiteId;
+    previousSelection.current = selectedSiteId;
+    if (!ready || !wasChanged || !selectedSiteId) return;
+    const marker = markers.current.get(selectedSiteId);
+    if (marker && map.current?.hasLayer(marker)) {
+      map.current.panTo(marker.getLatLng(), { animate: true });
+    }
+  }, [ready, selectedSiteId]);
 
   return (
     <div className="relative min-h-[440px] overflow-hidden rounded-3xl border border-ocean-900/10 bg-ocean-900 shadow-soft">

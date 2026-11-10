@@ -25,7 +25,7 @@ export default async function ImpactMapPage() {
   const evidenceUpdates = sites.filter((site) => site.latestEvidence).slice(0, 3);
 
   return (
-    <main className="bg-mist-50">
+    <div className="bg-mist-50">
       <section className="relative overflow-hidden bg-[#062d7f] text-white">
         <div className="pointer-events-none absolute -right-24 -top-40 size-[520px] rounded-full border-[90px] border-white/5" />
         <div className="pointer-events-none absolute -bottom-48 left-1/4 size-[460px] rounded-full border-[70px] border-[#c9f341]/10" />
@@ -136,6 +136,6 @@ export default async function ImpactMapPage() {
           ))}
         </div>
       </section>
-    </main>
+    </div>
   );
 }
