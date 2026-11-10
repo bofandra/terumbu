@@ -31,7 +31,7 @@ function removeFilterHref(filters: ExpeditionSearchFilters, key: keyof Expeditio
   return query ? `/expeditions?${query}` : "/expeditions";
 }
 
-function activeEntries(filters: ExpeditionSearchFilters) {
+function activeEntries(filters: ExpeditionSearchFilters, locale: "en" | "id") {
   const labels: Partial<Record<keyof ExpeditionSearchFilters, string>> = {
     q: "Keyword",
     destination: "Destination",
@@ -50,11 +50,19 @@ function activeEntries(filters: ExpeditionSearchFilters) {
     dateFrom: "Starts on/after", dateTo: "Ends on/before", participants: "Travelers", maxPrice: "Budget per person"
   };
 
+  const idLabels: Partial<Record<keyof ExpeditionSearchFilters, string>> = {
+    q: "Kata kunci", destination: "Destinasi", programType: "Program", highlight: "Sorotan",
+    purpose: "Tujuan", availability: "Ketersediaan", help: "Aktivitas", style: "Gaya",
+    hoursMax: "Jam", travelLength: "Durasi", meals: "Makanan", accommodation: "Akomodasi",
+    digitalNomad: "Fasilitas kerja", benefits: "Manfaat", dateFrom: "Mulai pada/setelah",
+    dateTo: "Selesai pada/sebelum", participants: "Peserta", maxPrice: "Anggaran per orang"
+  };
+  const effectiveLabels = locale === "id" ? idLabels : labels;
   return Object.entries(filters)
     .filter(([key, value]) => key !== "sort" && key !== "budgetCurrency" && value !== undefined && value !== null && String(value).trim())
     .map(([key, value]) => ({
       key: key as keyof ExpeditionSearchFilters,
-      label: `${labels[key as keyof ExpeditionSearchFilters] ?? key}: ${key === "hoursMax" ? `Up to ${value}h/week` : value}`
+      label: `${effectiveLabels[key as keyof ExpeditionSearchFilters] ?? key}: ${key === "hoursMax" ? (locale === "id" ? `Maks. ${value} jam/minggu` : `Up to ${value}h/week`) : value}`
     }));
 }
 
@@ -111,25 +119,25 @@ function FilterFields({ filters, facets, locale = "en" }: { filters: ExpeditionS
       </div>
 
       <div className="mt-5 grid gap-4">
-        <label className="grid gap-1 text-sm font-bold">Trip starts on/after<input className="min-h-11 rounded-lg border p-2" type="date" name="dateFrom" defaultValue={filters.dateFrom} /></label>
-        <label className="grid gap-1 text-sm font-bold">Trip ends on/before<input className="min-h-11 rounded-lg border p-2" type="date" name="dateTo" min={filters.dateFrom} defaultValue={filters.dateTo} /></label>
-        <label className="grid gap-1 text-sm font-bold">Travelers<input className="min-h-11 rounded-lg border p-2" type="number" min="1" max="12" name="participants" defaultValue={filters.participants} placeholder="Any group size" /></label>
-        <label className="grid gap-1 text-sm font-bold">Maximum price per person<input className="min-h-11 rounded-lg border p-2" type="number" min="0" step="0.01" name="maxPrice" defaultValue={filters.maxPrice} placeholder="Any budget" /></label>
-        <label className="grid gap-1 text-sm font-bold">Budget currency<select className="min-h-11 rounded-lg border p-2" name="budgetCurrency" defaultValue={filters.budgetCurrency ?? "USD"}>{["USD", "IDR", "EUR", "JPY"].map(value => <option key={value}>{value}</option>)}</select></label>
-        <p className="text-xs text-ocean-900/60">Trips must fit entirely within your dates. Currency conversions are approximate and require a recent source-dated quote; checkout always uses the original listed currency.</p>
+        <label className="grid gap-1 text-sm font-bold">{t("Trip starts on/after", "Mulai pada/setelah")}<input className="min-h-11 rounded-lg border p-2" type="date" name="dateFrom" defaultValue={filters.dateFrom} /></label>
+        <label className="grid gap-1 text-sm font-bold">{t("Trip ends on/before", "Selesai pada/sebelum")}<input className="min-h-11 rounded-lg border p-2" type="date" name="dateTo" min={filters.dateFrom} defaultValue={filters.dateTo} /></label>
+        <label className="grid gap-1 text-sm font-bold">{t("Travelers", "Jumlah peserta")}<input className="min-h-11 rounded-lg border p-2" type="number" min="1" max="12" name="participants" defaultValue={filters.participants} placeholder={t("Any group size", "Semua ukuran grup")} /></label>
+        <label className="grid gap-1 text-sm font-bold">{t("Maximum price per person", "Harga maksimum per orang")}<input className="min-h-11 rounded-lg border p-2" type="number" min="0" step="0.01" name="maxPrice" defaultValue={filters.maxPrice} placeholder={t("Any budget", "Semua anggaran")} /></label>
+        <label className="grid gap-1 text-sm font-bold">{t("Budget currency", "Mata uang anggaran")}<select className="min-h-11 rounded-lg border p-2" name="budgetCurrency" defaultValue={filters.budgetCurrency ?? "USD"}>{["USD", "IDR", "EUR", "JPY"].map(value => <option key={value}>{value}</option>)}</select></label>
+        <p className="text-xs text-ocean-900/60">{t("Trips must fit entirely within your dates. Currency conversions are approximate; the original listed currency remains authoritative.", "Perjalanan harus sepenuhnya berada dalam rentang tanggal. Estimasi konversi mata uang bersifat perkiraan; mata uang asli tetap menjadi acuan.")}</p>
         {filters.maxPrice !== undefined && !getDisplayFxSnapshot() ? (
           <p role="status" className="rounded-lg border border-coral-500/25 bg-sand-50 p-3 text-xs font-semibold leading-5 text-ocean-900">
-            Live exchange-rate estimates are currently unavailable. A budget filter will only match trips whose listed currency already matches your budget currency; some cross-currency trips may be omitted. Remove the budget filter to see all trips.
+            {t("Live exchange-rate estimates are unavailable. The budget filter only includes trips priced in the selected currency. Remove it to see all trips.", "Estimasi kurs belum tersedia. Filter anggaran hanya mencakup perjalanan dengan mata uang yang dipilih. Hapus filter untuk melihat semua perjalanan.")}
           </p>
         ) : null}
-        <SelectFilter label="Program Types" name="programType" value={filters.programType} options={facets.programTypes} placeholder="Any program" />
-        <SelectFilter label="Highlights" name="highlight" value={filters.highlight} options={facets.highlights} placeholder="Any highlight" />
-        <SelectFilter label="Purpose of the trip" name="purpose" value={filters.purpose} options={facets.purposes} placeholder="Any purpose" />
-        <SelectFilter label="Availability" name="availability" value={filters.availability} options={facets.availability} placeholder="Any availability" />
-        <SelectFilter label="How you help" name="help" value={filters.help} options={facets.helpActivities} placeholder="Any help activity" />
-        <SelectFilter label="Style" name="style" value={filters.style} options={facets.styles} placeholder="Any style" />
+        <SelectFilter label={t("Program types", "Jenis program")} name="programType" value={filters.programType} options={facets.programTypes} placeholder={t("Any program", "Semua program")} />
+        <SelectFilter label={t("Highlights", "Sorotan")} name="highlight" value={filters.highlight} options={facets.highlights} placeholder={t("Any highlight", "Semua sorotan")} />
+        <SelectFilter label={t("Purpose of the trip", "Tujuan perjalanan")} name="purpose" value={filters.purpose} options={facets.purposes} placeholder={t("Any purpose", "Semua tujuan")} />
+        <SelectFilter label={t("Availability", "Ketersediaan")} name="availability" value={filters.availability} options={facets.availability} placeholder={t("Any availability", "Semua ketersediaan")} />
+        <SelectFilter label={t("How you help", "Aktivitas kontribusi")} name="help" value={filters.help} options={facets.helpActivities} placeholder={t("Any help activity", "Semua aktivitas")} />
+        <SelectFilter label={t("Style", "Gaya")} name="style" value={filters.style} options={facets.styles} placeholder={t("Any style", "Semua gaya")} />
         <label className="grid gap-1.5 text-sm font-bold text-ocean-900">
-          Hours of collaboration per week
+          {t("Hours of collaboration per week", "Jam kolaborasi per minggu")}
           <span className="relative">
             <Clock className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-ocean-900/42" aria-hidden="true" />
             <input
@@ -138,16 +146,16 @@ function FilterFields({ filters, facets, locale = "en" }: { filters: ExpeditionS
               min={1}
               max={60}
               defaultValue={filters.hoursMax ?? ""}
-              placeholder="Up to 32"
+              placeholder={t("Up to 32", "Maks. 32")}
               className="min-h-11 w-full rounded-lg border border-ocean-900/12 bg-white pl-9 pr-3 text-sm font-semibold text-ocean-900 outline-none transition placeholder:text-ocean-900/38 focus:border-kelp-500"
             />
           </span>
         </label>
-        <SelectFilter label="Travel Length" name="travelLength" value={filters.travelLength} options={facets.travelLengths} placeholder="Any length" />
-        <SelectFilter label="Meals" name="meals" value={filters.meals} options={facets.meals} placeholder="Any meals" />
-        <SelectFilter label="Accommodations" name="accommodation" value={filters.accommodation} options={facets.accommodations} placeholder="Any stay" />
-        <SelectFilter label="Perfect for digital nomads" name="digitalNomad" value={filters.digitalNomad} options={facets.digitalNomadAmenities} placeholder="Any workspace" />
-        <SelectFilter label="Additional Benefits" name="benefits" value={filters.benefits} options={facets.benefits} placeholder="Any benefit" />
+        <SelectFilter label={t("Travel length", "Durasi perjalanan")} name="travelLength" value={filters.travelLength} options={facets.travelLengths} placeholder={t("Any length", "Semua durasi")} />
+        <SelectFilter label={t("Meals", "Makanan")} name="meals" value={filters.meals} options={facets.meals} placeholder={t("Any meals", "Semua makanan")} />
+        <SelectFilter label={t("Accommodations", "Akomodasi")} name="accommodation" value={filters.accommodation} options={facets.accommodations} placeholder={t("Any stay", "Semua akomodasi")} />
+        <SelectFilter label={t("Remote-work facilities", "Fasilitas kerja jarak jauh")} name="digitalNomad" value={filters.digitalNomad} options={facets.digitalNomadAmenities} placeholder={t("Any workspace", "Semua fasilitas")} />
+        <SelectFilter label={t("Additional benefits", "Manfaat tambahan")} name="benefits" value={filters.benefits} options={facets.benefits} placeholder={t("Any benefit", "Semua manfaat")} />
       </div>
     </>
   );
@@ -205,7 +213,7 @@ export function ExpeditionMarketplaceMobileFilters({ filters, facets, locale = "
 }
 
 export function ExpeditionActiveFilterChips({ filters, locale = "en" }: { filters: ExpeditionSearchFilters; locale?: "en" | "id" }) {
-  const entries = activeEntries(filters);
+  const entries = activeEntries(filters, locale);
 
   if (entries.length === 0) {
     return (
