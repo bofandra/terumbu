@@ -16,6 +16,7 @@ import type { ReactNode } from "react";
 
 import { PartnerCampaignImpactPlanningFields } from "@/components/partner-campaign-impact-planning-fields";
 import { PartnerCampaignImpactSiteSelector } from "@/components/partner-campaign-impact-site-selector";
+import { PartnerImpactSiteCoordinatePicker } from "@/components/partner-impact-site-coordinate-picker";
 import { Button } from "@/components/ui/button";
 import { MetricValue } from "@/components/ui/metric-value";
 import { ProgressMeter } from "@/components/ui/progress-meter";
@@ -599,15 +600,8 @@ function ImpactSiteFields({
           </select>
         </Field>
       </div>
-      <div className="grid gap-3 md:grid-cols-2">
-        <Field label="Latitude" required>
-          <input name="latitude" type="number" min="-90" max="90" step="0.000001" defaultValue={site?.latitude} placeholder="-0.234900" className={inputClassName} disabled={disabled} required />
-        </Field>
-        <Field label="Longitude" required>
-          <input name="longitude" type="number" min="-180" max="180" step="0.000001" defaultValue={site?.longitude} placeholder="130.516600" className={inputClassName} disabled={disabled} required />
-        </Field>
-      </div>
-<div className="mt-3 rounded-xl border border-ocean-900/10 bg-ocean-50 p-4">
+      <PartnerImpactSiteCoordinatePicker latitude={site?.latitude} longitude={site?.longitude} disabled={disabled} />
+      <div className="mt-3 rounded-xl border border-ocean-900/10 bg-ocean-50 p-4">
         <Field label="Public map location" help="Protect sensitive restoration sites. Approximate is recommended and is the default. Exact coordinates stay private unless you explicitly choose precise.">
           <select name="publicLocationPrecision" defaultValue={site?.publicLocationPrecision ?? "approximate"} className={inputClassName} disabled={disabled}>
             <option value="approximate">Approximate — around 10 km precision (recommended)</option>

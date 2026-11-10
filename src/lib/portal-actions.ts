@@ -536,8 +536,8 @@ function impactSiteFormValues(formData: FormData, campaignRequired: boolean, onE
   const name = formText(formData, "name");
   const ecosystemType = normalizeImpactSiteEcosystemType(formData.get("ecosystemType"));
   const region = formText(formData, "region");
-  const latitude = parseCoordinate(formData.get("latitude"), -90, 90);
-  const longitude = parseCoordinate(formData.get("longitude"), -180, 180);
+  const latitude = parseCoordinate(formData.get("latitude"), -11, 6);
+  const longitude = parseCoordinate(formData.get("longitude"), 94, 142);
   const metadata = impactSiteMetadataFromForm(formData);
 
   if ((campaignRequired && !campaignId) || !destinationId || !name || !ecosystemType || !latitude || !longitude || !metadata) {
