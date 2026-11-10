@@ -15,6 +15,7 @@ type ExpeditionMarketplaceFiltersProps = {
   filters: ExpeditionSearchFilters;
   facets: ExpeditionMarketplaceFacets;
   compact?: boolean;
+  locale?: "en" | "id";
 };
 
 const sortOptions = [
@@ -81,7 +82,7 @@ function SelectFilter({
         <option value="">{placeholder}</option>
         {options.slice(0, 12).map((option) => (
           <option key={option.value} value={option.value}>
-            {option.label} ({option.count})
+            {locale === "id" ? ({ "": "Rekomendasi", soonest: "Keberangkatan terdekat", price_asc: "Harga terendah", hours_asc: "Jam tersedikit" } as Record<string, string>)[option.value] : option.label} ({option.count})
           </option>
         ))}
       </select>
@@ -89,34 +90,24 @@ function SelectFilter({
   );
 }
 
-function FilterFields({ filters, facets }: { filters: ExpeditionSearchFilters; facets: ExpeditionMarketplaceFacets }) {
+function FilterFields({ filters, facets, locale = "en" }: { filters: ExpeditionSearchFilters; facets: ExpeditionMarketplaceFacets; locale?: "en" | "id" }) {
+  const t = (en: string, id: string) => locale === "id" ? id : en;
   return (
     <>
       <div className="grid gap-3">
         <label className="grid gap-1.5 text-sm font-bold text-ocean-900">
-          Search
+          {t("Search", "Cari")}
           <span className="relative">
             <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-ocean-900/42" aria-hidden="true" />
             <input
               name="q"
               defaultValue={filters.q ?? ""}
-              placeholder="Keywords, activity, host, place"
+              placeholder={t("Keywords, activity, host, place", "Kata kunci, aktivitas, mitra, tempat")}
               className="min-h-11 w-full rounded-lg border border-ocean-900/12 bg-white pl-9 pr-3 text-sm font-semibold text-ocean-900 outline-none transition placeholder:text-ocean-900/38 focus:border-kelp-500"
             />
           </span>
         </label>
-        <label className="grid gap-1.5 text-sm font-bold text-ocean-900">
-          Destination
-          <span className="relative">
-            <MapPin className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-ocean-900/42" aria-hidden="true" />
-            <input
-              name="destination"
-              defaultValue={filters.destination ?? ""}
-              placeholder="Raja Ampat, Wakatobi, Bali"
-              className="min-h-11 w-full rounded-lg border border-ocean-900/12 bg-white pl-9 pr-3 text-sm font-semibold text-ocean-900 outline-none transition placeholder:text-ocean-900/38 focus:border-kelp-500"
-            />
-          </span>
-        </label>
+        <SelectFilter label={t("Destination", "Destinasi")} name="destination" value={filters.destination} options={facets.destinations} placeholder={t("Any destination", "Semua destinasi")} />
       </div>
 
       <div className="mt-5 grid gap-4">
@@ -162,7 +153,7 @@ function FilterFields({ filters, facets }: { filters: ExpeditionSearchFilters; f
   );
 }
 
-export function ExpeditionMarketplaceFilters({ filters, facets, compact = false }: ExpeditionMarketplaceFiltersProps) {
+export function ExpeditionMarketplaceFilters({ filters, facets, compact = false, locale = "en" }: ExpeditionMarketplaceFiltersProps) {
   const activeCount = activeExpeditionFilterCount(filters);
 
   return (
@@ -175,26 +166,26 @@ export function ExpeditionMarketplaceFilters({ filters, facets, compact = false 
         <div>
           <p className="inline-flex items-center gap-2 text-sm font-bold text-ocean-900">
             <Filter className="size-4 text-kelp-500" aria-hidden="true" />
-            Search filters
+            {locale === "id" ? "Filter pencarian" : "Search filters"}
           </p>
-          <p className="mt-1 text-xs font-semibold text-ocean-900/48">{activeCount > 0 ? `${activeCount} active filters` : "Find the right field opportunity"}</p>
+          <p className="mt-1 text-xs font-semibold text-ocean-900/48">{activeCount > 0 ? (locale === "id" ? `${activeCount} filter aktif` : `${activeCount} {locale === "id" ? "aktif" : "active"} filters`) : (locale === "id" ? "Temukan perjalanan yang sesuai" : "Find the right field opportunity")}</p>
         </div>
         {activeCount > 0 ? (
           <Link href="/expeditions" className="text-xs font-bold text-coral-700 hover:text-coral-500">
-            Clear
+            {locale === "id" ? "Hapus" : "Clear"}
           </Link>
         ) : null}
       </div>
-      <FilterFields filters={filters} facets={facets} />
+      <FilterFields filters={filters} facets={facets} locale={locale} />
       <button type="submit" className="mt-5 flex min-h-11 w-full items-center justify-center gap-2 rounded-lg bg-kelp-500 px-4 text-sm font-bold text-white shadow-sm transition hover:bg-kelp-700">
         <SlidersHorizontal className="size-4" aria-hidden="true" />
-        Search opportunities
+        {locale === "id" ? "Cari perjalanan" : "Search opportunities"}
       </button>
     </form>
   );
 }
 
-export function ExpeditionMarketplaceMobileFilters({ filters, facets }: ExpeditionMarketplaceFiltersProps) {
+export function ExpeditionMarketplaceMobileFilters({ filters, facets, locale = "en" }: ExpeditionMarketplaceFiltersProps) {
   const activeCount = activeExpeditionFilterCount(filters);
 
   return (
@@ -202,25 +193,25 @@ export function ExpeditionMarketplaceMobileFilters({ filters, facets }: Expediti
       <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-sm font-bold text-ocean-900">
         <span className="inline-flex items-center gap-2">
           <Filter className="size-4 text-kelp-500" aria-hidden="true" />
-          Filters
+          {locale === "id" ? "Filter" : "Filters"}
         </span>
         <span className="rounded-full bg-kelp-100 px-2.5 py-1 text-xs text-kelp-700">{activeCount} active</span>
       </summary>
       <div className="border-t border-ocean-900/10 p-3">
-        <ExpeditionMarketplaceFilters filters={filters} facets={facets} compact />
+        <ExpeditionMarketplaceFilters filters={filters} facets={facets} locale={locale} compact />
       </div>
     </details>
   );
 }
 
-export function ExpeditionActiveFilterChips({ filters }: { filters: ExpeditionSearchFilters }) {
+export function ExpeditionActiveFilterChips({ filters, locale = "en" }: { filters: ExpeditionSearchFilters; locale?: "en" | "id" }) {
   const entries = activeEntries(filters);
 
   if (entries.length === 0) {
     return (
       <div className="flex flex-wrap items-center gap-2 text-sm font-semibold text-ocean-900/58">
         <Leaf className="size-4 text-kelp-500" aria-hidden="true" />
-        Showing every conservation opportunity
+        {locale === "id" ? "Menampilkan semua perjalanan konservasi" : "Showing every conservation opportunity"}
       </div>
     );
   }
@@ -242,7 +233,7 @@ export function ExpeditionActiveFilterChips({ filters }: { filters: ExpeditionSe
   );
 }
 
-export function ExpeditionSortControl({ filters }: { filters: ExpeditionSearchFilters }) {
+export function ExpeditionSortControl({ filters, locale = "en" }: { filters: ExpeditionSearchFilters; locale?: "en" | "id" }) {
   return (
     <form action="/expeditions" className="flex items-center gap-2">
       {Object.entries(filters).map(([key, value]) =>
@@ -251,7 +242,7 @@ export function ExpeditionSortControl({ filters }: { filters: ExpeditionSearchFi
         ) : null
       )}
       <label className="sr-only" htmlFor="expedition-sort">
-        Sort expeditions
+        {locale === "id" ? "Urutkan ekspedisi" : "Sort expeditions"}
       </label>
       <select
         id="expedition-sort"
@@ -266,7 +257,7 @@ export function ExpeditionSortControl({ filters }: { filters: ExpeditionSearchFi
         ))}
       </select>
       <button type="submit" className="flex min-h-10 items-center justify-center rounded-lg bg-ocean-900 px-3 text-sm font-bold text-white">
-        Sort
+        {locale === "id" ? "Urutkan" : "Sort"}
       </button>
     </form>
   );
