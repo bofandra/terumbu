@@ -15,3 +15,12 @@ export function summarizeImpactSites<T extends { verifiedEvidenceCount: number }
     verifiedEvidenceCount: sites.reduce((total, site) => total + Math.max(0, site.verifiedEvidenceCount), 0)
   };
 }
+
+/**
+ * Use a coarse, deterministic public grid (~11 km near the equator) rather than
+ * exposing habitat coordinates kept in protected operator records.
+ * Never use this rounded value for field work, routing or authoritative reports.
+ */
+export function publicImpactCoordinate(value: number): number {
+  return Math.round(value * 10) / 10;
+}
