@@ -170,7 +170,10 @@ export function ImpactMapPreview({ sites, locale = "en" }: ImpactMapPreviewProps
               </button>
             ))}
           </div>
-          <p role="status" aria-live="polite" className="text-xs font-semibold text-ocean-900/70">{visibleSites.length} {labels.resultCount}</p>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p role="status" aria-live="polite" className="text-xs font-semibold text-ocean-900/70">{visibleSites.length} {labels.resultCount}</p>
+            <a href="#impact-interactive-map" className="text-xs font-bold text-sky-700 underline underline-offset-2">{locale === "id" ? "Ke peta" : "Jump to map"}</a>
+          </div>
         </div>
 
         {selectedSite ? (
