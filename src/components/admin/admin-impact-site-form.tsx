@@ -244,18 +244,7 @@ export function AdminImpactSiteFields({
               {...fieldA11y(errors.progress, "impact-site-progress")}
             />
           </Field>
-          <Field id="impact-site-evidenceCount" label="Activity records" error={errors.evidenceCount}>
-            <input
-              id="impact-site-evidenceCount"
-              name="evidenceCount"
-              type="number"
-              min="0"
-              step="1"
-              defaultValue={values?.evidenceCount ?? 0}
-              className={adminInputClassName}
-              {...fieldA11y(errors.evidenceCount, "impact-site-evidenceCount")}
-            />
-          </Field>
+          <p className="rounded-lg border border-kelp-300 bg-white p-3 text-sm leading-6 text-ocean-900/70 lg:col-span-1">Activity record counts are calculated automatically from linked campaign evidence. No manual count is required.</p>
           <Field id="impact-site-latestSurvey" label="Latest survey">
             <input id="impact-site-latestSurvey" name="latestSurvey" type="date" defaultValue={values?.latestSurvey ?? ""} className={adminInputClassName} />
           </Field>

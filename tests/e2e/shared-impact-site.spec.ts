@@ -89,9 +89,11 @@ test("national impact map renders one pin for a site shared by two campaigns", a
     `;
 
     await page.goto("/impact-map");
-    const pin = page.getByRole("button", { name: `Show impact details for ${site.name}` });
+    // Leaflet renders each real geospatial marker as an interactive divIcon,
+    // not as an absolutely positioned overlay button.
+    const pin = page.locator(`.leaflet-marker-icon[title="${site.name}"]`);
     await expect(pin).toHaveCount(1);
-    await expect(page.locator(`button[title="${site.name}"]`)).toHaveCount(1);
+    await expect(pin).toHaveAttribute("role", "button");
     await pin.click();
     await expect(page.getByText(`${recordCount.total} activity records`, { exact: true }).first()).toBeVisible();
     await expect(page.locator('a[href="/campaigns/restore-raja-ampat-reefs"]').filter({ hasText: "Donate" })).toBeVisible();

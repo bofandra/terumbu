@@ -605,8 +605,8 @@ export default async function ExpeditionDetailPage({
         }}
       />
       <JsonLd data={expeditionStructuredData} />
-      <main className="bg-white pb-24">
-        <section className="overflow-hidden border-b border-ocean-900/10 bg-sand-50">
+      <main className="terumbu-editorial bg-white pb-24">
+        <section className="overflow-hidden border-b border-[#0757e5]/15 bg-[#eaf2ff]">
           <div className="mx-auto max-w-7xl px-4 pt-6 sm:px-6 lg:px-8">
             <nav className="flex flex-wrap items-center gap-2 text-sm font-semibold text-ocean-900/54" aria-label={isIndonesian ? "Breadcrumb navigasi" : "Breadcrumb"}>
               <Link href="/" className="hover:text-sky-700">{labels.home}</Link>
@@ -632,9 +632,9 @@ export default async function ExpeditionDetailPage({
                 <span>{ratingLabel}</span>
                 <span className="inline-flex size-6 items-center justify-center rounded-full border border-ocean-900/20 text-xs font-bold">?</span>
               </div>
-              <h1 className="mt-6 max-w-3xl text-5xl font-bold leading-[0.98] tracking-[-0.045em] text-ocean-900 sm:text-6xl">{expedition.title}</h1>
+              <h1 className="mt-6 max-w-3xl text-5xl font-black leading-[1.02] tracking-[-0.045em] text-[#062d7f] sm:text-6xl">{expedition.title}</h1>
               <p className="mt-5 max-w-2xl text-lg leading-8 text-ocean-900/64">{expedition.summary}</p>
-              <div className="mt-7 flex flex-wrap items-end justify-between gap-5 rounded-2xl border border-ocean-900/10 bg-white p-5 shadow-sm">
+              <div className="mt-7 flex flex-wrap items-end justify-between gap-5 rounded-3xl border border-[#0757e5]/15 bg-white p-6 shadow-soft">
                 <div>
                   <p className="text-xs font-bold uppercase tracking-[0.12em] text-ocean-900/48">{isIndonesian ? "Harga mulai" : "Price from"}</p>
                   <p className="mt-1 text-2xl font-bold text-ocean-900">{formatCurrency(expedition.price, expedition.currency)}</p>
