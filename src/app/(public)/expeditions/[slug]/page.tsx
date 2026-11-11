@@ -158,6 +158,23 @@ function DetailDivider() {
   return <hr className="border-ocean-900/10" />;
 }
 
+function InquiryContactConsent({ isIndonesian }: { isIndonesian: boolean }) {
+  return (
+    <label className="flex items-start gap-2 text-xs font-semibold leading-5 text-ocean-900/70 md:col-span-full">
+      <input name="contactConsent" type="checkbox" value="on" required className="mt-1 size-4 shrink-0 accent-kelp-600" />
+      <span>
+        {isIndonesian
+          ? "Saya setuju Terumbu dan mitra ekspedisi menghubungi saya terkait permintaan ini. Ini bukan konfirmasi booking."
+          : "I agree that Terumbu and the expedition host may contact me about this inquiry. This is not a booking confirmation."}
+        {" "}
+        <Link href="/privacy" className="font-bold text-sky-700 underline">
+          {isIndonesian ? "Kebijakan privasi" : "Privacy policy"}
+        </Link>
+      </span>
+    </label>
+  );
+}
+
 function CheckoutLink({
   expeditionSlug,
   departureId,
@@ -412,7 +429,8 @@ export default async function ExpeditionDetailPage({
           requestError: "Permintaan ekspedisi tidak dapat disimpan. Tambahkan nama, email, lalu coba lagi.",
           questionSaved: "Pertanyaanmu sudah masuk ke inbox website untuk admin Terumbu dan mitra ekspedisi.",
           questionError: "Tulis pertanyaan sebelum mengirim.",
-          unavailableDeparture: "Keberangkatan ini tidak menerima daftar tunggu. Hubungi tim untuk pilihan tanggal lain."
+          unavailableDeparture: "Keberangkatan ini tidak menerima daftar tunggu. Hubungi tim untuk pilihan tanggal lain.",
+          consentRequired: "Centang persetujuan kontak untuk mengirim permintaan."
         }
       : {
           learnMore: "Learn more",
@@ -507,7 +525,8 @@ export default async function ExpeditionDetailPage({
           requestError: "We could not save that expedition request. Add your name, email, and try again.",
           questionSaved: "Your question is in the website inbox for Terumbu admins and the expedition partner.",
           questionError: "Write your question before sending.",
-          unavailableDeparture: "This departure is not accepting a waitlist. Ask the team about other dates."
+          unavailableDeparture: "This departure is not accepting a waitlist. Ask the team about other dates.",
+          consentRequired: "Please agree to be contacted about your request."
         };
   const offerFacts = buildExpeditionOfferFacts(expedition.marketplace, locale);
   const benefitFacts = buildExpeditionBenefitFacts({
@@ -533,7 +552,9 @@ export default async function ExpeditionDetailPage({
       : query?.saved?.startsWith("interest")
         ? labels.requestCaptured
         : null;
-  const errorBannerMessage = query?.error === "expedition"
+  const errorBannerMessage = query?.error === "interest-consent"
+    ? labels.consentRequired
+    : query?.error === "expedition"
     ? labels.savedError
     : query?.error === "interest-question-invalid"
       ? labels.questionInvalid
@@ -818,6 +839,7 @@ export default async function ExpeditionDetailPage({
                           <input name="contactName" placeholder={labels.name} className="min-h-10 rounded-md border border-ocean-900/14 px-3 text-sm font-semibold outline-none focus:border-kelp-500" required />
                           <input name="contactEmail" type="email" placeholder={labels.email} className="min-h-10 rounded-md border border-ocean-900/14 px-3 text-sm font-semibold outline-none focus:border-kelp-500" required />
                           <input name="participantsCount" type="number" min={1} max={12} defaultValue={requestedParticipants} aria-label={labels.participants} className="min-h-10 rounded-md border border-ocean-900/14 bg-white px-3 text-sm font-semibold" required />
+                          <InquiryContactConsent isIndonesian={isIndonesian} />
                           <Button type="submit" tone="light" className="min-h-10 rounded-md">
                             {labels.joinWaitlist}
                           </Button>
@@ -839,6 +861,7 @@ export default async function ExpeditionDetailPage({
                     <input name="contactName" placeholder={labels.name} className="min-h-11 rounded-md border border-ocean-900/14 bg-white px-3 text-sm font-semibold outline-none focus:border-kelp-500" required />
                     <input name="contactEmail" type="email" placeholder={labels.email} className="min-h-11 rounded-md border border-ocean-900/14 bg-white px-3 text-sm font-semibold outline-none focus:border-kelp-500" required />
                     <input name="participantsCount" type="number" min={1} max={12} defaultValue={requestedParticipants} aria-label={labels.participants} className="min-h-11 rounded-md border border-ocean-900/14 bg-white px-3 text-sm font-semibold outline-none focus:border-kelp-500" required />
+                    <InquiryContactConsent isIndonesian={isIndonesian} />
                     <Button type="submit" className="rounded-md">
                       {labels.joinWaitlist}
                     </Button>
@@ -862,6 +885,7 @@ export default async function ExpeditionDetailPage({
                 <input name="preferredStartAt" type="date" className="min-h-11 rounded-md border border-ocean-900/14 bg-white px-3 text-sm font-semibold outline-none focus:border-kelp-500" />
                 <input name="message" placeholder={labels.privatePlaceholder} className="min-h-11 rounded-md border border-ocean-900/14 bg-white px-3 text-sm font-semibold outline-none focus:border-kelp-500" />
               </div>
+              <InquiryContactConsent isIndonesian={isIndonesian} />
               <Button type="submit" tone="secondary" className="w-fit rounded-md">
                 {labels.requestPrivate}
               </Button>
@@ -1163,6 +1187,7 @@ export default async function ExpeditionDetailPage({
                 className="rounded-md border border-ocean-900/14 bg-white px-3 py-3 text-sm font-semibold leading-6 outline-none focus:border-kelp-500"
                 required
               />
+              <InquiryContactConsent isIndonesian={isIndonesian} />
               <Button type="submit" tone="secondary" className="w-fit rounded-md">
                 <MessageSquareText size={17} aria-hidden="true" />
                 {labels.sendQuestion}
