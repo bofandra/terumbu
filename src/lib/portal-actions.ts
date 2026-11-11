@@ -98,7 +98,7 @@ import { canCancelExpeditionBooking, canCompleteExpeditionBooking } from "@/lib/
 import { normalizeApprovedSdgCodes } from "@/lib/sdg-claims";
 import { pendingPaymentHeldSeats } from "@/lib/expedition-held-seats";
 import { expeditionPublicationReadiness } from "@/lib/expedition-publication-readiness";
-import { expeditionMediaRightsValid, expeditionMediaProvenanceFromForm, newExpeditionMediaUploadFields, storedExpeditionMediaProvenance } from "@/lib/partner-expedition-media-rights";
+import { appendExpeditionMediaProvenance, expeditionMediaRightsValid, expeditionMediaProvenanceFromForm, newExpeditionMediaUploadFields } from "@/lib/partner-expedition-media-rights";
 import { canTransitionSponsoredEcosystem, normalizeSponsoredEcosystemOperationalStatus, sponsoredEcosystemTransitionRequiresReason } from "@/lib/sponsored-ecosystem-lifecycle";
 import { canAllocateSponsorshipToRestorationBatch, canTransitionRestorationBatch, normalizeRestorationBatchStatus, restorationTransitionPrerequisiteSatisfied, validRestorationAllocationUnits } from "@/lib/restoration-batches";
 import { buildPassportNumber, normalizeCurrency, parseCarbonKgPerUsd } from "@/lib/impact-calculations";
@@ -3581,9 +3581,15 @@ export async function updatePartnerExpeditionAction(formData: FormData) {
     currency,
     maxCapacity
   });
-  const mediaProvenance = expeditionMediaProvenanceFromForm(formData) ??
-    storedExpeditionMediaProvenance(existingExpedition.metadata);
-  const metadataForStorage = { ...metadata, ...(mediaProvenance ? { mediaProvenance } : {}) };
+  const mediaProvenanceHistory = appendExpeditionMediaProvenance(
+    existingExpedition.metadata, expeditionMediaProvenanceFromForm(formData)
+  );
+  const metadataForStorage = {
+    ...metadata,
+    ...(mediaProvenanceHistory.length > 0
+      ? { mediaProvenance: mediaProvenanceHistory.at(-1), mediaProvenanceHistory }
+      : {})
+  };
 
   const [expedition] = await db
     .update(expeditions)
@@ -3844,8 +3850,10 @@ export async function createPartnerExpeditionAction(formData: FormData) {
         maxCapacity: 0
       })
     : null;
-  const mediaProvenance = expeditionMediaProvenanceFromForm(formData);
-  const metadataForStorage = mediaProvenance ? { ...(metadata ?? {}), mediaProvenance } : metadata;
+  const mediaProvenanceHistory = appendExpeditionMediaProvenance(null, expeditionMediaProvenanceFromForm(formData));
+  const metadataForStorage = mediaProvenanceHistory.length > 0
+    ? { ...(metadata ?? {}), mediaProvenance: mediaProvenanceHistory.at(-1), mediaProvenanceHistory }
+    : metadata;
 
   const [expedition] = await db
     .insert(expeditions)
