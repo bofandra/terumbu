@@ -57,7 +57,7 @@ import { secondaryPriceLabel } from "@/lib/currency-display";
 import { getExpeditionDetail, getExpeditionSaveState } from "@/lib/queries";
 import { referralCodeForUser } from "@/lib/referrals";
 import { getPreferredDisplayCurrency, getPreferredLocale, localeTag } from "@/lib/user-preferences";
-import { localizedSeoPath, publicSeoAlternates } from "@/lib/public-locale-routing";
+import { localizedSeoPath, publicSeoAlternates, publicLocaleHref } from "@/lib/public-locale-routing";
 import { cn, formatCurrency } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
@@ -610,11 +610,11 @@ export default async function ExpeditionDetailPage({
         <section className="overflow-hidden border-b border-[#0757e5]/15 bg-[#eaf2ff]">
           <div className="mx-auto max-w-7xl px-4 pt-6 sm:px-6 lg:px-8">
             <nav className="flex flex-wrap items-center gap-2 text-sm font-semibold text-ocean-900/54" aria-label={isIndonesian ? "Breadcrumb navigasi" : "Breadcrumb"}>
-              <Link href="/" className="hover:text-sky-700">{labels.home}</Link>
+              <Link href={localizedSeoPath("/", locale)} className="hover:text-sky-700">{labels.home}</Link>
               <span>/</span>
-              <Link href="/expeditions" className="hover:text-sky-700">{labels.expeditions}</Link>
+              <Link href={localizedSeoPath("/expeditions", locale)} className="hover:text-sky-700">{labels.expeditions}</Link>
               <span>/</span>
-              <Link href={`/expeditions?destination=${encodeURIComponent(expedition.region)}`} className="hover:text-sky-700">{expedition.region}</Link>
+              <Link href={publicLocaleHref(`/expeditions?destination=${encodeURIComponent(expedition.region)}`, locale)} className="hover:text-sky-700">{expedition.region}</Link>
             </nav>
           </div>
 
