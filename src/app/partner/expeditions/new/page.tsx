@@ -17,6 +17,7 @@ const errorMessages: Record<string, string> = {
   "destination-missing": "Choose a published destination managed by Terumbu.",
   "expedition-invalid": "Enter a title, slug, region, duration, price, summary, and related campaign.",
   "expedition-slug": "That expedition slug is already in use.",
+  "image-rights-required": "Confirm that you own or have permission to publicly use newly uploaded expedition media.",
   "image-size": "Uploaded image is too large.",
   "image-type": "Upload a supported image file.",
   "partner-permission": "Your partner role cannot create expedition records for that organization."

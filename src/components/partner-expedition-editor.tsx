@@ -68,6 +68,21 @@ function optionsWithCurrentValues(options: string[], values: string[]) {
   return values.reduce((choices, value) => optionsWithCurrent(choices, value), options);
 }
 
+function ExpeditionMediaRightsDeclaration() {
+  return (
+    <label className="flex items-start gap-3 rounded-lg border border-ocean-900/10 bg-white p-3 text-sm text-ocean-900">
+      <input name="mediaRightsConfirmed" type="checkbox" value="on" className="mt-1 size-4 shrink-0 accent-kelp-600" />
+      <span>
+        <span className="block font-bold">I own the new images or have permission to publish them on Terumbu.world.</span>
+        <span className="mt-1 block text-xs leading-5 text-ocean-900/65">
+          Required only when uploading or replacing photos. Existing imagery can be kept unchanged without re-confirming.
+          Field evidence and public impact claims still require separate review.
+        </span>
+      </span>
+    </label>
+  );
+}
+
 export function PartnerExpeditionCreateForm({
   campaigns,
   academyCourses,
@@ -150,6 +165,7 @@ export function PartnerExpeditionCreateForm({
           <Field label="Image upload">
             <input name="imageFile" type="file" accept="image/png,image/jpeg,image/webp,image/gif" className={fileInputClassName} />
           </Field>
+          <ExpeditionMediaRightsDeclaration />
         </div>
         <Field label="Summary">
           <textarea name="summary" placeholder="Short public trip summary." className={textareaClassName} required />
@@ -634,6 +650,7 @@ function ExpeditionDetailForm({
               ) : null}
               <input name="imageFile" type="file" accept="image/png,image/jpeg,image/webp,image/gif" className={fileInputClassName} />
             </Field>
+            <ExpeditionMediaRightsDeclaration />
           </div>
           <Field label="Summary">
             <textarea name="summary" defaultValue={expedition.summary} className={textareaClassName} required />
