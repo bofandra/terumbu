@@ -70,16 +70,39 @@ function optionsWithCurrentValues(options: string[], values: string[]) {
 
 function ExpeditionMediaRightsDeclaration() {
   return (
-    <label className="flex items-start gap-3 rounded-lg border border-ocean-900/10 bg-white p-3 text-sm text-ocean-900">
-      <input name="mediaRightsConfirmed" type="checkbox" value="on" className="mt-1 size-4 shrink-0 accent-kelp-600" />
-      <span>
-        <span className="block font-bold">I own the new images or have permission to publish them on Terumbu.world.</span>
-        <span className="mt-1 block text-xs leading-5 text-ocean-900/65">
-          Required only when uploading or replacing photos. Existing imagery can be kept unchanged without re-confirming.
-          Field evidence and public impact claims still require separate review.
-        </span>
-      </span>
-    </label>
+    <fieldset className="rounded-lg border border-ocean-900/10 bg-white p-4">
+      <legend className="px-1 text-sm font-bold text-ocean-900">New image permissions and attribution</legend>
+      <p className="mb-3 text-xs leading-5 text-ocean-900/65">
+        For new hero, gallery or preparation images, record one source and rights declaration for this upload batch.
+        This information is private to reviewers; it is not independent proof of rights.
+        Unchanged images do not require re-entry.
+      </p>
+      <div className="grid gap-3 sm:grid-cols-2">
+        <label className="grid gap-1 text-xs font-bold text-ocean-900">
+          Photographer / source credit
+          <input name="mediaCredit" maxLength={160} placeholder="Name or organization that made the images" className={inputClassName} />
+        </label>
+        <label className="grid gap-1 text-xs font-bold text-ocean-900">
+          Basis for public use
+          <select name="mediaRightsBasis" defaultValue="" className={inputClassName}>
+            <option value="">Choose basis</option>
+            <option value="creator">Created by our team / organization</option>
+            <option value="licensed">Licensed for public use</option>
+            <option value="consented">Photographer / rights holder granted permission</option>
+          </select>
+        </label>
+      </div>
+      <label className="mt-3 grid gap-1 text-xs font-bold text-ocean-900">
+        Permission or original-file reference
+        <textarea name="mediaRightsReference" maxLength={500} rows={2}
+          placeholder="Internal archive ID, signed release reference, or licensing source (minimum 8 characters)"
+          className={textareaClassName} />
+      </label>
+      <label className="mt-3 flex items-start gap-3 text-sm text-ocean-900">
+        <input name="mediaRightsConfirmed" type="checkbox" value="on" className="mt-1 size-4 shrink-0 accent-kelp-600" />
+        <span>I confirm the source and rights basis above are accurate and the new images may be publicly used on Terumbu.world.</span>
+      </label>
+    </fieldset>
   );
 }
 
