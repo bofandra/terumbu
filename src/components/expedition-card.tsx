@@ -7,6 +7,7 @@ import type { ExpeditionCardData } from "@/lib/domain";
 import { secondaryPriceLabel } from "@/lib/currency-display";
 import type { DisplayCurrency } from "@/lib/user-preferences";
 import { cn, formatCurrency } from "@/lib/utils";
+import { localizedSeoPath } from "@/lib/public-locale-routing";
 
 type ExpeditionCardProps = {
   expedition: ExpeditionCardData;
@@ -26,7 +27,7 @@ export function ExpeditionCard({ expedition, displayCurrency = "USD", locale = "
   const query = new URLSearchParams();
   if (expedition.matchingDepartureId) query.set("departure", expedition.matchingDepartureId);
   if (expedition.requestedParticipants) query.set("participants", String(expedition.requestedParticipants));
-  const tripHref = `/expeditions/${expedition.slug}${query.size ? `?${query}` : ""}`;
+  const tripHref = `${localizedSeoPath(`/expeditions/${expedition.slug}`, isIndonesian ? "id" : "en")}${query.size ? `?${query}` : ""}`;
 
   return (
     <article className={cn(
