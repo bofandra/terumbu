@@ -6,8 +6,8 @@ import { resolveLocalizedPublicPath } from "./lib/public-locale-routing";
 
 export function proxy(request: NextRequest) {
   const headers = new Headers(request.headers);
-  // Never trust a client-supplied internal locale header.
-  headers.delete("x-terumbu-route-locale");
+  // Preserve the proxy-injected locale header across internal rewrites.
+  // Locale-prefixed URLs always overwrite it from the route itself.
   const localized = resolveLocalizedPublicPath(request.nextUrl.pathname);
   const response = localized
     ? (() => {
