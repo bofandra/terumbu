@@ -101,7 +101,7 @@ export async function submitExpeditionInterestRequestAction(formData: FormData) 
   const user = await getSessionUser();
 
   if (!expeditionId || !contactName || contactName.length > 160 ||
-    !contactEmail || contactEmail.length > 255 || !/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(contactEmail) ||
+    !contactEmail || contactEmail.length > 255 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contactEmail) ||
     !participantsCount || (message?.length ?? 0) > 4000) {
     redirect(appendResult(nextPath, "error", "interest-invalid"));
   }
