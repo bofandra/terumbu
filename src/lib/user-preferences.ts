@@ -1,4 +1,4 @@
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 
 export const supportedLocales = ["en", "id"] as const;
 export type SupportedLocale = (typeof supportedLocales)[number];
@@ -7,6 +7,8 @@ export const supportedDisplayCurrencies = ["USD", "EUR", "IDR", "JPY"] as const;
 export type DisplayCurrency = (typeof supportedDisplayCurrencies)[number];
 
 export async function getPreferredLocale(): Promise<SupportedLocale> {
+  const routeLocale = (await headers()).get("x-terumbu-route-locale");
+  if (supportedLocales.includes(routeLocale as SupportedLocale)) return routeLocale as SupportedLocale;
   const store = await cookies();
   const value = store.get("terumbu_locale")?.value;
   return supportedLocales.includes(value as SupportedLocale) ? (value as SupportedLocale) : "en";
