@@ -3492,12 +3492,12 @@ export async function updatePartnerExpeditionAction(formData: FormData) {
     redirectPartnerError(formData, "/partner/expeditions", "expedition-invalid");
   }
 
+  const existingExpedition = await requireExpeditionAccess(user.id, expeditionId, formData, "/partner/expeditions", "expedition:manage");
+  await requireCampaignAccess(user.id, relatedCampaignId, formData, "/partner/expeditions", "expedition:manage");
+
   if (!expeditionMediaRightsValid(formData)) {
     redirectPartnerError(formData, "/partner/expeditions", "image-rights-required");
   }
-
-  const existingExpedition = await requireExpeditionAccess(user.id, expeditionId, formData, "/partner/expeditions", "expedition:manage");
-  await requireCampaignAccess(user.id, relatedCampaignId, formData, "/partner/expeditions", "expedition:manage");
 
   const [destination] = await db
     .select({ id: destinations.id, name: destinations.name })
@@ -3774,11 +3774,11 @@ export async function createPartnerExpeditionAction(formData: FormData) {
     redirectPartnerError(formData, "/partner/expeditions", "expedition-invalid");
   }
 
+  await requireCampaignAccess(user.id, relatedCampaignId, formData, "/partner/expeditions", "expedition:manage");
+
   if (!expeditionMediaRightsValid(formData)) {
     redirectPartnerError(formData, "/partner/expeditions", "image-rights-required");
   }
-
-  await requireCampaignAccess(user.id, relatedCampaignId, formData, "/partner/expeditions", "expedition:manage");
 
   const [destination] = await db
     .select({ id: destinations.id, name: destinations.name })
