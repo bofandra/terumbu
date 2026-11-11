@@ -28,6 +28,7 @@ const errorMessages: Record<string, string> = {
   "expedition-missing": "Expedition record was not found.",
   "expedition-not-ready": "Publication review requires a published destination and campaign, hero image, departure, and all traveler-readiness details. See the Publication readiness checklist above.",
   "expedition-slug": "That expedition slug is already in use.",
+  "image-rights-required": "Confirm that you own or have permission to publicly use newly uploaded expedition media.",
   "image-size": "Uploaded image is too large.",
   "image-type": "Upload a supported image file.",
   "interest-request-invalid": "Choose an expedition request and final processing status.",
