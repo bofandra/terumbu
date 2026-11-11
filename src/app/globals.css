@@ -92,3 +92,19 @@ img {
   top: 8px;
 }
 .terumbu-map-pin:focus-visible span { outline: 4px solid #0757e5; }
+
+/* Shared accessibility rules for the public editorial experience. */
+:where(.terumbu-editorial) :is(a, button, input, select, textarea, summary):focus-visible {
+  outline: 3px solid var(--terumbu-blue);
+  outline-offset: 3px;
+}
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  .terumbu-editorial *,
+  .terumbu-editorial *::before,
+  .terumbu-editorial *::after {
+    animation-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
+}

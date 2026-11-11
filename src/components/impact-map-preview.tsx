@@ -1,11 +1,10 @@
 "use client";
 
-import { Camera, CheckCircle2, ExternalLink, HeartHandshake, MapPin, SlidersHorizontal } from "lucide-react";
+import { ExternalLink, HeartHandshake, MapPin, SlidersHorizontal } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 
-import { ProgressMeter } from "@/components/ui/progress-meter";
 import { ImpactSiteLeafletMap } from "@/components/impact-site-leaflet-map";
 import { isVisualEvidenceUrl } from "@/lib/coral-monitoring";
 import type { ImpactSiteData } from "@/lib/domain";
@@ -48,6 +47,7 @@ export function ImpactMapPreview({ sites, locale = "en" }: ImpactMapPreviewProps
           donate: "Donasi",
           fullMap: "Lihat peta lengkap",
           noMatch: "Tidak ada lokasi dampak yang sesuai dengan filter terpilih.",
+          region: "Wilayah", allRegions: "Semua wilayah", resultCount: "lokasi sesuai filter", siteReview: "Status lokasi", evidenceReview: "Tinjauan bukti lapangan",
           verified: "terverifikasi",
           inReview: "dalam review"
         }
@@ -79,21 +79,25 @@ export function ImpactMapPreview({ sites, locale = "en" }: ImpactMapPreviewProps
           donate: "Donate",
           fullMap: "View full map",
           noMatch: "No impact sites match the selected filters.",
+          region: "Region", allRegions: "All regions", resultCount: "sites match filters", siteReview: "Site status", evidenceReview: "Field evidence review",
           verified: "verified",
           inReview: "in review"
         };
   const [activeFilter, setActiveFilter] = useState<string>("all");
+  const [regionFilter, setRegionFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<"all" | "verified" | "review">("all");
   const [selectedSiteId, setSelectedSiteId] = useState<string | null>(sites[0]?.id ?? null);
   const typeFilters = useMemo(() => Array.from(new Set(sites.map((site) => site.type))), [sites]);
+  const regions = useMemo(() => Array.from(new Set(sites.map((site) => site.region).filter(Boolean))).sort(), [sites]);
   const visibleSites = sites.filter((site) => {
     const typeMatches = activeFilter === "all" || site.type === activeFilter;
+    const regionMatches = regionFilter === "all" || site.region === regionFilter;
     const statusMatches =
       statusFilter === "all" ||
       (statusFilter === "verified" && site.verifiedEvidenceCount > 0) ||
       (statusFilter === "review" && site.pendingEvidenceCount > 0);
 
-    return typeMatches && statusMatches;
+    return typeMatches && regionMatches && statusMatches;
   });
   const selectedSite = visibleSites.find((site) => site.id === selectedSiteId) ?? visibleSites[0] ?? null;
 
@@ -110,15 +114,20 @@ export function ImpactMapPreview({ sites, locale = "en" }: ImpactMapPreviewProps
   }
 
   return (
-    <div className="grid gap-5 lg:grid-cols-[1.25fr_0.75fr]">
-      <ImpactSiteLeafletMap sites={sites} visibleSites={visibleSites} selectedSiteId={selectedSite?.id ?? null} onSelect={setSelectedSiteId} locale={locale} />
-
+    <div className="grid gap-5 lg:grid-cols-[0.75fr_1.25fr]">
       <div className="rounded-2xl border border-ocean-900/10 bg-white p-5 shadow-soft">
         <div className="grid gap-3">
           <p className="flex items-center gap-2 text-sm font-bold text-ocean-900">
             <SlidersHorizontal size={16} aria-hidden="true" />
             {labels.filters}
           </p>
+          <label className="grid gap-1.5 text-sm font-bold text-ocean-900">
+            {labels.region}
+            <select value={regionFilter} onChange={(event) => { setRegionFilter(event.target.value); setSelectedSiteId(null); }} className="min-h-11 w-full rounded-lg border border-ocean-900/20 bg-white px-3 py-2 text-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-700">
+              <option value="all">{labels.allRegions}</option>
+              {regions.map((region) => <option key={region} value={region}>{region}</option>)}
+            </select>
+          </label>
           <div className="flex flex-wrap gap-2">
             {[{ value: "all", label: labels.all }, ...typeFilters.map((type) => ({ value: type, label: type }))].map((filter) => (
               <button
@@ -128,6 +137,7 @@ export function ImpactMapPreview({ sites, locale = "en" }: ImpactMapPreviewProps
                   "rounded-full px-4 py-2 text-sm font-bold transition",
                   filter.value === activeFilter ? "bg-ocean-900 text-white" : "bg-ocean-50 text-ocean-900 hover:bg-ocean-100"
                 )}
+                aria-pressed={filter.value === activeFilter}
                 onClick={() => {
                   setActiveFilter(filter.value);
                   setSelectedSiteId(null);
@@ -150,6 +160,7 @@ export function ImpactMapPreview({ sites, locale = "en" }: ImpactMapPreviewProps
                   "rounded-full px-4 py-2 text-sm font-bold transition",
                   filter.value === statusFilter ? "bg-kelp-700 text-white" : "bg-kelp-100 text-kelp-700 hover:bg-kelp-200"
                 )}
+                aria-pressed={filter.value === statusFilter}
                 onClick={() => {
                   setStatusFilter(filter.value);
                   setSelectedSiteId(null);
@@ -158,6 +169,10 @@ export function ImpactMapPreview({ sites, locale = "en" }: ImpactMapPreviewProps
                 {filter.label}
               </button>
             ))}
+          </div>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p role="status" aria-live="polite" className="text-xs font-semibold text-ocean-900/70">{visibleSites.length} {labels.resultCount}</p>
+            <a href="#impact-interactive-map" className="text-xs font-bold text-sky-700 underline underline-offset-2">{locale === "id" ? "Ke peta" : "Jump to map"}</a>
           </div>
         </div>
 
@@ -173,19 +188,11 @@ export function ImpactMapPreview({ sites, locale = "en" }: ImpactMapPreviewProps
               </span>
             </div>
 
-            <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
-              <div className="rounded-xl bg-white p-4">
-                <CheckCircle2 className="text-kelp-500" size={20} aria-hidden="true" />
-                <p className="mt-3 text-sm font-bold text-ocean-900">{selectedSite.progress}% {labels.milestone}</p>
-                <p className="mt-1 text-xs leading-5 text-ocean-900/60">{selectedSite.verifiedEvidenceCount} {labels.verified} · {selectedSite.pendingEvidenceCount} {labels.inReview}</p>
-              </div>
-              <div className="rounded-xl bg-white p-4">
-                <Camera className="text-coral-500" size={20} aria-hidden="true" />
-                <p className="mt-3 text-sm font-bold text-ocean-900">{selectedSite.evidenceCount} {labels.activityRecords}</p>
-                <p className="mt-1 text-xs leading-5 text-ocean-900/60">
-                  {selectedSite.latestSurvey ? `${labels.latestSurvey}: ${selectedSite.latestSurvey}` : labels.monitoringPending}
-                </p>
-              </div>
+            <div className="mt-5 rounded-xl bg-white p-4">
+              <p className="text-xs font-bold uppercase tracking-wide text-ocean-900/60">{labels.evidenceReview}</p>
+              <p className="mt-2 text-sm font-semibold text-ocean-900">{selectedSite.verifiedEvidenceCount} {labels.verified} · {selectedSite.pendingEvidenceCount} {labels.inReview}</p>
+              <p className="mt-1 text-xs text-ocean-900/60">{selectedSite.evidenceCount} {labels.activityRecords}</p>
+              {selectedSite.latestSurvey ? <p className="mt-2 text-xs text-ocean-900/60">{labels.latestSurvey}: {selectedSite.latestSurvey}</p> : null}
             </div>
 
             {selectedSite.beforeAfter ? (
@@ -252,14 +259,6 @@ export function ImpactMapPreview({ sites, locale = "en" }: ImpactMapPreviewProps
               </div>
             ) : null}
 
-            <ProgressMeter
-              value={selectedSite.progress}
-              label={`${selectedSite.name} ${selectedSite.progress} ${labels.milestoneAria}.`}
-              className="mt-5 h-2"
-              indicatorClassName="bg-kelp-500"
-              trackClassName="bg-white"
-            />
-
             <div className="mt-5 flex flex-wrap gap-2">
               <Link
                 href={selectedSite.campaignSlug ? `/campaigns/${selectedSite.campaignSlug}` : "/campaigns"}
@@ -294,6 +293,7 @@ export function ImpactMapPreview({ sites, locale = "en" }: ImpactMapPreviewProps
                 selectedSite?.id === site.id ? "border-coral-500 bg-coral-100/35" : "border-ocean-900/10"
               )}
               onClick={() => setSelectedSiteId(site.id)}
+              aria-pressed={selectedSite?.id === site.id}
             >
               <div className="flex items-start justify-between gap-3">
                 <div>
@@ -305,20 +305,13 @@ export function ImpactMapPreview({ sites, locale = "en" }: ImpactMapPreviewProps
                 </span>
               </div>
               <p className="mt-2 text-xs font-semibold text-ocean-900/58">
-                {site.verification} · {site.verifiedEvidenceCount} {labels.verified} · {site.pendingEvidenceCount} {labels.inReview}
+                {labels.siteReview}: {site.verification} · {labels.evidenceReview}: {site.verifiedEvidenceCount} {labels.verified} · {site.pendingEvidenceCount} {labels.inReview}
               </p>
-              <ProgressMeter
-                value={site.progress}
-                label={`${site.name} ${site.progress} ${labels.milestoneAria}.`}
-                className="mt-4 h-2"
-                indicatorClassName="bg-kelp-500"
-                trackClassName="bg-ocean-50"
-              />
-              <p className="mt-2 text-xs font-semibold text-ocean-900/60">{site.progress}% {labels.milestone}</p>
             </button>
           ))}
         </div>
       </div>
+      <ImpactSiteLeafletMap sites={sites} visibleSites={visibleSites} selectedSiteId={selectedSite?.id ?? null} onSelect={setSelectedSiteId} locale={locale} />
     </div>
   );
 }
