@@ -13,7 +13,7 @@ import { observeAdminDataLoader } from "@/lib/admin-observability";
 import { requireRole } from "@/lib/auth";
 import { updateExpeditionPublicationStatusAction } from "@/lib/portal-actions";
 import { expeditionPublicationReadiness } from "@/lib/expedition-publication-readiness";
-import { storedExpeditionMediaProvenance } from "@/lib/partner-expedition-media-rights";
+import { storedExpeditionMediaProvenanceHistory } from "@/lib/partner-expedition-media-rights";
 import { getAdminExpeditionWorkspaceData } from "@/lib/queries";
 import { formatCurrency } from "@/lib/utils";
 
@@ -61,7 +61,8 @@ export default async function AdminExpeditionDetailPage({ params, searchParams }
   const openDepartures = expedition.departures.filter((departure) => departure.status === "open").length;
   const availableSeats = expedition.departures.reduce((total, departure) => total + departure.availableSeats, 0);
   const relatedCampaign = data.campaignOptions.find((campaign) => campaign.id === expedition.relatedCampaignId);
-  const mediaProvenance = storedExpeditionMediaProvenance(expedition.metadata);
+  const mediaProvenanceHistory = storedExpeditionMediaProvenanceHistory(expedition.metadata);
+  const mediaProvenance = mediaProvenanceHistory.at(-1) ?? null;
   const publication = expeditionPublicationReadiness({
     metadata: expedition.detailMetadata,
     imageUrl: expedition.imageUrl,
@@ -169,6 +170,21 @@ export default async function AdminExpeditionDetailPage({ params, searchParams }
             ) : (
               <p className="mt-3 text-sm font-semibold text-coral-700">No structured source declaration is recorded for the current media. Verify it independently before approving.</p>
             )}
+            {mediaProvenanceHistory.length > 1 ? (
+              <details className="mt-3 rounded-lg border border-ocean-900/10 bg-white p-3">
+                <summary className="cursor-pointer text-sm font-bold text-ocean-900">
+                  Earlier upload declarations ({mediaProvenanceHistory.length - 1})
+                </summary>
+                <ul className="mt-3 grid gap-2 text-xs leading-5 text-ocean-900/75">
+                  {mediaProvenanceHistory.slice(0, -1).map((record, index) => (
+                    <li key={index} className="break-words rounded-md bg-sand-50 p-3">
+                      <span className="font-bold">{record.credit}</span> · {record.rightsBasis} · {record.reference}
+                      <span className="block">{record.uploadFields.join(", ") || "Legacy fields unspecified"}</span>
+                    </li>
+                  ))}
+                </ul>
+              </details>
+            ) : null}
           </div>
           <form action={updateExpeditionPublicationStatusAction} className="mt-5 grid gap-4">
             <label className="flex items-start gap-3 rounded-lg border border-ocean-900/10 bg-white p-3 text-sm font-semibold text-ocean-900">
