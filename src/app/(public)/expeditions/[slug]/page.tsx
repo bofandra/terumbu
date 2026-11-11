@@ -57,6 +57,7 @@ import { secondaryPriceLabel } from "@/lib/currency-display";
 import { getExpeditionDetail, getExpeditionSaveState } from "@/lib/queries";
 import { referralCodeForUser } from "@/lib/referrals";
 import { getPreferredDisplayCurrency, getPreferredLocale, localeTag } from "@/lib/user-preferences";
+import { localizedSeoPath, publicSeoAlternates, publicLocaleHref } from "@/lib/public-locale-routing";
 import { cn, formatCurrency } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
@@ -177,7 +178,7 @@ function CheckoutLink({
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params;
-  const expedition = await getExpeditionDetail(slug);
+  const [expedition, locale] = await Promise.all([getExpeditionDetail(slug), getPreferredLocale()]);
 
   if (!expedition) {
     return { title: "Expedition" };
@@ -188,12 +189,12 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   return {
     title: expedition.title,
     description: expedition.summary,
-    alternates: { canonical: `/expeditions/${expedition.slug}` },
+    alternates: { canonical: localizedSeoPath(`/expeditions/${expedition.slug}`, locale), languages: publicSeoAlternates(`/expeditions/${expedition.slug}`) },
     openGraph: {
       title: expedition.title,
       description: expedition.summary,
       type: "website",
-      url: `/expeditions/${expedition.slug}`,
+      url: localizedSeoPath(`/expeditions/${expedition.slug}`, locale),
       images: imageUrl ? [{ url: imageUrl }] : undefined
     },
     twitter: {
@@ -225,7 +226,7 @@ export default async function ExpeditionDetailPage({
     notFound();
   }
 
-  const expeditionPath = `/expeditions/${expedition.slug}`;
+  const expeditionPath = localizedSeoPath(`/expeditions/${expedition.slug}`, locale);
   const expeditionUrl = new URL(expeditionPath, appUrl).toString();
   const expeditionImage = expedition.galleryImages[0]?.src;
   const expeditionStructuredData = [
@@ -609,11 +610,11 @@ export default async function ExpeditionDetailPage({
         <section className="overflow-hidden border-b border-[#0757e5]/15 bg-[#eaf2ff]">
           <div className="mx-auto max-w-7xl px-4 pt-6 sm:px-6 lg:px-8">
             <nav className="flex flex-wrap items-center gap-2 text-sm font-semibold text-ocean-900/54" aria-label={isIndonesian ? "Breadcrumb navigasi" : "Breadcrumb"}>
-              <Link href="/" className="hover:text-sky-700">{labels.home}</Link>
+              <Link href={localizedSeoPath("/", locale)} className="hover:text-sky-700">{labels.home}</Link>
               <span>/</span>
-              <Link href="/expeditions" className="hover:text-sky-700">{labels.expeditions}</Link>
+              <Link href={localizedSeoPath("/expeditions", locale)} className="hover:text-sky-700">{labels.expeditions}</Link>
               <span>/</span>
-              <Link href={`/expeditions?destination=${encodeURIComponent(expedition.region)}`} className="hover:text-sky-700">{expedition.region}</Link>
+              <Link href={publicLocaleHref(`/expeditions?destination=${encodeURIComponent(expedition.region)}`, locale)} className="hover:text-sky-700">{expedition.region}</Link>
             </nav>
           </div>
 

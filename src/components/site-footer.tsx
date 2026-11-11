@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import type { SupportedLocale } from "@/lib/user-preferences";
+import { localizedSeoPath, publicLocaleHref } from "@/lib/public-locale-routing";
 
 export function SiteFooter({ locale = "en" }: { locale?: SupportedLocale }) {
   const labels =
@@ -52,8 +53,8 @@ export function SiteFooter({ locale = "en" }: { locale?: SupportedLocale }) {
     <footer className="border-t border-ocean-900/10 bg-sand-50">
       <div className="mx-auto grid max-w-7xl gap-10 px-4 py-12 sm:px-6 lg:grid-cols-[1.2fr_2fr] lg:px-8">
         <div>
-          <Link href="/" className="text-xl font-bold text-ocean-900">
-            Terumbu.eco
+          <Link href={localizedSeoPath("/", locale)} className="text-xl font-bold text-ocean-900">
+            Terumbu.world
           </Link>
           <p className="mt-4 max-w-md text-sm leading-6 text-ocean-900/68">
             {labels.description}
@@ -65,7 +66,7 @@ export function SiteFooter({ locale = "en" }: { locale?: SupportedLocale }) {
             <ul className="mt-4 space-y-3 text-sm text-ocean-900/68">
               {labels.links.map((item) => (
                 <li key={item.href}>
-                  <Link href={item.href} className="hover:text-ocean-900">
+                  <Link href={publicLocaleHref(item.href, locale)} className="hover:text-ocean-900">
                     {item.label}
                   </Link>
                 </li>
