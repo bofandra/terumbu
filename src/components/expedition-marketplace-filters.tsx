@@ -245,7 +245,7 @@ export function ExpeditionActiveFilterChips({ filters, locale = "en" }: { filter
 
 export function ExpeditionSortControl({ filters, locale = "en" }: { filters: ExpeditionSearchFilters; locale?: "en" | "id" }) {
   return (
-    <form action="/expeditions" className="flex items-center gap-2">
+    <form action={localizedSeoPath("/expeditions", locale)} className="flex items-center gap-2">
       {Object.entries(filters).map(([key, value]) =>
         key !== "sort" && value !== undefined && value !== null && String(value).trim() ? (
           <input key={key} type="hidden" name={key} value={String(value)} />
