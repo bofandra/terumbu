@@ -327,9 +327,8 @@ export default async function ExpeditionDetailPage({
     requiredAcademyCourse: expedition.requiredAcademyCourse
   };
   const inquiryQuery = new URLSearchParams({ participants: String(requestedParticipants) });
-  if (expedition.departures.some((departure) => departure.id === query?.departure)) {
-    inquiryQuery.set("departure", query!.departure!);
-  }
+  const selectedInquiryDeparture = expedition.departures.find((departure) => departure.id === query?.departure)?.id;
+  if (selectedInquiryDeparture) inquiryQuery.set("departure", selectedInquiryDeparture);
   const requestNextPath = `${expeditionPath}?${inquiryQuery.toString()}#availability`;
   const questionNextPath = `${expeditionPath}?${inquiryQuery.toString()}#ask-question`;
   const isIndonesian = locale === "id";
