@@ -42,4 +42,7 @@ test("public form and server action both enforce the journey contract", () => {
   assert.match(action, /expedition.status !== "published"/);
   assert.match(action, /departureAllowsInterest\(departure, requestType\)/);
   assert.match(action, /validInquiryParticipantCount\(formData.get\("participantsCount"\)\)/);
+  assert.match(action, /formData.get\("contactConsent"\) !== "on"/);
+  assert.equal((detail.match(/<InquiryContactConsent isIndonesian/g) ?? []).length, 4);
+  assert.match(detail, /inquiryQuery.toString\(\)/);
 });
