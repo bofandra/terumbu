@@ -70,16 +70,39 @@ function optionsWithCurrentValues(options: string[], values: string[]) {
 
 function ExpeditionMediaRightsDeclaration() {
   return (
-    <label className="flex items-start gap-3 rounded-lg border border-ocean-900/10 bg-white p-3 text-sm text-ocean-900">
-      <input name="mediaRightsConfirmed" type="checkbox" value="on" className="mt-1 size-4 shrink-0 accent-kelp-600" />
-      <span>
-        <span className="block font-bold">I own the new images or have permission to publish them on Terumbu.world.</span>
-        <span className="mt-1 block text-xs leading-5 text-ocean-900/65">
-          Required only when uploading or replacing photos. Existing imagery can be kept unchanged without re-confirming.
-          Field evidence and public impact claims still require separate review.
-        </span>
-      </span>
-    </label>
+    <fieldset className="rounded-lg border border-ocean-900/10 bg-white p-4">
+      <legend className="px-1 text-sm font-bold text-ocean-900">New image permissions and attribution</legend>
+      <p className="mb-3 text-xs leading-5 text-ocean-900/65">
+        For new hero, gallery or preparation images, record one source and rights declaration for this upload batch.
+        This information is private to reviewers; it is not independent proof of rights.
+        Unchanged images do not require re-entry.
+      </p>
+      <div className="grid gap-3 sm:grid-cols-2">
+        <label className="grid gap-1 text-xs font-bold text-ocean-900">
+          Photographer / source credit
+          <input name="mediaCredit" maxLength={160} placeholder="Name or organization that made the images" className={inputClassName} />
+        </label>
+        <label className="grid gap-1 text-xs font-bold text-ocean-900">
+          Basis for public use
+          <select name="mediaRightsBasis" defaultValue="" className={inputClassName}>
+            <option value="">Choose basis</option>
+            <option value="creator">Created by our team / organization</option>
+            <option value="licensed">Licensed for public use</option>
+            <option value="consented">Photographer / rights holder granted permission</option>
+          </select>
+        </label>
+      </div>
+      <label className="mt-3 grid gap-1 text-xs font-bold text-ocean-900">
+        Permission or original-file reference
+        <textarea name="mediaRightsReference" maxLength={500} rows={2}
+          placeholder="Internal archive ID, signed release reference, or licensing source (minimum 8 characters)"
+          className={textareaClassName} />
+      </label>
+      <label className="mt-3 flex items-start gap-3 text-sm text-ocean-900">
+        <input name="mediaRightsConfirmed" type="checkbox" value="on" className="mt-1 size-4 shrink-0 accent-kelp-600" />
+        <span>I confirm the source and rights basis above are accurate and the new images may be publicly used on Terumbu.world.</span>
+      </label>
+    </fieldset>
   );
 }
 
@@ -831,7 +854,23 @@ function RequestList({ expedition, returnTo }: { expedition: Expedition; returnT
               </p>
             ) : null}
           </div>
-          <Link href={`/expedition-requests/${request.id}`} className="mt-3 inline-block font-bold text-coral-700">Open conversation & offer a departure</Link>
+          <div className="mt-3 flex flex-wrap items-start gap-3 text-sm">
+            <a
+              href={`mailto:${encodeURIComponent(request.contactEmail)}?subject=${encodeURIComponent(`Terumbu expedition inquiry ${request.requestCode}`)}`}
+              className="inline-flex min-h-10 items-center font-bold text-coral-700 underline-offset-4 hover:underline"
+            >
+              Reply by email
+            </a>
+            {request.userId ? (
+              <Link href={`/expedition-requests/${request.id}`} className="inline-flex min-h-10 items-center font-bold text-coral-700 underline-offset-4 hover:underline">
+                Open secure conversation & offer a departure
+              </Link>
+            ) : (
+              <p className="max-w-md text-xs font-semibold leading-5 text-ocean-900/62">
+                Guest inquiry: reply using email. In-app departure offers require the traveler to sign in. Update the request status only after contacting them.
+              </p>
+            )}
+          </div>
           <form action={processPartnerExpeditionInterestRequestAction} className="mt-4 grid gap-2 lg:grid-cols-[180px_1fr_auto]">
             <input type="hidden" name="returnTo" value={returnTo} />
             <input type="hidden" name="requestId" value={request.id} />

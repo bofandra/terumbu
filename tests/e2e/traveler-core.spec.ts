@@ -302,3 +302,35 @@ test("host offer, traveler acceptance and manual checkout create one linked book
     expect(created.payment_status).toBe("pending");
   } finally { await hostContext.close(); await travelerContext.close(); await f.cleanup(); }
 });
+
+test("full departure waitlist keeps searched party size, consent and does not create a booking", async ({ page }) => {
+  const f = await fixture(3);
+  try {
+    await sql`update expedition_departures set status = 'full', seats_booked = 3 where id = ${f.target.id}`;
+    const [before] = await sql`select count(*)::int as total from expedition_bookings where expedition_id = ${f.trip.id}`;
+    await page.goto(`/expeditions/${f.trip.slug}?participants=3&departure=${f.target.id}`);
+    const waitlist = page.locator("form").filter({
+      has: page.locator(`input[name="departureId"][value="${f.target.id}"]`)
+    });
+    await expect(waitlist).toHaveCount(1);
+    await expect(waitlist.locator('input[name="participantsCount"]')).toHaveValue("3");
+    await waitlist.locator('input[name="contactName"]').fill("Interested group");
+    await waitlist.locator('input[name="contactEmail"]').fill("group-inquiry@example.org");
+    await expect(waitlist.locator('input[name="contactConsent"]')).not.toBeChecked();
+    await waitlist.locator('input[name="contactConsent"]').check();
+    await waitlist.locator('button[type="submit"]').click();
+    await expect(page).toHaveURL(/saved=interest-request/);
+    const [request] = await sql`select departure_id, request_type, participants_count, status
+      from expedition_interest_requests where expedition_id = ${f.trip.id} and contact_email = 'group-inquiry@example.org'`;
+    expect(request.departure_id).toBe(f.target.id);
+    expect(request.request_type).toBe("waitlist");
+    expect(request.participants_count).toBe(3);
+    expect(request.status).toBe("pending");
+    const [after] = await sql`select count(*)::int as total from expedition_bookings where expedition_id = ${f.trip.id}`;
+    expect(after.total).toBe(before.total);
+  } finally {
+    await sql`delete from admin_audit_logs where entity_type = 'expedition_interest_request' and
+      entity_id in (select id from expedition_interest_requests where expedition_id = ${f.trip.id})`;
+    await f.cleanup();
+  }
+});

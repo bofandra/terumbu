@@ -1,3 +1,5 @@
+> **Status addendum — 11 November 2026:** The table below is the original Phase-1 snapshot and its "CI pending" descriptions are historical. Phase 1 (#164), bilingual SEO aliases (#165) and upload rights declaration (#166) were merged to main. Phase 4/5 traveler inquiry and structured media-rights review changes are on feature branch `feat/uiux-phase4-5-p0-inquiry-provenance-20261111` pending independent CI, E2E and production verification. See [Phase 4/5 release notes](UI_UX_PHASE4_5_P0_TRAVELER_PARTNER_RELEASE_2026-11-11.md). No payment rollout.
+
 # Terumbu UI/UX Master Plan — Execution Log (11 November 2026)
 
 Source: [Master plan](UI_UX_MASTERPLAN_2026-11-11.md) · References: [ZIP reference library](../references/uiux/2026-11-11/README.md).

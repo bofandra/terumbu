@@ -44,6 +44,7 @@ import { ExpeditionShareButtons } from "@/components/expedition-share-buttons";
 import { ExpeditionSectionTabs } from "@/components/expedition-section-tabs";
 import { Button, ButtonLink } from "@/components/ui/button";
 import { submitExpeditionInterestRequestAction } from "@/lib/expedition-interest-actions";
+import { departureAllowsInterest, validInquiryParticipantCount } from "@/lib/expedition-inquiry-guard";
 import {
   buildExpeditionBenefitFacts,
   buildExpeditionMonthAvailability,
@@ -157,6 +158,23 @@ function DetailDivider() {
   return <hr className="border-ocean-900/10" />;
 }
 
+function InquiryContactConsent({ isIndonesian }: { isIndonesian: boolean }) {
+  return (
+    <label className="flex items-start gap-2 text-xs font-semibold leading-5 text-ocean-900/70 md:col-span-full">
+      <input name="contactConsent" type="checkbox" value="on" required className="mt-1 size-4 shrink-0 accent-kelp-600" />
+      <span>
+        {isIndonesian
+          ? "Saya setuju Terumbu dan mitra ekspedisi menghubungi saya terkait permintaan ini. Ini bukan konfirmasi booking."
+          : "I agree that Terumbu and the expedition host may contact me about this inquiry. This is not a booking confirmation."}
+        {" "}
+        <Link href="/privacy" className="font-bold text-sky-700 underline">
+          {isIndonesian ? "Kebijakan privasi" : "Privacy policy"}
+        </Link>
+      </span>
+    </label>
+  );
+}
+
 function CheckoutLink({
   expeditionSlug,
   departureId,
@@ -226,6 +244,7 @@ export default async function ExpeditionDetailPage({
     notFound();
   }
 
+  const requestedParticipants = validInquiryParticipantCount(query?.participants) ?? 1;
   const expeditionPath = localizedSeoPath(`/expeditions/${expedition.slug}`, locale);
   const expeditionUrl = new URL(expeditionPath, appUrl).toString();
   const expeditionImage = expedition.galleryImages[0]?.src;
@@ -288,7 +307,7 @@ export default async function ExpeditionDetailPage({
   const shareReferralCode = ownReferralCode;
   const bookingProps = {
     initialDepartureId: query?.departure,
-    initialParticipants: Number(query?.participants ?? 1),
+    initialParticipants: requestedParticipants,
     slug: expedition.slug,
     price: expedition.price,
     currency: expedition.currency,
@@ -307,8 +326,11 @@ export default async function ExpeditionDetailPage({
     academyEligibility,
     requiredAcademyCourse: expedition.requiredAcademyCourse
   };
-  const requestNextPath = `${expeditionPath}#availability`;
-  const questionNextPath = `${expeditionPath}#ask-question`;
+  const inquiryQuery = new URLSearchParams({ participants: String(requestedParticipants) });
+  const selectedInquiryDeparture = expedition.departures.find((departure) => departure.id === query?.departure)?.id;
+  if (selectedInquiryDeparture) inquiryQuery.set("departure", selectedInquiryDeparture);
+  const requestNextPath = `${expeditionPath}?${inquiryQuery.toString()}#availability`;
+  const questionNextPath = `${expeditionPath}?${inquiryQuery.toString()}#ask-question`;
   const isIndonesian = locale === "id";
   const localeName = localeTag(locale);
   const secondaryPrice = secondaryPriceLabel(expedition.price, expedition.currency, displayCurrency, localeName);
@@ -409,7 +431,11 @@ export default async function ExpeditionDetailPage({
           questionInvalid: "Tambahkan pertanyaan agar tim ekspedisi tahu apa yang perlu dijawab.",
           requestError: "Permintaan ekspedisi tidak dapat disimpan. Tambahkan nama, email, lalu coba lagi.",
           questionSaved: "Pertanyaanmu sudah masuk ke inbox website untuk admin Terumbu dan mitra ekspedisi.",
-          questionError: "Tulis pertanyaan sebelum mengirim."
+          questionError: "Tulis pertanyaan sebelum mengirim.",
+          unavailableDeparture: "Keberangkatan ini tidak menerima daftar tunggu. Hubungi tim untuk pilihan tanggal lain.",
+          consentRequired: "Centang persetujuan kontak untuk mengirim permintaan.",
+          unavailableRequest: "Keberangkatan yang dipilih sudah berubah atau tidak menerima permintaan. Periksa tanggal lain atau tanyakan kepada tim.",
+          invalidRequestDate: "Pilih tanggal permintaan rombongan yang valid dan masih akan datang."
         }
       : {
           learnMore: "Learn more",
@@ -503,7 +529,11 @@ export default async function ExpeditionDetailPage({
           questionInvalid: "Add your question so the expedition team knows what to answer.",
           requestError: "We could not save that expedition request. Add your name, email, and try again.",
           questionSaved: "Your question is in the website inbox for Terumbu admins and the expedition partner.",
-          questionError: "Write your question before sending."
+          questionError: "Write your question before sending.",
+          unavailableDeparture: "This departure is not accepting a waitlist. Ask the team about other dates.",
+          consentRequired: "Please agree to be contacted about your request.",
+          unavailableRequest: "That departure changed or no longer accepts requests. Choose another date or ask the host.",
+          invalidRequestDate: "Enter a valid future date for your group request."
         };
   const offerFacts = buildExpeditionOfferFacts(expedition.marketplace, locale);
   const benefitFacts = buildExpeditionBenefitFacts({
@@ -529,7 +559,13 @@ export default async function ExpeditionDetailPage({
       : query?.saved?.startsWith("interest")
         ? labels.requestCaptured
         : null;
-  const errorBannerMessage = query?.error === "expedition"
+  const errorBannerMessage = query?.error === "interest-consent"
+    ? labels.consentRequired
+    : query?.error === "interest-departure"
+      ? labels.unavailableRequest
+      : query?.error === "interest-date"
+        ? labels.invalidRequestDate
+    : query?.error === "expedition"
     ? labels.savedError
     : query?.error === "interest-question-invalid"
       ? labels.questionInvalid
@@ -794,7 +830,7 @@ export default async function ExpeditionDetailPage({
                       <span className={cn("w-fit rounded-full px-3 py-1 text-xs font-bold", departure.availableSeats <= 4 ? "bg-coral-100 text-coral-700" : "bg-kelp-100 text-kelp-700")}>
                         {departure.statusLabel}
                       </span>
-                      {departure.status === "open" && departure.availableSeats > 0 ? (
+                      {departure.status === "open" && departure.availableSeats >= requestedParticipants ? (
                         <div className="flex flex-wrap items-center justify-end gap-2">
                         <ExpeditionCalendarActions
                           title={expedition.title}
@@ -803,9 +839,9 @@ export default async function ExpeditionDetailPage({
                           location={departure.meetingPoint ?? expedition.region}
                           description={`${expedition.summary} — ${labels.expeditionCalendarDescription}`}
                         />
-                        {academyEligibility === "learning_required" && expedition.requiredAcademyCourse ? <ButtonLink href={"/academy/courses/" + expedition.requiredAcademyCourse.slug} className="rounded-full">{labels.completeCourse}</ButtonLink> : <CheckoutLink expeditionSlug={expedition.slug} departureId={departure.id} participants={Number(query?.participants ?? 1)} label={labels.selectDate} />}
+                        {academyEligibility === "learning_required" && expedition.requiredAcademyCourse ? <ButtonLink href={"/academy/courses/" + expedition.requiredAcademyCourse.slug} className="rounded-full">{labels.completeCourse}</ButtonLink> : <CheckoutLink expeditionSlug={expedition.slug} departureId={departure.id} participants={requestedParticipants} label={labels.selectDate} />}
                       </div>
-                      ) : (
+                      ) : departureAllowsInterest(departure, "waitlist") ? (
                         <form action={submitExpeditionInterestRequestAction} className="grid gap-2 rounded-md border border-ocean-900/10 bg-ocean-50 p-3">
                           <input type="hidden" name="next" value={requestNextPath} />
                           <input type="hidden" name="expeditionId" value={expedition.id} />
@@ -813,11 +849,14 @@ export default async function ExpeditionDetailPage({
                           <input type="hidden" name="requestType" value="waitlist" />
                           <input name="contactName" placeholder={labels.name} className="min-h-10 rounded-md border border-ocean-900/14 px-3 text-sm font-semibold outline-none focus:border-kelp-500" required />
                           <input name="contactEmail" type="email" placeholder={labels.email} className="min-h-10 rounded-md border border-ocean-900/14 px-3 text-sm font-semibold outline-none focus:border-kelp-500" required />
-                          <input name="participantsCount" type="hidden" value="1" />
+                          <input name="participantsCount" type="number" min={1} max={12} defaultValue={requestedParticipants} aria-label={labels.participants} className="min-h-10 rounded-md border border-ocean-900/14 bg-white px-3 text-sm font-semibold" required />
+                          <InquiryContactConsent isIndonesian={isIndonesian} />
                           <Button type="submit" tone="light" className="min-h-10 rounded-md">
                             {labels.joinWaitlist}
                           </Button>
                         </form>
+                      ) : (
+                        <p className="max-w-xs text-sm font-semibold leading-6 text-ocean-900/60">{labels.unavailableDeparture}</p>
                       )}
                     </div>
                   </article>
@@ -832,7 +871,8 @@ export default async function ExpeditionDetailPage({
                     <input type="hidden" name="requestType" value="waitlist" />
                     <input name="contactName" placeholder={labels.name} className="min-h-11 rounded-md border border-ocean-900/14 bg-white px-3 text-sm font-semibold outline-none focus:border-kelp-500" required />
                     <input name="contactEmail" type="email" placeholder={labels.email} className="min-h-11 rounded-md border border-ocean-900/14 bg-white px-3 text-sm font-semibold outline-none focus:border-kelp-500" required />
-                    <input name="participantsCount" type="number" min={1} max={12} defaultValue={1} className="min-h-11 rounded-md border border-ocean-900/14 bg-white px-3 text-sm font-semibold outline-none focus:border-kelp-500" required />
+                    <input name="participantsCount" type="number" min={1} max={12} defaultValue={requestedParticipants} aria-label={labels.participants} className="min-h-11 rounded-md border border-ocean-900/14 bg-white px-3 text-sm font-semibold outline-none focus:border-kelp-500" required />
+                    <InquiryContactConsent isIndonesian={isIndonesian} />
                     <Button type="submit" className="rounded-md">
                       {labels.joinWaitlist}
                     </Button>
@@ -852,10 +892,11 @@ export default async function ExpeditionDetailPage({
               <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-[1fr_1fr_130px_180px_minmax(0,1fr)]">
                 <input name="contactName" placeholder={labels.name} className="min-h-11 rounded-md border border-ocean-900/14 bg-white px-3 text-sm font-semibold outline-none focus:border-kelp-500" required />
                 <input name="contactEmail" type="email" placeholder={labels.email} className="min-h-11 rounded-md border border-ocean-900/14 bg-white px-3 text-sm font-semibold outline-none focus:border-kelp-500" required />
-                <input name="participantsCount" type="number" min={1} max={12} defaultValue={6} className="min-h-11 rounded-md border border-ocean-900/14 bg-white px-3 text-sm font-semibold outline-none focus:border-kelp-500" required />
+                <input name="participantsCount" type="number" min={1} max={12} defaultValue={query?.participants ? requestedParticipants : 6} aria-label={labels.participants} className="min-h-11 rounded-md border border-ocean-900/14 bg-white px-3 text-sm font-semibold outline-none focus:border-kelp-500" required />
                 <input name="preferredStartAt" type="date" className="min-h-11 rounded-md border border-ocean-900/14 bg-white px-3 text-sm font-semibold outline-none focus:border-kelp-500" />
                 <input name="message" placeholder={labels.privatePlaceholder} className="min-h-11 rounded-md border border-ocean-900/14 bg-white px-3 text-sm font-semibold outline-none focus:border-kelp-500" />
               </div>
+              <InquiryContactConsent isIndonesian={isIndonesian} />
               <Button type="submit" tone="secondary" className="w-fit rounded-md">
                 {labels.requestPrivate}
               </Button>
@@ -1137,12 +1178,12 @@ export default async function ExpeditionDetailPage({
               <input type="hidden" name="next" value={questionNextPath} />
               <input type="hidden" name="expeditionId" value={expedition.id} />
               <input type="hidden" name="requestType" value="question" />
-              <input type="hidden" name="participantsCount" value="1" />
+              <input type="hidden" name="participantsCount" value={requestedParticipants} />
               <div className="grid gap-3 sm:grid-cols-2">
                 <input name="contactName" placeholder={labels.yourName} className="min-h-11 rounded-md border border-ocean-900/14 bg-white px-3 text-sm font-semibold outline-none focus:border-kelp-500" required />
                 <input name="contactEmail" type="email" placeholder="you@example.com" className="min-h-11 rounded-md border border-ocean-900/14 bg-white px-3 text-sm font-semibold outline-none focus:border-kelp-500" required />
               </div>
-              <select name="departureId" className="min-h-11 rounded-md border border-ocean-900/14 bg-white px-3 text-sm font-semibold outline-none focus:border-kelp-500">
+              <select name="departureId" defaultValue={expedition.departures.some((departure) => departure.id === query?.departure) ? query?.departure : ""} aria-label={labels.generalQuestion} className="min-h-11 rounded-md border border-ocean-900/14 bg-white px-3 text-sm font-semibold outline-none focus:border-kelp-500">
                 <option value="">{labels.generalQuestion}</option>
                 {expedition.departures.map((departure) => (
                   <option key={departure.id} value={departure.id}>
@@ -1157,6 +1198,7 @@ export default async function ExpeditionDetailPage({
                 className="rounded-md border border-ocean-900/14 bg-white px-3 py-3 text-sm font-semibold leading-6 outline-none focus:border-kelp-500"
                 required
               />
+              <InquiryContactConsent isIndonesian={isIndonesian} />
               <Button type="submit" tone="secondary" className="w-fit rounded-md">
                 <MessageSquareText size={17} aria-hidden="true" />
                 {labels.sendQuestion}
