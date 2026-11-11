@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { ArrowUpRight, CalendarDays, MessageSquareText, ShieldCheck, Star, Users } from "lucide-react";
 import { notFound } from "next/navigation";
 
@@ -12,6 +13,7 @@ import { observeAdminDataLoader } from "@/lib/admin-observability";
 import { requireRole } from "@/lib/auth";
 import { updateExpeditionPublicationStatusAction } from "@/lib/portal-actions";
 import { expeditionPublicationReadiness } from "@/lib/expedition-publication-readiness";
+import { storedExpeditionMediaProvenance } from "@/lib/partner-expedition-media-rights";
 import { getAdminExpeditionWorkspaceData } from "@/lib/queries";
 import { formatCurrency } from "@/lib/utils";
 
@@ -40,7 +42,8 @@ const errorMessages: Record<string, string> = {
   "expedition-review": "Choose a valid publication decision.",
   "expedition-missing": "Expedition record was not found.",
   "expedition-review-state": "Only expeditions currently in review can be moderated.",
-  "expedition-not-ready": "Publication requires a published destination, public campaign, hero image, departure, and complete international-traveler information."
+  "expedition-not-ready": "Publication requires a published destination, public campaign, hero image, departure, and complete international-traveler information.",
+  "expedition-media-review-required": "Review the image rights and confirm the media review checklist before publishing."
 };
 
 export default async function AdminExpeditionDetailPage({ params, searchParams }: AdminExpeditionDetailPageProps) {
@@ -58,6 +61,7 @@ export default async function AdminExpeditionDetailPage({ params, searchParams }
   const openDepartures = expedition.departures.filter((departure) => departure.status === "open").length;
   const availableSeats = expedition.departures.reduce((total, departure) => total + departure.availableSeats, 0);
   const relatedCampaign = data.campaignOptions.find((campaign) => campaign.id === expedition.relatedCampaignId);
+  const mediaProvenance = storedExpeditionMediaProvenance(expedition.metadata);
   const publication = expeditionPublicationReadiness({
     metadata: expedition.detailMetadata,
     imageUrl: expedition.imageUrl,
@@ -126,7 +130,32 @@ export default async function AdminExpeditionDetailPage({ params, searchParams }
               </>
             )}
           </div>
+          <div className="mt-4 rounded-lg border border-ocean-900/10 bg-sand-50 p-4">
+            <h3 className="font-bold text-ocean-900">Private media-source review</h3>
+            <p className="mt-1 text-xs leading-5 text-ocean-900/65">
+              Partner declarations are not independent verification. Review actual image rights, model/location consent and attribution before approval.
+              Old uploads may not have structured source records.
+            </p>
+            {expedition.imageUrl ? (
+              <Image src={expedition.imageUrl} alt="Expedition hero supplied by partner for rights review" width={480} height={180}
+                unoptimized className="mt-3 h-36 w-full max-w-md rounded-lg object-cover" />
+            ) : null}
+            {mediaProvenance ? (
+              <dl className="mt-3 grid gap-2 text-sm text-ocean-900/80 sm:grid-cols-2">
+                <div><dt className="font-bold">Photo credit / source</dt><dd>{mediaProvenance.credit}</dd></div>
+                <div><dt className="font-bold">Declared basis</dt><dd>{mediaProvenance.rightsBasis}</dd></div>
+                <div className="sm:col-span-2"><dt className="font-bold">Private permission reference</dt><dd className="break-words">{mediaProvenance.reference}</dd></div>
+                <div className="sm:col-span-2"><dt className="font-bold">Upload fields covered</dt><dd>{mediaProvenance.uploadFields.join(", ") || "Legacy / unspecified"}</dd></div>
+              </dl>
+            ) : (
+              <p className="mt-3 text-sm font-semibold text-coral-700">No structured source declaration is recorded for the current media. Verify it independently before approving.</p>
+            )}
+          </div>
           <form action={updateExpeditionPublicationStatusAction} className="mt-5 grid gap-4">
+            <label className="flex items-start gap-3 rounded-lg border border-ocean-900/10 bg-white p-3 text-sm font-semibold text-ocean-900">
+              <input type="checkbox" name="reviewedMediaRights" value="on" className="mt-1 size-4 shrink-0 accent-kelp-600" />
+              <span>I reviewed image source, license/consent, attribution and public-safety/privacy suitability before publishing.</span>
+            </label>
             <input type="hidden" name="expeditionId" value={expedition.id} />
             <label className="grid gap-2 text-sm font-bold text-ocean-900">
               Review note <span className="font-semibold text-ocean-900/42">(optional)</span>
