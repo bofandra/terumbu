@@ -57,6 +57,7 @@ import { secondaryPriceLabel } from "@/lib/currency-display";
 import { getExpeditionDetail, getExpeditionSaveState } from "@/lib/queries";
 import { referralCodeForUser } from "@/lib/referrals";
 import { getPreferredDisplayCurrency, getPreferredLocale, localeTag } from "@/lib/user-preferences";
+import { localizedSeoPath, publicSeoAlternates } from "@/lib/public-locale-routing";
 import { cn, formatCurrency } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
@@ -177,7 +178,7 @@ function CheckoutLink({
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params;
-  const expedition = await getExpeditionDetail(slug);
+  const [expedition, locale] = await Promise.all([getExpeditionDetail(slug), getPreferredLocale()]);
 
   if (!expedition) {
     return { title: "Expedition" };
@@ -188,12 +189,12 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   return {
     title: expedition.title,
     description: expedition.summary,
-    alternates: { canonical: `/expeditions/${expedition.slug}` },
+    alternates: { canonical: localizedSeoPath(`/expeditions/${expedition.slug}`, locale), languages: publicSeoAlternates(`/expeditions/${expedition.slug}`) },
     openGraph: {
       title: expedition.title,
       description: expedition.summary,
       type: "website",
-      url: `/expeditions/${expedition.slug}`,
+      url: localizedSeoPath(`/expeditions/${expedition.slug}`, locale),
       images: imageUrl ? [{ url: imageUrl }] : undefined
     },
     twitter: {
@@ -225,7 +226,7 @@ export default async function ExpeditionDetailPage({
     notFound();
   }
 
-  const expeditionPath = `/expeditions/${expedition.slug}`;
+  const expeditionPath = localizedSeoPath(`/expeditions/${expedition.slug}`, locale);
   const expeditionUrl = new URL(expeditionPath, appUrl).toString();
   const expeditionImage = expedition.galleryImages[0]?.src;
   const expeditionStructuredData = [
