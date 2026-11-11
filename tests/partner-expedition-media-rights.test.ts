@@ -5,6 +5,8 @@ import test from "node:test";
 import {
   expeditionMediaRightsValid,
   expeditionMediaProvenanceFromForm,
+  appendExpeditionMediaProvenance,
+  storedExpeditionMediaProvenanceHistory,
   newExpeditionMediaUploadFields,
   storedExpeditionMediaProvenance
 } from "../src/lib/partner-expedition-media-rights";
@@ -65,5 +67,17 @@ test("partner writes and admin publish gate both enforce review", () => {
   assert.match(actions, /metadataForStorage/);
   assert.match(actions, /formData.get\("reviewedMediaRights"\) !== "on"/);
   assert.match(admin, /name="reviewedMediaRights"/);
-  assert.match(admin, /storedExpeditionMediaProvenance\(expedition.metadata\)/);
+  assert.match(admin, /storedExpeditionMediaProvenanceHistory\(expedition.metadata\)/);
+});
+
+test("later photo uploads retain earlier rights evidence without reattestation on ordinary edits", () => {
+  const first = expeditionMediaProvenanceFromForm(withRights("imageFile"))!;
+  const firstRecord = { mediaProvenance: first };
+  const second = expeditionMediaProvenanceFromForm(withRights("galleryImageFile"))!;
+  const history = appendExpeditionMediaProvenance(firstRecord, second);
+  assert.equal(history.length, 2);
+  assert.deepEqual(history[0], first);
+  assert.deepEqual(history[1], second);
+  assert.deepEqual(appendExpeditionMediaProvenance({ mediaProvenance: second, mediaProvenanceHistory: history }, null), history);
+  assert.deepEqual(storedExpeditionMediaProvenanceHistory({ mediaProvenance: second, mediaProvenanceHistory: history }), history);
 });
