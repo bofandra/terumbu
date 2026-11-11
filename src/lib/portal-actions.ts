@@ -98,7 +98,7 @@ import { canCancelExpeditionBooking, canCompleteExpeditionBooking } from "@/lib/
 import { normalizeApprovedSdgCodes } from "@/lib/sdg-claims";
 import { pendingPaymentHeldSeats } from "@/lib/expedition-held-seats";
 import { expeditionPublicationReadiness } from "@/lib/expedition-publication-readiness";
-import { expeditionMediaRightsValid, newExpeditionMediaUploadFields } from "@/lib/partner-expedition-media-rights";
+import { expeditionMediaRightsValid, expeditionMediaProvenanceFromForm, newExpeditionMediaUploadFields, storedExpeditionMediaProvenance } from "@/lib/partner-expedition-media-rights";
 import { canTransitionSponsoredEcosystem, normalizeSponsoredEcosystemOperationalStatus, sponsoredEcosystemTransitionRequiresReason } from "@/lib/sponsored-ecosystem-lifecycle";
 import { canAllocateSponsorshipToRestorationBatch, canTransitionRestorationBatch, normalizeRestorationBatchStatus, restorationTransitionPrerequisiteSatisfied, validRestorationAllocationUnits } from "@/lib/restoration-batches";
 import { buildPassportNumber, normalizeCurrency, parseCarbonKgPerUsd } from "@/lib/impact-calculations";
@@ -3581,6 +3581,9 @@ export async function updatePartnerExpeditionAction(formData: FormData) {
     currency,
     maxCapacity
   });
+  const mediaProvenance = expeditionMediaProvenanceFromForm(formData) ??
+    storedExpeditionMediaProvenance(existingExpedition.metadata);
+  const metadataForStorage = { ...metadata, ...(mediaProvenance ? { mediaProvenance } : {}) };
 
   const [expedition] = await db
     .update(expeditions)
@@ -3596,7 +3599,7 @@ export async function updatePartnerExpeditionAction(formData: FormData) {
       imageUrl,
       relatedCampaignId,
       requiredAcademyCourseId,
-      metadata,
+      metadata: metadataForStorage,
       status,
       publishedAt: status === "completed" ? existingExpedition.publishedAt ?? new Date() : status === existingExpedition.status ? existingExpedition.publishedAt : null,
       updatedAt: new Date()
@@ -3677,6 +3680,11 @@ export async function updateExpeditionPublicationStatusAction(formData: FormData
     redirect(withAdminFormOutcome(`/admin/expeditions/${expedition.id}`, "error", "expedition-review-state"));
   }
 
+  // Human review of media and rights is required for publishing; a partner declaration alone is not verification.
+  if (decision === "publish" && formData.get("reviewedMediaRights") !== "on") {
+    redirect(withAdminFormOutcome(`/admin/expeditions/${expedition.id}`, "error", "expedition-media-review-required"));
+  }
+
   if (decision === "publish") {
     const publicationDepartures = await db
       .select({
@@ -3737,6 +3745,7 @@ export async function updateExpeditionPublicationStatusAction(formData: FormData
         previousStatus: expedition.status,
         status: nextStatus,
         reviewNote,
+        mediaRightsReviewed: decision === "publish",
         relatedCampaignId: expedition.relatedCampaignId
       }
     });
@@ -3835,6 +3844,8 @@ export async function createPartnerExpeditionAction(formData: FormData) {
         maxCapacity: 0
       })
     : null;
+  const mediaProvenance = expeditionMediaProvenanceFromForm(formData);
+  const metadataForStorage = mediaProvenance ? { ...(metadata ?? {}), mediaProvenance } : metadata;
 
   const [expedition] = await db
     .insert(expeditions)
@@ -3850,7 +3861,7 @@ export async function createPartnerExpeditionAction(formData: FormData) {
       imageUrl,
       relatedCampaignId,
       requiredAcademyCourseId,
-      metadata,
+      metadata: metadataForStorage,
       status: "draft",
       publishedAt: null,
       updatedAt: new Date()
