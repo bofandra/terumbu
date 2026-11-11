@@ -140,6 +140,25 @@ export default async function AdminExpeditionDetailPage({ params, searchParams }
               <Image src={expedition.imageUrl} alt="Expedition hero supplied by partner for rights review" width={480} height={180}
                 unoptimized className="mt-3 h-36 w-full max-w-md rounded-lg object-cover" />
             ) : null}
+            {expedition.detailMetadata.galleryImages.length > 0 ? (
+              <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {expedition.detailMetadata.galleryImages.slice(0, 9).map((photo, index) => (
+                  <figure key={`${photo.src}-${index}`} className="rounded-lg border border-ocean-900/10 bg-white p-2">
+                    <Image src={photo.src} alt={photo.label || "Expedition gallery image for review"} width={320} height={180}
+                      unoptimized className="h-32 w-full rounded-md object-cover" />
+                    <figcaption className="mt-2 break-words text-xs text-ocean-900/65">
+                      <span className="font-bold">{photo.label || `Gallery image ${index + 1}`}</span>
+                      {photo.provenance ? ` · ${photo.provenance}` : " · No provenance caption recorded"}
+                    </figcaption>
+                  </figure>
+                ))}
+              </div>
+            ) : null}
+            {expedition.detailMetadata.preparationCourse.imageUrl ? (
+              <p className="mt-3 text-xs font-semibold text-ocean-900/65">
+                Preparation media also requires rights review; inspect the saved preparation course content before approval.
+              </p>
+            ) : null}
             {mediaProvenance ? (
               <dl className="mt-3 grid gap-2 text-sm text-ocean-900/80 sm:grid-cols-2">
                 <div><dt className="font-bold">Photo credit / source</dt><dd>{mediaProvenance.credit}</dd></div>
