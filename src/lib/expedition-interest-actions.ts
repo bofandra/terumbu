@@ -18,7 +18,8 @@ import {
 } from "@/db/schema";
 import { trackEvent } from "@/lib/analytics";
 import { getSessionUser, requireRole, safeRedirectPath } from "@/lib/auth";
-import { buildExpeditionInterestRequestCode, parseParticipantCount } from "@/lib/checkout";
+import { buildExpeditionInterestRequestCode } from "@/lib/checkout";
+import { departureAllowsInterest, validFutureInquiryDate, validInquiryParticipantCount } from "@/lib/expedition-inquiry-guard";
 import {
   normalizeExpeditionInterestRequestStatus,
   normalizeExpeditionInterestRequestType
@@ -91,14 +92,25 @@ export async function submitExpeditionInterestRequestAction(formData: FormData) 
   const requestType = normalizeExpeditionInterestRequestType(formData.get("requestType"));
   const contactName = formText(formData, "contactName");
   const contactEmail = formEmail(formData, "contactEmail");
-  const participantsCount = parseParticipantCount(formData.get("participantsCount"));
+  const participantsCount = validInquiryParticipantCount(formData.get("participantsCount"));
+  const preferredStartRaw = formText(formData, "preferredStartAt");
   const preferredStartAt = parsePreferredStart(formData.get("preferredStartAt"));
   const message = formText(formData, "message") || null;
   const nextPath = safeRedirectPath(formData.get("next"), "/expeditions");
   const user = await getSessionUser();
 
-  if (!expeditionId || !contactName || !contactEmail) {
+  if (!expeditionId || !contactName || contactName.length > 160 ||
+    !contactEmail || contactEmail.length > 255 || !/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(contactEmail) ||
+    !participantsCount || (message?.length ?? 0) > 4000) {
     redirect(appendResult(nextPath, "error", "interest-invalid"));
+  }
+
+  if (preferredStartRaw && (requestType !== "private_departure" || !validFutureInquiryDate(preferredStartRaw))) {
+    redirect(appendResult(nextPath, "error", "interest-date"));
+  }
+
+  if (requestType === "private_departure" && departureId) {
+    redirect(appendResult(nextPath, "error", "interest-departure"));
   }
 
   if (requestType === "question" && !message) {
@@ -109,24 +121,25 @@ export async function submitExpeditionInterestRequestAction(formData: FormData) 
     .select({
       id: expeditions.id,
       title: expeditions.title,
-      slug: expeditions.slug
+      slug: expeditions.slug,
+      status: expeditions.status
     })
     .from(expeditions)
     .where(eq(expeditions.id, expeditionId))
     .limit(1);
 
-  if (!expedition) {
+  if (!expedition || expedition.status !== "published") {
     redirect(appendResult(nextPath, "error", "interest-expedition"));
   }
 
   if (departureId) {
     const [departure] = await db
-      .select({ id: expeditionDepartures.id })
+      .select({ id: expeditionDepartures.id, status: expeditionDepartures.status, startsAt: expeditionDepartures.startsAt, endsAt: expeditionDepartures.endsAt })
       .from(expeditionDepartures)
       .where(and(eq(expeditionDepartures.id, departureId), eq(expeditionDepartures.expeditionId, expedition.id)))
       .limit(1);
 
-    if (!departure) {
+    if (!departure || !departureAllowsInterest(departure, requestType)) {
       redirect(appendResult(nextPath, "error", "interest-departure"));
     }
   }
