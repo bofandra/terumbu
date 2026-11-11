@@ -10,6 +10,7 @@ import { isVisualEvidenceUrl } from "@/lib/coral-monitoring";
 import type { ImpactSiteData } from "@/lib/domain";
 import type { SupportedLocale } from "@/lib/user-preferences";
 import { cn } from "@/lib/utils";
+import { localizedSeoPath } from "@/lib/public-locale-routing";
 
 type ImpactMapPreviewProps = {
   sites: ImpactSiteData[];
@@ -268,7 +269,7 @@ export function ImpactMapPreview({ sites, locale = "en" }: ImpactMapPreviewProps
                 {labels.donate}
               </Link>
               <Link
-                href="/impact-map"
+                href={localizedSeoPath("/impact-map", locale)}
                 className="inline-flex min-h-10 items-center justify-center rounded-full bg-white px-4 py-2 text-sm font-bold text-ocean-900 ring-1 ring-ocean-900/10 transition hover:ring-coral-500"
               >
                 {labels.fullMap}
