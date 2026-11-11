@@ -82,6 +82,7 @@ function requestMetadata(input: { requestType: ReturnType<typeof normalizeExpedi
     source: "public_expedition_detail",
     expeditionSlug: input.expeditionSlug,
     channel: input.requestType === "question" ? "question" : input.requestType,
+    contactConsentAcknowledged: true,
     ...(input.refreshedAt ? { refreshedAt: input.refreshedAt } : {})
   };
 }
@@ -111,6 +112,10 @@ export async function submitExpeditionInterestRequestAction(formData: FormData) 
 
   if (requestType === "private_departure" && departureId) {
     redirect(appendResult(nextPath, "error", "interest-departure"));
+  }
+
+  if (formData.get("contactConsent") !== "on") {
+    redirect(appendResult(nextPath, "error", "interest-consent"));
   }
 
   if (requestType === "question" && !message) {
