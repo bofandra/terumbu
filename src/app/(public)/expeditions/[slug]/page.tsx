@@ -326,8 +326,12 @@ export default async function ExpeditionDetailPage({
     academyEligibility,
     requiredAcademyCourse: expedition.requiredAcademyCourse
   };
-  const requestNextPath = `${expeditionPath}#availability`;
-  const questionNextPath = `${expeditionPath}#ask-question`;
+  const inquiryQuery = new URLSearchParams({ participants: String(requestedParticipants) });
+  if (expedition.departures.some((departure) => departure.id === query?.departure)) {
+    inquiryQuery.set("departure", query!.departure!);
+  }
+  const requestNextPath = `${expeditionPath}?${inquiryQuery.toString()}#availability`;
+  const questionNextPath = `${expeditionPath}?${inquiryQuery.toString()}#ask-question`;
   const isIndonesian = locale === "id";
   const localeName = localeTag(locale);
   const secondaryPrice = secondaryPriceLabel(expedition.price, expedition.currency, displayCurrency, localeName);
@@ -430,7 +434,9 @@ export default async function ExpeditionDetailPage({
           questionSaved: "Pertanyaanmu sudah masuk ke inbox website untuk admin Terumbu dan mitra ekspedisi.",
           questionError: "Tulis pertanyaan sebelum mengirim.",
           unavailableDeparture: "Keberangkatan ini tidak menerima daftar tunggu. Hubungi tim untuk pilihan tanggal lain.",
-          consentRequired: "Centang persetujuan kontak untuk mengirim permintaan."
+          consentRequired: "Centang persetujuan kontak untuk mengirim permintaan.",
+          unavailableRequest: "Keberangkatan yang dipilih sudah berubah atau tidak menerima permintaan. Periksa tanggal lain atau tanyakan kepada tim.",
+          invalidRequestDate: "Pilih tanggal permintaan rombongan yang valid dan masih akan datang."
         }
       : {
           learnMore: "Learn more",
@@ -526,7 +532,9 @@ export default async function ExpeditionDetailPage({
           questionSaved: "Your question is in the website inbox for Terumbu admins and the expedition partner.",
           questionError: "Write your question before sending.",
           unavailableDeparture: "This departure is not accepting a waitlist. Ask the team about other dates.",
-          consentRequired: "Please agree to be contacted about your request."
+          consentRequired: "Please agree to be contacted about your request.",
+          unavailableRequest: "That departure changed or no longer accepts requests. Choose another date or ask the host.",
+          invalidRequestDate: "Enter a valid future date for your group request."
         };
   const offerFacts = buildExpeditionOfferFacts(expedition.marketplace, locale);
   const benefitFacts = buildExpeditionBenefitFacts({
@@ -554,6 +562,10 @@ export default async function ExpeditionDetailPage({
         : null;
   const errorBannerMessage = query?.error === "interest-consent"
     ? labels.consentRequired
+    : query?.error === "interest-departure"
+      ? labels.unavailableRequest
+      : query?.error === "interest-date"
+        ? labels.invalidRequestDate
     : query?.error === "expedition"
     ? labels.savedError
     : query?.error === "interest-question-invalid"
