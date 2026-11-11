@@ -98,6 +98,7 @@ import { canCancelExpeditionBooking, canCompleteExpeditionBooking } from "@/lib/
 import { normalizeApprovedSdgCodes } from "@/lib/sdg-claims";
 import { pendingPaymentHeldSeats } from "@/lib/expedition-held-seats";
 import { expeditionPublicationReadiness } from "@/lib/expedition-publication-readiness";
+import { expeditionMediaRightsValid, newExpeditionMediaUploadFields } from "@/lib/partner-expedition-media-rights";
 import { canTransitionSponsoredEcosystem, normalizeSponsoredEcosystemOperationalStatus, sponsoredEcosystemTransitionRequiresReason } from "@/lib/sponsored-ecosystem-lifecycle";
 import { canAllocateSponsorshipToRestorationBatch, canTransitionRestorationBatch, normalizeRestorationBatchStatus, restorationTransitionPrerequisiteSatisfied, validRestorationAllocationUnits } from "@/lib/restoration-batches";
 import { buildPassportNumber, normalizeCurrency, parseCarbonKgPerUsd } from "@/lib/impact-calculations";
@@ -3491,6 +3492,10 @@ export async function updatePartnerExpeditionAction(formData: FormData) {
     redirectPartnerError(formData, "/partner/expeditions", "expedition-invalid");
   }
 
+  if (!expeditionMediaRightsValid(formData)) {
+    redirectPartnerError(formData, "/partner/expeditions", "image-rights-required");
+  }
+
   const existingExpedition = await requireExpeditionAccess(user.id, expeditionId, formData, "/partner/expeditions", "expedition:manage");
   await requireCampaignAccess(user.id, relatedCampaignId, formData, "/partner/expeditions", "expedition:manage");
 
@@ -3625,7 +3630,7 @@ export async function updatePartnerExpeditionAction(formData: FormData) {
     action: "partner_expedition.updated",
     entityType: "expedition",
     entityId: expeditionId,
-    metadata: { source: "partner_portal", slug, relatedCampaignId, status }
+    metadata: { source: "partner_portal", slug, relatedCampaignId, status, mediaRightsAcknowledged: newExpeditionMediaUploadFields(formData).length > 0 }
   });
 
   redirectPartnerSaved(formData, "/partner/expeditions", "expedition-updated");
@@ -3769,6 +3774,10 @@ export async function createPartnerExpeditionAction(formData: FormData) {
     redirectPartnerError(formData, "/partner/expeditions", "expedition-invalid");
   }
 
+  if (!expeditionMediaRightsValid(formData)) {
+    redirectPartnerError(formData, "/partner/expeditions", "image-rights-required");
+  }
+
   await requireCampaignAccess(user.id, relatedCampaignId, formData, "/partner/expeditions", "expedition:manage");
 
   const [destination] = await db
@@ -3869,7 +3878,7 @@ export async function createPartnerExpeditionAction(formData: FormData) {
     action: "partner_expedition.created",
     entityType: "expedition",
     entityId: expedition.id,
-    metadata: { source: "partner_portal", slug, relatedCampaignId }
+    metadata: { source: "partner_portal", slug, relatedCampaignId, mediaRightsAcknowledged: newExpeditionMediaUploadFields(formData).length > 0 }
   });
 
   redirect(`/partner/expeditions/${expedition.id}?saved=${encodeURIComponent("expedition-created")}`);
