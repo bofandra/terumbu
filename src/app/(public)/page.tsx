@@ -25,7 +25,7 @@ import {
   getImpactStats
 } from "@/lib/queries";
 import { getPreferredDisplayCurrency, getPreferredLocale, localeTag, t } from "@/lib/user-preferences";
-import { localizedSeoPath, publicSeoAlternates, publicLocaleHref } from "@/lib/public-locale-routing";
+import { localizedSeoPath, publicSeoAlternates } from "@/lib/public-locale-routing";
 
 export const dynamic = "force-dynamic";
 
