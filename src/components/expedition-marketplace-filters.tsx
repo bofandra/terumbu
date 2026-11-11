@@ -9,6 +9,7 @@ import {
   type ExpeditionSearchFilters
 } from "@/lib/expedition-marketplace";
 import { cn } from "@/lib/utils";
+import { localizedSeoPath, publicLocaleHref } from "@/lib/public-locale-routing";
 import { getDisplayFxSnapshot } from "@/lib/currency-display";
 
 type ExpeditionMarketplaceFiltersProps = {
@@ -26,10 +27,10 @@ const sortOptions = [
   { value: "duration_asc", label: "Shortest duration" }
 ];
 
-function removeFilterHref(filters: ExpeditionSearchFilters, key: keyof ExpeditionSearchFilters) {
+function removeFilterHref(filters: ExpeditionSearchFilters, key: keyof ExpeditionSearchFilters, locale: "en" | "id") {
   const query = expeditionSearchParams(filters, { [key]: null });
 
-  return query ? `/expeditions?${query}` : "/expeditions";
+  return publicLocaleHref(query ? `/expeditions?${query}` : "/expeditions", locale);
 }
 
 function activeEntries(filters: ExpeditionSearchFilters, locale: "en" | "id") {
@@ -167,7 +168,7 @@ export function ExpeditionMarketplaceFilters({ filters, facets, compact = false,
 
   return (
     <form
-      action="/expeditions"
+      action={localizedSeoPath("/expeditions", locale)}
       className={cn("rounded-xl border border-ocean-900/10 bg-white p-4 shadow-sm", compact ? "" : "lg:sticky lg:top-28")}
     >
       <input type="hidden" name="sort" value={filters.sort ?? ""} />
@@ -180,7 +181,7 @@ export function ExpeditionMarketplaceFilters({ filters, facets, compact = false,
           <p className="mt-1 text-xs font-semibold text-ocean-900/48">{activeCount > 0 ? (locale === "id" ? `${activeCount} filter aktif` : `${activeCount} {locale === "id" ? "aktif" : "active"} filters`) : (locale === "id" ? "Temukan perjalanan yang sesuai" : "Find the right field opportunity")}</p>
         </div>
         {activeCount > 0 ? (
-          <Link href="/expeditions" className="text-xs font-bold text-coral-700 hover:text-coral-500">
+          <Link href={localizedSeoPath("/expeditions", locale)} className="text-xs font-bold text-coral-700 hover:text-coral-500">
             {locale === "id" ? "Hapus" : "Clear"}
           </Link>
         ) : null}
@@ -230,7 +231,7 @@ export function ExpeditionActiveFilterChips({ filters, locale = "en" }: { filter
       {entries.map((entry) => (
         <Link
           key={entry.key}
-          href={removeFilterHref(filters, entry.key)}
+          href={removeFilterHref(filters, entry.key, locale)}
           className="inline-flex min-h-9 items-center gap-2 rounded-full border border-kelp-500/25 bg-kelp-100 px-3 text-xs font-bold text-kelp-700 hover:bg-white"
         >
           {entry.key === "digitalNomad" ? <Wifi className="size-3.5" aria-hidden="true" /> : null}
