@@ -55,3 +55,30 @@ export function storedExpeditionMediaProvenance(metadata: unknown): ExpeditionMe
     uploadFields: Array.isArray(record.uploadFields) ? record.uploadFields.filter((item): item is string => typeof item === "string") : []
   };
 }
+
+/**
+ * Earlier implementations saved only the last upload declaration. Read that
+ * record as the first entry so replacing one photo never erases previous
+ * declarations for retained gallery/preparation photos.
+ */
+export function storedExpeditionMediaProvenanceHistory(metadata: unknown): ExpeditionMediaProvenance[] {
+  if (!metadata || typeof metadata !== "object" || Array.isArray(metadata)) return [];
+  const root = metadata as Record<string, unknown>;
+  const saved = Array.isArray(root.mediaProvenanceHistory) ? root.mediaProvenanceHistory : [];
+  const history = saved
+    .map((entry) => storedExpeditionMediaProvenance({ mediaProvenance: entry }))
+    .filter((entry): entry is ExpeditionMediaProvenance => entry !== null);
+  const legacy = storedExpeditionMediaProvenance(metadata);
+  if (legacy && !history.some((entry) => JSON.stringify(entry) === JSON.stringify(legacy))) {
+    history.unshift(legacy);
+  }
+  return history;
+}
+
+export function appendExpeditionMediaProvenance(
+  metadata: unknown,
+  newUpload: ExpeditionMediaProvenance | null
+): ExpeditionMediaProvenance[] {
+  const existing = storedExpeditionMediaProvenanceHistory(metadata);
+  return newUpload ? [...existing, newUpload] : existing;
+}
