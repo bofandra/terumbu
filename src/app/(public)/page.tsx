@@ -25,6 +25,7 @@ import {
   getImpactStats
 } from "@/lib/queries";
 import { getPreferredDisplayCurrency, getPreferredLocale, localeTag, t } from "@/lib/user-preferences";
+import { localizedSeoPath, publicSeoAlternates, publicLocaleHref } from "@/lib/public-locale-routing";
 
 export const dynamic = "force-dynamic";
 
@@ -46,12 +47,14 @@ export async function generateMetadata(): Promise<Metadata> {
   return {
     title: { absolute: seo.title },
     description: seo.description,
+    alternates: { canonical: localizedSeoPath("/", locale), languages: publicSeoAlternates("/") },
     openGraph: {
       title: seo.title,
       description: seo.description,
       locale: locale === "id" ? "id_ID" : "en_US",
       type: "website",
-      siteName: "Terumbu.world"
+      siteName: "Terumbu.world",
+      url: localizedSeoPath("/", locale)
     },
     twitter: {
       card: "summary_large_image",
@@ -123,7 +126,7 @@ export default async function HomePage() {
             <p className="mt-6 max-w-2xl text-lg leading-8 text-white/82 sm:text-xl">
               {messages.home.intro}
             </p>
-            <form action="/expeditions" className="mt-9 grid gap-2 rounded-3xl border border-white/30 bg-white/15 p-3 shadow-[0_25px_60px_rgba(2,17,62,.24)] backdrop-blur-xl sm:grid-cols-[1fr_1fr_auto]">
+            <form action={localizedSeoPath("/expeditions", locale)} className="mt-9 grid gap-2 rounded-3xl border border-white/30 bg-white/15 p-3 shadow-[0_25px_60px_rgba(2,17,62,.24)] backdrop-blur-xl sm:grid-cols-[1fr_1fr_auto]">
               <div className="sm:col-span-3"><ExpeditionTravelSearchFields locale={locale} /></div>
               <label className="relative">
                 <span className="sr-only">{locale === "id" ? "Mau menjelajah ke mana?" : "Where do you want to explore?"}</span>
@@ -140,7 +143,7 @@ export default async function HomePage() {
               </button>
             </form>
             <div className="mt-7 flex flex-wrap gap-3">
-              <Link href="/impact-map" className="inline-flex min-h-11 items-center gap-2 rounded-full border border-white/40 px-5 py-2 text-sm font-bold text-white hover:bg-white/10"><BadgeCheck size={17} aria-hidden="true" />{locale === "id" ? "Jelajahi bukti dampak" : "Explore impact evidence"}</Link>
+              <Link href={localizedSeoPath("/impact-map", locale)} className="inline-flex min-h-11 items-center gap-2 rounded-full border border-white/40 px-5 py-2 text-sm font-bold text-white hover:bg-white/10"><BadgeCheck size={17} aria-hidden="true" />{locale === "id" ? "Jelajahi bukti dampak" : "Explore impact evidence"}</Link>
               <Link href="/academy" className="inline-flex min-h-11 items-center gap-2 rounded-full border border-white/40 px-5 py-2 text-sm font-bold text-white hover:bg-white/10"><BookOpen size={17} aria-hidden="true" />{locale === "id" ? "Belajar konservasi" : "Learn conservation"}</Link>
             </div>
             <div className="mt-6 flex flex-wrap items-center gap-4 text-sm font-semibold text-white/82">
@@ -163,7 +166,7 @@ export default async function HomePage() {
                 <p className="mt-4 text-2xl font-bold tracking-normal">{fieldUpdate.title}</p>
                 <ProgressMeter value={fieldUpdate.progress} label={`${fieldUpdate.title} progress`} className="mt-6 h-3" trackClassName="bg-white/18" />
                 <p className="mt-4 text-sm leading-6 text-white/72">{fieldUpdate.description}</p>
-                <ButtonLink href="/impact-map" tone="ghost" className="mt-6 border border-white/24 text-white hover:bg-white/10">
+                <ButtonLink href={localizedSeoPath("/impact-map", locale)} tone="ghost" className="mt-6 border border-white/24 text-white hover:bg-white/10">
                   <PlayCircle size={18} aria-hidden="true" />
                   {messages.home.watchImpact}
                 </ButtonLink>
@@ -181,7 +184,7 @@ export default async function HomePage() {
             <SectionHeading title={messages.home.featuredTitle}>
               {messages.home.featuredDescription}
             </SectionHeading>
-            <ButtonLink href="/expeditions" tone="secondary">
+            <ButtonLink href={localizedSeoPath("/expeditions", locale)} tone="secondary">
               {messages.home.exploreTrips}
             </ButtonLink>
           </div>
@@ -220,7 +223,7 @@ export default async function HomePage() {
         </SectionHeading>
         <div className="mt-10">
           <ImpactMapPreview sites={impactSites} locale={locale} />
-          <div className="mt-7 text-right"><Link href="/impact-map" className="inline-flex min-h-11 items-center gap-2 rounded-full bg-[#0757e5] px-6 text-sm font-bold text-white hover:bg-[#062d7f]">{locale === "id" ? "Lihat peta dampak lengkap" : "Explore the full impact map"} <ArrowRight size={16} aria-hidden="true" /></Link></div>
+          <div className="mt-7 text-right"><Link href={localizedSeoPath("/impact-map", locale)} className="inline-flex min-h-11 items-center gap-2 rounded-full bg-[#0757e5] px-6 text-sm font-bold text-white hover:bg-[#062d7f]">{locale === "id" ? "Lihat peta dampak lengkap" : "Explore the full impact map"} <ArrowRight size={16} aria-hidden="true" /></Link></div>
         </div>
         </div>
       </section>
