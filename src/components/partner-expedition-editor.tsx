@@ -854,7 +854,23 @@ function RequestList({ expedition, returnTo }: { expedition: Expedition; returnT
               </p>
             ) : null}
           </div>
-          <Link href={`/expedition-requests/${request.id}`} className="mt-3 inline-block font-bold text-coral-700">Open conversation & offer a departure</Link>
+          <div className="mt-3 flex flex-wrap items-start gap-3 text-sm">
+            <a
+              href={`mailto:${encodeURIComponent(request.contactEmail)}?subject=${encodeURIComponent(`Terumbu expedition inquiry ${request.requestCode}`)}`}
+              className="inline-flex min-h-10 items-center font-bold text-coral-700 underline-offset-4 hover:underline"
+            >
+              Reply by email
+            </a>
+            {request.userId ? (
+              <Link href={`/expedition-requests/${request.id}`} className="inline-flex min-h-10 items-center font-bold text-coral-700 underline-offset-4 hover:underline">
+                Open secure conversation & offer a departure
+              </Link>
+            ) : (
+              <p className="max-w-md text-xs font-semibold leading-5 text-ocean-900/62">
+                Guest inquiry: reply using email. In-app departure offers require the traveler to sign in. Update the request status only after contacting them.
+              </p>
+            )}
+          </div>
           <form action={processPartnerExpeditionInterestRequestAction} className="mt-4 grid gap-2 lg:grid-cols-[180px_1fr_auto]">
             <input type="hidden" name="returnTo" value={returnTo} />
             <input type="hidden" name="requestId" value={request.id} />
