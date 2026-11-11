@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { convertDisplayAmount, secondaryPriceLabel } from "../src/lib/currency-display";
+import { convertDisplayAmount, secondaryPriceLabel, validateDisplayFxSnapshot } from "../src/lib/currency-display";
 import { referralCodeForUser, referralRewardProgress } from "../src/lib/referrals";
 
 test("display currency conversion preserves canonical amount when currency matches", () => {
@@ -17,6 +17,9 @@ test("display currency conversion never invents an estimate without a current so
     delete process.env.NEXT_PUBLIC_FX_USD_EUR;
     delete process.env.NEXT_PUBLIC_FX_USD_IDR;
     delete process.env.NEXT_PUBLIC_FX_USD_JPY;
+    assert.equal(validateDisplayFxSnapshot({ asOf: "", source: "", usdRates: { USD: 1, EUR: 0, IDR: 0, JPY: 0 } }), null);
+    // An incomplete explicit override must fail closed even when a reviewed file exists.
+    process.env.NEXT_PUBLIC_FX_SOURCE = "Incomplete provider configuration";
     assert.equal(convertDisplayAmount(10, "USD", "IDR"), null);
     assert.equal(secondaryPriceLabel(10, "USD", "IDR"), null);
 
