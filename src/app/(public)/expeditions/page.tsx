@@ -15,6 +15,7 @@ import {
 import { parseExpeditionSearchFilters } from "@/lib/expedition-marketplace";
 import { getExpeditionMarketplaceResults } from "@/lib/queries";
 import { getPreferredDisplayCurrency, getPreferredLocale, localeTag, t } from "@/lib/user-preferences";
+import { localizedSeoPath, publicSeoAlternates } from "@/lib/public-locale-routing";
 
 export const dynamic = "force-dynamic";
 
@@ -29,14 +30,14 @@ export async function generateMetadata(): Promise<Metadata> {
     description: isIndonesian
       ? "Temukan trip konservasi bersama mitra lokal, cek kegiatan lapangan, harga, dan jadwal keberangkatan di Terumbu.world."
       : "Find conservation trips with local partners, then compare field activities, prices, and departure dates on Terumbu.world.",
-    alternates: { canonical: "/expeditions" },
+    alternates: { canonical: localizedSeoPath("/expeditions", locale), languages: publicSeoAlternates("/expeditions") },
     openGraph: {
       title: isIndonesian ? "Ekspedisi Konservasi Pesisir Indonesia | Terumbu.world" : "Conservation Expeditions in Indonesia | Terumbu.world",
       description: isIndonesian
         ? "Lihat pesisir lebih dekat bersama pemandu dan mitra lokal Terumbu."
         : "See Indonesia’s coasts up close with Terumbu’s local guides and partners.",
       type: "website",
-      url: "/expeditions"
+      url: localizedSeoPath("/expeditions", locale)
     }
   };
 }
@@ -58,7 +59,7 @@ export default async function ExpeditionsPage({ searchParams }: ExpeditionsPageP
   const localeName = localeTag(locale);
   const isIndonesian = locale === "id";
   const heroImage = expeditions.find((expedition) => expedition.imageUrl)?.imageUrl;
-  const collectionUrl = new URL("/expeditions", appUrl).toString();
+  const collectionUrl = new URL(localizedSeoPath("/expeditions", locale), appUrl).toString();
   const structuredData = {
     "@context": "https://schema.org",
     "@type": "CollectionPage",
@@ -72,7 +73,7 @@ export default async function ExpeditionsPage({ searchParams }: ExpeditionsPageP
         "@type": "ListItem",
         position: index + 1,
         name: expedition.title,
-        url: new URL(`/expeditions/${expedition.slug}`, appUrl).toString()
+        url: new URL(localizedSeoPath(`/expeditions/${expedition.slug}`, locale), appUrl).toString()
       }))
     }
   };
@@ -111,7 +112,7 @@ export default async function ExpeditionsPage({ searchParams }: ExpeditionsPageP
                 );
               })}
             </div>
-            <form action="/expeditions" className="mt-8 rounded-3xl border border-white/25 bg-white p-4 text-ocean-900 shadow-[0_25px_65px_rgba(2,17,62,.25)] sm:p-5">
+            <form action={localizedSeoPath("/expeditions", locale)} className="mt-8 rounded-3xl border border-white/25 bg-white p-4 text-ocean-900 shadow-[0_25px_65px_rgba(2,17,62,.25)] sm:p-5">
             {Object.entries(filters).filter(([key]) => !["q", "destination", "dateFrom", "dateTo", "participants"].includes(key)).map(([key, value]) => value !== undefined && <input key={key} type="hidden" name={key} value={String(value)} />)}
             <p className="text-sm font-bold text-ocean-900">{messages.searchTitle}</p>
             <div className="mt-3 grid gap-3 sm:grid-cols-2">
