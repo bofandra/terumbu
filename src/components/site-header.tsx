@@ -8,6 +8,7 @@ import { useEffect, useState, useTransition } from "react";
 import { navItems } from "@/lib/data";
 import { logoutAction } from "@/lib/auth-actions";
 import { cn } from "@/lib/utils";
+import { isPublicSeoPath, localizedSeoPath, publicLocaleHref, resolveLocalizedPublicPath } from "@/lib/public-locale-routing";
 import { setPublicPreferencesAction } from "@/lib/user-preferences-actions";
 
 type SiteHeaderUser = {
@@ -73,6 +74,8 @@ export function SiteHeader({
         };
   const localizedNavItems = navItems.map((item) => ({
     ...item,
+    href: publicLocaleHref(item.href, locale),
+    originalHref: item.href,
     label:
       item.href === "/expeditions"
         ? labels.explore
@@ -88,7 +91,15 @@ export function SiteHeader({
   function updatePreferences(formData: FormData) {
     startTransition(async () => {
       await setPublicPreferencesAction(formData);
-      router.refresh();
+      const requested = formData.get("locale");
+      const nextLocale = requested === "id" ? "id" : "en";
+      const currentPublicRoute = resolveLocalizedPublicPath(pathname)?.path ??
+        (isPublicSeoPath(pathname) ? pathname : null);
+      if (currentPublicRoute && nextLocale !== locale) {
+        router.replace(localizedSeoPath(currentPublicRoute, nextLocale));
+      } else {
+        router.refresh();
+      }
     });
   }
   const initials = user ? initialsForDisplayName(user.displayName) : null;
@@ -100,7 +111,7 @@ export function SiteHeader({
   return (
     <header className="sticky top-0 z-50 border-b border-white/15 bg-ocean-900/90 text-white backdrop-blur-xl">
       <div className="mx-auto flex h-20 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
-        <Link href="/" className="flex items-center gap-3" aria-label="Terumbu.world home">
+        <Link href={localizedSeoPath("/", locale)} className="flex items-center gap-3" aria-label="Terumbu.world home">
           <span className="flex size-10 items-center justify-center rounded-full bg-kelp-500 text-white">
             <Heart size={19} aria-hidden="true" />
           </span>
@@ -109,7 +120,8 @@ export function SiteHeader({
 
         <nav className="hidden items-center gap-1 xl:flex" aria-label="Main navigation">
           {localizedNavItems.map((item) => {
-            const isActive = item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
+            const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`) ||
+              pathname === item.originalHref || pathname.startsWith(`${item.originalHref}/`);
 
             return (
               <Link
