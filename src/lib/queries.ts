@@ -10143,6 +10143,7 @@ export async function getPartnerPortalData(userId?: string) {
       }[];
       interestRequests: {
         id: string;
+        userId: string | null;
         departureId: string | null;
         requestCode: string;
         requestType: ReturnType<typeof normalizeExpeditionInterestRequestType>;
@@ -10247,6 +10248,7 @@ export async function getPartnerPortalData(userId?: string) {
 
     expedition.interestRequests.push({
       id: row.id,
+      userId: row.userId,
       departureId: row.departureId,
       requestCode: row.requestCode,
       requestType: normalizeExpeditionInterestRequestType(row.requestType),
@@ -12261,6 +12263,7 @@ export async function getAdminExpeditionWorkspaceData(
         id: expeditionInterestRequests.id,
         departureId: expeditionInterestRequests.departureId,
         requestCode: expeditionInterestRequests.requestCode,
+        userId: expeditionInterestRequests.userId,
         requestType: expeditionInterestRequests.requestType,
         status: expeditionInterestRequests.status,
         contactName: expeditionInterestRequests.contactName,
