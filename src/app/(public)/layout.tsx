@@ -3,6 +3,8 @@ import { SiteHeader } from "@/components/site-header";
 import { getDefaultAuthenticatedPath, getSessionUser } from "@/lib/auth";
 import { getPreferredDisplayCurrency, getPreferredLocale } from "@/lib/user-preferences";
 
+import "./public-theme.css";
+
 export default async function PublicLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   const [user, locale, displayCurrency] = await Promise.all([
     getSessionUser(),

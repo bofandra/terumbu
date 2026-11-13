@@ -1,12 +1,15 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import Link from "next/link";
 import { ArrowRight, BadgeCheck, BookOpenCheck, Camera, MapPinned, ShieldCheck } from "lucide-react";
 
 import { ImpactMapPreview } from "@/components/impact-map-preview";
+import { isVisualEvidenceUrl } from "@/lib/coral-monitoring";
 import { getImpactMapSites } from "@/lib/queries";
 import { summarizeImpactSites } from "@/lib/impact-map-location";
 import { getPreferredLocale } from "@/lib/user-preferences";
 import { localizedSeoPath, publicSeoAlternates } from "@/lib/public-locale-routing";
+import { cn } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
@@ -24,42 +27,55 @@ export default async function ImpactMapPage() {
   const id = locale === "id";
   const { withVerifiedEvidence, verifiedEvidenceCount } = summarizeImpactSites(sites);
   const evidenceUpdates = sites.filter((site) => site.latestEvidence).slice(0, 3);
+  const heroEvidence = sites
+    .flatMap((site) => site.evidence)
+    .find((evidence) => evidence.verificationStatus === "verified" && isVisualEvidenceUrl(evidence.fileUrl));
 
   return (
-    <div className="bg-mist-50">
-      <section className="relative overflow-hidden bg-[#062d7f] text-white">
-        <div className="pointer-events-none absolute -right-24 -top-40 size-[520px] rounded-full border-[90px] border-white/5" />
-        <div className="pointer-events-none absolute -bottom-48 left-1/4 size-[460px] rounded-full border-[70px] border-[#c9f341]/10" />
-        <div className="relative mx-auto max-w-7xl px-4 py-16 sm:px-6 sm:py-24 lg:px-8">
-          <p className="inline-flex items-center gap-2 text-xs font-black uppercase tracking-[0.18em] text-[#c9f341]"><MapPinned size={17} aria-hidden="true" /> {id ? "Jejak konservasi" : "Conservation in action"}</p>
-          <h1 className="mt-5 max-w-4xl text-5xl font-black leading-[1.02] tracking-[-0.045em] sm:text-6xl lg:text-7xl">
-            {id ? "Lihat lokasi. Telusuri bukti. Pahami dampaknya." : "Explore the places. Follow the evidence. Understand the impact."}
-          </h1>
-          <p className="mt-6 max-w-2xl text-lg leading-8 text-white/80">
-            {id ? "Temukan lokasi yang tercatat di Terumbu, lalu periksa aktivitas lapangan dan status verifikasi dari setiap catatan." : "Discover registered Terumbu conservation sites and follow documented field activity and the verification status of each record."}
-          </p>
-          <div className="mt-8 flex flex-wrap gap-3">
-            <a href="#explore-map" className="inline-flex min-h-12 items-center gap-2 rounded-full bg-[#c9f341] px-6 text-sm font-bold text-[#062d7f] hover:bg-white">
-              {id ? "Jelajahi peta" : "Explore the map"} <ArrowRight size={16} aria-hidden="true" />
-            </a>
-            <Link href="/campaigns" className="inline-flex min-h-12 items-center gap-2 rounded-full border border-white/40 px-6 text-sm font-bold text-white hover:bg-white/10">
-              {id ? "Lihat kampanye" : "Browse campaigns"}
-            </Link>
+    <div className="terumbu-editorial bg-[var(--public-paper)] text-[var(--public-ink)]">
+      <section className="bg-[var(--public-cream)]">
+        <div className={cn("mx-auto grid max-w-7xl gap-10 px-4 py-12 sm:px-6 sm:py-16 lg:px-8 lg:py-24", heroEvidence && "lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] lg:items-end lg:gap-16")}>
+          <div>
+            <p className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[0.16em] text-[var(--public-blue)]"><MapPinned size={17} aria-hidden="true" /> {id ? "Jejak konservasi" : "Conservation in action"}</p>
+            <h1 className="public-display-title mt-5 max-w-4xl font-bold tracking-[-0.04em]">
+              {id ? "Lihat lokasi. Telusuri bukti. Pahami dampaknya." : "Explore the places. Follow the evidence. Understand the impact."}
+            </h1>
+            <p className="mt-6 max-w-2xl text-lg leading-8 text-ocean-900/75">
+              {id ? "Temukan lokasi yang tercatat di Terumbu, lalu periksa aktivitas lapangan dan status verifikasi dari setiap catatan." : "Discover registered Terumbu conservation sites and follow documented field activity and the verification status of each record."}
+            </p>
+            <div className="mt-8 flex flex-wrap gap-3">
+              <a href="#explore-map" className="inline-flex min-h-12 items-center gap-2 rounded-full bg-[var(--public-blue)] px-6 text-sm font-bold text-white hover:bg-[var(--public-navy)]">
+                {id ? "Jelajahi peta" : "Explore the map"} <ArrowRight size={16} aria-hidden="true" />
+              </a>
+              <Link href="/campaigns" className="inline-flex min-h-12 items-center gap-2 rounded-full border border-[var(--public-rule)] px-6 text-sm font-bold text-[var(--public-navy)] hover:bg-[var(--public-blue-light)]">
+                {id ? "Lihat kampanye" : "Browse campaigns"}
+              </Link>
+            </div>
           </div>
+          {heroEvidence ? (
+            <figure className="public-hero-photo public-dark">
+              <Image src={heroEvidence.fileUrl} alt="" fill priority unoptimized className="object-cover" sizes="(min-width: 1024px) 45vw, 100vw" />
+              <figcaption className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 to-transparent px-5 pb-4 pt-12 text-sm text-white">
+                <Link href={heroEvidence.sourceHref} className="inline-flex items-center gap-2 font-bold hover:underline">
+                  {heroEvidence.title} <ArrowRight size={15} className="shrink-0" aria-hidden="true" />
+                </Link>
+              </figcaption>
+            </figure>
+          ) : null}
         </div>
       </section>
 
       {sites.length > 0 ? (
-        <section aria-label={id ? "Ringkasan catatan lokasi" : "Recorded site summary"} className="border-b border-ocean-900/10 bg-white">
-          <div className="mx-auto grid max-w-7xl gap-4 px-4 py-7 sm:grid-cols-3 sm:px-6 lg:px-8">
+        <section aria-label={id ? "Ringkasan catatan lokasi" : "Recorded site summary"} className="bg-[var(--public-navy)] text-white">
+          <div className="mx-auto grid max-w-7xl divide-y divide-white/20 px-4 py-4 sm:grid-cols-3 sm:divide-x sm:divide-y-0 sm:px-6 lg:px-8">
             {[
               { value: sites.length, label: id ? "Lokasi tercatat" : "Recorded sites" },
               { value: withVerifiedEvidence, label: id ? "Lokasi dengan bukti terverifikasi" : "Sites with verified evidence" },
               { value: verifiedEvidenceCount, label: id ? "Catatan bukti terverifikasi" : "Verified evidence records" }
             ].map((metric) => (
-              <div key={metric.label} className="flex items-center gap-4 rounded-2xl bg-[#eef4ff] p-5">
-                <strong className="text-4xl font-black text-[#073b9e]">{metric.value.toLocaleString(id ? "id-ID" : "en-US")}</strong>
-                <span className="text-sm font-semibold text-ocean-900/72">{metric.label}</span>
+              <div key={metric.label} className="flex min-w-0 items-center gap-4 px-3 py-4 sm:px-5 sm:py-5">
+                <strong className="text-4xl font-bold text-[var(--public-lime)] [font-family:var(--public-display)]">{metric.value.toLocaleString(id ? "id-ID" : "en-US")}</strong>
+                <span className="text-sm font-semibold text-white/85">{metric.label}</span>
               </div>
             ))}
           </div>
@@ -72,17 +88,17 @@ export default async function ImpactMapPage() {
           <h2 className="mt-3 text-3xl font-black tracking-[-0.035em] text-ocean-900 sm:text-5xl">{id ? "Jelajahi lokasi dan catatannya" : "Explore sites and field records"}</h2>
           <p className="mt-4 text-base leading-7 text-ocean-900/68">{id ? "Pilih penanda di peta atau lokasi dalam daftar. Filter berdasarkan jenis ekosistem dan bukti yang tersedia." : "Select a marker or choose a site from the list. Filter by ecosystem type and evidence availability."}</p>
         </div>
-        <ImpactMapPreview sites={sites} locale={locale} />
+        <ImpactMapPreview sites={sites} locale={locale} layout="editorial" />
       </section>
 
       {evidenceUpdates.length > 0 ? (
-        <section className="bg-white py-16 sm:py-20">
+        <section className="bg-[var(--public-blue-light)] py-16 sm:py-20">
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
             <p className="text-xs font-black uppercase tracking-[0.18em] text-[#0657d9]">{id ? "Dari lapangan" : "From the field"}</p>
             <h2 className="mt-3 text-3xl font-black tracking-tight text-ocean-900 sm:text-4xl">{id ? "Catatan yang bisa ditelusuri" : "Records you can trace"}</h2>
             <div className="mt-8 grid gap-5 md:grid-cols-3">
               {evidenceUpdates.map((site) => (
-                <article key={site.id} className="rounded-2xl border border-ocean-900/10 bg-mist-50 p-6">
+                <article key={site.id} className="rounded-2xl border border-[var(--public-rule)] bg-white p-6">
                   <span className="inline-flex items-center gap-2 text-xs font-bold text-[#0757cc]"><Camera size={16} aria-hidden="true" /> {site.region}</span>
                   <h3 className="mt-4 text-xl font-black text-ocean-900">{site.name}</h3>
                   <p className="mt-2 text-sm leading-6 text-ocean-900/65">{site.latestEvidence?.title}</p>
@@ -97,7 +113,7 @@ export default async function ImpactMapPage() {
         </section>
       ) : null}
 
-      <section className="bg-[#eaf2ff] py-16 sm:py-20">
+      <section className="bg-[var(--public-cream)] py-16 sm:py-20">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="max-w-3xl">
             <p className="text-xs font-black uppercase tracking-[0.18em] text-[#0757cc]">{id ? "Memahami data" : "Understanding the evidence"}</p>

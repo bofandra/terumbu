@@ -135,7 +135,7 @@ export function ExpeditionSectionTabs({
           <a
             href={primaryActionHref}
             onClick={handlePrimaryActionClick}
-            className="inline-flex min-h-14 items-center justify-center gap-3 rounded-full bg-kelp-500 px-8 text-lg font-bold text-white shadow-soft transition hover:bg-kelp-700"
+            className="inline-flex min-h-14 items-center justify-center gap-3 rounded-full bg-[var(--public-blue)] px-8 text-lg font-bold text-white shadow-soft transition hover:bg-[var(--public-navy)]"
           >
             {primaryActionLabel}
             <ArrowRight size={24} aria-hidden="true" />

@@ -81,41 +81,68 @@ export default async function ExpeditionsPage({ searchParams }: ExpeditionsPageP
   return (
     <>
       <JsonLd data={structuredData} />
-      <main className="terumbu-editorial bg-mist-50">
-      <section className="relative overflow-hidden bg-[#062d7f] text-white">
-        <div className="pointer-events-none absolute -right-24 -top-48 size-[570px] rounded-full border-[90px] border-white/5" /><div className="relative mx-auto grid max-w-7xl gap-10 px-4 py-14 sm:px-6 sm:py-20 lg:grid-cols-[minmax(0,0.98fr)_minmax(360px,0.82fr)] lg:items-center lg:px-8 lg:py-24">
-          <div className="relative z-[1]">
-            <p className="inline-flex items-center gap-2 text-xs font-black uppercase tracking-[0.16em] text-[#c9f341]">
-              <span className="h-0.5 w-7 bg-[#c9f341]" aria-hidden="true" />
-              <Leaf className="size-4" aria-hidden="true" />
-              {messages.badge}
-            </p>
-            <h1 className="mt-6 max-w-3xl text-5xl font-black leading-[1.02] tracking-[-0.045em] text-white sm:text-6xl lg:text-7xl">
-              {messages.title}
-            </h1>
-            <p className="mt-6 max-w-xl text-base leading-7 text-white/80 sm:text-lg">
-              {messages.intro}
-            </p>
-            <div className="mt-7 flex flex-wrap gap-x-5 gap-y-3">
-              {[
-                { label: messages.verifiedPartners, icon: ShieldCheck },
-                { label: messages.impactTrips, icon: Compass },
-                { label: messages.smallGroups, icon: Users }
-              ].map((item) => {
-                const Icon = item.icon;
+      <div className="terumbu-editorial bg-[var(--public-paper)] text-[var(--public-ink)]">
+        <section className="bg-[var(--public-cream)]">
+          <div className="mx-auto grid max-w-7xl gap-10 px-4 py-12 sm:px-6 sm:py-16 lg:grid-cols-[minmax(0,.85fr)_minmax(0,1.15fr)] lg:items-end lg:gap-16 lg:px-8 lg:py-24">
+            <div className="relative z-[1]">
+              <p className="inline-flex items-center gap-2 text-xs font-black uppercase tracking-[0.16em] text-[var(--public-blue)]">
+                <span className="h-0.5 w-7 bg-[var(--public-blue)]" aria-hidden="true" />
+                <Leaf className="size-4" aria-hidden="true" />
+                {messages.badge}
+              </p>
+              <h1 className="public-display-title mt-5 max-w-3xl font-bold tracking-[-0.04em]">
+                {messages.title}
+              </h1>
+              <p className="mt-6 max-w-xl text-base leading-7 text-ocean-900/75 sm:text-lg">
+                {messages.intro}
+              </p>
+              <div className="mt-7 flex flex-wrap gap-x-5 gap-y-3">
+                {[
+                  { label: messages.verifiedPartners, icon: ShieldCheck },
+                  { label: messages.impactTrips, icon: Compass },
+                  { label: messages.smallGroups, icon: Users }
+                ].map((item) => {
+                  const Icon = item.icon;
 
-                return (
-                  <span key={item.label} className="inline-flex items-center gap-2 text-sm font-bold text-white/85">
-                    <Icon className="size-4 text-[#c9f341]" aria-hidden="true" />
-                    {item.label}
-                  </span>
-                );
-              })}
+                  return (
+                    <span key={item.label} className="inline-flex items-center gap-2 text-sm font-bold text-ocean-900/80">
+                      <Icon className="size-4 text-[var(--public-blue)]" aria-hidden="true" />
+                      {item.label}
+                    </span>
+                  );
+                })}
+              </div>
+              <Link href="#catalogue" className="mt-8 inline-flex min-h-12 items-center gap-2 rounded-full bg-[var(--public-blue)] px-6 text-sm font-bold text-white hover:bg-[var(--public-navy)]">
+                {messages.catalogueTitle} <ArrowUpRight size={16} aria-hidden="true" />
+              </Link>
             </div>
-            <form action={localizedSeoPath("/expeditions", locale)} className="mt-8 rounded-3xl border border-white/25 bg-white p-4 text-ocean-900 shadow-[0_25px_65px_rgba(2,17,62,.25)] sm:p-5">
+            <div className="public-hero-photo">
+              {heroImage ? (
+                <Image src={heroImage} alt={isIndonesian ? "Foto dari ekspedisi yang tersedia di Terumbu" : "Photo from an available Terumbu expedition"} fill priority className="object-cover" sizes="(max-width: 1024px) 100vw, 42vw" />
+              ) : (
+                <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,#78cfc7,transparent_35%),linear-gradient(155deg,#0b5d64,#04252f)]" />
+              )}
+              <div className="absolute inset-0 bg-gradient-to-t from-ocean-950/80 via-transparent to-transparent" />
+              <div className="absolute inset-x-6 bottom-6 text-white">
+                <p className="text-lg font-bold text-sand-100">{isIndonesian ? "Berangkat sebagai tamu." : "Arrive as a guest."}</p>
+                <p className="mt-1 max-w-sm text-sm leading-6 text-white/72">{isIndonesian ? "Pemandu lokal membantu kamu membaca tempatnya." : "A local guide helps you understand the place."}</p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section id="catalogue" className="mx-auto max-w-7xl scroll-mt-24 px-4 pt-14 sm:px-6 lg:px-8">
+          <div className="flex flex-col justify-between gap-4 border-b border-ocean-900/10 pb-7 lg:flex-row lg:items-end">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-[0.16em] text-sky-700">{messages.catalogueEyebrow}</p>
+              <h2 className="mt-3 text-3xl font-bold tracking-[-0.035em] text-ocean-900 sm:text-5xl">{messages.catalogueTitle}</h2>
+            </div>
+            <p className="max-w-xl text-base leading-7 text-ocean-900/62">{messages.catalogueIntro}</p>
+          </div>
+          <form action={localizedSeoPath("/expeditions", locale)} className="mt-6 rounded-2xl border border-[var(--public-rule)] bg-white p-4 shadow-sm sm:p-5">
             {Object.entries(filters).filter(([key]) => !["q", "destination", "dateFrom", "dateTo", "participants"].includes(key)).map(([key, value]) => value !== undefined && <input key={key} type="hidden" name={key} value={String(value)} />)}
             <p className="text-sm font-bold text-ocean-900">{messages.searchTitle}</p>
-            <div className="mt-3 grid gap-3 sm:grid-cols-2">
+            <div className="mt-3 grid gap-3 sm:grid-cols-[1fr_1fr_auto]">
               <label className="relative">
                 <span className="sr-only">{messages.keyword}</span>
                 <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-ocean-900/42" aria-hidden="true" />
@@ -135,123 +162,99 @@ export default async function ExpeditionsPage({ searchParams }: ExpeditionsPageP
                   className="min-h-12 w-full rounded-lg border border-ocean-900/12 bg-white px-3 text-sm font-semibold text-ocean-900 outline-none focus:border-kelp-500"
                 />
               </label>
-              <button type="submit" className="flex min-h-12 items-center justify-center rounded-full bg-[#0757e5] px-5 text-sm font-bold text-white shadow-sm hover:bg-[#062d7f] sm:col-span-2">
+              <button type="submit" className="flex min-h-12 items-center justify-center rounded-full bg-[var(--public-blue)] px-5 text-sm font-bold text-white shadow-sm hover:bg-[var(--public-navy)]">
                 {messages.search}
               </button>
-              <ExpeditionTravelSearchFields filters={filters} locale={locale} />
+              <div className="sm:col-span-3"><ExpeditionTravelSearchFields filters={filters} locale={locale} /></div>
             </div>
           </form>
-          </div>
-          <div className="relative min-h-[360px] overflow-hidden rounded-[42%_42%_1.75rem_1.75rem] bg-ocean-900 shadow-soft sm:min-h-[470px]">
-            {heroImage ? (
-              <Image src={heroImage} alt={isIndonesian ? "Foto dari ekspedisi yang tersedia di Terumbu" : "Photo from an available Terumbu expedition"} fill priority className="object-cover" sizes="(max-width: 1024px) 100vw, 42vw" />
-            ) : (
-              <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,#78cfc7,transparent_35%),linear-gradient(155deg,#0b5d64,#04252f)]" />
-            )}
-            <div className="absolute inset-0 bg-gradient-to-t from-ocean-950/80 via-transparent to-transparent" />
-            <div className="absolute inset-x-6 bottom-6 text-white">
-              <p className="text-lg font-bold text-sand-100">{isIndonesian ? "Berangkat sebagai tamu." : "Arrive as a guest."}</p>
-              <p className="mt-1 max-w-sm text-sm leading-6 text-white/72">{isIndonesian ? "Pemandu lokal membantu kamu membaca tempatnya." : "A local guide helps you understand the place."}</p>
-            </div>
-          </div>
-        </div>
-      </section>
+        </section>
 
-      <section id="catalogue" className="mx-auto max-w-7xl scroll-mt-24 px-4 pt-14 sm:px-6 lg:px-8">
-        <div className="flex flex-col justify-between gap-4 border-b border-ocean-900/10 pb-7 lg:flex-row lg:items-end">
-          <div>
-            <p className="text-xs font-bold uppercase tracking-[0.16em] text-sky-700">{messages.catalogueEyebrow}</p>
-            <h2 className="mt-3 text-3xl font-bold tracking-[-0.035em] text-ocean-900 sm:text-5xl">{messages.catalogueTitle}</h2>
-          </div>
-          <p className="max-w-xl text-base leading-7 text-ocean-900/62">{messages.catalogueIntro}</p>
-        </div>
-      </section>
+        <section className="mx-auto grid max-w-7xl gap-6 px-4 py-8 sm:px-6 lg:grid-cols-[310px_minmax(0,1fr)] lg:px-8">
+          <aside className="hidden lg:block">
+            <ExpeditionMarketplaceFilters filters={filters} facets={facets} locale={locale} />
+          </aside>
 
-      <section className="mx-auto grid max-w-7xl gap-6 px-4 py-8 sm:px-6 lg:grid-cols-[310px_minmax(0,1fr)] lg:px-8">
-        <aside className="hidden lg:block">
-          <ExpeditionMarketplaceFilters filters={filters} facets={facets} locale={locale} />
-        </aside>
-
-        <div className="min-w-0">
-          <ExpeditionMarketplaceMobileFilters filters={filters} facets={facets} locale={locale} />
-          <div className="mt-4 flex flex-col justify-between gap-4 rounded-xl border border-ocean-900/10 bg-white p-4 shadow-sm lg:mt-0 lg:flex-row lg:items-center">
-            <div>
-              <p className="text-xl font-bold tracking-normal text-ocean-900">
-                {total.toLocaleString(localeName)} {messages.found}
-              </p>
-              <div className="mt-3">
-                <ExpeditionActiveFilterChips filters={filters} locale={locale} />
+          <div className="min-w-0">
+            <ExpeditionMarketplaceMobileFilters filters={filters} facets={facets} locale={locale} />
+            <div className="mt-4 flex flex-col justify-between gap-4 rounded-xl border border-ocean-900/10 bg-white p-4 shadow-sm lg:mt-0 lg:flex-row lg:items-center">
+              <div>
+                <p className="text-xl font-bold tracking-normal text-ocean-900">
+                  {total.toLocaleString(localeName)} {messages.found}
+                </p>
+                <div className="mt-3">
+                  <ExpeditionActiveFilterChips filters={filters} locale={locale} />
+                </div>
               </div>
+              <ExpeditionSortControl filters={filters} locale={locale} />
             </div>
-            <ExpeditionSortControl filters={filters} locale={locale} />
-          </div>
 
-          <div className="mt-5 grid gap-5 md:grid-cols-2">
-            {expeditions.map((expedition) => (
-              <ExpeditionCard key={expedition.slug} expedition={expedition} tile displayCurrency={displayCurrency} locale={localeName} />
-            ))}
-          </div>
-
-          {expeditions.length === 0 ? (
-            <div className="mt-5 rounded-xl border border-dashed border-ocean-900/18 bg-white p-8 text-center shadow-sm">
-              <p className="text-xl font-bold tracking-normal text-ocean-900">{messages.noResults}</p>
-              <p className="mx-auto mt-2 max-w-lg text-sm leading-6 text-ocean-900/62">
-                {isIndonesian ? "Coba hapus satu filter, perluas destinasi, atau cari kegiatan seperti monitoring terumbu dan kerja komunitas." : "Try removing a filter, broadening the destination, or searching for an activity such as reef monitoring or community work."}
-              </p>
+            <div className="mt-5 grid gap-5 md:grid-cols-2">
+              {expeditions.map((expedition) => (
+                <ExpeditionCard key={expedition.slug} expedition={expedition} tile displayCurrency={displayCurrency} locale={localeName} />
+              ))}
             </div>
-          ) : null}
-        </div>
-      </section>
-      <section className="mt-8 bg-ocean-50 py-16 sm:py-20">
-        <div className="mx-auto grid max-w-7xl gap-10 px-4 sm:px-6 lg:grid-cols-[0.78fr_1.22fr] lg:px-8">
-          <div>
-            <p className="text-xs font-bold uppercase tracking-[0.16em] text-sky-700">{messages.approachEyebrow}</p>
-            <h2 className="mt-3 text-3xl font-bold tracking-[-0.035em] text-ocean-900 sm:text-5xl">{messages.approachTitle}</h2>
-            <p className="mt-5 max-w-md text-base leading-7 text-ocean-900/62">{messages.approachIntro}</p>
-          </div>
-          <div className="grid gap-4 sm:grid-cols-2">
-            {messages.approachItems.map((item) => (
-              <article key={item.title} className="border-t-2 border-sky-700 bg-white p-5">
-                <h3 className="text-lg font-bold text-ocean-900">{item.title}</h3>
-                <p className="mt-2 text-sm leading-6 text-ocean-900/62">{item.body}</p>
-              </article>
-            ))}
-          </div>
-        </div>
-      </section>
 
-      <section className="bg-white py-16 sm:py-20">
-        <div className="mx-auto grid max-w-7xl gap-10 px-4 sm:px-6 lg:grid-cols-[0.78fr_1.22fr] lg:px-8">
-          <div>
-            <p className="text-xs font-bold uppercase tracking-[0.16em] text-sky-700">{messages.faqEyebrow}</p>
-            <h2 className="mt-3 text-3xl font-bold tracking-[-0.035em] text-ocean-900 sm:text-5xl">{messages.faqTitle}</h2>
+            {expeditions.length === 0 ? (
+              <div className="mt-5 rounded-xl border border-dashed border-ocean-900/18 bg-white p-8 text-center shadow-sm">
+                <p className="text-xl font-bold tracking-normal text-ocean-900">{messages.noResults}</p>
+                <p className="mx-auto mt-2 max-w-lg text-sm leading-6 text-ocean-900/62">
+                  {isIndonesian ? "Coba hapus satu filter, perluas destinasi, atau cari kegiatan seperti monitoring terumbu dan kerja komunitas." : "Try removing a filter, broadening the destination, or searching for an activity such as reef monitoring or community work."}
+                </p>
+              </div>
+            ) : null}
           </div>
-          <div>
-            {messages.faqs.map((item) => (
-              <details key={item.question} className="group border-t border-ocean-900/12 py-5 last:border-b">
-                <summary className="flex cursor-pointer list-none items-center justify-between gap-4 font-bold text-ocean-900">
-                  {item.question}<span className="text-xl text-coral-500 group-open:rotate-45" aria-hidden="true">+</span>
-                </summary>
-                <p className="mt-3 max-w-2xl text-sm leading-6 text-ocean-900/62">{item.answer}</p>
-              </details>
-            ))}
+        </section>
+        <section className="mt-8 bg-[var(--public-blue-light)] py-16 sm:py-20">
+          <div className="mx-auto grid max-w-7xl gap-10 px-4 sm:px-6 lg:grid-cols-[0.78fr_1.22fr] lg:px-8">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-[0.16em] text-sky-700">{messages.approachEyebrow}</p>
+              <h2 className="mt-3 text-3xl font-bold tracking-[-0.035em] text-ocean-900 sm:text-5xl">{messages.approachTitle}</h2>
+              <p className="mt-5 max-w-md text-base leading-7 text-ocean-900/62">{messages.approachIntro}</p>
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              {messages.approachItems.map((item) => (
+                <article key={item.title} className="border-t-2 border-sky-700 bg-white p-5">
+                  <h3 className="text-lg font-bold text-ocean-900">{item.title}</h3>
+                  <p className="mt-2 text-sm leading-6 text-ocean-900/62">{item.body}</p>
+                </article>
+              ))}
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
 
-      <section className="bg-[#062d7f] py-14 text-white sm:py-16">
-        <div className="mx-auto flex max-w-7xl flex-col justify-between gap-8 px-4 sm:px-6 lg:flex-row lg:items-end lg:px-8">
-          <div>
-            <p className="text-xs font-bold uppercase tracking-[0.16em] text-sand-300">{messages.ctaEyebrow}</p>
-            <h2 className="mt-3 max-w-3xl text-3xl font-bold tracking-[-0.035em] sm:text-5xl">{messages.ctaTitle}</h2>
-            <p className="mt-4 max-w-xl text-base leading-7 text-white/72">{messages.ctaBody}</p>
+        <section className="bg-white py-16 sm:py-20">
+          <div className="mx-auto grid max-w-7xl gap-10 px-4 sm:px-6 lg:grid-cols-[0.78fr_1.22fr] lg:px-8">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-[0.16em] text-sky-700">{messages.faqEyebrow}</p>
+              <h2 className="mt-3 text-3xl font-bold tracking-[-0.035em] text-ocean-900 sm:text-5xl">{messages.faqTitle}</h2>
+            </div>
+            <div>
+              {messages.faqs.map((item) => (
+                <details key={item.question} className="group border-t border-ocean-900/12 py-5 last:border-b">
+                  <summary className="flex cursor-pointer list-none items-center justify-between gap-4 font-bold text-ocean-900">
+                    {item.question}<span className="text-xl text-coral-500 group-open:rotate-45" aria-hidden="true">+</span>
+                  </summary>
+                  <p className="mt-3 max-w-2xl text-sm leading-6 text-ocean-900/62">{item.answer}</p>
+                </details>
+              ))}
+            </div>
           </div>
-          <Link href="#catalogue" className="inline-flex min-h-12 shrink-0 items-center justify-center gap-2 rounded-full bg-[#c9f341] px-6 text-sm font-bold text-[#062d7f] hover:bg-white">
-            {isIndonesian ? "Pilih perjalanan dan hubungi mitra" : "Find a trip and contact its host"}<ArrowUpRight size={17} aria-hidden="true" />
-          </Link>
-        </div>
-      </section>
-      </main>
+        </section>
+
+        <section className="public-dark bg-[var(--public-navy)] py-14 text-white sm:py-16">
+          <div className="mx-auto flex max-w-7xl flex-col justify-between gap-8 px-4 sm:px-6 lg:flex-row lg:items-end lg:px-8">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-[0.16em] text-sand-300">{messages.ctaEyebrow}</p>
+              <h2 className="mt-3 max-w-3xl text-3xl font-bold tracking-[-0.035em] sm:text-5xl">{messages.ctaTitle}</h2>
+              <p className="mt-4 max-w-xl text-base leading-7 text-white/72">{messages.ctaBody}</p>
+            </div>
+            <Link href="#catalogue" className="inline-flex min-h-12 shrink-0 items-center justify-center gap-2 rounded-full bg-[#c9f341] px-6 text-sm font-bold text-[#062d7f] hover:bg-white">
+              {isIndonesian ? "Pilih perjalanan dan hubungi mitra" : "Find a trip and contact its host"}<ArrowUpRight size={17} aria-hidden="true" />
+            </Link>
+          </div>
+        </section>
+      </div>
     </>
   );
 }

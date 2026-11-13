@@ -108,37 +108,39 @@ export default async function HomePage() {
   const heroImageUrl = fieldUpdate?.imageUrl;
 
   return (
-    <>
-      <section className="terumbu-editorial relative flex min-h-[calc(100svh-5rem)] items-center overflow-hidden bg-[#062d7f]">
+    <div className="terumbu-editorial public-home">
+      <section className="public-dark relative overflow-hidden bg-[var(--public-navy)]">
         {heroImageUrl ? (
           <Image src={heroImageUrl} alt={locale === "id" ? "Dokumentasi lapangan dari mitra" : "Partner-managed field documentation"} fill priority unoptimized className="absolute inset-0 object-cover" sizes="100vw" />
         ) : null}
-        <div className="absolute inset-0 bg-gradient-to-br from-[#062d7f]/95 via-[#063b9a]/85 to-[#0757e5]/75" />
-        <div className="pointer-events-none absolute -right-36 -top-44 size-[650px] rounded-full border-[120px] border-white/5" />
-        <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-white to-transparent" />
+        <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(10,39,118,.96),rgba(10,39,118,.77)_55%,rgba(10,39,118,.38)),linear-gradient(0deg,rgba(10,39,118,.84),transparent_70%)]" />
 
-        <div className="relative mx-auto grid max-w-7xl gap-12 px-4 py-20 sm:px-6 sm:py-24 lg:grid-cols-[1.12fr_0.88fr] lg:items-end lg:px-8">
+        <div className="relative mx-auto grid max-w-7xl gap-8 px-4 pb-20 pt-14 sm:px-6 sm:pb-24 sm:pt-20 lg:min-h-[660px] lg:grid-cols-[minmax(0,1.28fr)_minmax(0,.72fr)] lg:items-end lg:gap-12 lg:px-8">
           <div className="max-w-3xl text-white">
             <p className="inline-flex items-center gap-2 text-xs font-black uppercase tracking-[0.2em] text-[#c9f341]"><Compass size={17} aria-hidden="true" /> TERUMBU · {locale === "id" ? "Wisata konservasi Indonesia" : "Conservation travel in Indonesia"}</p>
-            <h1 className="mt-6 max-w-4xl text-5xl font-black leading-[1.05] tracking-[-0.045em] sm:text-6xl lg:text-[5.25rem]">
-              {messages.home.title}
+            <h1 className="public-display-title mt-5 max-w-3xl">
+              {messages.home.title} <span className="block text-[var(--public-lime)]">{messages.home.titleAccent}</span>
             </h1>
             <p className="mt-6 max-w-2xl text-lg leading-8 text-white/82 sm:text-xl">
               {messages.home.intro}
             </p>
-            <form action={localizedSeoPath("/expeditions", locale)} className="mt-9 grid gap-2 rounded-3xl border border-white/30 bg-white/15 p-3 shadow-[0_25px_60px_rgba(2,17,62,.24)] backdrop-blur-xl sm:grid-cols-[1fr_1fr_auto]">
-              <div className="sm:col-span-3"><ExpeditionTravelSearchFields locale={locale} /></div>
-              <label className="relative">
-                <span className="sr-only">{locale === "id" ? "Mau menjelajah ke mana?" : "Where do you want to explore?"}</span>
-                <MapPinned className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-ocean-900/45" aria-hidden="true" />
-                <input name="destination" placeholder={messages.home.destinationPlaceholder} className="min-h-12 w-full rounded-xl border-0 bg-white pl-9 pr-3 text-sm font-semibold text-ocean-900 outline-none ring-1 ring-white/20 focus:ring-2 focus:ring-coral-300" />
+            <form action={localizedSeoPath("/expeditions", locale)} className="mt-7 grid gap-2 rounded-[1.125rem] border border-white/50 bg-[#0a2776]/65 p-3 backdrop-blur-xl sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]">
+              <div className="sm:col-span-3"><ExpeditionTravelSearchFields locale={locale} compact /></div>
+              <label className="grid gap-1 text-xs font-bold">
+                {locale === "id" ? "Mau menjelajah ke mana?" : "Where do you want to explore?"}
+                <span className="relative">
+                  <MapPinned className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-ocean-900/60" aria-hidden="true" />
+                  <input name="destination" placeholder={messages.home.destinationPlaceholder} className="min-h-11 w-full rounded-lg border-0 bg-white pl-9 pr-3 text-sm font-semibold text-ocean-900" />
+                </span>
               </label>
-              <label className="relative">
-                <span className="sr-only">{locale === "id" ? "Aktivitas yang ingin kamu coba" : "Activity you want to try"}</span>
-                <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-ocean-900/45" aria-hidden="true" />
-                <input name="q" placeholder={messages.home.activityPlaceholder} className="min-h-12 w-full rounded-xl border-0 bg-white pl-9 pr-3 text-sm font-semibold text-ocean-900 outline-none ring-1 ring-white/20 focus:ring-2 focus:ring-coral-300" />
+              <label className="grid gap-1 text-xs font-bold">
+                {locale === "id" ? "Aktivitas yang ingin kamu coba" : "Activity you want to try"}
+                <span className="relative">
+                  <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-ocean-900/60" aria-hidden="true" />
+                  <input name="q" placeholder={messages.home.activityPlaceholder} className="min-h-11 w-full rounded-lg border-0 bg-white pl-9 pr-3 text-sm font-semibold text-ocean-900" />
+                </span>
               </label>
-              <button type="submit" className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-[#c9f341] px-5 text-sm font-black text-[#062d7f] hover:bg-white">
+              <button type="submit" className="inline-flex min-h-11 items-center justify-center gap-2 self-end rounded-full bg-[var(--public-lime)] px-4 text-sm font-bold text-[var(--public-navy)] hover:bg-white">
                 {messages.home.searchTrips} <ArrowRight size={17} aria-hidden="true" />
               </button>
             </form>
@@ -161,30 +163,28 @@ export default async function HomePage() {
           </div>
 
           {fieldUpdate ? (
-            <div className="hidden items-end lg:flex">
-              <div className="w-full rounded-3xl border border-white/25 bg-white/15 p-6 text-white shadow-[0_30px_70px_rgba(0,0,0,.25)] backdrop-blur-xl">
-                <p className="mt-4 text-2xl font-bold tracking-normal">{fieldUpdate.title}</p>
-                <ProgressMeter value={fieldUpdate.progress} label={`${fieldUpdate.title} progress`} className="mt-6 h-3" trackClassName="bg-white/18" />
-                <p className="mt-4 text-sm leading-6 text-white/72">{fieldUpdate.description}</p>
-                <ButtonLink href={localizedSeoPath("/impact-map", locale)} tone="ghost" className="mt-6 border border-white/24 text-white hover:bg-white/10">
-                  <PlayCircle size={18} aria-hidden="true" />
-                  {messages.home.watchImpact}
-                </ButtonLink>
-              </div>
+            <div className="w-full max-w-lg rounded-[1.125rem] border border-white/30 bg-[#0a2776]/70 p-6 text-white shadow-soft backdrop-blur-xl lg:justify-self-end">
+              <h2 className="text-2xl">{fieldUpdate.title}</h2>
+              <ProgressMeter value={fieldUpdate.progress} label={`${fieldUpdate.title} progress`} indicatorClassName="bg-[var(--public-lime)]" className="mt-6 h-2" trackClassName="bg-white/18" />
+              <p className="mt-4 text-sm leading-6 text-white/72">{fieldUpdate.description}</p>
+              <ButtonLink href={localizedSeoPath("/impact-map", locale)} tone="ghost" className="mt-6 border border-white/24 text-white hover:bg-white/10">
+                <PlayCircle size={18} aria-hidden="true" />
+                {messages.home.watchImpact}
+              </ButtonLink>
             </div>
           ) : null}
         </div>
       </section>
 
-      <StatStrip stats={stats} />
+      <StatStrip stats={stats} editorial />
 
-      <section className="terumbu-editorial bg-white py-20 sm:py-24">
+      <section className="bg-[var(--public-paper)] py-16 sm:py-24">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="flex flex-col justify-between gap-6 md:flex-row md:items-end">
             <SectionHeading title={messages.home.featuredTitle}>
               {messages.home.featuredDescription}
             </SectionHeading>
-            <ButtonLink href={localizedSeoPath("/expeditions", locale)} tone="secondary">
+            <ButtonLink href={localizedSeoPath("/expeditions", locale)} tone="editorial">
               {messages.home.exploreTrips}
             </ButtonLink>
           </div>
@@ -194,54 +194,56 @@ export default async function HomePage() {
         </div>
       </section>
 
-      <section className="terumbu-editorial bg-[#f5f8fb] py-20 sm:py-24"><div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="flex flex-col justify-between gap-6 md:flex-row md:items-end">
-          <SectionHeading title={messages.home.supportTitle}>
-            {messages.home.supportDescription}
-          </SectionHeading>
-          <ButtonLink href="/campaigns" tone="secondary">
-            {messages.home.viewCampaigns}
-          </ButtonLink>
-        </div>
-        <div className="mt-10 grid gap-6 lg:grid-cols-3">
-          {campaigns.map((campaign) => (
-            <CampaignCard key={campaign.slug} campaign={campaign} locale={locale} />
-          ))}
-        </div>
-        {campaigns.length === 0 ? (
-          <div className="mt-8 rounded-3xl border border-dashed border-ocean-900/20 bg-white p-8 text-center">
-            <h3 className="text-xl font-bold text-ocean-900">{locale === "id" ? "Kampanye publik sedang disiapkan" : "Public campaigns are being prepared"}</h3>
-            <p className="mx-auto mt-2 max-w-xl text-sm leading-6 text-ocean-900/65">{locale === "id" ? "Kampanye akan tampil setelah kontennya disetujui untuk publikasi." : "Campaigns appear here once their records are approved for publication."}</p>
+      <section className="bg-[var(--public-cream)] py-16 sm:py-24">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div className="flex flex-col justify-between gap-6 md:flex-row md:items-end">
+            <SectionHeading title={messages.home.supportTitle}>
+              {messages.home.supportDescription}
+            </SectionHeading>
+            <ButtonLink href="/campaigns" tone="editorial">
+              {messages.home.viewCampaigns}
+            </ButtonLink>
           </div>
-        ) : null}
-      </div>
+          <div className="mt-10 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {campaigns.map((campaign) => (
+              <CampaignCard key={campaign.slug} campaign={campaign} locale={locale} editorial />
+            ))}
+          </div>
+          {campaigns.length === 0 ? (
+            <div className="mt-8 rounded-3xl border border-dashed border-ocean-900/20 bg-white p-8 text-center">
+              <h3 className="text-xl font-bold text-ocean-900">{locale === "id" ? "Kampanye publik sedang disiapkan" : "Public campaigns are being prepared"}</h3>
+              <p className="mx-auto mt-2 max-w-xl text-sm leading-6 text-ocean-900/65">{locale === "id" ? "Kampanye akan tampil setelah kontennya disetujui untuk publikasi." : "Campaigns appear here once their records are approved for publication."}</p>
+            </div>
+          ) : null}
+        </div>
       </section>
 
-      <section className="terumbu-editorial bg-[#eaf2ff] py-20 sm:py-24"><div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <SectionHeading title={messages.home.impactMapTitle}>
-          {messages.home.impactMapDescription}
-        </SectionHeading>
-        <div className="mt-10">
-          <ImpactMapPreview sites={impactSites} locale={locale} />
-          <div className="mt-7 text-right"><Link href={localizedSeoPath("/impact-map", locale)} className="inline-flex min-h-11 items-center gap-2 rounded-full bg-[#0757e5] px-6 text-sm font-bold text-white hover:bg-[#062d7f]">{locale === "id" ? "Lihat peta dampak lengkap" : "Explore the full impact map"} <ArrowRight size={16} aria-hidden="true" /></Link></div>
-        </div>
+      <section className="bg-[var(--public-blue-light)] py-16 sm:py-24">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <SectionHeading title={messages.home.impactMapTitle}>
+            {messages.home.impactMapDescription}
+          </SectionHeading>
+          <div className="mt-10">
+            <ImpactMapPreview sites={impactSites} locale={locale} layout="editorial" />
+            <div className="mt-7 text-right"><Link href={localizedSeoPath("/impact-map", locale)} className="inline-flex min-h-11 items-center gap-2 rounded-full bg-[#0757e5] px-6 text-sm font-bold text-white hover:bg-[#062d7f]">{locale === "id" ? "Lihat peta dampak lengkap" : "Explore the full impact map"} <ArrowRight size={16} aria-hidden="true" /></Link></div>
+          </div>
         </div>
       </section>
 
-      <section className="terumbu-editorial bg-[#062d7f] py-20 text-white sm:py-24">
+      <section className="public-dark bg-[var(--public-navy)] py-16 text-white sm:py-24">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <h2 className="max-w-4xl text-3xl font-black leading-tight text-white sm:text-5xl">{messages.home.howTitle}</h2>
-          <div className="mt-10 grid gap-5 md:grid-cols-2 lg:grid-cols-4">
+          <div className="mt-10 grid gap-px overflow-hidden rounded-[1.125rem] border border-white/20 bg-white/20 sm:grid-cols-2 lg:grid-cols-4">
             {journey.map((item) => {
               const Icon = item.icon;
 
               return (
-                <div key={item.title} className="rounded-3xl border border-white/10 bg-white p-6 text-ocean-900 shadow-soft">
-                  <span className="flex size-12 items-center justify-center rounded-full bg-coral-100 text-coral-700">
+                <div key={item.title} className="bg-[var(--public-navy)] p-6">
+                  <span className="text-[var(--public-lime)]">
                     <Icon size={23} aria-hidden="true" />
                   </span>
-                  <h3 className="mt-5 text-lg font-bold tracking-normal text-ocean-900">{item.title}</h3>
-                  <p className="mt-3 text-sm leading-6 text-ocean-900/68">{item.description}</p>
+                  <h3 className="mt-5 text-xl text-white">{item.title}</h3>
+                  <p className="mt-3 text-sm leading-6 text-white/80">{item.description}</p>
                 </div>
               );
             })}
@@ -249,16 +251,18 @@ export default async function HomePage() {
         </div>
       </section>
 
-      <section className="terumbu-editorial mx-auto max-w-7xl px-4 py-20 sm:px-6 sm:py-24 lg:px-8">
-        <div className="grid gap-10 lg:grid-cols-[0.9fr_1.1fr] lg:items-center">
+      <section className="bg-[var(--public-cream)] py-16 sm:py-24">
+        <div className="mx-auto grid max-w-7xl gap-10 px-4 sm:px-6 lg:grid-cols-[.75fr_1.25fr] lg:items-center lg:px-8">
           <SectionHeading title={messages.home.passportTitle}>
             {messages.home.passportDescription}
           </SectionHeading>
-          <PassportPreview passport={passport?.preview ?? fallbackPassport} />
+          <div className="rounded-[1.375rem] bg-[var(--public-lime)] p-4 sm:p-7">
+            <PassportPreview passport={passport?.preview ?? fallbackPassport} locale={locale} />
+          </div>
         </div>
       </section>
 
       <PartnerLogoStrip partners={partners} locale={locale} />
-    </>
+    </div>
   );
 }

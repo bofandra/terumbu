@@ -45,17 +45,17 @@ export function ExpeditionHeroGallery({ images, region, locale = "en" }: Expedit
     <>
       <button
         type="button"
-        className="group relative h-[340px] w-full overflow-hidden rounded-md bg-ocean-900 text-left disabled:cursor-default sm:h-[430px] lg:h-[480px]"
+        className="group relative h-[320px] w-full overflow-hidden rounded-[1.625rem_1.625rem_4.5rem_1.625rem] border-[5px] border-white bg-[var(--public-navy)] text-left shadow-soft disabled:cursor-default sm:h-[430px] lg:h-[480px] lg:rounded-[2.125rem_2.125rem_6.875rem_2.125rem]"
         onClick={() => main && setOpen(true)}
         disabled={!main}
       >
         {main ? <Image src={main.src} alt={main.caption} fill className="object-cover transition duration-500 group-hover:scale-[1.03]" sizes="(min-width: 1024px) 48vw, 100vw" priority /> : null}
         <div className="absolute inset-0 bg-gradient-to-t from-ocean-900/18 via-transparent to-transparent" />
-        <span className="absolute bottom-5 right-5 inline-flex min-h-11 items-center gap-2 rounded-full bg-white px-5 text-sm font-bold text-ocean-900 shadow-soft">
+        <span className="absolute bottom-5 left-4 inline-flex min-h-11 items-center gap-2 rounded-full bg-white px-5 text-sm font-bold text-ocean-900 shadow-soft">
           <Camera size={16} aria-hidden="true" />
           {main ? `${labels.viewAll} ${images.length} ${labels.photos}` : labels.noPhotos}
         </span>
-        <span className="absolute left-4 top-4 rounded-full bg-white/92 px-3 py-1 text-xs font-bold text-ocean-900 shadow-sm">{region}</span>
+        <span className="absolute right-4 top-4 rounded-full bg-[var(--public-lime)] px-4 py-2 text-xs font-bold text-[var(--public-navy)] shadow-sm">{region}</span>
       </button>
 
       {open ? (

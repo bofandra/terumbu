@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 
 import type { SupportedLocale } from "@/lib/user-preferences";
@@ -50,23 +51,23 @@ export function SiteFooter({ locale = "en" }: { locale?: SupportedLocale }) {
         };
 
   return (
-    <footer className="border-t border-ocean-900/10 bg-sand-50">
-      <div className="mx-auto grid max-w-7xl gap-10 px-4 py-12 sm:px-6 lg:grid-cols-[1.2fr_2fr] lg:px-8">
+    <footer className="public-footer bg-[var(--public-navy)] text-white">
+      <div className="mx-auto grid max-w-7xl gap-10 px-4 py-14 sm:px-6 lg:grid-cols-[1.2fr_2fr] lg:px-8">
         <div>
-          <Link href={localizedSeoPath("/", locale)} className="text-xl font-bold text-ocean-900">
-            Terumbu.world
+          <Link href={localizedSeoPath("/", locale)} className="inline-block" aria-label="Terumbu.world">
+            <Image src="/terumbu/terumbu-logo.png" alt="" width={1600} height={321} sizes="154px" className="h-auto w-[154px] brightness-0 invert" />
           </Link>
-          <p className="mt-4 max-w-md text-sm leading-6 text-ocean-900/68">
+          <p className="mt-4 max-w-md text-sm leading-6 text-white/80">
             {labels.description}
           </p>
         </div>
-        <div className="grid gap-8 sm:grid-cols-3">
+        <div className="grid grid-cols-2 gap-8 sm:grid-cols-3">
           <div>
-            <h2 className="text-sm font-semibold text-ocean-900">{labels.platform}</h2>
-            <ul className="mt-4 space-y-3 text-sm text-ocean-900/68">
+            <h2 className="text-xs font-bold uppercase tracking-[0.12em] text-[var(--public-lime)]">{labels.platform}</h2>
+            <ul className="mt-4 space-y-3 text-sm text-white/80">
               {labels.links.map((item) => (
                 <li key={item.href}>
-                  <Link href={publicLocaleHref(item.href, locale)} className="hover:text-ocean-900">
+                  <Link href={publicLocaleHref(item.href, locale)} className="hover:text-[var(--public-lime)]">
                     {item.label}
                   </Link>
                 </li>
@@ -74,17 +75,17 @@ export function SiteFooter({ locale = "en" }: { locale?: SupportedLocale }) {
             </ul>
           </div>
           <div>
-            <h2 className="text-sm font-semibold text-ocean-900">{labels.account}</h2>
-            <ul className="mt-4 space-y-3 text-sm text-ocean-900/68">
-              <li><Link href="/signup" className="hover:text-ocean-900">{labels.join}</Link></li>
-              <li><Link href="/dashboard" className="hover:text-ocean-900">{labels.dashboard}</Link></li>
-              <li><Link href="/dashboard/impact" className="hover:text-ocean-900">{labels.myImpact}</Link></li>
-              <li><Link href="/corporate/dashboard" className="hover:text-ocean-900">{labels.corporate}</Link></li>
+            <h2 className="text-xs font-bold uppercase tracking-[0.12em] text-[var(--public-lime)]">{labels.account}</h2>
+            <ul className="mt-4 space-y-3 text-sm text-white/80">
+              <li><Link href="/signup" className="hover:text-[var(--public-lime)]">{labels.join}</Link></li>
+              <li><Link href="/dashboard" className="hover:text-[var(--public-lime)]">{labels.dashboard}</Link></li>
+              <li><Link href="/dashboard/impact" className="hover:text-[var(--public-lime)]">{labels.myImpact}</Link></li>
+              <li><Link href="/corporate/dashboard" className="hover:text-[var(--public-lime)]">{labels.corporate}</Link></li>
             </ul>
           </div>
           <div>
-            <h2 className="text-sm font-semibold text-ocean-900">{labels.trust}</h2>
-            <ul className="mt-4 space-y-3 text-sm text-ocean-900/68">
+            <h2 className="text-xs font-bold uppercase tracking-[0.12em] text-[var(--public-lime)]">{labels.trust}</h2>
+            <ul className="mt-4 space-y-3 text-sm text-white/80">
               <li>{labels.verifiedPartners}</li>
               <li>{labels.fieldEvidence}</li>
               <li>{labels.transparency}</li>

@@ -405,7 +405,7 @@ export function ExpeditionMobileBookingBar(props: ExpeditionBookingCardProps) {
   const secondaryPrice = secondaryPriceLabel(props.price, props.currency, displayCurrency, locale);
 
   return (
-    <div className="fixed inset-x-0 bottom-0 z-40 border-t border-ocean-900/10 bg-white/96 p-3 shadow-soft backdrop-blur lg:hidden">
+    <div className="fixed inset-x-0 bottom-0 z-40 border-t border-ocean-900/10 bg-white p-3 shadow-soft lg:hidden">
       <div className="mx-auto flex max-w-lg items-center justify-between gap-3">
         <div className="min-w-0">
           <p className="text-xs font-semibold text-ocean-900/54">{isIndonesian ? "Mulai dari" : "From"}</p>
@@ -422,12 +422,12 @@ export function ExpeditionMobileBookingBar(props: ExpeditionBookingCardProps) {
           </p>
         </div>
         {props.academyEligibility === "learning_required" && props.requiredAcademyCourse ? (
-          <Link href={"/academy/courses/" + props.requiredAcademyCourse.slug} className="inline-flex min-h-12 shrink-0 items-center gap-2 rounded-full bg-kelp-500 px-5 text-sm font-bold text-white shadow-soft">
+          <Link href={"/academy/courses/" + props.requiredAcademyCourse.slug} className="inline-flex min-h-12 shrink-0 items-center gap-2 rounded-full bg-[var(--public-blue)] px-5 text-sm font-bold text-white hover:bg-[var(--public-navy)]">
             {isIndonesian ? "Selesaikan kursus" : "Complete course first"}
             <ArrowRight size={17} aria-hidden="true" />
           </Link>
         ) : bookableDeparture ? (
-          <a href="#availability" className="inline-flex min-h-12 shrink-0 items-center gap-2 rounded-full bg-kelp-500 px-5 text-sm font-bold text-white shadow-soft">
+          <a href="#availability" className="inline-flex min-h-12 shrink-0 items-center gap-2 rounded-full bg-[var(--public-blue)] px-5 text-sm font-bold text-white hover:bg-[var(--public-navy)]">
             {isIndonesian ? "Pilih tanggal" : "Reserve / Apply"}
             <ArrowRight size={17} aria-hidden="true" />
           </a>

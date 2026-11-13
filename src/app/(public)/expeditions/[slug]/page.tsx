@@ -1,7 +1,6 @@
 import {
   ArrowRight,
   Award,
-  BadgeCheck,
   CalendarDays,
   Check,
   CheckCircle2,
@@ -606,64 +605,56 @@ export default async function ExpeditionDetailPage({
         }}
       />
       <JsonLd data={expeditionStructuredData} />
-      <main className="terumbu-editorial bg-white pb-24">
-        <section className="overflow-hidden border-b border-[#0757e5]/15 bg-[#eaf2ff]">
-          <div className="mx-auto max-w-7xl px-4 pt-6 sm:px-6 lg:px-8">
-            <nav className="flex flex-wrap items-center gap-2 text-sm font-semibold text-ocean-900/54" aria-label={isIndonesian ? "Breadcrumb navigasi" : "Breadcrumb"}>
-              <Link href={localizedSeoPath("/", locale)} className="hover:text-sky-700">{labels.home}</Link>
+      <div className="terumbu-editorial public-expedition-detail bg-[var(--public-paper)] pb-24">
+        <section className="public-dark public-trip-hero relative bg-[var(--public-blue)] text-white">
+          <div className="relative mx-auto max-w-7xl px-4 pt-6 sm:px-6 lg:px-8">
+            <nav className="flex flex-wrap items-center gap-2 text-sm font-semibold text-white/90" aria-label={isIndonesian ? "Breadcrumb navigasi" : "Breadcrumb"}>
+              <Link href={localizedSeoPath("/", locale)} className="hover:underline">{labels.home}</Link>
               <span>/</span>
-              <Link href={localizedSeoPath("/expeditions", locale)} className="hover:text-sky-700">{labels.expeditions}</Link>
+              <Link href={localizedSeoPath("/expeditions", locale)} className="hover:underline">{labels.expeditions}</Link>
               <span>/</span>
-              <Link href={publicLocaleHref(`/expeditions?destination=${encodeURIComponent(expedition.region)}`, locale)} className="hover:text-sky-700">{expedition.region}</Link>
+              <Link href={publicLocaleHref(`/expeditions?destination=${encodeURIComponent(expedition.region)}`, locale)} className="hover:underline">{expedition.region}</Link>
             </nav>
           </div>
 
-          <div className="mx-auto grid max-w-7xl gap-10 px-4 pb-14 pt-8 sm:px-6 lg:grid-cols-[0.92fr_1.08fr] lg:items-center lg:px-8 lg:pb-20 lg:pt-10">
-            <ExpeditionHeroGallery images={expedition.galleryImages} region={expedition.region} locale={locale} />
-
+          <div className="relative mx-auto grid max-w-7xl gap-10 px-4 pb-14 pt-10 sm:px-6 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,.95fr)] lg:items-center lg:gap-16 lg:px-8 lg:pb-20 lg:pt-14">
             <div className="min-w-0 lg:pt-1">
-              <p className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[0.16em] text-sky-700">
-                <span className="h-0.5 w-7 bg-coral-500" aria-hidden="true" />
+              <p className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-[0.16em] text-[var(--public-lime)]">
+                <span className="h-0.5 w-7 shrink-0 bg-current" aria-hidden="true" />
                 {expedition.marketplace.typeLabel ? <>{expedition.marketplace.typeLabel} &bull; </> : null}{expedition.region}, Indonesia
               </p>
-              <div className="mt-5 flex flex-wrap items-center gap-2 text-sm font-semibold text-ocean-900/58">
+              <h1 className="public-display-title mt-4 max-w-3xl">{expedition.title}</h1>
+              <p className="mt-5 max-w-2xl text-lg leading-8 text-white/90">{expedition.summary}</p>
+              <div className="mt-5 flex flex-wrap items-center gap-2 text-sm font-semibold text-white/90">
                 <span className="flex items-center gap-1">
-                  {expedition.reviewCount > 0 ? stars(expedition.rating) : <Users size={18} aria-hidden="true" className="text-ocean-900/46" />}
+                  {expedition.reviewCount > 0 ? stars(expedition.rating) : <Users size={18} aria-hidden="true" />}
                 </span>
                 <span>{ratingLabel}</span>
-                <span className="inline-flex size-6 items-center justify-center rounded-full border border-ocean-900/20 text-xs font-bold">?</span>
               </div>
-              <h1 className="mt-6 max-w-3xl text-5xl font-black leading-[1.02] tracking-[-0.045em] text-[#062d7f] sm:text-6xl">{expedition.title}</h1>
-              <p className="mt-5 max-w-2xl text-lg leading-8 text-ocean-900/64">{expedition.summary}</p>
-              <div className="mt-7 flex flex-wrap items-end justify-between gap-5 rounded-3xl border border-[#0757e5]/15 bg-white p-6 shadow-soft">
-                <div>
-                  <p className="text-xs font-bold uppercase tracking-[0.12em] text-ocean-900/48">{isIndonesian ? "Harga mulai" : "Price from"}</p>
-                  <p className="mt-1 text-2xl font-bold text-ocean-900">{formatCurrency(expedition.price, expedition.currency)}</p>
-                  {secondaryPrice ? <p className="mt-1 text-xs font-bold text-kelp-700">{secondaryPrice} {isIndonesian ? "estimasi" : "estimated"}</p> : null}
+              <div className="mt-7 flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-white/20 bg-[var(--public-navy)] p-5">
+                <div className="min-w-0">
+                  <p className="text-xs font-bold uppercase tracking-[0.12em] text-white/80">{isIndonesian ? "Harga mulai" : "Price from"}</p>
+                  <p className="mt-1 break-words text-2xl font-bold">{formatCurrency(expedition.price, expedition.currency)}</p>
+                  {secondaryPrice ? <p className="mt-1 text-xs font-bold text-[var(--public-lime)]">{secondaryPrice} {isIndonesian ? "estimasi" : "estimated"}</p> : null}
                 </div>
-                <ButtonLink href={primaryActionHref} className="rounded-full">{primaryActionLabel}<ArrowRight size={17} aria-hidden="true" /></ButtonLink>
+                <Link href={primaryActionHref} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-[var(--public-lime)] px-5 py-2.5 text-sm font-bold text-[var(--public-navy)] hover:bg-white">
+                  {primaryActionLabel}<ArrowRight size={17} aria-hidden="true" />
+                </Link>
               </div>
 
-              <div className="mt-5"><ExpeditionShareButtons slug={expedition.slug} title={expedition.title} referralCode={shareReferralCode} compact locale={locale} /></div>
-
-              <div className="mt-8 grid gap-4 sm:grid-cols-3">
-                {heroBadges.map((badge, index) => {
-                  const Icon = index === 0 ? Leaf : index === 1 ? BadgeCheck : Users;
-
-                  return (
-                    <div key={badge} className="border-t border-ocean-900/12 pt-4">
-                      <Icon size={23} strokeWidth={1.8} aria-hidden="true" className={cn(index === 1 ? "text-purple-500" : "text-sky-700")} />
-                      <div>
-                        <p className="mt-3 text-sm font-bold text-ocean-900">{badge}</p>
-                      </div>
-                    </div>
-                  );
-                })}
-
-              </div>
+              <div className="mt-5 rounded-2xl bg-white/95 p-2"><ExpeditionShareButtons slug={expedition.slug} title={expedition.title} referralCode={shareReferralCode} compact locale={locale} /></div>
             </div>
+            <ExpeditionHeroGallery images={expedition.galleryImages} region={expedition.region} locale={locale} />
           </div>
         </section>
+
+        <div className="relative z-10 mx-auto -mt-5 max-w-7xl px-4 pb-5 sm:px-6 lg:px-8">
+          <ul className="flex flex-wrap gap-2 rounded-2xl border border-[var(--public-rule)] bg-white p-3 shadow-soft">
+            {Array.from(new Set([stayRange.stayAtLeast, ...heroBadges])).map((fact) => (
+              <li key={fact} className="rounded-full bg-[var(--public-blue-light)] px-4 py-2 text-sm font-bold text-[var(--public-navy)]">{fact}</li>
+            ))}
+          </ul>
+        </div>
 
         <ExpeditionSectionTabs
           tabs={tabs}
@@ -1276,9 +1267,8 @@ export default async function ExpeditionDetailPage({
             </div>
           </section>
         </div>
-      </main>
-
-      <ExpeditionMobileBookingBar {...bookingProps} />
+        <ExpeditionMobileBookingBar {...bookingProps} />
+      </div>
     </>
   );
 }

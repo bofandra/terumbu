@@ -46,7 +46,8 @@ const messages = {
     },
     home: {
       badge: "Conservation expeditions across Indonesia",
-      title: "Explore the wild. Help protect it.",
+      title: "Explore the wild.",
+      titleAccent: "Help protect it.",
       intro: "Join conservation journeys with local communities, learn from the ecosystems you visit, and take part in real action.",
       explore: "Explore Expeditions",
       impact: "See Verified Impact",
@@ -144,7 +145,8 @@ const messages = {
     },
     home: {
       badge: "Ekspedisi konservasi di seluruh Indonesia",
-      title: "Jelajahi alamnya. Ikut jaga tempatnya.",
+      title: "Jelajahi alamnya.",
+      titleAccent: "Ikut jaga tempatnya.",
       intro: "Ikuti perjalanan konservasi bersama masyarakat lokal belajar dari ekosistem yang kamu kunjungi dan terlibat dalam aksi nyata.",
       explore: "Jelajahi Ekspedisi",
       impact: "Lihat Dampak Terverifikasi",

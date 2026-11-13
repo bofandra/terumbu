@@ -53,17 +53,6 @@ img {
   color: #07343f;
 }
 
-/* The editorial palette in the supplied Terumbu concepts. Keep existing
-   operator dashboards on their established token set. */
-:root {
-  --terumbu-blue: #0757e5;
-  --terumbu-navy: #062d7f;
-  --terumbu-lime: #c9f341;
-}
-.terumbu-editorial h1,
-.terumbu-editorial h2 {
-  letter-spacing: -0.045em;
-}
 .terumbu-map-pin {
   border: 0 !important;
   background: none !important;
@@ -93,16 +82,11 @@ img {
 }
 .terumbu-map-pin:focus-visible span { outline: 4px solid #0757e5; }
 
-/* Shared accessibility rules for the public editorial experience. */
-:where(.terumbu-editorial) :is(a, button, input, select, textarea, summary):focus-visible {
-  outline: 3px solid var(--terumbu-blue);
-  outline-offset: 3px;
-}
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
-  .terumbu-editorial *,
-  .terumbu-editorial *::before,
-  .terumbu-editorial *::after {
+  :is(.terumbu-editorial, .public-header, .public-footer) *,
+  :is(.terumbu-editorial, .public-header, .public-footer) *::before,
+  :is(.terumbu-editorial, .public-header, .public-footer) *::after {
     animation-duration: 0.01ms !important;
     scroll-behavior: auto !important;
     transition-duration: 0.01ms !important;

@@ -31,8 +31,8 @@ export function ExpeditionCard({ expedition, displayCurrency = "USD", locale = "
 
   return (
     <article className={cn(
-      "group overflow-hidden rounded-3xl border border-ocean-900/10 bg-white shadow-sm transition hover:-translate-y-0.5 hover:border-[#0757e5]/40 hover:shadow-soft",
-      tile ? "flex h-full flex-col" : "grid md:grid-cols-[240px_minmax(0,1fr)]"
+      "group overflow-hidden border border-ocean-900/10 bg-white shadow-sm transition hover:-translate-y-0.5 hover:border-[#0757e5]/40 hover:shadow-soft",
+      tile ? "flex h-full flex-col rounded-2xl" : "grid rounded-3xl md:grid-cols-[240px_minmax(0,1fr)]"
     )}>
       <Link href={tripHref} className={cn("relative block overflow-hidden bg-ocean-900", tile ? "h-56 sm:h-64" : "min-h-56")}>
         {expedition.imageUrl ? (
@@ -79,7 +79,7 @@ export function ExpeditionCard({ expedition, displayCurrency = "USD", locale = "
             <p className="mt-1 text-xl font-black text-ocean-900">{displayedPrice}</p>
             {secondaryPrice ? <p className="mt-1 text-xs font-bold text-kelp-700">{secondaryPrice} {isIndonesian ? "estimasi" : "estimated"}</p> : null}
           </div>
-          <ButtonLink href={tripHref} tone="secondary">{isIndonesian ? "Lihat detail" : "View details"}</ButtonLink>
+          <ButtonLink href={tripHref} tone={tile ? "editorial" : "secondary"}>{isIndonesian ? "Lihat detail" : "View details"}</ButtonLink>
         </div>
       </div>
     </article>

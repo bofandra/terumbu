@@ -6,14 +6,15 @@ import { ButtonLink } from "@/components/ui/button";
 import { ProgressMeter } from "@/components/ui/progress-meter";
 import type { CampaignCardData } from "@/lib/domain";
 import type { SupportedLocale } from "@/lib/user-preferences";
-import { formatCurrency } from "@/lib/utils";
+import { cn, formatCurrency } from "@/lib/utils";
 
 type CampaignCardProps = {
   campaign: CampaignCardData;
   locale?: SupportedLocale;
+  editorial?: boolean;
 };
 
-export function CampaignCard({ campaign, locale = "en" }: CampaignCardProps) {
+export function CampaignCard({ campaign, locale = "en", editorial = false }: CampaignCardProps) {
   const progress = Math.round((campaign.raised / campaign.goal) * 100);
   const labels =
     locale === "id"
@@ -36,7 +37,7 @@ export function CampaignCard({ campaign, locale = "en" }: CampaignCardProps) {
     : `${campaign.title} in ${campaign.region}`;
 
   return (
-    <article className="overflow-hidden rounded-2xl border border-ocean-900/10 bg-white shadow-soft">
+    <article className={cn("overflow-hidden rounded-2xl border border-ocean-900/10 bg-white", editorial ? "flex flex-col" : "shadow-soft")}>
       <Link href={`/campaigns/${campaign.slug}`} className="block">
         {campaign.imageUrl ? (
           <Image
@@ -45,11 +46,11 @@ export function CampaignCard({ campaign, locale = "en" }: CampaignCardProps) {
             width={800}
             height={450}
             unoptimized
-            className="h-56 w-full object-cover"
+            className={cn("w-full object-cover", editorial ? "aspect-[5/4] h-auto" : "h-56")}
             sizes="(min-width: 1024px) 33vw, 100vw"
           />
         ) : (
-          <div className="flex h-56 w-full items-end bg-ocean-900 p-5 text-sm font-bold uppercase tracking-[0.14em] text-white/72">
+          <div className={cn("flex w-full items-end bg-ocean-900 p-5 text-sm font-bold uppercase tracking-[0.14em] text-white/72", editorial ? "aspect-[5/4]" : "h-56")}>
             {campaign.category}
           </div>
         )}
@@ -77,7 +78,7 @@ export function CampaignCard({ campaign, locale = "en" }: CampaignCardProps) {
             <span className="font-bold text-ocean-900">{progress}% {labels.funded}</span>
             <span className="text-ocean-900/60">{campaign.daysLeft} {labels.daysLeft}</span>
           </div>
-          <ProgressMeter value={progress} label={`${campaign.title} ${labels.progress}`} className="mt-2 h-3" trackClassName="bg-ocean-50" />
+          <ProgressMeter value={progress} label={`${campaign.title} ${labels.progress}`} className="mt-2 h-3" trackClassName="bg-ocean-50" indicatorClassName={editorial ? "bg-[var(--public-blue)]" : undefined} />
           <p className="mt-3 min-w-0 break-words text-sm text-ocean-900/68 [overflow-wrap:anywhere]">
             <span className="font-bold text-ocean-900">{formatCurrency(campaign.raised, campaign.currency)}</span> {labels.raisedOf}{" "}
             {formatCurrency(campaign.goal, campaign.currency)}
@@ -85,7 +86,7 @@ export function CampaignCard({ campaign, locale = "en" }: CampaignCardProps) {
           <p className="mt-1 text-sm text-ocean-900/68">{campaign.impact}</p>
         </div>
 
-        <ButtonLink href={`/campaigns/${campaign.slug}`} tone="donation" className="mt-5 w-full">
+        <ButtonLink href={`/campaigns/${campaign.slug}`} tone={editorial ? "editorial" : "donation"} className="mt-5 w-full">
           {labels.donate}
         </ButtonLink>
       </div>

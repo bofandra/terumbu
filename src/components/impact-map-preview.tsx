@@ -15,9 +15,11 @@ import { localizedSeoPath } from "@/lib/public-locale-routing";
 type ImpactMapPreviewProps = {
   sites: ImpactSiteData[];
   locale?: SupportedLocale;
+  layout?: "default" | "editorial";
 };
 
-export function ImpactMapPreview({ sites, locale = "en" }: ImpactMapPreviewProps) {
+export function ImpactMapPreview({ sites, locale = "en", layout = "default" }: ImpactMapPreviewProps) {
+  const editorial = layout === "editorial";
   const labels =
     locale === "id"
       ? {
@@ -114,9 +116,112 @@ export function ImpactMapPreview({ sites, locale = "en" }: ImpactMapPreviewProps
     );
   }
 
+  const siteDetail = selectedSite ? (
+    <div className={cn("min-w-0 border border-ocean-900/10 p-5", editorial ? "rounded-2xl bg-[var(--public-cream)]" : "mt-6 rounded-xl bg-sand-50")}>
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="break-words text-lg font-bold tracking-normal text-ocean-900">{selectedSite.name}</p>
+          <p className="mt-1 text-sm text-ocean-900/62">{selectedSite.region}</p>
+        </div>
+        <span className="max-w-[45%] break-words rounded-full bg-white px-3 py-1 text-xs font-bold text-ocean-900">
+          {selectedSite.type}
+        </span>
+      </div>
+
+      <div className="mt-5 rounded-xl bg-white p-4">
+        <p className="text-xs font-bold uppercase tracking-wide text-ocean-900/60">{labels.evidenceReview}</p>
+        <p className="mt-2 text-sm font-semibold text-ocean-900">{selectedSite.verifiedEvidenceCount} {labels.verified} · {selectedSite.pendingEvidenceCount} {labels.inReview}</p>
+        <p className="mt-1 text-xs text-ocean-900/60">{selectedSite.evidenceCount} {labels.activityRecords}</p>
+        {selectedSite.latestSurvey ? <p className="mt-2 text-xs text-ocean-900/60">{labels.latestSurvey}: {selectedSite.latestSurvey}</p> : null}
+      </div>
+
+      {selectedSite.beforeAfter ? (
+        <div className="mt-5 grid gap-3 sm:grid-cols-2">
+          {[
+            { label: labels.before, evidence: selectedSite.beforeAfter.before },
+            { label: labels.after, evidence: selectedSite.beforeAfter.after }
+          ].map(({ label, evidence }) => (
+            <div key={label} className="overflow-hidden rounded-xl bg-white">
+              {evidence && isVisualEvidenceUrl(evidence.fileUrl) ? (
+                <Image
+                  src={evidence.fileUrl}
+                  alt={`${label} ${labels.activityFor} ${selectedSite.name}`}
+                  width={360}
+                  height={220}
+                  unoptimized
+                  className="h-28 w-full object-cover"
+                  sizes="(min-width: 1280px) 180px, 50vw"
+                />
+              ) : (
+                <div className="flex h-28 items-center justify-center bg-ocean-50 text-xs font-bold text-ocean-900/52">{label}</div>
+              )}
+              <div className="p-3">
+                <p className="text-xs font-bold uppercase tracking-[0.12em] text-coral-700">{label}</p>
+                <p className="mt-1 line-clamp-2 text-xs font-semibold text-ocean-900/62">
+                  {evidence ? evidence.title : labels.pending}
+                </p>
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : null}
+
+      {selectedSite.latestEvidence ? (
+        <div className="mt-5 rounded-xl bg-white p-4">
+          <p className="text-xs font-bold uppercase tracking-[0.12em] text-coral-700">{labels.latestActivity}</p>
+          <h3 className="mt-2 font-bold text-ocean-900">{selectedSite.latestEvidence.title}</h3>
+          <p className="mt-2 text-xs leading-5 text-ocean-900/60">
+            {selectedSite.latestEvidence.stageLabel} / {selectedSite.latestEvidence.verificationStatus}
+            {selectedSite.latestEvidence.metricLabel && selectedSite.latestEvidence.metricValue
+              ? ` / ${selectedSite.latestEvidence.metricLabel}: ${selectedSite.latestEvidence.metricValue}`
+              : ""}
+          </p>
+          <Link href={selectedSite.latestEvidence.sourceHref} className={cn("mt-3 inline-flex items-center gap-1 text-sm font-bold", editorial ? "text-[var(--public-blue)] hover:underline" : "text-coral-700 hover:text-coral-500")}>
+            {labels.openSource}
+            <ExternalLink size={14} aria-hidden="true" />
+          </Link>
+        </div>
+      ) : null}
+
+      {selectedSite.monitoringHistory.length > 0 ? (
+        <div className="mt-5">
+          <p className="text-sm font-bold text-ocean-900">{labels.history}</p>
+          <ol className="mt-3 space-y-3">
+            {selectedSite.monitoringHistory.map((event) => (
+              <li key={event.id} className="border-l-2 border-ocean-100 pl-3">
+                <Link href={event.evidenceHref} className="text-sm font-bold text-ocean-900 hover:text-coral-700">
+                  {event.label} / {event.date}
+                </Link>
+                <p className="mt-1 text-xs leading-5 text-ocean-900/58">{event.summary}</p>
+              </li>
+            ))}
+          </ol>
+        </div>
+      ) : null}
+
+      <div className="mt-5 flex flex-wrap gap-2">
+        <Link
+          href={selectedSite.campaignSlug ? `/campaigns/${selectedSite.campaignSlug}` : "/campaigns"}
+          className={cn("inline-flex min-h-10 items-center justify-center gap-2 rounded-full px-4 py-2 text-sm font-bold text-white transition", editorial ? "bg-[var(--public-blue)] hover:bg-[var(--public-navy)]" : "bg-coral-500 hover:bg-coral-700")}
+        >
+          <HeartHandshake size={16} aria-hidden="true" />
+          {labels.donate}
+        </Link>
+        <Link
+          href={localizedSeoPath("/impact-map", locale)}
+          className="inline-flex min-h-10 items-center justify-center rounded-full bg-white px-4 py-2 text-sm font-bold text-ocean-900 ring-1 ring-ocean-900/10 transition hover:ring-coral-500"
+        >
+          {labels.fullMap}
+        </Link>
+      </div>
+    </div>
+  ) : null;
+
+  const map = <ImpactSiteLeafletMap sites={sites} visibleSites={visibleSites} selectedSiteId={selectedSite?.id ?? null} onSelect={setSelectedSiteId} locale={locale} />;
+
   return (
-    <div className="grid gap-5 lg:grid-cols-[0.75fr_1.25fr]">
-      <div className="rounded-2xl border border-ocean-900/10 bg-white p-5 shadow-soft">
+    <div className={cn("grid gap-5", editorial ? "items-start lg:grid-cols-[minmax(250px,.75fr)_minmax(0,1.7fr)]" : "lg:grid-cols-[0.75fr_1.25fr]")}>
+      <div className={cn("min-w-0 rounded-2xl border border-ocean-900/10 bg-white p-5", !editorial && "shadow-soft")}>
         <div className="grid gap-3">
           <p className="flex items-center gap-2 text-sm font-bold text-ocean-900">
             <SlidersHorizontal size={16} aria-hidden="true" />
@@ -177,106 +282,7 @@ export function ImpactMapPreview({ sites, locale = "en" }: ImpactMapPreviewProps
           </div>
         </div>
 
-        {selectedSite ? (
-          <div className="mt-6 rounded-xl border border-ocean-900/10 bg-sand-50 p-5">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <p className="text-lg font-bold tracking-normal text-ocean-900">{selectedSite.name}</p>
-                <p className="mt-1 text-sm text-ocean-900/62">{selectedSite.region}</p>
-              </div>
-              <span className="rounded-full bg-white px-3 py-1 text-xs font-bold text-ocean-900">
-                {selectedSite.type}
-              </span>
-            </div>
-
-            <div className="mt-5 rounded-xl bg-white p-4">
-              <p className="text-xs font-bold uppercase tracking-wide text-ocean-900/60">{labels.evidenceReview}</p>
-              <p className="mt-2 text-sm font-semibold text-ocean-900">{selectedSite.verifiedEvidenceCount} {labels.verified} · {selectedSite.pendingEvidenceCount} {labels.inReview}</p>
-              <p className="mt-1 text-xs text-ocean-900/60">{selectedSite.evidenceCount} {labels.activityRecords}</p>
-              {selectedSite.latestSurvey ? <p className="mt-2 text-xs text-ocean-900/60">{labels.latestSurvey}: {selectedSite.latestSurvey}</p> : null}
-            </div>
-
-            {selectedSite.beforeAfter ? (
-              <div className="mt-5 grid gap-3 sm:grid-cols-2">
-                {[
-                  { label: labels.before, evidence: selectedSite.beforeAfter.before },
-                  { label: labels.after, evidence: selectedSite.beforeAfter.after }
-                ].map(({ label, evidence }) => (
-                  <div key={label} className="overflow-hidden rounded-xl bg-white">
-                    {evidence && isVisualEvidenceUrl(evidence.fileUrl) ? (
-                      <Image
-                        src={evidence.fileUrl}
-                        alt={`${label} ${labels.activityFor} ${selectedSite.name}`}
-                        width={360}
-                        height={220}
-                        unoptimized
-                        className="h-28 w-full object-cover"
-                        sizes="(min-width: 1280px) 180px, 50vw"
-                      />
-                    ) : (
-                      <div className="flex h-28 items-center justify-center bg-ocean-50 text-xs font-bold text-ocean-900/52">{label}</div>
-                    )}
-                    <div className="p-3">
-                      <p className="text-xs font-bold uppercase tracking-[0.12em] text-coral-700">{label}</p>
-                      <p className="mt-1 line-clamp-2 text-xs font-semibold text-ocean-900/62">
-                        {evidence ? evidence.title : "Activity pending"}
-                      </p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : null}
-
-            {selectedSite.latestEvidence ? (
-              <div className="mt-5 rounded-xl bg-white p-4">
-                <p className="text-xs font-bold uppercase tracking-[0.12em] text-coral-700">{labels.latestActivity}</p>
-                <h3 className="mt-2 font-bold text-ocean-900">{selectedSite.latestEvidence.title}</h3>
-                <p className="mt-2 text-xs leading-5 text-ocean-900/60">
-                  {selectedSite.latestEvidence.stageLabel} / {selectedSite.latestEvidence.verificationStatus}
-                  {selectedSite.latestEvidence.metricLabel && selectedSite.latestEvidence.metricValue
-                    ? ` / ${selectedSite.latestEvidence.metricLabel}: ${selectedSite.latestEvidence.metricValue}`
-                    : ""}
-                </p>
-                <Link href={selectedSite.latestEvidence.sourceHref} className="mt-3 inline-flex items-center gap-1 text-sm font-bold text-coral-700 hover:text-coral-500">
-                  {labels.openSource}
-                  <ExternalLink size={14} aria-hidden="true" />
-                </Link>
-              </div>
-            ) : null}
-
-            {selectedSite.monitoringHistory.length > 0 ? (
-              <div className="mt-5">
-                <p className="text-sm font-bold text-ocean-900">{labels.history}</p>
-                <ol className="mt-3 space-y-3">
-                  {selectedSite.monitoringHistory.map((event) => (
-                    <li key={event.id} className="border-l-2 border-ocean-100 pl-3">
-                      <Link href={event.evidenceHref} className="text-sm font-bold text-ocean-900 hover:text-coral-700">
-                        {event.label} / {event.date}
-                      </Link>
-                      <p className="mt-1 text-xs leading-5 text-ocean-900/58">{event.summary}</p>
-                    </li>
-                  ))}
-                </ol>
-              </div>
-            ) : null}
-
-            <div className="mt-5 flex flex-wrap gap-2">
-              <Link
-                href={selectedSite.campaignSlug ? `/campaigns/${selectedSite.campaignSlug}` : "/campaigns"}
-                className="inline-flex min-h-10 items-center justify-center gap-2 rounded-full bg-coral-500 px-4 py-2 text-sm font-bold text-white transition hover:bg-coral-700"
-              >
-                <HeartHandshake size={16} aria-hidden="true" />
-                {labels.donate}
-              </Link>
-              <Link
-                href={localizedSeoPath("/impact-map", locale)}
-                className="inline-flex min-h-10 items-center justify-center rounded-full bg-white px-4 py-2 text-sm font-bold text-ocean-900 ring-1 ring-ocean-900/10 transition hover:ring-coral-500"
-              >
-                {labels.fullMap}
-              </Link>
-            </div>
-          </div>
-        ) : null}
+        {!editorial ? siteDetail : null}
 
         {visibleSites.length === 0 ? (
           <div className="mt-6 rounded-xl border border-dashed border-ocean-900/14 bg-sand-50 p-5 text-sm font-semibold text-ocean-900/62">
@@ -291,7 +297,9 @@ export function ImpactMapPreview({ sites, locale = "en" }: ImpactMapPreviewProps
               type="button"
               className={cn(
                 "w-full rounded-xl border p-4 text-left transition hover:border-coral-500",
-                selectedSite?.id === site.id ? "border-coral-500 bg-coral-100/35" : "border-ocean-900/10"
+                selectedSite?.id === site.id
+                  ? editorial ? "border-[var(--public-blue)] bg-[var(--public-blue-light)]" : "border-coral-500 bg-coral-100/35"
+                  : "border-ocean-900/10"
               )}
               onClick={() => setSelectedSiteId(site.id)}
               aria-pressed={selectedSite?.id === site.id}
@@ -312,7 +320,12 @@ export function ImpactMapPreview({ sites, locale = "en" }: ImpactMapPreviewProps
           ))}
         </div>
       </div>
-      <ImpactSiteLeafletMap sites={sites} visibleSites={visibleSites} selectedSiteId={selectedSite?.id ?? null} onSelect={setSelectedSiteId} locale={locale} />
+      {editorial ? (
+        <div className="grid min-w-0 gap-5">
+          {map}
+          {siteDetail}
+        </div>
+      ) : map}
     </div>
   );
 }
